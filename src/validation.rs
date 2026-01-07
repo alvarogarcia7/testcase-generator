@@ -369,4 +369,58 @@ LPA:
             result.err()
         );
     }
+
+    #[test]
+    fn test_validate_initial_conditions_custom_device_types() {
+        let validator = SchemaValidator::new().unwrap();
+
+        let yaml_content = r#"
+eUICC:
+  - "eUICC Condition 1"
+LPA:
+  - "LPA Condition 1"
+  - "LPA Condition 2"
+SM_DP_PLUS:
+  - "SM-DP+ Condition 1"
+"#;
+        let initial_conditions: serde_yaml::Value = serde_yaml::from_str(yaml_content).unwrap();
+
+        let result = validator.validate_initial_conditions(&initial_conditions);
+        assert!(
+            result.is_ok(),
+            "Validation should succeed with custom device types: {:?}",
+            result.err()
+        );
+    }
+
+    #[test]
+    fn test_validate_initial_conditions_single_device() {
+        let validator = SchemaValidator::new().unwrap();
+
+        let yaml_content = r#"
+LPA:
+  - "LPA Condition 1"
+"#;
+        let initial_conditions: serde_yaml::Value = serde_yaml::from_str(yaml_content).unwrap();
+
+        let result = validator.validate_initial_conditions(&initial_conditions);
+        assert!(
+            result.is_ok(),
+            "Validation should succeed with single device: {:?}",
+            result.err()
+        );
+    }
+
+    #[test]
+    fn test_validate_initial_conditions_empty_array_error() {
+        let validator = SchemaValidator::new().unwrap();
+
+        let yaml_content = r#"
+eUICC: []
+"#;
+        let initial_conditions: serde_yaml::Value = serde_yaml::from_str(yaml_content).unwrap();
+
+        let result = validator.validate_initial_conditions(&initial_conditions);
+        assert!(result.is_ok(), "Empty array should be valid");
+    }
 }

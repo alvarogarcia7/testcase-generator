@@ -396,3 +396,135 @@ impl TestCaseMetadata {
         validator.validate_partial_chunk(&yaml_str)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_metadata_to_yaml() {
+        let metadata = TestCaseMetadata {
+            requirement: "REQ001".to_string(),
+            item: 1,
+            tc: 2,
+            id: "TC001".to_string(),
+            description: "Test description".to_string(),
+        };
+
+        let yaml_map = metadata.to_yaml();
+        assert_eq!(yaml_map.len(), 5);
+        assert_eq!(
+            yaml_map.get("requirement"),
+            Some(&Value::String("REQ001".to_string()))
+        );
+        assert_eq!(yaml_map.get("item"), Some(&Value::Number(1.into())));
+        assert_eq!(yaml_map.get("tc"), Some(&Value::Number(2.into())));
+        assert_eq!(
+            yaml_map.get("id"),
+            Some(&Value::String("TC001".to_string()))
+        );
+        assert_eq!(
+            yaml_map.get("description"),
+            Some(&Value::String("Test description".to_string()))
+        );
+    }
+
+    #[test]
+    fn test_metadata_from_structure() {
+        let mut structure = IndexMap::new();
+        structure.insert(
+            "requirement".to_string(),
+            Value::String("REQ001".to_string()),
+        );
+        structure.insert("item".to_string(), Value::Number(1.into()));
+        structure.insert("tc".to_string(), Value::Number(2.into()));
+        structure.insert("id".to_string(), Value::String("TC001".to_string()));
+        structure.insert(
+            "description".to_string(),
+            Value::String("Test description".to_string()),
+        );
+
+        let metadata = TestCaseMetadata::from_structure(&structure).unwrap();
+        assert_eq!(metadata.requirement, "REQ001");
+        assert_eq!(metadata.item, 1);
+        assert_eq!(metadata.tc, 2);
+        assert_eq!(metadata.id, "TC001");
+        assert_eq!(metadata.description, "Test description");
+    }
+
+    #[test]
+    fn test_metadata_from_structure_missing_field() {
+        let mut structure = IndexMap::new();
+        structure.insert(
+            "requirement".to_string(),
+            Value::String("REQ001".to_string()),
+        );
+        structure.insert("item".to_string(), Value::Number(1.into()));
+
+        let metadata = TestCaseMetadata::from_structure(&structure);
+        assert!(metadata.is_none());
+    }
+
+    #[test]
+    fn test_metadata_from_structure_invalid_type() {
+        let mut structure = IndexMap::new();
+        structure.insert(
+            "requirement".to_string(),
+            Value::String("REQ001".to_string()),
+        );
+        structure.insert(
+            "item".to_string(),
+            Value::String("not_a_number".to_string()),
+        );
+        structure.insert("tc".to_string(), Value::Number(2.into()));
+        structure.insert("id".to_string(), Value::String("TC001".to_string()));
+        structure.insert(
+            "description".to_string(),
+            Value::String("Test description".to_string()),
+        );
+
+        let metadata = TestCaseMetadata::from_structure(&structure);
+        assert!(metadata.is_none());
+    }
+
+    #[test]
+    fn test_metadata_to_yaml_structure() {
+        let metadata = TestCaseMetadata {
+            requirement: "REQ001".to_string(),
+            item: 1,
+            tc: 2,
+            id: "TC001".to_string(),
+            description: "Test description".to_string(),
+        };
+
+        let yaml_map = metadata.to_yaml();
+
+        // Verify the YAML structure is correct
+        assert_eq!(yaml_map.len(), 5);
+        assert!(yaml_map.contains_key("requirement"));
+        assert!(yaml_map.contains_key("item"));
+        assert!(yaml_map.contains_key("tc"));
+        assert!(yaml_map.contains_key("id"));
+        assert!(yaml_map.contains_key("description"));
+    }
+
+    #[test]
+    fn test_metadata_roundtrip() {
+        let original = TestCaseMetadata {
+            requirement: "REQ001".to_string(),
+            item: 1,
+            tc: 2,
+            id: "TC001".to_string(),
+            description: "Test description".to_string(),
+        };
+
+        let yaml_map = original.to_yaml();
+        let recovered = TestCaseMetadata::from_structure(&yaml_map).unwrap();
+
+        assert_eq!(original.requirement, recovered.requirement);
+        assert_eq!(original.item, recovered.item);
+        assert_eq!(original.tc, recovered.tc);
+        assert_eq!(original.id, recovered.id);
+        assert_eq!(original.description, recovered.description);
+    }
+}

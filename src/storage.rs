@@ -343,6 +343,7 @@ mod tests {
 
         assert_eq!(test_case.id, loaded.id);
         assert_eq!(test_case.requirement, loaded.requirement);
+        assert_eq!(test_case.description, loaded.description);
     }
 
     #[test]
@@ -377,7 +378,13 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
 
-        let test_case = TestCase::new("TC001".to_string(), "Test Case 1".to_string());
+        let test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test Case 1".to_string(),
+        );
         let saved_path = storage.save_test_case(&test_case).unwrap();
 
         let resolved = storage.resolve_file_path(&saved_path).unwrap();
@@ -390,7 +397,13 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
 
-        let test_case = TestCase::new("TC001".to_string(), "Test Case 1".to_string());
+        let test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test Case 1".to_string(),
+        );
         let saved_path = storage.save_test_case(&test_case).unwrap();
 
         let resolved = storage.resolve_file_path(&saved_path).unwrap();
@@ -403,7 +416,13 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
 
-        let test_case = TestCase::new("TC001".to_string(), "Test Case 1".to_string());
+        let test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test Case 1".to_string(),
+        );
         storage.save_test_case(&test_case).unwrap();
 
         let resolved = storage.resolve_file_path(Path::new("TC001.yaml")).unwrap();
@@ -416,7 +435,13 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
 
-        let test_case = TestCase::new("unique_test_123".to_string(), "Test Case".to_string());
+        let test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "unique_test_123".to_string(),
+            "Test Case".to_string(),
+        );
         storage.save_test_case(&test_case).unwrap();
 
         let resolved = storage.resolve_file_path(Path::new("unique_test")).unwrap();
@@ -429,8 +454,20 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
 
-        let test_case1 = TestCase::new("test_abc".to_string(), "Test Case 1".to_string());
-        let test_case2 = TestCase::new("test_xyz".to_string(), "Test Case 2".to_string());
+        let test_case1 = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "test_abc".to_string(),
+            "Test Case 1".to_string(),
+        );
+        let test_case2 = TestCase::new(
+            "REQ002".to_string(),
+            2,
+            2,
+            "test_xyz".to_string(),
+            "Test Case 2".to_string(),
+        );
         storage.save_test_case(&test_case1).unwrap();
         storage.save_test_case(&test_case2).unwrap();
 
@@ -457,12 +494,18 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
 
-        let test_case = TestCase::new("TC001".to_string(), "Test Case 1".to_string());
+        let test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test Case 1".to_string(),
+        );
         storage.save_test_case(&test_case).unwrap();
 
         let loaded = storage.load_test_case_by_id("TC001").unwrap();
         assert_eq!(loaded.id, "TC001");
-        assert_eq!(loaded.title, "Test Case 1");
+        assert_eq!(loaded.description, "Test Case 1");
     }
 
     #[test]
@@ -470,7 +513,13 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
 
-        let test_case = TestCase::new("TC002".to_string(), "Test Case 2".to_string());
+        let test_case = TestCase::new(
+            "REQ002".to_string(),
+            2,
+            2,
+            "TC002".to_string(),
+            "Test Case 2".to_string(),
+        );
         let yaml_content = serde_yaml::to_string(&test_case).unwrap();
 
         let file_path = temp_dir.path().join("TC002.yml");
@@ -478,7 +527,7 @@ mod tests {
 
         let loaded = storage.load_test_case_by_id("TC002").unwrap();
         assert_eq!(loaded.id, "TC002");
-        assert_eq!(loaded.title, "Test Case 2");
+        assert_eq!(loaded.description, "Test Case 2");
     }
 
     #[test]
@@ -486,7 +535,13 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
 
-        let test_case = TestCase::new("TC001".to_string(), "Test Case 1".to_string());
+        let test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test Case 1".to_string(),
+        );
         storage.save_test_case(&test_case).unwrap();
 
         assert!(storage.test_case_exists("TC001"));
@@ -498,7 +553,13 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
 
-        let test_case = TestCase::new("TC002".to_string(), "Test Case 2".to_string());
+        let test_case = TestCase::new(
+            "REQ002".to_string(),
+            2,
+            2,
+            "TC002".to_string(),
+            "Test Case 2".to_string(),
+        );
         let yaml_content = serde_yaml::to_string(&test_case).unwrap();
 
         let file_path = temp_dir.path().join("TC002.yml");
@@ -512,7 +573,13 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
 
-        let test_case = TestCase::new("TC001".to_string(), "Test Case 1".to_string());
+        let test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test Case 1".to_string(),
+        );
         storage.save_test_case(&test_case).unwrap();
 
         assert!(storage.test_case_exists("TC001"));
@@ -525,7 +592,13 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
 
-        let test_case = TestCase::new("TC002".to_string(), "Test Case 2".to_string());
+        let test_case = TestCase::new(
+            "REQ002".to_string(),
+            2,
+            2,
+            "TC002".to_string(),
+            "Test Case 2".to_string(),
+        );
         let yaml_content = serde_yaml::to_string(&test_case).unwrap();
 
         let file_path = temp_dir.path().join("TC002.yml");
@@ -541,9 +614,27 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
 
-        let test_case1 = TestCase::new("gsma_4_4_2_2".to_string(), "Test 1".to_string());
-        let test_case2 = TestCase::new("gsma_4_4_2_3".to_string(), "Test 2".to_string());
-        let test_case3 = TestCase::new("other_test".to_string(), "Test 3".to_string());
+        let test_case1 = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "gsma_4_4_2_2".to_string(),
+            "Test 1".to_string(),
+        );
+        let test_case2 = TestCase::new(
+            "REQ002".to_string(),
+            2,
+            2,
+            "gsma_4_4_2_3".to_string(),
+            "Test 2".to_string(),
+        );
+        let test_case3 = TestCase::new(
+            "REQ003".to_string(),
+            3,
+            3,
+            "other_test".to_string(),
+            "Test 3".to_string(),
+        );
 
         storage.save_test_case(&test_case1).unwrap();
         storage.save_test_case(&test_case2).unwrap();
@@ -564,13 +655,18 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
 
-        let test_case = TestCase::new("TC001".to_string(), "Test Case 1".to_string());
+        let test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test Case 1".to_string(),
+        );
         storage.save_test_case(&test_case).unwrap();
 
-        // Load with complete filename including extension
         let loaded = storage.load_test_case_by_id("TC001.yaml").unwrap();
         assert_eq!(loaded.id, "TC001");
-        assert_eq!(loaded.title, "Test Case 1");
+        assert_eq!(loaded.description, "Test Case 1");
     }
 
     #[test]
@@ -578,16 +674,21 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
 
-        let test_case = TestCase::new("TC002".to_string(), "Test Case 2".to_string());
+        let test_case = TestCase::new(
+            "REQ002".to_string(),
+            2,
+            2,
+            "TC002".to_string(),
+            "Test Case 2".to_string(),
+        );
         let yaml_content = serde_yaml::to_string(&test_case).unwrap();
 
         let file_path = temp_dir.path().join("TC002.yml");
         fs::write(&file_path, yaml_content).unwrap();
 
-        // Load with complete filename including .yml extension
         let loaded = storage.load_test_case_by_id("TC002.yml").unwrap();
         assert_eq!(loaded.id, "TC002");
-        assert_eq!(loaded.title, "Test Case 2");
+        assert_eq!(loaded.description, "Test Case 2");
     }
 
     #[test]
@@ -595,10 +696,15 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
 
-        let test_case = TestCase::new("TC001".to_string(), "Test Case 1".to_string());
+        let test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test Case 1".to_string(),
+        );
         storage.save_test_case(&test_case).unwrap();
 
-        // Check with complete filename
         assert!(storage.test_case_exists("TC001.yaml"));
         assert!(storage.test_case_exists("TC001"));
         assert!(!storage.test_case_exists("TC999.yaml"));
@@ -609,12 +715,17 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
 
-        let test_case = TestCase::new("TC001".to_string(), "Test Case 1".to_string());
+        let test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test Case 1".to_string(),
+        );
         storage.save_test_case(&test_case).unwrap();
 
         assert!(storage.test_case_exists("TC001.yaml"));
 
-        // Delete with complete filename
         storage.delete_test_case("TC001.yaml").unwrap();
         assert!(!storage.test_case_exists("TC001"));
         assert!(!storage.test_case_exists("TC001.yaml"));
@@ -624,20 +735,24 @@ mod tests {
     fn test_load_test_case_by_id_with_path_prefix() {
         let temp_dir = TempDir::new().unwrap();
 
-        // Create a subdirectory like "data"
         let data_dir = temp_dir.path().join("data");
         fs::create_dir_all(&data_dir).unwrap();
 
         let storage = TestCaseStorage::new(&data_dir).unwrap();
 
-        let test_case = TestCase::new("gsma_4_4_2_2_TC".to_string(), "GSMA Test".to_string());
+        let test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "gsma_4_4_2_2_TC".to_string(),
+            "GSMA Test".to_string(),
+        );
         storage.save_test_case(&test_case).unwrap();
 
-        // Load with path prefix in the ID
         let loaded = storage
             .load_test_case_by_id("gsma_4_4_2_2_TC.yaml")
             .unwrap();
         assert_eq!(loaded.id, "gsma_4_4_2_2_TC");
-        assert_eq!(loaded.title, "GSMA Test");
+        assert_eq!(loaded.description, "GSMA Test");
     }
 }

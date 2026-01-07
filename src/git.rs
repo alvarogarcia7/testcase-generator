@@ -283,7 +283,7 @@ mod tests {
         let git = GitManager::init(temp_dir.path()).unwrap();
 
         let yaml_file = temp_dir.path().join("test-case.yaml");
-        fs::write(&yaml_file, "id: TC001\ntitle: Test Case 1").unwrap();
+        fs::write(&yaml_file, "id: TC001\ndescription: Test Case 1").unwrap();
 
         let oid = git
             .commit_progress(
@@ -308,7 +308,7 @@ mod tests {
 
         let yaml_file = temp_dir.path().join("test-case.yaml");
 
-        fs::write(&yaml_file, "id: TC001\ntitle: Initial").unwrap();
+        fs::write(&yaml_file, "id: TC001\ndescription: Initial").unwrap();
         git.commit_progress(
             Path::new("test-case.yaml"),
             "Setup test environment",
@@ -317,7 +317,7 @@ mod tests {
         )
         .unwrap();
 
-        fs::write(&yaml_file, "id: TC001\ntitle: Updated").unwrap();
+        fs::write(&yaml_file, "id: TC001\ndescription: Updated").unwrap();
         git.commit_progress(
             Path::new("test-case.yaml"),
             "Execute login test",
@@ -326,7 +326,7 @@ mod tests {
         )
         .unwrap();
 
-        fs::write(&yaml_file, "id: TC001\ntitle: Final").unwrap();
+        fs::write(&yaml_file, "id: TC001\ndescription: Final").unwrap();
         git.commit_progress(
             Path::new("test-case.yaml"),
             "Verify results",
