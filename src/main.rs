@@ -71,6 +71,16 @@ fn main() -> Result<()> {
         Commands::Init { path, git } => {
             handle_init(path.as_deref().unwrap_or(&cli.path), git)?;
         }
+
+        Commands::AddSteps { path, sequence_id } => {
+            let work_path = path.as_deref().unwrap_or(&cli.path);
+            handle_add_steps(work_path, sequence_id)?;
+        }
+
+        Commands::BuildSequencesWithSteps { path } => {
+            let work_path = path.as_deref().unwrap_or(&cli.path);
+            handle_build_sequences_with_steps(work_path)?;
+        }
     }
 
     Ok(())
@@ -520,6 +530,154 @@ fn handle_build_sequences(path: &str) -> Result<()> {
     if Prompts::confirm("\nCommit final file?")? {
         builder
             .commit("Complete test case with all sequences")
+            .context("Failed to commit final file")?;
+    }
+
+    Ok(())
+}
+
+fn handle_add_steps(path: &str, sequence_id: Option<i64>) -> Result<()> {
+    let mut builder = TestCaseBuilder::new(path).context("Failed to create test case builder")?;
+
+    println!("\n╔═══════════════════════════════════════════════╗");
+    println!("║      Add Steps to Sequence with Commits      ║");
+    println!("╚═══════════════════════════════════════════════╝\n");
+
+    builder.add_metadata().context("Failed to add metadata")?;
+
+    println!("✓ Metadata added to structure\n");
+
+    if Prompts::confirm("Commit metadata to git?")? {
+        builder
+            .commit("Add test case metadata")
+            .context("Failed to commit metadata")?;
+    }
+
+    if Prompts::confirm("\nAdd general initial conditions?")? {
+        builder
+            .add_general_initial_conditions(None)
+            .context("Failed to add general initial conditions")?;
+
+        println!("✓ General initial conditions added\n");
+
+        if Prompts::confirm("Commit general initial conditions to git?")? {
+            builder
+                .commit("Add general initial conditions")
+                .context("Failed to commit general initial conditions")?;
+        }
+    }
+
+    if Prompts::confirm("\nAdd initial conditions?")? {
+        builder
+            .add_initial_conditions(None)
+            .context("Failed to add initial conditions")?;
+
+        println!("✓ Initial conditions added\n");
+
+        if Prompts::confirm("Commit initial conditions to git?")? {
+            builder
+                .commit("Add initial conditions")
+                .context("Failed to commit initial conditions")?;
+        }
+    }
+
+    builder
+        .add_test_sequence_interactive()
+        .context("Failed to add test sequence")?;
+
+    if Prompts::confirm("Commit this sequence to git?")? {
+        let sequence_id_val = builder.get_next_sequence_id() - 1;
+        let commit_msg = format!("Add test sequence #{}", sequence_id_val);
+        builder
+            .commit(&commit_msg)
+            .context("Failed to commit test sequence")?;
+    }
+
+    let seq_id = if let Some(id) = sequence_id {
+        id
+    } else {
+        builder.get_next_sequence_id() - 1
+    };
+
+    builder
+        .add_steps_to_sequence_by_id_with_commits(seq_id)
+        .context("Failed to add steps to sequence")?;
+
+    let file_path = builder.save().context("Failed to save test case")?;
+
+    println!("\n╔═══════════════════════════════════════════════╗");
+    println!("║        Steps Added Successfully               ║");
+    println!("╚═══════════════════════════════════════════════╝");
+    println!("\nSaved to: {}", file_path.display());
+
+    if Prompts::confirm("\nCommit final file?")? {
+        builder
+            .commit("Complete test sequence with all steps")
+            .context("Failed to commit final file")?;
+    }
+
+    Ok(())
+}
+
+fn handle_build_sequences_with_steps(path: &str) -> Result<()> {
+    let mut builder = TestCaseBuilder::new(path).context("Failed to create test case builder")?;
+
+    println!("\n╔═══════════════════════════════════════════════╗");
+    println!("║ Build Test Sequences & Steps with Commits    ║");
+    println!("╚═══════════════════════════════════════════════╝\n");
+
+    builder.add_metadata().context("Failed to add metadata")?;
+
+    println!("✓ Metadata added to structure\n");
+
+    if Prompts::confirm("Commit metadata to git?")? {
+        builder
+            .commit("Add test case metadata")
+            .context("Failed to commit metadata")?;
+    }
+
+    if Prompts::confirm("\nAdd general initial conditions?")? {
+        builder
+            .add_general_initial_conditions(None)
+            .context("Failed to add general initial conditions")?;
+
+        println!("✓ General initial conditions added\n");
+
+        if Prompts::confirm("Commit general initial conditions to git?")? {
+            builder
+                .commit("Add general initial conditions")
+                .context("Failed to commit general initial conditions")?;
+        }
+    }
+
+    if Prompts::confirm("\nAdd initial conditions?")? {
+        builder
+            .add_initial_conditions(None)
+            .context("Failed to add initial conditions")?;
+
+        println!("✓ Initial conditions added\n");
+
+        if Prompts::confirm("Commit initial conditions to git?")? {
+            builder
+                .commit("Add initial conditions")
+                .context("Failed to commit initial conditions")?;
+        }
+    }
+
+    builder
+        .build_test_sequences_with_step_commits()
+        .context("Failed to build test sequences with steps")?;
+
+    let file_path = builder.save().context("Failed to save test case")?;
+
+    println!("\n╔═══════════════════════════════════════════════╗");
+    println!("║  Test Sequences & Steps Built Successfully   ║");
+    println!("╚═══════════════════════════════════════════════╝");
+    println!("\nSaved to: {}", file_path.display());
+
+    if Prompts::confirm("\nCommit final file?")? {
+        builder
+            .commit("Complete test case with all sequences and steps")
             .context("Failed to commit final file")?;
     }
 

@@ -301,7 +301,7 @@ impl TestCaseBuilder {
     }
 
     /// Validate a test sequence structure and append it to test_sequences
-    fn validate_and_append_sequence(&mut self, sequence: Value) -> Result<()> {
+    pub fn validate_and_append_sequence(&mut self, sequence: Value) -> Result<()> {
         if let Value::Mapping(seq_map) = &sequence {
             if !seq_map.contains_key(Value::String("id".to_string())) {
                 anyhow::bail!("Sequence must have an 'id' field");
@@ -354,6 +354,356 @@ impl TestCaseBuilder {
 
         println!("\n✓ All test sequences added");
         Ok(self)
+    }
+
+    /// Add steps to a test sequence with git commit after each step
+    pub fn add_steps_to_sequence_with_commits(
+        &mut self,
+        sequence_index: usize,
+    ) -> Result<&mut Self> {
+        use crate::fuzzy::TestCaseFuzzyFinder;
+
+        println!("\n╔═══════════════════════════════════════════════╗");
+        println!("║      Step Collection Loop with Commits       ║");
+        println!("╚═══════════════════════════════════════════════╝\n");
+
+        let sequence_id = self.get_sequence_id_by_index(sequence_index)?;
+        let sequence_name = self.get_sequence_name_by_index(sequence_index)?;
+
+        println!(
+            "Adding steps to Sequence #{}: {}\n",
+            sequence_id, sequence_name
+        );
+
+        let existing_steps = self.get_all_existing_steps();
+
+        loop {
+            let step_number = self.get_next_step_number(sequence_index)?;
+            println!("\n=== Add Step #{} ===", step_number);
+
+            let step_description = if !existing_steps.is_empty() {
+                println!("\nYou can select from existing step descriptions or enter a new one.");
+
+                if Prompts::confirm("Use fuzzy search to select from existing descriptions?")? {
+                    match TestCaseFuzzyFinder::search_strings(
+                        &existing_steps,
+                        "Select step description: ",
+                    )? {
+                        Some(desc) => desc,
+                        None => {
+                            println!("No selection made, entering new description.");
+                            Prompts::input("Step description")?
+                        }
+                    }
+                } else {
+                    Prompts::input("Step description")?
+                }
+            } else {
+                Prompts::input("Step description")?
+            };
+
+            let manual = if Prompts::confirm("Is this a manual step?")? {
+                Some(true)
+            } else {
+                None
+            };
+
+            let command = Prompts::input("Command")?;
+
+            let expected = self.prompt_for_expected()?;
+
+            let step = self.create_step_value(
+                step_number,
+                manual,
+                step_description.clone(),
+                command,
+                expected,
+            )?;
+
+            println!("\n=== Validating Step ===");
+            self.validate_and_append_step(sequence_index, step)?;
+            println!("✓ Step validated and added\n");
+
+            self.save().context("Failed to save file")?;
+
+            if Prompts::confirm("Commit this step to git?")? {
+                let commit_msg = format!(
+                    "Add step #{} to sequence #{}: {}",
+                    step_number, sequence_id, step_description
+                );
+                self.commit(&commit_msg).context("Failed to commit step")?;
+            }
+
+            if !Prompts::confirm("\nAdd another step to this sequence?")? {
+                break;
+            }
+        }
+
+        println!("\n✓ All steps added to sequence");
+        Ok(self)
+    }
+
+    /// Get the sequence ID by index
+    fn get_sequence_id_by_index(&self, index: usize) -> Result<i64> {
+        if let Some(Value::Sequence(sequences)) = self.structure.get("test_sequences") {
+            if let Some(Value::Mapping(seq_map)) = sequences.get(index) {
+                if let Some(Value::Number(id)) = seq_map.get(Value::String("id".to_string())) {
+                    return id
+                        .as_i64()
+                        .ok_or_else(|| anyhow::anyhow!("Invalid sequence ID"));
+                }
+            }
+        }
+        anyhow::bail!("Sequence not found at index {}", index)
+    }
+
+    /// Get the sequence name by index
+    fn get_sequence_name_by_index(&self, index: usize) -> Result<String> {
+        if let Some(Value::Sequence(sequences)) = self.structure.get("test_sequences") {
+            if let Some(Value::Mapping(seq_map)) = sequences.get(index) {
+                if let Some(Value::String(name)) = seq_map.get(Value::String("name".to_string())) {
+                    return Ok(name.clone());
+                }
+            }
+        }
+        anyhow::bail!("Sequence not found at index {}", index)
+    }
+
+    /// Get all existing step descriptions from all sequences
+    fn get_all_existing_steps(&self) -> Vec<String> {
+        let mut descriptions = Vec::new();
+
+        if let Some(Value::Sequence(sequences)) = self.structure.get("test_sequences") {
+            for seq in sequences {
+                if let Value::Mapping(seq_map) = seq {
+                    if let Some(Value::Sequence(steps)) =
+                        seq_map.get(Value::String("steps".to_string()))
+                    {
+                        for step in steps {
+                            if let Value::Mapping(step_map) = step {
+                                if let Some(Value::String(desc)) =
+                                    step_map.get(Value::String("description".to_string()))
+                                {
+                                    if !descriptions.contains(desc) {
+                                        descriptions.push(desc.clone());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        descriptions
+    }
+
+    /// Get the next step number for a sequence
+    fn get_next_step_number(&self, sequence_index: usize) -> Result<i64> {
+        if let Some(Value::Sequence(sequences)) = self.structure.get("test_sequences") {
+            if let Some(Value::Mapping(seq_map)) = sequences.get(sequence_index) {
+                if let Some(Value::Sequence(steps)) =
+                    seq_map.get(Value::String("steps".to_string()))
+                {
+                    let max_step = steps
+                        .iter()
+                        .filter_map(|step| {
+                            if let Value::Mapping(step_map) = step {
+                                step_map.get(Value::String("step".to_string())).and_then(
+                                    |v| match v {
+                                        Value::Number(n) => n.as_i64(),
+                                        _ => None,
+                                    },
+                                )
+                            } else {
+                                None
+                            }
+                        })
+                        .max()
+                        .unwrap_or(0);
+                    return Ok(max_step + 1);
+                }
+            }
+        }
+        anyhow::bail!("Sequence not found at index {}", sequence_index)
+    }
+
+    /// Prompt for expected results structure
+    fn prompt_for_expected(&self) -> Result<Value> {
+        let include_success = Prompts::confirm("Include 'success' field?")?;
+
+        let result = Prompts::input("Expected result")?;
+        let output = Prompts::input("Expected output")?;
+
+        let mut expected_map = serde_yaml::Mapping::new();
+
+        if include_success {
+            let success_value = Prompts::confirm("Success value (true/false)?")?;
+            expected_map.insert(
+                Value::String("success".to_string()),
+                Value::Bool(success_value),
+            );
+        }
+
+        expected_map.insert(Value::String("result".to_string()), Value::String(result));
+        expected_map.insert(Value::String("output".to_string()), Value::String(output));
+
+        Ok(Value::Mapping(expected_map))
+    }
+
+    /// Create a step value structure
+    pub fn create_step_value(
+        &self,
+        step_number: i64,
+        manual: Option<bool>,
+        description: String,
+        command: String,
+        expected: Value,
+    ) -> Result<Value> {
+        let mut step_map = serde_yaml::Mapping::new();
+
+        step_map.insert(
+            Value::String("step".to_string()),
+            Value::Number(step_number.into()),
+        );
+
+        if let Some(is_manual) = manual {
+            step_map.insert(Value::String("manual".to_string()), Value::Bool(is_manual));
+        }
+
+        step_map.insert(
+            Value::String("description".to_string()),
+            Value::String(description),
+        );
+
+        step_map.insert(Value::String("command".to_string()), Value::String(command));
+
+        step_map.insert(Value::String("expected".to_string()), expected);
+
+        Ok(Value::Mapping(step_map))
+    }
+
+    /// Validate a step structure and append it to the sequence
+    pub fn validate_and_append_step(&mut self, sequence_index: usize, step: Value) -> Result<()> {
+        if let Value::Mapping(step_map) = &step {
+            if !step_map.contains_key(Value::String("step".to_string())) {
+                anyhow::bail!("Step must have a 'step' field");
+            }
+            if !step_map.contains_key(Value::String("description".to_string())) {
+                anyhow::bail!("Step must have a 'description' field");
+            }
+            if !step_map.contains_key(Value::String("command".to_string())) {
+                anyhow::bail!("Step must have a 'command' field");
+            }
+            if !step_map.contains_key(Value::String("expected".to_string())) {
+                anyhow::bail!("Step must have an 'expected' field");
+            }
+
+            if let Some(Value::Mapping(expected_map)) =
+                step_map.get(Value::String("expected".to_string()))
+            {
+                if !expected_map.contains_key(Value::String("result".to_string())) {
+                    anyhow::bail!("Expected must have a 'result' field");
+                }
+                if !expected_map.contains_key(Value::String("output".to_string())) {
+                    anyhow::bail!("Expected must have an 'output' field");
+                }
+            } else {
+                anyhow::bail!("Expected must be a mapping");
+            }
+        } else {
+            anyhow::bail!("Step must be a mapping");
+        }
+
+        let sequences = self
+            .structure
+            .get_mut("test_sequences")
+            .ok_or_else(|| anyhow::anyhow!("test_sequences not found"))?;
+
+        if let Value::Sequence(seq_vec) = sequences {
+            if let Some(Value::Mapping(seq_map)) = seq_vec.get_mut(sequence_index) {
+                if let Some(Value::Sequence(steps)) =
+                    seq_map.get_mut(Value::String("steps".to_string()))
+                {
+                    steps.push(step);
+                } else {
+                    anyhow::bail!("steps field is not a sequence");
+                }
+            } else {
+                anyhow::bail!("Sequence at index {} is not a mapping", sequence_index);
+            }
+        } else {
+            anyhow::bail!("test_sequences is not a sequence");
+        }
+
+        Ok(())
+    }
+
+    /// Build test sequences with step collection loops and commits
+    pub fn build_test_sequences_with_step_commits(&mut self) -> Result<&mut Self> {
+        println!("\n╔═══════════════════════════════════════════════╗");
+        println!("║  Test Sequence & Step Builder with Commits   ║");
+        println!("╚═══════════════════════════════════════════════╝\n");
+
+        loop {
+            self.add_test_sequence_interactive()
+                .context("Failed to add test sequence")?;
+
+            let sequence_index = self.get_sequence_count() - 1;
+
+            if Prompts::confirm("Commit this sequence to git?")? {
+                let sequence_id = self.get_next_sequence_id() - 1;
+                let commit_msg = format!("Add test sequence #{}", sequence_id);
+                self.commit(&commit_msg)
+                    .context("Failed to commit test sequence")?;
+            }
+
+            if Prompts::confirm("\nAdd steps to this sequence now?")? {
+                self.add_steps_to_sequence_with_commits(sequence_index)
+                    .context("Failed to add steps to sequence")?;
+            }
+
+            if !Prompts::confirm("\nAdd another test sequence?")? {
+                break;
+            }
+        }
+
+        println!("\n✓ All test sequences and steps added");
+        Ok(self)
+    }
+
+    /// Get the count of sequences
+    fn get_sequence_count(&self) -> usize {
+        if let Some(Value::Sequence(sequences)) = self.structure.get("test_sequences") {
+            sequences.len()
+        } else {
+            0
+        }
+    }
+
+    /// Add steps to an existing sequence by sequence ID
+    pub fn add_steps_to_sequence_by_id_with_commits(
+        &mut self,
+        sequence_id: i64,
+    ) -> Result<&mut Self> {
+        let sequence_index = self.find_sequence_index_by_id(sequence_id)?;
+        self.add_steps_to_sequence_with_commits(sequence_index)
+    }
+
+    /// Find sequence index by ID
+    fn find_sequence_index_by_id(&self, sequence_id: i64) -> Result<usize> {
+        if let Some(Value::Sequence(sequences)) = self.structure.get("test_sequences") {
+            for (idx, seq) in sequences.iter().enumerate() {
+                if let Value::Mapping(seq_map) = seq {
+                    if let Some(Value::Number(id)) = seq_map.get(Value::String("id".to_string())) {
+                        if id.as_i64() == Some(sequence_id) {
+                            return Ok(idx);
+                        }
+                    }
+                }
+            }
+        }
+        anyhow::bail!("Sequence with ID {} not found", sequence_id)
     }
 }
 
@@ -668,5 +1018,392 @@ mod tests {
         let yaml = builder.to_yaml_string().unwrap();
         assert!(yaml.contains("Test Sequence"));
         assert!(yaml.contains("This is a test"));
+    }
+
+    #[test]
+    fn test_get_sequence_id_by_index() {
+        let temp_dir = TempDir::new().unwrap();
+        let mut builder = TestCaseBuilder::new(temp_dir.path()).unwrap();
+
+        let mut seq_map = serde_yaml::Mapping::new();
+        seq_map.insert(Value::String("id".to_string()), Value::Number(5.into()));
+        seq_map.insert(
+            Value::String("name".to_string()),
+            Value::String("Test Sequence".to_string()),
+        );
+        seq_map.insert(
+            Value::String("steps".to_string()),
+            Value::Sequence(Vec::new()),
+        );
+
+        builder
+            .validate_and_append_sequence(Value::Mapping(seq_map))
+            .unwrap();
+
+        let id = builder.get_sequence_id_by_index(0).unwrap();
+        assert_eq!(id, 5);
+    }
+
+    #[test]
+    fn test_get_sequence_name_by_index() {
+        let temp_dir = TempDir::new().unwrap();
+        let mut builder = TestCaseBuilder::new(temp_dir.path()).unwrap();
+
+        let mut seq_map = serde_yaml::Mapping::new();
+        seq_map.insert(Value::String("id".to_string()), Value::Number(1.into()));
+        seq_map.insert(
+            Value::String("name".to_string()),
+            Value::String("My Test Sequence".to_string()),
+        );
+        seq_map.insert(
+            Value::String("steps".to_string()),
+            Value::Sequence(Vec::new()),
+        );
+
+        builder
+            .validate_and_append_sequence(Value::Mapping(seq_map))
+            .unwrap();
+
+        let name = builder.get_sequence_name_by_index(0).unwrap();
+        assert_eq!(name, "My Test Sequence");
+    }
+
+    #[test]
+    fn test_get_next_step_number_empty() {
+        let temp_dir = TempDir::new().unwrap();
+        let mut builder = TestCaseBuilder::new(temp_dir.path()).unwrap();
+
+        let mut seq_map = serde_yaml::Mapping::new();
+        seq_map.insert(Value::String("id".to_string()), Value::Number(1.into()));
+        seq_map.insert(
+            Value::String("name".to_string()),
+            Value::String("Test Sequence".to_string()),
+        );
+        seq_map.insert(
+            Value::String("steps".to_string()),
+            Value::Sequence(Vec::new()),
+        );
+
+        builder
+            .validate_and_append_sequence(Value::Mapping(seq_map))
+            .unwrap();
+
+        let next_step = builder.get_next_step_number(0).unwrap();
+        assert_eq!(next_step, 1);
+    }
+
+    #[test]
+    fn test_get_next_step_number_with_existing() {
+        let temp_dir = TempDir::new().unwrap();
+        let mut builder = TestCaseBuilder::new(temp_dir.path()).unwrap();
+
+        let mut step1 = serde_yaml::Mapping::new();
+        step1.insert(Value::String("step".to_string()), Value::Number(1.into()));
+        step1.insert(
+            Value::String("description".to_string()),
+            Value::String("Step 1".to_string()),
+        );
+        step1.insert(
+            Value::String("command".to_string()),
+            Value::String("ssh".to_string()),
+        );
+
+        let mut expected = serde_yaml::Mapping::new();
+        expected.insert(
+            Value::String("result".to_string()),
+            Value::String("success".to_string()),
+        );
+        expected.insert(
+            Value::String("output".to_string()),
+            Value::String("ok".to_string()),
+        );
+        step1.insert(
+            Value::String("expected".to_string()),
+            Value::Mapping(expected),
+        );
+
+        let steps_vec = vec![Value::Mapping(step1)];
+
+        let mut seq_map = serde_yaml::Mapping::new();
+        seq_map.insert(Value::String("id".to_string()), Value::Number(1.into()));
+        seq_map.insert(
+            Value::String("name".to_string()),
+            Value::String("Test Sequence".to_string()),
+        );
+        seq_map.insert(
+            Value::String("steps".to_string()),
+            Value::Sequence(steps_vec),
+        );
+
+        builder
+            .validate_and_append_sequence(Value::Mapping(seq_map))
+            .unwrap();
+
+        let next_step = builder.get_next_step_number(0).unwrap();
+        assert_eq!(next_step, 2);
+    }
+
+    #[test]
+    fn test_create_step_value() {
+        let temp_dir = TempDir::new().unwrap();
+        let builder = TestCaseBuilder::new(temp_dir.path()).unwrap();
+
+        let mut expected = serde_yaml::Mapping::new();
+        expected.insert(
+            Value::String("result".to_string()),
+            Value::String("0x9000".to_string()),
+        );
+        expected.insert(
+            Value::String("output".to_string()),
+            Value::String("Success".to_string()),
+        );
+
+        let step = builder
+            .create_step_value(
+                1,
+                Some(true),
+                "Test step".to_string(),
+                "ssh".to_string(),
+                Value::Mapping(expected),
+            )
+            .unwrap();
+
+        if let Value::Mapping(step_map) = step {
+            assert_eq!(
+                step_map.get(Value::String("step".to_string())),
+                Some(&Value::Number(1.into()))
+            );
+            assert_eq!(
+                step_map.get(Value::String("manual".to_string())),
+                Some(&Value::Bool(true))
+            );
+            assert_eq!(
+                step_map.get(Value::String("description".to_string())),
+                Some(&Value::String("Test step".to_string()))
+            );
+        } else {
+            panic!("Step should be a mapping");
+        }
+    }
+
+    #[test]
+    fn test_validate_and_append_step() {
+        let temp_dir = TempDir::new().unwrap();
+        let mut builder = TestCaseBuilder::new(temp_dir.path()).unwrap();
+
+        let mut seq_map = serde_yaml::Mapping::new();
+        seq_map.insert(Value::String("id".to_string()), Value::Number(1.into()));
+        seq_map.insert(
+            Value::String("name".to_string()),
+            Value::String("Test Sequence".to_string()),
+        );
+        seq_map.insert(
+            Value::String("steps".to_string()),
+            Value::Sequence(Vec::new()),
+        );
+
+        builder
+            .validate_and_append_sequence(Value::Mapping(seq_map))
+            .unwrap();
+
+        let mut expected = serde_yaml::Mapping::new();
+        expected.insert(
+            Value::String("result".to_string()),
+            Value::String("0x9000".to_string()),
+        );
+        expected.insert(
+            Value::String("output".to_string()),
+            Value::String("Success".to_string()),
+        );
+
+        let step = builder
+            .create_step_value(
+                1,
+                None,
+                "Test step".to_string(),
+                "ssh".to_string(),
+                Value::Mapping(expected),
+            )
+            .unwrap();
+
+        builder.validate_and_append_step(0, step).unwrap();
+
+        if let Some(Value::Sequence(sequences)) = builder.structure().get("test_sequences") {
+            if let Some(Value::Mapping(seq_map)) = sequences.first() {
+                if let Some(Value::Sequence(steps)) =
+                    seq_map.get(Value::String("steps".to_string()))
+                {
+                    assert_eq!(steps.len(), 1);
+                } else {
+                    panic!("steps is not a sequence");
+                }
+            } else {
+                panic!("sequence is not a mapping");
+            }
+        } else {
+            panic!("test_sequences not found");
+        }
+    }
+
+    #[test]
+    fn test_validate_step_missing_fields() {
+        let temp_dir = TempDir::new().unwrap();
+        let mut builder = TestCaseBuilder::new(temp_dir.path()).unwrap();
+
+        let mut seq_map = serde_yaml::Mapping::new();
+        seq_map.insert(Value::String("id".to_string()), Value::Number(1.into()));
+        seq_map.insert(
+            Value::String("name".to_string()),
+            Value::String("Test Sequence".to_string()),
+        );
+        seq_map.insert(
+            Value::String("steps".to_string()),
+            Value::Sequence(Vec::new()),
+        );
+
+        builder
+            .validate_and_append_sequence(Value::Mapping(seq_map))
+            .unwrap();
+
+        let mut step_map = serde_yaml::Mapping::new();
+        step_map.insert(Value::String("step".to_string()), Value::Number(1.into()));
+
+        let result = builder.validate_and_append_step(0, Value::Mapping(step_map));
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("must have a 'description'"));
+    }
+
+    #[test]
+    fn test_get_all_existing_steps() {
+        let temp_dir = TempDir::new().unwrap();
+        let mut builder = TestCaseBuilder::new(temp_dir.path()).unwrap();
+
+        let mut expected = serde_yaml::Mapping::new();
+        expected.insert(
+            Value::String("result".to_string()),
+            Value::String("success".to_string()),
+        );
+        expected.insert(
+            Value::String("output".to_string()),
+            Value::String("ok".to_string()),
+        );
+
+        let mut step1 = serde_yaml::Mapping::new();
+        step1.insert(Value::String("step".to_string()), Value::Number(1.into()));
+        step1.insert(
+            Value::String("description".to_string()),
+            Value::String("First step".to_string()),
+        );
+        step1.insert(
+            Value::String("command".to_string()),
+            Value::String("ssh".to_string()),
+        );
+        step1.insert(
+            Value::String("expected".to_string()),
+            Value::Mapping(expected.clone()),
+        );
+
+        let mut step2 = serde_yaml::Mapping::new();
+        step2.insert(Value::String("step".to_string()), Value::Number(2.into()));
+        step2.insert(
+            Value::String("description".to_string()),
+            Value::String("Second step".to_string()),
+        );
+        step2.insert(
+            Value::String("command".to_string()),
+            Value::String("ssh".to_string()),
+        );
+        step2.insert(
+            Value::String("expected".to_string()),
+            Value::Mapping(expected.clone()),
+        );
+
+        let steps_vec = vec![Value::Mapping(step1), Value::Mapping(step2)];
+
+        let mut seq_map = serde_yaml::Mapping::new();
+        seq_map.insert(Value::String("id".to_string()), Value::Number(1.into()));
+        seq_map.insert(
+            Value::String("name".to_string()),
+            Value::String("Test Sequence".to_string()),
+        );
+        seq_map.insert(
+            Value::String("steps".to_string()),
+            Value::Sequence(steps_vec),
+        );
+
+        builder
+            .validate_and_append_sequence(Value::Mapping(seq_map))
+            .unwrap();
+
+        let existing_steps = builder.get_all_existing_steps();
+        assert_eq!(existing_steps.len(), 2);
+        assert!(existing_steps.contains(&"First step".to_string()));
+        assert!(existing_steps.contains(&"Second step".to_string()));
+    }
+
+    #[test]
+    fn test_find_sequence_index_by_id() {
+        let temp_dir = TempDir::new().unwrap();
+        let mut builder = TestCaseBuilder::new(temp_dir.path()).unwrap();
+
+        let mut seq1 = serde_yaml::Mapping::new();
+        seq1.insert(Value::String("id".to_string()), Value::Number(10.into()));
+        seq1.insert(
+            Value::String("name".to_string()),
+            Value::String("Sequence 1".to_string()),
+        );
+        seq1.insert(
+            Value::String("steps".to_string()),
+            Value::Sequence(Vec::new()),
+        );
+
+        let mut seq2 = serde_yaml::Mapping::new();
+        seq2.insert(Value::String("id".to_string()), Value::Number(20.into()));
+        seq2.insert(
+            Value::String("name".to_string()),
+            Value::String("Sequence 2".to_string()),
+        );
+        seq2.insert(
+            Value::String("steps".to_string()),
+            Value::Sequence(Vec::new()),
+        );
+
+        builder
+            .validate_and_append_sequence(Value::Mapping(seq1))
+            .unwrap();
+        builder
+            .validate_and_append_sequence(Value::Mapping(seq2))
+            .unwrap();
+
+        let index = builder.find_sequence_index_by_id(20).unwrap();
+        assert_eq!(index, 1);
+    }
+
+    #[test]
+    fn test_get_sequence_count() {
+        let temp_dir = TempDir::new().unwrap();
+        let mut builder = TestCaseBuilder::new(temp_dir.path()).unwrap();
+
+        assert_eq!(builder.get_sequence_count(), 0);
+
+        let mut seq_map = serde_yaml::Mapping::new();
+        seq_map.insert(Value::String("id".to_string()), Value::Number(1.into()));
+        seq_map.insert(
+            Value::String("name".to_string()),
+            Value::String("Test Sequence".to_string()),
+        );
+        seq_map.insert(
+            Value::String("steps".to_string()),
+            Value::Sequence(Vec::new()),
+        );
+
+        builder
+            .validate_and_append_sequence(Value::Mapping(seq_map))
+            .unwrap();
+
+        assert_eq!(builder.get_sequence_count(), 1);
     }
 }

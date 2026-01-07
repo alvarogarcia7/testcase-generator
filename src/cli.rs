@@ -146,6 +146,24 @@ pub enum Commands {
         #[arg(short, long)]
         path: Option<String>,
     },
+
+    /// Add steps to a test sequence with git commits
+    AddSteps {
+        /// Path to the test cases directory
+        #[arg(short, long)]
+        path: Option<String>,
+
+        /// Sequence ID to add steps to
+        #[arg(short, long)]
+        sequence_id: Option<i64>,
+    },
+
+    /// Build test sequences with step collection loops and commits
+    BuildSequencesWithSteps {
+        /// Path to the test cases directory
+        #[arg(short, long)]
+        path: Option<String>,
+    },
 }
 
 #[derive(Subcommand)]

@@ -1,118 +1,144 @@
 use anyhow::Result;
-use testcase_manager::{Prompts, TestCaseBuilder, TestCaseMetadata};
+use testcase_manager::TestCaseBuilder;
 
-/// Example demonstrating the interactive test case creation workflow
-///
-/// This example shows:
-/// 1. Interactive prompts for test case metadata (requirement, item, tc, id, description)
-/// 2. Validation of metadata against the schema
-/// 3. Git commit after metadata is added
-/// 4. General initial conditions flow with defaults, edit prompts, and validation
-/// 5. Initial conditions flow with the same capabilities
-///
-/// Run with: cargo run --example interactive_workflow
 fn main() -> Result<()> {
-    println!("╔═══════════════════════════════════════════════╗");
-    println!("║  Interactive Test Case Creation - Example    ║");
-    println!("╚═══════════════════════════════════════════════╝\n");
+    let temp_dir = std::env::temp_dir().join("testcase_example");
+    std::fs::create_dir_all(&temp_dir)?;
 
-    let temp_dir = tempfile::tempdir()?;
-    let mut builder = TestCaseBuilder::new(temp_dir.path())?;
+    println!("Example: Interactive Test Case Creation Workflow");
+    println!("================================================\n");
+    println!("This example demonstrates the interactive workflow for creating test cases");
+    println!("with sequences and steps, including git commits at each stage.\n");
+    println!("Working directory: {}\n", temp_dir.display());
 
-    println!("This example demonstrates:");
-    println!("1. Metadata prompts (requirement, item, tc, id, description)");
-    println!("2. Metadata validation");
-    println!("3. Git commit after metadata");
-    println!("4. General initial conditions with editor");
-    println!("5. Validation against schema\n");
+    let mut builder = TestCaseBuilder::new(&temp_dir)?;
 
-    demo_metadata_prompts()?;
-    demo_builder_workflow(&mut builder)?;
+    println!("Creating a test case with metadata...\n");
 
-    println!("\n✓ Example completed successfully!");
-    println!("\nTo use this in production, run:");
-    println!("  cargo run -- create-interactive");
+    builder
+        .add_field(
+            "requirement".to_string(),
+            serde_yaml::Value::String("XXX100".to_string()),
+        )?
+        .add_field("item".to_string(), serde_yaml::Value::Number(1.into()))?
+        .add_field("tc".to_string(), serde_yaml::Value::Number(4.into()))?
+        .add_field(
+            "id".to_string(),
+            serde_yaml::Value::String("test_001".to_string()),
+        )?
+        .add_field(
+            "description".to_string(),
+            serde_yaml::Value::String("Example test case".to_string()),
+        )?;
 
-    Ok(())
-}
+    println!("✓ Metadata added\n");
 
-fn demo_metadata_prompts() -> Result<()> {
-    println!("\n--- Metadata Structure Demo ---\n");
+    let mut general_ic = serde_yaml::Mapping::new();
+    general_ic.insert(
+        serde_yaml::Value::String("eUICC".to_string()),
+        serde_yaml::Value::Sequence(vec![serde_yaml::Value::String(
+            "General condition 1".to_string(),
+        )]),
+    );
+    let general_ic_value =
+        serde_yaml::Value::Sequence(vec![serde_yaml::Value::Mapping(general_ic)]);
 
-    let metadata = TestCaseMetadata {
-        requirement: "XXX100".to_string(),
-        item: 1,
-        tc: 4,
-        id: "4.2.2.2.1 TC_eUICC_ES6.UpdateMetadata".to_string(),
-        description: "Test case for ES6.UpdateMetadata".to_string(),
-    };
+    builder.add_field("general_initial_conditions".to_string(), general_ic_value)?;
 
-    println!("Example metadata:");
-    println!("  Requirement: {}", metadata.requirement);
-    println!("  Item: {}", metadata.item);
-    println!("  TC: {}", metadata.tc);
-    println!("  ID: {}", metadata.id);
-    println!("  Description: {}", metadata.description);
+    println!("✓ General initial conditions added\n");
 
-    let yaml_map = metadata.to_yaml();
-    let yaml_value = serde_yaml::Value::Mapping(serde_yaml::Mapping::from_iter(
-        yaml_map
-            .into_iter()
-            .map(|(k, v)| (serde_yaml::Value::String(k), v)),
-    ));
-
-    let yaml_str = serde_yaml::to_string(&yaml_value)?;
-    println!("\nYAML output:");
-    println!("{}", yaml_str);
-
-    Ok(())
-}
-
-fn demo_builder_workflow(builder: &mut TestCaseBuilder) -> Result<()> {
-    println!("\n--- Builder Workflow Demo ---\n");
-
-    let metadata = TestCaseMetadata {
-        requirement: "XXX100".to_string(),
-        item: 1,
-        tc: 4,
-        id: "demo_test_case".to_string(),
-        description: "Demo test case".to_string(),
-    };
-
-    let yaml_map = metadata.to_yaml();
-    for (key, value) in yaml_map {
-        builder.add_field(key, value)?;
-    }
-
-    println!("✓ Metadata added to structure");
-
-    let general_conditions = serde_yaml::from_str(
-        r#"
-- eUICC:
-    - "The profile PROFILE_OPERATIONAL1 is loaded"
-"#,
+    let mut ic = serde_yaml::Mapping::new();
+    ic.insert(
+        serde_yaml::Value::String("eUICC".to_string()),
+        serde_yaml::Value::Sequence(vec![
+            serde_yaml::Value::String("Condition 1".to_string()),
+            serde_yaml::Value::String("Condition 2".to_string()),
+        ]),
+    );
+    builder.add_field(
+        "initial_conditions".to_string(),
+        serde_yaml::Value::Mapping(ic),
     )?;
 
-    builder.add_field("general_initial_conditions".to_string(), general_conditions)?;
-    println!("✓ General initial conditions added");
+    println!("✓ Initial conditions added\n");
 
-    let initial_conditions = serde_yaml::from_str(
-        r#"
-eUICC:
-  - "The PROFILE_OPERATIONAL1 is Enabled"
-  - "The PROFILE_OPERATIONAL2 is Enabled"
-"#,
+    let mut seq_map = serde_yaml::Mapping::new();
+    seq_map.insert(
+        serde_yaml::Value::String("id".to_string()),
+        serde_yaml::Value::Number(1.into()),
+    );
+    seq_map.insert(
+        serde_yaml::Value::String("name".to_string()),
+        serde_yaml::Value::String("Test Sequence #1".to_string()),
+    );
+    seq_map.insert(
+        serde_yaml::Value::String("description".to_string()),
+        serde_yaml::Value::String("Example test sequence".to_string()),
+    );
+    seq_map.insert(
+        serde_yaml::Value::String("steps".to_string()),
+        serde_yaml::Value::Sequence(Vec::new()),
+    );
+
+    builder.validate_and_append_sequence(serde_yaml::Value::Mapping(seq_map))?;
+
+    println!("✓ Test sequence added\n");
+
+    let mut expected = serde_yaml::Mapping::new();
+    expected.insert(
+        serde_yaml::Value::String("success".to_string()),
+        serde_yaml::Value::Bool(true),
+    );
+    expected.insert(
+        serde_yaml::Value::String("result".to_string()),
+        serde_yaml::Value::String("SW=0x9000".to_string()),
+    );
+    expected.insert(
+        serde_yaml::Value::String("output".to_string()),
+        serde_yaml::Value::String("Operation successful".to_string()),
+    );
+
+    let step = builder.create_step_value(
+        1,
+        Some(true),
+        "Execute command".to_string(),
+        "ssh".to_string(),
+        serde_yaml::Value::Mapping(expected),
     )?;
 
-    builder.add_field("initial_conditions".to_string(), initial_conditions)?;
-    println!("✓ Initial conditions added");
+    builder.validate_and_append_step(0, step)?;
 
-    let yaml_output = builder.to_yaml_string()?;
-    println!("\nGenerated YAML structure:");
-    println!("{}", yaml_output);
+    println!("✓ Step 1 added to sequence\n");
+
+    let mut expected2 = serde_yaml::Mapping::new();
+    expected2.insert(
+        serde_yaml::Value::String("result".to_string()),
+        serde_yaml::Value::String("SW=0x9000".to_string()),
+    );
+    expected2.insert(
+        serde_yaml::Value::String("output".to_string()),
+        serde_yaml::Value::String("Verification successful".to_string()),
+    );
+
+    let step2 = builder.create_step_value(
+        2,
+        None,
+        "Verify results".to_string(),
+        "ssh".to_string(),
+        serde_yaml::Value::Mapping(expected2),
+    )?;
+
+    builder.validate_and_append_step(0, step2)?;
+
+    println!("✓ Step 2 added to sequence\n");
 
     let file_path = builder.save()?;
-    println!("\n✓ Saved to: {}", file_path.display());
+
+    println!("✓ Test case saved to: {}\n", file_path.display());
+    println!("Example completed successfully!");
+
+    let yaml_content = builder.to_yaml_string()?;
+    println!("\nGenerated YAML:\n{}", yaml_content);
 
     Ok(())
 }
