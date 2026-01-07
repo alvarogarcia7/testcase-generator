@@ -66,6 +66,44 @@ testcase-manager create-interactive --path ./my-testcases
 
 See [Interactive Workflow Documentation](docs/interactive_workflow.md) for details.
 
+### Build Test Sequences Interactively
+
+The `build-sequences` command provides a comprehensive workflow for creating test sequences with git commits before each sequence:
+
+**Features:**
+- **Fuzzy Search**: Search and reuse existing sequence names from the current file
+- **Editor Integration**: Copy/edit descriptions in your preferred editor
+- **Validation**: Automatic validation of sequence metadata structure
+- **Incremental IDs**: Automatically assigns sequential IDs to new sequences
+- **Git Commits**: Optional git commit before adding each sequence
+- **Interactive Prompts**: Guided prompts for name, description, and initial conditions
+
+```bash
+# Start test sequence builder
+testcase-manager build-sequences
+
+# With custom path
+testcase-manager build-sequences --path ./my-testcases
+```
+
+**Workflow:**
+1. Add metadata (requirement, item, tc, id, description) with validation
+2. Optionally commit metadata to git
+3. Add general initial conditions (optional)
+4. Optionally commit general initial conditions
+5. Add test case initial conditions (optional)
+6. Optionally commit initial conditions
+7. **Loop: Build test sequences**
+   - Enter or fuzzy-search sequence name from existing sequences
+   - Edit description in editor or enter via prompt
+   - Add sequence-specific initial conditions (optional)
+   - Validate sequence metadata structure
+   - Append validated sequence to test_sequences array
+   - Optionally commit the sequence to git
+   - Repeat for additional sequences
+8. Save the complete YAML file
+9. Optionally commit the final file
+
 ### List test cases
 
 ```bash

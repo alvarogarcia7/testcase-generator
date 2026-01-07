@@ -56,9 +56,11 @@ fn demo_metadata_prompts() -> Result<()> {
 
     let yaml_map = metadata.to_yaml();
     let yaml_value = serde_yaml::Value::Mapping(serde_yaml::Mapping::from_iter(
-        yaml_map.into_iter().map(|(k, v)| (serde_yaml::Value::String(k), v))
+        yaml_map
+            .into_iter()
+            .map(|(k, v)| (serde_yaml::Value::String(k), v)),
     ));
-    
+
     let yaml_str = serde_yaml::to_string(&yaml_value)?;
     println!("\nYAML output:");
     println!("{}", yaml_str);

@@ -1,4 +1,3 @@
-use crate::editor::TestCaseEditor;
 use crate::git::GitManager;
 use crate::prompts::Prompts;
 use crate::validation::SchemaValidator;
@@ -19,9 +18,8 @@ impl TestCaseBuilder {
     /// Create a new test case builder
     pub fn new<P: AsRef<Path>>(base_path: P) -> Result<Self> {
         let base_path = base_path.as_ref().to_path_buf();
-        let validator = SchemaValidator::new()
-            .context("Failed to create schema validator")?;
-        
+        let validator = SchemaValidator::new().context("Failed to create schema validator")?;
+
         let git_manager = GitManager::open(&base_path)
             .or_else(|_| GitManager::init(&base_path))
             .ok();
@@ -36,11 +34,11 @@ impl TestCaseBuilder {
 
     /// Prompt for and add metadata to the structure
     pub fn add_metadata(&mut self) -> Result<&mut Self> {
-        let metadata = Prompts::prompt_metadata()
-            .context("Failed to prompt for metadata")?;
-        
+        let metadata = Prompts::prompt_metadata().context("Failed to prompt for metadata")?;
+
         println!("\n=== Validating Metadata ===");
-        metadata.validate(&self.validator)
+        metadata
+            .validate(&self.validator)
             .context("Metadata validation failed")?;
         println!("✓ Metadata is valid\n");
 
@@ -59,8 +57,7 @@ impl TestCaseBuilder {
             let file_name = self.get_file_name()?;
             let file_path = self.base_path.join(&file_name);
 
-            std::fs::write(&file_path, yaml_content)
-                .context("Failed to write YAML file")?;
+            std::fs::write(&file_path, yaml_content).context("Failed to write YAML file")?;
 
             let author_name = std::env::var("GIT_AUTHOR_NAME")
                 .unwrap_or_else(|_| "Test Case Manager".to_string());
@@ -86,20 +83,19 @@ impl TestCaseBuilder {
         let conditions = Prompts::prompt_general_initial_conditions(defaults, &self.validator)
             .context("Failed to prompt for general initial conditions")?;
 
-        self.structure.insert("general_initial_conditions".to_string(), conditions);
+        self.structure
+            .insert("general_initial_conditions".to_string(), conditions);
 
         Ok(self)
     }
 
     /// Add initial conditions with interactive prompts
-    pub fn add_initial_conditions(
-        &mut self,
-        defaults: Option<&Value>,
-    ) -> Result<&mut Self> {
+    pub fn add_initial_conditions(&mut self, defaults: Option<&Value>) -> Result<&mut Self> {
         let conditions = Prompts::prompt_initial_conditions(defaults, &self.validator)
             .context("Failed to prompt for initial conditions")?;
 
-        self.structure.insert("initial_conditions".to_string(), conditions);
+        self.structure
+            .insert("initial_conditions".to_string(), conditions);
 
         Ok(self)
     }
@@ -113,18 +109,20 @@ impl TestCaseBuilder {
     /// Validate the entire structure
     pub fn validate(&self) -> Result<()> {
         let yaml_content = self.to_yaml_string()?;
-        self.validator.validate_chunk(&yaml_content)
+        self.validator
+            .validate_chunk(&yaml_content)
             .context("Structure validation failed")
     }
 
     /// Convert the structure to a YAML string
     pub fn to_yaml_string(&self) -> Result<String> {
         let yaml_value = Value::Mapping(serde_yaml::Mapping::from_iter(
-            self.structure.iter().map(|(k, v)| (Value::String(k.clone()), v.clone()))
+            self.structure
+                .iter()
+                .map(|(k, v)| (Value::String(k.clone()), v.clone())),
         ));
-        
-        serde_yaml::to_string(&yaml_value)
-            .context("Failed to serialize structure to YAML")
+
+        serde_yaml::to_string(&yaml_value).context("Failed to serialize structure to YAML")
     }
 
     /// Get the file name for this test case
@@ -142,8 +140,7 @@ impl TestCaseBuilder {
         let file_name = self.get_file_name()?;
         let file_path = self.base_path.join(&file_name);
 
-        std::fs::write(&file_path, yaml_content)
-            .context("Failed to write YAML file")?;
+        std::fs::write(&file_path, yaml_content).context("Failed to write YAML file")?;
 
         Ok(file_path)
     }
@@ -156,6 +153,207 @@ impl TestCaseBuilder {
     /// Get a mutable reference to the current structure
     pub fn structure_mut(&mut self) -> &mut IndexMap<String, Value> {
         &mut self.structure
+    }
+
+    /// Get the next test sequence ID
+    pub fn get_next_sequence_id(&self) -> i64 {
+        if let Some(Value::Sequence(sequences)) = self.structure.get("test_sequences") {
+            let max_id = sequences
+                .iter()
+                .filter_map(|seq| {
+                    if let Value::Mapping(map) = seq {
+                        map.get(Value::String("id".to_string()))
+                            .and_then(|v| match v {
+                                Value::Number(n) => n.as_i64(),
+                                _ => None,
+                            })
+                    } else {
+                        None
+                    }
+                })
+                .max()
+                .unwrap_or(0);
+            max_id + 1
+        } else {
+            1
+        }
+    }
+
+    /// Add a test sequence with interactive prompts
+    pub fn add_test_sequence_interactive(&mut self) -> Result<&mut Self> {
+        use crate::editor::TestCaseEditor;
+        use crate::fuzzy::TestCaseFuzzyFinder;
+        use crate::prompts::Prompts;
+
+        println!("\n=== Add Test Sequence ===\n");
+
+        let sequence_id = self.get_next_sequence_id();
+        println!("Sequence ID: {}", sequence_id);
+
+        let existing_sequences = self.get_existing_sequence_names();
+        let sequence_name = if !existing_sequences.is_empty() {
+            println!("\nYou can select from existing sequence names or type a new one.");
+
+            if Prompts::confirm("Use fuzzy search to select from existing names?")? {
+                match TestCaseFuzzyFinder::search_strings(
+                    &existing_sequences,
+                    "Select sequence name: ",
+                )? {
+                    Some(name) => name,
+                    None => {
+                        println!("No selection made, entering new name.");
+                        Prompts::input("Sequence name")?
+                    }
+                }
+            } else {
+                Prompts::input("Sequence name")?
+            }
+        } else {
+            Prompts::input("Sequence name")?
+        };
+
+        let description = if Prompts::confirm("\nEdit description in editor?")? {
+            let template = format!(
+                "# Description for: {}\n# Enter the sequence description below:\n\n",
+                sequence_name
+            );
+            let edited = TestCaseEditor::edit_text(&template)?;
+
+            let cleaned: String = edited
+                .lines()
+                .filter(|line| !line.trim().starts_with('#'))
+                .collect::<Vec<&str>>()
+                .join("\n")
+                .trim()
+                .to_string();
+
+            if cleaned.is_empty() {
+                None
+            } else {
+                Some(cleaned)
+            }
+        } else {
+            Prompts::input_optional("Description")?
+        };
+
+        let add_initial_conditions =
+            Prompts::confirm("\nAdd sequence-specific initial conditions?")?;
+        let initial_conditions = if add_initial_conditions {
+            Some(Prompts::prompt_initial_conditions(None, &self.validator)?)
+        } else {
+            None
+        };
+
+        let mut sequence_map = serde_yaml::Mapping::new();
+        sequence_map.insert(
+            Value::String("id".to_string()),
+            Value::Number(sequence_id.into()),
+        );
+        sequence_map.insert(
+            Value::String("name".to_string()),
+            Value::String(sequence_name.clone()),
+        );
+
+        if let Some(desc) = description {
+            sequence_map.insert(
+                Value::String("description".to_string()),
+                Value::String(desc),
+            );
+        }
+
+        if let Some(ic) = initial_conditions {
+            let ic_array = vec![ic];
+            sequence_map.insert(
+                Value::String("initial_conditions".to_string()),
+                Value::Sequence(ic_array),
+            );
+        }
+
+        sequence_map.insert(
+            Value::String("steps".to_string()),
+            Value::Sequence(Vec::new()),
+        );
+
+        let sequence_value = Value::Mapping(sequence_map);
+
+        println!("\n=== Validating Test Sequence ===");
+        self.validate_and_append_sequence(sequence_value)?;
+        println!("✓ Test sequence validated and added\n");
+
+        Ok(self)
+    }
+
+    /// Get existing sequence names from the structure
+    fn get_existing_sequence_names(&self) -> Vec<String> {
+        let mut names = Vec::new();
+
+        if let Some(Value::Sequence(sequences)) = self.structure.get("test_sequences") {
+            for seq in sequences {
+                if let Value::Mapping(map) = seq {
+                    if let Some(Value::String(name)) = map.get(Value::String("name".to_string())) {
+                        names.push(name.clone());
+                    }
+                }
+            }
+        }
+
+        names
+    }
+
+    /// Validate a test sequence structure and append it to test_sequences
+    fn validate_and_append_sequence(&mut self, sequence: Value) -> Result<()> {
+        if let Value::Mapping(seq_map) = &sequence {
+            if !seq_map.contains_key(Value::String("id".to_string())) {
+                anyhow::bail!("Sequence must have an 'id' field");
+            }
+            if !seq_map.contains_key(Value::String("name".to_string())) {
+                anyhow::bail!("Sequence must have a 'name' field");
+            }
+            if !seq_map.contains_key(Value::String("steps".to_string())) {
+                anyhow::bail!("Sequence must have a 'steps' field");
+            }
+        } else {
+            anyhow::bail!("Sequence must be a mapping");
+        }
+
+        let sequences = self
+            .structure
+            .entry("test_sequences".to_string())
+            .or_insert_with(|| Value::Sequence(Vec::new()));
+
+        if let Value::Sequence(seq_vec) = sequences {
+            seq_vec.push(sequence);
+        } else {
+            anyhow::bail!("test_sequences must be a sequence");
+        }
+
+        Ok(())
+    }
+
+    /// Build test sequences interactively with git commits before each sequence
+    pub fn build_test_sequences_with_commits(&mut self) -> Result<&mut Self> {
+        println!("\n╔═══════════════════════════════════════════════╗");
+        println!("║    Test Sequence Builder with Git Commits    ║");
+        println!("╚═══════════════════════════════════════════════╝\n");
+
+        loop {
+            self.add_test_sequence_interactive()
+                .context("Failed to add test sequence")?;
+
+            if Prompts::confirm("Commit this sequence to git?")? {
+                let sequence_id = self.get_next_sequence_id() - 1;
+                let commit_msg = format!("Add test sequence #{}", sequence_id);
+                self.commit(&commit_msg)
+                    .context("Failed to commit test sequence")?;
+            }
+
+            if !Prompts::confirm("\nAdd another test sequence?")? {
+                break;
+            }
+        }
+
+        println!("\n✓ All test sequences added");
+        Ok(self)
     }
 }
 
@@ -175,11 +373,13 @@ mod tests {
     fn test_add_field() {
         let temp_dir = TempDir::new().unwrap();
         let mut builder = TestCaseBuilder::new(temp_dir.path()).unwrap();
-        
-        builder.add_field(
-            "test_field".to_string(),
-            Value::String("test_value".to_string())
-        ).unwrap();
+
+        builder
+            .add_field(
+                "test_field".to_string(),
+                Value::String("test_value".to_string()),
+            )
+            .unwrap();
 
         assert_eq!(
             builder.structure().get("test_field"),
@@ -191,16 +391,17 @@ mod tests {
     fn test_to_yaml_string() {
         let temp_dir = TempDir::new().unwrap();
         let mut builder = TestCaseBuilder::new(temp_dir.path()).unwrap();
-        
-        builder.add_field(
-            "requirement".to_string(),
-            Value::String("REQ001".to_string())
-        ).unwrap();
 
-        builder.add_field(
-            "item".to_string(),
-            Value::Number(1.into())
-        ).unwrap();
+        builder
+            .add_field(
+                "requirement".to_string(),
+                Value::String("REQ001".to_string()),
+            )
+            .unwrap();
+
+        builder
+            .add_field("item".to_string(), Value::Number(1.into()))
+            .unwrap();
 
         let yaml = builder.to_yaml_string().unwrap();
         assert!(yaml.contains("requirement"));
@@ -212,16 +413,17 @@ mod tests {
     fn test_save_file() {
         let temp_dir = TempDir::new().unwrap();
         let mut builder = TestCaseBuilder::new(temp_dir.path()).unwrap();
-        
-        builder.add_field(
-            "id".to_string(),
-            Value::String("test_case_001".to_string())
-        ).unwrap();
 
-        builder.add_field(
-            "requirement".to_string(),
-            Value::String("REQ001".to_string())
-        ).unwrap();
+        builder
+            .add_field("id".to_string(), Value::String("test_case_001".to_string()))
+            .unwrap();
+
+        builder
+            .add_field(
+                "requirement".to_string(),
+                Value::String("REQ001".to_string()),
+            )
+            .unwrap();
 
         let file_path = builder.save().unwrap();
         assert!(file_path.exists());
@@ -232,12 +434,28 @@ mod tests {
     fn test_complete_metadata() {
         let temp_dir = TempDir::new().unwrap();
         let mut builder = TestCaseBuilder::new(temp_dir.path()).unwrap();
-        
-        builder.add_field("requirement".to_string(), Value::String("XXX100".to_string())).unwrap();
-        builder.add_field("item".to_string(), Value::Number(1.into())).unwrap();
-        builder.add_field("tc".to_string(), Value::Number(4.into())).unwrap();
-        builder.add_field("id".to_string(), Value::String("test_001".to_string())).unwrap();
-        builder.add_field("description".to_string(), Value::String("Test description".to_string())).unwrap();
+
+        builder
+            .add_field(
+                "requirement".to_string(),
+                Value::String("XXX100".to_string()),
+            )
+            .unwrap();
+        builder
+            .add_field("item".to_string(), Value::Number(1.into()))
+            .unwrap();
+        builder
+            .add_field("tc".to_string(), Value::Number(4.into()))
+            .unwrap();
+        builder
+            .add_field("id".to_string(), Value::String("test_001".to_string()))
+            .unwrap();
+        builder
+            .add_field(
+                "description".to_string(),
+                Value::String("Test description".to_string()),
+            )
+            .unwrap();
 
         let yaml = builder.to_yaml_string().unwrap();
         assert!(yaml.contains("requirement: XXX100"));
@@ -245,5 +463,210 @@ mod tests {
         assert!(yaml.contains("tc: 4"));
         assert!(yaml.contains("test_001"));
         assert!(yaml.contains("Test description"));
+    }
+
+    #[test]
+    fn test_get_next_sequence_id_empty() {
+        let temp_dir = TempDir::new().unwrap();
+        let builder = TestCaseBuilder::new(temp_dir.path()).unwrap();
+
+        assert_eq!(builder.get_next_sequence_id(), 1);
+    }
+
+    #[test]
+    fn test_get_next_sequence_id_with_sequences() {
+        let temp_dir = TempDir::new().unwrap();
+        let mut builder = TestCaseBuilder::new(temp_dir.path()).unwrap();
+
+        let mut seq1 = serde_yaml::Mapping::new();
+        seq1.insert(Value::String("id".to_string()), Value::Number(1.into()));
+        seq1.insert(
+            Value::String("name".to_string()),
+            Value::String("Seq 1".to_string()),
+        );
+        seq1.insert(
+            Value::String("steps".to_string()),
+            Value::Sequence(Vec::new()),
+        );
+
+        let mut seq2 = serde_yaml::Mapping::new();
+        seq2.insert(Value::String("id".to_string()), Value::Number(3.into()));
+        seq2.insert(
+            Value::String("name".to_string()),
+            Value::String("Seq 2".to_string()),
+        );
+        seq2.insert(
+            Value::String("steps".to_string()),
+            Value::Sequence(Vec::new()),
+        );
+
+        builder
+            .validate_and_append_sequence(Value::Mapping(seq1))
+            .unwrap();
+        builder
+            .validate_and_append_sequence(Value::Mapping(seq2))
+            .unwrap();
+
+        assert_eq!(builder.get_next_sequence_id(), 4);
+    }
+
+    #[test]
+    fn test_validate_and_append_sequence() {
+        let temp_dir = TempDir::new().unwrap();
+        let mut builder = TestCaseBuilder::new(temp_dir.path()).unwrap();
+
+        let mut seq_map = serde_yaml::Mapping::new();
+        seq_map.insert(Value::String("id".to_string()), Value::Number(1.into()));
+        seq_map.insert(
+            Value::String("name".to_string()),
+            Value::String("Test Sequence".to_string()),
+        );
+        seq_map.insert(
+            Value::String("steps".to_string()),
+            Value::Sequence(Vec::new()),
+        );
+
+        builder
+            .validate_and_append_sequence(Value::Mapping(seq_map))
+            .unwrap();
+
+        let sequences = builder.structure().get("test_sequences").unwrap();
+        if let Value::Sequence(seq_vec) = sequences {
+            assert_eq!(seq_vec.len(), 1);
+        } else {
+            panic!("test_sequences is not a sequence");
+        }
+    }
+
+    #[test]
+    fn test_validate_and_append_sequence_missing_id() {
+        let temp_dir = TempDir::new().unwrap();
+        let mut builder = TestCaseBuilder::new(temp_dir.path()).unwrap();
+
+        let mut seq_map = serde_yaml::Mapping::new();
+        seq_map.insert(
+            Value::String("name".to_string()),
+            Value::String("Test Sequence".to_string()),
+        );
+        seq_map.insert(
+            Value::String("steps".to_string()),
+            Value::Sequence(Vec::new()),
+        );
+
+        let result = builder.validate_and_append_sequence(Value::Mapping(seq_map));
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("must have an 'id'"));
+    }
+
+    #[test]
+    fn test_validate_and_append_sequence_missing_name() {
+        let temp_dir = TempDir::new().unwrap();
+        let mut builder = TestCaseBuilder::new(temp_dir.path()).unwrap();
+
+        let mut seq_map = serde_yaml::Mapping::new();
+        seq_map.insert(Value::String("id".to_string()), Value::Number(1.into()));
+        seq_map.insert(
+            Value::String("steps".to_string()),
+            Value::Sequence(Vec::new()),
+        );
+
+        let result = builder.validate_and_append_sequence(Value::Mapping(seq_map));
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("must have a 'name'"));
+    }
+
+    #[test]
+    fn test_validate_and_append_sequence_missing_steps() {
+        let temp_dir = TempDir::new().unwrap();
+        let mut builder = TestCaseBuilder::new(temp_dir.path()).unwrap();
+
+        let mut seq_map = serde_yaml::Mapping::new();
+        seq_map.insert(Value::String("id".to_string()), Value::Number(1.into()));
+        seq_map.insert(
+            Value::String("name".to_string()),
+            Value::String("Test Sequence".to_string()),
+        );
+
+        let result = builder.validate_and_append_sequence(Value::Mapping(seq_map));
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("must have a 'steps'"));
+    }
+
+    #[test]
+    fn test_get_existing_sequence_names() {
+        let temp_dir = TempDir::new().unwrap();
+        let mut builder = TestCaseBuilder::new(temp_dir.path()).unwrap();
+
+        let mut seq1 = serde_yaml::Mapping::new();
+        seq1.insert(Value::String("id".to_string()), Value::Number(1.into()));
+        seq1.insert(
+            Value::String("name".to_string()),
+            Value::String("Sequence One".to_string()),
+        );
+        seq1.insert(
+            Value::String("steps".to_string()),
+            Value::Sequence(Vec::new()),
+        );
+
+        let mut seq2 = serde_yaml::Mapping::new();
+        seq2.insert(Value::String("id".to_string()), Value::Number(2.into()));
+        seq2.insert(
+            Value::String("name".to_string()),
+            Value::String("Sequence Two".to_string()),
+        );
+        seq2.insert(
+            Value::String("steps".to_string()),
+            Value::Sequence(Vec::new()),
+        );
+
+        builder
+            .validate_and_append_sequence(Value::Mapping(seq1))
+            .unwrap();
+        builder
+            .validate_and_append_sequence(Value::Mapping(seq2))
+            .unwrap();
+
+        let names = builder.get_existing_sequence_names();
+        assert_eq!(names.len(), 2);
+        assert_eq!(names[0], "Sequence One");
+        assert_eq!(names[1], "Sequence Two");
+    }
+
+    #[test]
+    fn test_sequence_with_description() {
+        let temp_dir = TempDir::new().unwrap();
+        let mut builder = TestCaseBuilder::new(temp_dir.path()).unwrap();
+
+        let mut seq_map = serde_yaml::Mapping::new();
+        seq_map.insert(Value::String("id".to_string()), Value::Number(1.into()));
+        seq_map.insert(
+            Value::String("name".to_string()),
+            Value::String("Test Sequence".to_string()),
+        );
+        seq_map.insert(
+            Value::String("description".to_string()),
+            Value::String("This is a test".to_string()),
+        );
+        seq_map.insert(
+            Value::String("steps".to_string()),
+            Value::Sequence(Vec::new()),
+        );
+
+        builder
+            .validate_and_append_sequence(Value::Mapping(seq_map))
+            .unwrap();
+
+        let yaml = builder.to_yaml_string().unwrap();
+        assert!(yaml.contains("Test Sequence"));
+        assert!(yaml.contains("This is a test"));
     }
 }

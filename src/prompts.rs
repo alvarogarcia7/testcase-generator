@@ -1,5 +1,5 @@
-use crate::models::{Priority, Status, TestType};
 use crate::editor::TestCaseEditor;
+use crate::models::{Priority, Status, TestType};
 use crate::validation::SchemaValidator;
 use anyhow::{Context, Result};
 use dialoguer::{theme::ColorfulTheme, Confirm, Input, MultiSelect, Select};
@@ -189,7 +189,7 @@ impl Prompts {
     /// Prompt for test case metadata fields
     pub fn prompt_metadata() -> Result<TestCaseMetadata> {
         println!("\n=== Test Case Metadata ===\n");
-        
+
         let requirement = Self::input("Requirement")?;
         let item = Self::input_integer("Item")?;
         let tc = Self::input_integer("TC")?;
@@ -213,15 +213,15 @@ impl Prompts {
         println!("\n=== General Initial Conditions ===\n");
 
         if let Some(default_value) = defaults {
-            let yaml_str = serde_yaml::to_string(default_value)
-                .context("Failed to serialize defaults")?;
-            
+            let yaml_str =
+                serde_yaml::to_string(default_value).context("Failed to serialize defaults")?;
+
             println!("Current defaults:");
             println!("{}", yaml_str);
             println!();
 
             let keep_defaults = Self::confirm_with_default("Keep these defaults?", true)?;
-            
+
             if keep_defaults {
                 return Ok(default_value.clone());
             }
@@ -238,14 +238,14 @@ impl Prompts {
     - ""
 "#;
 
-            let edited_content = TestCaseEditor::edit_text(template)
-                .context("Failed to open editor")?;
+            let edited_content =
+                TestCaseEditor::edit_text(template).context("Failed to open editor")?;
 
-            let parsed: Value = serde_yaml::from_str(&edited_content)
-                .context("Failed to parse YAML")?;
+            let parsed: Value =
+                serde_yaml::from_str(&edited_content).context("Failed to parse YAML")?;
 
-            let yaml_for_validation = serde_yaml::to_string(&parsed)
-                .context("Failed to serialize for validation")?;
+            let yaml_for_validation =
+                serde_yaml::to_string(&parsed).context("Failed to serialize for validation")?;
 
             match validator.validate_partial_chunk(&yaml_for_validation) {
                 Ok(_) => {
@@ -271,29 +271,32 @@ impl Prompts {
         println!("\n=== Initial Conditions ===\n");
 
         if let Some(default_value) = defaults {
-            let yaml_str = serde_yaml::to_string(default_value)
-                .context("Failed to serialize defaults")?;
-            
+            let yaml_str =
+                serde_yaml::to_string(default_value).context("Failed to serialize defaults")?;
+
             println!("Current defaults:");
             println!("{}", yaml_str);
             println!();
 
             let keep_defaults = Self::confirm_with_default("Keep these defaults?", true)?;
-            
+
             if keep_defaults {
                 return Ok(default_value.clone());
             }
         }
 
         let device_name = Self::input("Device name (e.g., eUICC)")?;
-        
+
         let mut conditions: Vec<String> = Vec::new();
-        
-        println!("\nEnter conditions for '{}' (enter empty string to finish):", device_name);
-        
+
+        println!(
+            "\nEnter conditions for '{}' (enter empty string to finish):",
+            device_name
+        );
+
         loop {
             let condition = Self::input_optional(&format!("Condition #{}", conditions.len() + 1))?;
-            
+
             match condition {
                 Some(cond) if !cond.trim().is_empty() => {
                     conditions.push(cond);
@@ -309,23 +312,21 @@ impl Prompts {
         }
 
         let mut map = serde_yaml::Mapping::new();
-        let conditions_array: Vec<Value> = conditions
-            .into_iter()
-            .map(Value::String)
-            .collect();
-        
+        let conditions_array: Vec<Value> = conditions.into_iter().map(Value::String).collect();
+
         map.insert(
             Value::String(device_name.clone()),
-            Value::Sequence(conditions_array)
+            Value::Sequence(conditions_array),
         );
 
         let initial_conditions_value = Value::Mapping(map);
 
-        validator.validate_initial_conditions(&initial_conditions_value)
+        validator
+            .validate_initial_conditions(&initial_conditions_value)
             .context("Initial conditions validation failed")?;
 
         println!("✓ Valid structure");
-        
+
         Ok(initial_conditions_value)
     }
 }
@@ -344,11 +345,17 @@ impl TestCaseMetadata {
     /// Convert to YAML structure
     pub fn to_yaml(&self) -> IndexMap<String, Value> {
         let mut map = IndexMap::new();
-        map.insert("requirement".to_string(), Value::String(self.requirement.clone()));
+        map.insert(
+            "requirement".to_string(),
+            Value::String(self.requirement.clone()),
+        );
         map.insert("item".to_string(), Value::Number(self.item.into()));
         map.insert("tc".to_string(), Value::Number(self.tc.into()));
         map.insert("id".to_string(), Value::String(self.id.clone()));
-        map.insert("description".to_string(), Value::String(self.description.clone()));
+        map.insert(
+            "description".to_string(),
+            Value::String(self.description.clone()),
+        );
         map
     }
 
@@ -356,12 +363,12 @@ impl TestCaseMetadata {
     pub fn validate(&self, validator: &SchemaValidator) -> Result<()> {
         let yaml_map = self.to_yaml();
         let yaml_value = Value::Mapping(serde_yaml::Mapping::from_iter(
-            yaml_map.into_iter().map(|(k, v)| (Value::String(k), v))
+            yaml_map.into_iter().map(|(k, v)| (Value::String(k), v)),
         ));
-        
-        let yaml_str = serde_yaml::to_string(&yaml_value)
-            .context("Failed to serialize metadata")?;
-        
+
+        let yaml_str =
+            serde_yaml::to_string(&yaml_value).context("Failed to serialize metadata")?;
+
         validator.validate_partial_chunk(&yaml_str)
     }
 }

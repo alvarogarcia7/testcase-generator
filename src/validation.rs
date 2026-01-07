@@ -66,7 +66,10 @@ impl SchemaValidator {
         self.validate_chunk(yaml_content)
     }
 
-    pub fn validate_initial_conditions(&self, initial_conditions: &serde_yaml::Value) -> Result<()> {
+    pub fn validate_initial_conditions(
+        &self,
+        initial_conditions: &serde_yaml::Value,
+    ) -> Result<()> {
         let json_value: JsonValue =
             serde_json::to_value(initial_conditions).context("Failed to convert to JSON")?;
 
@@ -79,7 +82,7 @@ impl SchemaValidator {
                         conditions
                     );
                 }
-                
+
                 if let JsonValue::Array(arr) = conditions {
                     for (idx, item) in arr.iter().enumerate() {
                         if !item.is_string() {
@@ -587,7 +590,11 @@ eUICC:
         let initial_conditions: serde_yaml::Value = serde_yaml::from_str(yaml_content).unwrap();
 
         let result = validator.validate_initial_conditions(&initial_conditions);
-        assert!(result.is_ok(), "Validation should succeed: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "Validation should succeed: {:?}",
+            result.err()
+        );
     }
 
     #[test]
@@ -601,7 +608,10 @@ eUICC: "not an array"
 
         let result = validator.validate_initial_conditions(&initial_conditions);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("must have an array"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("must have an array"));
     }
 
     #[test]
@@ -634,6 +644,10 @@ LPA:
         let initial_conditions: serde_yaml::Value = serde_yaml::from_str(yaml_content).unwrap();
 
         let result = validator.validate_initial_conditions(&initial_conditions);
-        assert!(result.is_ok(), "Validation should succeed: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "Validation should succeed: {:?}",
+            result.err()
+        );
     }
 }

@@ -139,6 +139,13 @@ pub enum Commands {
         #[arg(short, long)]
         path: Option<String>,
     },
+
+    /// Build test sequences interactively with git commits
+    BuildSequences {
+        /// Path to the test cases directory
+        #[arg(short, long)]
+        path: Option<String>,
+    },
 }
 
 #[derive(Subcommand)]

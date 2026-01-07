@@ -476,6 +476,405 @@ initial_conditions:
     - "The PROFILE_OPERATIONAL2 is Enabled."
 ```
 
+## Test Sequence Builder
+
+The `build-sequences` command provides a comprehensive workflow for creating test sequences with git commits before each sequence.
+
+### Overview
+
+The test sequence builder provides:
+
+1. **Fuzzy search** for sequence names from existing sequences
+2. **Editor integration** for copying/editing descriptions
+3. **Validation** of sequence metadata structure
+4. **Incremental ID assignment** automatically assigns sequential IDs
+5. **Git commits** optional commits before adding each sequence
+6. **Append to structure** validated sequences are appended to test_sequences array
+
+### Command Line Usage
+
+```bash
+# Start test sequence builder
+testcase-manager build-sequences
+
+# Specify custom path
+testcase-manager build-sequences --path ./my-testcases
+```
+
+### Workflow Steps
+
+#### 1. Initial Setup
+
+The workflow begins like `create-interactive`:
+
+```
+╔═══════════════════════════════════════════════╗
+║   Test Sequence Builder with Git Commits     ║
+╚═══════════════════════════════════════════════╝
+
+=== Test Case Metadata ===
+
+Requirement: XXX100
+Item: 1
+TC: 4
+ID: 4.2.2.2.1 TC_eUICC_ES6.UpdateMetadata
+Description: Test ES6.UpdateMetadata operations
+
+=== Validating Metadata ===
+✓ Metadata is valid
+
+✓ Metadata added to structure
+
+Commit metadata to git? [Y/n]: y
+✓ Committed: Add test case metadata
+```
+
+#### 2. General Initial Conditions
+
+Same as `create-interactive` workflow:
+
+```
+Add general initial conditions? [Y/n]: y
+
+=== General Initial Conditions ===
+
+[Editor opens with template or keep defaults]
+
+✓ General initial conditions added
+
+Commit general initial conditions to git? [Y/n]: y
+✓ Committed: Add general initial conditions
+```
+
+#### 3. Initial Conditions
+
+Same as `create-interactive` workflow:
+
+```
+Add initial conditions? [Y/n]: y
+
+=== Initial Conditions ===
+
+Device name (e.g., eUICC): eUICC
+
+Enter conditions for 'eUICC' (enter empty string to finish):
+Condition #1: The PROFILE_OPERATIONAL1 is Enabled.
+Condition #2: The PROFILE_OPERATIONAL2 is Enabled.
+Condition #3: [press Enter]
+
+✓ Valid structure
+✓ Initial conditions added
+
+Commit initial conditions to git? [Y/n]: y
+✓ Committed: Add initial conditions
+```
+
+#### 4. Build Test Sequences (Loop)
+
+Now the sequence builder starts:
+
+```
+╔═══════════════════════════════════════════════╗
+║    Test Sequence Builder with Git Commits    ║
+╚═══════════════════════════════════════════════╝
+
+=== Add Test Sequence ===
+
+Sequence ID: 1
+```
+
+##### 4.1. Sequence Name Selection
+
+If existing sequences are found in the structure, you can fuzzy search them:
+
+```
+You can select from existing sequence names or type a new one.
+
+Use fuzzy search to select from existing names? [y/N]: y
+```
+
+**Fuzzy Search Interface:**
+```
+> Test Sequence #01 Nominal: Unset PPR1
+  Test Sequence #02 Nominal: Unset PPR2 and update icon
+  Test Sequence #03 Error Case: Invalid parameters
+  
+Select sequence name: nominal
+> Test Sequence #01 Nominal: Unset PPR1
+  Test Sequence #02 Nominal: Unset PPR2 and update icon
+```
+
+Press Enter to select. Or skip fuzzy search and type a new name:
+
+```
+Sequence name: Test Sequence #01 Nominal: Unset PPR1
+```
+
+##### 4.2. Description Editing
+
+You can edit the description in your editor:
+
+```
+Edit description in editor? [y/N]: y
+```
+
+The editor opens with a template:
+
+```
+# Description for: Test Sequence #01 Nominal: Unset PPR1
+# Enter the sequence description below:
+
+This test case verifies that the eUICC correctly processes an ES6.UpdateMetadata command to unset PPR1
+when the profile is in the operational state and PPR1 is currently set.
+```
+
+Comment lines (starting with #) are automatically removed from the final description.
+
+Or enter it via prompt:
+
+```
+Description: This test case verifies that the eUICC correctly processes...
+```
+
+##### 4.3. Sequence-Specific Initial Conditions
+
+Each sequence can have its own initial conditions:
+
+```
+Add sequence-specific initial conditions? [y/N]: y
+
+=== Initial Conditions ===
+
+Device name (e.g., eUICC): eUICC
+
+Enter conditions for 'eUICC' (enter empty string to finish):
+Condition #1: The PROFILE_OPERATIONAL3 is Enabled.
+Condition #2: [press Enter]
+
+✓ Valid structure
+```
+
+##### 4.4. Sequence Validation
+
+The sequence structure is validated:
+
+```
+=== Validating Test Sequence ===
+✓ Test sequence validated and added
+```
+
+**Validation checks:**
+- Sequence must be a mapping (object)
+- Must have 'id' field
+- Must have 'name' field
+- Must have 'steps' field (initialized as empty array)
+- Optional: 'description', 'initial_conditions'
+
+##### 4.5. Git Commit
+
+Optionally commit the sequence:
+
+```
+Commit this sequence to git? [y/N]: y
+✓ Committed: Add test sequence #1
+```
+
+##### 4.6. Repeat or Finish
+
+```
+Add another test sequence? [y/N]: y
+```
+
+If yes, the loop repeats with Sequence ID: 2, and so on.
+
+#### 5. Final Save
+
+After all sequences are added:
+
+```
+✓ All test sequences added
+
+╔═══════════════════════════════════════════════╗
+║    Test Sequences Built Successfully          ║
+╚═══════════════════════════════════════════════╝
+
+Saved to: ./testcases/4.2.2.2.1_TC_eUICC_ES6.UpdateMetadata.yaml
+
+Commit final file? [y/N]: y
+✓ Committed: Complete test case with all sequences
+```
+
+### Features in Detail
+
+#### Fuzzy Search for Sequence Names
+
+- **Reuse names**: Quickly select from previously entered sequence names
+- **Consistency**: Ensures naming consistency across sequences
+- **Fast navigation**: skim fuzzy finder with incremental search
+- **Fallback**: Can always type a new name if no match
+
+#### Editor Integration
+
+- **Template-based**: Opens with helpful comments and examples
+- **Clean output**: Automatically removes comment lines
+- **Multi-line support**: Write detailed descriptions with proper formatting
+- **Fallback to prompt**: Can skip editor and use simple prompt
+
+#### Automatic ID Assignment
+
+- **Incremental**: IDs start at 1 and increment automatically
+- **Smart detection**: Finds the maximum existing ID and adds 1
+- **Gap handling**: If IDs are 1, 3, 5, next will be 6
+- **No user input**: IDs are assigned automatically
+
+#### Sequence Metadata Validation
+
+Validates the structure before appending:
+
+```rust
+// Required fields
+id: 1                              // Must be an integer
+name: "Test Sequence #01"          // Must be a string
+steps: []                          // Must be an array (empty for now)
+
+// Optional fields
+description: "..."                 // String
+initial_conditions: [...]          // Array of device conditions
+```
+
+#### Git Commits Before Each Sequence
+
+- **Incremental history**: Each sequence is a separate commit
+- **Clear messages**: Commits are named "Add test sequence #N"
+- **Optional**: Can skip commits if desired
+- **Rollback friendly**: Easy to revert to previous sequence
+
+### Example Output
+
+The final YAML file:
+
+```yaml
+requirement: XXX100
+item: 1
+tc: 4
+id: '4.2.2.2.1 TC_eUICC_ES6.UpdateMetadata'
+description: Test ES6.UpdateMetadata operations
+general_initial_conditions:
+  - eUICC:
+      - "The profile PROFILE_OPERATIONAL1 with #METADATA_WITH_PPRS_AND_ICON is loaded on the eUICC."
+initial_conditions:
+  eUICC:
+    - "The PROFILE_OPERATIONAL1 is Enabled."
+    - "The PROFILE_OPERATIONAL2 is Enabled."
+test_sequences:
+  - id: 1
+    name: "Test Sequence #01 Nominal: Unset PPR1"
+    description: |
+      This test case verifies that the eUICC correctly processes an ES6.UpdateMetadata command to unset PPR1
+      when the profile is in the operational state and PPR1 is currently set.
+    initial_conditions:
+      - eUICC:
+          - "The PROFILE_OPERATIONAL3 is Enabled."
+    steps: []
+  - id: 2
+    name: "Test Sequence #02 Nominal: Unset PPR2 and update icon"
+    description: |
+      The purpose of this test is to verify that the MNO can unset PPR2 and update the icon and
+      icon type values from a Profile.
+    initial_conditions:
+      - eUICC:
+          - "The PROFILE_OPERATIONAL3 is Enabled."
+    steps: []
+```
+
+### Git Commit History
+
+```bash
+$ testcase-manager git log --limit 5
+
+a1b2c3d - Complete test case with all sequences (Test Case Manager)
+d4e5f6g - Add test sequence #2 (Test Case Manager)
+h7i8j9k - Add test sequence #1 (Test Case Manager)
+l0m1n2o - Add initial conditions (Test Case Manager)
+p3q4r5s - Add general initial conditions (Test Case Manager)
+```
+
+### Programmatic Usage
+
+```rust
+use testcase_manager::TestCaseBuilder;
+use anyhow::Result;
+
+fn build_sequences_programmatically() -> Result<()> {
+    let mut builder = TestCaseBuilder::new("./testcases")?;
+
+    // Add metadata
+    builder.add_metadata()?;
+    builder.commit("Add test case metadata")?;
+
+    // Add initial conditions
+    builder.add_general_initial_conditions(None)?;
+    builder.commit("Add general initial conditions")?;
+
+    builder.add_initial_conditions(None)?;
+    builder.commit("Add initial conditions")?;
+
+    // Build sequences with interactive prompts and commits
+    builder.build_test_sequences_with_commits()?;
+
+    // Save
+    let file_path = builder.save()?;
+    println!("Saved to: {}", file_path.display());
+
+    Ok(())
+}
+```
+
+### Best Practices
+
+1. **Use fuzzy search**: Reuse sequence names for consistency
+2. **Edit descriptions in editor**: Better for multi-line descriptions
+3. **Commit each sequence**: Creates clear history for tracking changes
+4. **Add sequence-specific conditions**: Only when they differ from test case conditions
+5. **Keep naming consistent**: Use patterns like "Test Sequence #NN Description"
+
+### Troubleshooting
+
+#### Fuzzy Search Shows No Items
+
+**Problem**: Fuzzy search shows empty list
+
+**Solution**: This happens when no sequences exist yet. The first sequence must be typed manually.
+
+#### Description Not Saved
+
+**Problem**: Description is empty after editing in editor
+
+**Solution**: Make sure to write content outside comment lines (lines starting with #).
+
+#### Sequence ID Skipped
+
+**Problem**: Sequence IDs jump (1, 2, 4 instead of 1, 2, 3)
+
+**Solution**: This is normal if you manually added a sequence with ID 3. The builder finds the max ID and adds 1.
+
+#### Validation Fails
+
+**Problem**: Sequence validation fails with missing field
+
+**Solution**: The builder automatically adds required fields (id, name, steps). If validation fails, check your manual edits.
+
+### Advantages Over Manual Editing
+
+| Feature | Manual YAML Editing | Test Sequence Builder |
+|---------|---------------------|----------------------|
+| ID assignment | Manual, error-prone | Automatic, incremental |
+| Name reuse | Copy/paste, inconsistent | Fuzzy search, consistent |
+| Validation | After save, late feedback | Before append, immediate |
+| Git history | Manual commits, unclear | Automatic, descriptive |
+| Description editing | Text editor, full YAML | Dedicated editor, clean |
+| Error handling | Parse errors, unclear | Structured validation |
+
 ## See Also
 
 - [Validation Documentation](validation.md)
