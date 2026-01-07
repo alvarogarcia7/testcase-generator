@@ -173,7 +173,9 @@ impl Prompts {
         println!("\n=== Test Case Metadata ===\n");
 
         if recovered.is_some() {
-            println!("⚠ Recovered values shown as editable text (Enter confirms, you can edit/delete)\n");
+            println!(
+                "⚠ Recovered values shown as editable text (Enter confirms, you can edit/delete)\n"
+            );
         }
 
         let requirement = Self::input_with_recovered_default(

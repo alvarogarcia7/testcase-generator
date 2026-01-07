@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use chrono::{DateTime, Local, Utc};
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use serde_yaml::Value;
@@ -76,6 +77,26 @@ impl RecoveryManager {
         Self { recovery_file_path }
     }
 
+    fn format_timestamp_with_relative(timestamp: &DateTime<Utc>) -> String {
+        let local_time: DateTime<Local> = timestamp.with_timezone(&Local);
+        let now = Utc::now();
+        let duration = now.signed_duration_since(*timestamp);
+
+        let relative = if duration.num_seconds() < 60 {
+            format!("{} s ago", duration.num_seconds())
+        } else if duration.num_minutes() < 60 {
+            format!("{} min ago", duration.num_minutes())
+        } else if duration.num_hours() < 24 {
+            format!("{} h ago", duration.num_hours())
+        } else {
+            format!("{} d ago", duration.num_days())
+        };
+
+        let absolute = local_time.format("%Y-%m-%d %H:%M:%S");
+
+        format!("{} ({})", relative, absolute)
+    }
+
     pub fn save_state(&self, state: &RecoveryState) -> Result<()> {
         let json_content =
             serde_json::to_string_pretty(state).context("Failed to serialize recovery state")?;
@@ -123,7 +144,10 @@ impl RecoveryManager {
             println!("\n╔══════════════════════════════════════════════════════╗");
             println!("║           Recovery File Detected                    ║");
             println!("╚══════════════════════════════════════════════════════╝\n");
-            println!("Found recovery data from: {}", state.timestamp);
+            println!(
+                "Found recovery data from: {}",
+                Self::format_timestamp_with_relative(&state.timestamp)
+            );
             println!("Phase: {}", state.current_phase);
 
             if state.has_errors() {
