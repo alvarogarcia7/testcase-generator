@@ -1,5 +1,6 @@
 use crate::git::GitManager;
 use crate::prompts::Prompts;
+use crate::recovery::{RecoveryManager, RecoveryState};
 use crate::validation::SchemaValidator;
 use anyhow::{Context, Result};
 use indexmap::IndexMap;
@@ -12,6 +13,7 @@ pub struct TestCaseBuilder {
     validator: SchemaValidator,
     git_manager: Option<GitManager>,
     structure: IndexMap<String, Value>,
+    recovery_manager: RecoveryManager,
 }
 
 impl TestCaseBuilder {
@@ -24,12 +26,84 @@ impl TestCaseBuilder {
             .or_else(|_| GitManager::init(&base_path))
             .ok();
 
+        let recovery_manager = RecoveryManager::new(&base_path);
+
         Ok(Self {
             base_path,
             validator,
             git_manager,
             structure: IndexMap::new(),
+            recovery_manager,
         })
+    }
+
+    /// Create a new test case builder and check for recovery
+    pub fn new_with_recovery<P: AsRef<Path>>(base_path: P) -> Result<Self> {
+        let base_path = base_path.as_ref().to_path_buf();
+        let validator = SchemaValidator::new().context("Failed to create schema validator")?;
+
+        let git_manager = GitManager::open(&base_path)
+            .or_else(|_| GitManager::init(&base_path))
+            .ok();
+
+        let recovery_manager = RecoveryManager::new(&base_path);
+
+        let structure = if recovery_manager.prompt_for_recovery()? {
+            if let Some(state) = recovery_manager.load_state()? {
+                println!("✓ Resuming from saved state\n");
+                state.structure
+            } else {
+                IndexMap::new()
+            }
+        } else {
+            IndexMap::new()
+        };
+
+        Ok(Self {
+            base_path,
+            validator,
+            git_manager,
+            structure,
+            recovery_manager,
+        })
+    }
+
+    /// Save current state to recovery file
+    pub fn save_recovery_state(&self, phase: &str) -> Result<()> {
+        let state = RecoveryState::new(self.structure.clone(), phase.to_string());
+        self.recovery_manager.save_state(&state)?;
+        Ok(())
+    }
+
+    /// Save current state with validation errors to recovery file
+    pub fn save_recovery_state_with_errors(
+        &self,
+        phase: &str,
+        error: &anyhow::Error,
+    ) -> Result<()> {
+        let validation_errors = RecoveryManager::extract_validation_errors_from_anyhow(error);
+        let state = RecoveryState::with_errors(
+            self.structure.clone(),
+            validation_errors,
+            phase.to_string(),
+        );
+        self.recovery_manager.save_state(&state)?;
+        Ok(())
+    }
+
+    /// Delete the recovery file
+    pub fn delete_recovery_file(&self) -> Result<()> {
+        self.recovery_manager.delete_recovery_file()
+    }
+
+    /// Get the recovery manager
+    pub fn recovery_manager(&self) -> &RecoveryManager {
+        &self.recovery_manager
+    }
+
+    /// Get the validator
+    pub fn validator(&self) -> &SchemaValidator {
+        &self.validator
     }
 
     /// Prompt for and add metadata to the structure

@@ -23,3 +23,8 @@ test-doc:
 clippy:
 	cargo clippy --all --all-features --tests -- -D warnings
 .PHONY: clippy
+
+run: build
+	./target/debug/testcase-manager
+.PHONY: run
+

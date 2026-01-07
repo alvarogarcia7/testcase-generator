@@ -3,7 +3,7 @@ use clap::Parser;
 use testcase_manager::{
     cli::{Cli, Commands, GitCommands},
     GitManager, Prompts, TestCase, TestCaseBuilder, TestCaseEditor, TestCaseFuzzyFinder,
-    TestCaseStorage, TestCaseValidator, TestSuite,
+    TestCaseMetadata, TestCaseStorage, TestCaseValidator, TestSuite,
 };
 
 fn main() -> Result<()> {
@@ -424,7 +424,7 @@ fn handle_init(path: &str, init_git: bool) -> Result<()> {
 }
 
 fn handle_create_interactive(path: &str) -> Result<()> {
-    let mut builder = TestCaseBuilder::new(path).context("Failed to create test case builder")?;
+    let mut builder = TestCaseBuilder::new_with_recovery(path).context("Failed to create test case builder")?;
 
     println!("\n╔═══════════════════════════════════════════════╗");
     println!("║   Interactive Test Case Creation Workflow    ║");
@@ -470,6 +470,9 @@ fn handle_create_interactive(path: &str) -> Result<()> {
 
     let file_path = builder.save().context("Failed to save test case")?;
 
+    builder.delete_recovery_file()?;
+    println!("✓ Recovery file deleted");
+
     println!("\n╔═══════════════════════════════════════════════╗");
     println!("║          Test Case Created Successfully       ║");
     println!("╚═══════════════════════════════════════════════╝");
@@ -479,7 +482,7 @@ fn handle_create_interactive(path: &str) -> Result<()> {
 }
 
 fn handle_build_sequences(path: &str) -> Result<()> {
-    let mut builder = TestCaseBuilder::new(path).context("Failed to create test case builder")?;
+    let mut builder = TestCaseBuilder::new_with_recovery(path).context("Failed to create test case builder")?;
 
     println!("\n╔═══════════════════════════════════════════════╗");
     println!("║   Test Sequence Builder with Git Commits     ║");
@@ -540,11 +543,14 @@ fn handle_build_sequences(path: &str) -> Result<()> {
             .context("Failed to commit final file")?;
     }
 
+    builder.delete_recovery_file()?;
+    println!("✓ Recovery file deleted");
+
     Ok(())
 }
 
 fn handle_add_steps(path: &str, sequence_id: Option<i64>) -> Result<()> {
-    let mut builder = TestCaseBuilder::new(path).context("Failed to create test case builder")?;
+    let mut builder = TestCaseBuilder::new_with_recovery(path).context("Failed to create test case builder")?;
 
     println!("\n╔═══════════════════════════════════════════════╗");
     println!("║      Add Steps to Sequence with Commits      ║");
@@ -623,11 +629,14 @@ fn handle_add_steps(path: &str, sequence_id: Option<i64>) -> Result<()> {
             .context("Failed to commit final file")?;
     }
 
+    builder.delete_recovery_file()?;
+    println!("✓ Recovery file deleted");
+
     Ok(())
 }
 
 fn handle_build_sequences_with_steps(path: &str) -> Result<()> {
-    let mut builder = TestCaseBuilder::new(path).context("Failed to create test case builder")?;
+    let mut builder = TestCaseBuilder::new_with_recovery(path).context("Failed to create test case builder")?;
 
     println!("\n╔═══════════════════════════════════════════════╗");
     println!("║ Build Test Sequences & Steps with Commits    ║");
@@ -688,6 +697,9 @@ fn handle_build_sequences_with_steps(path: &str) -> Result<()> {
             .context("Failed to commit final file")?;
     }
 
+    builder.delete_recovery_file()?;
+    println!("✓ Recovery file deleted");
+
     Ok(())
 }
 
@@ -711,22 +723,38 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>) -> Result<()>
         base_dir.display()
     ))?;
 
-    let mut builder =
-        TestCaseBuilder::new(base_dir).context("Failed to create test case builder")?;
+    let mut builder = TestCaseBuilder::new_with_recovery(base_dir)
+        .context("Failed to create test case builder")?;
 
     println!("\n╔══════════════════════════════════════════════════════╗");
     println!("║    Complete Interactive Test Case Workflow          ║");
     println!("║  with Git Commits & Validation Error Handling       ║");
     println!("╚══════════════════════════════════════════════════════╝\n");
 
+    let recovered_metadata = TestCaseMetadata::from_structure(builder.structure());
+
     loop {
-        match builder.add_metadata() {
+        let metadata = Prompts::prompt_metadata_with_recovery(recovered_metadata.as_ref())
+            .context("Failed to prompt for metadata")?;
+
+        println!("\n=== Validating Metadata ===");
+        match metadata.validate(builder.validator()) {
             Ok(_) => {
-                println!("✓ Metadata added to structure\n");
+                println!("✓ Metadata is valid\n");
+
+                let yaml_map = metadata.to_yaml();
+                for (key, value) in yaml_map {
+                    builder.structure_mut().insert(key, value);
+                }
+
+                builder.save_recovery_state("metadata")?;
                 break;
             }
             Err(e) => {
                 println!("✗ Metadata validation failed: {}\n", e);
+
+                builder.save_recovery_state_with_errors("metadata", &e)?;
+
                 if !Prompts::confirm("Retry metadata entry?")? {
                     anyhow::bail!("User cancelled metadata entry");
                 }
@@ -745,10 +773,13 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>) -> Result<()>
             match builder.add_general_initial_conditions(None) {
                 Ok(_) => {
                     println!("✓ General initial conditions added\n");
+                    builder.save_recovery_state("general_initial_conditions")?;
                     break;
                 }
                 Err(e) => {
                     println!("✗ General initial conditions validation failed: {}\n", e);
+                    builder.save_recovery_state_with_errors("general_initial_conditions", &e)?;
+
                     if !Prompts::confirm("Retry general initial conditions entry?")? {
                         println!("⚠ Skipping general initial conditions\n");
                         break;
@@ -769,10 +800,13 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>) -> Result<()>
             match builder.add_initial_conditions(None) {
                 Ok(_) => {
                     println!("✓ Initial conditions added\n");
+                    builder.save_recovery_state("initial_conditions")?;
                     break;
                 }
                 Err(e) => {
                     println!("✗ Initial conditions validation failed: {}\n", e);
+                    builder.save_recovery_state_with_errors("initial_conditions", &e)?;
+
                     if !Prompts::confirm("Retry initial conditions entry?")? {
                         println!("⚠ Skipping initial conditions\n");
                         break;
@@ -795,9 +829,14 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>) -> Result<()>
     loop {
         let sequence_added = loop {
             match builder.add_test_sequence_interactive() {
-                Ok(_) => break true,
+                Ok(_) => {
+                    builder.save_recovery_state("test_sequences")?;
+                    break true;
+                }
                 Err(e) => {
                     println!("✗ Test sequence validation failed: {}\n", e);
+                    builder.save_recovery_state_with_errors("test_sequences", &e)?;
+
                     if !Prompts::confirm("Retry test sequence entry?")? {
                         println!("⚠ Skipping this test sequence\n");
                         break false;
@@ -902,6 +941,7 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>) -> Result<()>
                         Ok(_) => {
                             println!("✓ Step validated and added\n");
                             builder.save().context("Failed to save file")?;
+                            builder.save_recovery_state("steps")?;
 
                             if Prompts::confirm("Commit this step to git?")? {
                                 builder
@@ -919,6 +959,8 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>) -> Result<()>
                         }
                         Err(e) => {
                             println!("✗ Step validation failed: {}\n", e);
+                            builder.save_recovery_state_with_errors("steps", &e)?;
+
                             if !Prompts::confirm("Retry this step entry?")? {
                                 println!("⚠ Skipping this step\n");
                                 if !Prompts::confirm("\nAdd another step to this sequence?")? {
@@ -973,6 +1015,9 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>) -> Result<()>
 
         println!("✓ Committed to git\n");
     }
+
+    builder.delete_recovery_file()?;
+    println!("✓ Recovery file deleted\n");
 
     println!("╔══════════════════════════════════════════════════════╗");
     println!("║         Test Case Workflow Completed!               ║");

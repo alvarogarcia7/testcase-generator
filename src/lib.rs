@@ -6,15 +6,18 @@ pub mod git;
 pub mod models;
 pub mod parser;
 pub mod prompts;
+pub mod recovery;
 pub mod storage;
 pub mod validation;
 
 pub use builder::TestCaseBuilder;
+pub use cli::Cli;
 pub use editor::TestCaseEditor;
 pub use fuzzy::TestCaseFuzzyFinder;
 pub use git::GitManager;
 pub use models::{Priority, Status, Step, TestCase, TestSequence, TestSuite, TestType};
 pub use parser::{SearchableCollections, TestCaseParser};
 pub use prompts::{Prompts, TestCaseMetadata};
+pub use recovery::{RecoveryManager, RecoveryState};
 pub use storage::TestCaseStorage;
 pub use validation::{SchemaValidator, TestCaseValidator};

@@ -10,6 +10,7 @@ A comprehensive CLI tool for managing test cases in YAML format with interactive
 - **Git Integration**: Commit progress after each step or sequence
 - **Schema Validation**: Validate test cases against a JSON schema
 - **Fuzzy Search**: Search through test cases, sequences, and steps
+- **Recovery Mechanism**: Automatically saves progress after each operation and can resume from saved state if interrupted
 
 ## Commands
 
@@ -67,6 +68,24 @@ The step collection loop includes:
 4. **Schema Validation**: Each step is validated before being added
 5. **Git Commits**: Optionally commit after each step is added
 6. **File Persistence**: File is saved after each step
+
+## Recovery Mechanism
+
+The recovery mechanism automatically saves the current test case structure and validation errors after each operation:
+
+- **Automatic Saves**: After each metadata entry, initial conditions, sequence, or step addition
+- **Error Tracking**: Captures validation errors with field paths for inline display
+- **Resume on Startup**: Detects `.recovery.json` file on startup and prompts to resume
+- **Pre-populated Fields**: Recovered values are shown as editable initial text in prompts (Enter confirms, user can edit/delete)
+- **Error Annotations**: Validation errors from previous attempts are displayed inline
+- **Auto-cleanup**: Recovery file is automatically deleted on successful completion
+
+To use recovery:
+
+1. Start any interactive workflow (`create-interactive`, `build-sequences`, `complete`, etc.)
+2. If the workflow is interrupted, the progress is saved to `.recovery.json`
+3. Restart the same command to be prompted to resume from the saved state
+4. Choose to resume or start fresh (optionally deleting the recovery file)
 
 ## Step Schema
 

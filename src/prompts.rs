@@ -18,6 +18,19 @@ impl Prompts {
             .context("Failed to read input")
     }
 
+    /// Prompt for a string input with a recovered value as initial text (for recovery)
+    pub fn input_with_recovered_default(prompt: &str, recovered: Option<&str>) -> Result<String> {
+        if let Some(recovered_value) = recovered {
+            Input::with_theme(&ColorfulTheme::default())
+                .with_prompt(prompt)
+                .with_initial_text(recovered_value)
+                .interact_text()
+                .context("Failed to read input")
+        } else {
+            Self::input(prompt)
+        }
+    }
+
     /// Prompt for an optional string input
     pub fn input_optional(prompt: &str) -> Result<Option<String>> {
         let input: String = Input::with_theme(&ColorfulTheme::default())
@@ -54,6 +67,26 @@ impl Prompts {
                 Ok(value) => return Ok(value),
                 Err(_) => println!("Please enter a valid integer"),
             }
+        }
+    }
+
+    /// Prompt for an integer input with a recovered value as initial text (for recovery)
+    pub fn input_integer_with_default(prompt: &str, recovered: Option<i64>) -> Result<i64> {
+        if let Some(recovered_value) = recovered {
+            loop {
+                let input: String = Input::with_theme(&ColorfulTheme::default())
+                    .with_prompt(prompt)
+                    .with_initial_text(recovered_value.to_string())
+                    .interact_text()
+                    .context("Failed to read input")?;
+
+                match input.trim().parse::<i64>() {
+                    Ok(value) => return Ok(value),
+                    Err(_) => println!("Please enter a valid integer"),
+                }
+            }
+        } else {
+            Self::input_integer(prompt)
         }
     }
 
@@ -195,6 +228,37 @@ impl Prompts {
         let tc = Self::input_integer("TC")?;
         let id = Self::input("ID")?;
         let description = Self::input("Description")?;
+
+        Ok(TestCaseMetadata {
+            requirement,
+            item,
+            tc,
+            id,
+            description,
+        })
+    }
+
+    /// Prompt for test case metadata fields with recovery support
+    pub fn prompt_metadata_with_recovery(
+        recovered: Option<&TestCaseMetadata>,
+    ) -> Result<TestCaseMetadata> {
+        println!("\n=== Test Case Metadata ===\n");
+
+        if recovered.is_some() {
+            println!("⚠ Recovered values shown as editable text (Enter confirms, you can edit/delete)\n");
+        }
+
+        let requirement = Self::input_with_recovered_default(
+            "Requirement",
+            recovered.map(|m| m.requirement.as_str()),
+        )?;
+        let item = Self::input_integer_with_default("Item", recovered.map(|m| m.item))?;
+        let tc = Self::input_integer_with_default("TC", recovered.map(|m| m.tc))?;
+        let id = Self::input_with_recovered_default("ID", recovered.map(|m| m.id.as_str()))?;
+        let description = Self::input_with_recovered_default(
+            "Description",
+            recovered.map(|m| m.description.as_str()),
+        )?;
 
         Ok(TestCaseMetadata {
             requirement,
@@ -357,6 +421,36 @@ impl TestCaseMetadata {
             Value::String(self.description.clone()),
         );
         map
+    }
+
+    /// Extract from YAML structure
+    pub fn from_structure(structure: &IndexMap<String, Value>) -> Option<Self> {
+        let requirement = structure
+            .get("requirement")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string())?;
+
+        let item = structure.get("item").and_then(|v| v.as_i64())?;
+
+        let tc = structure.get("tc").and_then(|v| v.as_i64())?;
+
+        let id = structure
+            .get("id")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string())?;
+
+        let description = structure
+            .get("description")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string())?;
+
+        Some(TestCaseMetadata {
+            requirement,
+            item,
+            tc,
+            id,
+            description,
+        })
     }
 
     /// Validate metadata chunk
