@@ -51,7 +51,7 @@ pub enum Commands {
         status: Option<String>,
 
         /// Filter by priority
-        #[arg(short, long)]
+        #[arg(short = 'r', long)]
         priority: Option<String>,
 
         /// Show detailed information
