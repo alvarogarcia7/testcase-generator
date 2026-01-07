@@ -10,7 +10,7 @@
 10→- **Lint**: make lint
 11→- **Test**: make test
 12→- **Dev Server**: N/A
-13→
+13→You must build and lint before committing
 14→## Tech Stack
 15→- Not yet initialized
 16→
