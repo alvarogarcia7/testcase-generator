@@ -96,59 +96,12 @@ impl TestCaseBuilder {
         &mut self,
         defaults: Option<&Value>,
     ) -> Result<&mut Self> {
-        println!("\n=== Initial Conditions ===\n");
+        let conditions = Prompts::prompt_initial_conditions(defaults, &self.validator)
+            .context("Failed to prompt for initial conditions")?;
 
-        if let Some(default_value) = defaults {
-            let yaml_str = serde_yaml::to_string(default_value)
-                .context("Failed to serialize defaults")?;
-            
-            println!("Current defaults:");
-            println!("{}", yaml_str);
-            println!();
+        self.structure.insert("initial_conditions".to_string(), conditions);
 
-            let keep_defaults = Prompts::confirm_with_default("Keep these defaults?", true)?;
-            
-            if keep_defaults {
-                self.structure.insert("initial_conditions".to_string(), default_value.clone());
-                return Ok(self);
-            }
-        }
-
-        loop {
-            let template = r#"# Initial Conditions
-# Example:
-# eUICC:
-#   - "Condition 1"
-#   - "Condition 2"
-
-eUICC:
-  - ""
-"#;
-
-            let edited_content = TestCaseEditor::edit_text(template)
-                .context("Failed to open editor")?;
-
-            let parsed: Value = serde_yaml::from_str(&edited_content)
-                .context("Failed to parse YAML")?;
-
-            let yaml_for_validation = serde_yaml::to_string(&parsed)
-                .context("Failed to serialize for validation")?;
-
-            match self.validator.validate_partial_chunk(&yaml_for_validation) {
-                Ok(_) => {
-                    println!("✓ Valid structure");
-                    self.structure.insert("initial_conditions".to_string(), parsed);
-                    return Ok(self);
-                }
-                Err(e) => {
-                    println!("✗ Validation failed: {}", e);
-                    let retry = Prompts::confirm("Try again?")?;
-                    if !retry {
-                        anyhow::bail!("Validation failed, user cancelled");
-                    }
-                }
-            }
-        }
+        Ok(self)
     }
 
     /// Add a custom field with validation

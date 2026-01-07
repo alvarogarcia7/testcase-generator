@@ -130,7 +130,7 @@ Commit general initial conditions to git? [Y/n]: y
 
 ### 6. Initial Conditions
 
-Similar to general initial conditions, but for the main initial conditions:
+The workflow prompts for the main initial conditions with interactive device selection and iterative condition entry:
 
 ```
 === Initial Conditions ===
@@ -138,15 +138,50 @@ Similar to general initial conditions, but for the main initial conditions:
 Add initial conditions? [Y/n]: y
 ```
 
-The same flow applies:
-1. Show defaults (if available)
-2. Prompt to keep or edit
-3. Open editor with template if editing
-4. Validate against schema
-5. Add to structure
-6. Offer to commit
+#### Option A: Keep Defaults
 
-Template for initial conditions:
+If defaults are available, they are displayed:
+
+```
+Current defaults:
+eUICC:
+  - "The PROFILE_OPERATIONAL1 is Enabled."
+  - "The PROFILE_OPERATIONAL2 is Enabled."
+
+Keep these defaults? [Y/n]: y
+✓ Initial conditions added
+```
+
+#### Option B: Interactive Entry
+
+If you choose to create new initial conditions, the workflow prompts for:
+
+1. **Device name**: The device for which conditions apply (e.g., eUICC, LPA)
+2. **Conditions**: Iteratively enter condition strings until you enter an empty string
+
+Example interaction:
+
+```
+Device name (e.g., eUICC): eUICC
+
+Enter conditions for 'eUICC' (enter empty string to finish):
+Condition #1: The PROFILE_OPERATIONAL1 is Enabled.
+Condition #2: The PROFILE_OPERATIONAL2 is Enabled.
+Condition #3: [press Enter to finish]
+```
+
+After entering all conditions:
+- The structure is validated against the schema
+- Ensures device name is valid
+- Ensures conditions are an array of strings
+- If validation succeeds, the conditions are added to the structure
+
+```
+✓ Valid structure
+✓ Initial conditions added
+```
+
+Template structure for initial conditions:
 
 ```yaml
 # Initial Conditions
@@ -269,11 +304,28 @@ The metadata chunk validates:
 
 ### Initial Conditions Validation
 
-Initial conditions are validated as part of the overall schema. The validator checks:
-- Correct YAML structure
-- Required fields are present
-- Types match schema expectations
-- Array items conform to schema
+Initial conditions have specialized validation to ensure the structure is correct:
+
+1. **Structure validation**: The initial_conditions must be an object (mapping)
+2. **Device validation**: Each device name must map to an array
+3. **Condition validation**: Each condition must be a string
+
+The validator performs these checks:
+```rust
+// Example validation
+eUICC:                    // Must be a mapping key (device name)
+  - "Condition 1"        // Must be a string
+  - "Condition 2"        // Must be a string
+```
+
+Validation error examples:
+```
+✗ Device 'eUICC' must have an array of conditions, got: "not an array"
+✗ Condition #2 for device 'eUICC' must be a string, got: 123
+✗ initial_conditions must be an object with device names as keys
+```
+
+The validation occurs before the structure is appended to the test case, ensuring that only valid data is saved.
 
 ### Error Messages
 

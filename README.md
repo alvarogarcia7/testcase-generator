@@ -52,7 +52,8 @@ The `create-interactive` command provides a guided workflow with:
 - Interactive prompts for metadata (requirement, item, tc, id, description)
 - Schema validation after each section
 - Git commits after each major section
-- Editor integration for complex structures
+- Editor integration for general initial conditions
+- Interactive device selection and condition entry for initial conditions
 - Default values that can be kept or edited
 
 ```bash

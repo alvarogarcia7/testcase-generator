@@ -65,6 +65,40 @@ impl SchemaValidator {
 
         self.validate_chunk(yaml_content)
     }
+
+    pub fn validate_initial_conditions(&self, initial_conditions: &serde_yaml::Value) -> Result<()> {
+        let json_value: JsonValue =
+            serde_json::to_value(initial_conditions).context("Failed to convert to JSON")?;
+
+        if let JsonValue::Object(obj) = &json_value {
+            for (device_name, conditions) in obj.iter() {
+                if !conditions.is_array() {
+                    anyhow::bail!(
+                        "Device '{}' must have an array of conditions, got: {:?}",
+                        device_name,
+                        conditions
+                    );
+                }
+                
+                if let JsonValue::Array(arr) = conditions {
+                    for (idx, item) in arr.iter().enumerate() {
+                        if !item.is_string() {
+                            anyhow::bail!(
+                                "Condition #{} for device '{}' must be a string, got: {:?}",
+                                idx + 1,
+                                device_name,
+                                item
+                            );
+                        }
+                    }
+                }
+            }
+        } else {
+            anyhow::bail!("initial_conditions must be an object with device names as keys");
+        }
+
+        Ok(())
+    }
 }
 
 impl Default for SchemaValidator {
@@ -539,5 +573,67 @@ test_sequences:
             crate::models::TestCase::new("TC001".to_string(), "Test Case 1".to_string());
 
         assert!(validator.validate_test_case(&test_case).is_err());
+    }
+
+    #[test]
+    fn test_validate_initial_conditions_valid() {
+        let validator = SchemaValidator::new().unwrap();
+
+        let yaml_content = r#"
+eUICC:
+  - "Condition 1"
+  - "Condition 2"
+"#;
+        let initial_conditions: serde_yaml::Value = serde_yaml::from_str(yaml_content).unwrap();
+
+        let result = validator.validate_initial_conditions(&initial_conditions);
+        assert!(result.is_ok(), "Validation should succeed: {:?}", result.err());
+    }
+
+    #[test]
+    fn test_validate_initial_conditions_invalid_not_array() {
+        let validator = SchemaValidator::new().unwrap();
+
+        let yaml_content = r#"
+eUICC: "not an array"
+"#;
+        let initial_conditions: serde_yaml::Value = serde_yaml::from_str(yaml_content).unwrap();
+
+        let result = validator.validate_initial_conditions(&initial_conditions);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("must have an array"));
+    }
+
+    #[test]
+    fn test_validate_initial_conditions_invalid_not_strings() {
+        let validator = SchemaValidator::new().unwrap();
+
+        let yaml_content = r#"
+eUICC:
+  - "Valid string"
+  - 123
+"#;
+        let initial_conditions: serde_yaml::Value = serde_yaml::from_str(yaml_content).unwrap();
+
+        let result = validator.validate_initial_conditions(&initial_conditions);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("must be a string"));
+    }
+
+    #[test]
+    fn test_validate_initial_conditions_multiple_devices() {
+        let validator = SchemaValidator::new().unwrap();
+
+        let yaml_content = r#"
+eUICC:
+  - "Condition 1"
+  - "Condition 2"
+LPA:
+  - "LPA Condition 1"
+"#;
+        let initial_conditions: serde_yaml::Value = serde_yaml::from_str(yaml_content).unwrap();
+
+        let result = validator.validate_initial_conditions(&initial_conditions);
+        assert!(result.is_ok(), "Validation should succeed: {:?}", result.err());
     }
 }

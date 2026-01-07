@@ -262,6 +262,72 @@ impl Prompts {
             }
         }
     }
+
+    /// Prompt for initial conditions with device selection and iterative condition collection
+    pub fn prompt_initial_conditions(
+        defaults: Option<&Value>,
+        validator: &SchemaValidator,
+    ) -> Result<Value> {
+        println!("\n=== Initial Conditions ===\n");
+
+        if let Some(default_value) = defaults {
+            let yaml_str = serde_yaml::to_string(default_value)
+                .context("Failed to serialize defaults")?;
+            
+            println!("Current defaults:");
+            println!("{}", yaml_str);
+            println!();
+
+            let keep_defaults = Self::confirm_with_default("Keep these defaults?", true)?;
+            
+            if keep_defaults {
+                return Ok(default_value.clone());
+            }
+        }
+
+        let device_name = Self::input("Device name (e.g., eUICC)")?;
+        
+        let mut conditions: Vec<String> = Vec::new();
+        
+        println!("\nEnter conditions for '{}' (enter empty string to finish):", device_name);
+        
+        loop {
+            let condition = Self::input_optional(&format!("Condition #{}", conditions.len() + 1))?;
+            
+            match condition {
+                Some(cond) if !cond.trim().is_empty() => {
+                    conditions.push(cond);
+                }
+                _ => {
+                    if conditions.is_empty() {
+                        println!("At least one condition is required.");
+                        continue;
+                    }
+                    break;
+                }
+            }
+        }
+
+        let mut map = serde_yaml::Mapping::new();
+        let conditions_array: Vec<Value> = conditions
+            .into_iter()
+            .map(Value::String)
+            .collect();
+        
+        map.insert(
+            Value::String(device_name.clone()),
+            Value::Sequence(conditions_array)
+        );
+
+        let initial_conditions_value = Value::Mapping(map);
+
+        validator.validate_initial_conditions(&initial_conditions_value)
+            .context("Initial conditions validation failed")?;
+
+        println!("✓ Valid structure");
+        
+        Ok(initial_conditions_value)
+    }
 }
 
 /// Metadata fields for a test case
