@@ -15,4 +15,4 @@ pub use models::{Priority, Status, Step, TestCase, TestSequence, TestSuite, Test
 pub use parser::{SearchableCollections, TestCaseParser};
 pub use prompts::Prompts;
 pub use storage::TestCaseStorage;
-pub use validation::TestCaseValidator;
+pub use validation::{SchemaValidator, TestCaseValidator};
