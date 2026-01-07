@@ -132,6 +132,13 @@ pub enum Commands {
         #[arg(short, long)]
         git: bool,
     },
+
+    /// Create test case interactively with metadata prompts
+    CreateInteractive {
+        /// Path to the test cases directory
+        #[arg(short, long)]
+        path: Option<String>,
+    },
 }
 
 #[derive(Subcommand)]

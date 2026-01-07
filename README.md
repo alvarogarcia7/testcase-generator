@@ -33,7 +33,7 @@ testcase-manager init --git
 ### Create a test case
 
 ```bash
-# Interactive creation
+# Interactive creation (legacy)
 testcase-manager create
 
 # With parameters
@@ -41,7 +41,29 @@ testcase-manager create --id TC001 --title "Login Test"
 
 # Open in editor
 testcase-manager create --edit
+
+# Interactive workflow with guided prompts and validation
+testcase-manager create-interactive
 ```
+
+### Interactive Test Case Creation Workflow
+
+The `create-interactive` command provides a guided workflow with:
+- Interactive prompts for metadata (requirement, item, tc, id, description)
+- Schema validation after each section
+- Git commits after each major section
+- Editor integration for complex structures
+- Default values that can be kept or edited
+
+```bash
+# Start interactive workflow
+testcase-manager create-interactive
+
+# With custom path
+testcase-manager create-interactive --path ./my-testcases
+```
+
+See [Interactive Workflow Documentation](docs/interactive_workflow.md) for details.
 
 ### List test cases
 

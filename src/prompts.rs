@@ -1,6 +1,10 @@
 use crate::models::{Priority, Status, TestType};
+use crate::editor::TestCaseEditor;
+use crate::validation::SchemaValidator;
 use anyhow::{Context, Result};
 use dialoguer::{theme::ColorfulTheme, Confirm, Input, MultiSelect, Select};
+use indexmap::IndexMap;
+use serde_yaml::Value;
 
 /// Interactive prompt utilities
 pub struct Prompts;
@@ -36,6 +40,21 @@ impl Prompts {
             .default(default.to_string())
             .interact_text()
             .context("Failed to read input")
+    }
+
+    /// Prompt for an integer input
+    pub fn input_integer(prompt: &str) -> Result<i64> {
+        loop {
+            let input: String = Input::with_theme(&ColorfulTheme::default())
+                .with_prompt(prompt)
+                .interact_text()
+                .context("Failed to read input")?;
+
+            match input.trim().parse::<i64>() {
+                Ok(value) => return Ok(value),
+                Err(_) => println!("Please enter a valid integer"),
+            }
+        }
     }
 
     /// Prompt for a confirmation (yes/no)
@@ -165,5 +184,118 @@ impl Prompts {
                 .filter(|s| !s.is_empty())
                 .collect())
         }
+    }
+
+    /// Prompt for test case metadata fields
+    pub fn prompt_metadata() -> Result<TestCaseMetadata> {
+        println!("\n=== Test Case Metadata ===\n");
+        
+        let requirement = Self::input("Requirement")?;
+        let item = Self::input_integer("Item")?;
+        let tc = Self::input_integer("TC")?;
+        let id = Self::input("ID")?;
+        let description = Self::input("Description")?;
+
+        Ok(TestCaseMetadata {
+            requirement,
+            item,
+            tc,
+            id,
+            description,
+        })
+    }
+
+    /// Prompt for general initial conditions with editor support
+    pub fn prompt_general_initial_conditions(
+        defaults: Option<&Value>,
+        validator: &SchemaValidator,
+    ) -> Result<Value> {
+        println!("\n=== General Initial Conditions ===\n");
+
+        if let Some(default_value) = defaults {
+            let yaml_str = serde_yaml::to_string(default_value)
+                .context("Failed to serialize defaults")?;
+            
+            println!("Current defaults:");
+            println!("{}", yaml_str);
+            println!();
+
+            let keep_defaults = Self::confirm_with_default("Keep these defaults?", true)?;
+            
+            if keep_defaults {
+                return Ok(default_value.clone());
+            }
+        }
+
+        loop {
+            let template = r#"# General Initial Conditions
+# Example:
+# - eUICC:
+#     - "Condition 1"
+#     - "Condition 2"
+
+- eUICC:
+    - ""
+"#;
+
+            let edited_content = TestCaseEditor::edit_text(template)
+                .context("Failed to open editor")?;
+
+            let parsed: Value = serde_yaml::from_str(&edited_content)
+                .context("Failed to parse YAML")?;
+
+            let yaml_for_validation = serde_yaml::to_string(&parsed)
+                .context("Failed to serialize for validation")?;
+
+            match validator.validate_partial_chunk(&yaml_for_validation) {
+                Ok(_) => {
+                    println!("✓ Valid structure");
+                    return Ok(parsed);
+                }
+                Err(e) => {
+                    println!("✗ Validation failed: {}", e);
+                    let retry = Self::confirm("Try again?")?;
+                    if !retry {
+                        anyhow::bail!("Validation failed, user cancelled");
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Metadata fields for a test case
+#[derive(Debug, Clone)]
+pub struct TestCaseMetadata {
+    pub requirement: String,
+    pub item: i64,
+    pub tc: i64,
+    pub id: String,
+    pub description: String,
+}
+
+impl TestCaseMetadata {
+    /// Convert to YAML structure
+    pub fn to_yaml(&self) -> IndexMap<String, Value> {
+        let mut map = IndexMap::new();
+        map.insert("requirement".to_string(), Value::String(self.requirement.clone()));
+        map.insert("item".to_string(), Value::Number(self.item.into()));
+        map.insert("tc".to_string(), Value::Number(self.tc.into()));
+        map.insert("id".to_string(), Value::String(self.id.clone()));
+        map.insert("description".to_string(), Value::String(self.description.clone()));
+        map
+    }
+
+    /// Validate metadata chunk
+    pub fn validate(&self, validator: &SchemaValidator) -> Result<()> {
+        let yaml_map = self.to_yaml();
+        let yaml_value = Value::Mapping(serde_yaml::Mapping::from_iter(
+            yaml_map.into_iter().map(|(k, v)| (Value::String(k), v))
+        ));
+        
+        let yaml_str = serde_yaml::to_string(&yaml_value)
+            .context("Failed to serialize metadata")?;
+        
+        validator.validate_partial_chunk(&yaml_str)
     }
 }
