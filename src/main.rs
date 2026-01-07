@@ -81,6 +81,13 @@ fn main() -> Result<()> {
             let work_path = path.as_deref().unwrap_or(&cli.path);
             handle_build_sequences_with_steps(work_path)?;
         }
+
+        Commands::Complete {
+            output,
+            commit_prefix,
+        } => {
+            handle_complete(&output, commit_prefix.as_deref())?;
+        }
     }
 
     Ok(())
@@ -680,6 +687,296 @@ fn handle_build_sequences_with_steps(path: &str) -> Result<()> {
             .commit("Complete test case with all sequences and steps")
             .context("Failed to commit final file")?;
     }
+
+    Ok(())
+}
+
+fn handle_complete(output_path: &str, commit_prefix: Option<&str>) -> Result<()> {
+    let prefix = commit_prefix.unwrap_or("");
+    let commit_msg = |msg: &str| {
+        if prefix.is_empty() {
+            msg.to_string()
+        } else {
+            format!("{}: {}", prefix, msg)
+        }
+    };
+
+    let output_file = std::path::Path::new(output_path);
+    let base_dir = output_file
+        .parent()
+        .ok_or_else(|| anyhow::anyhow!("Invalid output path"))?;
+
+    std::fs::create_dir_all(base_dir).context(format!(
+        "Failed to create directory: {}",
+        base_dir.display()
+    ))?;
+
+    let mut builder =
+        TestCaseBuilder::new(base_dir).context("Failed to create test case builder")?;
+
+    println!("\n╔══════════════════════════════════════════════════════╗");
+    println!("║    Complete Interactive Test Case Workflow          ║");
+    println!("║  with Git Commits & Validation Error Handling       ║");
+    println!("╚══════════════════════════════════════════════════════╝\n");
+
+    loop {
+        match builder.add_metadata() {
+            Ok(_) => {
+                println!("✓ Metadata added to structure\n");
+                break;
+            }
+            Err(e) => {
+                println!("✗ Metadata validation failed: {}\n", e);
+                if !Prompts::confirm("Retry metadata entry?")? {
+                    anyhow::bail!("User cancelled metadata entry");
+                }
+            }
+        }
+    }
+
+    if Prompts::confirm("Commit metadata to git?")? {
+        builder
+            .commit(&commit_msg("Add test case metadata"))
+            .context("Failed to commit metadata")?;
+    }
+
+    if Prompts::confirm("\nAdd general initial conditions?")? {
+        loop {
+            match builder.add_general_initial_conditions(None) {
+                Ok(_) => {
+                    println!("✓ General initial conditions added\n");
+                    break;
+                }
+                Err(e) => {
+                    println!("✗ General initial conditions validation failed: {}\n", e);
+                    if !Prompts::confirm("Retry general initial conditions entry?")? {
+                        println!("⚠ Skipping general initial conditions\n");
+                        break;
+                    }
+                }
+            }
+        }
+
+        if Prompts::confirm("Commit general initial conditions to git?")? {
+            builder
+                .commit(&commit_msg("Add general initial conditions"))
+                .context("Failed to commit general initial conditions")?;
+        }
+    }
+
+    if Prompts::confirm("\nAdd initial conditions?")? {
+        loop {
+            match builder.add_initial_conditions(None) {
+                Ok(_) => {
+                    println!("✓ Initial conditions added\n");
+                    break;
+                }
+                Err(e) => {
+                    println!("✗ Initial conditions validation failed: {}\n", e);
+                    if !Prompts::confirm("Retry initial conditions entry?")? {
+                        println!("⚠ Skipping initial conditions\n");
+                        break;
+                    }
+                }
+            }
+        }
+
+        if Prompts::confirm("Commit initial conditions to git?")? {
+            builder
+                .commit(&commit_msg("Add initial conditions"))
+                .context("Failed to commit initial conditions")?;
+        }
+    }
+
+    println!("\n╔══════════════════════════════════════════════════════╗");
+    println!("║         Build Test Sequences with Validation        ║");
+    println!("╚══════════════════════════════════════════════════════╝\n");
+
+    loop {
+        let sequence_added = loop {
+            match builder.add_test_sequence_interactive() {
+                Ok(_) => break true,
+                Err(e) => {
+                    println!("✗ Test sequence validation failed: {}\n", e);
+                    if !Prompts::confirm("Retry test sequence entry?")? {
+                        println!("⚠ Skipping this test sequence\n");
+                        break false;
+                    }
+                }
+            }
+        };
+
+        if !sequence_added {
+            if Prompts::confirm("Add another test sequence?")? {
+                continue;
+            } else {
+                break;
+            }
+        }
+
+        let sequence_index = builder.get_sequence_count() - 1;
+
+        if Prompts::confirm("Commit this sequence to git?")? {
+            let sequence_id = builder.get_next_sequence_id() - 1;
+            builder
+                .commit(&commit_msg(&format!("Add test sequence #{}", sequence_id)))
+                .context("Failed to commit test sequence")?;
+        }
+
+        if Prompts::confirm("\nAdd steps to this sequence now?")? {
+            let sequence_id = match builder.get_sequence_id_by_index(sequence_index) {
+                Ok(id) => id,
+                Err(e) => {
+                    println!("✗ Failed to get sequence ID: {}", e);
+                    if !Prompts::confirm("\nAdd another test sequence?")? {
+                        break;
+                    }
+                    continue;
+                }
+            };
+
+            let sequence_name = builder
+                .get_sequence_name_by_index(sequence_index)
+                .unwrap_or_else(|_| "Unknown".to_string());
+
+            println!("\n╔══════════════════════════════════════════════════════╗");
+            println!(
+                "║      Add Steps to Sequence #{}: {}",
+                sequence_id, sequence_name
+            );
+            println!("╚══════════════════════════════════════════════════════╝\n");
+
+            let existing_steps = builder.get_all_existing_steps();
+
+            'add_steps: loop {
+                let step_number = builder.get_next_step_number(sequence_index)?;
+
+                'step_retry: loop {
+                    println!("\n=== Add Step #{} ===", step_number);
+
+                    let step_description = if !existing_steps.is_empty() {
+                        println!(
+                            "\nYou can select from existing step descriptions or enter a new one."
+                        );
+
+                        if Prompts::confirm(
+                            "Use fuzzy search to select from existing descriptions?",
+                        )? {
+                            match TestCaseFuzzyFinder::search_strings(
+                                &existing_steps,
+                                "Select step description: ",
+                            )? {
+                                Some(desc) => desc,
+                                None => {
+                                    println!("No selection made, entering new description.");
+                                    Prompts::input("Step description")?
+                                }
+                            }
+                        } else {
+                            Prompts::input("Step description")?
+                        }
+                    } else {
+                        Prompts::input("Step description")?
+                    };
+
+                    let manual = if Prompts::confirm("Is this a manual step?")? {
+                        Some(true)
+                    } else {
+                        None
+                    };
+
+                    let command = Prompts::input("Command")?;
+
+                    let expected = builder.prompt_for_expected()?;
+
+                    let step = builder.create_step_value(
+                        step_number,
+                        manual,
+                        step_description.clone(),
+                        command,
+                        expected,
+                    )?;
+
+                    println!("\n=== Validating Step ===");
+                    match builder.validate_and_append_step(sequence_index, step) {
+                        Ok(_) => {
+                            println!("✓ Step validated and added\n");
+                            builder.save().context("Failed to save file")?;
+
+                            if Prompts::confirm("Commit this step to git?")? {
+                                builder
+                                    .commit(&commit_msg(&format!(
+                                        "Add step #{} to sequence #{}: {}",
+                                        step_number, sequence_id, step_description
+                                    )))
+                                    .context("Failed to commit step")?;
+                            }
+
+                            if !Prompts::confirm("\nAdd another step to this sequence?")? {
+                                break 'add_steps;
+                            }
+                            break 'step_retry;
+                        }
+                        Err(e) => {
+                            println!("✗ Step validation failed: {}\n", e);
+                            if !Prompts::confirm("Retry this step entry?")? {
+                                println!("⚠ Skipping this step\n");
+                                if !Prompts::confirm("\nAdd another step to this sequence?")? {
+                                    break 'add_steps;
+                                }
+                                break 'step_retry;
+                            }
+                        }
+                    }
+                }
+            }
+
+            println!("\n✓ All steps added to sequence");
+        }
+
+        if !Prompts::confirm("\nAdd another test sequence?")? {
+            break;
+        }
+    }
+
+    println!("\n╔══════════════════════════════════════════════════════╗");
+    println!("║           Saving Complete Test Case                 ║");
+    println!("╚══════════════════════════════════════════════════════╝\n");
+
+    let final_yaml_content = builder.to_yaml_string()?;
+    std::fs::write(output_path, &final_yaml_content)
+        .context(format!("Failed to write output file: {}", output_path))?;
+
+    println!("✓ Complete test case saved to: {}\n", output_path);
+
+    if Prompts::confirm("Commit final complete test case?")? {
+        let git = match GitManager::open(base_dir) {
+            Ok(git) => git,
+            Err(_) => GitManager::init(base_dir)?,
+        };
+
+        let author_name =
+            std::env::var("GIT_AUTHOR_NAME").unwrap_or_else(|_| "Test Case Manager".to_string());
+        let author_email = std::env::var("GIT_AUTHOR_EMAIL")
+            .unwrap_or_else(|_| "testcase@example.com".to_string());
+
+        let relative_path = output_file
+            .file_name()
+            .ok_or_else(|| anyhow::anyhow!("Invalid output filename"))?;
+
+        git.add(&[relative_path])?;
+        git.commit(
+            &commit_msg("Complete test case with all sequences and steps"),
+            &author_name,
+            &author_email,
+        )?;
+
+        println!("✓ Committed to git\n");
+    }
+
+    println!("╔══════════════════════════════════════════════════════╗");
+    println!("║         Test Case Workflow Completed!               ║");
+    println!("╚══════════════════════════════════════════════════════╝");
 
     Ok(())
 }

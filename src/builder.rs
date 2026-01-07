@@ -367,18 +367,18 @@ impl TestCaseBuilder {
         println!("║      Step Collection Loop with Commits       ║");
         println!("╚═══════════════════════════════════════════════╝\n");
 
-        let sequence_id = self.get_sequence_id_by_index(sequence_index)?;
-        let sequence_name = self.get_sequence_name_by_index(sequence_index)?;
+        let sequence_id = self.get_sequence_id_by_index_internal(sequence_index)?;
+        let sequence_name = self.get_sequence_name_by_index_internal(sequence_index)?;
 
         println!(
             "Adding steps to Sequence #{}: {}\n",
             sequence_id, sequence_name
         );
 
-        let existing_steps = self.get_all_existing_steps();
+        let existing_steps = self.get_all_existing_steps_internal();
 
         loop {
-            let step_number = self.get_next_step_number(sequence_index)?;
+            let step_number = self.get_next_step_number_internal(sequence_index)?;
             println!("\n=== Add Step #{} ===", step_number);
 
             let step_description = if !existing_steps.is_empty() {
@@ -410,7 +410,7 @@ impl TestCaseBuilder {
 
             let command = Prompts::input("Command")?;
 
-            let expected = self.prompt_for_expected()?;
+            let expected = self.prompt_for_expected_internal()?;
 
             let step = self.create_step_value(
                 step_number,
@@ -443,8 +443,13 @@ impl TestCaseBuilder {
         Ok(self)
     }
 
-    /// Get the sequence ID by index
-    fn get_sequence_id_by_index(&self, index: usize) -> Result<i64> {
+    /// Public accessor for get_sequence_id_by_index
+    pub fn get_sequence_id_by_index(&self, index: usize) -> Result<i64> {
+        self.get_sequence_id_by_index_internal(index)
+    }
+
+    /// Internal implementation of get_sequence_id_by_index
+    fn get_sequence_id_by_index_internal(&self, index: usize) -> Result<i64> {
         if let Some(Value::Sequence(sequences)) = self.structure.get("test_sequences") {
             if let Some(Value::Mapping(seq_map)) = sequences.get(index) {
                 if let Some(Value::Number(id)) = seq_map.get(Value::String("id".to_string())) {
@@ -457,8 +462,13 @@ impl TestCaseBuilder {
         anyhow::bail!("Sequence not found at index {}", index)
     }
 
-    /// Get the sequence name by index
-    fn get_sequence_name_by_index(&self, index: usize) -> Result<String> {
+    /// Public accessor for get_sequence_name_by_index
+    pub fn get_sequence_name_by_index(&self, index: usize) -> Result<String> {
+        self.get_sequence_name_by_index_internal(index)
+    }
+
+    /// Internal implementation of get_sequence_name_by_index
+    fn get_sequence_name_by_index_internal(&self, index: usize) -> Result<String> {
         if let Some(Value::Sequence(sequences)) = self.structure.get("test_sequences") {
             if let Some(Value::Mapping(seq_map)) = sequences.get(index) {
                 if let Some(Value::String(name)) = seq_map.get(Value::String("name".to_string())) {
@@ -469,8 +479,13 @@ impl TestCaseBuilder {
         anyhow::bail!("Sequence not found at index {}", index)
     }
 
-    /// Get all existing step descriptions from all sequences
-    fn get_all_existing_steps(&self) -> Vec<String> {
+    /// Public accessor for get_all_existing_steps
+    pub fn get_all_existing_steps(&self) -> Vec<String> {
+        self.get_all_existing_steps_internal()
+    }
+
+    /// Internal implementation of get_all_existing_steps
+    fn get_all_existing_steps_internal(&self) -> Vec<String> {
         let mut descriptions = Vec::new();
 
         if let Some(Value::Sequence(sequences)) = self.structure.get("test_sequences") {
@@ -498,8 +513,41 @@ impl TestCaseBuilder {
         descriptions
     }
 
-    /// Get the next step number for a sequence
-    fn get_next_step_number(&self, sequence_index: usize) -> Result<i64> {
+    /// Public accessor for prompt_for_expected
+    pub fn prompt_for_expected(&self) -> Result<Value> {
+        self.prompt_for_expected_internal()
+    }
+
+    /// Internal implementation of prompt_for_expected
+    fn prompt_for_expected_internal(&self) -> Result<Value> {
+        let include_success = Prompts::confirm("Include 'success' field?")?;
+
+        let result = Prompts::input("Expected result")?;
+        let output = Prompts::input("Expected output")?;
+
+        let mut expected_map = serde_yaml::Mapping::new();
+
+        if include_success {
+            let success_value = Prompts::confirm("Success value (true/false)?")?;
+            expected_map.insert(
+                Value::String("success".to_string()),
+                Value::Bool(success_value),
+            );
+        }
+
+        expected_map.insert(Value::String("result".to_string()), Value::String(result));
+        expected_map.insert(Value::String("output".to_string()), Value::String(output));
+
+        Ok(Value::Mapping(expected_map))
+    }
+
+    /// Public accessor for get_next_step_number
+    pub fn get_next_step_number(&self, sequence_index: usize) -> Result<i64> {
+        self.get_next_step_number_internal(sequence_index)
+    }
+
+    /// Internal implementation of get_next_step_number
+    fn get_next_step_number_internal(&self, sequence_index: usize) -> Result<i64> {
         if let Some(Value::Sequence(sequences)) = self.structure.get("test_sequences") {
             if let Some(Value::Mapping(seq_map)) = sequences.get(sequence_index) {
                 if let Some(Value::Sequence(steps)) =
@@ -526,29 +574,6 @@ impl TestCaseBuilder {
             }
         }
         anyhow::bail!("Sequence not found at index {}", sequence_index)
-    }
-
-    /// Prompt for expected results structure
-    fn prompt_for_expected(&self) -> Result<Value> {
-        let include_success = Prompts::confirm("Include 'success' field?")?;
-
-        let result = Prompts::input("Expected result")?;
-        let output = Prompts::input("Expected output")?;
-
-        let mut expected_map = serde_yaml::Mapping::new();
-
-        if include_success {
-            let success_value = Prompts::confirm("Success value (true/false)?")?;
-            expected_map.insert(
-                Value::String("success".to_string()),
-                Value::Bool(success_value),
-            );
-        }
-
-        expected_map.insert(Value::String("result".to_string()), Value::String(result));
-        expected_map.insert(Value::String("output".to_string()), Value::String(output));
-
-        Ok(Value::Mapping(expected_map))
     }
 
     /// Create a step value structure
@@ -673,7 +698,7 @@ impl TestCaseBuilder {
     }
 
     /// Get the count of sequences
-    fn get_sequence_count(&self) -> usize {
+    pub fn get_sequence_count(&self) -> usize {
         if let Some(Value::Sequence(sequences)) = self.structure.get("test_sequences") {
             sequences.len()
         } else {

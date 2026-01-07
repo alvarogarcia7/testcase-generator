@@ -164,6 +164,17 @@ pub enum Commands {
         #[arg(short, long)]
         path: Option<String>,
     },
+
+    /// Complete interactive workflow: metadata, conditions, sequences, steps with git commits
+    Complete {
+        /// Output file path (default: data/gsma_4.4.2.3_TC.yml)
+        #[arg(short, long, default_value = "data/gsma_4.4.2.3_TC.yml")]
+        output: String,
+
+        /// Commit message prefix (default: empty)
+        #[arg(short, long)]
+        commit_prefix: Option<String>,
+    },
 }
 
 #[derive(Subcommand)]
