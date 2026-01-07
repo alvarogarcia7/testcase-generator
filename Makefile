@@ -1,6 +1,9 @@
 pre-commit: test clippy
 .PHONY: pre-commit
 
+lint: fmt clippy
+.PHONY: lint
+
 build:
 	cargo build --all
 .PHONY: build
