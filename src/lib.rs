@@ -15,9 +15,12 @@ pub use cli::Cli;
 pub use editor::TestCaseEditor;
 pub use fuzzy::TestCaseFuzzyFinder;
 pub use git::GitManager;
-pub use models::{Priority, Status, Step, TestCase, TestSequence, TestSuite, TestType};
+pub use models::{
+    Expected, GeneralInitialCondition, InitialCondition, Step, TestCase, TestSequence, TestSuite,
+    TopLevelInitialConditions,
+};
 pub use parser::{SearchableCollections, TestCaseParser};
 pub use prompts::{Prompts, TestCaseMetadata};
 pub use recovery::{RecoveryManager, RecoveryState};
 pub use storage::TestCaseStorage;
-pub use validation::{SchemaValidator, TestCaseValidator};
+pub use validation::SchemaValidator;

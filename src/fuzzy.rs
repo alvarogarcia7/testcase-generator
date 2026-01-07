@@ -15,7 +15,12 @@ impl TestCaseFuzzyFinder {
 
         let items: Vec<String> = test_cases
             .iter()
-            .map(|tc| format!("{} - {} ({})", tc.id, tc.title, tc.status as u8))
+            .map(|tc| {
+                format!(
+                    "{} - {} (Item: {}, TC: {})",
+                    tc.id, tc.requirement, tc.item, tc.tc
+                )
+            })
             .collect();
 
         let item_reader = SkimItemReader::default();

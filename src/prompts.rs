@@ -1,5 +1,4 @@
 use crate::editor::TestCaseEditor;
-use crate::models::{Priority, Status, TestType};
 use crate::validation::SchemaValidator;
 use anyhow::{Context, Result};
 use dialoguer::{theme::ColorfulTheme, Confirm, Input, MultiSelect, Select};
@@ -105,77 +104,6 @@ impl Prompts {
             .default(default)
             .interact()
             .context("Failed to read confirmation")
-    }
-
-    /// Select a priority level
-    pub fn select_priority() -> Result<Priority> {
-        let priorities = vec!["Low", "Medium", "High", "Critical"];
-
-        let selection = Select::with_theme(&ColorfulTheme::default())
-            .with_prompt("Select priority")
-            .items(&priorities)
-            .default(1)
-            .interact()
-            .context("Failed to read selection")?;
-
-        match selection {
-            0 => Ok(Priority::Low),
-            1 => Ok(Priority::Medium),
-            2 => Ok(Priority::High),
-            3 => Ok(Priority::Critical),
-            _ => unreachable!(),
-        }
-    }
-
-    /// Select a status
-    pub fn select_status() -> Result<Status> {
-        let statuses = vec!["Draft", "Active", "Deprecated", "Archived"];
-
-        let selection = Select::with_theme(&ColorfulTheme::default())
-            .with_prompt("Select status")
-            .items(&statuses)
-            .default(0)
-            .interact()
-            .context("Failed to read selection")?;
-
-        match selection {
-            0 => Ok(Status::Draft),
-            1 => Ok(Status::Active),
-            2 => Ok(Status::Deprecated),
-            3 => Ok(Status::Archived),
-            _ => unreachable!(),
-        }
-    }
-
-    /// Select a test type
-    pub fn select_test_type() -> Result<TestType> {
-        let types = vec![
-            "Functional",
-            "Integration",
-            "Regression",
-            "Smoke",
-            "Performance",
-            "Security",
-            "User Acceptance",
-        ];
-
-        let selection = Select::with_theme(&ColorfulTheme::default())
-            .with_prompt("Select test type")
-            .items(&types)
-            .default(0)
-            .interact()
-            .context("Failed to read selection")?;
-
-        match selection {
-            0 => Ok(TestType::Functional),
-            1 => Ok(TestType::Integration),
-            2 => Ok(TestType::Regression),
-            3 => Ok(TestType::Smoke),
-            4 => Ok(TestType::Performance),
-            5 => Ok(TestType::Security),
-            6 => Ok(TestType::UserAcceptance),
-            _ => unreachable!(),
-        }
     }
 
     /// Select from a list of items

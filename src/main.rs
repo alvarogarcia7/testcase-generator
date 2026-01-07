@@ -3,15 +3,15 @@ use clap::Parser;
 use testcase_manager::{
     cli::{Cli, Commands, GitCommands},
     GitManager, Prompts, TestCase, TestCaseBuilder, TestCaseEditor, TestCaseFuzzyFinder,
-    TestCaseMetadata, TestCaseStorage, TestCaseValidator, TestSuite,
+    TestCaseMetadata, TestCaseStorage, TestSuite,
 };
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Create { id, title, edit } => {
-            handle_create(&cli.path, id, title, edit)?;
+        Commands::Create { id } => {
+            handle_create(&cli.path, id)?;
         }
 
         Commands::Edit { id, fuzzy } => {
@@ -93,39 +93,21 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn handle_create(
-    base_path: &str,
-    id: Option<String>,
-    title: Option<String>,
-    edit: bool,
-) -> Result<()> {
+fn handle_create(base_path: &str, id: Option<String>) -> Result<()> {
     let storage = TestCaseStorage::new(base_path)?;
+
+    let requirement = Prompts::input("Requirement")?;
+    let item = Prompts::input_integer("Item")?;
+    let tc = Prompts::input_integer("TC")?;
 
     let id = match id {
         Some(id) => id,
         None => Prompts::input("Test Case ID")?,
     };
 
-    let title = match title {
-        Some(title) => title,
-        None => Prompts::input("Test Case Title")?,
-    };
+    let description = Prompts::input("Description")?;
 
-    let mut test_case = TestCase::new(id, title);
-
-    if edit {
-        test_case = TestCaseEditor::create_test_case(&test_case)?;
-    } else {
-        test_case.priority = Prompts::select_priority()?;
-        test_case.status = Prompts::select_status()?;
-        test_case.test_type = Prompts::select_test_type()?;
-        test_case.description = Prompts::input_optional("Description")?;
-        test_case.author = Prompts::input_optional("Author")?;
-        test_case.tags = Prompts::input_tags("Tags (comma-separated)")?;
-    }
-
-    let validator = TestCaseValidator::new()?;
-    validator.validate_test_case(&test_case)?;
+    let test_case = TestCase::new(requirement, item, tc, id, description);
 
     let file_path = storage.save_test_case(&test_case)?;
     println!("Test case created: {}", file_path.display());
@@ -148,11 +130,7 @@ fn handle_edit(base_path: &str, id: Option<String>, fuzzy: bool) -> Result<()> {
         test_cases[index].clone()
     };
 
-    let mut edited_test_case = TestCaseEditor::edit_test_case(&test_case)?;
-    edited_test_case.touch();
-
-    let validator = TestCaseValidator::new()?;
-    validator.validate_test_case(&edited_test_case)?;
+    let edited_test_case = TestCaseEditor::edit_test_case(&test_case)?;
 
     let file_path = storage.save_test_case(&edited_test_case)?;
     println!("Test case updated: {}", file_path.display());
@@ -162,28 +140,13 @@ fn handle_edit(base_path: &str, id: Option<String>, fuzzy: bool) -> Result<()> {
 
 fn handle_list(
     base_path: &str,
-    tag: Option<String>,
-    status: Option<String>,
-    priority: Option<String>,
+    _tag: Option<String>,
+    _status: Option<String>,
+    _priority: Option<String>,
     verbose: bool,
 ) -> Result<()> {
     let storage = TestCaseStorage::new(base_path)?;
-    let mut test_cases = storage.load_all_test_cases()?;
-
-    if let Some(tag) = tag {
-        test_cases.retain(|tc| tc.tags.contains(&tag));
-    }
-
-    if let Some(status_str) = status {
-        test_cases
-            .retain(|tc| format!("{:?}", tc.status).to_lowercase() == status_str.to_lowercase());
-    }
-
-    if let Some(priority_str) = priority {
-        test_cases.retain(|tc| {
-            format!("{:?}", tc.priority).to_lowercase() == priority_str.to_lowercase()
-        });
-    }
+    let test_cases = storage.load_all_test_cases()?;
 
     if test_cases.is_empty() {
         println!("No test cases found.");
@@ -195,22 +158,16 @@ fn handle_list(
     for tc in test_cases {
         if verbose {
             println!("ID: {}", tc.id);
-            println!("Title: {}", tc.title);
-            println!("Priority: {:?}", tc.priority);
-            println!("Status: {:?}", tc.status);
-            println!("Type: {:?}", tc.test_type);
-            if !tc.tags.is_empty() {
-                println!("Tags: {}", tc.tags.join(", "));
-            }
-            if let Some(desc) = &tc.description {
-                println!("Description: {}", desc);
-            }
-            println!("Sequences: {}", tc.sequences.len());
+            println!("Requirement: {}", tc.requirement);
+            println!("Item: {}", tc.item);
+            println!("TC: {}", tc.tc);
+            println!("Description: {}", tc.description);
+            println!("Test Sequences: {}", tc.test_sequences.len());
             println!();
         } else {
             println!(
-                "{:<15} {:<40} {:?}/{:?}",
-                tc.id, tc.title, tc.priority, tc.status
+                "{:<30} {:<20} Item: {}, TC: {}",
+                tc.id, tc.requirement, tc.item, tc.tc
             );
         }
     }
@@ -262,18 +219,21 @@ fn handle_delete(base_path: &str, id: &str, force: bool) -> Result<()> {
 
 fn handle_validate(base_path: &str, file: Option<String>, all: bool) -> Result<()> {
     let storage = TestCaseStorage::new(base_path)?;
-    let validator = TestCaseValidator::new()?;
 
     if let Some(file_path) = file {
         let test_case = storage.load_test_case(&file_path)?;
-        validator.validate_test_case(&test_case)?;
+        let yaml = serde_yaml::to_string(&test_case)?;
+        let validator = testcase_manager::SchemaValidator::new()?;
+        validator.validate_chunk(&yaml)?;
         println!("✓ Valid: {}", file_path);
     } else if all {
         let test_cases = storage.load_all_test_cases()?;
         let mut errors = 0;
+        let validator = testcase_manager::SchemaValidator::new()?;
 
         for test_case in test_cases {
-            match validator.validate_test_case(&test_case) {
+            let yaml = serde_yaml::to_string(&test_case)?;
+            match validator.validate_chunk(&yaml) {
                 Ok(_) => println!("✓ Valid: {}", test_case.id),
                 Err(e) => {
                     println!("✗ Invalid: {} - {}", test_case.id, e);
@@ -304,22 +264,15 @@ fn handle_search(base_path: &str, _query: Option<String>) -> Result<()> {
     Ok(())
 }
 
-fn handle_export(base_path: &str, output: &str, tags: Option<String>) -> Result<()> {
+fn handle_export(base_path: &str, output: &str, _tags: Option<String>) -> Result<()> {
     let storage = TestCaseStorage::new(base_path)?;
-    let mut test_cases = storage.load_all_test_cases()?;
-
-    if let Some(tags_str) = tags {
-        let required_tags: Vec<String> =
-            tags_str.split(',').map(|s| s.trim().to_string()).collect();
-        test_cases.retain(|tc| required_tags.iter().any(|tag| tc.tags.contains(tag)));
-    }
+    let test_cases = storage.load_all_test_cases()?;
 
     let test_suite = TestSuite {
         name: "Exported Test Suite".to_string(),
         description: Some("Exported from test case repository".to_string()),
         version: Some("1.0".to_string()),
         test_cases,
-        metadata: std::collections::HashMap::new(),
     };
 
     let file_path = storage.save_test_suite(&test_suite, output)?;
@@ -332,11 +285,12 @@ fn handle_import(base_path: &str, file: &str, skip_validation: bool) -> Result<(
     let storage = TestCaseStorage::new(base_path)?;
     let test_suite = storage.load_test_suite(file)?;
 
-    let validator = TestCaseValidator::new()?;
+    let validator = testcase_manager::SchemaValidator::new()?;
 
     for test_case in test_suite.test_cases {
         if !skip_validation {
-            validator.validate_test_case(&test_case)?;
+            let yaml = serde_yaml::to_string(&test_case)?;
+            validator.validate_chunk(&yaml)?;
         }
 
         storage.save_test_case(&test_case)?;

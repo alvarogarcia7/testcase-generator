@@ -1,193 +1,105 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+
+/// Expected outcome for a test step
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct Expected {
+    /// Whether the step should succeed (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub success: Option<bool>,
+
+    /// Expected result value
+    pub result: String,
+
+    /// Expected output
+    pub output: String,
+}
 
 /// Represents a single step in a test sequence
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Step {
-    /// Unique identifier for the step
-    pub id: String,
+    /// Step number
+    pub step: i64,
 
-    /// Human-readable description of the step
+    /// Whether this is a manual step (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub manual: Option<bool>,
+
+    /// Description of the step
     pub description: String,
 
-    /// Action to perform (e.g., "click", "type", "verify")
-    pub action: String,
+    /// Command to execute
+    pub command: String,
 
-    /// Target element or location for the action
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub target: Option<String>,
-
-    /// Value or input data for the action
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub value: Option<String>,
-
-    /// Expected result or outcome
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub expected: Option<String>,
-
-    /// Additional metadata or parameters
-    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
-    pub metadata: HashMap<String, serde_yaml::Value>,
+    /// Expected outcome
+    pub expected: Expected,
 }
 
-/// Priority level for test cases
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
-pub enum Priority {
-    Low,
-    Medium,
-    High,
-    Critical,
-}
-
-/// Status of a test case
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
-pub enum Status {
-    Draft,
-    Active,
-    Deprecated,
-    Archived,
-}
-
-/// Type of test
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
-pub enum TestType {
-    Functional,
-    Integration,
-    Regression,
-    Smoke,
-    Performance,
-    Security,
-    #[serde(rename = "user-acceptance")]
-    UserAcceptance,
-    Other(String),
-}
-
-/// Environment configuration
+/// Initial condition for eUICC
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct Environment {
-    /// Environment name (e.g., "development", "staging", "production")
-    pub name: String,
-
-    /// Base URL or endpoint
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub url: Option<String>,
-
-    /// Environment-specific variables
-    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
-    pub variables: HashMap<String, String>,
-}
-
-/// Precondition for test execution
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct Precondition {
-    /// Description of the precondition
-    pub description: String,
-
-    /// Steps to set up the precondition
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub setup_steps: Vec<String>,
-}
-
-/// Post-execution cleanup
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct Cleanup {
-    /// Description of the cleanup
-    pub description: String,
-
-    /// Steps to perform cleanup
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub cleanup_steps: Vec<String>,
+pub struct InitialCondition {
+    #[serde(rename = "eUICC")]
+    pub euicc: Vec<String>,
 }
 
 /// A sequence of test steps
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TestSequence {
-    /// Unique identifier for the sequence
-    pub id: String,
+    /// Sequence identifier
+    pub id: i64,
 
     /// Name of the test sequence
     pub name: String,
 
-    /// Detailed description
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
+    /// Description of the test sequence
+    pub description: String,
+
+    /// Initial conditions specific to this sequence
+    pub initial_conditions: Vec<InitialCondition>,
 
     /// List of steps in the sequence
     pub steps: Vec<Step>,
-
-    /// Tags for categorization
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub tags: Vec<String>,
-
-    /// Additional metadata
-    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
-    pub metadata: HashMap<String, serde_yaml::Value>,
 }
 
-/// A complete test case
+/// General initial condition
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct GeneralInitialCondition {
+    #[serde(rename = "eUICC")]
+    pub euicc: Vec<String>,
+}
+
+/// Top-level initial conditions
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct TopLevelInitialConditions {
+    #[serde(rename = "eUICC")]
+    pub euicc: Vec<String>,
+}
+
+/// A complete test case following the GSMA schema
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TestCase {
+    /// Requirement identifier
+    pub requirement: String,
+
+    /// Item number
+    pub item: i64,
+
+    /// TC number
+    pub tc: i64,
+
     /// Unique identifier for the test case
     pub id: String,
 
-    /// Title of the test case
-    pub title: String,
+    /// Description of the test case
+    pub description: String,
 
-    /// Detailed description
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
+    /// General initial conditions
+    pub general_initial_conditions: Vec<GeneralInitialCondition>,
 
-    /// Priority level
-    pub priority: Priority,
-
-    /// Current status
-    pub status: Status,
-
-    /// Type of test
-    #[serde(rename = "type")]
-    pub test_type: TestType,
-
-    /// Tags for categorization and filtering
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub tags: Vec<String>,
-
-    /// Author or creator
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub author: Option<String>,
-
-    /// Creation timestamp
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub created_at: Option<chrono::DateTime<chrono::Utc>>,
-
-    /// Last update timestamp
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub updated_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// Initial conditions
+    pub initial_conditions: TopLevelInitialConditions,
 
     /// Test sequences
-    pub sequences: Vec<TestSequence>,
-
-    /// Preconditions for the test
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub preconditions: Vec<Precondition>,
-
-    /// Cleanup steps after the test
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub cleanup: Vec<Cleanup>,
-
-    /// Environment configurations
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub environments: Vec<Environment>,
-
-    /// Related test case IDs
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub related_tests: Vec<String>,
-
-    /// Additional metadata
-    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
-    pub metadata: HashMap<String, serde_yaml::Value>,
+    pub test_sequences: Vec<TestSequence>,
 }
 
 /// Collection of test cases
@@ -206,66 +118,56 @@ pub struct TestSuite {
 
     /// List of test cases
     pub test_cases: Vec<TestCase>,
-
-    /// Additional metadata
-    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
-    pub metadata: HashMap<String, serde_yaml::Value>,
 }
 
 impl TestCase {
-    /// Create a new test case with default values
-    pub fn new(id: String, title: String) -> Self {
+    /// Create a new test case with required fields
+    pub fn new(requirement: String, item: i64, tc: i64, id: String, description: String) -> Self {
         Self {
+            requirement,
+            item,
+            tc,
             id,
-            title,
-            description: None,
-            priority: Priority::Medium,
-            status: Status::Draft,
-            test_type: TestType::Functional,
-            tags: Vec::new(),
-            author: None,
-            created_at: Some(chrono::Utc::now()),
-            updated_at: Some(chrono::Utc::now()),
-            sequences: Vec::new(),
-            preconditions: Vec::new(),
-            cleanup: Vec::new(),
-            environments: Vec::new(),
-            related_tests: Vec::new(),
-            metadata: HashMap::new(),
+            description,
+            general_initial_conditions: Vec::new(),
+            initial_conditions: TopLevelInitialConditions { euicc: Vec::new() },
+            test_sequences: Vec::new(),
         }
-    }
-
-    /// Update the timestamp
-    pub fn touch(&mut self) {
-        self.updated_at = Some(chrono::Utc::now());
     }
 }
 
 impl TestSequence {
     /// Create a new test sequence
-    pub fn new(id: String, name: String) -> Self {
+    pub fn new(id: i64, name: String, description: String) -> Self {
         Self {
             id,
             name,
-            description: None,
+            description,
+            initial_conditions: Vec::new(),
             steps: Vec::new(),
-            tags: Vec::new(),
-            metadata: HashMap::new(),
         }
     }
 }
 
 impl Step {
     /// Create a new step
-    pub fn new(id: String, description: String, action: String) -> Self {
+    pub fn new(
+        step: i64,
+        description: String,
+        command: String,
+        result: String,
+        output: String,
+    ) -> Self {
         Self {
-            id,
+            step,
+            manual: None,
             description,
-            action,
-            target: None,
-            value: None,
-            expected: None,
-            metadata: HashMap::new(),
+            command,
+            expected: Expected {
+                success: None,
+                result,
+                output,
+            },
         }
     }
 }
@@ -278,7 +180,6 @@ impl TestSuite {
             description: None,
             version: None,
             test_cases: Vec::new(),
-            metadata: HashMap::new(),
         }
     }
 }

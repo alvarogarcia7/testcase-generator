@@ -330,13 +330,19 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
 
-        let test_case = TestCase::new("TC001".to_string(), "Test Case 1".to_string());
+        let test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test Case 1".to_string(),
+        );
 
         storage.save_test_case(&test_case).unwrap();
         let loaded = storage.load_test_case_by_id("TC001").unwrap();
 
         assert_eq!(test_case.id, loaded.id);
-        assert_eq!(test_case.title, loaded.title);
+        assert_eq!(test_case.requirement, loaded.requirement);
     }
 
     #[test]
@@ -344,8 +350,20 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
 
-        let test_case1 = TestCase::new("TC001".to_string(), "Test Case 1".to_string());
-        let test_case2 = TestCase::new("TC002".to_string(), "Test Case 2".to_string());
+        let test_case1 = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test Case 1".to_string(),
+        );
+        let test_case2 = TestCase::new(
+            "REQ002".to_string(),
+            2,
+            2,
+            "TC002".to_string(),
+            "Test Case 2".to_string(),
+        );
 
         storage.save_test_case(&test_case1).unwrap();
         storage.save_test_case(&test_case2).unwrap();

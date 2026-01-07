@@ -20,14 +20,6 @@ pub enum Commands {
         /// ID for the test case
         #[arg(short, long)]
         id: Option<String>,
-
-        /// Title for the test case
-        #[arg(short, long)]
-        title: Option<String>,
-
-        /// Open in editor after creation
-        #[arg(short, long)]
-        edit: bool,
     },
 
     /// Edit an existing test case
