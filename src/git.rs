@@ -213,6 +213,36 @@ impl GitManager {
 
         Ok(commits)
     }
+
+    /// Stage and commit progress for a YAML file with a descriptive message
+    ///
+    /// This function stages the specified YAML file and creates a commit with a
+    /// message that describes which step was completed.
+    ///
+    /// # Arguments
+    ///
+    /// * `yaml_file_path` - Path to the YAML file to stage (relative to repo root)
+    /// * `step_description` - Description of the step that was completed
+    /// * `author_name` - Name of the commit author
+    /// * `author_email` - Email of the commit author
+    ///
+    /// # Returns
+    ///
+    /// The OID of the created commit
+    pub fn commit_progress<P: AsRef<Path>>(
+        &self,
+        yaml_file_path: P,
+        step_description: &str,
+        author_name: &str,
+        author_email: &str,
+    ) -> Result<git2::Oid> {
+        self.add(&[yaml_file_path.as_ref()])
+            .context("Failed to stage YAML file")?;
+
+        let commit_message = format!("Complete step: {}", step_description);
+
+        self.commit(&commit_message, author_name, author_email)
+    }
 }
 
 /// Information about a commit
@@ -245,5 +275,70 @@ mod tests {
             .unwrap();
 
         assert!(!oid.is_zero());
+    }
+
+    #[test]
+    fn test_commit_progress() {
+        let temp_dir = TempDir::new().unwrap();
+        let git = GitManager::init(temp_dir.path()).unwrap();
+
+        let yaml_file = temp_dir.path().join("test-case.yaml");
+        fs::write(&yaml_file, "id: TC001\ntitle: Test Case 1").unwrap();
+
+        let oid = git
+            .commit_progress(
+                Path::new("test-case.yaml"),
+                "User login validation",
+                "Test User",
+                "test@example.com",
+            )
+            .unwrap();
+
+        assert!(!oid.is_zero());
+
+        let commits = git.log(1).unwrap();
+        assert_eq!(commits.len(), 1);
+        assert_eq!(commits[0].message, "Complete step: User login validation");
+    }
+
+    #[test]
+    fn test_commit_progress_multiple_steps() {
+        let temp_dir = TempDir::new().unwrap();
+        let git = GitManager::init(temp_dir.path()).unwrap();
+
+        let yaml_file = temp_dir.path().join("test-case.yaml");
+
+        fs::write(&yaml_file, "id: TC001\ntitle: Initial").unwrap();
+        git.commit_progress(
+            Path::new("test-case.yaml"),
+            "Setup test environment",
+            "Test User",
+            "test@example.com",
+        )
+        .unwrap();
+
+        fs::write(&yaml_file, "id: TC001\ntitle: Updated").unwrap();
+        git.commit_progress(
+            Path::new("test-case.yaml"),
+            "Execute login test",
+            "Test User",
+            "test@example.com",
+        )
+        .unwrap();
+
+        fs::write(&yaml_file, "id: TC001\ntitle: Final").unwrap();
+        git.commit_progress(
+            Path::new("test-case.yaml"),
+            "Verify results",
+            "Test User",
+            "test@example.com",
+        )
+        .unwrap();
+
+        let commits = git.log(3).unwrap();
+        assert_eq!(commits.len(), 3);
+        assert_eq!(commits[0].message, "Complete step: Verify results");
+        assert_eq!(commits[1].message, "Complete step: Execute login test");
+        assert_eq!(commits[2].message, "Complete step: Setup test environment");
     }
 }
