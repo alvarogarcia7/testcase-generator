@@ -3,6 +3,7 @@ use crate::database::ConditionDatabase;
 use crate::git::GitManager;
 use crate::prompts::Prompts;
 use crate::recovery::{RecoveryManager, RecoveryState};
+use crate::sample::SampleData;
 use crate::validation::SchemaValidator;
 use anyhow::{Context, Result};
 use indexmap::IndexMap;
@@ -17,6 +18,7 @@ pub struct TestCaseBuilder {
     structure: IndexMap<String, Value>,
     recovery_manager: RecoveryManager,
     db: Option<ConditionDatabase>,
+    sample: Option<SampleData>,
 }
 
 impl TestCaseBuilder {
@@ -41,6 +43,7 @@ impl TestCaseBuilder {
             structure: IndexMap::new(),
             recovery_manager,
             db,
+            sample: None,
         })
     }
 
@@ -76,7 +79,24 @@ impl TestCaseBuilder {
             structure,
             recovery_manager,
             db,
+            sample: None,
         })
+    }
+
+    /// Set sample data for the builder
+    pub fn with_sample(mut self, sample: SampleData) -> Self {
+        self.sample = Some(sample);
+        self
+    }
+
+    /// Enable sample mode
+    pub fn enable_sample_mode(&mut self) {
+        self.sample = Some(SampleData::new());
+    }
+
+    /// Get a reference to the sample data if available
+    pub fn sample(&self) -> Option<&SampleData> {
+        self.sample.as_ref()
     }
 
     /// Save current state to recovery file
@@ -455,7 +475,10 @@ impl TestCaseBuilder {
         println!("Sequence ID: {}", sequence_id);
 
         let existing_sequences = self.get_existing_sequence_names();
-        let sequence_name = if !existing_sequences.is_empty() {
+        let sequence_name = if let Some(sample) = &self.sample {
+            let prompts = Prompts::new_with_sample(sample);
+            prompts.input_with_sample("Sequence name", &sample.sequence_name())?
+        } else if !existing_sequences.is_empty() {
             println!("\nYou can select from existing sequence names or type a new one.");
 
             if Prompts::confirm("Use fuzzy search to select from existing names?")? {
@@ -476,7 +499,14 @@ impl TestCaseBuilder {
             Prompts::input("Sequence name")?
         };
 
-        let description = if Prompts::confirm("\nEdit description in editor?")? {
+        let description = if let Some(sample) = &self.sample {
+            let prompts = Prompts::new_with_sample(sample);
+            if let Some(desc) = sample.sequence_description() {
+                prompts.input_optional_with_sample("Description", &desc)?
+            } else {
+                None
+            }
+        } else if Prompts::confirm("\nEdit description in editor?")? {
             let template = format!(
                 "# Description for: {}\n# Enter the sequence description below:\n\n",
                 sequence_name
@@ -501,16 +531,43 @@ impl TestCaseBuilder {
             Prompts::input_optional("Description")?
         };
 
-        let add_initial_conditions =
-            Prompts::confirm("\nAdd sequence-specific initial conditions?")?;
-        let database_path = Prompts::input_with_default("Database path", "data")?;
+        let add_initial_conditions = if let Some(sample) = &self.sample {
+            let prompts = Prompts::new_with_sample(sample);
+            prompts.confirm_with_sample(
+                "\nAdd sequence-specific initial conditions?",
+                sample.confirm_add_sequence_initial_conditions(),
+            )?
+        } else {
+            Prompts::confirm("\nAdd sequence-specific initial conditions?")?
+        };
+
+        let database_path = if let Some(sample) = &self.sample {
+            sample.database_path()
+        } else {
+            Prompts::input_with_default("Database path", "data")?
+        };
 
         let db = ConditionDatabase::load_from_directory(&database_path)
             .context("Failed to load condition database")?;
 
-        let prompts = Prompts::new_with_database(&db);
+        let prompts = if let Some(sample) = &self.sample {
+            Prompts::new_with_database_and_sample(&db, sample)
+        } else {
+            Prompts::new_with_database(&db)
+        };
+
         let initial_conditions = if add_initial_conditions {
-            if Prompts::confirm("Use database for initial conditions?")? {
+            let use_db = if let Some(sample) = &self.sample {
+                let sample_prompts = Prompts::new_with_sample(sample);
+                sample_prompts.confirm_with_sample(
+                    "Use database for initial conditions?",
+                    sample.confirm_use_database(),
+                )?
+            } else {
+                Prompts::confirm("Use database for initial conditions?")?
+            };
+
+            if use_db {
                 let conditions = db.get_initial_conditions();
 
                 if !conditions.is_empty() {
@@ -836,15 +893,38 @@ impl TestCaseBuilder {
 
     /// Internal implementation of prompt_for_expected
     fn prompt_for_expected_internal(&self) -> Result<Value> {
-        let include_success = Prompts::confirm("Include 'success' field?")?;
-
-        let result = Prompts::input("Expected result")?;
-        let output = Prompts::input("Expected output")?;
+        let (include_success, result, output, success_value) = if let Some(sample) = &self.sample {
+            let prompts = Prompts::new_with_sample(sample);
+            let include = prompts.confirm_with_sample(
+                "Include 'success' field?",
+                sample.confirm_include_success_field(),
+            )?;
+            let res = prompts.input_with_sample("Expected result", &sample.expected_result())?;
+            let out = prompts.input_with_sample("Expected output", &sample.expected_output())?;
+            let success = if include {
+                prompts.confirm_with_sample(
+                    "Success value (true/false)?",
+                    sample.expected_success_value(),
+                )?
+            } else {
+                false
+            };
+            (include, res, out, success)
+        } else {
+            let include = Prompts::confirm("Include 'success' field?")?;
+            let res = Prompts::input("Expected result")?;
+            let out = Prompts::input("Expected output")?;
+            let success = if include {
+                Prompts::confirm("Success value (true/false)?")?
+            } else {
+                false
+            };
+            (include, res, out, success)
+        };
 
         let mut expected_map = serde_yaml::Mapping::new();
 
         if include_success {
-            let success_value = Prompts::confirm("Success value (true/false)?")?;
             expected_map.insert(
                 Value::String("success".to_string()),
                 Value::Bool(success_value),

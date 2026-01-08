@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use testcase_manager::{
     cli::{Cli, Commands, GitCommands},
-    ConditionDatabase, GitManager, Prompts, TestCase, TestCaseBuilder, TestCaseEditor,
+    ConditionDatabase, GitManager, Prompts, SampleData, TestCase, TestCaseBuilder, TestCaseEditor,
     TestCaseFuzzyFinder, TestCaseMetadata, TestCaseStorage, TestSuite,
 };
 
@@ -85,8 +85,9 @@ fn main() -> Result<()> {
         Commands::Complete {
             output,
             commit_prefix,
+            sample,
         } => {
-            handle_complete(&output, commit_prefix.as_deref())?;
+            handle_complete(&output, commit_prefix.as_deref(), sample)?;
         }
 
         Commands::ParseGeneralConditions { database, path } => {
@@ -768,7 +769,7 @@ fn handle_build_sequences_with_steps(path: &str) -> Result<()> {
     Ok(())
 }
 
-fn handle_complete(output_path: &str, commit_prefix: Option<&str>) -> Result<()> {
+fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: bool) -> Result<()> {
     let prefix = commit_prefix.unwrap_or("");
     let commit_msg = |msg: &str| {
         if prefix.is_empty() {
@@ -791,16 +792,38 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>) -> Result<()>
     let mut builder = TestCaseBuilder::new_with_recovery(base_dir)
         .context("Failed to create test case builder")?;
 
+    let sample_data = if use_sample {
+        Some(SampleData::new())
+    } else {
+        None
+    };
+
     println!("\n╔══════════════════════════════════════════════════════╗");
     println!("║    Complete Interactive Test Case Workflow          ║");
     println!("║  with Git Commits & Validation Error Handling       ║");
     println!("╚══════════════════════════════════════════════════════╝\n");
 
+    if use_sample {
+        println!("📝 Sample mode enabled: Default values will be pre-populated\n");
+    }
+
     let recovered_metadata = TestCaseMetadata::from_structure(builder.structure());
 
     loop {
-        let metadata = Prompts::prompt_metadata_with_recovery(recovered_metadata.as_ref())
-            .context("Failed to prompt for metadata")?;
+        let metadata = if use_sample && recovered_metadata.is_none() {
+            if let Some(sample) = &sample_data {
+                let prompts = Prompts::new_with_sample(sample);
+                prompts
+                    .prompt_metadata_with_sample()
+                    .context("Failed to prompt for metadata")?
+            } else {
+                Prompts::prompt_metadata_with_recovery(recovered_metadata.as_ref())
+                    .context("Failed to prompt for metadata")?
+            }
+        } else {
+            Prompts::prompt_metadata_with_recovery(recovered_metadata.as_ref())
+                .context("Failed to prompt for metadata")?
+        };
 
         println!("\n=== Validating Metadata ===");
         match metadata.validate(builder.validator()) {
@@ -827,14 +850,30 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>) -> Result<()>
         }
     }
 
-    // TODO AGB: if validation is correct, commit automatically
-    if Prompts::confirm("Commit metadata to git?")? {
+    let should_commit = if let Some(sample) = &sample_data {
+        let prompts = Prompts::new_with_sample(sample);
+        prompts.confirm_with_sample("Commit metadata to git?", sample.confirm_commit())?
+    } else {
+        Prompts::confirm("Commit metadata to git?")?
+    };
+
+    if should_commit {
         builder
             .commit(&commit_msg("Add test case metadata"))
             .context("Failed to commit metadata")?;
     }
 
-    if Prompts::confirm("\nAdd general initial conditions?")? {
+    let add_general = if let Some(sample) = &sample_data {
+        let prompts = Prompts::new_with_sample(sample);
+        prompts.confirm_with_sample(
+            "\nAdd general initial conditions?",
+            sample.confirm_add_general_conditions(),
+        )?
+    } else {
+        Prompts::confirm("\nAdd general initial conditions?")?
+    };
+
+    if add_general {
         loop {
             match builder.add_general_initial_conditions(None) {
                 Ok(_) => {
@@ -846,7 +885,17 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>) -> Result<()>
                     println!("✗ General initial conditions validation failed: {}\n", e);
                     builder.save_recovery_state_with_errors("general_initial_conditions", &e)?;
 
-                    if !Prompts::confirm("Retry general initial conditions entry?")? {
+                    let should_retry = if let Some(sample) = &sample_data {
+                        let prompts = Prompts::new_with_sample(sample);
+                        prompts.confirm_with_sample(
+                            "Retry general initial conditions entry?",
+                            sample.confirm_retry(),
+                        )?
+                    } else {
+                        Prompts::confirm("Retry general initial conditions entry?")?
+                    };
+
+                    if !should_retry {
                         println!("⚠ Skipping general initial conditions\n");
                         break;
                     }
@@ -854,14 +903,34 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>) -> Result<()>
             }
         }
 
-        if Prompts::confirm("Commit general initial conditions to git?")? {
+        let should_commit_general = if let Some(sample) = &sample_data {
+            let prompts = Prompts::new_with_sample(sample);
+            prompts.confirm_with_sample(
+                "Commit general initial conditions to git?",
+                sample.confirm_commit(),
+            )?
+        } else {
+            Prompts::confirm("Commit general initial conditions to git?")?
+        };
+
+        if should_commit_general {
             builder
                 .commit(&commit_msg("Add general initial conditions"))
                 .context("Failed to commit general initial conditions")?;
         }
     }
 
-    if Prompts::confirm("\nAdd initial conditions?")? {
+    let add_initial = if let Some(sample) = &sample_data {
+        let prompts = Prompts::new_with_sample(sample);
+        prompts.confirm_with_sample(
+            "\nAdd initial conditions?",
+            sample.confirm_add_initial_conditions(),
+        )?
+    } else {
+        Prompts::confirm("\nAdd initial conditions?")?
+    };
+
+    if add_initial {
         loop {
             match builder.add_initial_conditions(None) {
                 Ok(_) => {
@@ -873,7 +942,17 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>) -> Result<()>
                     println!("✗ Initial conditions validation failed: {}\n", e);
                     builder.save_recovery_state_with_errors("initial_conditions", &e)?;
 
-                    if !Prompts::confirm("Retry initial conditions entry?")? {
+                    let should_retry = if let Some(sample) = &sample_data {
+                        let prompts = Prompts::new_with_sample(sample);
+                        prompts.confirm_with_sample(
+                            "Retry initial conditions entry?",
+                            sample.confirm_retry(),
+                        )?
+                    } else {
+                        Prompts::confirm("Retry initial conditions entry?")?
+                    };
+
+                    if !should_retry {
                         println!("⚠ Skipping initial conditions\n");
                         break;
                     }
@@ -881,7 +960,15 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>) -> Result<()>
             }
         }
 
-        if Prompts::confirm("Commit initial conditions to git?")? {
+        let should_commit_initial = if let Some(sample) = &sample_data {
+            let prompts = Prompts::new_with_sample(sample);
+            prompts
+                .confirm_with_sample("Commit initial conditions to git?", sample.confirm_commit())?
+        } else {
+            Prompts::confirm("Commit initial conditions to git?")?
+        };
+
+        if should_commit_initial {
             builder
                 .commit(&commit_msg("Add initial conditions"))
                 .context("Failed to commit initial conditions")?;
@@ -903,7 +990,17 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>) -> Result<()>
                     println!("✗ Test sequence validation failed: {}\n", e);
                     builder.save_recovery_state_with_errors("test_sequences", &e)?;
 
-                    if !Prompts::confirm("Retry test sequence entry?")? {
+                    let should_retry = if let Some(sample) = &sample_data {
+                        let prompts = Prompts::new_with_sample(sample);
+                        prompts.confirm_with_sample(
+                            "Retry test sequence entry?",
+                            sample.confirm_retry(),
+                        )?
+                    } else {
+                        Prompts::confirm("Retry test sequence entry?")?
+                    };
+
+                    if !should_retry {
                         println!("⚠ Skipping this test sequence\n");
                         break false;
                     }
@@ -912,7 +1009,17 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>) -> Result<()>
         };
 
         if !sequence_added {
-            if Prompts::confirm("Add another test sequence?")? {
+            let add_another_seq = if let Some(sample) = &sample_data {
+                let prompts = Prompts::new_with_sample(sample);
+                prompts.confirm_with_sample(
+                    "Add another test sequence?",
+                    sample.confirm_add_another_sequence(),
+                )?
+            } else {
+                Prompts::confirm("Add another test sequence?")?
+            };
+
+            if add_another_seq {
                 continue;
             } else {
                 break;
@@ -921,19 +1028,46 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>) -> Result<()>
 
         let sequence_index = builder.get_sequence_count() - 1;
 
-        if Prompts::confirm("Commit this sequence to git?")? {
+        let should_commit_seq = if let Some(sample) = &sample_data {
+            let prompts = Prompts::new_with_sample(sample);
+            prompts.confirm_with_sample("Commit this sequence to git?", sample.confirm_commit())?
+        } else {
+            Prompts::confirm("Commit this sequence to git?")?
+        };
+
+        if should_commit_seq {
             let sequence_id = builder.get_next_sequence_id() - 1;
             builder
                 .commit(&commit_msg(&format!("Add test sequence #{}", sequence_id)))
                 .context("Failed to commit test sequence")?;
         }
 
-        if Prompts::confirm("\nAdd steps to this sequence now?")? {
+        let add_steps = if let Some(sample) = &sample_data {
+            let prompts = Prompts::new_with_sample(sample);
+            prompts.confirm_with_sample(
+                "\nAdd steps to this sequence now?",
+                sample.confirm_add_steps_to_sequence(),
+            )?
+        } else {
+            Prompts::confirm("\nAdd steps to this sequence now?")?
+        };
+
+        if add_steps {
             let sequence_id = match builder.get_sequence_id_by_index(sequence_index) {
                 Ok(id) => id,
                 Err(e) => {
                     println!("✗ Failed to get sequence ID: {}", e);
-                    if !Prompts::confirm("\nAdd another test sequence?")? {
+                    let add_another_seq = if let Some(sample) = &sample_data {
+                        let prompts = Prompts::new_with_sample(sample);
+                        prompts.confirm_with_sample(
+                            "\nAdd another test sequence?",
+                            sample.confirm_add_another_sequence(),
+                        )?
+                    } else {
+                        Prompts::confirm("\nAdd another test sequence?")?
+                    };
+
+                    if !add_another_seq {
                         break;
                     }
                     continue;
@@ -959,7 +1093,10 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>) -> Result<()>
                 'step_retry: loop {
                     println!("\n=== Add Step #{} ===", step_number);
 
-                    let step_description = if !existing_steps.is_empty() {
+                    let step_description = if let Some(sample) = &sample_data {
+                        let prompts = Prompts::new_with_sample(sample);
+                        prompts.input_with_sample("Step description", &sample.step_description())?
+                    } else if !existing_steps.is_empty() {
                         println!(
                             "\nYou can select from existing step descriptions or enter a new one."
                         );
@@ -984,13 +1121,28 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>) -> Result<()>
                         Prompts::input("Step description")?
                     };
 
-                    let manual = if Prompts::confirm("Is this a manual step?")? {
+                    let manual = if let Some(sample) = &sample_data {
+                        let prompts = Prompts::new_with_sample(sample);
+                        if prompts.confirm_with_sample(
+                            "Is this a manual step?",
+                            sample.confirm_is_manual_step(),
+                        )? {
+                            Some(true)
+                        } else {
+                            None
+                        }
+                    } else if Prompts::confirm("Is this a manual step?")? {
                         Some(true)
                     } else {
                         None
                     };
 
-                    let command = Prompts::input("Command")?;
+                    let command = if let Some(sample) = &sample_data {
+                        let prompts = Prompts::new_with_sample(sample);
+                        prompts.input_with_sample("Command", &sample.step_command())?
+                    } else {
+                        Prompts::input("Command")?
+                    };
 
                     let expected = builder.prompt_for_expected()?;
 
@@ -1009,7 +1161,17 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>) -> Result<()>
                             builder.save().context("Failed to save file")?;
                             builder.save_recovery_state("steps")?;
 
-                            if Prompts::confirm("Commit this step to git?")? {
+                            let should_commit_step = if let Some(sample) = &sample_data {
+                                let prompts = Prompts::new_with_sample(sample);
+                                prompts.confirm_with_sample(
+                                    "Commit this step to git?",
+                                    sample.confirm_commit(),
+                                )?
+                            } else {
+                                Prompts::confirm("Commit this step to git?")?
+                            };
+
+                            if should_commit_step {
                                 builder
                                     .commit(&commit_msg(&format!(
                                         "Add step #{} to sequence #{}: {}",
@@ -1018,7 +1180,17 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>) -> Result<()>
                                     .context("Failed to commit step")?;
                             }
 
-                            if !Prompts::confirm("\nAdd another step to this sequence?")? {
+                            let add_another_step = if let Some(sample) = &sample_data {
+                                let prompts = Prompts::new_with_sample(sample);
+                                prompts.confirm_with_sample(
+                                    "\nAdd another step to this sequence?",
+                                    sample.confirm_add_another_step(),
+                                )?
+                            } else {
+                                Prompts::confirm("\nAdd another step to this sequence?")?
+                            };
+
+                            if !add_another_step {
                                 break 'add_steps;
                             }
                             break 'step_retry;
@@ -1027,9 +1199,29 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>) -> Result<()>
                             println!("✗ Step validation failed: {}\n", e);
                             builder.save_recovery_state_with_errors("steps", &e)?;
 
-                            if !Prompts::confirm("Retry this step entry?")? {
+                            let should_retry_step = if let Some(sample) = &sample_data {
+                                let prompts = Prompts::new_with_sample(sample);
+                                prompts.confirm_with_sample(
+                                    "Retry this step entry?",
+                                    sample.confirm_retry(),
+                                )?
+                            } else {
+                                Prompts::confirm("Retry this step entry?")?
+                            };
+
+                            if !should_retry_step {
                                 println!("⚠ Skipping this step\n");
-                                if !Prompts::confirm("\nAdd another step to this sequence?")? {
+                                let add_another_step = if let Some(sample) = &sample_data {
+                                    let prompts = Prompts::new_with_sample(sample);
+                                    prompts.confirm_with_sample(
+                                        "\nAdd another step to this sequence?",
+                                        sample.confirm_add_another_step(),
+                                    )?
+                                } else {
+                                    Prompts::confirm("\nAdd another step to this sequence?")?
+                                };
+
+                                if !add_another_step {
                                     break 'add_steps;
                                 }
                                 break 'step_retry;
@@ -1042,7 +1234,17 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>) -> Result<()>
             println!("\n✓ All steps added to sequence");
         }
 
-        if !Prompts::confirm("\nAdd another test sequence?")? {
+        let add_another_seq = if let Some(sample) = &sample_data {
+            let prompts = Prompts::new_with_sample(sample);
+            prompts.confirm_with_sample(
+                "\nAdd another test sequence?",
+                sample.confirm_add_another_sequence(),
+            )?
+        } else {
+            Prompts::confirm("\nAdd another test sequence?")?
+        };
+
+        if !add_another_seq {
             break;
         }
     }
@@ -1057,7 +1259,17 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>) -> Result<()>
 
     println!("✓ Complete test case saved to: {}\n", output_path);
 
-    if Prompts::confirm("Commit final complete test case?")? {
+    let should_commit_final = if let Some(sample) = &sample_data {
+        let prompts = Prompts::new_with_sample(sample);
+        prompts.confirm_with_sample(
+            "Commit final complete test case?",
+            sample.confirm_final_commit(),
+        )?
+    } else {
+        Prompts::confirm("Commit final complete test case?")?
+    };
+
+    if should_commit_final {
         let git = match GitManager::open(base_dir) {
             Ok(git) => git,
             Err(_) => GitManager::init(base_dir)?,
