@@ -8,14 +8,33 @@ pub trait Oracle {
     /// Prompt for a string input
     fn input(&self, prompt: &str) -> Result<String>;
 
+    /// Prompt for a string input with initial text
+    fn input_with_initial_text(&self, prompt: &str, initial_text: &str) -> Result<String>;
+
+    /// Prompt for a string input with a default value
+    fn input_with_default(&self, prompt: &str, default: &str) -> Result<String>;
+
     /// Prompt for an optional string input
     fn input_optional(&self, prompt: &str) -> Result<Option<String>>;
+
+    /// Prompt for an optional string input with initial text
+    fn input_optional_with_initial_text(
+        &self,
+        prompt: &str,
+        initial_text: &str,
+    ) -> Result<Option<String>>;
 
     /// Prompt for an integer input
     fn input_integer(&self, prompt: &str) -> Result<i64>;
 
+    /// Prompt for an integer input with initial text
+    fn input_integer_with_initial_text(&self, prompt: &str, initial_text: &str) -> Result<i64>;
+
     /// Prompt for a confirmation (yes/no)
     fn confirm(&self, prompt: &str) -> Result<bool>;
+
+    /// Prompt for a confirmation with a default value
+    fn confirm_with_default(&self, prompt: &str, default: bool) -> Result<bool>;
 
     /// Select from a list of items, returns the index of the selected item
     fn select<T: ToString>(&self, prompt: &str, items: &[T]) -> Result<usize>;
@@ -51,9 +70,44 @@ impl Oracle for TtyCliOracle {
             .context("Failed to read input")
     }
 
+    fn input_with_initial_text(&self, prompt: &str, initial_text: &str) -> Result<String> {
+        Input::with_theme(&ColorfulTheme::default())
+            .with_prompt(prompt)
+            .with_initial_text(initial_text)
+            .interact_text()
+            .context("Failed to read input")
+    }
+
+    fn input_with_default(&self, prompt: &str, default: &str) -> Result<String> {
+        Input::with_theme(&ColorfulTheme::default())
+            .with_prompt(prompt)
+            .default(default.to_string())
+            .interact_text()
+            .context("Failed to read input")
+    }
+
     fn input_optional(&self, prompt: &str) -> Result<Option<String>> {
         let input: String = Input::with_theme(&ColorfulTheme::default())
             .with_prompt(prompt)
+            .allow_empty(true)
+            .interact_text()
+            .context("Failed to read input")?;
+
+        if input.trim().is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(input))
+        }
+    }
+
+    fn input_optional_with_initial_text(
+        &self,
+        prompt: &str,
+        initial_text: &str,
+    ) -> Result<Option<String>> {
+        let input: String = Input::with_theme(&ColorfulTheme::default())
+            .with_prompt(prompt)
+            .with_initial_text(initial_text)
             .allow_empty(true)
             .interact_text()
             .context("Failed to read input")?;
@@ -79,9 +133,32 @@ impl Oracle for TtyCliOracle {
         }
     }
 
+    fn input_integer_with_initial_text(&self, prompt: &str, initial_text: &str) -> Result<i64> {
+        loop {
+            let input: String = Input::with_theme(&ColorfulTheme::default())
+                .with_prompt(prompt)
+                .with_initial_text(initial_text)
+                .interact_text()
+                .context("Failed to read input")?;
+
+            match input.trim().parse::<i64>() {
+                Ok(value) => return Ok(value),
+                Err(_) => println!("Please enter a valid integer"),
+            }
+        }
+    }
+
     fn confirm(&self, prompt: &str) -> Result<bool> {
         Confirm::with_theme(&ColorfulTheme::default())
             .with_prompt(prompt)
+            .interact()
+            .context("Failed to read confirmation")
+    }
+
+    fn confirm_with_default(&self, prompt: &str, default: bool) -> Result<bool> {
+        Confirm::with_theme(&ColorfulTheme::default())
+            .with_prompt(prompt)
+            .default(default)
             .interact()
             .context("Failed to read confirmation")
     }
@@ -253,6 +330,25 @@ impl MenuCliOracle {
         Ok(input.trim().to_string())
     }
 
+    /// Numbered input fallback for string input with initial text
+    fn numbered_input_with_initial_text(prompt: &str, initial_text: &str) -> Result<String> {
+        println!("\n⚠ TTY not detected (e.g., VS Code debug console)");
+        println!("Interactive input unavailable - using simple input instead\n");
+        println!("{} [default: {}]:", prompt, initial_text);
+        print!("> ");
+        io::stdout().flush()?;
+
+        let mut input = String::new();
+        io::stdin().read_line(&mut input)?;
+
+        let input = input.trim();
+        if input.is_empty() {
+            Ok(initial_text.to_string())
+        } else {
+            Ok(input.to_string())
+        }
+    }
+
     /// Numbered input fallback for optional string input
     fn numbered_input_optional(prompt: &str) -> Result<Option<String>> {
         println!("\n⚠ TTY not detected (e.g., VS Code debug console)");
@@ -291,6 +387,33 @@ impl MenuCliOracle {
         }
     }
 
+    /// Numbered input fallback for integer input with initial text
+    fn numbered_input_integer_with_initial_text(prompt: &str, initial_text: &str) -> Result<i64> {
+        println!("\n⚠ TTY not detected (e.g., VS Code debug console)");
+        println!("Interactive input unavailable - using simple input instead\n");
+
+        loop {
+            println!("{} [default: {}]:", prompt, initial_text);
+            print!("> ");
+            io::stdout().flush()?;
+
+            let mut input = String::new();
+            io::stdin().read_line(&mut input)?;
+
+            let input = input.trim();
+            let value_to_parse = if input.is_empty() {
+                initial_text
+            } else {
+                input
+            };
+
+            match value_to_parse.parse::<i64>() {
+                Ok(value) => return Ok(value),
+                Err(_) => println!("❌ Please enter a valid integer\n"),
+            }
+        }
+    }
+
     /// Numbered confirm fallback
     fn numbered_confirm(prompt: &str) -> Result<bool> {
         println!("\n⚠ TTY not detected (e.g., VS Code debug console)");
@@ -304,6 +427,33 @@ impl MenuCliOracle {
             io::stdin().read_line(&mut input)?;
 
             match input.trim().to_lowercase().as_str() {
+                "y" | "yes" => return Ok(true),
+                "n" | "no" => return Ok(false),
+                _ => println!("❌ Please enter 'y' or 'n'\n"),
+            }
+        }
+    }
+
+    /// Numbered confirm fallback with default
+    fn numbered_confirm_with_default(prompt: &str, default: bool) -> Result<bool> {
+        println!("\n⚠ TTY not detected (e.g., VS Code debug console)");
+        println!("Interactive confirmation unavailable - using simple y/n input instead\n");
+
+        let default_str = if default { "Y/n" } else { "y/N" };
+
+        loop {
+            print!("{} ({}): ", prompt, default_str);
+            io::stdout().flush()?;
+
+            let mut input = String::new();
+            io::stdin().read_line(&mut input)?;
+
+            let input = input.trim();
+            if input.is_empty() {
+                return Ok(default);
+            }
+
+            match input.to_lowercase().as_str() {
                 "y" | "yes" => return Ok(true),
                 "n" | "no" => return Ok(false),
                 _ => println!("❌ Please enter 'y' or 'n'\n"),
@@ -330,6 +480,30 @@ impl Oracle for MenuCliOracle {
             .context("Failed to read input")
     }
 
+    fn input_with_initial_text(&self, prompt: &str, initial_text: &str) -> Result<String> {
+        if !Self::is_tty() {
+            return Self::numbered_input_with_initial_text(prompt, initial_text);
+        }
+
+        Input::with_theme(&ColorfulTheme::default())
+            .with_prompt(prompt)
+            .with_initial_text(initial_text)
+            .interact_text()
+            .context("Failed to read input")
+    }
+
+    fn input_with_default(&self, prompt: &str, default: &str) -> Result<String> {
+        if !Self::is_tty() {
+            return Self::numbered_input_with_initial_text(prompt, default);
+        }
+
+        Input::with_theme(&ColorfulTheme::default())
+            .with_prompt(prompt)
+            .default(default.to_string())
+            .interact_text()
+            .context("Failed to read input")
+    }
+
     fn input_optional(&self, prompt: &str) -> Result<Option<String>> {
         if !Self::is_tty() {
             return Self::numbered_input_optional(prompt);
@@ -345,6 +519,34 @@ impl Oracle for MenuCliOracle {
             Ok(None)
         } else {
             Ok(Some(input))
+        }
+    }
+
+    fn input_optional_with_initial_text(
+        &self,
+        prompt: &str,
+        initial_text: &str,
+    ) -> Result<Option<String>> {
+        if !Self::is_tty() {
+            let result = Self::numbered_input_with_initial_text(prompt, initial_text)?;
+            if result.is_empty() {
+                Ok(None)
+            } else {
+                Ok(Some(result))
+            }
+        } else {
+            let input: String = Input::with_theme(&ColorfulTheme::default())
+                .with_prompt(prompt)
+                .with_initial_text(initial_text)
+                .allow_empty(true)
+                .interact_text()
+                .context("Failed to read input")?;
+
+            if input.trim().is_empty() {
+                Ok(None)
+            } else {
+                Ok(Some(input))
+            }
         }
     }
 
@@ -366,6 +568,25 @@ impl Oracle for MenuCliOracle {
         }
     }
 
+    fn input_integer_with_initial_text(&self, prompt: &str, initial_text: &str) -> Result<i64> {
+        if !Self::is_tty() {
+            return Self::numbered_input_integer_with_initial_text(prompt, initial_text);
+        }
+
+        loop {
+            let input: String = Input::with_theme(&ColorfulTheme::default())
+                .with_prompt(prompt)
+                .with_initial_text(initial_text)
+                .interact_text()
+                .context("Failed to read input")?;
+
+            match input.trim().parse::<i64>() {
+                Ok(value) => return Ok(value),
+                Err(_) => println!("Please enter a valid integer"),
+            }
+        }
+    }
+
     fn confirm(&self, prompt: &str) -> Result<bool> {
         if !Self::is_tty() {
             return Self::numbered_confirm(prompt);
@@ -373,6 +594,18 @@ impl Oracle for MenuCliOracle {
 
         Confirm::with_theme(&ColorfulTheme::default())
             .with_prompt(prompt)
+            .interact()
+            .context("Failed to read confirmation")
+    }
+
+    fn confirm_with_default(&self, prompt: &str, default: bool) -> Result<bool> {
+        if !Self::is_tty() {
+            return Self::numbered_confirm_with_default(prompt, default);
+        }
+
+        Confirm::with_theme(&ColorfulTheme::default())
+            .with_prompt(prompt)
+            .default(default)
             .interact()
             .context("Failed to read confirmation")
     }
@@ -462,7 +695,38 @@ impl Oracle for HardcodedOracle {
         }
     }
 
+    fn input_with_initial_text(&self, _prompt: &str, _initial_text: &str) -> Result<String> {
+        match self.next_answer()? {
+            AnswerVariant::String(s) => Ok(s),
+            _ => anyhow::bail!("Expected String answer variant"),
+        }
+    }
+
+    fn input_with_default(&self, _prompt: &str, _default: &str) -> Result<String> {
+        match self.next_answer()? {
+            AnswerVariant::String(s) => Ok(s),
+            _ => anyhow::bail!("Expected String answer variant"),
+        }
+    }
+
     fn input_optional(&self, _prompt: &str) -> Result<Option<String>> {
+        match self.next_answer()? {
+            AnswerVariant::String(s) => {
+                if s.is_empty() {
+                    Ok(None)
+                } else {
+                    Ok(Some(s))
+                }
+            }
+            _ => anyhow::bail!("Expected String answer variant"),
+        }
+    }
+
+    fn input_optional_with_initial_text(
+        &self,
+        _prompt: &str,
+        _initial_text: &str,
+    ) -> Result<Option<String>> {
         match self.next_answer()? {
             AnswerVariant::String(s) => {
                 if s.is_empty() {
@@ -482,7 +746,21 @@ impl Oracle for HardcodedOracle {
         }
     }
 
+    fn input_integer_with_initial_text(&self, _prompt: &str, _initial_text: &str) -> Result<i64> {
+        match self.next_answer()? {
+            AnswerVariant::Int(i) => Ok(i),
+            _ => anyhow::bail!("Expected Int answer variant"),
+        }
+    }
+
     fn confirm(&self, _prompt: &str) -> Result<bool> {
+        match self.next_answer()? {
+            AnswerVariant::Bool(b) => Ok(b),
+            _ => anyhow::bail!("Expected Bool answer variant"),
+        }
+    }
+
+    fn confirm_with_default(&self, _prompt: &str, _default: bool) -> Result<bool> {
         match self.next_answer()? {
             AnswerVariant::Bool(b) => Ok(b),
             _ => anyhow::bail!("Expected Bool answer variant"),
