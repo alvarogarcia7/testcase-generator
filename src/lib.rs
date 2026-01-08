@@ -15,7 +15,7 @@ pub mod validation;
 
 pub use builder::TestCaseBuilder;
 pub use cli::Cli;
-pub use config::EditorConfig;
+pub use config::{CommitMessageTemplates, Config, EditorConfig, GitAuthorInfo};
 pub use database::ConditionDatabase;
 pub use editor::TestCaseEditor;
 pub use fuzzy::TestCaseFuzzyFinder;

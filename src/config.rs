@@ -1,5 +1,8 @@
+use anyhow::{Context, Result};
+use serde::{Deserialize, Serialize};
 use std::env;
-use std::path::Path;
+use std::fs;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone)]
 pub struct EditorConfig {
@@ -63,5 +66,85 @@ impl EditorConfig {
             .or(self.editor.as_ref())
             .or(self.custom_fallback.as_ref())
             .cloned()
+    }
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct GitAuthorInfo {
+    pub name: Option<String>,
+    pub email: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommitMessageTemplates {
+    pub add_testcase: Option<String>,
+    pub update_testcase: Option<String>,
+    pub delete_testcase: Option<String>,
+}
+
+impl Default for CommitMessageTemplates {
+    fn default() -> Self {
+        Self {
+            add_testcase: Some("Add test case: {name}".to_string()),
+            update_testcase: Some("Update test case: {name}".to_string()),
+            delete_testcase: Some("Delete test case: {name}".to_string()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Config {
+    pub default_database_path: Option<PathBuf>,
+    pub default_device_name: Option<String>,
+    pub git_author: GitAuthorInfo,
+    pub commit_templates: CommitMessageTemplates,
+}
+
+impl Config {
+    pub fn config_dir() -> Result<PathBuf> {
+        let home = env::var("HOME")
+            .or_else(|_| env::var("USERPROFILE"))
+            .context("Could not determine home directory")?;
+        Ok(PathBuf::from(home).join(".testcase-manager"))
+    }
+
+    pub fn config_path() -> Result<PathBuf> {
+        Ok(Self::config_dir()?.join("config.toml"))
+    }
+
+    pub fn load() -> Result<Self> {
+        let config_path = Self::config_path()?;
+
+        if !config_path.exists() {
+            return Ok(Self::default());
+        }
+
+        let contents = fs::read_to_string(&config_path)
+            .context(format!("Failed to read config file: {:?}", config_path))?;
+
+        let config: Config = toml::from_str(&contents).context("Failed to parse config file")?;
+
+        Ok(config)
+    }
+
+    pub fn save(&self) -> Result<()> {
+        let config_dir = Self::config_dir()?;
+        fs::create_dir_all(&config_dir).context(format!(
+            "Failed to create config directory: {:?}",
+            config_dir
+        ))?;
+
+        let config_path = Self::config_path()?;
+        let contents = toml::to_string_pretty(self).context("Failed to serialize config")?;
+
+        fs::write(&config_path, contents)
+            .context(format!("Failed to write config file: {:?}", config_path))?;
+
+        Ok(())
+    }
+
+    pub fn load_or_default() -> Self {
+        Self::load().unwrap_or_default()
     }
 }
