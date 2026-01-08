@@ -15,6 +15,7 @@ pub struct TestCaseBuilder {
     git_manager: Option<GitManager>,
     structure: IndexMap<String, Value>,
     recovery_manager: RecoveryManager,
+    db: Option<ConditionDatabase>,
 }
 
 impl TestCaseBuilder {
@@ -29,12 +30,16 @@ impl TestCaseBuilder {
 
         let recovery_manager = RecoveryManager::new(&base_path);
 
+        // Try to load database from base_path
+        let db = ConditionDatabase::load_from_directory(&base_path).ok();
+
         Ok(Self {
             base_path,
             validator,
             git_manager,
             structure: IndexMap::new(),
             recovery_manager,
+            db,
         })
     }
 
@@ -60,12 +65,16 @@ impl TestCaseBuilder {
             IndexMap::new()
         };
 
+        // Try to load database from base_path
+        let db = ConditionDatabase::load_from_directory(&base_path).ok();
+
         Ok(Self {
             base_path,
             validator,
             git_manager,
             structure,
             recovery_manager,
+            db,
         })
     }
 
@@ -166,7 +175,13 @@ impl TestCaseBuilder {
 
     /// Add initial conditions with interactive prompts
     pub fn add_initial_conditions(&mut self, defaults: Option<&Value>) -> Result<&mut Self> {
-        let conditions = Prompts::prompt_initial_conditions(defaults, &self.validator)
+        let prompts = if let Some(ref db) = self.db {
+            Prompts::new_with_database(&db)
+        } else {
+            Prompts::new()
+        };
+        let conditions = prompts
+            .prompt_initial_conditions(defaults, &self.validator)
             .context("Failed to prompt for initial conditions")?;
 
         self.structure
@@ -463,13 +478,14 @@ impl TestCaseBuilder {
 
         let add_initial_conditions =
             Prompts::confirm("\nAdd sequence-specific initial conditions?")?;
+        let database_path = Prompts::input_with_default("Database path", "data")?;
+
+        let db = ConditionDatabase::load_from_directory(&database_path)
+            .context("Failed to load condition database")?;
+
+        let prompts = Prompts::new_with_database(&db);
         let initial_conditions = if add_initial_conditions {
             if Prompts::confirm("Use database for initial conditions?")? {
-                let database_path = Prompts::input_with_default("Database path", "data")?;
-
-                let db = ConditionDatabase::load_from_directory(&database_path)
-                    .context("Failed to load condition database")?;
-
                 let conditions = db.get_initial_conditions();
 
                 if !conditions.is_empty() {
@@ -510,10 +526,10 @@ impl TestCaseBuilder {
                     }
                 } else {
                     println!("No conditions in database, using manual entry.");
-                    Some(Prompts::prompt_initial_conditions(None, &self.validator)?)
+                    Some(prompts.prompt_initial_conditions(None, &self.validator)?)
                 }
             } else {
-                Some(Prompts::prompt_initial_conditions(None, &self.validator)?)
+                Some(prompts.prompt_initial_conditions(None, &self.validator)?)
             }
         } else {
             None

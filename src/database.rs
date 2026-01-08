@@ -8,6 +8,9 @@ use std::path::Path;
 /// This database loads all test cases from a directory and extracts
 /// unique general initial conditions and initial conditions for use
 /// in fuzzy search selection when creating new test cases.
+///
+// TODO AGB: Rename to TestCaseDatabase
+#[derive(Clone)]
 pub struct ConditionDatabase {
     general_conditions: Vec<String>,
     initial_conditions: Vec<String>,
@@ -30,14 +33,14 @@ impl ConditionDatabase {
         let storage = TestCaseStorage::new(path)?;
         let test_cases = storage.load_all_test_cases()?;
 
-        let mut general_conditions_set = HashSet::new();
-        let mut initial_conditions_set = HashSet::new();
-        let mut device_names_set = HashSet::new();
+        let mut general_conditions_set: HashSet<String> = HashSet::new();
+        let mut initial_conditions_set: HashSet<String> = HashSet::new();
+        let mut device_names_set: HashSet<String> = HashSet::new();
 
         for test_case in test_cases {
-            for general_cond in test_case.general_initial_conditions {
-                for euicc_cond in general_cond.euicc {
-                    general_conditions_set.insert(euicc_cond);
+            for (_, conditions) in &test_case.general_initial_conditions {
+                for condition in conditions {
+                    general_conditions_set.insert(condition.clone());
                 }
             }
 
@@ -51,9 +54,9 @@ impl ConditionDatabase {
 
             // Also extract from sequence-level initial conditions
             for sequence in &test_case.test_sequences {
-                for seq_init_cond in &sequence.initial_conditions {
-                    for euicc_cond in &seq_init_cond.euicc {
-                        initial_conditions_set.insert(euicc_cond.clone());
+                for (_, conditions) in &sequence.initial_conditions {
+                    for condition in conditions {
+                        initial_conditions_set.insert(condition.clone());
                     }
                     // Extract device names from sequence initial conditions too
                     device_names_set.insert("eUICC".to_string());
@@ -61,18 +64,16 @@ impl ConditionDatabase {
             }
         }
 
-        let mut general_conditions: Vec<String> = general_conditions_set.into_iter().collect();
-        let mut initial_conditions: Vec<String> = initial_conditions_set.into_iter().collect();
-        let mut device_names: Vec<String> = device_names_set.into_iter().collect();
-
-        general_conditions.sort();
-        initial_conditions.sort();
-        device_names.sort();
+        fn sort(set: HashSet<String>) -> Vec<String> {
+            let mut as_vec: Vec<String> = set.into_iter().collect();
+            as_vec.sort();
+            as_vec
+        }
 
         Ok(Self {
-            general_conditions,
-            initial_conditions,
-            device_names,
+            general_conditions: sort(general_conditions_set),
+            initial_conditions: sort(initial_conditions_set),
+            device_names: sort(device_names_set),
         })
     }
 

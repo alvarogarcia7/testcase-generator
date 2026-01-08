@@ -9,9 +9,21 @@ use serde_yaml::Value;
 use std::path::Path;
 
 /// Interactive prompt utilities
-pub struct Prompts;
+pub struct Prompts<'a> {
+    db: Option<&'a ConditionDatabase>,
+}
 
-impl Prompts {
+impl Prompts<'_> {
+    /// Create a new Prompts instance without a database
+    pub fn new() -> Self {
+        Self { db: None }
+    }
+
+    /// Create a new Prompts instance with a database
+    pub fn new_with_database(db: &'static ConditionDatabase) -> Self {
+        Self { db: Some(db) }
+    }
+
     /// Prompt for a string input
     pub fn input(prompt: &str) -> Result<String> {
         Input::with_theme(&ColorfulTheme::default())
@@ -263,6 +275,7 @@ impl Prompts {
 
     /// Prompt for initial conditions with device selection and iterative condition collection
     pub fn prompt_initial_conditions(
+        &self,
         defaults: Option<&Value>,
         validator: &SchemaValidator,
     ) -> Result<Value> {
@@ -283,23 +296,27 @@ impl Prompts {
             }
         }
 
-        // Default device names to offer
-        let default_device_names =
-            vec!["eUICC".to_string(), "LPA".to_string(), "SM-DP+".to_string()];
-
-        let device_name = if Self::confirm("Use fuzzy search to select device name?")? {
-            match TestCaseFuzzyFinder::search_strings(
-                &default_device_names,
-                "Select device name (or ESC to enter manually): ",
-            )? {
-                Some(name) => name,
-                None => {
-                    println!("No selection made, entering manually.");
-                    Self::input("Device name (e.g., eUICC)")?
-                }
+        // Get device names from database or use defaults
+        let default_device_names = if let Some(ref db) = self.db {
+            let db_names = db.get_device_names();
+            if !db_names.is_empty() {
+                db_names.to_vec()
+            } else {
+                vec!["eUICC".to_string(), "LPA".to_string(), "SM-DP+".to_string()]
             }
         } else {
-            Self::input("Device name (e.g., eUICC)")?
+            vec!["eUICC".to_string(), "LPA".to_string(), "SM-DP+".to_string()]
+        };
+
+        let device_name = match TestCaseFuzzyFinder::search_strings(
+            &default_device_names,
+            "Select device name (fuzzy search, or ESC to enter manually): ",
+        )? {
+            Some(name) => name,
+            None => {
+                println!("No selection made, entering manually.");
+                Self::input("Device name (e.g., eUICC)")?
+            }
         };
 
         let mut conditions: Vec<String> = Vec::new();
@@ -417,6 +434,7 @@ impl Prompts {
 
     /// Prompt for initial conditions from database with fuzzy search
     pub fn prompt_initial_conditions_from_database<P: AsRef<Path>>(
+        &self,
         database_path: P,
         validator: &SchemaValidator,
     ) -> Result<Value> {
@@ -430,7 +448,7 @@ impl Prompts {
         if conditions.is_empty() {
             println!("No initial conditions found in database.");
             println!("Falling back to manual entry.\n");
-            return Self::prompt_initial_conditions(None, validator);
+            return self.prompt_initial_conditions(None, validator);
         }
 
         println!(
@@ -485,7 +503,7 @@ impl Prompts {
                     if selected_conditions.is_empty() {
                         println!("No conditions selected.");
                         if Self::confirm("Use manual entry instead?")? {
-                            return Self::prompt_initial_conditions(None, validator);
+                            return self.prompt_initial_conditions(None, validator);
                         }
                     }
                     break;

@@ -17,10 +17,7 @@ pub use database::ConditionDatabase;
 pub use editor::TestCaseEditor;
 pub use fuzzy::TestCaseFuzzyFinder;
 pub use git::GitManager;
-pub use models::{
-    Expected, GeneralInitialCondition, InitialCondition, Step, TestCase, TestSequence, TestSuite,
-    TopLevelInitialConditions,
-};
+pub use models::{Expected, Step, TestCase, TestSequence, TestSuite, TopLevelInitialConditions};
 pub use parser::{SearchableCollections, TestCaseParser};
 pub use prompts::{Prompts, TestCaseMetadata};
 pub use recovery::{RecoveryManager, RecoveryState};

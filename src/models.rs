@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 
 /// Expected outcome for a test step
@@ -34,13 +36,6 @@ pub struct Step {
     pub expected: Expected,
 }
 
-/// Initial condition for eUICC
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct InitialCondition {
-    #[serde(rename = "eUICC")]
-    pub euicc: Vec<String>,
-}
-
 /// A sequence of test steps
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TestSequence {
@@ -54,17 +49,10 @@ pub struct TestSequence {
     pub description: String,
 
     /// Initial conditions specific to this sequence
-    pub initial_conditions: Vec<InitialCondition>,
+    pub initial_conditions: HashMap<String, Vec<String>>,
 
     /// List of steps in the sequence
     pub steps: Vec<Step>,
-}
-
-/// General initial condition
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct GeneralInitialCondition {
-    #[serde(rename = "eUICC")]
-    pub euicc: Vec<String>,
 }
 
 /// Top-level initial conditions
@@ -93,7 +81,7 @@ pub struct TestCase {
     pub description: String,
 
     /// General initial conditions
-    pub general_initial_conditions: Vec<GeneralInitialCondition>,
+    pub general_initial_conditions: HashMap<String, Vec<String>>,
 
     /// Initial conditions
     pub initial_conditions: TopLevelInitialConditions,
@@ -123,13 +111,14 @@ pub struct TestSuite {
 impl TestCase {
     /// Create a new test case with required fields
     pub fn new(requirement: String, item: i64, tc: i64, id: String, description: String) -> Self {
+        let general_initial_conditions: HashMap<String, Vec<String>> = HashMap::new();
         Self {
             requirement,
             item,
             tc,
             id,
             description,
-            general_initial_conditions: Vec::new(),
+            general_initial_conditions,
             initial_conditions: TopLevelInitialConditions { euicc: Vec::new() },
             test_sequences: Vec::new(),
         }
@@ -139,11 +128,12 @@ impl TestCase {
 impl TestSequence {
     /// Create a new test sequence
     pub fn new(id: i64, name: String, description: String) -> Self {
+        let initial_conditions: HashMap<String, Vec<String>> = HashMap::new();
         Self {
             id,
             name,
             description,
-            initial_conditions: Vec::new(),
+            initial_conditions,
             steps: Vec::new(),
         }
     }
@@ -240,14 +230,6 @@ mod tests {
     }
 
     #[test]
-    fn test_initial_condition_creation() {
-        let condition = InitialCondition {
-            euicc: vec!["Condition 1".to_string(), "Condition 2".to_string()],
-        };
-        assert_eq!(condition.euicc.len(), 2);
-    }
-
-    #[test]
     fn test_test_sequence_creation() {
         let sequence = TestSequence::new(1, "Test Sequence".to_string(), "Description".to_string());
         assert_eq!(sequence.id, 1);
@@ -270,14 +252,6 @@ mod tests {
         );
         sequence.steps.push(step);
         assert_eq!(sequence.steps.len(), 1);
-    }
-
-    #[test]
-    fn test_general_initial_condition_creation() {
-        let condition = GeneralInitialCondition {
-            euicc: vec!["General Condition".to_string()],
-        };
-        assert_eq!(condition.euicc.len(), 1);
     }
 
     #[test]
