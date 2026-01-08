@@ -173,6 +173,25 @@ impl TestCaseBuilder {
         Ok(self)
     }
 
+    /// Add general initial conditions with fuzzy search from database
+    pub fn add_general_initial_conditions_with_search(
+        &mut self,
+        defaults: Option<&Value>,
+        storage: &crate::storage::TestCaseStorage,
+    ) -> Result<&mut Self> {
+        let conditions = Prompts::prompt_general_initial_conditions_with_search(
+            defaults,
+            &self.validator,
+            storage,
+        )
+        .context("Failed to prompt for general initial conditions")?;
+
+        self.structure
+            .insert("general_initial_conditions".to_string(), conditions);
+
+        Ok(self)
+    }
+
     /// Add initial conditions with interactive prompts
     pub fn add_initial_conditions(&mut self, defaults: Option<&Value>) -> Result<&mut Self> {
         let prompts = if let Some(ref db) = self.db {

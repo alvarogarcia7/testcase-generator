@@ -318,6 +318,26 @@ impl TestCaseStorage {
 
         false
     }
+
+    /// Get all unique general initial conditions from existing test cases
+    /// Returns them as YAML strings for fuzzy search
+    pub fn get_all_general_initial_conditions(&self) -> Result<Vec<String>> {
+        let test_cases = self.load_all_test_cases()?;
+        let mut conditions_set = std::collections::HashSet::new();
+
+        for test_case in test_cases {
+            if !test_case.general_initial_conditions.is_empty() {
+                // Serialize the general_initial_conditions to YAML
+                if let Ok(yaml_str) = serde_yaml::to_string(&test_case.general_initial_conditions) {
+                    conditions_set.insert(yaml_str);
+                }
+            }
+        }
+
+        let mut conditions: Vec<String> = conditions_set.into_iter().collect();
+        conditions.sort();
+        Ok(conditions)
+    }
 }
 
 #[cfg(test)]

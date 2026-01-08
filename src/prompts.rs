@@ -215,7 +215,7 @@ impl<'a> Prompts<'a> {
         })
     }
 
-    /// Prompt for general initial conditions with editor support
+    /// Prompt for general initial conditions with fuzzy search and editor support
     pub fn prompt_general_initial_conditions(
         defaults: Option<&Value>,
         validator: &SchemaValidator,
@@ -237,6 +237,126 @@ impl<'a> Prompts<'a> {
             }
         }
 
+        loop {
+            let template = r#"# General Initial Conditions
+# Example:
+# - eUICC:
+#     - "Condition 1"
+#     - "Condition 2"
+
+- eUICC:
+    - ""
+"#;
+
+            let edited_content =
+                TestCaseEditor::edit_text(template).context("Failed to open editor")?;
+
+            let parsed: Value =
+                serde_yaml::from_str(&edited_content).context("Failed to parse YAML")?;
+
+            let yaml_for_validation =
+                serde_yaml::to_string(&parsed).context("Failed to serialize for validation")?;
+
+            match validator.validate_partial_chunk(&yaml_for_validation) {
+                Ok(_) => {
+                    println!("✓ Valid structure");
+                    return Ok(parsed);
+                }
+                Err(e) => {
+                    println!("✗ Validation failed: {}", e);
+                    let retry = Self::confirm("Try again?")?;
+                    if !retry {
+                        anyhow::bail!("Validation failed, user cancelled");
+                    }
+                }
+            }
+        }
+    }
+
+    /// Prompt for general initial conditions with fuzzy search from database
+    pub fn prompt_general_initial_conditions_with_search(
+        defaults: Option<&Value>,
+        validator: &SchemaValidator,
+        storage: &crate::storage::TestCaseStorage,
+    ) -> Result<Value> {
+        use crate::fuzzy::TestCaseFuzzyFinder;
+
+        println!("\n=== General Initial Conditions ===\n");
+
+        if let Some(default_value) = defaults {
+            let yaml_str =
+                serde_yaml::to_string(default_value).context("Failed to serialize defaults")?;
+
+            println!("Current defaults:");
+            println!("{}", yaml_str);
+            println!();
+
+            let keep_defaults = Self::confirm_with_default("Keep these defaults?", true)?;
+
+            if keep_defaults {
+                return Ok(default_value.clone());
+            }
+        }
+
+        // Get existing general initial conditions from database
+        let existing_conditions = storage
+            .get_all_general_initial_conditions()
+            .unwrap_or_else(|_| Vec::new());
+
+        if !existing_conditions.is_empty() {
+            println!(
+                "Found {} existing general initial condition(s) in database.",
+                existing_conditions.len()
+            );
+
+            if Self::confirm("Search existing general initial conditions?")? {
+                if let Some(selected_yaml) = TestCaseFuzzyFinder::search_strings(
+                    &existing_conditions,
+                    "Select general initial condition: ",
+                )? {
+                    // Parse the selected YAML
+                    let parsed: Value = serde_yaml::from_str(&selected_yaml)
+                        .context("Failed to parse selected general initial conditions")?;
+
+                    println!("\n✓ Selected existing general initial conditions:");
+                    println!("{}", selected_yaml);
+
+                    if Self::confirm("Use this as-is?")? {
+                        return Ok(parsed);
+                    } else if Self::confirm("Edit this condition?")? {
+                        // Let user edit the selected condition
+                        loop {
+                            let edited_content = TestCaseEditor::edit_text(&selected_yaml)
+                                .context("Failed to open editor")?;
+
+                            let parsed_edited: Value = serde_yaml::from_str(&edited_content)
+                                .context("Failed to parse YAML")?;
+
+                            let yaml_for_validation = serde_yaml::to_string(&parsed_edited)
+                                .context("Failed to serialize for validation")?;
+
+                            match validator.validate_partial_chunk(&yaml_for_validation) {
+                                Ok(_) => {
+                                    println!("✓ Valid structure");
+                                    return Ok(parsed_edited);
+                                }
+                                Err(e) => {
+                                    println!("✗ Validation failed: {}", e);
+                                    let retry = Self::confirm("Try again?")?;
+                                    if !retry {
+                                        anyhow::bail!("Validation failed, user cancelled");
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    // If user doesn't want to use or edit, fall through to create new
+                }
+            }
+        }
+
+        // Create new general initial condition
+        println!("\nCreating new general initial condition...");
         loop {
             let template = r#"# General Initial Conditions
 # Example:
