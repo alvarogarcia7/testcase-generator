@@ -1,5 +1,8 @@
+use crate::config::EditorConfig;
 use crate::models::TestCase;
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
+use std::fs;
+use std::process::Command;
 
 /// Editor integration for test cases
 pub struct TestCaseEditor;
@@ -23,13 +26,43 @@ impl TestCaseEditor {
         Self::edit_test_case(template)
     }
 
-    /// Edit arbitrary YAML content
-    pub fn edit_yaml(content: &str) -> Result<String> {
-        edit::edit(content).context("Failed to open editor")
+    /// Edit arbitrary YAML content with configured editor
+    pub fn edit_yaml(content: &str, config: &EditorConfig) -> Result<String> {
+        Self::edit_with_config(content, config)
     }
 
-    /// Edit text content
-    pub fn edit_text(content: &str) -> Result<String> {
-        edit::edit(content).context("Failed to open editor")
+    /// Edit text content with configured editor
+    pub fn edit_text(content: &str, config: &EditorConfig) -> Result<String> {
+        Self::edit_with_config(content, config)
+    }
+
+    /// Edit content using the configured editor
+    fn edit_with_config(content: &str, config: &EditorConfig) -> Result<String> {
+        let editor_path = config
+            .get_editor()
+            .ok_or_else(|| anyhow!("No editor configured. Please set VISUAL, EDITOR, or CUSTOM_FALLBACK environment variable"))?;
+
+        let temp_file =
+            tempfile::NamedTempFile::new().context("Failed to create temporary file")?;
+        let temp_path = temp_file.path();
+
+        fs::write(temp_path, content).context("Failed to write content to temporary file")?;
+
+        let status = Command::new(&editor_path)
+            .arg(temp_path)
+            .status()
+            .context(format!("Failed to execute editor: {}", editor_path))?;
+
+        if !status.success() {
+            return Err(anyhow!(
+                "Editor exited with non-zero status: {}",
+                status.code().unwrap_or(-1)
+            ));
+        }
+
+        let edited_content = fs::read_to_string(temp_path)
+            .context("Failed to read edited content from temporary file")?;
+
+        Ok(edited_content)
     }
 }

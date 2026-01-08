@@ -11,26 +11,26 @@ pub struct EditorConfig {
 impl EditorConfig {
     pub fn load() -> Self {
         let original_vars = Self::save_env_vars();
-        
+
         if Path::new(".env").exists() {
             let _ = dotenvy::from_filename(".env");
         }
-        
+
         if Path::new(".env.local").exists() {
             let _ = dotenvy::from_filename(".env.local");
         }
-        
+
         let editor = Self::get_with_precedence("EDITOR", &original_vars);
         let visual = Self::get_with_precedence("VISUAL", &original_vars);
         let custom_fallback = Self::get_with_precedence("CUSTOM_FALLBACK", &original_vars);
-        
+
         EditorConfig {
             editor,
             visual,
             custom_fallback,
         }
     }
-    
+
     fn save_env_vars() -> (Option<String>, Option<String>, Option<String>) {
         (
             env::var("EDITOR").ok(),
@@ -38,7 +38,7 @@ impl EditorConfig {
             env::var("CUSTOM_FALLBACK").ok(),
         )
     }
-    
+
     fn get_with_precedence(
         key: &str,
         original_vars: &(Option<String>, Option<String>, Option<String>),
@@ -49,14 +49,14 @@ impl EditorConfig {
             "CUSTOM_FALLBACK" => &original_vars.2,
             _ => &None,
         };
-        
+
         if original.is_some() {
             return original.clone();
         }
-        
+
         env::var(key).ok()
     }
-    
+
     pub fn get_editor(&self) -> Option<String> {
         self.visual
             .as_ref()

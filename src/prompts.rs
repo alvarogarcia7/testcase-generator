@@ -1,3 +1,4 @@
+use crate::config::EditorConfig;
 use crate::database::ConditionDatabase;
 use crate::editor::TestCaseEditor;
 use crate::fuzzy::TestCaseFuzzyFinder;
@@ -219,6 +220,7 @@ impl<'a> Prompts<'a> {
     pub fn prompt_general_initial_conditions(
         defaults: Option<&Value>,
         validator: &SchemaValidator,
+        editor_config: &EditorConfig,
     ) -> Result<Value> {
         println!("\n=== General Initial Conditions ===\n");
 
@@ -248,8 +250,8 @@ impl<'a> Prompts<'a> {
     - ""
 "#;
 
-            let edited_content =
-                TestCaseEditor::edit_text(template).context("Failed to open editor")?;
+            let edited_content = TestCaseEditor::edit_text(template, editor_config)
+                .context("Failed to open editor")?;
 
             let parsed: Value =
                 serde_yaml::from_str(&edited_content).context("Failed to parse YAML")?;
@@ -278,6 +280,7 @@ impl<'a> Prompts<'a> {
         defaults: Option<&Value>,
         validator: &SchemaValidator,
         storage: &crate::storage::TestCaseStorage,
+        editor_config: &EditorConfig,
     ) -> Result<Value> {
         use crate::fuzzy::TestCaseFuzzyFinder;
 
@@ -326,7 +329,7 @@ impl<'a> Prompts<'a> {
                     } else if Self::confirm("Edit this condition?")? {
                         // Let user edit the selected condition
                         loop {
-                            let edited_content = TestCaseEditor::edit_text(&selected_yaml)
+                            let edited_content = TestCaseEditor::edit_text(&selected_yaml, editor_config)
                                 .context("Failed to open editor")?;
 
                             let parsed_edited: Value = serde_yaml::from_str(&edited_content)
@@ -369,7 +372,7 @@ impl<'a> Prompts<'a> {
 "#;
 
             let edited_content =
-                TestCaseEditor::edit_text(template).context("Failed to open editor")?;
+                TestCaseEditor::edit_text(template, editor_config).context("Failed to open editor")?;
 
             let parsed: Value =
                 serde_yaml::from_str(&edited_content).context("Failed to parse YAML")?;
@@ -486,6 +489,7 @@ impl<'a> Prompts<'a> {
     pub fn prompt_general_initial_conditions_from_database<P: AsRef<Path>>(
         database_path: P,
         validator: &SchemaValidator,
+        editor_config: &EditorConfig,
     ) -> Result<Value> {
         println!("\n=== General Initial Conditions (from database) ===\n");
 
@@ -497,7 +501,7 @@ impl<'a> Prompts<'a> {
         if conditions.is_empty() {
             println!("No general initial conditions found in database.");
             println!("Falling back to manual entry.\n");
-            return Self::prompt_general_initial_conditions(None, validator);
+            return Self::prompt_general_initial_conditions(None, validator, editor_config);
         }
 
         println!(
@@ -526,7 +530,11 @@ impl<'a> Prompts<'a> {
                     if selected_conditions.is_empty() {
                         println!("No conditions selected.");
                         if Self::confirm("Use manual entry instead?")? {
-                            return Self::prompt_general_initial_conditions(None, validator);
+                            return Self::prompt_general_initial_conditions(
+                                None,
+                                validator,
+                                editor_config,
+                            );
                         }
                     }
                     break;

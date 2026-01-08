@@ -1,3 +1,4 @@
+use crate::config::EditorConfig;
 use crate::database::ConditionDatabase;
 use crate::git::GitManager;
 use crate::prompts::Prompts;
@@ -164,8 +165,10 @@ impl TestCaseBuilder {
         &mut self,
         defaults: Option<&Value>,
     ) -> Result<&mut Self> {
-        let conditions = Prompts::prompt_general_initial_conditions(defaults, &self.validator)
-            .context("Failed to prompt for general initial conditions")?;
+        let editor_config = EditorConfig::load();
+        let conditions =
+            Prompts::prompt_general_initial_conditions(defaults, &self.validator, &editor_config)
+                .context("Failed to prompt for general initial conditions")?;
 
         self.structure
             .insert("general_initial_conditions".to_string(), conditions);
@@ -179,10 +182,12 @@ impl TestCaseBuilder {
         defaults: Option<&Value>,
         storage: &crate::storage::TestCaseStorage,
     ) -> Result<&mut Self> {
+        let editor_config = EditorConfig::load();
         let conditions = Prompts::prompt_general_initial_conditions_with_search(
             defaults,
             &self.validator,
             storage,
+            &editor_config,
         )
         .context("Failed to prompt for general initial conditions")?;
 
@@ -476,7 +481,8 @@ impl TestCaseBuilder {
                 "# Description for: {}\n# Enter the sequence description below:\n\n",
                 sequence_name
             );
-            let edited = TestCaseEditor::edit_text(&template)?;
+            let editor_config = EditorConfig::load();
+            let edited = TestCaseEditor::edit_text(&template, &editor_config)?;
 
             let cleaned: String = edited
                 .lines()
