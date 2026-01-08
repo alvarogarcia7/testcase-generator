@@ -63,7 +63,8 @@
             "args": [],
             "console": "integratedTerminal",
             "env": {
-                "TERM": "xterm-256color"
+                "TERM": "xterm-256color",
+                "RUST_BACKTRACE": "1",
             }
         },
         {

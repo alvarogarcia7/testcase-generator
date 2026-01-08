@@ -194,7 +194,7 @@ impl TestCaseFuzzyFinder {
         let skim_items = item_reader.of_bufread(Cursor::new(items.join("\n")));
 
         let options = SkimOptionsBuilder::default()
-            .height(Some("50%"))
+            // .height(Some("50%"))
             .multi(false)
             .prompt(Some(prompt))
             .build()
