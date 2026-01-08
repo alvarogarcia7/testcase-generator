@@ -4,6 +4,80 @@ use anyhow::{anyhow, Context, Result};
 use std::fs;
 use std::process::Command;
 
+/// Editor integration with validation loop
+pub struct EditorFlow {
+    config: EditorConfig,
+}
+
+impl EditorFlow {
+    pub fn new(config: EditorConfig) -> Self {
+        Self { config }
+    }
+
+    pub fn edit_with_validation_loop<T, F>(&self, template: &str, mut validate: F) -> Result<T>
+    where
+        T: serde::de::DeserializeOwned,
+        F: FnMut(&T) -> Result<()>,
+    {
+        let mut content = template.to_string();
+
+        loop {
+            let edited_content = self.open_editor(&content)?;
+
+            match serde_yaml::from_str::<T>(&edited_content) {
+                Ok(parsed) => match validate(&parsed) {
+                    Ok(()) => return Ok(parsed),
+                    Err(validation_error) => {
+                        content = self.annotate_with_error(&edited_content, &validation_error);
+                    }
+                },
+                Err(parse_error) => {
+                    content = self.annotate_with_error(&edited_content, &parse_error.into());
+                }
+            }
+        }
+    }
+
+    fn open_editor(&self, content: &str) -> Result<String> {
+        let editor_path = self.config
+            .get_editor()
+            .ok_or_else(|| anyhow!("No editor configured. Please set VISUAL, EDITOR, or CUSTOM_FALLBACK environment variable"))?;
+
+        let temp_file =
+            tempfile::NamedTempFile::new().context("Failed to create temporary file")?;
+        let temp_path = temp_file.path();
+
+        fs::write(temp_path, content).context("Failed to write content to temporary file")?;
+
+        let status = Command::new(&editor_path)
+            .arg(temp_path)
+            .status()
+            .context(format!("Failed to execute editor: {}", editor_path))?;
+
+        if !status.success() {
+            return Err(anyhow!(
+                "Editor exited with non-zero status: {}",
+                status.code().unwrap_or(-1)
+            ));
+        }
+
+        let edited_content = fs::read_to_string(temp_path)
+            .context("Failed to read edited content from temporary file")?;
+
+        Ok(edited_content)
+    }
+
+    fn annotate_with_error(&self, content: &str, error: &anyhow::Error) -> String {
+        let error_message = format!("# VALIDATION ERROR: {}", error);
+        let separator = "# ".repeat(40);
+
+        format!(
+            "{}\n{}\n{}\n\n{}",
+            separator, error_message, separator, content
+        )
+    }
+}
+
 /// Editor integration for test cases
 pub struct TestCaseEditor;
 
