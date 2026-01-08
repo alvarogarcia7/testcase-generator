@@ -16,7 +16,10 @@ pub mod validation;
 
 pub use builder::TestCaseBuilder;
 pub use cli::Cli;
-pub use collection_builder::{CollectionBuilder, SelectionMode};
+pub use collection_builder::{
+    CollectionBuilder, ConditionCollectionBuilder, SelectionMode, SequenceCollectionBuilder,
+    StepCollectionBuilder,
+};
 pub use config::{CommitMessageTemplates, Config, EditorConfig, GitAuthorInfo};
 pub use database::ConditionDatabase;
 pub use editor::TestCaseEditor;
