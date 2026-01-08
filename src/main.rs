@@ -157,15 +157,14 @@ fn handle_list(
     verbose: bool,
 ) -> Result<()> {
     let storage = TestCaseStorage::new(base_path)?;
+    let file_infos = storage.load_all_with_validation()?;
+
+    if file_infos.is_empty() {
+        println!("No test case files found.");
+        return Ok(());
+    }
 
     if verbose {
-        let file_infos = storage.load_all_with_validation()?;
-
-        if file_infos.is_empty() {
-            println!("No test case files found.");
-            return Ok(());
-        }
-
         println!("Found {} test case file(s):\n", file_infos.len());
 
         for file_info in file_infos {
@@ -219,20 +218,28 @@ fn handle_list(
             println!();
         }
     } else {
-        let test_cases = storage.load_all_test_cases()?;
+        println!("Found {} test case(s):\n", file_infos.len());
 
-        if test_cases.is_empty() {
-            println!("No test cases found.");
-            return Ok(());
-        }
+        for file_info in file_infos {
+            if let Some(tc) = &file_info.test_case {
+                let status_marker = match &file_info.status {
+                    testcase_manager::FileValidationStatus::Valid => "✓",
+                    testcase_manager::FileValidationStatus::ParseError { .. } => "✗",
+                    testcase_manager::FileValidationStatus::ValidationError { .. } => "✗",
+                };
 
-        println!("Found {} test case(s):\n", test_cases.len());
-
-        for tc in test_cases {
-            println!(
-                "{:<30} {:<20} Item: {}, TC: {}",
-                tc.id, tc.requirement, tc.item, tc.tc
-            );
+                println!(
+                    "{} {:<30} {:<20} Item: {}, TC: {}",
+                    status_marker, tc.id, tc.requirement, tc.item, tc.tc
+                );
+            } else {
+                let file_name = file_info
+                    .path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("unknown");
+                println!("✗ {:<30} (Failed to load)", file_name);
+            }
         }
     }
 
