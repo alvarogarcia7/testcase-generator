@@ -1,4 +1,4 @@
-use crate::config::EditorConfig;
+use crate::{TestCaseEditor, config::EditorConfig};
 use crate::database::ConditionDatabase;
 use crate::editor::EditorFlow;
 use crate::fuzzy::TestCaseFuzzyFinder;
