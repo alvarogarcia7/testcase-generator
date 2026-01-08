@@ -845,7 +845,7 @@ impl<'a> StepCollectionBuilder<'a> {
     }
 
     /// Collect a single step with field-by-field prompts
-    fn collect_single_step(&self, step_number: i64) -> Result<Option<Value>> {
+    pub fn collect_single_step(&self, step_number: i64) -> Result<Option<Value>> {
         // Prompt for description with fuzzy search if available
         let description = if !self.existing_descriptions.is_empty() {
             if Prompts::confirm("Search existing step descriptions?")? {
@@ -1057,7 +1057,7 @@ impl<'a> SequenceCollectionBuilder<'a> {
     }
 
     /// Collect a single test sequence with all its components
-    fn collect_single_sequence(&self, sequence_id: i64) -> Result<Option<Value>> {
+    pub fn collect_single_sequence(&self, sequence_id: i64) -> Result<Option<Value>> {
         // Prompt for sequence name
         let sequence_name = if !self.existing_sequence_names.is_empty() {
             if Prompts::confirm("Search existing sequence names?")? {
@@ -1169,6 +1169,7 @@ impl<'a> SequenceCollectionBuilder<'a> {
         );
 
         // Add initial conditions if provided
+        // Note: sequence initial_conditions is an array of objects per schema
         if let Some(ic_map) = initial_conditions {
             let mut ic_yaml_map = serde_yaml::Mapping::new();
             for (device, conditions) in ic_map {
@@ -1176,9 +1177,11 @@ impl<'a> SequenceCollectionBuilder<'a> {
                     conditions.into_iter().map(Value::String).collect();
                 ic_yaml_map.insert(Value::String(device), Value::Sequence(condition_values));
             }
+            // Wrap in array as per schema requirement for test sequences
+            let ic_array = vec![Value::Mapping(ic_yaml_map)];
             sequence_map.insert(
                 Value::String("initial_conditions".to_string()),
-                Value::Mapping(ic_yaml_map),
+                Value::Sequence(ic_array),
             );
         }
 

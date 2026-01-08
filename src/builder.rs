@@ -468,84 +468,14 @@ impl TestCaseBuilder {
 
     /// Add a test sequence with interactive prompts
     pub fn add_test_sequence_interactive(&mut self) -> Result<&mut Self> {
-        use crate::editor::TestCaseEditor;
-        use crate::prompts::Prompts;
+        use crate::collection_builder::SequenceCollectionBuilder;
 
         println!("\n=== Add Test Sequence ===\n");
 
         let sequence_id = self.get_next_sequence_id();
         println!("Sequence ID: {}", sequence_id);
 
-        let existing_sequences = self.get_existing_sequence_names();
-        let sequence_name = if let Some(sample) = &self.sample {
-            let prompts = Prompts::new_with_sample(sample);
-            prompts.input_with_sample("Sequence name", &sample.sequence_name())?
-        } else if !existing_sequences.is_empty() {
-            println!("\nYou can select from existing sequence names or type a new one.");
-
-            if Prompts::confirm("Use fuzzy search to select from existing names?")? {
-                match TestCaseFuzzyFinder::search_strings(
-                    &existing_sequences,
-                    "Select sequence name: ",
-                )? {
-                    FuzzySearchResult::Selected(name) => name,
-                    FuzzySearchResult::Cancelled => {
-                        println!("No selection made, entering new name.");
-                        Prompts::input("Sequence name")?
-                    }
-                    FuzzySearchResult::Error(e) => {
-                        return Err(anyhow::anyhow!("Search error: {}", e));
-                    }
-                }
-            } else {
-                Prompts::input("Sequence name")?
-            }
-        } else {
-            Prompts::input("Sequence name")?
-        };
-
-        let description = if let Some(sample) = &self.sample {
-            let prompts = Prompts::new_with_sample(sample);
-            if let Some(desc) = sample.sequence_description() {
-                prompts.input_optional_with_sample("Description", &desc)?
-            } else {
-                None
-            }
-        } else if Prompts::confirm("\nEdit description in editor?")? {
-            let template = format!(
-                "# Description for: {}\n# Enter the sequence description below:\n\n",
-                sequence_name
-            );
-            let editor_config = EditorConfig::load();
-            let edited = TestCaseEditor::edit_text(&template, &editor_config)?;
-
-            let cleaned: String = edited
-                .lines()
-                .filter(|line| !line.trim().starts_with('#'))
-                .collect::<Vec<&str>>()
-                .join("\n")
-                .trim()
-                .to_string();
-
-            if cleaned.is_empty() {
-                None
-            } else {
-                Some(cleaned)
-            }
-        } else {
-            Prompts::input_optional("Description")?
-        };
-
-        let add_initial_conditions = if let Some(sample) = &self.sample {
-            let prompts = Prompts::new_with_sample(sample);
-            prompts.confirm_with_sample(
-                "\nAdd sequence-specific initial conditions?",
-                sample.confirm_add_sequence_initial_conditions(),
-            )?
-        } else {
-            Prompts::confirm("\nAdd sequence-specific initial conditions?")?
-        };
-
+        // Load database for fuzzy search support
         let database_path = if let Some(sample) = &self.sample {
             sample.database_path()
         } else {
@@ -555,107 +485,21 @@ impl TestCaseBuilder {
         let db = ConditionDatabase::load_from_directory(&database_path)
             .context("Failed to load condition database")?;
 
-        let prompts = if let Some(sample) = &self.sample {
-            Prompts::new_with_database_and_sample(&db, sample)
-        } else {
-            Prompts::new_with_database(&db)
-        };
+        // Get existing sequence names and step descriptions for fuzzy search
+        let existing_sequence_names = self.get_existing_sequence_names();
+        let existing_step_descriptions = self.get_all_existing_steps_internal();
 
-        let initial_conditions = if add_initial_conditions {
-            let use_db = if let Some(sample) = &self.sample {
-                let sample_prompts = Prompts::new_with_sample(sample);
-                sample_prompts.confirm_with_sample(
-                    "Use database for initial conditions?",
-                    sample.confirm_use_database(),
-                )?
-            } else {
-                Prompts::confirm("Use database for initial conditions?")?
-            };
+        // Use SequenceCollectionBuilder to collect metadata and potentially steps
+        let builder = SequenceCollectionBuilder::new(sequence_id)
+            .with_database(&db)
+            .with_validator(self.validator.clone())
+            .with_existing_sequence_names(existing_sequence_names)
+            .with_existing_step_descriptions(existing_step_descriptions);
 
-            if use_db {
-                let conditions = db.get_initial_conditions();
-
-                if !conditions.is_empty() {
-                    let mut selected_conditions = Vec::new();
-
-                    loop {
-                        let selected = TestCaseFuzzyFinder::search_strings(
-                            conditions,
-                            "Select condition (ESC to finish): ",
-                        )?;
-
-                        match selected {
-                            FuzzySearchResult::Selected(condition) => {
-                                selected_conditions.push(condition.clone());
-                                println!("✓ Added: {}", condition);
-
-                                if !Prompts::confirm("Add another condition?")? {
-                                    break;
-                                }
-                            }
-                            FuzzySearchResult::Cancelled => break,
-                            FuzzySearchResult::Error(e) => {
-                                return Err(anyhow::anyhow!("Search error: {}", e));
-                            }
-                        }
-                    }
-
-                    if !selected_conditions.is_empty() {
-                        let euicc_conditions: Vec<Value> =
-                            selected_conditions.into_iter().map(Value::String).collect();
-
-                        let mut initial_cond_map = serde_yaml::Mapping::new();
-                        initial_cond_map.insert(
-                            Value::String("eUICC".to_string()),
-                            Value::Sequence(euicc_conditions),
-                        );
-
-                        Some(Value::Mapping(initial_cond_map))
-                    } else {
-                        None
-                    }
-                } else {
-                    println!("No conditions in database, using manual entry.");
-                    Some(prompts.prompt_initial_conditions(None, &self.validator)?)
-                }
-            } else {
-                Some(prompts.prompt_initial_conditions(None, &self.validator)?)
-            }
-        } else {
-            None
-        };
-
-        let mut sequence_map = serde_yaml::Mapping::new();
-        sequence_map.insert(
-            Value::String("id".to_string()),
-            Value::Number(sequence_id.into()),
-        );
-        sequence_map.insert(
-            Value::String("name".to_string()),
-            Value::String(sequence_name.clone()),
-        );
-
-        if let Some(desc) = description {
-            sequence_map.insert(
-                Value::String("description".to_string()),
-                Value::String(desc),
-            );
-        }
-
-        if let Some(ic) = initial_conditions {
-            let ic_array = vec![ic];
-            sequence_map.insert(
-                Value::String("initial_conditions".to_string()),
-                Value::Sequence(ic_array),
-            );
-        }
-
-        sequence_map.insert(
-            Value::String("steps".to_string()),
-            Value::Sequence(Vec::new()),
-        );
-
-        let sequence_value = Value::Mapping(sequence_map);
+        // Collect a single sequence
+        let sequence_value = builder
+            .collect_single_sequence(sequence_id)?
+            .ok_or_else(|| anyhow::anyhow!("Sequence collection was cancelled"))?;
 
         println!("\n=== Validating Test Sequence ===");
         self.validate_and_append_sequence(sequence_value)?;
@@ -742,6 +586,8 @@ impl TestCaseBuilder {
         &mut self,
         sequence_index: usize,
     ) -> Result<&mut Self> {
+        use crate::collection_builder::StepCollectionBuilder;
+
         println!("\n╔═══════════════════════════════════════════════╗");
         println!("║      Step Collection Loop with Commits       ║");
         println!("╚═══════════════════════════════════════════════╝\n");
@@ -754,69 +600,48 @@ impl TestCaseBuilder {
             sequence_id, sequence_name
         );
 
-        let existing_steps = self.get_all_existing_steps_internal();
+        let existing_step_descriptions = self.get_all_existing_steps_internal();
+
+        // Use StepCollectionBuilder for unified step-by-step workflow
+        let step_builder = StepCollectionBuilder::new_with_validator(1, &self.validator)
+            .with_existing_descriptions(existing_step_descriptions);
 
         loop {
             let step_number = self.get_next_step_number_internal(sequence_index)?;
             println!("\n=== Add Step #{} ===", step_number);
 
-            let step_description = if !existing_steps.is_empty() {
-                println!("\nYou can select from existing step descriptions or enter a new one.");
+            // Collect single step using StepCollectionBuilder workflow
+            let step = step_builder.collect_single_step(step_number)?;
 
-                if Prompts::confirm("Use fuzzy search to select from existing descriptions?")? {
-                    match TestCaseFuzzyFinder::search_strings(
-                        &existing_steps,
-                        "Select step description: ",
-                    )? {
-                        FuzzySearchResult::Selected(desc) => desc,
-                        FuzzySearchResult::Cancelled => {
-                            println!("No selection made, entering new description.");
-                            Prompts::input("Step description")?
-                        }
-                        FuzzySearchResult::Error(e) => {
-                            return Err(anyhow::anyhow!("Search error: {}", e));
-                        }
-                    }
+            if let Some(step_value) = step {
+                println!("\n=== Validating Step ===");
+                self.validate_and_append_step(sequence_index, step_value.clone())?;
+                println!("✓ Step validated and added\n");
+
+                self.save().context("Failed to save file")?;
+
+                // Extract step description for commit message
+                let step_description = if let Value::Mapping(ref map) = step_value {
+                    map.get(Value::String("description".to_string()))
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("step")
+                        .to_string()
                 } else {
-                    Prompts::input("Step description")?
+                    "step".to_string()
+                };
+
+                if Prompts::confirm("Commit this step to git?")? {
+                    let commit_msg = format!(
+                        "Add step #{} to sequence #{}: {}",
+                        step_number, sequence_id, step_description
+                    );
+                    self.commit(&commit_msg).context("Failed to commit step")?;
+                }
+
+                if !Prompts::confirm("\nAdd another step to this sequence?")? {
+                    break;
                 }
             } else {
-                Prompts::input("Step description")?
-            };
-
-            let manual = if Prompts::confirm("Is this a manual step?")? {
-                Some(true)
-            } else {
-                None
-            };
-
-            let command = Prompts::input("Command")?;
-
-            let expected = self.prompt_for_expected_internal()?;
-
-            let step = self.create_step_value(
-                step_number,
-                manual,
-                step_description.clone(),
-                command,
-                expected,
-            )?;
-
-            println!("\n=== Validating Step ===");
-            self.validate_and_append_step(sequence_index, step)?;
-            println!("✓ Step validated and added\n");
-
-            self.save().context("Failed to save file")?;
-
-            if Prompts::confirm("Commit this step to git?")? {
-                let commit_msg = format!(
-                    "Add step #{} to sequence #{}: {}",
-                    step_number, sequence_id, step_description
-                );
-                self.commit(&commit_msg).context("Failed to commit step")?;
-            }
-
-            if !Prompts::confirm("\nAdd another step to this sequence?")? {
                 break;
             }
         }
