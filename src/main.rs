@@ -2,6 +2,7 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use testcase_manager::{
     cli::{Cli, Commands, GitCommands},
+    fuzzy::FuzzySearchResult,
     ConditionDatabase, GitManager, Prompts, SampleData, TestCase, TestCaseBuilder, TestCaseEditor,
     TestCaseFuzzyFinder, TestCaseMetadata, TestCaseStorage, TestSuite,
 };
@@ -1115,8 +1116,8 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
                                 &existing_steps,
                                 "Select step description: ",
                             )? {
-                                Some(desc) => desc,
-                                None => {
+                                FuzzySearchResult::Selected(desc) => desc,
+                                FuzzySearchResult::Cancelled | FuzzySearchResult::Error(_) => {
                                     println!("No selection made, entering new description.");
                                     Prompts::input("Step description")?
                                 }
@@ -1364,14 +1365,20 @@ fn handle_parse_general_conditions(database_path: &str, work_path: &str) -> Resu
 
         match choice.trim() {
             "1" => {
-                let selected = TestCaseFuzzyFinder::search_strings(
+                match TestCaseFuzzyFinder::search_strings(
                     conditions,
                     "Select condition (ESC to cancel): ",
-                )?;
-
-                if let Some(condition) = selected {
-                    selected_conditions.push(condition.clone());
-                    println!("✓ Added from database: {}\n", condition);
+                )? {
+                    FuzzySearchResult::Selected(condition) => {
+                        selected_conditions.push(condition.clone());
+                        println!("✓ Added from database: {}\n", condition);
+                    }
+                    FuzzySearchResult::Cancelled => {
+                        // User cancelled, do nothing
+                    }
+                    FuzzySearchResult::Error(e) => {
+                        println!("✗ Search error: {}", e);
+                    }
                 }
             }
             "2" => {
@@ -1488,14 +1495,20 @@ fn handle_parse_initial_conditions(database_path: &str, work_path: &str) -> Resu
 
         match choice.trim() {
             "1" => {
-                let selected = TestCaseFuzzyFinder::search_strings(
+                match TestCaseFuzzyFinder::search_strings(
                     conditions,
                     "Select condition (ESC to cancel): ",
-                )?;
-
-                if let Some(condition) = selected {
-                    selected_conditions.push(condition.clone());
-                    println!("✓ Added from database: {}\n", condition);
+                )? {
+                    FuzzySearchResult::Selected(condition) => {
+                        selected_conditions.push(condition.clone());
+                        println!("✓ Added from database: {}\n", condition);
+                    }
+                    FuzzySearchResult::Cancelled => {
+                        // User cancelled, do nothing
+                    }
+                    FuzzySearchResult::Error(e) => {
+                        println!("✗ Search error: {}", e);
+                    }
                 }
             }
             "2" => {

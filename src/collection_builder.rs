@@ -1,6 +1,6 @@
 use crate::config::EditorConfig;
 use crate::database::ConditionDatabase;
-use crate::fuzzy::TestCaseFuzzyFinder;
+use crate::fuzzy::{FuzzySearchResult, TestCaseFuzzyFinder};
 use crate::prompts::Prompts;
 use crate::validation::SchemaValidator;
 use anyhow::{Context, Result};
@@ -248,18 +248,19 @@ where
 
         match self.mode {
             SelectionMode::SingleSelect => {
-                let selected = TestCaseFuzzyFinder::search_strings(&item_strings, prompt)?;
-
-                if let Some(selected_str) = selected {
-                    // Find the corresponding item
-                    for (idx, item_str) in item_strings.iter().enumerate() {
-                        if item_str == &selected_str {
-                            return Ok(Some(self.existing_items[idx].clone()));
+                match TestCaseFuzzyFinder::search_strings(&item_strings, prompt)? {
+                    FuzzySearchResult::Selected(selected_str) => {
+                        // Find the corresponding item
+                        for (idx, item_str) in item_strings.iter().enumerate() {
+                            if item_str == &selected_str {
+                                return Ok(Some(self.existing_items[idx].clone()));
+                            }
                         }
+                        Ok(None)
                     }
+                    FuzzySearchResult::Cancelled => Ok(None),
+                    FuzzySearchResult::Error(e) => Err(anyhow::anyhow!("Search error: {}", e)),
                 }
-
-                Ok(None)
             }
             SelectionMode::MultiSelect => {
                 let selected = TestCaseFuzzyFinder::multi_select(&item_strings, prompt)?;
@@ -639,12 +640,15 @@ impl<'a> ConditionCollectionBuilder<'a> {
                     device_names,
                     "Select device name (or ESC to enter manually): ",
                 )? {
-                    Some(name) => {
+                    FuzzySearchResult::Selected(name) => {
                         println!("Selected: {}\n", name);
                         return Ok(name);
                     }
-                    None => {
+                    FuzzySearchResult::Cancelled => {
                         println!("No selection made, entering manually.\n");
+                    }
+                    FuzzySearchResult::Error(e) => {
+                        return Err(anyhow::anyhow!("Search error: {}", e));
                     }
                 }
             }
@@ -723,7 +727,7 @@ impl<'a> ConditionCollectionBuilder<'a> {
             )?;
 
             match selected {
-                Some(condition) => {
+                FuzzySearchResult::Selected(condition) => {
                     selected_conditions.push(condition.clone());
                     println!("✓ Added: {}\n", condition);
 
@@ -731,7 +735,7 @@ impl<'a> ConditionCollectionBuilder<'a> {
                         break;
                     }
                 }
-                None => {
+                FuzzySearchResult::Cancelled => {
                     if selected_conditions.is_empty() {
                         println!("No conditions selected.");
                         if Prompts::confirm("Use manual entry instead?")? {
@@ -739,6 +743,9 @@ impl<'a> ConditionCollectionBuilder<'a> {
                         }
                     }
                     break;
+                }
+                FuzzySearchResult::Error(e) => {
+                    return Err(anyhow::anyhow!("Search error: {}", e));
                 }
             }
         }
@@ -846,10 +853,13 @@ impl<'a> StepCollectionBuilder<'a> {
                     &self.existing_descriptions,
                     "Select step description: ",
                 )? {
-                    Some(desc) => desc,
-                    None => {
+                    FuzzySearchResult::Selected(desc) => desc,
+                    FuzzySearchResult::Cancelled => {
                         println!("No selection made, entering new description.\n");
                         Prompts::input("Step description")?
+                    }
+                    FuzzySearchResult::Error(e) => {
+                        return Err(anyhow::anyhow!("Search error: {}", e));
                     }
                 }
             } else {
@@ -1055,10 +1065,13 @@ impl<'a> SequenceCollectionBuilder<'a> {
                     &self.existing_sequence_names,
                     "Select sequence name: ",
                 )? {
-                    Some(name) => name,
-                    None => {
+                    FuzzySearchResult::Selected(name) => name,
+                    FuzzySearchResult::Cancelled => {
                         println!("No selection made, entering new name.\n");
                         Prompts::input("Sequence name")?
+                    }
+                    FuzzySearchResult::Error(e) => {
+                        return Err(anyhow::anyhow!("Search error: {}", e));
                     }
                 }
             } else {

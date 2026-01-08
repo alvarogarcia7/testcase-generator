@@ -3,6 +3,17 @@ use anyhow::Result;
 use skim::prelude::*;
 use std::io::{self, Cursor, Write};
 
+/// Result type for fuzzy search operations
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum FuzzySearchResult {
+    /// User selected an item
+    Selected(String),
+    /// User cancelled the operation (pressed ESC)
+    Cancelled,
+    /// An error occurred during the search
+    Error(String),
+}
+
 /// Fuzzy finder for test cases
 pub struct TestCaseFuzzyFinder;
 
@@ -181,13 +192,17 @@ impl TestCaseFuzzyFinder {
     }
 
     /// Fuzzy search through a list of strings
-    pub fn search_strings(items: &[String], prompt: &str) -> Result<Option<String>> {
+    pub fn search_strings(items: &[String], prompt: &str) -> Result<FuzzySearchResult> {
         if items.is_empty() {
-            return Ok(None);
+            return Ok(FuzzySearchResult::Cancelled);
         }
 
         if !Self::is_tty() {
-            return Self::numbered_selection(items, prompt);
+            return match Self::numbered_selection(items, prompt) {
+                Ok(Some(selected)) => Ok(FuzzySearchResult::Selected(selected)),
+                Ok(None) => Ok(FuzzySearchResult::Cancelled),
+                Err(e) => Ok(FuzzySearchResult::Error(e.to_string())),
+            };
         }
 
         let item_reader = SkimItemReader::default();
@@ -200,18 +215,21 @@ impl TestCaseFuzzyFinder {
             .build()
             .map_err(|e| anyhow::anyhow!("Failed to build skim options: {}", e))?;
 
-        let selected = Skim::run_with(&options, Some(skim_items)).and_then(|output| {
-            if output.is_abort {
-                None
-            } else {
-                output
-                    .selected_items
-                    .first()
-                    .map(|item| item.output().to_string())
-            }
-        });
+        let result = Skim::run_with(&options, Some(skim_items));
 
-        Ok(selected)
+        match result {
+            Some(output) => {
+                if output.is_abort {
+                    Ok(FuzzySearchResult::Cancelled)
+                } else {
+                    match output.selected_items.first() {
+                        Some(item) => Ok(FuzzySearchResult::Selected(item.output().to_string())),
+                        None => Ok(FuzzySearchResult::Cancelled),
+                    }
+                }
+            }
+            None => Ok(FuzzySearchResult::Cancelled),
+        }
     }
 
     /// Multi-select fuzzy search

@@ -1,6 +1,6 @@
 use crate::database::ConditionDatabase;
 use crate::editor::EditorFlow;
-use crate::fuzzy::TestCaseFuzzyFinder;
+use crate::fuzzy::{FuzzySearchResult, TestCaseFuzzyFinder};
 use crate::sample::SampleData;
 use crate::validation::SchemaValidator;
 use crate::{config::EditorConfig, TestCaseEditor};
@@ -413,48 +413,57 @@ impl<'a> Prompts<'a> {
             );
 
             if Self::confirm("Search existing general initial conditions?")? {
-                if let Some(selected_yaml) = TestCaseFuzzyFinder::search_strings(
+                match TestCaseFuzzyFinder::search_strings(
                     &existing_conditions,
                     "Select general initial condition: ",
                 )? {
-                    // Parse the selected YAML
-                    let parsed: Value = serde_yaml::from_str(&selected_yaml)
-                        .context("Failed to parse selected general initial conditions")?;
+                    FuzzySearchResult::Selected(selected_yaml) => {
+                        // Parse the selected YAML
+                        let parsed: Value = serde_yaml::from_str(&selected_yaml)
+                            .context("Failed to parse selected general initial conditions")?;
 
-                    println!("\n✓ Selected existing general initial conditions:");
-                    println!("{}", selected_yaml);
+                        println!("\n✓ Selected existing general initial conditions:");
+                        println!("{}", selected_yaml);
 
-                    if Self::confirm("Use this as-is?")? {
-                        return Ok(parsed);
-                    } else if Self::confirm("Edit this condition?")? {
-                        // Let user edit the selected condition
-                        loop {
-                            let edited_content =
-                                TestCaseEditor::edit_text(&selected_yaml, editor_config)
-                                    .context("Failed to open editor")?;
+                        if Self::confirm("Use this as-is?")? {
+                            return Ok(parsed);
+                        } else if Self::confirm("Edit this condition?")? {
+                            // Let user edit the selected condition
+                            loop {
+                                let edited_content =
+                                    TestCaseEditor::edit_text(&selected_yaml, editor_config)
+                                        .context("Failed to open editor")?;
 
-                            let parsed_edited: Value = serde_yaml::from_str(&edited_content)
-                                .context("Failed to parse YAML")?;
+                                let parsed_edited: Value = serde_yaml::from_str(&edited_content)
+                                    .context("Failed to parse YAML")?;
 
-                            let yaml_for_validation = serde_yaml::to_string(&parsed_edited)
-                                .context("Failed to serialize for validation")?;
+                                let yaml_for_validation = serde_yaml::to_string(&parsed_edited)
+                                    .context("Failed to serialize for validation")?;
 
-                            match validator.validate_partial_chunk(&yaml_for_validation) {
-                                Ok(_) => {
-                                    println!("✓ Valid structure");
-                                    return Ok(parsed_edited);
-                                }
-                                Err(e) => {
-                                    println!("✗ Validation failed: {}", e);
-                                    let retry = Self::confirm("Try again?")?;
-                                    if !retry {
-                                        anyhow::bail!("Validation failed, user cancelled");
+                                match validator.validate_partial_chunk(&yaml_for_validation) {
+                                    Ok(_) => {
+                                        println!("✓ Valid structure");
+                                        return Ok(parsed_edited);
+                                    }
+                                    Err(e) => {
+                                        println!("✗ Validation failed: {}", e);
+                                        let retry = Self::confirm("Try again?")?;
+                                        if !retry {
+                                            anyhow::bail!("Validation failed, user cancelled");
+                                        }
                                     }
                                 }
                             }
                         }
+                        // If user doesn't want to use or edit, fall through to create new
                     }
-                    // If user doesn't want to use or edit, fall through to create new
+                    FuzzySearchResult::Cancelled => {
+                        // User cancelled, fall through to create new
+                    }
+                    FuzzySearchResult::Error(e) => {
+                        println!("✗ Search error: {}", e);
+                        // Fall through to create new
+                    }
                 }
             }
         }
@@ -546,8 +555,8 @@ impl<'a> Prompts<'a> {
                 &default_device_names,
                 "Select device name (fuzzy search, or ESC to enter manually): ",
             )? {
-                Some(name) => name,
-                None => {
+                FuzzySearchResult::Selected(name) => name,
+                FuzzySearchResult::Cancelled | FuzzySearchResult::Error(_) => {
                     println!("No selection made, entering manually.");
                     Self::input("Device name (e.g., eUICC)")?
                 }
@@ -636,13 +645,11 @@ impl<'a> Prompts<'a> {
         let mut selected_conditions = Vec::new();
 
         loop {
-            let selected = TestCaseFuzzyFinder::search_strings(
+            match TestCaseFuzzyFinder::search_strings(
                 conditions,
                 "Select condition (ESC to finish): ",
-            )?;
-
-            match selected {
-                Some(condition) => {
+            )? {
+                FuzzySearchResult::Selected(condition) => {
                     selected_conditions.push(condition.clone());
                     println!("✓ Added: {}\n", condition);
 
@@ -650,7 +657,7 @@ impl<'a> Prompts<'a> {
                         break;
                     }
                 }
-                None => {
+                FuzzySearchResult::Cancelled => {
                     if selected_conditions.is_empty() {
                         println!("No conditions selected.");
                         if Self::confirm("Use manual entry instead?")? {
@@ -661,6 +668,10 @@ impl<'a> Prompts<'a> {
                             );
                         }
                     }
+                    break;
+                }
+                FuzzySearchResult::Error(e) => {
+                    println!("✗ Search error: {}", e);
                     break;
                 }
             }
@@ -721,8 +732,8 @@ impl<'a> Prompts<'a> {
                 device_names,
                 "Select device name (or ESC to enter manually): ",
             )? {
-                Some(name) => name,
-                None => {
+                FuzzySearchResult::Selected(name) => name,
+                FuzzySearchResult::Cancelled | FuzzySearchResult::Error(_) => {
                     println!("No device name selected, entering manually.");
                     Self::input("Device name (e.g., eUICC)")?
                 }
@@ -737,13 +748,11 @@ impl<'a> Prompts<'a> {
         let mut selected_conditions = Vec::new();
 
         loop {
-            let selected = TestCaseFuzzyFinder::search_strings(
+            match TestCaseFuzzyFinder::search_strings(
                 conditions,
                 "Select condition (ESC to finish): ",
-            )?;
-
-            match selected {
-                Some(condition) => {
+            )? {
+                FuzzySearchResult::Selected(condition) => {
                     selected_conditions.push(condition.clone());
                     println!("✓ Added: {}\n", condition);
 
@@ -751,13 +760,17 @@ impl<'a> Prompts<'a> {
                         break;
                     }
                 }
-                None => {
+                FuzzySearchResult::Cancelled => {
                     if selected_conditions.is_empty() {
                         println!("No conditions selected.");
                         if Self::confirm("Use manual entry instead?")? {
                             return self.prompt_initial_conditions(None, validator);
                         }
                     }
+                    break;
+                }
+                FuzzySearchResult::Error(e) => {
+                    println!("✗ Search error: {}", e);
                     break;
                 }
             }

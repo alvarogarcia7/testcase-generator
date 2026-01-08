@@ -1,5 +1,6 @@
 use crate::config::EditorConfig;
 use crate::database::ConditionDatabase;
+use crate::fuzzy::{FuzzySearchResult, TestCaseFuzzyFinder};
 use crate::git::GitManager;
 use crate::prompts::Prompts;
 use crate::recovery::{RecoveryManager, RecoveryState};
@@ -239,8 +240,6 @@ impl TestCaseBuilder {
         &mut self,
         database_path: P,
     ) -> Result<&mut Self> {
-        use crate::fuzzy::TestCaseFuzzyFinder;
-
         let db = ConditionDatabase::load_from_directory(database_path)
             .context("Failed to load condition database")?;
 
@@ -267,7 +266,7 @@ impl TestCaseBuilder {
             )?;
 
             match selected {
-                Some(condition) => {
+                FuzzySearchResult::Selected(condition) => {
                     selected_conditions.push(condition.clone());
                     println!("✓ Added: {}\n", condition);
 
@@ -275,7 +274,7 @@ impl TestCaseBuilder {
                         break;
                     }
                 }
-                None => {
+                FuzzySearchResult::Cancelled => {
                     if selected_conditions.is_empty() {
                         println!("No conditions selected.");
                         if !Prompts::confirm("Continue without general initial conditions?")? {
@@ -283,6 +282,9 @@ impl TestCaseBuilder {
                         }
                     }
                     break;
+                }
+                FuzzySearchResult::Error(e) => {
+                    return Err(anyhow::anyhow!("Search error: {}", e));
                 }
             }
         }
@@ -315,8 +317,6 @@ impl TestCaseBuilder {
         &mut self,
         database_path: P,
     ) -> Result<&mut Self> {
-        use crate::fuzzy::TestCaseFuzzyFinder;
-
         let db = ConditionDatabase::load_from_directory(database_path)
             .context("Failed to load condition database")?;
 
@@ -343,7 +343,7 @@ impl TestCaseBuilder {
             )?;
 
             match selected {
-                Some(condition) => {
+                FuzzySearchResult::Selected(condition) => {
                     selected_conditions.push(condition.clone());
                     println!("✓ Added: {}\n", condition);
 
@@ -351,7 +351,7 @@ impl TestCaseBuilder {
                         break;
                     }
                 }
-                None => {
+                FuzzySearchResult::Cancelled => {
                     if selected_conditions.is_empty() {
                         println!("No conditions selected.");
                         if !Prompts::confirm("Continue without initial conditions?")? {
@@ -359,6 +359,9 @@ impl TestCaseBuilder {
                         }
                     }
                     break;
+                }
+                FuzzySearchResult::Error(e) => {
+                    return Err(anyhow::anyhow!("Search error: {}", e));
                 }
             }
         }
@@ -466,7 +469,6 @@ impl TestCaseBuilder {
     /// Add a test sequence with interactive prompts
     pub fn add_test_sequence_interactive(&mut self) -> Result<&mut Self> {
         use crate::editor::TestCaseEditor;
-        use crate::fuzzy::TestCaseFuzzyFinder;
         use crate::prompts::Prompts;
 
         println!("\n=== Add Test Sequence ===\n");
@@ -486,10 +488,13 @@ impl TestCaseBuilder {
                     &existing_sequences,
                     "Select sequence name: ",
                 )? {
-                    Some(name) => name,
-                    None => {
+                    FuzzySearchResult::Selected(name) => name,
+                    FuzzySearchResult::Cancelled => {
                         println!("No selection made, entering new name.");
                         Prompts::input("Sequence name")?
+                    }
+                    FuzzySearchResult::Error(e) => {
+                        return Err(anyhow::anyhow!("Search error: {}", e));
                     }
                 }
             } else {
@@ -580,7 +585,7 @@ impl TestCaseBuilder {
                         )?;
 
                         match selected {
-                            Some(condition) => {
+                            FuzzySearchResult::Selected(condition) => {
                                 selected_conditions.push(condition.clone());
                                 println!("✓ Added: {}", condition);
 
@@ -588,7 +593,10 @@ impl TestCaseBuilder {
                                     break;
                                 }
                             }
-                            None => break,
+                            FuzzySearchResult::Cancelled => break,
+                            FuzzySearchResult::Error(e) => {
+                                return Err(anyhow::anyhow!("Search error: {}", e));
+                            }
                         }
                     }
 
@@ -734,8 +742,6 @@ impl TestCaseBuilder {
         &mut self,
         sequence_index: usize,
     ) -> Result<&mut Self> {
-        use crate::fuzzy::TestCaseFuzzyFinder;
-
         println!("\n╔═══════════════════════════════════════════════╗");
         println!("║      Step Collection Loop with Commits       ║");
         println!("╚═══════════════════════════════════════════════╝\n");
@@ -762,10 +768,13 @@ impl TestCaseBuilder {
                         &existing_steps,
                         "Select step description: ",
                     )? {
-                        Some(desc) => desc,
-                        None => {
+                        FuzzySearchResult::Selected(desc) => desc,
+                        FuzzySearchResult::Cancelled => {
                             println!("No selection made, entering new description.");
                             Prompts::input("Step description")?
+                        }
+                        FuzzySearchResult::Error(e) => {
+                            return Err(anyhow::anyhow!("Search error: {}", e));
                         }
                     }
                 } else {

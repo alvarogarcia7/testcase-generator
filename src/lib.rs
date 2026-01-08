@@ -23,7 +23,7 @@ pub use collection_builder::{
 pub use config::{CommitMessageTemplates, Config, EditorConfig, GitAuthorInfo};
 pub use database::ConditionDatabase;
 pub use editor::TestCaseEditor;
-pub use fuzzy::TestCaseFuzzyFinder;
+pub use fuzzy::{FuzzySearchResult, TestCaseFuzzyFinder};
 pub use git::GitManager;
 pub use models::{
     Expected, FileValidationStatus, Step, TestCase, TestCaseFileInfo, TestSequence, TestSuite,

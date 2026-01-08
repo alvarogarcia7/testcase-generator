@@ -1,5 +1,5 @@
 use anyhow::Result;
-use testcase_manager::TestCaseFuzzyFinder;
+use testcase_manager::{FuzzySearchResult, TestCaseFuzzyFinder};
 
 fn main() -> Result<()> {
     println!("TTY Fallback Demo");
@@ -18,11 +18,14 @@ fn main() -> Result<()> {
 
     println!("=== Single Selection Demo ===\n");
     match TestCaseFuzzyFinder::search_strings(&options, "Select an option:")? {
-        Some(selected) => {
+        FuzzySearchResult::Selected(selected) => {
             println!("\n✓ You selected: {}", selected);
         }
-        None => {
-            println!("\n✗ No selection made");
+        FuzzySearchResult::Cancelled => {
+            println!("\n✗ Selection cancelled");
+        }
+        FuzzySearchResult::Error(e) => {
+            println!("\n✗ Error during selection: {}", e);
         }
     }
 
