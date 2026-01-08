@@ -167,9 +167,6 @@ impl Prompts {
             id,
             description,
         };
-
-        // metadata.validate_recursive(&validator, None).unwrap();
-
         Ok(metadata)
     }
 
