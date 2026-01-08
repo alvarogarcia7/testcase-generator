@@ -1,5 +1,6 @@
 pub mod builder;
 pub mod cli;
+pub mod collection_builder;
 pub mod config;
 pub mod database;
 pub mod editor;
@@ -15,6 +16,7 @@ pub mod validation;
 
 pub use builder::TestCaseBuilder;
 pub use cli::Cli;
+pub use collection_builder::{CollectionBuilder, SelectionMode};
 pub use config::{CommitMessageTemplates, Config, EditorConfig, GitAuthorInfo};
 pub use database::ConditionDatabase;
 pub use editor::TestCaseEditor;
