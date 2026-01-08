@@ -176,7 +176,7 @@ impl TestCaseBuilder {
     /// Add initial conditions with interactive prompts
     pub fn add_initial_conditions(&mut self, defaults: Option<&Value>) -> Result<&mut Self> {
         let prompts = if let Some(ref db) = self.db {
-            Prompts::new_with_database(&db)
+            Prompts::new_with_database(db)
         } else {
             Prompts::new()
         };

@@ -13,14 +13,14 @@ pub struct Prompts<'a> {
     db: Option<&'a ConditionDatabase>,
 }
 
-impl Prompts<'_> {
+impl<'a> Prompts<'a> {
     /// Create a new Prompts instance without a database
-    pub fn new() -> Self {
-        Self { db: None }
+    pub fn new() -> Prompts<'static> {
+        Prompts { db: None }
     }
 
     /// Create a new Prompts instance with a database
-    pub fn new_with_database(db: &'static ConditionDatabase) -> Self {
+    pub fn new_with_database(db: &'a ConditionDatabase) -> Self {
         Self { db: Some(db) }
     }
 
@@ -297,7 +297,7 @@ impl Prompts<'_> {
         }
 
         // Get device names from database or use defaults
-        let default_device_names = if let Some(ref db) = self.db {
+        let default_device_names = if let Some(db) = self.db {
             let db_names = db.get_device_names();
             if !db_names.is_empty() {
                 db_names.to_vec()

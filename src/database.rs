@@ -38,7 +38,7 @@ impl ConditionDatabase {
         let mut device_names_set: HashSet<String> = HashSet::new();
 
         for test_case in test_cases {
-            for (_, conditions) in &test_case.general_initial_conditions {
+            for conditions in test_case.general_initial_conditions.values() {
                 for condition in conditions {
                     general_conditions_set.insert(condition.clone());
                 }
@@ -54,7 +54,7 @@ impl ConditionDatabase {
 
             // Also extract from sequence-level initial conditions
             for sequence in &test_case.test_sequences {
-                for (_, conditions) in &sequence.initial_conditions {
+                for conditions in sequence.initial_conditions.values() {
                     for condition in conditions {
                         initial_conditions_set.insert(condition.clone());
                     }
