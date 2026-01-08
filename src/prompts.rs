@@ -1,7 +1,8 @@
 use crate::database::ConditionDatabase;
-use crate::editor::TestCaseEditor;
+use crate::editor::EditorFlow;
 use crate::fuzzy::TestCaseFuzzyFinder;
 use crate::validation::SchemaValidator;
+use crate::{config::EditorConfig, TestCaseEditor};
 use anyhow::{Context, Result};
 use dialoguer::{theme::ColorfulTheme, Confirm, Input, MultiSelect, Select};
 use indexmap::IndexMap;
@@ -219,6 +220,7 @@ impl<'a> Prompts<'a> {
     pub fn prompt_general_initial_conditions(
         defaults: Option<&Value>,
         validator: &SchemaValidator,
+        editor_config: &EditorConfig,
     ) -> Result<Value> {
         println!("\n=== General Initial Conditions ===\n");
 
@@ -237,8 +239,7 @@ impl<'a> Prompts<'a> {
             }
         }
 
-        loop {
-            let template = r#"# General Initial Conditions
+        let template = r#"# General Initial Conditions
 # Example:
 # - eUICC:
 #     - "Condition 1"
@@ -248,29 +249,15 @@ impl<'a> Prompts<'a> {
     - ""
 "#;
 
-            let edited_content =
-                TestCaseEditor::edit_text(template).context("Failed to open editor")?;
-
-            let parsed: Value =
-                serde_yaml::from_str(&edited_content).context("Failed to parse YAML")?;
-
+        let editor_flow = EditorFlow::new(editor_config.clone());
+        let parsed = editor_flow.edit_with_validation_loop(template, |value: &Value| {
             let yaml_for_validation =
-                serde_yaml::to_string(&parsed).context("Failed to serialize for validation")?;
+                serde_yaml::to_string(value).context("Failed to serialize for validation")?;
+            validator.validate_partial_chunk(&yaml_for_validation)
+        })?;
 
-            match validator.validate_partial_chunk(&yaml_for_validation) {
-                Ok(_) => {
-                    println!("✓ Valid structure");
-                    return Ok(parsed);
-                }
-                Err(e) => {
-                    println!("✗ Validation failed: {}", e);
-                    let retry = Self::confirm("Try again?")?;
-                    if !retry {
-                        anyhow::bail!("Validation failed, user cancelled");
-                    }
-                }
-            }
-        }
+        println!("✓ Valid structure");
+        Ok(parsed)
     }
 
     /// Prompt for general initial conditions with fuzzy search from database
@@ -278,6 +265,7 @@ impl<'a> Prompts<'a> {
         defaults: Option<&Value>,
         validator: &SchemaValidator,
         storage: &crate::storage::TestCaseStorage,
+        editor_config: &EditorConfig,
     ) -> Result<Value> {
         use crate::fuzzy::TestCaseFuzzyFinder;
 
@@ -326,8 +314,9 @@ impl<'a> Prompts<'a> {
                     } else if Self::confirm("Edit this condition?")? {
                         // Let user edit the selected condition
                         loop {
-                            let edited_content = TestCaseEditor::edit_text(&selected_yaml)
-                                .context("Failed to open editor")?;
+                            let edited_content =
+                                TestCaseEditor::edit_text(&selected_yaml, editor_config)
+                                    .context("Failed to open editor")?;
 
                             let parsed_edited: Value = serde_yaml::from_str(&edited_content)
                                 .context("Failed to parse YAML")?;
@@ -368,8 +357,8 @@ impl<'a> Prompts<'a> {
     - ""
 "#;
 
-            let edited_content =
-                TestCaseEditor::edit_text(template).context("Failed to open editor")?;
+            let edited_content = TestCaseEditor::edit_text(template, editor_config)
+                .context("Failed to open editor")?;
 
             let parsed: Value =
                 serde_yaml::from_str(&edited_content).context("Failed to parse YAML")?;
@@ -486,6 +475,7 @@ impl<'a> Prompts<'a> {
     pub fn prompt_general_initial_conditions_from_database<P: AsRef<Path>>(
         database_path: P,
         validator: &SchemaValidator,
+        editor_config: &EditorConfig,
     ) -> Result<Value> {
         println!("\n=== General Initial Conditions (from database) ===\n");
 
@@ -497,7 +487,7 @@ impl<'a> Prompts<'a> {
         if conditions.is_empty() {
             println!("No general initial conditions found in database.");
             println!("Falling back to manual entry.\n");
-            return Self::prompt_general_initial_conditions(None, validator);
+            return Self::prompt_general_initial_conditions(None, validator, editor_config);
         }
 
         println!(
@@ -526,7 +516,11 @@ impl<'a> Prompts<'a> {
                     if selected_conditions.is_empty() {
                         println!("No conditions selected.");
                         if Self::confirm("Use manual entry instead?")? {
-                            return Self::prompt_general_initial_conditions(None, validator);
+                            return Self::prompt_general_initial_conditions(
+                                None,
+                                validator,
+                                editor_config,
+                            );
                         }
                     }
                     break;

@@ -1,5 +1,6 @@
 pub mod builder;
 pub mod cli;
+pub mod config;
 pub mod database;
 pub mod editor;
 pub mod fuzzy;
@@ -13,6 +14,7 @@ pub mod validation;
 
 pub use builder::TestCaseBuilder;
 pub use cli::Cli;
+pub use config::EditorConfig;
 pub use database::ConditionDatabase;
 pub use editor::TestCaseEditor;
 pub use fuzzy::TestCaseFuzzyFinder;

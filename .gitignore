@@ -25,6 +25,10 @@ Thumbs.db
 # Recovery files
 .recovery.json
 
+# Environment files
+.env
+.env.local
+
 # Integration test artifacts
 test_e2e_*/
 test_basic_*/
