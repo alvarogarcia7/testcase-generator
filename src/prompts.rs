@@ -1,6 +1,6 @@
 use crate::config::EditorConfig;
 use crate::database::ConditionDatabase;
-use crate::editor::TestCaseEditor;
+use crate::editor::EditorFlow;
 use crate::fuzzy::TestCaseFuzzyFinder;
 use crate::validation::SchemaValidator;
 use anyhow::{Context, Result};
@@ -239,8 +239,7 @@ impl<'a> Prompts<'a> {
             }
         }
 
-        loop {
-            let template = r#"# General Initial Conditions
+        let template = r#"# General Initial Conditions
 # Example:
 # - eUICC:
 #     - "Condition 1"
@@ -250,29 +249,15 @@ impl<'a> Prompts<'a> {
     - ""
 "#;
 
-            let edited_content = TestCaseEditor::edit_text(template, editor_config)
-                .context("Failed to open editor")?;
-
-            let parsed: Value =
-                serde_yaml::from_str(&edited_content).context("Failed to parse YAML")?;
-
+        let editor_flow = EditorFlow::new(editor_config.clone());
+        let parsed = editor_flow.edit_with_validation_loop(template, |value: &Value| {
             let yaml_for_validation =
-                serde_yaml::to_string(&parsed).context("Failed to serialize for validation")?;
+                serde_yaml::to_string(value).context("Failed to serialize for validation")?;
+            validator.validate_partial_chunk(&yaml_for_validation)
+        })?;
 
-            match validator.validate_partial_chunk(&yaml_for_validation) {
-                Ok(_) => {
-                    println!("✓ Valid structure");
-                    return Ok(parsed);
-                }
-                Err(e) => {
-                    println!("✗ Validation failed: {}", e);
-                    let retry = Self::confirm("Try again?")?;
-                    if !retry {
-                        anyhow::bail!("Validation failed, user cancelled");
-                    }
-                }
-            }
-        }
+        println!("✓ Valid structure");
+        Ok(parsed)
     }
 
     /// Prompt for general initial conditions with fuzzy search from database
