@@ -10,10 +10,7 @@ use testcase_manager::validation::SchemaValidator;
 fn test_valid_gsma_files() {
     let validator = SchemaValidator::new().expect("Failed to create validator");
 
-    let valid_files = vec![
-        "data/gsma_4.4.2.2_TC.yaml",
-        "data/gsma_4.4.2.2_TC.yml",
-    ];
+    let valid_files = vec!["data/gsma_4.4.2.2_TC.yaml", "data/gsma_4.4.2.2_TC.yml"];
 
     for file_path in valid_files {
         println!("\n=== Testing valid file: {} ===", file_path);
@@ -131,10 +128,7 @@ fn test_invalid_data_yml_wrong_structure() {
 fn test_chunk_validation_on_valid_files() {
     let validator = SchemaValidator::new().expect("Failed to create validator");
 
-    let valid_files = vec![
-        "data/gsma_4.4.2.2_TC.yaml",
-        "data/gsma_4.4.2.2_TC.yml",
-    ];
+    let valid_files = vec!["data/gsma_4.4.2.2_TC.yaml", "data/gsma_4.4.2.2_TC.yml"];
 
     for file_path in valid_files {
         println!(
@@ -182,10 +176,7 @@ fn test_all_data_files_exist() {
 
 #[test]
 fn test_valid_files_can_be_parsed_as_yaml() {
-    let valid_files = vec![
-        "data/gsma_4.4.2.2_TC.yaml",
-        "data/gsma_4.4.2.2_TC.yml",
-    ];
+    let valid_files = vec!["data/gsma_4.4.2.2_TC.yaml", "data/gsma_4.4.2.2_TC.yml"];
 
     for file_path in valid_files {
         println!("\n=== Testing YAML parsing for: {} ===", file_path);
