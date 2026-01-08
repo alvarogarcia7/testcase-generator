@@ -399,27 +399,23 @@ fn handle_create_interactive(path: &str) -> Result<()> {
 
     println!("✓ Metadata added to structure\n");
 
-    if Prompts::confirm("Commit metadata to git?")? {
-        builder
-            .commit("Add test case metadata")
-            .context("Failed to commit metadata")?;
-    }
+    builder
+        .commit("Add test case metadata")
+        .context("Failed to commit metadata")?;
 
-    if Prompts::confirm("\nAdd general initial conditions?")? {
+    if Prompts::confirm_with_default("\nAdd general initial conditions?", true)? {
         builder
             .add_general_initial_conditions(None)
             .context("Failed to add general initial conditions")?;
 
         println!("✓ General initial conditions added\n");
 
-        if Prompts::confirm("Commit general initial conditions to git?")? {
-            builder
-                .commit("Add general initial conditions")
-                .context("Failed to commit general initial conditions")?;
-        }
+        builder
+            .commit("Add general initial conditions")
+            .context("Failed to commit general initial conditions")?;
     }
 
-    if Prompts::confirm("\nAdd initial conditions?")? {
+    if Prompts::confirm_with_default("\nAdd initial conditions?", true)? {
         builder
             .add_initial_conditions(None)
             .context("Failed to add initial conditions")?;
@@ -730,6 +726,7 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>) -> Result<()>
         }
     }
 
+    // TODO AGB: if validation is correct, commit automatically
     if Prompts::confirm("Commit metadata to git?")? {
         builder
             .commit(&commit_msg("Add test case metadata"))

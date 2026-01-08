@@ -283,7 +283,24 @@ impl Prompts {
             }
         }
 
-        let device_name = Self::input("Device name (e.g., eUICC)")?;
+        // Default device names to offer
+        let default_device_names =
+            vec!["eUICC".to_string(), "LPA".to_string(), "SM-DP+".to_string()];
+
+        let device_name = if Self::confirm("Use fuzzy search to select device name?")? {
+            match TestCaseFuzzyFinder::search_strings(
+                &default_device_names,
+                "Select device name (or ESC to enter manually): ",
+            )? {
+                Some(name) => name,
+                None => {
+                    println!("No selection made, entering manually.");
+                    Self::input("Device name (e.g., eUICC)")?
+                }
+            }
+        } else {
+            Self::input("Device name (e.g., eUICC)")?
+        };
 
         let mut conditions: Vec<String> = Vec::new();
 
@@ -421,6 +438,32 @@ impl Prompts {
             conditions.len()
         );
 
+        // Fuzzy search for device name from database
+        let device_names = db.get_device_names();
+        let device_name = if !device_names.is_empty() {
+            println!("\n=== Select Device Name ===");
+            println!(
+                "Available device names from database: {}\n",
+                device_names.len()
+            );
+
+            match TestCaseFuzzyFinder::search_strings(
+                device_names,
+                "Select device name (or ESC to enter manually): ",
+            )? {
+                Some(name) => name,
+                None => {
+                    println!("No device name selected, entering manually.");
+                    Self::input("Device name (e.g., eUICC)")?
+                }
+            }
+        } else {
+            println!("No device names found in database, using manual entry.");
+            Self::input("Device name (e.g., eUICC)")?
+        };
+
+        println!("\nSelected device: {}\n", device_name);
+
         let mut selected_conditions = Vec::new();
 
         loop {
@@ -454,13 +497,13 @@ impl Prompts {
             anyhow::bail!("No initial conditions selected");
         }
 
-        let euicc_conditions: Vec<Value> =
+        let conditions_values: Vec<Value> =
             selected_conditions.into_iter().map(Value::String).collect();
 
         let mut initial_cond_map = serde_yaml::Mapping::new();
         initial_cond_map.insert(
-            Value::String("eUICC".to_string()),
-            Value::Sequence(euicc_conditions),
+            Value::String(device_name),
+            Value::Sequence(conditions_values),
         );
 
         Ok(Value::Mapping(initial_cond_map))

@@ -11,6 +11,7 @@ use std::path::Path;
 pub struct ConditionDatabase {
     general_conditions: Vec<String>,
     initial_conditions: Vec<String>,
+    device_names: Vec<String>,
 }
 
 impl ConditionDatabase {
@@ -31,6 +32,7 @@ impl ConditionDatabase {
 
         let mut general_conditions_set = HashSet::new();
         let mut initial_conditions_set = HashSet::new();
+        let mut device_names_set = HashSet::new();
 
         for test_case in test_cases {
             for general_cond in test_case.general_initial_conditions {
@@ -43,25 +45,34 @@ impl ConditionDatabase {
                 initial_conditions_set.insert(euicc_cond);
             }
 
+            // Extract device name from initial_conditions structure
+            // The device name is "eUICC" by default but we should extract all device names used
+            device_names_set.insert("eUICC".to_string());
+
             // Also extract from sequence-level initial conditions
             for sequence in &test_case.test_sequences {
                 for seq_init_cond in &sequence.initial_conditions {
                     for euicc_cond in &seq_init_cond.euicc {
                         initial_conditions_set.insert(euicc_cond.clone());
                     }
+                    // Extract device names from sequence initial conditions too
+                    device_names_set.insert("eUICC".to_string());
                 }
             }
         }
 
         let mut general_conditions: Vec<String> = general_conditions_set.into_iter().collect();
         let mut initial_conditions: Vec<String> = initial_conditions_set.into_iter().collect();
+        let mut device_names: Vec<String> = device_names_set.into_iter().collect();
 
         general_conditions.sort();
         initial_conditions.sort();
+        device_names.sort();
 
         Ok(Self {
             general_conditions,
             initial_conditions,
+            device_names,
         })
     }
 
@@ -73,5 +84,10 @@ impl ConditionDatabase {
     /// Get all unique initial conditions from the database
     pub fn get_initial_conditions(&self) -> &[String] {
         &self.initial_conditions
+    }
+
+    /// Get all unique device names from the database
+    pub fn get_device_names(&self) -> &[String] {
+        &self.device_names
     }
 }
