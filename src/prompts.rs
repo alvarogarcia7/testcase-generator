@@ -382,7 +382,7 @@ impl<'a> Prompts<'a> {
         storage: &crate::storage::TestCaseStorage,
         editor_config: &EditorConfig,
     ) -> Result<Value> {
-        use crate::fuzzy::TestCaseFuzzyFinder;
+        use crate::collection_builder::ConditionCollectionBuilder;
 
         println!("\n=== General Initial Conditions ===\n");
 
@@ -468,42 +468,30 @@ impl<'a> Prompts<'a> {
             }
         }
 
-        // Create new general initial condition
+        // Create new general initial condition using ConditionCollectionBuilder
         println!("\nCreating new general initial condition...");
-        loop {
-            let template = r#"# General Initial Conditions
-# Example:
-# - eUICC:
-#     - "Condition 1"
-#     - "Condition 2"
 
-- eUICC:
-    - ""
-"#;
+        // Use ConditionCollectionBuilder for iterative condition collection with editor fallback
+        let condition_builder = ConditionCollectionBuilder::new_with_validator(validator.clone());
 
-            let edited_content = TestCaseEditor::edit_text(template, editor_config)
-                .context("Failed to open editor")?;
+        // Build conditions using iterative step-by-step workflow
+        let conditions_map = condition_builder.build_conditions()?;
 
-            let parsed: Value =
-                serde_yaml::from_str(&edited_content).context("Failed to parse YAML")?;
+        // Convert HashMap to the expected general initial conditions format: array of device mappings
+        let mut general_conditions_array = Vec::new();
 
-            let yaml_for_validation =
-                serde_yaml::to_string(&parsed).context("Failed to serialize for validation")?;
-
-            match validator.validate_partial_chunk(&yaml_for_validation) {
-                Ok(_) => {
-                    println!("✓ Valid structure");
-                    return Ok(parsed);
-                }
-                Err(e) => {
-                    println!("✗ Validation failed: {}", e);
-                    let retry = Self::confirm("Try again?")?;
-                    if !retry {
-                        anyhow::bail!("Validation failed, user cancelled");
-                    }
-                }
-            }
+        for (device_name, condition_strings) in conditions_map {
+            let mut device_map = serde_yaml::Mapping::new();
+            let condition_values: Vec<Value> =
+                condition_strings.into_iter().map(Value::String).collect();
+            device_map.insert(
+                Value::String(device_name),
+                Value::Sequence(condition_values),
+            );
+            general_conditions_array.push(Value::Mapping(device_map));
         }
+
+        Ok(Value::Sequence(general_conditions_array))
     }
 
     /// Prompt for initial conditions with device selection and iterative condition collection
@@ -624,6 +612,8 @@ impl<'a> Prompts<'a> {
         validator: &SchemaValidator,
         editor_config: &EditorConfig,
     ) -> Result<Value> {
+        use crate::collection_builder::ConditionCollectionBuilder;
+
         println!("\n=== General Initial Conditions (from database) ===\n");
 
         let db = ConditionDatabase::load_from_directory(database_path)
@@ -642,55 +632,31 @@ impl<'a> Prompts<'a> {
             conditions.len()
         );
 
-        let mut selected_conditions = Vec::new();
+        // Use ConditionCollectionBuilder for iterative step-by-step condition collection
+        let condition_builder =
+            ConditionCollectionBuilder::new_with_database_and_validator(&db, validator.clone());
 
-        loop {
-            match TestCaseFuzzyFinder::search_strings(
-                conditions,
-                "Select condition (ESC to finish): ",
-            )? {
-                FuzzySearchResult::Selected(condition) => {
-                    selected_conditions.push(condition.clone());
-                    println!("✓ Added: {}\n", condition);
+        // Build conditions using iterative workflow with fuzzy search from database
+        let conditions_map = condition_builder
+            .build_conditions_from_database()
+            .or_else(|_| {
+                println!("Falling back to manual entry...\n");
+                condition_builder.build_conditions()
+            })?;
 
-                    if !Self::confirm("Add another general initial condition?")? {
-                        break;
-                    }
-                }
-                FuzzySearchResult::Cancelled => {
-                    if selected_conditions.is_empty() {
-                        println!("No conditions selected.");
-                        if Self::confirm("Use manual entry instead?")? {
-                            return Self::prompt_general_initial_conditions(
-                                None,
-                                validator,
-                                editor_config,
-                            );
-                        }
-                    }
-                    break;
-                }
-                FuzzySearchResult::Error(e) => {
-                    println!("✗ Search error: {}", e);
-                    break;
-                }
-            }
+        // Convert HashMap to the expected general initial conditions format: array of device mappings
+        let mut general_conditions_array = Vec::new();
+
+        for (device_name, condition_strings) in conditions_map {
+            let mut device_map = serde_yaml::Mapping::new();
+            let condition_values: Vec<Value> =
+                condition_strings.into_iter().map(Value::String).collect();
+            device_map.insert(
+                Value::String(device_name),
+                Value::Sequence(condition_values),
+            );
+            general_conditions_array.push(Value::Mapping(device_map));
         }
-
-        if selected_conditions.is_empty() {
-            anyhow::bail!("No general initial conditions selected");
-        }
-
-        let euicc_conditions: Vec<Value> =
-            selected_conditions.into_iter().map(Value::String).collect();
-
-        let mut general_cond_map = serde_yaml::Mapping::new();
-        general_cond_map.insert(
-            Value::String("eUICC".to_string()),
-            Value::Sequence(euicc_conditions),
-        );
-
-        let general_conditions_array = vec![Value::Mapping(general_cond_map)];
 
         Ok(Value::Sequence(general_conditions_array))
     }
@@ -701,6 +667,8 @@ impl<'a> Prompts<'a> {
         database_path: P,
         validator: &SchemaValidator,
     ) -> Result<Value> {
+        use crate::collection_builder::ConditionCollectionBuilder;
+
         println!("\n=== Initial Conditions (from database) ===\n");
 
         let db = ConditionDatabase::load_from_directory(database_path)
@@ -719,74 +687,31 @@ impl<'a> Prompts<'a> {
             conditions.len()
         );
 
-        // Fuzzy search for device name from database
-        let device_names = db.get_device_names();
-        let device_name = if !device_names.is_empty() {
-            println!("\n=== Select Device Name ===");
-            println!(
-                "Available device names from database: {}\n",
-                device_names.len()
-            );
+        // Use ConditionCollectionBuilder for iterative step-by-step condition collection
+        let condition_builder =
+            ConditionCollectionBuilder::new_with_database_and_validator(&db, validator.clone());
 
-            match TestCaseFuzzyFinder::search_strings(
-                device_names,
-                "Select device name (or ESC to enter manually): ",
-            )? {
-                FuzzySearchResult::Selected(name) => name,
-                FuzzySearchResult::Cancelled | FuzzySearchResult::Error(_) => {
-                    println!("No device name selected, entering manually.");
-                    Self::input("Device name (e.g., eUICC)")?
-                }
-            }
-        } else {
-            println!("No device names found in database, using manual entry.");
-            Self::input("Device name (e.g., eUICC)")?
-        };
+        // Build conditions using iterative workflow with fuzzy search from database
+        let conditions_map = condition_builder
+            .build_conditions_from_database()
+            .or_else(|_| {
+                println!("Falling back to manual entry...\n");
+                condition_builder.build_conditions()
+            })?;
 
-        println!("\nSelected device: {}\n", device_name);
-
-        let mut selected_conditions = Vec::new();
-
-        loop {
-            match TestCaseFuzzyFinder::search_strings(
-                conditions,
-                "Select condition (ESC to finish): ",
-            )? {
-                FuzzySearchResult::Selected(condition) => {
-                    selected_conditions.push(condition.clone());
-                    println!("✓ Added: {}\n", condition);
-
-                    if !Self::confirm("Add another initial condition?")? {
-                        break;
-                    }
-                }
-                FuzzySearchResult::Cancelled => {
-                    if selected_conditions.is_empty() {
-                        println!("No conditions selected.");
-                        if Self::confirm("Use manual entry instead?")? {
-                            return self.prompt_initial_conditions(None, validator);
-                        }
-                    }
-                    break;
-                }
-                FuzzySearchResult::Error(e) => {
-                    println!("✗ Search error: {}", e);
-                    break;
-                }
-            }
-        }
-
-        if selected_conditions.is_empty() {
-            anyhow::bail!("No initial conditions selected");
-        }
-
-        let conditions_values: Vec<Value> =
-            selected_conditions.into_iter().map(Value::String).collect();
+        // Convert HashMap to the expected initial conditions format: single device mapping
+        // Take the first (and typically only) device entry
+        let (device_name, condition_strings) = conditions_map
+            .into_iter()
+            .next()
+            .ok_or_else(|| anyhow::anyhow!("No conditions collected"))?;
 
         let mut initial_cond_map = serde_yaml::Mapping::new();
+        let condition_values: Vec<Value> =
+            condition_strings.into_iter().map(Value::String).collect();
         initial_cond_map.insert(
             Value::String(device_name),
-            Value::Sequence(conditions_values),
+            Value::Sequence(condition_values),
         );
 
         Ok(Value::Mapping(initial_cond_map))

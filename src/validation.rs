@@ -10,6 +10,17 @@ pub struct SchemaValidator {
     schema_value: JsonValue,
 }
 
+impl Clone for SchemaValidator {
+    fn clone(&self) -> Self {
+        let schema = JSONSchema::compile(&self.schema_value)
+            .expect("Failed to recompile JSON schema during clone");
+        Self {
+            schema,
+            schema_value: self.schema_value.clone(),
+        }
+    }
+}
+
 impl SchemaValidator {
     pub fn new() -> Result<Self> {
         let schema_path = Path::new("data/schema.json");
