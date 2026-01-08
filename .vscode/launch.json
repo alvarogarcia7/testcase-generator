@@ -1,0 +1,116 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Launch",
+            "program": "${workspaceFolder}/target/debug/testcase-manager",
+            "args": [
+                "create-interactive"
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Custom launch",
+            "targetCreateCommands": [
+                "target create ${workspaceFolder}/main"
+            ],
+            "processCreateCommands": [
+                "settings set target.run-args create-interactive",
+                "process launch"
+            ]
+        },
+        {
+            "name": "Debug unit tests in library 'testcase_manager'",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": [
+                    "test"
+                ]
+            }
+        },
+        {
+            "name": "Debug executable 'testcase-manager'",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": [
+                    "run",
+                    "--bin=testcase-manager",
+                    "--",
+                    "create-interactive"
+                ]
+            },
+            "args": [],
+            // "externalConsole": true,
+            "console": "integratedTerminal",
+            "env": {
+                "TERM": "xterm-256color",
+            }
+        },
+        {
+            "name": "Debug unit tests in executable 'testcase-manager'",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--bin=testcase-manager"
+                ]
+            },
+        },
+        {
+            "name": "Debug example 'interactive_workflow'",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": [
+                    "run",
+                    "--example=interactive_workflow"
+                ]
+            },
+            "args": []
+        },
+        {
+            "name": "Debug unit tests in example 'interactive_workflow'",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--example=interactive_workflow"
+                ]
+            }
+        },
+        {
+            "name": "Debug example 'validate_gsma_schema'",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": [
+                    "run",
+                    "--example=validate_gsma_schema"
+                ]
+            },
+            "args": []
+        },
+        {
+            "name": "Debug unit tests in example 'validate_gsma_schema'",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--example=validate_gsma_schema"
+                ]
+            }
+        }
+    ]
+}

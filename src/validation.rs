@@ -6,6 +6,7 @@ use std::path::Path;
 
 pub struct SchemaValidator {
     schema: JSONSchema,
+    schema_value: JsonValue,
 }
 
 impl SchemaValidator {
@@ -20,10 +21,103 @@ impl SchemaValidator {
         let schema = JSONSchema::compile(&schema_value)
             .map_err(|e| anyhow::anyhow!("Failed to compile JSON schema: {}", e))?;
 
-        Ok(Self { schema })
+        Ok(Self {
+            schema,
+            schema_value,
+        })
     }
 
+    /// Validate a chunk of input data against the schema
+    ///
+    /// This method validates only the provided chunk without requiring all fields.
+    /// It extracts the properties from the chunk and validates each property individually
+    /// against the schema's property definitions.
+    ///
+    /// # Arguments
+    /// * `yaml_content` - YAML string containing the chunk to validate
+    ///
+    /// # Returns
+    /// * `Ok(())` if the chunk is valid according to the schema
+    /// * `Err` with validation errors if the chunk is invalid
     pub fn validate_chunk(&self, yaml_content: &str) -> Result<()> {
+        let yaml_value: serde_yaml::Value =
+            serde_yaml::from_str(yaml_content).context("Failed to parse YAML content")?;
+
+        let json_value: JsonValue =
+            serde_json::to_value(&yaml_value).context("Failed to convert YAML to JSON")?;
+
+        // For chunk validation, we validate each property against its schema definition
+        // without requiring all properties to be present
+        if let JsonValue::Object(obj) = &json_value {
+            let mut errors = Vec::new();
+
+            // Get the schema properties from schema_value
+            if let Some(JsonValue::Object(schema_obj)) = self.schema_value.get("properties") {
+                for (key, value) in obj.iter() {
+                    // Check if this property exists in the schema
+                    if let Some(property_schema) = schema_obj.get(key) {
+                        // Compile a schema for just this property
+                        let property_schema_obj = serde_json::json!({
+                            "type": "object",
+                            "properties": {
+                                key: property_schema
+                            },
+                            "required": [key]
+                        });
+
+                        if let Ok(prop_schema) = JSONSchema::compile(&property_schema_obj) {
+                            let test_obj = serde_json::json!({
+                                key: value
+                            });
+
+                            let validation_result = prop_schema.validate(&test_obj);
+                            match validation_result {
+                                Ok(_) => {
+                                    println!("Success for field: {:?}", key)
+                                }
+                                Err(validation_errors) => {
+                                    let error_list: Vec<_> = validation_errors.collect();
+                                    for e in error_list {
+                                        let path = if e.instance_path.to_string().is_empty() {
+                                            key.to_string()
+                                        } else {
+                                            format!("{}{}", key, e.instance_path)
+                                        };
+                                        errors.push(format!(
+                                            "  - Path '{}': {}",
+                                            path,
+                                            format_validation_error(&e)
+                                        ));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if !errors.is_empty() {
+                anyhow::bail!("Schema validation failed:\n{}", errors.join("\n"));
+            } else {
+                println!("For this chunk, all fields are correct")
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Validate a complete test case document against the schema
+    ///
+    /// This method validates that all required fields are present and valid.
+    /// Use this for complete test case documents.
+    ///
+    /// # Arguments
+    /// * `yaml_content` - YAML string containing the complete document
+    ///
+    /// # Returns
+    /// * `Ok(())` if the complete document is valid
+    /// * `Err` with validation errors if the document is invalid or missing required fields
+    pub fn validate_complete(&self, yaml_content: &str) -> Result<()> {
         let yaml_value: serde_yaml::Value =
             serde_yaml::from_str(yaml_content).context("Failed to parse YAML content")?;
 
@@ -50,6 +144,17 @@ impl SchemaValidator {
         Ok(())
     }
 
+    /// Validate a partial chunk, allowing empty objects
+    ///
+    /// This is a convenience method that allows empty objects to pass validation.
+    /// For non-empty objects, it delegates to validate_chunk.
+    ///
+    /// # Arguments
+    /// * `yaml_content` - YAML string containing the partial chunk
+    ///
+    /// # Returns
+    /// * `Ok(())` if the chunk is valid or empty
+    /// * `Err` with validation errors if the chunk is invalid
     pub fn validate_partial_chunk(&self, yaml_content: &str) -> Result<()> {
         let yaml_value: serde_yaml::Value =
             serde_yaml::from_str(yaml_content).context("Failed to parse YAML content")?;
@@ -198,7 +303,7 @@ test_sequences:
           output: "Success"
 "#;
 
-        let result = validator.validate_chunk(yaml_content);
+        let result = validator.validate_complete(yaml_content);
         assert!(
             result.is_ok(),
             "Validation should succeed: {:?}",
@@ -215,10 +320,31 @@ requirement: XXX100
 item: 1
 "#;
 
-        let result = validator.validate_chunk(yaml_content);
+        let result = validator.validate_complete(yaml_content);
         assert!(result.is_err());
         let error_msg = result.unwrap_err().to_string();
         assert!(error_msg.contains("Missing required property") || error_msg.contains("required"));
+    }
+
+    #[test]
+    fn test_validate_chunk_metadata_only() {
+        let validator = SchemaValidator::new().unwrap();
+
+        // Validate only metadata fields as a chunk (not requiring all other fields)
+        let yaml_content = r#"
+requirement: XXX100
+item: 1
+tc: 4
+id: 'TC001'
+description: 'Test description'
+"#;
+
+        let result = validator.validate_chunk(yaml_content);
+        assert!(
+            result.is_ok(),
+            "Chunk validation should succeed for metadata only: {:?}",
+            result.err()
+        );
     }
 
     #[test]
@@ -281,10 +407,30 @@ test_sequences:
           output: "Success"
 "#;
 
-        let result = validator.validate_chunk(yaml_content);
+        let result = validator.validate_complete(yaml_content);
         assert!(result.is_err());
         let error_msg = result.unwrap_err().to_string();
         assert!(error_msg.contains("Invalid type") || error_msg.contains("type"));
+    }
+
+    #[test]
+    fn test_validate_chunk_wrong_type() {
+        let validator = SchemaValidator::new().unwrap();
+
+        // Test that chunk validation catches type errors
+        let yaml_content = r#"
+requirement: XXX100
+item: "not_an_integer"
+"#;
+
+        let result = validator.validate_chunk(yaml_content);
+        assert!(result.is_err());
+        let error_msg = result.unwrap_err().to_string();
+        assert!(
+            error_msg.contains("Invalid type")
+                || error_msg.contains("type")
+                || error_msg.contains("item")
+        );
     }
 
     #[test]
@@ -422,5 +568,81 @@ eUICC: []
 
         let result = validator.validate_initial_conditions(&initial_conditions);
         assert!(result.is_ok(), "Empty array should be valid");
+    }
+
+    #[test]
+    fn test_validate_chunk_single_field() {
+        let validator = SchemaValidator::new().unwrap();
+
+        // Test validating just one field
+        let yaml_content = r#"
+requirement: XXX100
+"#;
+
+        let result = validator.validate_chunk(yaml_content);
+        assert!(
+            result.is_ok(),
+            "Should validate single field chunk: {:?}",
+            result.err()
+        );
+    }
+
+    #[test]
+    fn test_validate_chunk_multiple_fields() {
+        let validator = SchemaValidator::new().unwrap();
+
+        // Test validating multiple fields but not all
+        let yaml_content = r#"
+requirement: XXX100
+item: 1
+tc: 4
+"#;
+
+        let result = validator.validate_chunk(yaml_content);
+        assert!(
+            result.is_ok(),
+            "Should validate multiple field chunk: {:?}",
+            result.err()
+        );
+    }
+
+    #[test]
+    fn test_validate_chunk_general_initial_conditions_only() {
+        let validator = SchemaValidator::new().unwrap();
+
+        // Test validating just general_initial_conditions
+        let yaml_content = r#"
+general_initial_conditions:
+  - eUICC:
+      - "Condition 1"
+      - "Condition 2"
+"#;
+
+        let result = validator.validate_chunk(yaml_content);
+        assert!(
+            result.is_ok(),
+            "Should validate general_initial_conditions chunk: {:?}",
+            result.err()
+        );
+    }
+
+    #[test]
+    fn test_validate_chunk_initial_conditions_only() {
+        let validator = SchemaValidator::new().unwrap();
+
+        // Test validating just initial_conditions
+        let yaml_content = r#"
+initial_conditions:
+  eUICC:
+    - "Condition 1"
+    - "Condition 2"
+"#;
+
+        let result = validator.validate_chunk(yaml_content);
+        assert!(
+            result.is_ok(),
+            "Should validate initial_conditions chunk: {:?}",
+            result.err()
+        );
     }
 }
