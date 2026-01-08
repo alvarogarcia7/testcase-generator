@@ -1,9 +1,12 @@
+use crate::database::ConditionDatabase;
 use crate::editor::TestCaseEditor;
+use crate::fuzzy::TestCaseFuzzyFinder;
 use crate::validation::SchemaValidator;
 use anyhow::{Context, Result};
 use dialoguer::{theme::ColorfulTheme, Confirm, Input, MultiSelect, Select};
 use indexmap::IndexMap;
 use serde_yaml::Value;
+use std::path::Path;
 
 /// Interactive prompt utilities
 pub struct Prompts;
@@ -150,6 +153,7 @@ impl Prompts {
     /// Prompt for test case metadata fields
     pub fn prompt_metadata() -> Result<TestCaseMetadata> {
         println!("\n=== Test Case Metadata ===\n");
+        let validator = SchemaValidator::new()?;
 
         let requirement = Self::input("Requirement")?;
         let item = Self::input_integer("Item")?;
@@ -157,13 +161,17 @@ impl Prompts {
         let id = Self::input("ID")?;
         let description = Self::input("Description")?;
 
-        Ok(TestCaseMetadata {
+        let metadata = TestCaseMetadata {
             requirement,
             item,
             tc,
             id,
             description,
-        })
+        };
+
+        metadata.validate_recursive(&validator, None).unwrap();
+
+        Ok(metadata)
     }
 
     /// Prompt for test case metadata fields with recovery support
@@ -323,6 +331,144 @@ impl Prompts {
 
         Ok(initial_conditions_value)
     }
+
+    /// Prompt for general initial conditions from database with fuzzy search
+    pub fn prompt_general_initial_conditions_from_database<P: AsRef<Path>>(
+        database_path: P,
+        validator: &SchemaValidator,
+    ) -> Result<Value> {
+        println!("\n=== General Initial Conditions (from database) ===\n");
+
+        let db = ConditionDatabase::load_from_directory(database_path)
+            .context("Failed to load condition database")?;
+
+        let conditions = db.get_general_conditions();
+
+        if conditions.is_empty() {
+            println!("No general initial conditions found in database.");
+            println!("Falling back to manual entry.\n");
+            return Self::prompt_general_initial_conditions(None, validator);
+        }
+
+        println!(
+            "Loaded {} unique general initial conditions from database\n",
+            conditions.len()
+        );
+
+        let mut selected_conditions = Vec::new();
+
+        loop {
+            let selected = TestCaseFuzzyFinder::search_strings(
+                conditions,
+                "Select condition (ESC to finish): ",
+            )?;
+
+            match selected {
+                Some(condition) => {
+                    selected_conditions.push(condition.clone());
+                    println!("✓ Added: {}\n", condition);
+
+                    if !Self::confirm("Add another general initial condition?")? {
+                        break;
+                    }
+                }
+                None => {
+                    if selected_conditions.is_empty() {
+                        println!("No conditions selected.");
+                        if Self::confirm("Use manual entry instead?")? {
+                            return Self::prompt_general_initial_conditions(None, validator);
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+
+        if selected_conditions.is_empty() {
+            anyhow::bail!("No general initial conditions selected");
+        }
+
+        let euicc_conditions: Vec<Value> =
+            selected_conditions.into_iter().map(Value::String).collect();
+
+        let mut general_cond_map = serde_yaml::Mapping::new();
+        general_cond_map.insert(
+            Value::String("eUICC".to_string()),
+            Value::Sequence(euicc_conditions),
+        );
+
+        let general_conditions_array = vec![Value::Mapping(general_cond_map)];
+
+        Ok(Value::Sequence(general_conditions_array))
+    }
+
+    /// Prompt for initial conditions from database with fuzzy search
+    pub fn prompt_initial_conditions_from_database<P: AsRef<Path>>(
+        database_path: P,
+        validator: &SchemaValidator,
+    ) -> Result<Value> {
+        println!("\n=== Initial Conditions (from database) ===\n");
+
+        let db = ConditionDatabase::load_from_directory(database_path)
+            .context("Failed to load condition database")?;
+
+        let conditions = db.get_initial_conditions();
+
+        if conditions.is_empty() {
+            println!("No initial conditions found in database.");
+            println!("Falling back to manual entry.\n");
+            return Self::prompt_initial_conditions(None, validator);
+        }
+
+        println!(
+            "Loaded {} unique initial conditions from database\n",
+            conditions.len()
+        );
+
+        let mut selected_conditions = Vec::new();
+
+        loop {
+            let selected = TestCaseFuzzyFinder::search_strings(
+                conditions,
+                "Select condition (ESC to finish): ",
+            )?;
+
+            match selected {
+                Some(condition) => {
+                    selected_conditions.push(condition.clone());
+                    println!("✓ Added: {}\n", condition);
+
+                    if !Self::confirm("Add another initial condition?")? {
+                        break;
+                    }
+                }
+                None => {
+                    if selected_conditions.is_empty() {
+                        println!("No conditions selected.");
+                        if Self::confirm("Use manual entry instead?")? {
+                            return Self::prompt_initial_conditions(None, validator);
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+
+        if selected_conditions.is_empty() {
+            anyhow::bail!("No initial conditions selected");
+        }
+
+        let euicc_conditions: Vec<Value> =
+            selected_conditions.into_iter().map(Value::String).collect();
+
+        let mut initial_cond_map = serde_yaml::Mapping::new();
+        initial_cond_map.insert(
+            Value::String("eUICC".to_string()),
+            Value::Sequence(euicc_conditions),
+        );
+
+        Ok(Value::Mapping(initial_cond_map))
+    }
 }
 
 /// Metadata fields for a test case
@@ -385,7 +531,74 @@ impl TestCaseMetadata {
 
     /// Validate metadata chunk
     pub fn validate(&self, validator: &SchemaValidator) -> Result<()> {
-        let yaml_map = self.to_yaml();
+        self.validate_recursive(validator, None)
+    }
+
+    /// Validate metadata chunk with optional attribute specification for recursive validation
+    ///
+    /// # Arguments
+    /// * `validator` - The schema validator to use
+    /// * `attribute` - Optional attribute name to validate. If None, validates all attributes.
+    ///   Supports nested validation by validating one attribute at a time.
+    ///
+    /// # Example
+    /// ```ignore
+    /// // Validate all attributes
+    /// metadata.validate_recursive(validator, None)?;
+    ///
+    /// // Validate only the 'requirement' attribute
+    /// metadata.validate_recursive(validator, Some("requirement"))?;
+    ///
+    /// // Validate attributes recursively one by one
+    /// for attr in &["requirement", "item", "tc", "id", "description"] {
+    ///     metadata.validate_recursive(validator, Some(attr))?;
+    /// }
+    /// ```
+    pub fn validate_recursive(
+        &self,
+        validator: &SchemaValidator,
+        attribute: Option<&str>,
+    ) -> Result<()> {
+        let yaml_map = match attribute {
+            Some(attr_name) => {
+                // Validate only the specified attribute
+                let mut single_attr_map = IndexMap::new();
+
+                match attr_name {
+                    "requirement" => {
+                        single_attr_map.insert(
+                            "requirement".to_string(),
+                            Value::String(self.requirement.clone()),
+                        );
+                    }
+                    "item" => {
+                        single_attr_map.insert("item".to_string(), Value::Number(self.item.into()));
+                    }
+                    "tc" => {
+                        single_attr_map.insert("tc".to_string(), Value::Number(self.tc.into()));
+                    }
+                    "id" => {
+                        single_attr_map.insert("id".to_string(), Value::String(self.id.clone()));
+                    }
+                    "description" => {
+                        single_attr_map.insert(
+                            "description".to_string(),
+                            Value::String(self.description.clone()),
+                        );
+                    }
+                    _ => {
+                        anyhow::bail!("Unknown attribute '{}' for validation", attr_name);
+                    }
+                }
+
+                single_attr_map
+            }
+            None => {
+                // Validate all attributes
+                self.to_yaml()
+            }
+        };
+
         let yaml_value = Value::Mapping(serde_yaml::Mapping::from_iter(
             yaml_map.into_iter().map(|(k, v)| (Value::String(k), v)),
         ));
@@ -393,7 +606,39 @@ impl TestCaseMetadata {
         let yaml_str =
             serde_yaml::to_string(&yaml_value).context("Failed to serialize metadata")?;
 
-        validator.validate_partial_chunk(&yaml_str)
+        validator
+            .validate_partial_chunk(&yaml_str)
+            .context(match attribute {
+                Some(attr) => format!("Validation failed for attribute '{}'", attr),
+                None => "Validation failed for metadata".to_string(),
+            })
+    }
+
+    /// Validate all metadata attributes recursively, one at a time
+    ///
+    /// This method validates each attribute individually in sequence, which is useful
+    /// for identifying exactly which attribute is causing validation failures.
+    ///
+    /// # Arguments
+    /// * `validator` - The schema validator to use
+    ///
+    /// # Returns
+    /// * `Ok(())` if all attributes are valid
+    /// * `Err` with context about which attribute failed
+    pub fn validate_all_attributes_recursively(&self, validator: &SchemaValidator) -> Result<()> {
+        let attributes = ["requirement", "item", "tc", "id", "description"];
+
+        for attribute in &attributes {
+            self.validate_recursive(validator, Some(attribute))
+                .context(format!("Failed at attribute '{}'", attribute))?;
+        }
+
+        Ok(())
+    }
+
+    /// Get list of all attribute names that can be validated
+    pub fn get_validatable_attributes() -> Vec<&'static str> {
+        vec!["requirement", "item", "tc", "id", "description"]
     }
 }
 
@@ -526,5 +771,122 @@ mod tests {
         assert_eq!(original.tc, recovered.tc);
         assert_eq!(original.id, recovered.id);
         assert_eq!(original.description, recovered.description);
+    }
+
+    #[test]
+    fn test_validate_recursive_single_attribute() {
+        let metadata = TestCaseMetadata {
+            requirement: "XXX100".to_string(),
+            item: 1,
+            tc: 4,
+            id: "TC001".to_string(),
+            description: "Test description".to_string(),
+        };
+
+        let validator = crate::validation::SchemaValidator::new().unwrap();
+
+        // Should be able to validate individual attributes
+        assert!(metadata
+            .validate_recursive(&validator, Some("requirement"))
+            .is_ok());
+        assert!(metadata
+            .validate_recursive(&validator, Some("item"))
+            .is_ok());
+        assert!(metadata.validate_recursive(&validator, Some("tc")).is_ok());
+        assert!(metadata.validate_recursive(&validator, Some("id")).is_ok());
+        assert!(metadata
+            .validate_recursive(&validator, Some("description"))
+            .is_ok());
+    }
+
+    #[test]
+    fn test_validate_recursive_all_attributes() {
+        let metadata = TestCaseMetadata {
+            requirement: "XXX100".to_string(),
+            item: 1,
+            tc: 4,
+            id: "TC001".to_string(),
+            description: "Test description".to_string(),
+        };
+
+        let validator = crate::validation::SchemaValidator::new().unwrap();
+
+        // Should validate all attributes when None is passed
+        assert!(metadata.validate_recursive(&validator, None).is_ok());
+    }
+
+    #[test]
+    fn test_validate_recursive_unknown_attribute() {
+        let metadata = TestCaseMetadata {
+            requirement: "XXX100".to_string(),
+            item: 1,
+            tc: 4,
+            id: "TC001".to_string(),
+            description: "Test description".to_string(),
+        };
+
+        let validator = crate::validation::SchemaValidator::new().unwrap();
+
+        // Should fail for unknown attribute
+        let result = metadata.validate_recursive(&validator, Some("unknown_field"));
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Unknown attribute"));
+    }
+
+    #[test]
+    fn test_validate_all_attributes_recursively() {
+        let metadata = TestCaseMetadata {
+            requirement: "XXX100".to_string(),
+            item: 1,
+            tc: 4,
+            id: "TC001".to_string(),
+            description: "Test description".to_string(),
+        };
+
+        let validator = crate::validation::SchemaValidator::new().unwrap();
+
+        // Should validate all attributes one by one
+        assert!(metadata
+            .validate_all_attributes_recursively(&validator)
+            .is_ok());
+    }
+
+    #[test]
+    fn test_get_validatable_attributes() {
+        let attributes = TestCaseMetadata::get_validatable_attributes();
+
+        assert_eq!(attributes.len(), 5);
+        assert!(attributes.contains(&"requirement"));
+        assert!(attributes.contains(&"item"));
+        assert!(attributes.contains(&"tc"));
+        assert!(attributes.contains(&"id"));
+        assert!(attributes.contains(&"description"));
+    }
+
+    #[test]
+    fn test_validate_recursive_iterative() {
+        let metadata = TestCaseMetadata {
+            requirement: "XXX100".to_string(),
+            item: 1,
+            tc: 4,
+            id: "TC001".to_string(),
+            description: "Test description".to_string(),
+        };
+
+        let validator = crate::validation::SchemaValidator::new().unwrap();
+
+        // Validate each attribute recursively one at a time
+        for attribute in &["requirement", "item", "tc", "id", "description"] {
+            let result = metadata.validate_recursive(&validator, Some(attribute));
+            assert!(
+                result.is_ok(),
+                "Validation failed for attribute '{}': {:?}",
+                attribute,
+                result.err()
+            );
+        }
     }
 }

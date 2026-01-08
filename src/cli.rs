@@ -167,6 +167,28 @@ pub enum Commands {
         #[arg(short, long)]
         commit_prefix: Option<String>,
     },
+
+    /// Parse general initial conditions from database with fuzzy search
+    ParseGeneralConditions {
+        /// Path to the database file
+        #[arg(short, long, default_value = "data")]
+        database: String,
+
+        /// Path to the test cases directory
+        #[arg(short = 'p', long)]
+        path: Option<String>,
+    },
+
+    /// Parse initial conditions from database with fuzzy search
+    ParseInitialConditions {
+        /// Path to the database file
+        #[arg(short, long, default_value = "data")]
+        database: String,
+
+        /// Path to the test cases directory
+        #[arg(short = 'p', long)]
+        path: Option<String>,
+    },
 }
 
 #[derive(Subcommand)]

@@ -1,6 +1,18 @@
-# Step Collection Loop - Quick Reference
+# Test Case Manager - Quick Reference
 
 ## Command Line Usage
+
+### Parse Conditions from Database
+
+#### Parse General Initial Conditions
+```bash
+testcase-manager parse-general-conditions --database data
+```
+
+#### Parse Initial Conditions
+```bash
+testcase-manager parse-initial-conditions --database data
+```
 
 ### Build Complete Test Case with Steps
 ```bash
@@ -15,6 +27,109 @@ testcase-manager add-steps --sequence-id 1
 ### Build Sequences Only (No Steps)
 ```bash
 testcase-manager build-sequences
+```
+
+## Database-backed Condition Selection
+
+The database commands extract all unique conditions from existing test case YAML files in a directory, and allow you to add new conditions manually.
+
+### What Gets Extracted
+
+**General Initial Conditions:**
+- From `general_initial_conditions[].eUICC[]` fields
+- Across all test cases in the database directory
+
+**Initial Conditions:**
+- From `initial_conditions.eUICC[]` fields (top-level)
+- From `test_sequences[].initial_conditions[].eUICC[]` fields (sequence-level)
+- Across all test cases in the database directory
+
+### Interactive Selection Interface
+
+When adding conditions, you have three options:
+1. **Search from database (fuzzy search)**
+   - Type to filter conditions as you type
+   - Use arrow keys to navigate
+   - Press Enter to select
+   - Press ESC to cancel and return to menu
+   
+2. **Create new condition (manual entry)**
+   - Enter a new condition text directly
+   - Useful when the database doesn't have what you need
+   - New condition is added to your test case
+   
+3. **Finish selection**
+   - Complete the selection process
+   - Shows confirmation before saving
+
+### Current Selection Display
+- After each addition, see all selected conditions
+- Numbered list for easy review
+- Continue adding or finish when ready
+
+### Example Usage
+
+```bash
+# Parse general initial conditions from data directory
+testcase-manager parse-general-conditions --database data
+
+# Parse initial conditions from custom directory
+testcase-manager parse-initial-conditions --database /path/to/testcases
+```
+
+### Example Interactive Session
+
+```
+=== Current Selection: 0 condition(s) ===
+  (none)
+
+=== Add General Initial Condition ===
+Options:
+  1. Search from database (fuzzy search)
+  2. Create new condition (manual entry)
+  3. Finish selection
+
+Choice (1/2/3): 1
+
+[Fuzzy finder opens - type to search]
+> The profile PROFILE_OPERATIONAL1 is loaded
+
+✓ Added from database: The profile PROFILE_OPERATIONAL1 is loaded on the eUICC.
+
+=== Current Selection: 1 condition(s) ===
+  1. The profile PROFILE_OPERATIONAL1 is loaded on the eUICC.
+
+=== Add General Initial Condition ===
+Options:
+  1. Search from database (fuzzy search)
+  2. Create new condition (manual entry)
+  3. Finish selection
+
+Choice (1/2/3): 2
+
+Enter new condition: The SIM card is provisioned with test credentials
+
+✓ Added new condition: The SIM card is provisioned with test credentials
+
+=== Current Selection: 2 condition(s) ===
+  1. The profile PROFILE_OPERATIONAL1 is loaded on the eUICC.
+  2. The SIM card is provisioned with test credentials
+
+=== Add General Initial Condition ===
+Options:
+  1. Search from database (fuzzy search)
+  2. Create new condition (manual entry)
+  3. Finish selection
+
+Choice (1/2/3): 3
+
+✓ General initial conditions added to test case
+
+Save to test case? [y/N]: y
+✓ General initial conditions saved to: data/test_case.yaml
+
+Commit to git? [y/N]: y
+✓ Committed: Add general initial conditions
 ```
 
 ## Step Structure
@@ -124,11 +239,16 @@ Output: Authentication failed
 
 ## Tips
 
-1. **Reuse Descriptions**: Use fuzzy search to maintain consistency
-2. **Commit Often**: Commit after important steps for audit trail
-3. **Optional Fields**: Only add 'manual' and 'success' when needed
-4. **Clear Descriptions**: Make descriptions searchable and descriptive
-5. **Expected Fields**: Always provide clear result and output values
+1. **Reuse Conditions**: Use database parsing (option 1) to select from existing conditions for consistency
+2. **Create New When Needed**: Use manual entry (option 2) when the database doesn't have the exact condition you need
+3. **Review Before Saving**: The current selection display lets you verify all conditions before committing
+4. **Reuse Descriptions**: Use fuzzy search to maintain consistency across test cases
+5. **Commit Often**: Commit after important steps for audit trail
+6. **Optional Fields**: Only add 'manual' and 'success' when needed
+7. **Clear Descriptions**: Make descriptions searchable and descriptive
+8. **Expected Fields**: Always provide clear result and output values
+9. **Database Updates**: Newly added conditions are available in the database for future test cases
+10. **Cancel Anytime**: Press ESC in fuzzy search to cancel and return to menu without selecting
 
 ## Troubleshooting
 

@@ -1,3 +1,4 @@
+use crate::database::ConditionDatabase;
 use crate::git::GitManager;
 use crate::prompts::Prompts;
 use crate::recovery::{RecoveryManager, RecoveryState};
@@ -174,6 +175,156 @@ impl TestCaseBuilder {
         Ok(self)
     }
 
+    /// Add general initial conditions from database with fuzzy search
+    pub fn add_general_initial_conditions_from_database<P: AsRef<Path>>(
+        &mut self,
+        database_path: P,
+    ) -> Result<&mut Self> {
+        use crate::fuzzy::TestCaseFuzzyFinder;
+
+        let db = ConditionDatabase::load_from_directory(database_path)
+            .context("Failed to load condition database")?;
+
+        let conditions = db.get_general_conditions();
+
+        if conditions.is_empty() {
+            println!("No general initial conditions found in database.");
+            return Ok(self);
+        }
+
+        println!(
+            "Loaded {} unique general initial conditions from database\n",
+            conditions.len()
+        );
+
+        let mut selected_conditions = Vec::new();
+
+        loop {
+            println!("\n=== Select General Initial Condition ===");
+
+            let selected = TestCaseFuzzyFinder::search_strings(
+                conditions,
+                "Select condition (ESC to finish): ",
+            )?;
+
+            match selected {
+                Some(condition) => {
+                    selected_conditions.push(condition.clone());
+                    println!("✓ Added: {}\n", condition);
+
+                    if !Prompts::confirm("Add another general initial condition?")? {
+                        break;
+                    }
+                }
+                None => {
+                    if selected_conditions.is_empty() {
+                        println!("No conditions selected.");
+                        if !Prompts::confirm("Continue without general initial conditions?")? {
+                            continue;
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+
+        if !selected_conditions.is_empty() {
+            let euicc_conditions: Vec<Value> =
+                selected_conditions.into_iter().map(Value::String).collect();
+
+            let mut general_cond_map = serde_yaml::Mapping::new();
+            general_cond_map.insert(
+                Value::String("eUICC".to_string()),
+                Value::Sequence(euicc_conditions),
+            );
+
+            let general_conditions_array = vec![Value::Mapping(general_cond_map)];
+
+            self.structure.insert(
+                "general_initial_conditions".to_string(),
+                Value::Sequence(general_conditions_array),
+            );
+
+            println!("\n✓ General initial conditions added to test case");
+        }
+
+        Ok(self)
+    }
+
+    /// Add initial conditions from database with fuzzy search
+    pub fn add_initial_conditions_from_database<P: AsRef<Path>>(
+        &mut self,
+        database_path: P,
+    ) -> Result<&mut Self> {
+        use crate::fuzzy::TestCaseFuzzyFinder;
+
+        let db = ConditionDatabase::load_from_directory(database_path)
+            .context("Failed to load condition database")?;
+
+        let conditions = db.get_initial_conditions();
+
+        if conditions.is_empty() {
+            println!("No initial conditions found in database.");
+            return Ok(self);
+        }
+
+        println!(
+            "Loaded {} unique initial conditions from database\n",
+            conditions.len()
+        );
+
+        let mut selected_conditions = Vec::new();
+
+        loop {
+            println!("\n=== Select Initial Condition ===");
+
+            let selected = TestCaseFuzzyFinder::search_strings(
+                conditions,
+                "Select condition (ESC to finish): ",
+            )?;
+
+            match selected {
+                Some(condition) => {
+                    selected_conditions.push(condition.clone());
+                    println!("✓ Added: {}\n", condition);
+
+                    if !Prompts::confirm("Add another initial condition?")? {
+                        break;
+                    }
+                }
+                None => {
+                    if selected_conditions.is_empty() {
+                        println!("No conditions selected.");
+                        if !Prompts::confirm("Continue without initial conditions?")? {
+                            continue;
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+
+        if !selected_conditions.is_empty() {
+            let euicc_conditions: Vec<Value> =
+                selected_conditions.into_iter().map(Value::String).collect();
+
+            let mut initial_cond_map = serde_yaml::Mapping::new();
+            initial_cond_map.insert(
+                Value::String("eUICC".to_string()),
+                Value::Sequence(euicc_conditions),
+            );
+
+            self.structure.insert(
+                "initial_conditions".to_string(),
+                Value::Mapping(initial_cond_map),
+            );
+
+            println!("\n✓ Initial conditions added to test case");
+        }
+
+        Ok(self)
+    }
+
     /// Add a custom field with validation
     pub fn add_field(&mut self, key: String, value: Value) -> Result<&mut Self> {
         self.structure.insert(key, value);
@@ -313,7 +464,57 @@ impl TestCaseBuilder {
         let add_initial_conditions =
             Prompts::confirm("\nAdd sequence-specific initial conditions?")?;
         let initial_conditions = if add_initial_conditions {
-            Some(Prompts::prompt_initial_conditions(None, &self.validator)?)
+            if Prompts::confirm("Use database for initial conditions?")? {
+                let database_path = Prompts::input_with_default("Database path", "data")?;
+
+                let db = ConditionDatabase::load_from_directory(&database_path)
+                    .context("Failed to load condition database")?;
+
+                let conditions = db.get_initial_conditions();
+
+                if !conditions.is_empty() {
+                    let mut selected_conditions = Vec::new();
+
+                    loop {
+                        let selected = TestCaseFuzzyFinder::search_strings(
+                            conditions,
+                            "Select condition (ESC to finish): ",
+                        )?;
+
+                        match selected {
+                            Some(condition) => {
+                                selected_conditions.push(condition.clone());
+                                println!("✓ Added: {}", condition);
+
+                                if !Prompts::confirm("Add another condition?")? {
+                                    break;
+                                }
+                            }
+                            None => break,
+                        }
+                    }
+
+                    if !selected_conditions.is_empty() {
+                        let euicc_conditions: Vec<Value> =
+                            selected_conditions.into_iter().map(Value::String).collect();
+
+                        let mut initial_cond_map = serde_yaml::Mapping::new();
+                        initial_cond_map.insert(
+                            Value::String("eUICC".to_string()),
+                            Value::Sequence(euicc_conditions),
+                        );
+
+                        Some(Value::Mapping(initial_cond_map))
+                    } else {
+                        None
+                    }
+                } else {
+                    println!("No conditions in database, using manual entry.");
+                    Some(Prompts::prompt_initial_conditions(None, &self.validator)?)
+                }
+            } else {
+                Some(Prompts::prompt_initial_conditions(None, &self.validator)?)
+            }
         } else {
             None
         };

@@ -2,8 +2,8 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use testcase_manager::{
     cli::{Cli, Commands, GitCommands},
-    GitManager, Prompts, TestCase, TestCaseBuilder, TestCaseEditor, TestCaseFuzzyFinder,
-    TestCaseMetadata, TestCaseStorage, TestSuite,
+    ConditionDatabase, GitManager, Prompts, TestCase, TestCaseBuilder, TestCaseEditor,
+    TestCaseFuzzyFinder, TestCaseMetadata, TestCaseStorage, TestSuite,
 };
 
 fn main() -> Result<()> {
@@ -87,6 +87,16 @@ fn main() -> Result<()> {
             commit_prefix,
         } => {
             handle_complete(&output, commit_prefix.as_deref())?;
+        }
+
+        Commands::ParseGeneralConditions { database, path } => {
+            let work_path = path.as_deref().unwrap_or(&cli.path);
+            handle_parse_general_conditions(&database, work_path)?;
+        }
+
+        Commands::ParseInitialConditions { database, path } => {
+            let work_path = path.as_deref().unwrap_or(&cli.path);
+            handle_parse_initial_conditions(&database, work_path)?;
         }
     }
 
@@ -980,6 +990,253 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>) -> Result<()>
     println!("╔══════════════════════════════════════════════════════╗");
     println!("║         Test Case Workflow Completed!               ║");
     println!("╚══════════════════════════════════════════════════════╝");
+
+    Ok(())
+}
+
+fn handle_parse_general_conditions(database_path: &str, work_path: &str) -> Result<()> {
+    // TODO AGB: Create function to print title
+    println!("\n╔═══════════════════════════════════════════════╗");
+    println!("║   Parse General Initial Conditions           ║");
+    println!("╚═══════════════════════════════════════════════╝\n");
+
+    let db = ConditionDatabase::load_from_directory(database_path)
+        .context("Failed to load condition database")?;
+
+    let conditions = db.get_general_conditions();
+
+    if conditions.is_empty() {
+        println!("No general initial conditions found in database.");
+        return Ok(());
+    }
+
+    println!(
+        "Loaded {} unique general initial conditions from database\n",
+        conditions.len()
+    );
+
+    let mut builder = TestCaseBuilder::new_with_recovery(work_path)
+        .context("Failed to create test case builder")?;
+
+    builder.add_metadata().context("Failed to add metadata")?;
+
+    println!("✓ Metadata added to structure\n");
+
+    let mut selected_conditions = Vec::new();
+
+    loop {
+        println!(
+            "\n=== Current Selection: {} condition(s) ===",
+            selected_conditions.len()
+        );
+        if !selected_conditions.is_empty() {
+            for (idx, cond) in selected_conditions.iter().enumerate() {
+                println!("  {}. {}", idx + 1, cond);
+            }
+        } else {
+            println!("  (none)");
+        }
+
+        println!("\n=== Add General Initial Condition ===");
+        println!("Options:");
+        println!("  1. Search from database (fuzzy search)");
+        println!("  2. Create new condition (manual entry)");
+        println!("  3. Finish selection");
+
+        let choice = Prompts::input("\nChoice (1/2/3)")?;
+
+        match choice.trim() {
+            "1" => {
+                let selected = TestCaseFuzzyFinder::search_strings(
+                    conditions,
+                    "Select condition (ESC to cancel): ",
+                )?;
+
+                if let Some(condition) = selected {
+                    selected_conditions.push(condition.clone());
+                    println!("✓ Added from database: {}\n", condition);
+                }
+            }
+            "2" => {
+                let new_condition = Prompts::input("Enter new condition")?;
+                if !new_condition.trim().is_empty() {
+                    selected_conditions.push(new_condition.clone());
+                    println!("✓ Added new condition: {}\n", new_condition);
+                }
+            }
+            "3" => {
+                if selected_conditions.is_empty() {
+                    println!("No conditions selected.");
+                    if !Prompts::confirm("Continue without general initial conditions?")? {
+                        continue;
+                    }
+                }
+                break;
+            }
+            _ => {
+                println!("Invalid choice. Please enter 1, 2, or 3.");
+            }
+        }
+    }
+
+    if !selected_conditions.is_empty() {
+        use serde_yaml::Value;
+
+        let euicc_conditions: Vec<Value> =
+            selected_conditions.into_iter().map(Value::String).collect();
+
+        let mut general_cond_map = serde_yaml::Mapping::new();
+        general_cond_map.insert(
+            Value::String("eUICC".to_string()),
+            Value::Sequence(euicc_conditions),
+        );
+
+        let general_conditions_array = vec![Value::Mapping(general_cond_map)];
+
+        builder.structure_mut().insert(
+            "general_initial_conditions".to_string(),
+            Value::Sequence(general_conditions_array),
+        );
+
+        println!("\n✓ General initial conditions added to test case");
+    }
+
+    let file_path = builder.save().context("Failed to save test case")?;
+
+    println!("\n╔═══════════════════════════════════════════════╗");
+    println!("║    Test Case Saved Successfully               ║");
+    println!("╚═══════════════════════════════════════════════╝");
+    println!("\nSaved to: {}", file_path.display());
+
+    if Prompts::confirm("\nCommit to git?")? {
+        builder
+            .commit("Add general initial conditions")
+            .context("Failed to commit")?;
+    }
+
+    builder.delete_recovery_file()?;
+
+    Ok(())
+}
+
+fn handle_parse_initial_conditions(database_path: &str, work_path: &str) -> Result<()> {
+    println!("\n╔═══════════════════════════════════════════════╗");
+    println!("║   Parse Initial Conditions                    ║");
+    println!("╚═══════════════════════════════════════════════╝\n");
+
+    let db = ConditionDatabase::load_from_directory(database_path)
+        .context("Failed to load condition database")?;
+
+    let conditions = db.get_initial_conditions();
+
+    if conditions.is_empty() {
+        println!("No initial conditions found in database.");
+        return Ok(());
+    }
+
+    println!(
+        "Loaded {} unique initial conditions from database\n",
+        conditions.len()
+    );
+
+    let mut builder = TestCaseBuilder::new_with_recovery(work_path)
+        .context("Failed to create test case builder")?;
+
+    builder.add_metadata().context("Failed to add metadata")?;
+
+    println!("✓ Metadata added to structure\n");
+
+    let mut selected_conditions = Vec::new();
+
+    loop {
+        println!(
+            "\n=== Current Selection: {} condition(s) ===",
+            selected_conditions.len()
+        );
+        if !selected_conditions.is_empty() {
+            for (idx, cond) in selected_conditions.iter().enumerate() {
+                println!("  {}. {}", idx + 1, cond);
+            }
+        } else {
+            println!("  (none)");
+        }
+
+        println!("\n=== Add Initial Condition ===");
+        println!("Options:");
+        println!("  1. Search from database (fuzzy search)");
+        println!("  2. Create new condition (manual entry)");
+        println!("  3. Finish selection");
+
+        let choice = Prompts::input("\nChoice (1/2/3)")?;
+
+        match choice.trim() {
+            "1" => {
+                let selected = TestCaseFuzzyFinder::search_strings(
+                    conditions,
+                    "Select condition (ESC to cancel): ",
+                )?;
+
+                if let Some(condition) = selected {
+                    selected_conditions.push(condition.clone());
+                    println!("✓ Added from database: {}\n", condition);
+                }
+            }
+            "2" => {
+                let new_condition = Prompts::input("Enter new condition")?;
+                if !new_condition.trim().is_empty() {
+                    selected_conditions.push(new_condition.clone());
+                    println!("✓ Added new condition: {}\n", new_condition);
+                }
+            }
+            "3" => {
+                if selected_conditions.is_empty() {
+                    println!("No conditions selected.");
+                    if !Prompts::confirm("Continue without initial conditions?")? {
+                        continue;
+                    }
+                }
+                break;
+            }
+            _ => {
+                println!("Invalid choice. Please enter 1, 2, or 3.");
+            }
+        }
+    }
+
+    if !selected_conditions.is_empty() {
+        use serde_yaml::Value;
+
+        let euicc_conditions: Vec<Value> =
+            selected_conditions.into_iter().map(Value::String).collect();
+
+        let mut initial_cond_map = serde_yaml::Mapping::new();
+        initial_cond_map.insert(
+            Value::String("eUICC".to_string()),
+            Value::Sequence(euicc_conditions),
+        );
+
+        builder.structure_mut().insert(
+            "initial_conditions".to_string(),
+            Value::Mapping(initial_cond_map),
+        );
+
+        println!("\n✓ Initial conditions added to test case");
+    }
+
+    let file_path = builder.save().context("Failed to save test case")?;
+
+    println!("\n╔═══════════════════════════════════════════════╗");
+    println!("║    Test Case Saved Successfully               ║");
+    println!("╚═══════════════════════════════════════════════╝");
+    println!("\nSaved to: {}", file_path.display());
+
+    if Prompts::confirm("\nCommit to git?")? {
+        builder
+            .commit("Add initial conditions")
+            .context("Failed to commit")?;
+    }
+
+    builder.delete_recovery_file()?;
 
     Ok(())
 }

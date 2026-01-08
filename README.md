@@ -5,14 +5,52 @@ A comprehensive CLI tool for managing test cases in YAML format with interactive
 ## Features
 
 - **Interactive Test Case Creation**: Build test cases with guided prompts
+- **Database-backed Condition Selection**: Fuzzy search through existing conditions from test database
 - **Test Sequence Builder**: Create test sequences with automatic numbering and validation
 - **Step Collection Loop**: Add steps to sequences with fuzzy search for existing steps
 - **Git Integration**: Commit progress after each step or sequence
 - **Schema Validation**: Validate test cases against a JSON schema
-- **Fuzzy Search**: Search through test cases, sequences, and steps
+- **Fuzzy Search**: Search through test cases, sequences, steps, and conditions
 - **Recovery Mechanism**: Automatically saves progress after each operation and can resume from saved state if interrupted
 
 ## Commands
+
+### Parse Conditions from Database
+
+Parse and select general initial conditions or initial conditions from existing test cases using fuzzy search:
+
+#### Parse General Initial Conditions
+
+```bash
+testcase-manager parse-general-conditions --database <path>
+```
+
+This command will:
+1. Load all test cases from the database directory (default: `data`)
+2. Extract all unique general initial conditions
+3. Present them in a fuzzy search interface
+4. Allow selection of multiple conditions
+5. Add selected conditions to a new test case
+6. Optionally commit to git
+
+#### Parse Initial Conditions
+
+```bash
+testcase-manager parse-initial-conditions --database <path>
+```
+
+This command will:
+1. Load all test cases from the database directory (default: `data`)
+2. Extract all unique initial conditions (including sequence-level conditions)
+3. Present them in a fuzzy search interface
+4. Allow selection of multiple conditions
+5. Add selected conditions to a new test case
+6. Optionally commit to git
+
+The database search extracts conditions from:
+- Top-level general initial conditions
+- Top-level initial conditions
+- Sequence-level initial conditions
 
 ### Build Test Sequences with Step Collection
 
