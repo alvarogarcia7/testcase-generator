@@ -1,8 +1,8 @@
-use crate::{TestCaseEditor, config::EditorConfig};
 use crate::database::ConditionDatabase;
 use crate::editor::EditorFlow;
 use crate::fuzzy::TestCaseFuzzyFinder;
 use crate::validation::SchemaValidator;
+use crate::{config::EditorConfig, TestCaseEditor};
 use anyhow::{Context, Result};
 use dialoguer::{theme::ColorfulTheme, Confirm, Input, MultiSelect, Select};
 use indexmap::IndexMap;
@@ -314,8 +314,9 @@ impl<'a> Prompts<'a> {
                     } else if Self::confirm("Edit this condition?")? {
                         // Let user edit the selected condition
                         loop {
-                            let edited_content = TestCaseEditor::edit_text(&selected_yaml, editor_config)
-                                .context("Failed to open editor")?;
+                            let edited_content =
+                                TestCaseEditor::edit_text(&selected_yaml, editor_config)
+                                    .context("Failed to open editor")?;
 
                             let parsed_edited: Value = serde_yaml::from_str(&edited_content)
                                 .context("Failed to parse YAML")?;
@@ -356,8 +357,8 @@ impl<'a> Prompts<'a> {
     - ""
 "#;
 
-            let edited_content =
-                TestCaseEditor::edit_text(template, editor_config).context("Failed to open editor")?;
+            let edited_content = TestCaseEditor::edit_text(template, editor_config)
+                .context("Failed to open editor")?;
 
             let parsed: Value =
                 serde_yaml::from_str(&edited_content).context("Failed to parse YAML")?;
