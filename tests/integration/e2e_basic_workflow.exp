@@ -1,0 +1,386 @@
+#!/usr/bin/expect -f
+#
+# Basic E2E Integration Test for testcase-manager CLI
+#
+# This is a simplified version of the complete workflow test that focuses on
+# metadata and initial conditions without adding steps.
+#
+# Usage: ./tests/integration/e2e_basic_workflow.exp [binary_path]
+#
+
+set timeout 60
+log_user 1
+
+if {$argc > 0} {
+    set binary_path [lindex $argv 0]
+} else {
+    set binary_path "./target/debug/testcase-manager"
+}
+
+if {![file exists $binary_path]} {
+    puts "ERROR: Binary not found at $binary_path"
+    exit 1
+}
+
+set test_dir "test_basic_[clock seconds]"
+set output_file "$test_dir/basic_test.yaml"
+
+puts "\n=========================================="
+puts "Basic E2E Test for testcase-manager"
+puts "=========================================="
+puts "Test directory: $test_dir"
+puts "Output file: $output_file\n"
+
+file mkdir $test_dir
+exec git init $test_dir
+exec git -C $test_dir config user.name "Test User"
+exec git -C $test_dir config user.email "test@example.com"
+
+set env(GIT_AUTHOR_NAME) "Test User"
+set env(GIT_AUTHOR_EMAIL) "test@example.com"
+set env(GIT_COMMITTER_NAME) "Test User"
+set env(GIT_COMMITTER_EMAIL) "test@example.com"
+
+puts "==> Starting basic workflow..."
+spawn $binary_path complete -o $output_file
+
+expect {
+    timeout { 
+        puts "\nERROR: Timeout waiting for start"
+        exec rm -rf $test_dir
+        exit 1 
+    }
+    "Complete Interactive Test Case Workflow" { 
+        puts "✓ Started" 
+    }
+}
+
+# Metadata
+puts "\n==> Entering metadata..."
+expect {
+    timeout { 
+        puts "\nERROR: Timeout on Requirement"
+        exec rm -rf $test_dir
+        exit 1 
+    }
+    "Requirement:" { send "TEST_REQ\r" }
+}
+
+expect {
+    timeout { 
+        puts "\nERROR: Timeout on Item"
+        exec rm -rf $test_dir
+        exit 1 
+    }
+    "Item:" { send "1\r" }
+}
+
+expect {
+    timeout { 
+        puts "\nERROR: Timeout on TC"
+        exec rm -rf $test_dir
+        exit 1 
+    }
+    "TC:" { send "1\r" }
+}
+
+expect {
+    timeout { 
+        puts "\nERROR: Timeout on ID"
+        exec rm -rf $test_dir
+        exit 1 
+    }
+    "ID:" { send "basic_test_001\r" }
+}
+
+expect {
+    timeout { 
+        puts "\nERROR: Timeout on Description"
+        exec rm -rf $test_dir
+        exit 1 
+    }
+    "Description:" { send "Basic test\r" }
+}
+
+expect {
+    timeout { 
+        puts "\nERROR: Timeout on validation"
+        exec rm -rf $test_dir
+        exit 1 
+    }
+    "Metadata is valid" { puts "✓ Validated" }
+}
+
+expect {
+    timeout { 
+        puts "\nERROR: Timeout on commit prompt"
+        exec rm -rf $test_dir
+        exit 1 
+    }
+    "Commit metadata to git?" { send "y\r" }
+}
+
+expect {
+    timeout { 
+        puts "\nERROR: Timeout on commit"
+        exec rm -rf $test_dir
+        exit 1 
+    }
+    -re "Committed" { puts "✓ Committed" }
+}
+
+# Skip general initial conditions
+expect {
+    timeout { 
+        puts "\nERROR: Timeout on general IC"
+        exec rm -rf $test_dir
+        exit 1 
+    }
+    "Add general initial conditions?" { send "n\r" }
+}
+
+# Add minimal initial conditions
+puts "\n==> Adding initial conditions..."
+expect {
+    timeout { 
+        puts "\nERROR: Timeout on IC prompt"
+        exec rm -rf $test_dir
+        exit 1 
+    }
+    "Add initial conditions?" { send "y\r" }
+}
+
+expect {
+    timeout { 
+        puts "\nERROR: Timeout on device name"
+        exec rm -rf $test_dir
+        exit 1 
+    }
+    "Device name" { send "eUICC\r" }
+}
+
+expect {
+    timeout { 
+        puts "\nERROR: Timeout on condition 1"
+        exec rm -rf $test_dir
+        exit 1 
+    }
+    "Condition #1:" { send "Test condition\r" }
+}
+
+expect {
+    timeout { 
+        puts "\nERROR: Timeout on condition 2"
+        exec rm -rf $test_dir
+        exit 1 
+    }
+    "Condition #2:" { send "\r" }
+}
+
+expect {
+    timeout { 
+        puts "\nERROR: Timeout on IC validation"
+        exec rm -rf $test_dir
+        exit 1 
+    }
+    "Valid structure" { puts "✓ Validated" }
+}
+
+expect {
+    timeout { 
+        puts "\nERROR: Timeout on IC commit prompt"
+        exec rm -rf $test_dir
+        exit 1 
+    }
+    "Commit initial conditions to git?" { send "y\r" }
+}
+
+expect {
+    timeout { 
+        puts "\nERROR: Timeout on IC commit"
+        exec rm -rf $test_dir
+        exit 1 
+    }
+    -re "Committed" { puts "✓ Committed" }
+}
+
+# Skip sequence creation
+puts "\n==> Skipping sequence creation..."
+expect {
+    timeout { 
+        puts "\nERROR: Timeout on sequence ID"
+        exec rm -rf $test_dir
+        exit 1 
+    }
+    "Sequence ID:" { puts "✓ At sequence prompt" }
+}
+
+expect {
+    timeout { 
+        puts "\nERROR: Timeout on fuzzy"
+        exec rm -rf $test_dir
+        exit 1 
+    }
+    "Use fuzzy search" { send "n\r" }
+}
+
+expect {
+    timeout { 
+        puts "\nERROR: Timeout on seq name"
+        exec rm -rf $test_dir
+        exit 1 
+    }
+    "Sequence name:" { send "Test Sequence\r" }
+}
+
+expect {
+    timeout { 
+        puts "\nERROR: Timeout on editor"
+        exec rm -rf $test_dir
+        exit 1 
+    }
+    "Edit description in editor?" { send "n\r" }
+}
+
+expect {
+    timeout { 
+        puts "\nERROR: Timeout on desc"
+        exec rm -rf $test_dir
+        exit 1 
+    }
+    "Description:" { send "\r" }
+}
+
+expect {
+    timeout { 
+        puts "\nERROR: Timeout on seq IC"
+        exec rm -rf $test_dir
+        exit 1 
+    }
+    "Add sequence-specific initial conditions?" { send "n\r" }
+}
+
+expect {
+    timeout { 
+        puts "\nERROR: Timeout on seq validation"
+        exec rm -rf $test_dir
+        exit 1 
+    }
+    "Test sequence validated and added" { puts "✓ Validated" }
+}
+
+expect {
+    timeout { 
+        puts "\nERROR: Timeout on seq commit"
+        exec rm -rf $test_dir
+        exit 1 
+    }
+    "Commit this sequence to git?" { send "n\r" }
+}
+
+expect {
+    timeout { 
+        puts "\nERROR: Timeout on steps"
+        exec rm -rf $test_dir
+        exit 1 
+    }
+    "Add steps to this sequence now?" { send "n\r" }
+}
+
+expect {
+    timeout { 
+        puts "\nERROR: Timeout on another seq"
+        exec rm -rf $test_dir
+        exit 1 
+    }
+    "Add another test sequence?" { send "n\r" }
+}
+
+# Final save
+puts "\n==> Finalizing..."
+expect {
+    timeout { 
+        puts "\nERROR: Timeout on save"
+        exec rm -rf $test_dir
+        exit 1 
+    }
+    "Complete test case saved to:" { puts "✓ Saved" }
+}
+
+expect {
+    timeout { 
+        puts "\nERROR: Timeout on final commit"
+        exec rm -rf $test_dir
+        exit 1 
+    }
+    "Commit final complete test case?" { send "y\r" }
+}
+
+expect {
+    timeout { 
+        puts "\nERROR: Timeout on committed"
+        exec rm -rf $test_dir
+        exit 1 
+    }
+    "Committed to git" { puts "✓ Committed" }
+}
+
+expect {
+    timeout { 
+        puts "\nERROR: Timeout on complete"
+        exec rm -rf $test_dir
+        exit 1 
+    }
+    "Test Case Workflow Completed!" { puts "✓ Complete" }
+}
+
+expect eof
+catch wait result
+set exit_status [lindex $result 3]
+
+if {$exit_status != 0} {
+    puts "\nERROR: Process exited with status $exit_status"
+    exec rm -rf $test_dir
+    exit 1
+}
+
+# Validation
+puts "\n==> Validating output..."
+
+if {![file exists $output_file]} {
+    puts "ERROR: Output file not created"
+    exec rm -rf $test_dir
+    exit 1
+}
+puts "✓ File exists"
+
+set fp [open $output_file r]
+set content [read $fp]
+close $fp
+
+foreach field {requirement item tc id description initial_conditions test_sequences} {
+    if {![string match "*${field}:*" $content]} {
+        puts "ERROR: Missing field: $field"
+        exec rm -rf $test_dir
+        exit 1
+    }
+}
+puts "✓ Required fields present"
+
+set git_log [exec git -C $test_dir log --oneline]
+set commit_count [llength [split $git_log "\n"]]
+if {$commit_count < 2} {
+    puts "ERROR: Expected at least 2 commits, found $commit_count"
+    exec rm -rf $test_dir
+    exit 1
+}
+puts "✓ Git commits created ($commit_count commits)"
+
+exec rm -rf $test_dir
+puts "✓ Cleanup complete"
+
+puts "\n=========================================="
+puts "BASIC TEST PASSED ✓"
+puts "=========================================="
+
+exit 0

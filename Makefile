@@ -28,3 +28,14 @@ run: build
 	./target/debug/testcase-manager
 .PHONY: run
 
+test-e2e: build
+	./tests/integration/run_e2e_test.sh
+.PHONY: test-e2e
+
+test-e2e-all: build
+	./tests/integration/run_all_tests.sh
+.PHONY: test-e2e-all
+
+test-all: test test-e2e-all
+.PHONY: test-all
+

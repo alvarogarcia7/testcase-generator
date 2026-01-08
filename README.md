@@ -171,6 +171,55 @@ make test
 make lint
 ```
 
+### Integration Tests
+
+The project includes comprehensive end-to-end integration tests using the Expect automation tool. These tests validate the complete user workflow from metadata entry through test sequence and step creation, including git commit verification.
+
+#### Prerequisites
+
+Install Expect:
+- Ubuntu/Debian: `sudo apt-get install expect`
+- macOS: `brew install expect`
+- RHEL/CentOS: `sudo yum install expect`
+
+#### Running Integration Tests
+
+Run the complete workflow test:
+```bash
+make test-e2e
+```
+
+Run all integration tests (basic + complete):
+```bash
+make test-e2e-all
+```
+
+Run all tests (unit + integration):
+```bash
+make test-all
+```
+
+Manual execution:
+```bash
+./tests/integration/run_e2e_test.sh --build
+./tests/integration/run_all_tests.sh --build
+```
+
+#### Test Coverage
+
+The integration tests validate:
+- Metadata creation and validation
+- General initial conditions
+- Device-specific initial conditions
+- Test sequence creation with descriptions
+- Step collection with expected results
+- Git commits at each checkpoint
+- YAML output file structure and content
+- Schema validation
+- Recovery file cleanup
+
+See [tests/integration/README.md](tests/integration/README.md) for detailed documentation.
+
 ## License
 
 See LICENSE file for details.

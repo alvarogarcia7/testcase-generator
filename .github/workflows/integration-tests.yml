@@ -1,0 +1,49 @@
+name: Integration Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  integration-tests:
+    name: E2E Integration Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Rust
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+      with:
+        toolchain: stable
+        
+    - name: Install Expect
+      run: sudo apt-get update && sudo apt-get install -y expect
+      
+    - name: Build project
+      run: cargo build --release
+      
+    - name: Run unit tests
+      run: cargo test --all --all-features --tests
+      
+    - name: Run integration tests
+      run: ./tests/integration/ci_test.sh
+      env:
+        GIT_AUTHOR_NAME: "CI Test"
+        GIT_AUTHOR_EMAIL: "ci@example.com"
+        GIT_COMMITTER_NAME: "CI Test"
+        GIT_COMMITTER_EMAIL: "ci@example.com"
+        
+    - name: Upload test artifacts on failure
+      if: failure()
+      uses: actions/upload-artifact@v3
+      with:
+        name: integration-test-artifacts
+        path: |
+          test_e2e_*/
+          test_basic_*/
+        retention-days: 5
