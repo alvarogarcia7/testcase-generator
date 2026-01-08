@@ -11,6 +11,7 @@ A comprehensive CLI tool for managing test cases in YAML format with interactive
 - **Git Integration**: Commit progress after each step or sequence
 - **Schema Validation**: Validate test cases against a JSON schema
 - **Fuzzy Search**: Search through test cases, sequences, steps, and conditions
+- **TTY Fallback**: Automatic detection of non-TTY environments (e.g., VS Code debug console) with graceful fallback to numbered selection
 - **Recovery Mechanism**: Automatically saves progress after each operation and can resume from saved state if interrupted
 
 ## Commands
@@ -139,6 +140,25 @@ steps:
       success: false  # optional
       result: "SW=0x9000"
       output: "This operation was successful."
+```
+
+## TTY Fallback
+
+The fuzzy search automatically detects non-TTY environments (like VS Code debug console) and falls back to numbered selection:
+
+**Normal Terminal:**
+- Interactive fuzzy search with keyboard navigation
+
+**Non-TTY Environment (VS Code, CI/CD, etc.):**
+- Numbered list display
+- Simple numeric input (e.g., "1" to select first option)
+- Multi-select with space-separated numbers (e.g., "1 3 5")
+
+For more details, see [docs/TTY_FALLBACK.md](docs/TTY_FALLBACK.md)
+
+**Try the demo:**
+```bash
+cargo run --example tty_fallback_demo
 ```
 
 ## Development
