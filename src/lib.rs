@@ -25,7 +25,7 @@ pub use models::{
     Expected, FileValidationStatus, Step, TestCase, TestCaseFileInfo, TestSequence, TestSuite,
     TopLevelInitialConditions, ValidationErrorDetail,
 };
-pub use oracle::{Oracle, TtyCliOracle};
+pub use oracle::{MenuCliOracle, Oracle, TtyCliOracle};
 pub use parser::{SearchableCollections, TestCaseParser};
 pub use prompts::{Prompts, TestCaseMetadata};
 pub use recovery::{RecoveryManager, RecoveryState};
