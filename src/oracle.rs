@@ -44,6 +44,9 @@ pub trait Oracle {
 
     /// Fuzzy search through a list of strings, returns the selected string
     fn fuzzy_search_strings(&self, items: &[String], prompt: &str) -> Result<Option<String>>;
+
+    /// Fuzzy multi-select from a list of strings, returns the selected strings
+    fn fuzzy_multi_select(&self, items: &[String], prompt: &str) -> Result<Vec<String>>;
 }
 
 /// TTY-based CLI Oracle implementation using dialoguer and skim
@@ -184,8 +187,69 @@ impl Oracle for TtyCliOracle {
     }
 
     fn fuzzy_search_strings(&self, items: &[String], prompt: &str) -> Result<Option<String>> {
-        use crate::fuzzy::TestCaseFuzzyFinder;
-        TestCaseFuzzyFinder::search_strings(items, prompt)
+        use skim::prelude::*;
+        use std::io::Cursor;
+
+        if items.is_empty() {
+            return Ok(None);
+        }
+
+        let item_reader = SkimItemReader::default();
+        let skim_items = item_reader.of_bufread(Cursor::new(items.join("\n")));
+
+        let options = SkimOptionsBuilder::default()
+            .multi(false)
+            .prompt(Some(prompt))
+            .build()
+            .map_err(|e| anyhow::anyhow!("Failed to build skim options: {}", e))?;
+
+        let selected = Skim::run_with(&options, Some(skim_items)).and_then(|output| {
+            if output.is_abort {
+                None
+            } else {
+                output
+                    .selected_items
+                    .first()
+                    .map(|item| item.output().to_string())
+            }
+        });
+
+        Ok(selected)
+    }
+
+    fn fuzzy_multi_select(&self, items: &[String], prompt: &str) -> Result<Vec<String>> {
+        use skim::prelude::*;
+        use std::io::Cursor;
+
+        if items.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let item_reader = SkimItemReader::default();
+        let skim_items = item_reader.of_bufread(Cursor::new(items.join("\n")));
+
+        let options = SkimOptionsBuilder::default()
+            .height(Some("50%"))
+            .multi(true)
+            .prompt(Some(prompt))
+            .build()
+            .map_err(|e| anyhow::anyhow!("Failed to build skim options: {}", e))?;
+
+        let selected = Skim::run_with(&options, Some(skim_items))
+            .map(|output| {
+                if output.is_abort {
+                    Vec::new()
+                } else {
+                    output
+                        .selected_items
+                        .iter()
+                        .map(|item| item.output().to_string())
+                        .collect()
+                }
+            })
+            .unwrap_or_default();
+
+        Ok(selected)
     }
 }
 
@@ -640,7 +704,12 @@ impl Oracle for MenuCliOracle {
 
     fn fuzzy_search_strings(&self, items: &[String], prompt: &str) -> Result<Option<String>> {
         use crate::fuzzy::TestCaseFuzzyFinder;
-        TestCaseFuzzyFinder::search_strings(items, prompt)
+        TestCaseFuzzyFinder::search_strings_with_fallback(items, prompt)
+    }
+
+    fn fuzzy_multi_select(&self, items: &[String], prompt: &str) -> Result<Vec<String>> {
+        use crate::fuzzy::TestCaseFuzzyFinder;
+        TestCaseFuzzyFinder::multi_select_with_fallback(items, prompt)
     }
 }
 
@@ -805,6 +874,13 @@ impl Oracle for HardcodedOracle {
                 }
             }
             _ => anyhow::bail!("Expected String answer variant"),
+        }
+    }
+
+    fn fuzzy_multi_select(&self, _items: &[String], _prompt: &str) -> Result<Vec<String>> {
+        match self.next_answer()? {
+            AnswerVariant::Strings(strings) => Ok(strings),
+            _ => anyhow::bail!("Expected Strings answer variant"),
         }
     }
 }

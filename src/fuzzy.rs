@@ -1,4 +1,5 @@
 use crate::models::TestCase;
+use crate::oracle::Oracle;
 use anyhow::Result;
 use skim::prelude::*;
 use std::io::{self, Cursor, Write};
@@ -180,12 +181,15 @@ impl TestCaseFuzzyFinder {
         }
     }
 
-    /// Fuzzy search through a list of strings
+    /// Fuzzy search through a list of strings (delegates to TtyCliOracle)
     pub fn search_strings(items: &[String], prompt: &str) -> Result<Option<String>> {
-        if items.is_empty() {
-            return Ok(None);
-        }
+        use crate::oracle::TtyCliOracle;
+        let oracle = TtyCliOracle::new();
+        oracle.fuzzy_search_strings(items, prompt)
+    }
 
+    /// Fuzzy search with TTY fallback (delegates to MenuCliOracle for non-TTY handling)
+    pub fn search_strings_with_fallback(items: &[String], prompt: &str) -> Result<Option<String>> {
         if !Self::is_tty() {
             return Self::numbered_selection(items, prompt);
         }
@@ -194,7 +198,6 @@ impl TestCaseFuzzyFinder {
         let skim_items = item_reader.of_bufread(Cursor::new(items.join("\n")));
 
         let options = SkimOptionsBuilder::default()
-            // .height(Some("50%"))
             .multi(false)
             .prompt(Some(prompt))
             .build()
@@ -214,12 +217,15 @@ impl TestCaseFuzzyFinder {
         Ok(selected)
     }
 
-    /// Multi-select fuzzy search
+    /// Multi-select fuzzy search (delegates to TtyCliOracle)
     pub fn multi_select(items: &[String], prompt: &str) -> Result<Vec<String>> {
-        if items.is_empty() {
-            return Ok(Vec::new());
-        }
+        use crate::oracle::TtyCliOracle;
+        let oracle = TtyCliOracle::new();
+        oracle.fuzzy_multi_select(items, prompt)
+    }
 
+    /// Multi-select fuzzy search with TTY fallback (delegates to MenuCliOracle for non-TTY handling)
+    pub fn multi_select_with_fallback(items: &[String], prompt: &str) -> Result<Vec<String>> {
         if !Self::is_tty() {
             return Self::numbered_multi_selection(items, prompt);
         }
