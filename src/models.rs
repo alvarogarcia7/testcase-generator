@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
@@ -172,6 +173,48 @@ impl TestSuite {
             test_cases: Vec::new(),
         }
     }
+}
+
+/// Detailed validation error information
+#[derive(Debug, Clone)]
+pub struct ValidationErrorDetail {
+    /// JSON path where the error occurred (e.g., "/test_sequences/0/steps/1/expected")
+    pub path: String,
+
+    /// The specific constraint that failed
+    pub constraint: String,
+
+    /// The actual value that was found
+    pub found_value: String,
+
+    /// The expected value or constraint
+    pub expected_constraint: String,
+}
+
+/// Result of validating a file
+#[derive(Debug, Clone)]
+pub enum FileValidationStatus {
+    /// File is valid
+    Valid,
+
+    /// File failed to parse as YAML
+    ParseError { message: String },
+
+    /// File failed schema validation
+    ValidationError { errors: Vec<ValidationErrorDetail> },
+}
+
+/// Information about a test case file and its validation status
+#[derive(Debug, Clone)]
+pub struct TestCaseFileInfo {
+    /// Path to the file
+    pub path: PathBuf,
+
+    /// Validation status
+    pub status: FileValidationStatus,
+
+    /// Test case data if successfully loaded
+    pub test_case: Option<TestCase>,
 }
 
 #[cfg(test)]

@@ -156,25 +156,78 @@ fn handle_list(
     verbose: bool,
 ) -> Result<()> {
     let storage = TestCaseStorage::new(base_path)?;
-    let test_cases = storage.load_all_test_cases()?;
 
-    if test_cases.is_empty() {
-        println!("No test cases found.");
-        return Ok(());
-    }
+    if verbose {
+        let file_infos = storage.load_all_with_validation()?;
 
-    println!("Found {} test case(s):\n", test_cases.len());
+        if file_infos.is_empty() {
+            println!("No test case files found.");
+            return Ok(());
+        }
 
-    for tc in test_cases {
-        if verbose {
-            println!("ID: {}", tc.id);
-            println!("Requirement: {}", tc.requirement);
-            println!("Item: {}", tc.item);
-            println!("TC: {}", tc.tc);
-            println!("Description: {}", tc.description);
-            println!("Test Sequences: {}", tc.test_sequences.len());
+        println!("Found {} test case file(s):\n", file_infos.len());
+
+        for file_info in file_infos {
+            let file_name = file_info
+                .path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("unknown");
+
+            match &file_info.status {
+                testcase_manager::FileValidationStatus::Valid => {
+                    if let Some(tc) = &file_info.test_case {
+                        println!("✓ {} (Valid)", file_name);
+                        println!("  ID: {}", tc.id);
+                        println!("  Requirement: {}", tc.requirement);
+                        println!("  Item: {}", tc.item);
+                        println!("  TC: {}", tc.tc);
+                        println!("  Description: {}", tc.description);
+                        println!("  Test Sequences: {}", tc.test_sequences.len());
+                    } else {
+                        println!("✓ {} (Valid)", file_name);
+                    }
+                }
+                testcase_manager::FileValidationStatus::ParseError { message } => {
+                    println!("✗ {} (Parse Error)", file_name);
+                    println!("  Error: {}", message);
+                }
+                testcase_manager::FileValidationStatus::ValidationError { errors } => {
+                    println!(
+                        "✗ {} (Schema Validation Failed: {} error(s))",
+                        file_name,
+                        errors.len()
+                    );
+                    if let Some(tc) = &file_info.test_case {
+                        println!("  ID: {}", tc.id);
+                        println!("  Requirement: {}", tc.requirement);
+                    }
+                    for (idx, error) in errors.iter().enumerate().take(3) {
+                        println!(
+                            "  Error #{}: Path '{}' - {}",
+                            idx + 1,
+                            error.path,
+                            error.constraint
+                        );
+                    }
+                    if errors.len() > 3 {
+                        println!("  ... and {} more error(s)", errors.len() - 3);
+                    }
+                }
+            }
             println!();
-        } else {
+        }
+    } else {
+        let test_cases = storage.load_all_test_cases()?;
+
+        if test_cases.is_empty() {
+            println!("No test cases found.");
+            return Ok(());
+        }
+
+        println!("Found {} test case(s):\n", test_cases.len());
+
+        for tc in test_cases {
             println!(
                 "{:<30} {:<20} Item: {}, TC: {}",
                 tc.id, tc.requirement, tc.item, tc.tc
@@ -234,26 +287,74 @@ fn handle_validate(base_path: &str, file: Option<String>, all: bool) -> Result<(
         let test_case = storage.load_test_case(&file_path)?;
         let yaml = serde_yaml::to_string(&test_case)?;
         let validator = testcase_manager::SchemaValidator::new()?;
-        validator.validate_chunk(&yaml)?;
-        println!("✓ Valid: {}", file_path);
-    } else if all {
-        let test_cases = storage.load_all_test_cases()?;
-        let mut errors = 0;
-        let validator = testcase_manager::SchemaValidator::new()?;
 
-        for test_case in test_cases {
-            let yaml = serde_yaml::to_string(&test_case)?;
-            match validator.validate_chunk(&yaml) {
-                Ok(_) => println!("✓ Valid: {}", test_case.id),
-                Err(e) => {
-                    println!("✗ Invalid: {} - {}", test_case.id, e);
-                    errors += 1;
+        let validation_errors = validator.validate_with_details(&yaml)?;
+
+        if validation_errors.is_empty() {
+            println!("✓ Valid: {}", file_path);
+        } else {
+            println!("✗ Invalid: {}", file_path);
+            println!("\nValidation Errors:");
+            for (idx, error) in validation_errors.iter().enumerate() {
+                println!("\n  Error #{}: Path '{}'", idx + 1, error.path);
+                println!("    Constraint: {}", error.constraint);
+                println!("    Expected: {}", error.expected_constraint);
+                println!("    Found: {}", error.found_value);
+            }
+            anyhow::bail!(
+                "Validation failed with {} error(s)",
+                validation_errors.len()
+            );
+        }
+    } else if all {
+        let file_infos = storage.load_all_with_validation()?;
+        let mut error_count = 0;
+        let mut valid_count = 0;
+        let mut parse_error_count = 0;
+
+        for file_info in &file_infos {
+            let file_name = file_info
+                .path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("unknown");
+
+            match &file_info.status {
+                testcase_manager::FileValidationStatus::Valid => {
+                    println!("✓ Valid: {}", file_name);
+                    valid_count += 1;
+                }
+                testcase_manager::FileValidationStatus::ParseError { message } => {
+                    println!("✗ Parse Error: {}", file_name);
+                    println!("  {}", message);
+                    parse_error_count += 1;
+                }
+                testcase_manager::FileValidationStatus::ValidationError { errors } => {
+                    println!("✗ Invalid: {}", file_name);
+                    println!("  Validation Errors ({}):", errors.len());
+                    for (idx, error) in errors.iter().enumerate() {
+                        println!("\n    Error #{}: Path '{}'", idx + 1, error.path);
+                        println!("      Constraint: {}", error.constraint);
+                        println!("      Expected: {}", error.expected_constraint);
+                        println!("      Found: {}", error.found_value);
+                    }
+                    println!();
+                    error_count += 1;
                 }
             }
         }
 
-        if errors > 0 {
-            anyhow::bail!("{} validation error(s) found", errors);
+        println!("\n=== Validation Summary ===");
+        println!("Total files: {}", file_infos.len());
+        println!("✓ Valid: {}", valid_count);
+        println!("✗ Schema violations: {}", error_count);
+        println!("✗ Parse errors: {}", parse_error_count);
+
+        if error_count > 0 || parse_error_count > 0 {
+            anyhow::bail!(
+                "{} validation error(s) found",
+                error_count + parse_error_count
+            );
         }
     } else {
         anyhow::bail!("Specify --file or --all");

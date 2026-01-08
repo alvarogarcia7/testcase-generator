@@ -1,7 +1,9 @@
-use testcase_manager::validation::SchemaValidator;
+use testcase_manager::{SchemaValidator, TestCaseStorage};
 
 fn main() -> anyhow::Result<()> {
     let validator = SchemaValidator::new()?;
+
+    println!("=== Schema Validation with Detailed Error Reporting ===\n");
 
     let valid_yaml = r#"
 requirement: XXX100
@@ -142,6 +144,80 @@ test_sequences:
     match validator.validate_chunk(invalid_yaml) {
         Ok(_) => println!("✓ Invalid validation successful (unexpected)"),
         Err(e) => println!("✗ Invalid validation failed (expected):\n{}", e),
+    }
+
+    println!("\n=== Detailed Validation Error Reporting ===\n");
+    println!("Using validate_with_details() for structured error information...\n");
+
+    match validator.validate_with_details(invalid_yaml) {
+        Ok(errors) => {
+            if errors.is_empty() {
+                println!("✓ No validation errors found");
+            } else {
+                println!("✗ Found {} validation error(s):\n", errors.len());
+                for (idx, error) in errors.iter().enumerate() {
+                    println!("Error #{}:", idx + 1);
+                    println!("  JSON Path: {}", error.path);
+                    println!("  Constraint Type: {}", error.constraint);
+                    println!("  Expected: {}", error.expected_constraint);
+                    println!("  Found Value: {}", error.found_value);
+                    println!();
+                }
+            }
+        }
+        Err(e) => println!("Failed to perform validation: {}", e),
+    }
+
+    println!("\n=== Batch Validation of Files ===\n");
+    println!("Demonstrating load_all_with_validation() for directory scanning...\n");
+
+    if let Ok(storage) = TestCaseStorage::new("data") {
+        match storage.load_all_with_validation() {
+            Ok(file_infos) => {
+                println!("Found {} file(s):\n", file_infos.len());
+
+                for file_info in file_infos {
+                    let file_name = file_info
+                        .path
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or("unknown");
+
+                    match &file_info.status {
+                        testcase_manager::FileValidationStatus::Valid => {
+                            println!("✓ {} - VALID", file_name);
+                        }
+                        testcase_manager::FileValidationStatus::ParseError { message } => {
+                            println!("✗ {} - PARSE ERROR", file_name);
+                            println!("  Message: {}", message);
+                        }
+                        testcase_manager::FileValidationStatus::ValidationError { errors } => {
+                            println!(
+                                "✗ {} - SCHEMA VALIDATION FAILED ({} errors)",
+                                file_name,
+                                errors.len()
+                            );
+                            for (idx, error) in errors.iter().enumerate().take(3) {
+                                println!(
+                                    "  Error #{}: Path '{}' - {} (Expected: {})",
+                                    idx + 1,
+                                    error.path,
+                                    error.constraint,
+                                    error.expected_constraint
+                                );
+                            }
+                            if errors.len() > 3 {
+                                println!("  ... and {} more error(s)", errors.len() - 3);
+                            }
+                        }
+                    }
+                    println!();
+                }
+            }
+            Err(e) => println!("Failed to load files: {}", e),
+        }
+    } else {
+        println!("Note: 'data' directory not found. This is expected in test environments.");
     }
 
     Ok(())

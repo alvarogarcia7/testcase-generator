@@ -1,4 +1,5 @@
-use crate::models::{TestCase, TestSuite};
+use crate::models::{FileValidationStatus, TestCase, TestCaseFileInfo, TestSuite};
+use crate::validation::SchemaValidator;
 use anyhow::{Context, Result};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -208,20 +209,127 @@ impl TestCaseStorage {
     }
 
     /// Load all test cases from the storage directory
+    ///
+    /// This method attempts to load all test case files. Files that fail to parse
+    /// or validate are skipped with a warning message that includes validation details.
     pub fn load_all_test_cases(&self) -> Result<Vec<TestCase>> {
         let files = self.list_test_case_files()?;
         let mut test_cases = Vec::new();
+        let validator = SchemaValidator::new().ok();
 
         for file in files {
-            match self.load_test_case(&file) {
-                Ok(test_case) => test_cases.push(test_case),
+            let file_name = file
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("unknown");
+
+            match fs::read_to_string(&file) {
+                Ok(content) => match serde_yaml::from_str::<TestCase>(&content) {
+                    Ok(test_case) => {
+                        if let Some(ref v) = validator {
+                            if let Ok(errors) = v.validate_with_details(&content) {
+                                if !errors.is_empty() {
+                                    eprintln!("Warning: {} has validation errors:", file_name);
+                                    for error in errors.iter().take(3) {
+                                        eprintln!(
+                                            "  - Path '{}': {} (Expected: {})",
+                                            error.path, error.constraint, error.expected_constraint
+                                        );
+                                    }
+                                    if errors.len() > 3 {
+                                        eprintln!("  ... and {} more error(s)", errors.len() - 3);
+                                    }
+                                }
+                            }
+                        }
+                        test_cases.push(test_case);
+                    }
+                    Err(e) => {
+                        eprintln!("Warning: Failed to parse {}: {}", file_name, e);
+                    }
+                },
                 Err(e) => {
-                    eprintln!("Warning: Failed to load {}: {}", file.display(), e);
+                    eprintln!("Warning: Failed to read {}: {}", file_name, e);
                 }
             }
         }
 
         Ok(test_cases)
+    }
+
+    /// Load all test case files with validation information
+    ///
+    /// This method loads all YAML files and validates them, returning detailed
+    /// information about each file including validation errors.
+    pub fn load_all_with_validation(&self) -> Result<Vec<TestCaseFileInfo>> {
+        let files = self.list_test_case_files()?;
+        let validator = SchemaValidator::new()?;
+        let mut results = Vec::new();
+
+        for file in files {
+            let file_info = self.load_file_with_validation(&file, &validator);
+            results.push(file_info);
+        }
+
+        Ok(results)
+    }
+
+    /// Load a single file with validation details
+    fn load_file_with_validation(
+        &self,
+        file_path: &Path,
+        validator: &SchemaValidator,
+    ) -> TestCaseFileInfo {
+        let content = match fs::read_to_string(file_path) {
+            Ok(c) => c,
+            Err(e) => {
+                return TestCaseFileInfo {
+                    path: file_path.to_path_buf(),
+                    status: FileValidationStatus::ParseError {
+                        message: format!("Failed to read file: {}", e),
+                    },
+                    test_case: None,
+                };
+            }
+        };
+
+        match serde_yaml::from_str::<TestCase>(&content) {
+            Ok(test_case) => {
+                let validation_errors = match validator.validate_with_details(&content) {
+                    Ok(errors) => errors,
+                    Err(e) => {
+                        return TestCaseFileInfo {
+                            path: file_path.to_path_buf(),
+                            status: FileValidationStatus::ParseError {
+                                message: format!("Validation check failed: {}", e),
+                            },
+                            test_case: Some(test_case),
+                        };
+                    }
+                };
+
+                let status = if validation_errors.is_empty() {
+                    FileValidationStatus::Valid
+                } else {
+                    FileValidationStatus::ValidationError {
+                        errors: validation_errors,
+                    }
+                };
+
+                TestCaseFileInfo {
+                    path: file_path.to_path_buf(),
+                    status,
+                    test_case: Some(test_case),
+                }
+            }
+            Err(e) => TestCaseFileInfo {
+                path: file_path.to_path_buf(),
+                status: FileValidationStatus::ParseError {
+                    message: format!("YAML parsing error: {}", e),
+                },
+                test_case: None,
+            },
+        }
     }
 
     /// Delete a test case file by ID

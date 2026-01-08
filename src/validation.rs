@@ -1,3 +1,4 @@
+use crate::models::ValidationErrorDetail;
 use anyhow::{Context, Result};
 use jsonschema::JSONSchema;
 use serde_json::Value as JsonValue;
@@ -144,6 +145,55 @@ impl SchemaValidator {
         Ok(())
     }
 
+    /// Validate and return detailed error information
+    ///
+    /// This method validates YAML content and returns structured error details
+    /// that can be used for detailed error reporting.
+    ///
+    /// # Arguments
+    /// * `yaml_content` - YAML string to validate
+    ///
+    /// # Returns
+    /// * `Ok(())` if valid
+    /// * `Err` with structured validation error details
+    pub fn validate_with_details(&self, yaml_content: &str) -> Result<Vec<ValidationErrorDetail>> {
+        let yaml_value: serde_yaml::Value =
+            serde_yaml::from_str(yaml_content).context("Failed to parse YAML content")?;
+
+        let json_value: JsonValue =
+            serde_json::to_value(&yaml_value).context("Failed to convert YAML to JSON")?;
+
+        let validation_result = self.schema.validate(&json_value);
+
+        if let Err(errors) = validation_result {
+            let mut error_details = Vec::new();
+
+            for e in errors {
+                let path = if e.instance_path.to_string().is_empty() {
+                    "root".to_string()
+                } else {
+                    e.instance_path.to_string()
+                };
+
+                let error_str = e.to_string();
+                let (constraint, expected_constraint) = extract_constraint_info(&error_str);
+
+                let found_value = extract_instance_value(&json_value, &e.instance_path.to_string());
+
+                error_details.push(ValidationErrorDetail {
+                    path,
+                    constraint,
+                    found_value,
+                    expected_constraint,
+                });
+            }
+
+            return Ok(error_details);
+        }
+
+        Ok(Vec::new())
+    }
+
     /// Validate a partial chunk, allowing empty objects
     ///
     /// This is a convenience method that allows empty objects to pass validation.
@@ -229,6 +279,91 @@ fn format_validation_error(error: &jsonschema::ValidationError) -> String {
     }
 
     error_str
+}
+
+/// Extract constraint information from a validation error message
+fn extract_constraint_info(error_str: &str) -> (String, String) {
+    if error_str.contains("is not of type") {
+        let parts: Vec<&str> = error_str.split("is not of type").collect();
+        if parts.len() == 2 {
+            let expected_type = parts[1].trim().trim_matches('\'').trim_matches('"');
+            return (
+                "type_mismatch".to_string(),
+                format!("Expected type: {}", expected_type),
+            );
+        }
+    }
+
+    if error_str.contains("is a required property") {
+        if let Some(prop) = error_str.split('\'').nth(1) {
+            return (
+                "missing_property".to_string(),
+                format!("Required property '{}' is missing", prop),
+            );
+        }
+    }
+
+    if error_str.contains("is not valid under any of the given schemas") {
+        return (
+            "oneOf_validation".to_string(),
+            "Value does not match any of the allowed schemas".to_string(),
+        );
+    }
+
+    if error_str.contains("does not match pattern") {
+        return ("pattern_mismatch".to_string(), error_str.to_string());
+    }
+
+    if error_str.contains("is less than the minimum") {
+        return ("minimum_value".to_string(), error_str.to_string());
+    }
+
+    if error_str.contains("is greater than the maximum") {
+        return ("maximum_value".to_string(), error_str.to_string());
+    }
+
+    ("validation_error".to_string(), error_str.to_string())
+}
+
+/// Extract the actual value at a given JSON path
+fn extract_instance_value(json_value: &JsonValue, path: &str) -> String {
+    if path.is_empty() || path == "/" {
+        return format!("{}", json_value);
+    }
+
+    let path_parts: Vec<&str> = path.trim_start_matches('/').split('/').collect();
+    let mut current = json_value;
+
+    for part in path_parts {
+        if let Ok(index) = part.parse::<usize>() {
+            if let Some(arr) = current.as_array() {
+                if let Some(value) = arr.get(index) {
+                    current = value;
+                } else {
+                    return format!("<index {} out of bounds>", index);
+                }
+            } else {
+                return format!("<not an array at {}>", part);
+            }
+        } else if let Some(obj) = current.as_object() {
+            if let Some(value) = obj.get(part) {
+                current = value;
+            } else {
+                return format!("<missing field '{}'>", part);
+            }
+        } else {
+            return format!("<cannot access field '{}'>", part);
+        }
+    }
+
+    match current {
+        JsonValue::String(s) => format!("\"{}\"", s),
+        JsonValue::Number(n) => format!("{}", n),
+        JsonValue::Bool(b) => format!("{}", b),
+        JsonValue::Null => "null".to_string(),
+        JsonValue::Array(_) => "[array]".to_string(),
+        JsonValue::Object(_) => "{object}".to_string(),
+    }
 }
 
 #[cfg(test)]
