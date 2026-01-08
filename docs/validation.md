@@ -2,10 +2,11 @@
 
 ## Overview
 
-The validation module provides JSON schema validation for YAML structures. It includes two validators:
+The validation module provides JSON schema validation for YAML structures with detailed error reporting. It includes:
 
 1. **SchemaValidator**: Validates YAML against the schema defined in `data/schema.json`
-2. **TestCaseValidator**: Validates test cases against the internal test case schema
+2. **Detailed Error Reporting**: Captures validation errors with JSON path, constraint type, expected values, and actual values
+3. **File Loading with Validation**: Scans directories and provides validation status for each file
 
 ## SchemaValidator
 
@@ -123,6 +124,40 @@ Schema validation failed:
   - Path 'root': Missing required property 'test_sequences'
 ```
 
+#### `validate_with_details(&self, yaml_content: &str) -> Result<Vec<ValidationErrorDetail>>`
+
+**NEW** - Validates YAML content and returns structured error details for comprehensive error reporting.
+
+**Parameters:**
+- `yaml_content`: YAML string to validate
+
+**Returns:**
+- `Ok(Vec<ValidationErrorDetail>)` - Empty vector if valid, otherwise contains detailed error information
+- `Err` if the YAML cannot be parsed
+
+**ValidationErrorDetail Structure:**
+Each error detail contains:
+- `path`: JSON path where the error occurred (e.g., "/test_sequences/0/steps/1/expected")
+- `constraint`: Type of constraint that failed (e.g., "type_mismatch", "missing_property")
+- `found_value`: The actual value found in the file
+- `expected_constraint`: Description of what was expected by the schema
+
+**Example Usage:**
+```rust
+let validator = SchemaValidator::new()?;
+let errors = validator.validate_with_details(yaml_content)?;
+
+if errors.is_empty() {
+    println!("✓ Valid");
+} else {
+    for error in errors {
+        println!("Error at {}: {}", error.path, error.constraint);
+        println!("  Expected: {}", error.expected_constraint);
+        println!("  Found: {}", error.found_value);
+    }
+}
+```
+
 #### `validate_partial_chunk(&self, yaml_content: &str) -> Result<()>`
 
 Validates a partial YAML structure, allowing empty objects.
@@ -163,6 +198,89 @@ use testcase_manager::{TestCase, TestCaseValidator};
 let validator = TestCaseValidator::new()?;
 let test_case = TestCase::new("TC001".to_string(), "Test".to_string());
 validator.validate_test_case(&test_case)?;
+```
+
+## File Validation and Listing
+
+### Loading Files with Validation Status
+
+The storage module provides `load_all_with_validation()` to scan directories and return detailed validation information for each file.
+
+**Usage:**
+```rust
+use testcase_manager::{TestCaseStorage, FileValidationStatus};
+
+let storage = TestCaseStorage::new("data")?;
+let file_infos = storage.load_all_with_validation()?;
+
+for file_info in file_infos {
+    match &file_info.status {
+        FileValidationStatus::Valid => {
+            println!("✓ {} is valid", file_info.path.display());
+        }
+        FileValidationStatus::ParseError { message } => {
+            println!("✗ {} failed to parse: {}", file_info.path.display(), message);
+        }
+        FileValidationStatus::ValidationError { errors } => {
+            println!("✗ {} has {} validation error(s):", 
+                file_info.path.display(), errors.len());
+            for error in errors {
+                println!("  - Path '{}': {}", error.path, error.constraint);
+                println!("    Expected: {}", error.expected_constraint);
+                println!("    Found: {}", error.found_value);
+            }
+        }
+    }
+}
+```
+
+### CLI Commands
+
+#### List with Validation (Verbose Mode)
+
+```bash
+# List all files with validation status
+cargo run -- list --verbose
+
+# Example output:
+# ✓ test_case_1.yaml (Valid)
+#   ID: TC001
+#   Requirement: REQ001
+#
+# ✗ test_case_2.yaml (Schema Validation Failed: 2 error(s))
+#   Error #1: Path '/item' - type_mismatch
+#   Error #2: Path 'root' - missing_property
+```
+
+#### Validate All Files
+
+```bash
+# Validate all files in the directory with detailed error output
+cargo run -- validate --all
+
+# Example output:
+# ✓ Valid: test_case_1.yaml
+# 
+# ✗ Invalid: test_case_2.yaml
+#   Validation Errors (2):
+#
+#     Error #1: Path '/item'
+#       Constraint: type_mismatch
+#       Expected: Expected type: integer
+#       Found: "not_an_integer"
+#
+# === Validation Summary ===
+# Total files: 2
+# ✓ Valid: 1
+# ✗ Schema violations: 1
+# ✗ Parse errors: 0
+```
+
+#### Validate Single File
+
+```bash
+# Validate a specific file
+cargo run -- validate --file test_case.yaml
 ```
 
 ## Schema Structure
