@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
 use dialoguer::{theme::ColorfulTheme, Confirm, Input, MultiSelect, Select};
+use std::collections::VecDeque;
 use std::io::{self, Write};
 
 /// Trait defining the interface for user input operations
@@ -407,5 +408,125 @@ impl Oracle for MenuCliOracle {
     fn fuzzy_search_strings(&self, items: &[String], prompt: &str) -> Result<Option<String>> {
         use crate::fuzzy::TestCaseFuzzyFinder;
         TestCaseFuzzyFinder::search_strings(items, prompt)
+    }
+}
+
+/// Enum representing different types of answers for hardcoded responses
+#[derive(Debug, Clone)]
+pub enum AnswerVariant {
+    String(String),
+    Int(i64),
+    Bool(bool),
+    Strings(Vec<String>),
+}
+
+/// Hardcoded Oracle for testing that uses a queue-based answer system
+pub struct HardcodedOracle {
+    answers: std::cell::RefCell<VecDeque<AnswerVariant>>,
+}
+
+impl HardcodedOracle {
+    /// Create a new HardcodedOracle with a queue of answers
+    pub fn new(answers: VecDeque<AnswerVariant>) -> Self {
+        Self {
+            answers: std::cell::RefCell::new(answers),
+        }
+    }
+
+    /// Create an empty HardcodedOracle
+    pub fn empty() -> Self {
+        Self {
+            answers: std::cell::RefCell::new(VecDeque::new()),
+        }
+    }
+
+    /// Add an answer to the queue
+    pub fn add_answer(&self, answer: AnswerVariant) {
+        self.answers.borrow_mut().push_back(answer);
+    }
+
+    /// Get the next answer from the queue
+    fn next_answer(&self) -> Result<AnswerVariant> {
+        self.answers
+            .borrow_mut()
+            .pop_front()
+            .ok_or_else(|| anyhow::anyhow!("No more hardcoded answers available"))
+    }
+}
+
+impl Oracle for HardcodedOracle {
+    fn input(&self, _prompt: &str) -> Result<String> {
+        match self.next_answer()? {
+            AnswerVariant::String(s) => Ok(s),
+            _ => anyhow::bail!("Expected String answer variant"),
+        }
+    }
+
+    fn input_optional(&self, _prompt: &str) -> Result<Option<String>> {
+        match self.next_answer()? {
+            AnswerVariant::String(s) => {
+                if s.is_empty() {
+                    Ok(None)
+                } else {
+                    Ok(Some(s))
+                }
+            }
+            _ => anyhow::bail!("Expected String answer variant"),
+        }
+    }
+
+    fn input_integer(&self, _prompt: &str) -> Result<i64> {
+        match self.next_answer()? {
+            AnswerVariant::Int(i) => Ok(i),
+            _ => anyhow::bail!("Expected Int answer variant"),
+        }
+    }
+
+    fn confirm(&self, _prompt: &str) -> Result<bool> {
+        match self.next_answer()? {
+            AnswerVariant::Bool(b) => Ok(b),
+            _ => anyhow::bail!("Expected Bool answer variant"),
+        }
+    }
+
+    fn select<T: ToString>(&self, _prompt: &str, _items: &[T]) -> Result<usize> {
+        match self.next_answer()? {
+            AnswerVariant::Int(i) => {
+                if i < 0 {
+                    anyhow::bail!("Expected non-negative integer for select")
+                }
+                Ok(i as usize)
+            }
+            _ => anyhow::bail!("Expected Int answer variant"),
+        }
+    }
+
+    fn multi_select<T: ToString>(&self, _prompt: &str, _items: &[T]) -> Result<Vec<usize>> {
+        match self.next_answer()? {
+            AnswerVariant::Strings(strings) => {
+                let indices: Result<Vec<usize>> = strings
+                    .iter()
+                    .map(|s| {
+                        s.parse::<usize>()
+                            .context("Failed to parse string as usize for multi_select")
+                    })
+                    .collect();
+                indices
+            }
+            _ => anyhow::bail!("Expected Strings answer variant"),
+        }
+    }
+
+    fn fuzzy_search_strings(&self, _items: &[String], _prompt: &str) -> Result<Option<String>> {
+        match self.next_answer()? {
+            AnswerVariant::String(s) => {
+                if s.is_empty() {
+                    Ok(None)
+                } else {
+                    Ok(Some(s))
+                }
+            }
+            _ => anyhow::bail!("Expected String answer variant"),
+        }
     }
 }
