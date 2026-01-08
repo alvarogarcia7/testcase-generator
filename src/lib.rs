@@ -9,6 +9,7 @@ pub mod models;
 pub mod parser;
 pub mod prompts;
 pub mod recovery;
+pub mod sample;
 pub mod storage;
 pub mod validation;
 
@@ -26,5 +27,6 @@ pub use models::{
 pub use parser::{SearchableCollections, TestCaseParser};
 pub use prompts::{Prompts, TestCaseMetadata};
 pub use recovery::{RecoveryManager, RecoveryState};
+pub use sample::SampleData;
 pub use storage::TestCaseStorage;
 pub use validation::SchemaValidator;

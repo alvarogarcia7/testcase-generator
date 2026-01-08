@@ -1,6 +1,7 @@
 use crate::database::ConditionDatabase;
 use crate::editor::EditorFlow;
 use crate::fuzzy::TestCaseFuzzyFinder;
+use crate::sample::SampleData;
 use crate::validation::SchemaValidator;
 use crate::{config::EditorConfig, TestCaseEditor};
 use anyhow::{Context, Result};
@@ -12,23 +13,55 @@ use std::path::Path;
 /// Interactive prompt utilities
 pub struct Prompts<'a> {
     db: Option<&'a ConditionDatabase>,
+    sample: Option<&'a SampleData>,
 }
 
 impl<'a> Prompts<'a> {
     /// Create a new Prompts instance without a database
     pub fn new() -> Prompts<'static> {
-        Prompts { db: None }
+        Prompts {
+            db: None,
+            sample: None,
+        }
     }
 
     /// Create a new Prompts instance with a database
     pub fn new_with_database(db: &'a ConditionDatabase) -> Self {
-        Self { db: Some(db) }
+        Self {
+            db: Some(db),
+            sample: None,
+        }
+    }
+
+    /// Create a new Prompts instance with sample data
+    pub fn new_with_sample(sample: &'a SampleData) -> Self {
+        Self {
+            db: None,
+            sample: Some(sample),
+        }
+    }
+
+    /// Create a new Prompts instance with both database and sample data
+    pub fn new_with_database_and_sample(db: &'a ConditionDatabase, sample: &'a SampleData) -> Self {
+        Self {
+            db: Some(db),
+            sample: Some(sample),
+        }
     }
 
     /// Prompt for a string input
     pub fn input(prompt: &str) -> Result<String> {
         Input::with_theme(&ColorfulTheme::default())
             .with_prompt(prompt)
+            .interact_text()
+            .context("Failed to read input")
+    }
+
+    /// Prompt for a string input with sample default
+    pub fn input_with_sample(&self, prompt: &str, sample_value: &str) -> Result<String> {
+        Input::with_theme(&ColorfulTheme::default())
+            .with_prompt(prompt)
+            .with_initial_text(sample_value)
             .interact_text()
             .context("Failed to read input")
     }
@@ -61,6 +94,26 @@ impl<'a> Prompts<'a> {
         }
     }
 
+    /// Prompt for an optional string input with sample default
+    pub fn input_optional_with_sample(
+        &self,
+        prompt: &str,
+        sample_value: &str,
+    ) -> Result<Option<String>> {
+        let input: String = Input::with_theme(&ColorfulTheme::default())
+            .with_prompt(prompt)
+            .with_initial_text(sample_value)
+            .allow_empty(true)
+            .interact_text()
+            .context("Failed to read input")?;
+
+        if input.trim().is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(input))
+        }
+    }
+
     /// Prompt for a string with a default value
     pub fn input_with_default(prompt: &str, default: &str) -> Result<String> {
         Input::with_theme(&ColorfulTheme::default())
@@ -75,6 +128,22 @@ impl<'a> Prompts<'a> {
         loop {
             let input: String = Input::with_theme(&ColorfulTheme::default())
                 .with_prompt(prompt)
+                .interact_text()
+                .context("Failed to read input")?;
+
+            match input.trim().parse::<i64>() {
+                Ok(value) => return Ok(value),
+                Err(_) => println!("Please enter a valid integer"),
+            }
+        }
+    }
+
+    /// Prompt for an integer input with sample default
+    pub fn input_integer_with_sample(&self, prompt: &str, sample_value: i64) -> Result<i64> {
+        loop {
+            let input: String = Input::with_theme(&ColorfulTheme::default())
+                .with_prompt(prompt)
+                .with_initial_text(sample_value.to_string())
                 .interact_text()
                 .context("Failed to read input")?;
 
@@ -118,6 +187,15 @@ impl<'a> Prompts<'a> {
         Confirm::with_theme(&ColorfulTheme::default())
             .with_prompt(prompt)
             .default(default)
+            .interact()
+            .context("Failed to read confirmation")
+    }
+
+    /// Prompt for a confirmation with sample default
+    pub fn confirm_with_sample(&self, prompt: &str, sample_value: bool) -> Result<bool> {
+        Confirm::with_theme(&ColorfulTheme::default())
+            .with_prompt(prompt)
+            .default(sample_value)
             .interact()
             .context("Failed to read confirmation")
     }
@@ -181,6 +259,43 @@ impl<'a> Prompts<'a> {
             description,
         };
         Ok(metadata)
+    }
+
+    /// Prompt for test case metadata fields with optional sample data
+    pub fn prompt_metadata_with_sample(&self) -> Result<TestCaseMetadata> {
+        println!("\n=== Test Case Metadata ===\n");
+
+        if self.sample.is_some() {
+            println!(
+                "⚠ Sample values shown as editable text (Enter confirms, you can edit/delete)\n"
+            );
+        }
+
+        let (requirement, item, tc, id, description) = if let Some(sample) = self.sample {
+            (
+                self.input_with_sample("Requirement", &sample.metadata_requirement())?,
+                self.input_integer_with_sample("Item", sample.metadata_item())?,
+                self.input_integer_with_sample("TC", sample.metadata_tc())?,
+                self.input_with_sample("ID", &sample.metadata_id())?,
+                self.input_with_sample("Description", &sample.metadata_description())?,
+            )
+        } else {
+            (
+                Self::input("Requirement")?,
+                Self::input_integer("Item")?,
+                Self::input_integer("TC")?,
+                Self::input("ID")?,
+                Self::input("Description")?,
+            )
+        };
+
+        Ok(TestCaseMetadata {
+            requirement,
+            item,
+            tc,
+            id,
+            description,
+        })
     }
 
     /// Prompt for test case metadata fields with recovery support
@@ -398,7 +513,11 @@ impl<'a> Prompts<'a> {
             println!("{}", yaml_str);
             println!();
 
-            let keep_defaults = Self::confirm_with_default("Keep these defaults?", true)?;
+            let keep_defaults = if let Some(sample) = self.sample {
+                self.confirm_with_sample("Keep these defaults?", sample.confirm_keep_defaults())?
+            } else {
+                Self::confirm_with_default("Keep these defaults?", true)?
+            };
 
             if keep_defaults {
                 return Ok(default_value.clone());
@@ -417,14 +536,21 @@ impl<'a> Prompts<'a> {
             vec!["eUICC".to_string(), "LPA".to_string(), "SM-DP+".to_string()]
         };
 
-        let device_name = match TestCaseFuzzyFinder::search_strings(
-            &default_device_names,
-            "Select device name (fuzzy search, or ESC to enter manually): ",
-        )? {
-            Some(name) => name,
-            None => {
-                println!("No selection made, entering manually.");
-                Self::input("Device name (e.g., eUICC)")?
+        let device_name = if let Some(sample) = self.sample {
+            self.input_with_sample(
+                "Device name (e.g., eUICC)",
+                &sample.initial_condition_device_name(),
+            )?
+        } else {
+            match TestCaseFuzzyFinder::search_strings(
+                &default_device_names,
+                "Select device name (fuzzy search, or ESC to enter manually): ",
+            )? {
+                Some(name) => name,
+                None => {
+                    println!("No selection made, entering manually.");
+                    Self::input("Device name (e.g., eUICC)")?
+                }
             }
         };
 
@@ -436,7 +562,19 @@ impl<'a> Prompts<'a> {
         );
 
         loop {
-            let condition = Self::input_optional(&format!("Condition #{}", conditions.len() + 1))?;
+            let condition = if let Some(sample) = self.sample {
+                let cond_value = sample.initial_condition(conditions.len());
+                if sample.input_optional_stop(conditions.len()) {
+                    None
+                } else {
+                    self.input_optional_with_sample(
+                        &format!("Condition #{}", conditions.len() + 1),
+                        &cond_value,
+                    )?
+                }
+            } else {
+                Self::input_optional(&format!("Condition #{}", conditions.len() + 1))?
+            };
 
             match condition {
                 Some(cond) if !cond.trim().is_empty() => {

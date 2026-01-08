@@ -166,6 +166,10 @@ pub enum Commands {
         /// Commit message prefix (default: empty)
         #[arg(short, long)]
         commit_prefix: Option<String>,
+
+        /// Use sample data for prompts (default answers that can be modified)
+        #[arg(long)]
+        sample: bool,
     },
 
     /// Parse general initial conditions from database with fuzzy search
