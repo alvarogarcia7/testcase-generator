@@ -12,7 +12,11 @@
             "args": [
                 "create-interactive"
             ],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "env": {
+                "TERM": "xterm-256color"
+            }
         },
         {
             "type": "lldb",
@@ -24,7 +28,11 @@
             "processCreateCommands": [
                 "settings set target.run-args create-interactive",
                 "process launch"
-            ]
+            ],
+            "console": "integratedTerminal",
+            "env": {
+                "TERM": "xterm-256color"
+            }
         },
         {
             "name": "Debug unit tests in library 'testcase_manager'",
@@ -34,6 +42,10 @@
                 "args": [
                     "test"
                 ]
+            },
+            "console": "integratedTerminal",
+            "env": {
+                "TERM": "xterm-256color"
             }
         },
         {
@@ -49,10 +61,9 @@
                 ]
             },
             "args": [],
-            // "externalConsole": true,
             "console": "integratedTerminal",
             "env": {
-                "TERM": "xterm-256color",
+                "TERM": "xterm-256color"
             }
         },
         {
@@ -65,6 +76,10 @@
                     "--bin=testcase-manager"
                 ]
             },
+            "console": "integratedTerminal",
+            "env": {
+                "TERM": "xterm-256color"
+            }
         },
         {
             "name": "Debug example 'interactive_workflow'",
@@ -76,7 +91,11 @@
                     "--example=interactive_workflow"
                 ]
             },
-            "args": []
+            "args": [],
+            "console": "integratedTerminal",
+            "env": {
+                "TERM": "xterm-256color"
+            }
         },
         {
             "name": "Debug unit tests in example 'interactive_workflow'",
@@ -87,6 +106,10 @@
                     "test",
                     "--example=interactive_workflow"
                 ]
+            },
+            "console": "integratedTerminal",
+            "env": {
+                "TERM": "xterm-256color"
             }
         },
         {
@@ -99,7 +122,11 @@
                     "--example=validate_gsma_schema"
                 ]
             },
-            "args": []
+            "args": [],
+            "console": "integratedTerminal",
+            "env": {
+                "TERM": "xterm-256color"
+            }
         },
         {
             "name": "Debug unit tests in example 'validate_gsma_schema'",
@@ -110,6 +137,10 @@
                     "test",
                     "--example=validate_gsma_schema"
                 ]
+            },
+            "console": "integratedTerminal",
+            "env": {
+                "TERM": "xterm-256color"
             }
         }
     ]
