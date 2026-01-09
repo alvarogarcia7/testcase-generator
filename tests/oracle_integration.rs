@@ -327,9 +327,10 @@ fn test_complete_workflow_with_hardcoded_oracle() -> Result<()> {
     assert!(!parsed.general_initial_conditions.is_empty());
 
     // Verify initial conditions
-    assert_eq!(parsed.initial_conditions.euicc.len(), 2);
-    assert_eq!(parsed.initial_conditions.euicc[0], "Initial condition 1");
-    assert_eq!(parsed.initial_conditions.euicc[1], "Initial condition 2");
+    let euicc = parsed.initial_conditions.get("eUICC").unwrap();
+    assert_eq!(euicc.len(), 2);
+    assert_eq!(euicc[0], "Initial condition 1");
+    assert_eq!(euicc[1], "Initial condition 2");
 
     // Verify test sequence
     assert_eq!(parsed.test_sequences.len(), 1);

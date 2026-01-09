@@ -6,7 +6,7 @@ use std::sync::Arc;
 use tempfile::TempDir;
 use testcase_manager::{
     oracle::{AnswerVariant, HardcodedOracle, Oracle},
-    GitManager, Prompts, SchemaValidator, TestCase, TestCaseBuilder,
+    GitManager, Prompts, TestCase, TestCaseBuilder,
 };
 
 #[test]
@@ -157,7 +157,7 @@ fn test_end_to_end_complete_workflow() -> Result<()> {
     }
 
     // Add test sequence
-    builder.add_test_sequence(None)?;
+    builder.add_test_sequence_interactive()?; 
 
     // Commit sequence
     let commit_seq = oracle.confirm("Commit this sequence?")?;
@@ -169,7 +169,7 @@ fn test_end_to_end_complete_workflow() -> Result<()> {
     let add_steps = oracle.confirm("Add steps to this sequence now?")?;
     if add_steps {
         // Add Step 1
-        builder.add_step_to_sequence(0, None)?;
+        builder.add_steps_to_sequence_with_commits(1-1)?;
 
         // Commit step 1
         let commit_step1 = oracle.confirm("Commit this step?")?;
@@ -181,7 +181,7 @@ fn test_end_to_end_complete_workflow() -> Result<()> {
         let add_step2 = oracle.confirm("Add another step to this sequence?")?;
         if add_step2 {
             // Add Step 2
-            builder.add_step_to_sequence(0, None)?;
+            builder.add_steps_to_sequence_by_id_with_commits(2-1)?;
 
             // Commit step 2
             let commit_step2 = oracle.confirm("Commit this step?")?;
@@ -198,8 +198,7 @@ fn test_end_to_end_complete_workflow() -> Result<()> {
     oracle.confirm("Add another test sequence?")?; // false
 
     // Save final test case
-    let file_path =
-        builder.save_with_filename(&output_file.file_name().unwrap().to_string_lossy())?;
+    let file_path = builder.save()?;
 
     // Commit final test case
     let commit_final = oracle.confirm("Commit final complete test case?")?;

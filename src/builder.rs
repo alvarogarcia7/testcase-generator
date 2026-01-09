@@ -662,7 +662,7 @@ impl TestCaseBuilder {
                     )?)
                 }
             } else {
-                    Some(prompts.prompt_initial_conditions_with_oracle(
+                Some(prompts.prompt_initial_conditions_with_oracle(
                     None,
                     &self.validator,
                     &self.oracle,
