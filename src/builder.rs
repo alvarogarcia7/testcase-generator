@@ -1,6 +1,8 @@
+use crate::complex_structure_editor::ComplexStructureEditor;
 use crate::config::EditorConfig;
 use crate::database::ConditionDatabase;
 use crate::git::GitManager;
+use crate::models::Expected;
 use crate::oracle::Oracle;
 use crate::prompts::Prompts;
 use crate::recovery::{RecoveryManager, RecoveryState};
@@ -952,6 +954,37 @@ impl TestCaseBuilder {
 
     /// Internal implementation of prompt_for_expected
     fn prompt_for_expected_internal(&self) -> Result<Value> {
+        if let Some(ref db) = self.db {
+            let editor_config = EditorConfig::load();
+            let expected_items = db.get_all_expected();
+
+            if !expected_items.is_empty() {
+                let template = r#"# success: true  # Optional field
+result: ""
+output: ""
+"#;
+
+                match ComplexStructureEditor::<Expected>::edit_with_fuzzy_search(
+                    &expected_items,
+                    "Select expected result (ESC to skip): ",
+                    self.oracle.as_ref(),
+                    &editor_config,
+                    &self.validator,
+                    template,
+                ) {
+                    Ok(expected) => {
+                        let yaml_value = serde_yaml::to_value(&expected)
+                            .context("Failed to convert Expected to YAML value")?;
+                        return Ok(yaml_value);
+                    }
+                    Err(e) => {
+                        log::warn!("Fuzzy search failed or cancelled: {}", e);
+                        log::info!("Falling back to field-by-field prompts");
+                    }
+                }
+            }
+        }
+
         let (include_success, result, output, success_value) = if let Some(sample) = &self.sample {
             let prompts = Prompts::new_with_sample(sample);
             let include = prompts.confirm_with_sample_oracle(
