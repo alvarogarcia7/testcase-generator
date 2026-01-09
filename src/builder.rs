@@ -791,7 +791,7 @@ impl TestCaseBuilder {
         &mut self,
         sequence_index: usize,
     ) -> Result<&mut Self> {
-        use crate::fuzzy::TestCaseFuzzyFinder;
+        use crate::models::Step;
 
         println!("\n╔═══════════════════════════════════════════════╗");
         println!("║      Step Collection Loop with Commits       ║");
@@ -805,56 +805,56 @@ impl TestCaseBuilder {
             sequence_id, sequence_name
         );
 
-        let existing_steps = self.get_all_existing_steps_internal();
-
         loop {
             let step_number = self.get_next_step_number_internal(sequence_index)?;
             println!("\n=== Add Step #{} ===", step_number);
 
-            let step_description = if !existing_steps.is_empty() {
-                println!("\nYou can select from existing step descriptions or enter a new one.");
+            let step = if let Some(ref db) = self.db {
+                let editor_config = EditorConfig::load();
+                let step_items = db.get_all_steps();
 
-                if Prompts::confirm_with_oracle(
-                    "Use fuzzy search to select from existing descriptions?",
-                    &self.oracle,
-                )? {
-                    match TestCaseFuzzyFinder::search_strings(
-                        &existing_steps,
-                        "Select step description: ",
-                    )? {
-                        Some(desc) => desc,
-                        None => {
-                            println!("No selection made, entering new description.");
-                            Prompts::input_with_oracle("Step description", &self.oracle)?
+                if !step_items.is_empty() {
+                    let template = format!(
+                        r#"step: {}
+description: ""
+command: ""
+expected:
+  result: ""
+  output: ""
+"#,
+                        step_number
+                    );
+
+                    match ComplexStructureEditor::<Step>::edit_with_fuzzy_search(
+                        &step_items,
+                        "Select step (ESC to create new): ",
+                        self.oracle.as_ref(),
+                        &editor_config,
+                        &self.validator,
+                        &template,
+                    ) {
+                        Ok(mut edited_step) => {
+                            edited_step.step = step_number;
+                            edited_step
+                        }
+                        Err(e) => {
+                            log::warn!("Fuzzy search failed or cancelled: {}", e);
+                            log::info!("Falling back to field-by-field prompts");
+                            self.prompt_for_step_fields(step_number)?
                         }
                     }
                 } else {
-                    Prompts::input_with_oracle("Step description", &self.oracle)?
+                    self.prompt_for_step_fields(step_number)?
                 }
             } else {
-                Prompts::input_with_oracle("Step description", &self.oracle)?
+                self.prompt_for_step_fields(step_number)?
             };
 
-            let manual = if Prompts::confirm_with_oracle("Is this a manual step?", &self.oracle)? {
-                Some(true)
-            } else {
-                None
-            };
-
-            let command = Prompts::input_with_oracle("Command", &self.oracle)?;
-
-            let expected = self.prompt_for_expected_internal()?;
-
-            let step = self.create_step_value(
-                step_number,
-                manual,
-                step_description.clone(),
-                command,
-                expected,
-            )?;
+            let step_value = serde_yaml::to_value(&step)
+                .context("Failed to convert Step to YAML value")?;
 
             println!("\n=== Validating Step ===");
-            self.validate_and_append_step(sequence_index, step)?;
+            self.validate_and_append_step(sequence_index, step_value)?;
             println!("✓ Step validated and added\n");
 
             self.save().context("Failed to save file")?;
@@ -862,7 +862,7 @@ impl TestCaseBuilder {
             if Prompts::confirm_with_oracle("Commit this step to git?", &self.oracle)? {
                 let commit_msg = format!(
                     "Add step #{} to sequence #{}: {}",
-                    step_number, sequence_id, step_description
+                    step_number, sequence_id, step.description
                 );
                 self.commit(&commit_msg).context("Failed to commit step")?;
             }
@@ -875,6 +875,33 @@ impl TestCaseBuilder {
 
         println!("\n✓ All steps added to sequence");
         Ok(self)
+    }
+
+    /// Helper method to prompt for step fields individually
+    fn prompt_for_step_fields(&self, step_number: i64) -> Result<crate::models::Step> {
+        use crate::models::Step;
+
+        let description = Prompts::input_with_oracle("Step description", &self.oracle)?;
+
+        let manual = if Prompts::confirm_with_oracle("Is this a manual step?", &self.oracle)? {
+            Some(true)
+        } else {
+            None
+        };
+
+        let command = Prompts::input_with_oracle("Command", &self.oracle)?;
+
+        let expected_value = self.prompt_for_expected_internal()?;
+        let expected: crate::models::Expected = serde_yaml::from_value(expected_value)
+            .context("Failed to convert expected value to Expected struct")?;
+
+        Ok(Step {
+            step: step_number,
+            manual,
+            description,
+            command,
+            expected,
+        })
     }
 
     /// Public accessor for get_sequence_id_by_index
