@@ -459,8 +459,8 @@ impl<'a> Prompts<'a> {
 #     - "Condition 1"
 #     - "Condition 2"
 
-- eUICC:
-    - ""
+eUICC:
+  - "Condition 1"
 "#;
 
         let editor_flow = EditorFlow::new(editor_config.clone());
