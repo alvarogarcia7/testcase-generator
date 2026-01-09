@@ -514,8 +514,8 @@ fn handle_init(path: &str, init_git: bool) -> Result<()> {
 
 fn handle_create_interactive(path: &str) -> Result<()> {
     let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
-    let mut builder =
-        TestCaseBuilder::new_with_recovery(path, oracle).context("Failed to create test case builder")?;
+    let mut builder = TestCaseBuilder::new_with_recovery(path, oracle)
+        .context("Failed to create test case builder")?;
 
     println!("\n╔═══════════════════════════════════════════════╗");
     println!("║   Interactive Test Case Creation Workflow    ║");
@@ -570,8 +570,8 @@ fn handle_create_interactive(path: &str) -> Result<()> {
 
 fn handle_build_sequences(path: &str) -> Result<()> {
     let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
-    let mut builder =
-        TestCaseBuilder::new_with_recovery(path, oracle).context("Failed to create test case builder")?;
+    let mut builder = TestCaseBuilder::new_with_recovery(path, oracle)
+        .context("Failed to create test case builder")?;
 
     println!("\n╔═══════════════════════════════════════════════╗");
     println!("║   Test Sequence Builder with Git Commits     ║");
@@ -640,8 +640,8 @@ fn handle_build_sequences(path: &str) -> Result<()> {
 
 fn handle_add_steps(path: &str, sequence_id: Option<i64>) -> Result<()> {
     let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
-    let mut builder =
-        TestCaseBuilder::new_with_recovery(path, oracle).context("Failed to create test case builder")?;
+    let mut builder = TestCaseBuilder::new_with_recovery(path, oracle)
+        .context("Failed to create test case builder")?;
 
     println!("\n╔═══════════════════════════════════════════════╗");
     println!("║      Add Steps to Sequence with Commits      ║");
@@ -728,8 +728,8 @@ fn handle_add_steps(path: &str, sequence_id: Option<i64>) -> Result<()> {
 
 fn handle_build_sequences_with_steps(path: &str) -> Result<()> {
     let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
-    let mut builder =
-        TestCaseBuilder::new_with_recovery(path, oracle).context("Failed to create test case builder")?;
+    let mut builder = TestCaseBuilder::new_with_recovery(path, oracle)
+        .context("Failed to create test case builder")?;
 
     println!("\n╔═══════════════════════════════════════════════╗");
     println!("║ Build Test Sequences & Steps with Commits    ║");

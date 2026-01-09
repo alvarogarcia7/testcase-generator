@@ -1,5 +1,4 @@
-use anyhow::{Context, Error, Result};
-use clap::builder::Str;
+use anyhow::{Context, Result};
 use dialoguer::{theme::ColorfulTheme, Confirm, Input, MultiSelect, Select};
 use std::collections::VecDeque;
 use std::io::{self, Write};
@@ -387,7 +386,7 @@ impl MenuCliOracle {
             }
         }
 
-        let selected_strings = selected.iter().map( move |i| items[*i].clone()).collect();
+        let selected_strings = selected.iter().map(move |i| items[*i].clone()).collect();
 
         Ok(selected_strings)
     }
@@ -924,5 +923,456 @@ impl Oracle for HardcodedOracle {
             AnswerVariant::Strings(strings) => Ok(strings),
             _ => anyhow::bail!("Expected Strings answer variant"),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_hardcoded_oracle_answer_queue_consumption() {
+        let mut answers = VecDeque::new();
+        answers.push_back(AnswerVariant::String("first".to_string()));
+        answers.push_back(AnswerVariant::String("second".to_string()));
+        answers.push_back(AnswerVariant::String("third".to_string()));
+
+        let oracle = HardcodedOracle::new(answers);
+
+        assert_eq!(oracle.input("prompt1").unwrap(), "first");
+        assert_eq!(oracle.input("prompt2").unwrap(), "second");
+        assert_eq!(oracle.input("prompt3").unwrap(), "third");
+    }
+
+    #[test]
+    fn test_hardcoded_oracle_empty_queue_error() {
+        let oracle = HardcodedOracle::empty();
+
+        let result = oracle.input("prompt");
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("No more hardcoded answers available"));
+    }
+
+    #[test]
+    fn test_hardcoded_oracle_exhausted_queue_error() {
+        let mut answers = VecDeque::new();
+        answers.push_back(AnswerVariant::String("only_answer".to_string()));
+
+        let oracle = HardcodedOracle::new(answers);
+
+        oracle.input("prompt1").unwrap();
+
+        let result = oracle.input("prompt2");
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("No more hardcoded answers available"));
+    }
+
+    #[test]
+    fn test_hardcoded_oracle_add_answer() {
+        let oracle = HardcodedOracle::empty();
+
+        oracle.add_answer(AnswerVariant::String("added".to_string()));
+        oracle.add_answer(AnswerVariant::Int(42));
+
+        assert_eq!(oracle.input("prompt").unwrap(), "added");
+        assert_eq!(oracle.input_integer("prompt").unwrap(), 42);
+    }
+
+    #[test]
+    fn test_hardcoded_oracle_string_methods() {
+        let mut answers = VecDeque::new();
+        answers.push_back(AnswerVariant::String("input_result".to_string()));
+        answers.push_back(AnswerVariant::String("with_initial".to_string()));
+        answers.push_back(AnswerVariant::String("with_default".to_string()));
+
+        let oracle = HardcodedOracle::new(answers);
+
+        assert_eq!(oracle.input("prompt").unwrap(), "input_result");
+        assert_eq!(
+            oracle.input_with_initial_text("prompt", "initial").unwrap(),
+            "with_initial"
+        );
+        assert_eq!(
+            oracle.input_with_default("prompt", "default").unwrap(),
+            "with_default"
+        );
+    }
+
+    #[test]
+    fn test_hardcoded_oracle_optional_string_some() {
+        let mut answers = VecDeque::new();
+        answers.push_back(AnswerVariant::String("value".to_string()));
+        answers.push_back(AnswerVariant::String("with_initial".to_string()));
+
+        let oracle = HardcodedOracle::new(answers);
+
+        assert_eq!(
+            oracle.input_optional("prompt").unwrap(),
+            Some("value".to_string())
+        );
+        assert_eq!(
+            oracle
+                .input_optional_with_initial_text("prompt", "initial")
+                .unwrap(),
+            Some("with_initial".to_string())
+        );
+    }
+
+    #[test]
+    fn test_hardcoded_oracle_optional_string_none() {
+        let mut answers = VecDeque::new();
+        answers.push_back(AnswerVariant::String("".to_string()));
+        answers.push_back(AnswerVariant::String("".to_string()));
+
+        let oracle = HardcodedOracle::new(answers);
+
+        assert_eq!(oracle.input_optional("prompt").unwrap(), None);
+        assert_eq!(
+            oracle
+                .input_optional_with_initial_text("prompt", "initial")
+                .unwrap(),
+            None
+        );
+    }
+
+    #[test]
+    fn test_hardcoded_oracle_integer_methods() {
+        let mut answers = VecDeque::new();
+        answers.push_back(AnswerVariant::Int(100));
+        answers.push_back(AnswerVariant::Int(-50));
+
+        let oracle = HardcodedOracle::new(answers);
+
+        assert_eq!(oracle.input_integer("prompt").unwrap(), 100);
+        assert_eq!(
+            oracle
+                .input_integer_with_initial_text("prompt", "10")
+                .unwrap(),
+            -50
+        );
+    }
+
+    #[test]
+    fn test_hardcoded_oracle_confirm_methods() {
+        let mut answers = VecDeque::new();
+        answers.push_back(AnswerVariant::Bool(true));
+        answers.push_back(AnswerVariant::Bool(false));
+
+        let oracle = HardcodedOracle::new(answers);
+
+        assert!(oracle.confirm("prompt").unwrap());
+        assert!(!oracle.confirm_with_default("prompt", true).unwrap());
+    }
+
+    #[test]
+    fn test_hardcoded_oracle_select() {
+        let mut answers = VecDeque::new();
+        answers.push_back(AnswerVariant::Int(0));
+        answers.push_back(AnswerVariant::Int(2));
+
+        let oracle = HardcodedOracle::new(answers);
+
+        let items = vec![
+            "item1".to_string(),
+            "item2".to_string(),
+            "item3".to_string(),
+        ];
+        assert_eq!(oracle.select("prompt", items.clone()).unwrap(), "0");
+        assert_eq!(oracle.select("prompt", items).unwrap(), "2");
+    }
+
+    #[test]
+    fn test_hardcoded_oracle_select_negative_error() {
+        let mut answers = VecDeque::new();
+        answers.push_back(AnswerVariant::Int(-1));
+
+        let oracle = HardcodedOracle::new(answers);
+
+        let items = vec!["item1".to_string(), "item2".to_string()];
+        let result = oracle.select("prompt", items);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Expected non-negative integer"));
+    }
+
+    #[test]
+    fn test_hardcoded_oracle_multi_select() {
+        let mut answers = VecDeque::new();
+        answers.push_back(AnswerVariant::Strings(vec![
+            "0".to_string(),
+            "2".to_string(),
+            "4".to_string(),
+        ]));
+
+        let oracle = HardcodedOracle::new(answers);
+
+        let items = vec![
+            "a".to_string(),
+            "b".to_string(),
+            "c".to_string(),
+            "d".to_string(),
+            "e".to_string(),
+        ];
+        let result = oracle.multi_select("prompt", items).unwrap();
+        assert_eq!(
+            result,
+            vec!["a".to_string(), "c".to_string(), "e".to_string()]
+        );
+    }
+
+    #[test]
+    fn test_hardcoded_oracle_multi_select_empty() {
+        let mut answers = VecDeque::new();
+        answers.push_back(AnswerVariant::Strings(vec![]));
+
+        let oracle = HardcodedOracle::new(answers);
+
+        let items = vec!["a".to_string(), "b".to_string(), "c".to_string()];
+        let result = oracle.multi_select("prompt", items).unwrap();
+        assert_eq!(result, Vec::<String>::new());
+    }
+
+    #[test]
+    fn test_hardcoded_oracle_multi_select_invalid_index() {
+        let mut answers = VecDeque::new();
+        answers.push_back(AnswerVariant::Strings(vec!["not_a_number".to_string()]));
+
+        let oracle = HardcodedOracle::new(answers);
+
+        let items = vec!["a".to_string(), "b".to_string()];
+        let result = oracle.multi_select("prompt", items);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Failed to parse string as usize"));
+    }
+
+    #[test]
+    fn test_hardcoded_oracle_fuzzy_search_some() {
+        let mut answers = VecDeque::new();
+        answers.push_back(AnswerVariant::String("selected".to_string()));
+
+        let oracle = HardcodedOracle::new(answers);
+
+        let items = vec!["item1".to_string(), "selected".to_string()];
+        let result = oracle.fuzzy_search_strings(&items, "prompt").unwrap();
+        assert_eq!(result, Some("selected".to_string()));
+    }
+
+    #[test]
+    fn test_hardcoded_oracle_fuzzy_search_none() {
+        let mut answers = VecDeque::new();
+        answers.push_back(AnswerVariant::String("".to_string()));
+
+        let oracle = HardcodedOracle::new(answers);
+
+        let items = vec!["item1".to_string()];
+        let result = oracle.fuzzy_search_strings(&items, "prompt").unwrap();
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_hardcoded_oracle_fuzzy_multi_select() {
+        let mut answers = VecDeque::new();
+        answers.push_back(AnswerVariant::Strings(vec![
+            "first".to_string(),
+            "second".to_string(),
+        ]));
+
+        let oracle = HardcodedOracle::new(answers);
+
+        let items = vec![
+            "first".to_string(),
+            "second".to_string(),
+            "third".to_string(),
+        ];
+        let result = oracle.fuzzy_multi_select(&items, "prompt").unwrap();
+        assert_eq!(result, vec!["first".to_string(), "second".to_string()]);
+    }
+
+    #[test]
+    fn test_hardcoded_oracle_type_mismatch_string_expected() {
+        let mut answers = VecDeque::new();
+        answers.push_back(AnswerVariant::Int(42));
+
+        let oracle = HardcodedOracle::new(answers);
+
+        let result = oracle.input("prompt");
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Expected String answer variant"));
+    }
+
+    #[test]
+    fn test_hardcoded_oracle_type_mismatch_int_expected() {
+        let mut answers = VecDeque::new();
+        answers.push_back(AnswerVariant::String("not_an_int".to_string()));
+
+        let oracle = HardcodedOracle::new(answers);
+
+        let result = oracle.input_integer("prompt");
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Expected Int answer variant"));
+    }
+
+    #[test]
+    fn test_hardcoded_oracle_type_mismatch_bool_expected() {
+        let mut answers = VecDeque::new();
+        answers.push_back(AnswerVariant::String("yes".to_string()));
+
+        let oracle = HardcodedOracle::new(answers);
+
+        let result = oracle.confirm("prompt");
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Expected Bool answer variant"));
+    }
+
+    #[test]
+    fn test_hardcoded_oracle_type_mismatch_strings_expected() {
+        let mut answers = VecDeque::new();
+        answers.push_back(AnswerVariant::Int(1));
+
+        let oracle = HardcodedOracle::new(answers);
+
+        let items = vec!["a".to_string(), "b".to_string()];
+        let result = oracle.multi_select("prompt", items);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Expected Strings answer variant"));
+    }
+
+    #[test]
+    fn test_hardcoded_oracle_type_mismatch_select() {
+        let mut answers = VecDeque::new();
+        answers.push_back(AnswerVariant::Bool(true));
+
+        let oracle = HardcodedOracle::new(answers);
+
+        let items = vec!["a".to_string(), "b".to_string()];
+        let result = oracle.select("prompt", items);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Expected Int answer variant"));
+    }
+
+    #[test]
+    fn test_hardcoded_oracle_type_mismatch_fuzzy_search() {
+        let mut answers = VecDeque::new();
+        answers.push_back(AnswerVariant::Bool(false));
+
+        let oracle = HardcodedOracle::new(answers);
+
+        let items = vec!["item".to_string()];
+        let result = oracle.fuzzy_search_strings(&items, "prompt");
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Expected String answer variant"));
+    }
+
+    #[test]
+    fn test_hardcoded_oracle_type_mismatch_fuzzy_multi_select() {
+        let mut answers = VecDeque::new();
+        answers.push_back(AnswerVariant::String("single".to_string()));
+
+        let oracle = HardcodedOracle::new(answers);
+
+        let items = vec!["item".to_string()];
+        let result = oracle.fuzzy_multi_select(&items, "prompt");
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Expected Strings answer variant"));
+    }
+
+    #[test]
+    fn test_hardcoded_oracle_int_conversion_to_string() {
+        let mut answers = VecDeque::new();
+        answers.push_back(AnswerVariant::Int(5));
+
+        let oracle = HardcodedOracle::new(answers);
+
+        let items = vec![
+            "a".to_string(),
+            "b".to_string(),
+            "c".to_string(),
+            "d".to_string(),
+            "e".to_string(),
+            "f".to_string(),
+        ];
+        let result = oracle.select("prompt", items).unwrap();
+        assert_eq!(result, "5");
+    }
+
+    #[test]
+    fn test_hardcoded_oracle_strings_conversion_to_items() {
+        let mut answers = VecDeque::new();
+        answers.push_back(AnswerVariant::Strings(vec![
+            "1".to_string(),
+            "3".to_string(),
+            "5".to_string(),
+        ]));
+
+        let oracle = HardcodedOracle::new(answers);
+
+        let items = vec![
+            "a".to_string(),
+            "b".to_string(),
+            "c".to_string(),
+            "d".to_string(),
+            "e".to_string(),
+            "f".to_string(),
+        ];
+        let result = oracle.multi_select("prompt", items).unwrap();
+        assert_eq!(
+            result,
+            vec!["b".to_string(), "d".to_string(), "f".to_string()]
+        );
+    }
+
+    #[test]
+    fn test_hardcoded_oracle_mixed_type_sequence() {
+        let mut answers = VecDeque::new();
+        answers.push_back(AnswerVariant::String("name".to_string()));
+        answers.push_back(AnswerVariant::Int(42));
+        answers.push_back(AnswerVariant::Bool(true));
+        answers.push_back(AnswerVariant::Strings(vec!["opt1".to_string()]));
+
+        let oracle = HardcodedOracle::new(answers);
+
+        assert_eq!(oracle.input("name").unwrap(), "name");
+        assert_eq!(oracle.input_integer("age").unwrap(), 42);
+        assert!(oracle.confirm("confirm").unwrap());
+        let items = vec!["opt1".to_string(), "opt2".to_string()];
+        assert_eq!(
+            oracle.fuzzy_multi_select(&items, "select").unwrap(),
+            vec!["opt1".to_string()]
+        );
+
+        let result = oracle.input("extra");
+        assert!(result.is_err());
     }
 }

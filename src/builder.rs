@@ -2,7 +2,6 @@ use crate::config::EditorConfig;
 use crate::database::ConditionDatabase;
 use crate::git::GitManager;
 use crate::oracle::Oracle;
-use std::sync::Arc;
 use crate::prompts::Prompts;
 use crate::recovery::{RecoveryManager, RecoveryState};
 use crate::sample::SampleData;
@@ -11,6 +10,7 @@ use anyhow::{Context, Result};
 use indexmap::IndexMap;
 use serde_yaml::Value;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 /// Builder for creating test cases interactively
 pub struct TestCaseBuilder {
@@ -52,7 +52,10 @@ impl TestCaseBuilder {
     }
 
     /// Create a new test case builder and check for recovery
-    pub fn new_with_recovery<P: AsRef<Path>>(base_path: P, oracle: Arc<dyn Oracle>) -> Result<Self> {
+    pub fn new_with_recovery<P: AsRef<Path>>(
+        base_path: P,
+        oracle: Arc<dyn Oracle>,
+    ) -> Result<Self> {
         let base_path = base_path.as_ref().to_path_buf();
         let validator = SchemaValidator::new().context("Failed to create schema validator")?;
 
@@ -288,14 +291,20 @@ impl TestCaseBuilder {
                     selected_conditions.push(condition.clone());
                     log::info!("✓ Added: {}\n", condition);
 
-                    if !Prompts::confirm_with_oracle("Add another general initial condition?", &self.oracle)? {
+                    if !Prompts::confirm_with_oracle(
+                        "Add another general initial condition?",
+                        &self.oracle,
+                    )? {
                         break;
                     }
                 }
                 None => {
                     if selected_conditions.is_empty() {
                         log::info!("No conditions selected.");
-                        if !Prompts::confirm_with_oracle("Continue without general initial conditions?", &self.oracle)? {
+                        if !Prompts::confirm_with_oracle(
+                            "Continue without general initial conditions?",
+                            &self.oracle,
+                        )? {
                             continue;
                         }
                     }
@@ -364,14 +373,20 @@ impl TestCaseBuilder {
                     selected_conditions.push(condition.clone());
                     log::info!("✓ Added: {}\n", condition);
 
-                    if !Prompts::confirm_with_oracle("Add another initial condition?", &self.oracle)? {
+                    if !Prompts::confirm_with_oracle(
+                        "Add another initial condition?",
+                        &self.oracle,
+                    )? {
                         break;
                     }
                 }
                 None => {
                     if selected_conditions.is_empty() {
                         log::info!("No conditions selected.");
-                        if !Prompts::confirm_with_oracle("Continue without initial conditions?", &self.oracle)? {
+                        if !Prompts::confirm_with_oracle(
+                            "Continue without initial conditions?",
+                            &self.oracle,
+                        )? {
                             continue;
                         }
                     }
@@ -494,11 +509,18 @@ impl TestCaseBuilder {
         let existing_sequences = self.get_existing_sequence_names();
         let sequence_name = if let Some(sample) = &self.sample {
             let prompts = Prompts::new_with_sample(sample);
-            prompts.input_with_sample_oracle("Sequence name", &sample.sequence_name(), &self.oracle)?
+            prompts.input_with_sample_oracle(
+                "Sequence name",
+                &sample.sequence_name(),
+                &self.oracle,
+            )?
         } else if !existing_sequences.is_empty() {
             log::info!("\nYou can select from existing sequence names or type a new one.");
 
-            if Prompts::confirm_with_oracle("Use fuzzy search to select from existing names?", &self.oracle)? {
+            if Prompts::confirm_with_oracle(
+                "Use fuzzy search to select from existing names?",
+                &self.oracle,
+            )? {
                 match TestCaseFuzzyFinder::search_strings(
                     &existing_sequences,
                     "Select sequence name: ",
@@ -556,7 +578,10 @@ impl TestCaseBuilder {
                 &self.oracle,
             )?
         } else {
-            Prompts::confirm_with_oracle("\nAdd sequence-specific initial conditions?", &self.oracle)?
+            Prompts::confirm_with_oracle(
+                "\nAdd sequence-specific initial conditions?",
+                &self.oracle,
+            )?
         };
 
         let database_path = if let Some(sample) = &self.sample {
@@ -603,7 +628,10 @@ impl TestCaseBuilder {
                                 selected_conditions.push(condition.clone());
                                 log::info!("✓ Added: {}", condition);
 
-                                if !Prompts::confirm_with_oracle("Add another condition?", &self.oracle)? {
+                                if !Prompts::confirm_with_oracle(
+                                    "Add another condition?",
+                                    &self.oracle,
+                                )? {
                                     break;
                                 }
                             }
@@ -627,10 +655,18 @@ impl TestCaseBuilder {
                     }
                 } else {
                     log::info!("No conditions in database, using manual entry.");
-                    Some(prompts.prompt_initial_conditions_with_oracle(None, &self.validator, &self.oracle)?)
+                    Some(prompts.prompt_initial_conditions_with_oracle(
+                        None,
+                        &self.validator,
+                        &self.oracle,
+                    )?)
                 }
             } else {
-                    Some(prompts.prompt_initial_conditions_with_oracle(None, &self.validator, &self.oracle)?)
+                    Some(prompts.prompt_initial_conditions_with_oracle(
+                    None,
+                    &self.validator,
+                    &self.oracle,
+                )?)
             }
         } else {
             None
@@ -776,7 +812,10 @@ impl TestCaseBuilder {
             let step_description = if !existing_steps.is_empty() {
                 println!("\nYou can select from existing step descriptions or enter a new one.");
 
-                if Prompts::confirm_with_oracle("Use fuzzy search to select from existing descriptions?", &self.oracle)? {
+                if Prompts::confirm_with_oracle(
+                    "Use fuzzy search to select from existing descriptions?",
+                    &self.oracle,
+                )? {
                     match TestCaseFuzzyFinder::search_strings(
                         &existing_steps,
                         "Select step description: ",
@@ -826,7 +865,8 @@ impl TestCaseBuilder {
                 self.commit(&commit_msg).context("Failed to commit step")?;
             }
 
-            if !Prompts::confirm_with_oracle("\nAdd another step to this sequence?", &self.oracle)? {
+            if !Prompts::confirm_with_oracle("\nAdd another step to this sequence?", &self.oracle)?
+            {
                 break;
             }
         }
@@ -919,8 +959,16 @@ impl TestCaseBuilder {
                 sample.confirm_include_success_field(),
                 &self.oracle,
             )?;
-            let res = prompts.input_with_sample_oracle("Expected result", &sample.expected_result(), &self.oracle)?;
-            let out = prompts.input_with_sample_oracle("Expected output", &sample.expected_output(), &self.oracle)?;
+            let res = prompts.input_with_sample_oracle(
+                "Expected result",
+                &sample.expected_result(),
+                &self.oracle,
+            )?;
+            let out = prompts.input_with_sample_oracle(
+                "Expected output",
+                &sample.expected_output(),
+                &self.oracle,
+            )?;
             let success = if include {
                 prompts.confirm_with_sample_oracle(
                     "Success value (true/false)?",
@@ -1165,7 +1213,8 @@ mod tests {
     #[test]
     fn test_add_field() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
+        let mut builder =
+            TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         builder
             .add_field(
@@ -1183,7 +1232,8 @@ mod tests {
     #[test]
     fn test_to_yaml_string() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
+        let mut builder =
+            TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         builder
             .add_field(
@@ -1205,7 +1255,8 @@ mod tests {
     #[test]
     fn test_save_file() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
+        let mut builder =
+            TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         builder
             .add_field("id".to_string(), Value::String("test_case_001".to_string()))
@@ -1226,7 +1277,8 @@ mod tests {
     #[test]
     fn test_complete_metadata() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
+        let mut builder =
+            TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         builder
             .add_field(
@@ -1269,7 +1321,8 @@ mod tests {
     #[test]
     fn test_get_next_sequence_id_with_sequences() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
+        let mut builder =
+            TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         let mut seq1 = serde_yaml::Mapping::new();
         seq1.insert(Value::String("id".to_string()), Value::Number(1.into()));
@@ -1306,7 +1359,8 @@ mod tests {
     #[test]
     fn test_validate_and_append_sequence() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
+        let mut builder =
+            TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         let mut seq_map = serde_yaml::Mapping::new();
         seq_map.insert(Value::String("id".to_string()), Value::Number(1.into()));
@@ -1334,7 +1388,8 @@ mod tests {
     #[test]
     fn test_validate_and_append_sequence_missing_id() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
+        let mut builder =
+            TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         let mut seq_map = serde_yaml::Mapping::new();
         seq_map.insert(
@@ -1357,7 +1412,8 @@ mod tests {
     #[test]
     fn test_validate_and_append_sequence_missing_name() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
+        let mut builder =
+            TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         let mut seq_map = serde_yaml::Mapping::new();
         seq_map.insert(Value::String("id".to_string()), Value::Number(1.into()));
@@ -1377,7 +1433,8 @@ mod tests {
     #[test]
     fn test_validate_and_append_sequence_missing_steps() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
+        let mut builder =
+            TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         let mut seq_map = serde_yaml::Mapping::new();
         seq_map.insert(Value::String("id".to_string()), Value::Number(1.into()));
@@ -1397,7 +1454,8 @@ mod tests {
     #[test]
     fn test_get_existing_sequence_names() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
+        let mut builder =
+            TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         let mut seq1 = serde_yaml::Mapping::new();
         seq1.insert(Value::String("id".to_string()), Value::Number(1.into()));
@@ -1437,7 +1495,8 @@ mod tests {
     #[test]
     fn test_sequence_with_description() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
+        let mut builder =
+            TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         let mut seq_map = serde_yaml::Mapping::new();
         seq_map.insert(Value::String("id".to_string()), Value::Number(1.into()));
@@ -1466,7 +1525,8 @@ mod tests {
     #[test]
     fn test_get_sequence_id_by_index() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
+        let mut builder =
+            TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         let mut seq_map = serde_yaml::Mapping::new();
         seq_map.insert(Value::String("id".to_string()), Value::Number(5.into()));
@@ -1490,7 +1550,8 @@ mod tests {
     #[test]
     fn test_get_sequence_name_by_index() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
+        let mut builder =
+            TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         let mut seq_map = serde_yaml::Mapping::new();
         seq_map.insert(Value::String("id".to_string()), Value::Number(1.into()));
@@ -1514,7 +1575,8 @@ mod tests {
     #[test]
     fn test_get_next_step_number_empty() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
+        let mut builder =
+            TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         let mut seq_map = serde_yaml::Mapping::new();
         seq_map.insert(Value::String("id".to_string()), Value::Number(1.into()));
@@ -1538,7 +1600,8 @@ mod tests {
     #[test]
     fn test_get_next_step_number_with_existing() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
+        let mut builder =
+            TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         let mut step1 = serde_yaml::Mapping::new();
         step1.insert(Value::String("step".to_string()), Value::Number(1.into()));
@@ -1632,7 +1695,8 @@ mod tests {
     #[test]
     fn test_validate_and_append_step() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
+        let mut builder =
+            TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         let mut seq_map = serde_yaml::Mapping::new();
         seq_map.insert(Value::String("id".to_string()), Value::Number(1.into()));
@@ -1691,7 +1755,8 @@ mod tests {
     #[test]
     fn test_validate_step_missing_fields() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
+        let mut builder =
+            TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         let mut seq_map = serde_yaml::Mapping::new();
         seq_map.insert(Value::String("id".to_string()), Value::Number(1.into()));
@@ -1722,7 +1787,8 @@ mod tests {
     #[test]
     fn test_get_all_existing_steps() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
+        let mut builder =
+            TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         let mut expected = serde_yaml::Mapping::new();
         expected.insert(
@@ -1790,7 +1856,8 @@ mod tests {
     #[test]
     fn test_find_sequence_index_by_id() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
+        let mut builder =
+            TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         let mut seq1 = serde_yaml::Mapping::new();
         seq1.insert(Value::String("id".to_string()), Value::Number(10.into()));
@@ -1828,7 +1895,8 @@ mod tests {
     #[test]
     fn test_get_sequence_count() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
+        let mut builder =
+            TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         assert_eq!(builder.get_sequence_count(), 0);
 

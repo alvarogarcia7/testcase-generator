@@ -852,11 +852,7 @@ impl<'a> Prompts<'a> {
         validator: &SchemaValidator,
     ) -> Result<Value> {
         let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
-        self.prompt_initial_conditions_from_database_oracle(
-            database_path,
-            validator,
-            &oracle,
-        )
+        self.prompt_initial_conditions_from_database_oracle(database_path, validator, &oracle)
     }
 
     /// Prompt for initial conditions from database with fuzzy search with custom oracle
