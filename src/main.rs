@@ -3,7 +3,7 @@ use std::sync::Arc;
 use anyhow::{Context, Result};
 use clap::Parser;
 use testcase_manager::{
-    ConditionDatabase, GitManager, Prompts, SampleData, TestCase, TestCaseBuilder, TestCaseEditor, TestCaseFuzzyFinder, TestCaseMetadata, TestCaseStorage, TestSuite, TtyCliOracle, cli::{Cli, Commands, GitCommands}
+    ConditionDatabase, GitManager, Oracle, Prompts, SampleData, TestCase, TestCaseBuilder, TestCaseEditor, TestCaseFuzzyFinder, TestCaseMetadata, TestCaseStorage, TestSuite, TtyCliOracle, cli::{Cli, Commands, GitCommands}
 };
 
 fn main() -> Result<()> {
@@ -1467,7 +1467,7 @@ fn handle_parse_initial_conditions(database_path: &str, work_path: &str) -> Resu
         conditions.len()
     );
 
-    let oracle = Arc::new(TtyCliOracle::new());
+    let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
     let mut builder = TestCaseBuilder::new_with_recovery(work_path, oracle)
         .context("Failed to create test case builder")?;
 
