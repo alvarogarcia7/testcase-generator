@@ -27,6 +27,10 @@ tempfile = "3.8"
 name = "validate-yaml"
 path = "src/bin/validate-yaml.rs"
 
+[[bin]]
+name = "tcm"
+path = "src/main.rs"
+
 [[example]]
 name = "tty_fallback_demo"
 path = "examples/tty_fallback_demo.rs"
