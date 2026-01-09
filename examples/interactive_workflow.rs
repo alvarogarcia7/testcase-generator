@@ -1,12 +1,14 @@
 use anyhow::Result;
-use testcase_manager::TestCaseBuilder;
+use testcase_manager::{print_title, TestCaseBuilder, TitleStyle};
 
 fn main() -> Result<()> {
     let temp_dir = std::env::temp_dir().join("testcase_example");
     std::fs::create_dir_all(&temp_dir)?;
 
-    println!("Example: Interactive Test Case Creation Workflow");
-    println!("================================================\n");
+    print_title(
+        "Example: Interactive Test Case Creation Workflow",
+        TitleStyle::SimpleEquals,
+    );
     println!("This example demonstrates the interactive workflow for creating test cases");
     println!("with sequences and steps, including git commits at each stage.\n");
     println!("Working directory: {}\n", temp_dir.display());

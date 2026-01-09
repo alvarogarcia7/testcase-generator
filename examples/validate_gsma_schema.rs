@@ -1,9 +1,12 @@
-use testcase_manager::{SchemaValidator, TestCaseStorage};
+use testcase_manager::{print_title, SchemaValidator, TestCaseStorage, TitleStyle};
 
 fn main() -> anyhow::Result<()> {
     let validator = SchemaValidator::new()?;
 
-    println!("=== Schema Validation with Detailed Error Reporting ===\n");
+    print_title(
+        "Schema Validation with Detailed Error Reporting",
+        TitleStyle::TripleEquals,
+    );
 
     let valid_yaml = r#"
 requirement: XXX100
@@ -146,7 +149,10 @@ test_sequences:
         Err(e) => println!("✗ Invalid validation failed (expected):\n{}", e),
     }
 
-    println!("\n=== Detailed Validation Error Reporting ===\n");
+    print_title(
+        "Detailed Validation Error Reporting",
+        TitleStyle::TripleEquals,
+    );
     println!("Using validate_with_details() for structured error information...\n");
 
     match validator.validate_with_details(invalid_yaml) {
@@ -168,7 +174,7 @@ test_sequences:
         Err(e) => println!("Failed to perform validation: {}", e),
     }
 
-    println!("\n=== Batch Validation of Files ===\n");
+    print_title("Batch Validation of Files", TitleStyle::TripleEquals);
     println!("Demonstrating load_all_with_validation() for directory scanning...\n");
 
     if let Ok(storage) = TestCaseStorage::new("data") {

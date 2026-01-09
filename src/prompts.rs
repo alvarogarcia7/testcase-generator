@@ -2,6 +2,7 @@ use crate::database::ConditionDatabase;
 use crate::editor::EditorFlow;
 use crate::fuzzy::TestCaseFuzzyFinder;
 use crate::sample::SampleData;
+use crate::ui::print_section_title;
 use crate::validation::SchemaValidator;
 use crate::{config::EditorConfig, TestCaseEditor};
 use anyhow::{Context, Result};
@@ -243,7 +244,7 @@ impl<'a> Prompts<'a> {
 
     /// Prompt for test case metadata fields
     pub fn prompt_metadata() -> Result<TestCaseMetadata> {
-        log::info!("\n=== Test Case Metadata ===\n");
+        print_section_title("Test Case Metadata");
 
         let requirement = Self::input("Requirement")?;
         let item = Self::input_integer("Item")?;
@@ -269,7 +270,7 @@ impl<'a> Prompts<'a> {
 
     /// Prompt for test case metadata fields with optional sample data
     pub fn prompt_metadata_with_sample(&self) -> Result<TestCaseMetadata> {
-        log::info!("\n=== Test Case Metadata ===\n");
+        print_section_title("Test Case Metadata");
 
         if self.sample.is_some() {
             log::info!(
@@ -308,7 +309,7 @@ impl<'a> Prompts<'a> {
     pub fn prompt_metadata_with_recovery(
         recovered: Option<&TestCaseMetadata>,
     ) -> Result<TestCaseMetadata> {
-        log::info!("\n=== Test Case Metadata ===\n");
+        print_section_title("Test Case Metadata");
 
         if recovered.is_some() {
             log::info!(
@@ -343,7 +344,7 @@ impl<'a> Prompts<'a> {
         validator: &SchemaValidator,
         editor_config: &EditorConfig,
     ) -> Result<Value> {
-        log::info!("\n=== General Initial Conditions ===\n");
+        print_section_title("General Initial Conditions");
 
         if let Some(default_value) = defaults {
             let yaml_str =
@@ -389,8 +390,10 @@ impl<'a> Prompts<'a> {
         editor_config: &EditorConfig,
     ) -> Result<Value> {
         use crate::fuzzy::TestCaseFuzzyFinder;
+        use crate::ui::print_title;
+        use crate::TitleStyle;
 
-        println!("\n=== General Initial Conditions ===\n");
+        print_title("General Initial Conditions", TitleStyle::TripleEquals);
 
         if let Some(default_value) = defaults {
             let yaml_str =
@@ -509,7 +512,7 @@ impl<'a> Prompts<'a> {
         defaults: Option<&Value>,
         validator: &SchemaValidator,
     ) -> Result<Value> {
-        log::info!("\n=== Initial Conditions ===\n");
+        print_section_title("Initial Conditions");
 
         if let Some(default_value) = defaults {
             let yaml_str =
@@ -621,7 +624,13 @@ impl<'a> Prompts<'a> {
         validator: &SchemaValidator,
         editor_config: &EditorConfig,
     ) -> Result<Value> {
-        println!("\n=== General Initial Conditions (from database) ===\n");
+        use crate::ui::print_title;
+        use crate::TitleStyle;
+
+        print_title(
+            "General Initial Conditions (from database)",
+            TitleStyle::TripleEquals,
+        );
 
         let db = ConditionDatabase::load_from_directory(database_path)
             .context("Failed to load condition database")?;
@@ -696,7 +705,13 @@ impl<'a> Prompts<'a> {
         database_path: P,
         validator: &SchemaValidator,
     ) -> Result<Value> {
-        println!("\n=== Initial Conditions (from database) ===\n");
+        use crate::ui::print_title;
+        use crate::TitleStyle;
+
+        print_title(
+            "Initial Conditions (from database)",
+            TitleStyle::TripleEquals,
+        );
 
         let db = ConditionDatabase::load_from_directory(database_path)
             .context("Failed to load condition database")?;
@@ -717,7 +732,10 @@ impl<'a> Prompts<'a> {
         // Fuzzy search for device name from database
         let device_names = db.get_device_names();
         let device_name = if !device_names.is_empty() {
-            println!("\n=== Select Device Name ===");
+            use crate::ui::print_title;
+            use crate::TitleStyle;
+
+            print_title("Select Device Name", TitleStyle::TripleEquals);
             println!(
                 "Available device names from database: {}\n",
                 device_names.len()
