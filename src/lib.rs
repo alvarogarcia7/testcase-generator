@@ -1,5 +1,6 @@
 pub mod builder;
 pub mod cli;
+pub mod complex_structure_editor;
 pub mod config;
 pub mod database;
 pub mod editor;
@@ -16,6 +17,7 @@ pub mod validation;
 
 pub use builder::TestCaseBuilder;
 pub use cli::Cli;
+pub use complex_structure_editor::ComplexStructureEditor;
 pub use config::{CommitMessageTemplates, Config, EditorConfig, GitAuthorInfo};
 pub use database::ConditionDatabase;
 pub use editor::TestCaseEditor;
