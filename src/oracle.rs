@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use dialoguer::{theme::ColorfulTheme, Confirm, Input, MultiSelect, Select};
 use std::collections::VecDeque;
-use std::io::{self, Write};
+use std::io::{self, BufRead, Write};
 
 /// Trait defining the interface for user input operations
 pub trait Oracle {
@@ -47,6 +47,9 @@ pub trait Oracle {
 
     /// Fuzzy multi-select from a list of strings, returns the selected strings
     fn fuzzy_multi_select(&self, items: &[String], prompt: &str) -> Result<Vec<String>>;
+
+    /// Prompt for multi-line input (read until EOF/Ctrl+D)
+    fn multi_line_input(&self, prompt: &str) -> Result<String>;
 }
 
 /// TTY-based CLI Oracle implementation using dialoguer and skim
@@ -258,6 +261,27 @@ impl Oracle for TtyCliOracle {
             .unwrap_or_default();
 
         Ok(selected)
+    }
+
+    fn multi_line_input(&self, prompt: &str) -> Result<String> {
+        println!("{}", prompt);
+        println!("(Enter your text below. Press Ctrl+D when finished)");
+        println!();
+
+        let mut lines = Vec::new();
+        let stdin = io::stdin();
+        let mut handle = stdin.lock();
+
+        loop {
+            let mut line = String::new();
+            match handle.read_line(&mut line) {
+                Ok(0) => break,
+                Ok(_) => lines.push(line),
+                Err(e) => return Err(anyhow::anyhow!("Failed to read line: {}", e)),
+            }
+        }
+
+        Ok(lines.join(""))
     }
 }
 
@@ -751,6 +775,27 @@ impl Oracle for MenuCliOracle {
         use crate::fuzzy::TestCaseFuzzyFinder;
         TestCaseFuzzyFinder::multi_select_with_fallback(items, prompt)
     }
+
+    fn multi_line_input(&self, prompt: &str) -> Result<String> {
+        println!("{}", prompt);
+        println!("(Enter your text below. Press Ctrl+D when finished)");
+        println!();
+
+        let mut lines = Vec::new();
+        let stdin = io::stdin();
+        let mut handle = stdin.lock();
+
+        loop {
+            let mut line = String::new();
+            match handle.read_line(&mut line) {
+                Ok(0) => break,
+                Ok(_) => lines.push(line),
+                Err(e) => return Err(anyhow::anyhow!("Failed to read line: {}", e)),
+            }
+        }
+
+        Ok(lines.join(""))
+    }
 }
 
 /// Enum representing different types of answers for hardcoded responses
@@ -923,6 +968,13 @@ impl Oracle for HardcodedOracle {
         match self.next_answer()? {
             AnswerVariant::Strings(strings) => Ok(strings),
             _ => anyhow::bail!("Expected Strings answer variant"),
+        }
+    }
+
+    fn multi_line_input(&self, _prompt: &str) -> Result<String> {
+        match self.next_answer()? {
+            AnswerVariant::String(s) => Ok(s),
+            _ => anyhow::bail!("Expected String answer variant"),
         }
     }
 }
