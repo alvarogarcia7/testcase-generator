@@ -36,7 +36,9 @@ fn test_end_to_end_complete_workflow() -> Result<()> {
     // Add general initial conditions?
     answers.push_back(AnswerVariant::Bool(true));
     answers.push_back(AnswerVariant::String("eUICC".to_string()));
-    answers.push_back(AnswerVariant::String("General initial condition 1".to_string()));
+    answers.push_back(AnswerVariant::String(
+        "General initial condition 1".to_string(),
+    ));
     answers.push_back(AnswerVariant::String("".to_string()));
 
     // Commit general initial conditions?
@@ -59,7 +61,9 @@ fn test_end_to_end_complete_workflow() -> Result<()> {
     answers.push_back(AnswerVariant::Bool(true)); // Add sequence-specific initial conditions?
     answers.push_back(AnswerVariant::Bool(false)); // Use database?
     answers.push_back(AnswerVariant::String("eUICC".to_string()));
-    answers.push_back(AnswerVariant::String("Sequence-specific condition 1".to_string()));
+    answers.push_back(AnswerVariant::String(
+        "Sequence-specific condition 1".to_string(),
+    ));
     answers.push_back(AnswerVariant::String("".to_string()));
 
     // Commit this sequence?
@@ -194,7 +198,8 @@ fn test_end_to_end_complete_workflow() -> Result<()> {
     oracle.confirm("Add another test sequence?")?; // false
 
     // Save final test case
-    let file_path = builder.save_with_filename(&output_file.file_name().unwrap().to_string_lossy())?;
+    let file_path =
+        builder.save_with_filename(&output_file.file_name().unwrap().to_string_lossy())?;
 
     // Commit final test case
     let commit_final = oracle.confirm("Commit final complete test case?")?;

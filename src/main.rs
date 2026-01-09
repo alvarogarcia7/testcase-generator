@@ -815,15 +815,21 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
         "Failed to create directory: {}",
         base_dir.display()
     ))?;
-    let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
-    let mut builder = TestCaseBuilder::new_with_recovery(base_dir, oracle)
-        .context("Failed to create test case builder")?;
 
     let sample_data = if use_sample {
         Some(SampleData::new())
     } else {
         None
     };
+
+    let oracle: Arc<dyn Oracle> = if let Some(ref sample) = sample_data {
+        Arc::new(sample.create_oracle_for_complete())
+    } else {
+        Arc::new(TtyCliOracle::new())
+    };
+
+    let mut builder = TestCaseBuilder::new_with_recovery(base_dir, oracle)
+        .context("Failed to create test case builder")?;
 
     println!("\n╔══════════════════════════════════════════════════════╗");
     println!("║    Complete Interactive Test Case Workflow          ║");

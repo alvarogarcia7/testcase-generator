@@ -764,33 +764,34 @@ pub enum AnswerVariant {
 
 /// Hardcoded Oracle for testing that uses a queue-based answer system
 pub struct HardcodedOracle {
-    answers: std::cell::RefCell<VecDeque<AnswerVariant>>,
+    answers: std::sync::Mutex<VecDeque<AnswerVariant>>,
 }
 
 impl HardcodedOracle {
     /// Create a new HardcodedOracle with a queue of answers
     pub fn new(answers: VecDeque<AnswerVariant>) -> Self {
         Self {
-            answers: std::cell::RefCell::new(answers),
+            answers: std::sync::Mutex::new(answers),
         }
     }
 
     /// Create an empty HardcodedOracle
     pub fn empty() -> Self {
         Self {
-            answers: std::cell::RefCell::new(VecDeque::new()),
+            answers: std::sync::Mutex::new(VecDeque::new()),
         }
     }
 
     /// Add an answer to the queue
     pub fn add_answer(&self, answer: AnswerVariant) {
-        self.answers.borrow_mut().push_back(answer);
+        self.answers.lock().unwrap().push_back(answer);
     }
 
     /// Get the next answer from the queue
     fn next_answer(&self) -> Result<AnswerVariant> {
         self.answers
-            .borrow_mut()
+            .lock()
+            .unwrap()
             .pop_front()
             .ok_or_else(|| anyhow::anyhow!("No more hardcoded answers available"))
     }
