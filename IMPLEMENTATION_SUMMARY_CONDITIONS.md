@@ -67,7 +67,7 @@ Added helper methods:
 testcase-manager parse-general-conditions --database data
 ```
 
-1. Database loads all test cases from `data/` directory
+1. Database loads all test cases from `testcases/` directory
 2. Extracts and deduplicates general initial conditions
 3. User prompted for test case metadata
 4. Fuzzy search interface appears with all unique conditions
@@ -83,7 +83,7 @@ testcase-manager parse-general-conditions --database data
 testcase-manager parse-initial-conditions --database data
 ```
 
-1. Database loads all test cases from `data/` directory
+1. Database loads all test cases from `testcases/` directory
 2. Extracts and deduplicates initial conditions (top-level + sequence-level)
 3. User prompted for test case metadata
 4. Fuzzy search interface appears with all unique conditions

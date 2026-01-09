@@ -291,7 +291,7 @@ fn custom_workflow() -> Result<()> {
 
 ## Validation
 
-All inputs are validated against the JSON schema defined in `data/schema.json`.
+All inputs are validated against the JSON schema defined in `testcases/schema.json`.
 
 ### Metadata Validation
 
@@ -878,5 +878,5 @@ fn build_sequences_programmatically() -> Result<()> {
 ## See Also
 
 - [Validation Documentation](validation.md)
-- [Schema Reference](../data/schema.json)
+- [Schema Reference](../testcases/schema.json)
 - [Git Integration](../README.md#git-operations)

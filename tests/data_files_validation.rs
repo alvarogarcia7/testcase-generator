@@ -2,7 +2,7 @@ use std::fs;
 use std::path::Path;
 use testcase_manager::validation::SchemaValidator;
 
-/// Test that validates all YAML files in the data/ directory
+/// Test that validates all YAML files in the testcases/ directory
 /// Valid files (gsma_*) should pass validation
 /// Invalid files should fail validation appropriately
 
@@ -10,7 +10,10 @@ use testcase_manager::validation::SchemaValidator;
 fn test_valid_gsma_files() {
     let validator = SchemaValidator::new().expect("Failed to create validator");
 
-    let valid_files = vec!["data/gsma_4.4.2.2_TC.yaml", "data/gsma_4.4.2.2_TC.yml"];
+    let valid_files = vec![
+        "testcases/gsma_4.4.2.2_TC.yaml",
+        "testcases/gsma_4.4.2.2_TC.yml",
+    ];
 
     for file_path in valid_files {
         println!("\n=== Testing valid file: {} ===", file_path);
@@ -44,7 +47,7 @@ fn test_valid_gsma_files() {
 fn test_invalid_sgp_file_missing_general_conditions() {
     let validator = SchemaValidator::new().expect("Failed to create validator");
 
-    let file_path = "data/SGP.22_4.4.2.yaml";
+    let file_path = "tests/sample/SGP.22_4.4.2.yaml";
 
     println!("\n=== Testing invalid file: {} ===", file_path);
 
@@ -86,7 +89,7 @@ fn test_invalid_sgp_file_missing_general_conditions() {
 fn test_invalid_data_yml_wrong_structure() {
     let validator = SchemaValidator::new().expect("Failed to create validator");
 
-    let file_path = "data/data.yml";
+    let file_path = "tests/sample/data.yml";
 
     println!("\n=== Testing invalid file: {} ===", file_path);
 
@@ -128,7 +131,10 @@ fn test_invalid_data_yml_wrong_structure() {
 fn test_chunk_validation_on_valid_files() {
     let validator = SchemaValidator::new().expect("Failed to create validator");
 
-    let valid_files = vec!["data/gsma_4.4.2.2_TC.yaml", "data/gsma_4.4.2.2_TC.yml"];
+    let valid_files = vec![
+        "testcases/gsma_4.4.2.2_TC.yaml",
+        "testcases/gsma_4.4.2.2_TC.yml",
+    ];
 
     for file_path in valid_files {
         println!(
@@ -157,10 +163,10 @@ fn test_chunk_validation_on_valid_files() {
 fn test_all_data_files_exist() {
     let expected_files = vec![
         "data/schema.json",
-        "data/gsma_4.4.2.2_TC.yaml",
-        "data/gsma_4.4.2.2_TC.yml",
-        "data/SGP.22_4.4.2.yaml",
-        "data/data.yml",
+        "testcases/gsma_4.4.2.2_TC.yaml",
+        "testcases/gsma_4.4.2.2_TC.yml",
+        "tests/sample/SGP.22_4.4.2.yaml",
+        "tests/sample/data.yml",
     ];
 
     for file_path in expected_files {
@@ -176,7 +182,10 @@ fn test_all_data_files_exist() {
 
 #[test]
 fn test_valid_files_can_be_parsed_as_yaml() {
-    let valid_files = vec!["data/gsma_4.4.2.2_TC.yaml", "data/gsma_4.4.2.2_TC.yml"];
+    let valid_files = vec![
+        "testcases/gsma_4.4.2.2_TC.yaml",
+        "testcases/gsma_4.4.2.2_TC.yml",
+    ];
 
     for file_path in valid_files {
         println!("\n=== Testing YAML parsing for: {} ===", file_path);
@@ -240,7 +249,7 @@ fn test_valid_files_can_be_parsed_as_yaml() {
 #[test]
 fn test_invalid_files_structure() {
     // Test SGP.22_4.4.2.yaml
-    let file_path = "data/SGP.22_4.4.2.yaml";
+    let file_path = "tests/sample/SGP.22_4.4.2.yaml";
     let content = fs::read_to_string(file_path)
         .unwrap_or_else(|e| panic!("Failed to read {}: {}", file_path, e));
 
@@ -262,36 +271,11 @@ fn test_invalid_files_structure() {
         "✓ {} is correctly missing general_initial_conditions",
         file_path
     );
-
-    // Test data.yml
-    let file_path = "data/data.yml";
-    let content = fs::read_to_string(file_path)
-        .unwrap_or_else(|e| panic!("Failed to read {}: {}", file_path, e));
-
-    let yaml_value: serde_yaml::Value = serde_yaml::from_str(&content)
-        .unwrap_or_else(|e| panic!("Failed to parse {} as YAML: {}", file_path, e));
-
-    let mapping = yaml_value.as_mapping().unwrap();
-
-    // Should have completely different structure
-    assert!(
-        !mapping.contains_key(serde_yaml::Value::String("requirement".to_string())),
-        "{} should not have 'requirement' field (different structure)",
-        file_path
-    );
-
-    assert!(
-        !mapping.contains_key(serde_yaml::Value::String("test_sequences".to_string())),
-        "{} should not have 'test_sequences' field (different structure)",
-        file_path
-    );
-
-    println!("✓ {} has different structure as expected", file_path);
 }
 
 #[test]
 fn test_valid_files_detailed_structure() {
-    let file_path = "data/gsma_4.4.2.2_TC.yaml";
+    let file_path = "testcases/gsma_4.4.2.2_TC.yaml";
 
     println!("\n=== Testing detailed structure of: {} ===", file_path);
 

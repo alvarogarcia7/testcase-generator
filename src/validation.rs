@@ -14,10 +14,10 @@ impl SchemaValidator {
     pub fn new() -> Result<Self> {
         let schema_path = Path::new("data/schema.json");
         let schema_content =
-            fs::read_to_string(schema_path).context("Failed to read data/schema.json")?;
+            fs::read_to_string(schema_path).context(format!("Failed to read {:?}", schema_path))?;
 
         let schema_value: JsonValue =
-            serde_json::from_str(&schema_content).context("Failed to parse schema.json")?;
+            serde_json::from_str(&schema_content).context("Failed to parse schema file")?;
 
         let schema = JSONSchema::compile(&schema_value)
             .map_err(|e| anyhow::anyhow!("Failed to compile JSON schema: {}", e))?;

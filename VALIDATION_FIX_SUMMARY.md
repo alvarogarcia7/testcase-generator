@@ -2,7 +2,7 @@
 
 ## Problem Statement
 
-The validation module incorrectly reported payloads as invalid when they should succeed according to the schema constraints defined in `data/schema.json`. The main issues were:
+The validation module incorrectly reported payloads as invalid when they should succeed according to the schema constraints defined in `testcases/schema.json`. The main issues were:
 
 1. **Tuple Validation Not Properly Handled**: The schema uses JSON Schema Draft-04 tuple validation where `items` is an array, but the validator wasn't properly handling this pattern
 2. **Type Checking Incomplete**: The validator wasn't properly validating types for nested structures
@@ -243,4 +243,4 @@ The validation module now correctly implements JSON Schema Draft-04 validation w
 - Nested structure validation
 - Clear error messages
 
-All validation is now aligned with the schema constraints defined in `data/schema.json`.
+All validation is now aligned with the schema constraints defined in `testcases/schema.json`.

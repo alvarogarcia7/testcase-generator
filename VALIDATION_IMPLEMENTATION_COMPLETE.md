@@ -2,7 +2,7 @@
 
 ## Summary
 
-Successfully reviewed and corrected the JSON schema validation implementation in the validation module (`src/validation.rs`). The validator now correctly enforces all schema rules including required fields, type constraints, pattern matching, and structural requirements according to `data/schema.json`.
+Successfully reviewed and corrected the JSON schema validation implementation in the validation module (`src/validation.rs`). The validator now correctly enforces all schema rules including required fields, type constraints, pattern matching, and structural requirements according to `testcases/schema.json`.
 
 ## Problem Identified
 
@@ -131,7 +131,7 @@ Properly validates:
 **Comprehensive Scenarios**:
 - Minimal complete document
 - Extra sequences, steps, conditions
-- Metadata/conditions only
+- Metatestcases/conditions only
 - Empty arrays
 - Optional field variations
 - Type mismatches
@@ -345,7 +345,7 @@ The validation module now correctly implements JSON Schema Draft-04 validation w
 - ✅ Backward compatibility
 - ✅ Real-world scenario support
 
-The validator correctly accepts valid payloads and rejects invalid ones according to the schema constraints defined in `data/schema.json`.
+The validator correctly accepts valid payloads and rejects invalid ones according to the schema constraints defined in `testcases/schema.json`.
 
 ## Status: COMPLETE ✅
 

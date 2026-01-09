@@ -2,14 +2,14 @@
 
 ## Summary
 
-Implemented a comprehensive JSON schema validation module that loads `data/schema.json` and provides the `validate_chunk()` function to validate partial or complete YAML structures before appending, with clear error messages for schema violations.
+Implemented a comprehensive JSON schema validation module that loads `testcases/schema.json` and provides the `validate_chunk()` function to validate partial or complete YAML structures before appending, with clear error messages for schema violations.
 
 ## Files Created/Modified
 
 ### 1. `src/validation.rs`
 **Main implementation file** containing:
 
-- **`SchemaValidator` struct**: New validator that loads schema from `data/schema.json`
+- **`SchemaValidator` struct**: New validator that loads schema from `testcases/schema.json`
   - `new()`: Creates validator by loading and compiling the JSON schema
   - `validate_chunk(yaml_content: &str)`: Validates complete or partial YAML structures
   - `validate_partial_chunk(yaml_content: &str)`: Validates partial structures, allowing empty objects
@@ -45,7 +45,7 @@ Implemented a comprehensive JSON schema validation module that loads `data/schem
 ## Key Features
 
 ### 1. Schema Loading
-- Dynamically loads schema from `data/schema.json` at runtime
+- Dynamically loads schema from `testcases/schema.json` at runtime
 - Compiles schema for efficient validation
 - Returns clear errors if schema file is missing or invalid
 

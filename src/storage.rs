@@ -158,7 +158,7 @@ impl TestCaseStorage {
                 if file_path.exists() {
                     return self.load_test_case(id);
                 }
-                // Also try it without base_path in case it's a full path like "data/file.yaml"
+                // Also try it without base_path in case it's a full path like "testcases/file.yaml"
                 if id_path.exists() {
                     return self.load_test_case(id);
                 }

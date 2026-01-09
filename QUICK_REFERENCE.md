@@ -126,7 +126,7 @@ Choice (1/2/3): 3
 ✓ General initial conditions added to test case
 
 Save to test case? [y/N]: y
-✓ General initial conditions saved to: data/test_case.yaml
+✓ General initial conditions saved to: testcases/test_case.yaml
 
 Commit to git? [y/N]: y
 ✓ Committed: Add general initial conditions

@@ -4,7 +4,7 @@
 
 The validation module provides JSON schema validation for YAML structures with detailed error reporting. It includes:
 
-1. **SchemaValidator**: Validates YAML against the schema defined in `data/schema.json`
+1. **SchemaValidator**: Validates YAML against the schema defined in `testcases/schema.json`
 2. **Detailed Error Reporting**: Captures validation errors with JSON path, constraint type, expected values, and actual values
 3. **File Loading with Validation**: Scans directories and provides validation status for each file
 
@@ -12,7 +12,7 @@ The validation module provides JSON schema validation for YAML structures with d
 
 ### Purpose
 
-Validates partial or complete YAML structures against the GSMA test case schema defined in `data/schema.json`.
+Validates partial or complete YAML structures against the GSMA test case schema defined in `testcases/schema.json`.
 
 ### Usage
 
@@ -20,7 +20,7 @@ Validates partial or complete YAML structures against the GSMA test case schema 
 use testcase_manager::validation::SchemaValidator;
 
 fn main() -> anyhow::Result<()> {
-    // Create a validator (loads data/schema.json)
+    // Create a validator (loads testcases/schema.json)
     let validator = SchemaValidator::new()?;
     
     // Validate a complete YAML structure
@@ -91,7 +91,7 @@ test_sequences:
 
 #### `new() -> Result<Self>`
 
-Creates a new `SchemaValidator` by loading and compiling the schema from `data/schema.json`.
+Creates a new `SchemaValidator` by loading and compiling the schema from `testcases/schema.json`.
 
 **Returns:**
 - `Ok(SchemaValidator)` on success
@@ -285,7 +285,7 @@ cargo run -- validate --file test_case.yaml
 
 ## Schema Structure
 
-The schema in `data/schema.json` defines the structure for GSMA test cases with the following top-level properties:
+The schema in `testcases/schema.json` defines the structure for GSMA test cases with the following top-level properties:
 
 - `requirement`: (string) Requirement identifier
 - `item`: (integer) Item number
