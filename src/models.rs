@@ -56,13 +56,6 @@ pub struct TestSequence {
     pub steps: Vec<Step>,
 }
 
-/// Top-level initial conditions
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct TopLevelInitialConditions {
-    #[serde(rename = "eUICC")]
-    pub euicc: Vec<String>,
-}
-
 /// A complete test case following the GSMA schema
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TestCase {
@@ -295,14 +288,6 @@ mod tests {
         );
         sequence.steps.push(step);
         assert_eq!(sequence.steps.len(), 1);
-    }
-
-    #[test]
-    fn test_top_level_initial_conditions_creation() {
-        let conditions = TopLevelInitialConditions {
-            euicc: vec!["Condition 1".to_string(), "Condition 2".to_string()],
-        };
-        assert_eq!(conditions.euicc.len(), 2);
     }
 
     #[test]

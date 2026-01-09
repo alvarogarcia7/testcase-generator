@@ -23,7 +23,7 @@ pub use fuzzy::TestCaseFuzzyFinder;
 pub use git::GitManager;
 pub use models::{
     Expected, FileValidationStatus, Step, TestCase, TestCaseFileInfo, TestSequence, TestSuite,
-    TopLevelInitialConditions, ValidationErrorDetail,
+    ValidationErrorDetail,
 };
 pub use oracle::{AnswerVariant, HardcodedOracle, MenuCliOracle, Oracle, TtyCliOracle};
 pub use parser::{SearchableCollections, TestCaseParser};
