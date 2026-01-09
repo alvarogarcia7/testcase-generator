@@ -3,7 +3,10 @@ use std::sync::Arc;
 use anyhow::{Context, Result};
 use clap::Parser;
 use testcase_manager::{
-    ConditionDatabase, GitManager, Oracle, Prompts, SampleData, TestCase, TestCaseBuilder, TestCaseEditor, TestCaseFuzzyFinder, TestCaseMetadata, TestCaseStorage, TestSuite, TtyCliOracle, cli::{Cli, Commands, GitCommands}
+    cli::{Cli, Commands, GitCommands},
+    ConditionDatabase, GitManager, Oracle, Prompts, SampleData, TestCase, TestCaseBuilder,
+    TestCaseEditor, TestCaseFuzzyFinder, TestCaseMetadata, TestCaseStorage, TestSuite,
+    TtyCliOracle,
 };
 
 fn main() -> Result<()> {
@@ -148,8 +151,9 @@ fn handle_edit(base_path: &str, id: Option<String>, fuzzy: bool) -> Result<()> {
     } else {
         let test_cases = storage.load_all_test_cases()?;
         let ids: Vec<String> = test_cases.iter().map(|tc| tc.id.clone()).collect();
-        let index = Prompts::select("Select a test case", &ids)?;
-        test_cases[index].clone()
+        let index = Prompts::select("Select a test case", ids)?;
+        let my_int: usize = index.parse().unwrap();
+        test_cases[my_int].clone()
     };
 
     let edited_test_case = TestCaseEditor::edit_test_case(&test_case)?;
@@ -268,8 +272,9 @@ fn handle_view(base_path: &str, id: Option<String>, fuzzy: bool) -> Result<()> {
     } else {
         let test_cases = storage.load_all_test_cases()?;
         let ids: Vec<String> = test_cases.iter().map(|tc| tc.id.clone()).collect();
-        let index = Prompts::select("Select a test case", &ids)?;
-        test_cases[index].clone()
+        let index = Prompts::select("Select a test case", ids)?;
+        let my_int: usize = index.parse().unwrap();
+        test_cases[my_int].clone()
     };
 
     let yaml = serde_yaml::to_string(&test_case)?;
@@ -508,8 +513,9 @@ fn handle_init(path: &str, init_git: bool) -> Result<()> {
 }
 
 fn handle_create_interactive(path: &str) -> Result<()> {
+    let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
     let mut builder =
-        TestCaseBuilder::new_with_recovery(path).context("Failed to create test case builder")?;
+        TestCaseBuilder::new_with_recovery(path, oracle).context("Failed to create test case builder")?;
 
     println!("\n╔═══════════════════════════════════════════════╗");
     println!("║   Interactive Test Case Creation Workflow    ║");
@@ -563,8 +569,9 @@ fn handle_create_interactive(path: &str) -> Result<()> {
 }
 
 fn handle_build_sequences(path: &str) -> Result<()> {
+    let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
     let mut builder =
-        TestCaseBuilder::new_with_recovery(path).context("Failed to create test case builder")?;
+        TestCaseBuilder::new_with_recovery(path, oracle).context("Failed to create test case builder")?;
 
     println!("\n╔═══════════════════════════════════════════════╗");
     println!("║   Test Sequence Builder with Git Commits     ║");
@@ -632,8 +639,9 @@ fn handle_build_sequences(path: &str) -> Result<()> {
 }
 
 fn handle_add_steps(path: &str, sequence_id: Option<i64>) -> Result<()> {
+    let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
     let mut builder =
-        TestCaseBuilder::new_with_recovery(path).context("Failed to create test case builder")?;
+        TestCaseBuilder::new_with_recovery(path, oracle).context("Failed to create test case builder")?;
 
     println!("\n╔═══════════════════════════════════════════════╗");
     println!("║      Add Steps to Sequence with Commits      ║");
@@ -719,8 +727,9 @@ fn handle_add_steps(path: &str, sequence_id: Option<i64>) -> Result<()> {
 }
 
 fn handle_build_sequences_with_steps(path: &str) -> Result<()> {
+    let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
     let mut builder =
-        TestCaseBuilder::new_with_recovery(path).context("Failed to create test case builder")?;
+        TestCaseBuilder::new_with_recovery(path, oracle).context("Failed to create test case builder")?;
 
     println!("\n╔═══════════════════════════════════════════════╗");
     println!("║ Build Test Sequences & Steps with Commits    ║");
@@ -806,8 +815,8 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
         "Failed to create directory: {}",
         base_dir.display()
     ))?;
-
-    let mut builder = TestCaseBuilder::new_with_recovery(base_dir)
+    let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
+    let mut builder = TestCaseBuilder::new_with_recovery(base_dir, oracle)
         .context("Failed to create test case builder")?;
 
     let sample_data = if use_sample {
@@ -1343,7 +1352,8 @@ fn handle_parse_general_conditions(database_path: &str, work_path: &str) -> Resu
         conditions.len()
     );
 
-    let mut builder = TestCaseBuilder::new_with_recovery(work_path)
+    let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
+    let mut builder = TestCaseBuilder::new_with_recovery(work_path, oracle)
         .context("Failed to create test case builder")?;
 
     builder.add_metadata().context("Failed to add metadata")?;
