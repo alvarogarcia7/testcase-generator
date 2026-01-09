@@ -2,7 +2,7 @@ use crate::complex_structure_editor::ComplexStructureEditor;
 use crate::config::EditorConfig;
 use crate::database::ConditionDatabase;
 use crate::git::GitManager;
-use crate::models::Expected;
+use crate::models::{Expected, TestSequence};
 use crate::oracle::Oracle;
 use crate::prompts::Prompts;
 use crate::recovery::{RecoveryManager, RecoveryState};
@@ -499,14 +499,84 @@ impl TestCaseBuilder {
 
     /// Add a test sequence with interactive prompts
     pub fn add_test_sequence_interactive(&mut self) -> Result<&mut Self> {
-        use crate::editor::TestCaseEditor;
-        use crate::fuzzy::TestCaseFuzzyFinder;
         use crate::prompts::Prompts;
 
         log::info!("\n=== Add Test Sequence ===\n");
 
         let sequence_id = self.get_next_sequence_id();
         log::debug!("Sequence ID: {}", sequence_id);
+
+        // Load database to get existing sequences
+        let database_path = if let Some(sample) = &self.sample {
+            sample.database_path()
+        } else {
+            Prompts::input_with_default_oracle("Database path", "data", &self.oracle)?
+        };
+
+        let db = ConditionDatabase::load_from_directory(&database_path)
+            .context("Failed to load condition database")?;
+
+        let editor_config = EditorConfig::load();
+        let sequence_items = db.get_all_sequences();
+
+        // Create a template for a new sequence
+        let template = format!(
+            r#"id: {}
+name: ""
+description: ""
+initial_conditions: {{}}
+steps: []
+"#,
+            sequence_id
+        );
+
+        // Use ComplexStructureEditor to allow fuzzy search and editing
+        let mut edited_sequence = if !sequence_items.is_empty() {
+            match ComplexStructureEditor::<TestSequence>::edit_with_fuzzy_search(
+                &sequence_items,
+                "Select sequence template (ESC to create new): ",
+                self.oracle.as_ref(),
+                &editor_config,
+                &self.validator,
+                &template,
+            ) {
+                Ok(mut seq) => {
+                    // Update the ID to the next available ID
+                    seq.id = sequence_id;
+                    seq
+                }
+                Err(e) => {
+                    log::warn!("Fuzzy search failed or cancelled: {}", e);
+                    log::info!("Falling back to manual entry");
+                    return self.add_test_sequence_interactive_fallback();
+                }
+            }
+        } else {
+            log::info!("No sequences in database, using manual entry.");
+            return self.add_test_sequence_interactive_fallback();
+        };
+
+        // Clear steps from template since we're creating a new sequence
+        edited_sequence.steps.clear();
+
+        // Convert to YAML Value
+        let sequence_value = serde_yaml::to_value(&edited_sequence)
+            .context("Failed to convert TestSequence to YAML value")?;
+
+        log::info!("\n=== Validating Test Sequence ===");
+        self.validate_and_append_sequence(sequence_value)?;
+        log::info!("✓ Test sequence validated and added\n");
+
+        Ok(self)
+    }
+
+    /// Fallback method for adding test sequence when database is unavailable or fuzzy search is cancelled
+    fn add_test_sequence_interactive_fallback(&mut self) -> Result<&mut Self> {
+        use crate::editor::TestCaseEditor;
+        use crate::fuzzy::TestCaseFuzzyFinder;
+        use crate::prompts::Prompts;
+
+        let sequence_id = self.get_next_sequence_id();
 
         let existing_sequences = self.get_existing_sequence_names();
         let sequence_name = if let Some(sample) = &self.sample {
