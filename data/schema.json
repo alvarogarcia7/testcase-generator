@@ -19,150 +19,98 @@
     },
     "general_initial_conditions": {
       "type": "object",
-      "properties": {
-        "^_": {
-          "type": "array",
-          "items": [
-            {
-              "type": "string"
-            }
-          ]
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string"
         }
       }
     },
     "initial_conditions": {
       "type": "object",
-      "properties": {
-        "^_": {
-          "type": "array",
-          "items": [
-            {
-              "type": "string"
-            }
-          ]
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string"
         }
       }
     },
     "test_sequences": {
       "type": "array",
-      "items": [
-        {
-          "type": "object",
-          "properties": {
-            "id": {
-              "type": "integer"
-            },
-            "name": {
-              "type": "string"
-            },
-            "description": {
-              "type": "string"
-            },
-            "initial_conditions": {
-              "type": "object",
-              "properties": {
-                "^_": {
-                  "type": "array",
-                  "items": [
-                    {
-                      "type": "string"
-                    }
-                  ]
-                }
-              }
-            },
-            "steps": {
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "initial_conditions": {
+            "type": "object",
+            "additionalProperties": {
               "type": "array",
-              "items": [
-                {
-                  "type": "object",
-                  "properties": {
-                    "step": {
-                      "type": "integer"
-                    },
-                    "manual": {
-                      "type": "boolean"
-                    },
-                    "description": {
-                      "type": "string"
-                    },
-                    "command": {
-                      "type": "string"
-                    },
-                    "expected": {
-                      "type": "object",
-                      "properties": {
-                        "success": {
-                          "type": "boolean"
-                        },
-                        "result": {
-                          "type": "string"
-                        },
-                        "output": {
-                          "type": "string"
-                        }
-                      },
-                      "required": [
-                        "success",
-                        "result",
-                        "output"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "step",
-                    "description",
-                    "command",
-                    "expected"
-                  ]
-                },
-                {
-                  "type": "object",
-                  "properties": {
-                    "step": {
-                      "type": "integer"
-                    },
-                    "description": {
-                      "type": "string"
-                    },
-                    "command": {
-                      "type": "string"
-                    },
-                    "expected": {
-                      "type": "object",
-                      "properties": {
-                        "result": {
-                          "type": "string"
-                        },
-                        "output": {
-                          "type": "string"
-                        }
-                      },
-                      "required": [
-                        "result",
-                        "output"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "step",
-                    "description",
-                    "command",
-                    "expected"
-                  ]
-                }
-              ]
+              "items": {
+                "type": "string"
+              }
             }
           },
-          "required": [
-            "id",
-            "name",
-            "description",
-            "initial_conditions",
-            "steps"
-          ]
-        }
-      ]
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "step": {
+                  "type": "integer"
+                },
+                "manual": {
+                  "type": "boolean"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "command": {
+                  "type": "string"
+                },
+                "expected": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "result": {
+                      "type": "string"
+                    },
+                    "output": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "result",
+                    "output"
+                  ]
+                }
+              },
+              "required": [
+                "step",
+                "description",
+                "command",
+                "expected"
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "initial_conditions",
+          "steps"
+        ]
+      }
     }
   },
   "required": [

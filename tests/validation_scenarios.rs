@@ -387,7 +387,6 @@ initial_conditions:
 }
 
 #[test]
-#[ignore = "??"]
 fn test_validator_rejects_non_array_euicc() {
     let validator = SchemaValidator::new().unwrap();
 
@@ -407,7 +406,6 @@ initial_conditions:
 }
 
 #[test]
-#[ignore = "??"]
 fn test_validator_rejects_non_string_in_euicc_array() {
     let validator = SchemaValidator::new().unwrap();
 

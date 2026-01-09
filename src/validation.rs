@@ -152,6 +152,26 @@ impl SchemaValidator {
                 }
             }
 
+            // Validate additionalProperties if defined
+            if let Some(additional_props_schema) = schema.get("additionalProperties") {
+                let defined_properties = schema
+                    .get("properties")
+                    .and_then(|p| p.as_object())
+                    .map(|obj| obj.keys().collect::<std::collections::HashSet<_>>())
+                    .unwrap_or_default();
+
+                for (key, val) in obj.iter() {
+                    if !defined_properties.contains(key) {
+                        let prop_path = format!("{}.{}", path, key);
+                        if let Err(prop_errors) =
+                            self.validate_value(val, additional_props_schema, &prop_path)
+                        {
+                            errors.extend(prop_errors);
+                        }
+                    }
+                }
+            }
+
             // Check required fields
             if let Some(JsonValue::Array(required)) = schema.get("required") {
                 for req_field in required {
@@ -1020,7 +1040,6 @@ test_sequences:
     }
 
     #[test]
-    #[ignore = "??"]
     fn test_validate_chunk_general_initial_conditions_wrong_structure() {
         let validator = SchemaValidator::new().unwrap();
 
@@ -1040,7 +1059,6 @@ general_initial_conditions:
     }
 
     #[test]
-    #[ignore = "??"]
     fn test_validate_chunk_initial_conditions_euicc_not_array() {
         let validator = SchemaValidator::new().unwrap();
 
@@ -1060,7 +1078,6 @@ initial_conditions:
     }
 
     #[test]
-    #[ignore = "??"]
     fn test_validate_chunk_initial_conditions_euicc_items_not_strings() {
         let validator = SchemaValidator::new().unwrap();
 
