@@ -1377,7 +1377,7 @@ mod tests {
     #[test]
     fn test_validate_and_append_sequence_missing_steps() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path(), Box::new(TtyCliOracle::new())).unwrap();
+        let mut builder = TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         let mut seq_map = serde_yaml::Mapping::new();
         seq_map.insert(Value::String("id".to_string()), Value::Number(1.into()));
@@ -1397,7 +1397,7 @@ mod tests {
     #[test]
     fn test_get_existing_sequence_names() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path(), Box::new(TtyCliOracle::new())).unwrap();
+        let mut builder = TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         let mut seq1 = serde_yaml::Mapping::new();
         seq1.insert(Value::String("id".to_string()), Value::Number(1.into()));
@@ -1437,7 +1437,7 @@ mod tests {
     #[test]
     fn test_sequence_with_description() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path(), Box::new(TtyCliOracle::new())).unwrap();
+        let mut builder = TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         let mut seq_map = serde_yaml::Mapping::new();
         seq_map.insert(Value::String("id".to_string()), Value::Number(1.into()));
@@ -1466,7 +1466,7 @@ mod tests {
     #[test]
     fn test_get_sequence_id_by_index() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path(), Box::new(TtyCliOracle::new())).unwrap();
+        let mut builder = TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         let mut seq_map = serde_yaml::Mapping::new();
         seq_map.insert(Value::String("id".to_string()), Value::Number(5.into()));
@@ -1490,7 +1490,7 @@ mod tests {
     #[test]
     fn test_get_sequence_name_by_index() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path(), Box::new(TtyCliOracle::new())).unwrap();
+        let mut builder = TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         let mut seq_map = serde_yaml::Mapping::new();
         seq_map.insert(Value::String("id".to_string()), Value::Number(1.into()));
@@ -1514,7 +1514,7 @@ mod tests {
     #[test]
     fn test_get_next_step_number_empty() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path(), Box::new(TtyCliOracle::new())).unwrap();
+        let mut builder = TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         let mut seq_map = serde_yaml::Mapping::new();
         seq_map.insert(Value::String("id".to_string()), Value::Number(1.into()));
@@ -1538,7 +1538,7 @@ mod tests {
     #[test]
     fn test_get_next_step_number_with_existing() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path(), Box::new(TtyCliOracle::new())).unwrap();
+        let mut builder = TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         let mut step1 = serde_yaml::Mapping::new();
         step1.insert(Value::String("step".to_string()), Value::Number(1.into()));
@@ -1589,7 +1589,7 @@ mod tests {
     #[test]
     fn test_create_step_value() {
         let temp_dir = TempDir::new().unwrap();
-        let builder = TestCaseBuilder::new(temp_dir.path(), Box::new(TtyCliOracle::new())).unwrap();
+        let builder = TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         let mut expected = serde_yaml::Mapping::new();
         expected.insert(
@@ -1632,7 +1632,7 @@ mod tests {
     #[test]
     fn test_validate_and_append_step() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path(), Box::new(TtyCliOracle::new())).unwrap();
+        let mut builder = TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         let mut seq_map = serde_yaml::Mapping::new();
         seq_map.insert(Value::String("id".to_string()), Value::Number(1.into()));
@@ -1691,7 +1691,7 @@ mod tests {
     #[test]
     fn test_validate_step_missing_fields() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path(), Box::new(TtyCliOracle::new())).unwrap();
+        let mut builder = TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         let mut seq_map = serde_yaml::Mapping::new();
         seq_map.insert(Value::String("id".to_string()), Value::Number(1.into()));
@@ -1722,7 +1722,7 @@ mod tests {
     #[test]
     fn test_get_all_existing_steps() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path(), Box::new(TtyCliOracle::new())).unwrap();
+        let mut builder = TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         let mut expected = serde_yaml::Mapping::new();
         expected.insert(
@@ -1790,7 +1790,7 @@ mod tests {
     #[test]
     fn test_find_sequence_index_by_id() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path(), Box::new(TtyCliOracle::new())).unwrap();
+        let mut builder = TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         let mut seq1 = serde_yaml::Mapping::new();
         seq1.insert(Value::String("id".to_string()), Value::Number(10.into()));
@@ -1828,7 +1828,7 @@ mod tests {
     #[test]
     fn test_get_sequence_count() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path(), Box::new(TtyCliOracle::new())).unwrap();
+        let mut builder = TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         assert_eq!(builder.get_sequence_count(), 0);
 
