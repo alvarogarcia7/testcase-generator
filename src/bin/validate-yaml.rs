@@ -14,10 +14,17 @@ struct Cli {
     /// Path to the JSON schema file
     #[arg(value_name = "SCHEMA_FILE")]
     schema_file: PathBuf,
+
+    /// Enable verbose logging
+    #[arg(short, long)]
+    verbose: bool,
 }
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
+
+    let log_level = if cli.verbose { "info" } else { "warn" };
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(log_level)).init();
 
     // Read the YAML file
     let yaml_content = fs::read_to_string(&cli.yaml_file).context(format!(
@@ -49,8 +56,8 @@ fn main() -> Result<()> {
 
     // Validate
     if let Err(errors) = compiled_schema.validate(&json_value) {
-        println!("✗ Validation failed!\n");
-        println!("The following schema constraint violations were found:\n");
+        log::error!("✗ Validation failed!");
+        log::error!("The following schema constraint violations were found:");
 
         for (idx, error) in errors.enumerate() {
             let path = if error.instance_path.to_string().is_empty() {
@@ -59,19 +66,17 @@ fn main() -> Result<()> {
                 error.instance_path.to_string()
             };
 
-            println!("Error #{}: Path '{}'", idx + 1, path);
-            println!("  Constraint: {}", error);
+            log::error!("Error #{}: Path '{}'", idx + 1, path);
+            log::error!("  Constraint: {}", error);
 
-            // Extract the actual value at the error path if possible
             let instance = error.instance.as_ref();
-            println!("  Found value: {}", instance);
-            println!();
+            log::error!("  Found value: {}", instance);
         }
 
         anyhow::bail!("Validation failed with schema constraint violations");
     }
 
-    println!("✓ Validation successful!");
-    println!("\nThe YAML payload is valid according to the provided schema.");
+    log::info!("✓ Validation successful!");
+    log::info!("The YAML payload is valid according to the provided schema.");
     Ok(())
 }

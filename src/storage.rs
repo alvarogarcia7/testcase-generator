@@ -67,7 +67,7 @@ impl TestCaseStorage {
                 let matching_files = self.find_files_by_substring(&file_path_str)?;
 
                 if matching_files.len() == 1 {
-                    println!(
+                    log::info!(
                         "Choosing file '{}' matching substring '{}'",
                         matching_files[0].display(),
                         file_path_str
@@ -229,15 +229,17 @@ impl TestCaseStorage {
                         if let Some(ref v) = validator {
                             if let Ok(errors) = v.validate_with_details(&content) {
                                 if !errors.is_empty() {
-                                    eprintln!("Warning: {} has validation errors:", file_name);
+                                    log::warn!("Warning: {} has validation errors:", file_name);
                                     for error in errors.iter().take(3) {
-                                        eprintln!(
+                                        log::warn!(
                                             "  - Path '{}': {} (Expected: {})",
-                                            error.path, error.constraint, error.expected_constraint
+                                            error.path,
+                                            error.constraint,
+                                            error.expected_constraint
                                         );
                                     }
                                     if errors.len() > 3 {
-                                        eprintln!("  ... and {} more error(s)", errors.len() - 3);
+                                        log::warn!("  ... and {} more error(s)", errors.len() - 3);
                                     }
                                 }
                             }
@@ -245,11 +247,11 @@ impl TestCaseStorage {
                         test_cases.push(test_case);
                     }
                     Err(e) => {
-                        eprintln!("Warning: Failed to parse {}: {}", file_name, e);
+                        log::warn!("Warning: Failed to parse {}: {}", file_name, e);
                     }
                 },
                 Err(e) => {
-                    eprintln!("Warning: Failed to read {}: {}", file_name, e);
+                    log::warn!("Warning: Failed to read {}: {}", file_name, e);
                 }
             }
         }
@@ -280,7 +282,7 @@ impl TestCaseStorage {
         payload_path: &Path,
         validator: &SchemaValidator,
     ) -> TestCaseFileInfo {
-        println!("Validating payload file: {}", payload_path.display());
+        log::info!("Validating payload file: {}", payload_path.display());
         let content = match fs::read_to_string(payload_path) {
             Ok(c) => c,
             Err(e) => {
@@ -294,7 +296,7 @@ impl TestCaseStorage {
             }
         };
 
-        println!("\tpath is valid: {}", payload_path.display());
+        log::debug!("\tpath is valid: {}", payload_path.display());
 
         let yaml_content = fs::read_to_string(payload_path)
             .context(format!(
@@ -303,13 +305,12 @@ impl TestCaseStorage {
             ))
             .unwrap();
 
-        // Parse the YAML content
         let yaml_value: serde_yaml::Value = serde_yaml::from_str(&yaml_content)
             .context("Failed to parse YAML content")
             .unwrap();
 
-        println!("\tYaml parsed successfully as a string.\n");
-        println!("YAML Value: {:?}", yaml_value);
+        log::debug!("\tYaml parsed successfully as a string.");
+        log::debug!("YAML Value: {:?}", yaml_value);
 
         let deserializer = serde_yaml::Deserializer::from_str(&yaml_content);
         // map_err(|e| {
@@ -320,22 +321,17 @@ impl TestCaseStorage {
         let result: Result<TestCase, _> = serde_path_to_error::deserialize(deserializer);
         match result {
             Ok(_) => {
-                println!("\tDeserialization succeeded.\n");
+                log::debug!("\tDeserialization succeeded.");
             }
             Err(err) => {
                 let path = err.path().to_string();
-                println!("\tDeserialization error at path: {}", path);
+                log::debug!("\tDeserialization error at path: {}", path);
             }
         }
 
-        // .map_err(|e| {
-        //     println!("\tDeserialization error: {} {}", e, e.path().to_string());
-        //     e
-        // }).unwrap();
-
         let x1: Result<TestCase, serde_yaml::Error> =
             serde_yaml::from_value(yaml_value).map_err(|e| {
-                println!("\tError parsing TestCase: {}", e);
+                log::debug!("\tError parsing TestCase: {}", e);
                 e
             });
         match x1 {

@@ -2,12 +2,10 @@ use std::fs;
 use std::path::Path;
 use testcase_manager::validation::SchemaValidator;
 
-/// Test that validates all YAML files in the testcases/ directory
-/// Valid files (gsma_*) should pass validation
-/// Invalid files should fail validation appropriately
-
 #[test]
 fn test_valid_gsma_files() {
+    let _ = env_logger::builder().is_test(true).try_init();
+
     let validator = SchemaValidator::new().expect("Failed to create validator");
 
     let valid_files = vec![
@@ -16,7 +14,7 @@ fn test_valid_gsma_files() {
     ];
 
     for file_path in valid_files {
-        println!("\n=== Testing valid file: {} ===", file_path);
+        log::info!("\n=== Testing valid file: {} ===", file_path);
 
         // Check file exists
         assert!(
@@ -39,17 +37,19 @@ fn test_valid_gsma_files() {
             result.err()
         );
 
-        println!("✓ {} passed validation", file_path);
+        log::info!("✓ {} passed validation", file_path);
     }
 }
 
 #[test]
 fn test_invalid_sgp_file_missing_general_conditions() {
+    let _ = env_logger::builder().is_test(true).try_init();
+
     let validator = SchemaValidator::new().expect("Failed to create validator");
 
     let file_path = "tests/sample/SGP.22_4.4.2.yaml";
 
-    println!("\n=== Testing invalid file: {} ===", file_path);
+    log::info!("\n=== Testing invalid file: {} ===", file_path);
 
     // Check file exists
     assert!(
@@ -78,7 +78,7 @@ fn test_invalid_sgp_file_missing_general_conditions() {
         error_msg
     );
 
-    println!(
+    log::info!(
         "✓ {} correctly failed validation: {}",
         file_path,
         error_msg.lines().next().unwrap_or("")
@@ -87,11 +87,13 @@ fn test_invalid_sgp_file_missing_general_conditions() {
 
 #[test]
 fn test_invalid_data_yml_wrong_structure() {
+    let _ = env_logger::builder().is_test(true).try_init();
+
     let validator = SchemaValidator::new().expect("Failed to create validator");
 
     let file_path = "tests/sample/data.yml";
 
-    println!("\n=== Testing invalid file: {} ===", file_path);
+    log::info!("\n=== Testing invalid file: {} ===", file_path);
 
     // Check file exists
     assert!(
@@ -120,7 +122,7 @@ fn test_invalid_data_yml_wrong_structure() {
         error_msg
     );
 
-    println!(
+    log::info!(
         "✓ {} correctly failed validation: {}",
         file_path,
         error_msg.lines().next().unwrap_or("")
@@ -129,6 +131,8 @@ fn test_invalid_data_yml_wrong_structure() {
 
 #[test]
 fn test_chunk_validation_on_valid_files() {
+    let _ = env_logger::builder().is_test(true).try_init();
+
     let validator = SchemaValidator::new().expect("Failed to create validator");
 
     let valid_files = vec![
@@ -137,7 +141,7 @@ fn test_chunk_validation_on_valid_files() {
     ];
 
     for file_path in valid_files {
-        println!(
+        log::info!(
             "\n=== Testing chunk validation on valid file: {} ===",
             file_path
         );
@@ -155,12 +159,14 @@ fn test_chunk_validation_on_valid_files() {
             result.err()
         );
 
-        println!("✓ {} passed chunk validation", file_path);
+        log::info!("✓ {} passed chunk validation", file_path);
     }
 }
 
 #[test]
 fn test_all_data_files_exist() {
+    let _ = env_logger::builder().is_test(true).try_init();
+
     let expected_files = vec![
         "data/schema.json",
         "testcases/gsma_4.4.2.2_TC.yaml",
@@ -177,18 +183,20 @@ fn test_all_data_files_exist() {
         );
     }
 
-    println!("✓ All expected data files exist");
+    log::info!("✓ All expected data files exist");
 }
 
 #[test]
 fn test_valid_files_can_be_parsed_as_yaml() {
+    let _ = env_logger::builder().is_test(true).try_init();
+
     let valid_files = vec![
         "testcases/gsma_4.4.2.2_TC.yaml",
         "testcases/gsma_4.4.2.2_TC.yml",
     ];
 
     for file_path in valid_files {
-        println!("\n=== Testing YAML parsing for: {} ===", file_path);
+        log::info!("\n=== Testing YAML parsing for: {} ===", file_path);
 
         let content = fs::read_to_string(file_path)
             .unwrap_or_else(|e| panic!("Failed to read {}: {}", file_path, e));
@@ -242,13 +250,14 @@ fn test_valid_files_can_be_parsed_as_yaml() {
             file_path
         );
 
-        println!("✓ {} is valid YAML with expected structure", file_path);
+        log::info!("✓ {} is valid YAML with expected structure", file_path);
     }
 }
 
 #[test]
 fn test_invalid_files_structure() {
-    // Test SGP.22_4.4.2.yaml
+    let _ = env_logger::builder().is_test(true).try_init();
+
     let file_path = "tests/sample/SGP.22_4.4.2.yaml";
     let content = fs::read_to_string(file_path)
         .unwrap_or_else(|e| panic!("Failed to read {}: {}", file_path, e));
@@ -267,7 +276,7 @@ fn test_invalid_files_structure() {
         file_path
     );
 
-    println!(
+    log::info!(
         "✓ {} is correctly missing general_initial_conditions",
         file_path
     );
@@ -275,9 +284,11 @@ fn test_invalid_files_structure() {
 
 #[test]
 fn test_valid_files_detailed_structure() {
+    let _ = env_logger::builder().is_test(true).try_init();
+
     let file_path = "testcases/gsma_4.4.2.2_TC.yaml";
 
-    println!("\n=== Testing detailed structure of: {} ===", file_path);
+    log::info!("\n=== Testing detailed structure of: {} ===", file_path);
 
     let content = fs::read_to_string(file_path)
         .unwrap_or_else(|e| panic!("Failed to read {}: {}", file_path, e));
@@ -374,5 +385,5 @@ fn test_valid_files_detailed_structure() {
         "Step missing 'expected'"
     );
 
-    println!("✓ {} has correct detailed structure", file_path);
+    log::info!("✓ {} has correct detailed structure", file_path);
 }
