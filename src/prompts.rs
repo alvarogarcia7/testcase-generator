@@ -221,30 +221,30 @@ impl<'a> Prompts<'a> {
     }
 
     /// Select from a list of items
-    pub fn select<T: ToString>(prompt: &str, items: &[T]) -> Result<usize> {
+    pub fn select(prompt: &str, items: Vec<String>) -> Result<String> {
         Self::select_with_oracle(prompt, items, &TtyCliOracle::new())
     }
 
     /// Select from a list of items with custom oracle
-    pub fn select_with_oracle<T: ToString>(
+    pub fn select_with_oracle(
         prompt: &str,
-        items: &[T],
+        items: Vec<String>,
         oracle: &impl Oracle,
-    ) -> Result<usize> {
+    ) -> Result<String> {
         oracle.select(prompt, items)
     }
 
     /// Multi-select from a list of items
-    pub fn multi_select<T: ToString>(prompt: &str, items: &[T]) -> Result<Vec<usize>> {
+    pub fn multi_select(prompt: &str, items: Vec<String>) -> Result<Vec<String>> {
         Self::multi_select_with_oracle(prompt, items, &TtyCliOracle::new())
     }
 
     /// Multi-select from a list of items with custom oracle
-    pub fn multi_select_with_oracle<T: ToString>(
+    pub fn multi_select_with_oracle(
         prompt: &str,
-        items: &[T],
+        items: Vec<String>,
         oracle: &impl Oracle,
-    ) -> Result<Vec<usize>> {
+    ) -> Result<Vec<String>> {
         oracle.multi_select(prompt, items)
     }
 

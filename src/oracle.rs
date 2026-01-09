@@ -1,6 +1,8 @@
-use anyhow::{Context, Result};
+use anyhow::{Context, Error, Result};
+use clap::builder::Str;
 use dialoguer::{theme::ColorfulTheme, Confirm, Input, MultiSelect, Select};
 use std::collections::VecDeque;
+use std::fmt::format;
 use std::io::{self, Write};
 
 /// Trait defining the interface for user input operations
@@ -37,10 +39,10 @@ pub trait Oracle {
     fn confirm_with_default(&self, prompt: &str, default: bool) -> Result<bool>;
 
     /// Select from a list of items, returns the index of the selected item
-    fn select<T: ToString>(&self, prompt: &str, items: &[T]) -> Result<usize>;
+    fn select(&self, prompt: &str, items: Vec<String>) -> Result<String>;
 
     /// Multi-select from a list of items, returns indices of selected items
-    fn multi_select<T: ToString>(&self, prompt: &str, items: &[T]) -> Result<Vec<usize>>;
+    fn multi_select(&self, prompt: &str, items: Vec<String>) -> Result<Vec<String>>;
 
     /// Fuzzy search through a list of strings, returns the selected string
     fn fuzzy_search_strings(&self, items: &[String], prompt: &str) -> Result<Option<String>>;
@@ -166,24 +168,32 @@ impl Oracle for TtyCliOracle {
             .context("Failed to read confirmation")
     }
 
-    fn select<T: ToString>(&self, prompt: &str, items: &[T]) -> Result<usize> {
-        let item_strings: Vec<String> = items.iter().map(|i| i.to_string()).collect();
-
+    fn select(&self, prompt: &str, items: Vec<String>) -> Result<String> {
         Select::with_theme(&ColorfulTheme::default())
             .with_prompt(prompt)
-            .items(&item_strings)
+            .items(&items)
             .interact()
+            .map(move |i| items[i].clone())
             .context("Failed to read selection")
     }
 
-    fn multi_select<T: ToString>(&self, prompt: &str, items: &[T]) -> Result<Vec<usize>> {
-        let item_strings: Vec<String> = items.iter().map(|i| i.to_string()).collect();
-
-        MultiSelect::with_theme(&ColorfulTheme::default())
+    fn multi_select(&self, prompt: &str, items: Vec<String>) -> Result<Vec<String>> {
+        let indices = MultiSelect::with_theme(&ColorfulTheme::default())
             .with_prompt(prompt)
-            .items(&item_strings)
+            .items(&items)
             .interact()
-            .context("Failed to read selection")
+            .map(|is| is.into_iter().map(|i| items[i].clone()).collect())
+            .context("Failed to read selection");
+        // .map(|indices|{
+        //         let mut selection = vec![];
+        //         let x2 = indices.into_iter().map(|is| {
+        //             for i in indices {
+        //                 selection.push(items[i].clone());
+        //             }
+        //         }).collect();
+        //         x2
+        //     })
+        indices
     }
 
     fn fuzzy_search_strings(&self, items: &[String], prompt: &str) -> Result<Option<String>> {
@@ -269,7 +279,7 @@ impl MenuCliOracle {
     }
 
     /// Numbered selection fallback for single select
-    fn numbered_selection<T: ToString>(items: &[T], prompt: &str) -> Result<usize> {
+    fn numbered_selection(items: Vec<String>, prompt: &str) -> Result<String> {
         if items.is_empty() {
             anyhow::bail!("Cannot select from empty list");
         }
@@ -298,7 +308,7 @@ impl MenuCliOracle {
 
             match input.parse::<usize>() {
                 Ok(num) if num > 0 && num <= item_strings.len() => {
-                    return Ok(num - 1);
+                    return Ok(items[num - 1].clone());
                 }
                 _ => {
                     println!(
@@ -311,7 +321,7 @@ impl MenuCliOracle {
     }
 
     /// Numbered multi-selection fallback
-    fn numbered_multi_selection<T: ToString>(items: &[T], prompt: &str) -> Result<Vec<usize>> {
+    fn numbered_multi_selection(items: Vec<String>, prompt: &str) -> Result<Vec<String>> {
         if items.is_empty() {
             return Ok(Vec::new());
         }
@@ -378,7 +388,9 @@ impl MenuCliOracle {
             }
         }
 
-        Ok(selected)
+        let selected_strings = selected.iter().map( move |i| items[*i].clone()).collect();
+
+        Ok(selected_strings)
     }
 
     /// Numbered input fallback for string input
@@ -674,7 +686,35 @@ impl Oracle for MenuCliOracle {
             .context("Failed to read confirmation")
     }
 
-    fn select<T: ToString>(&self, prompt: &str, items: &[T]) -> Result<usize> {
+    // fn select(&self, prompt: &str, items: Vec<String>) -> Result<String> {
+    //     Select::with_theme(&ColorfulTheme::default())
+    //         .with_prompt(prompt)
+    //         .items(&items)
+    //         .interact()
+    //         .map(move |i| items[i].clone())
+    //         .context("Failed to read selection")
+    // }
+
+    // fn multi_select(&self, prompt: &str, items: Vec<String>) -> Result<Vec<String>> {
+    //     let indices = MultiSelect::with_theme(&ColorfulTheme::default())
+    //         .with_prompt(prompt)
+    //         .items(&items)
+    //         .interact()
+    //         .map(|is| is.into_iter().map(|i| items[i].clone()).collect())
+    //         .context("Failed to read selection");
+    //     // .map(|indices|{
+    //     //         let mut selection = vec![];
+    //     //         let x2 = indices.into_iter().map(|is| {
+    //     //             for i in indices {
+    //     //                 selection.push(items[i].clone());
+    //     //             }
+    //     //         }).collect();
+    //     //         x2
+    //     //     })
+    //     indices
+    // }
+
+    fn select(&self, prompt: &str, items: Vec<String>) -> Result<String> {
         if !Self::is_tty() {
             return Self::numbered_selection(items, prompt);
         }
@@ -685,10 +725,11 @@ impl Oracle for MenuCliOracle {
             .with_prompt(prompt)
             .items(&item_strings)
             .interact()
+            .map(move |i| items[i].clone())
             .context("Failed to read selection")
     }
 
-    fn multi_select<T: ToString>(&self, prompt: &str, items: &[T]) -> Result<Vec<usize>> {
+    fn multi_select(&self, prompt: &str, items: Vec<String>) -> Result<Vec<String>> {
         if !Self::is_tty() {
             return Self::numbered_multi_selection(items, prompt);
         }
@@ -699,6 +740,7 @@ impl Oracle for MenuCliOracle {
             .with_prompt(prompt)
             .items(&item_strings)
             .interact()
+            .map(|is| is.into_iter().map(|i| items[i].clone()).collect())
             .context("Failed to read selection")
     }
 
@@ -836,19 +878,19 @@ impl Oracle for HardcodedOracle {
         }
     }
 
-    fn select<T: ToString>(&self, _prompt: &str, _items: &[T]) -> Result<usize> {
+    fn select(&self, _prompt: &str, _items: Vec<String>) -> Result<String> {
         match self.next_answer()? {
             AnswerVariant::Int(i) => {
                 if i < 0 {
                     anyhow::bail!("Expected non-negative integer for select")
                 }
-                Ok(i as usize)
+                Ok(format!("{}", i))
             }
             _ => anyhow::bail!("Expected Int answer variant"),
         }
     }
 
-    fn multi_select<T: ToString>(&self, _prompt: &str, _items: &[T]) -> Result<Vec<usize>> {
+    fn multi_select(&self, _prompt: &str, _items: Vec<String>) -> Result<Vec<String>> {
         match self.next_answer()? {
             AnswerVariant::Strings(strings) => {
                 let indices: Result<Vec<usize>> = strings
@@ -858,7 +900,8 @@ impl Oracle for HardcodedOracle {
                             .context("Failed to parse string as usize for multi_select")
                     })
                     .collect();
-                indices
+                indices.map(|is| is.into_iter().map(|i| _items[i].clone()).collect())
+                // indices.map(|i|items[*i].clone()).collect()
             }
             _ => anyhow::bail!("Expected Strings answer variant"),
         }
