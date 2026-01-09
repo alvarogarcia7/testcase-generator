@@ -99,6 +99,13 @@ fn main() -> Result<()> {
             let work_path = path.as_deref().unwrap_or(&cli.path);
             handle_parse_initial_conditions(&database, work_path)?;
         }
+
+        Commands::ValidateYaml {
+            yaml_file,
+            schema_file,
+        } => {
+            handle_validate_yaml(&yaml_file, &schema_file)?;
+        }
     }
 
     Ok(())
@@ -1555,5 +1562,61 @@ fn handle_parse_initial_conditions(database_path: &str, work_path: &str) -> Resu
 
     builder.delete_recovery_file()?;
 
+    Ok(())
+}
+
+fn handle_validate_yaml(yaml_file: &str, schema_file: &str) -> Result<()> {
+    use std::fs;
+
+    // Read the YAML file
+    let yaml_content = fs::read_to_string(yaml_file)
+        .context(format!("Failed to read YAML file: {}", yaml_file))?;
+
+    // Read the JSON schema file
+    let schema_content = fs::read_to_string(schema_file)
+        .context(format!("Failed to read schema file: {}", schema_file))?;
+
+    // Parse the schema
+    let schema_value: serde_json::Value =
+        serde_json::from_str(&schema_content).context("Failed to parse JSON schema")?;
+
+    // Parse the YAML content
+    let yaml_value: serde_yaml::Value =
+        serde_yaml::from_str(&yaml_content).context("Failed to parse YAML content")?;
+
+    // Convert YAML to JSON Value for validation
+    let json_value: serde_json::Value =
+        serde_json::to_value(&yaml_value).context("Failed to convert YAML to JSON")?;
+
+    // Compile the schema
+    let compiled_schema = jsonschema::JSONSchema::compile(&schema_value)
+        .map_err(|e| anyhow::anyhow!("Failed to compile JSON schema: {}", e))?;
+
+    // Validate
+    if let Err(errors) = compiled_schema.validate(&json_value) {
+        println!("✗ Validation failed!\n");
+        println!("The following schema constraint violations were found:\n");
+
+        for (idx, error) in errors.enumerate() {
+            let path = if error.instance_path.to_string().is_empty() {
+                "root".to_string()
+            } else {
+                error.instance_path.to_string()
+            };
+
+            println!("Error #{}: Path '{}'", idx + 1, path);
+            println!("  Constraint: {}", error);
+
+            // Extract the actual value at the error path if possible
+            let instance = error.instance.as_ref();
+            println!("  Found value: {}", instance);
+            println!();
+        }
+
+        anyhow::bail!("Validation failed with schema constraint violations");
+    }
+
+    println!("✓ Validation successful!");
+    println!("\nThe YAML payload is valid according to the provided schema.");
     Ok(())
 }

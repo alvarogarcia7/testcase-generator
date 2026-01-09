@@ -193,6 +193,15 @@ pub enum Commands {
         #[arg(short = 'p', long)]
         path: Option<String>,
     },
+
+    /// Validate a YAML payload against a JSON schema
+    ValidateYaml {
+        /// Path to the YAML payload file
+        yaml_file: String,
+
+        /// Path to the JSON schema file
+        schema_file: String,
+    },
 }
 
 #[derive(Subcommand)]
