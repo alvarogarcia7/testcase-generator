@@ -41,6 +41,7 @@ impl SchemaValidator {
     /// * `Ok(())` if the chunk is valid according to the schema
     /// * `Err` with validation errors if the chunk is invalid
     pub fn validate_chunk(&self, yaml_content: &str) -> Result<()> {
+        log::debug!("Validating YAML chunk");
         let yaml_value: serde_yaml::Value =
             serde_yaml::from_str(yaml_content).context("Failed to parse YAML content")?;
 
@@ -67,6 +68,7 @@ impl SchemaValidator {
             }
         }
 
+        log::debug!("YAML chunk validation successful");
         Ok(())
     }
 
@@ -206,6 +208,7 @@ impl SchemaValidator {
     /// * `Ok(())` if the complete document is valid
     /// * `Err` with validation errors if the document is invalid or missing required fields
     pub fn validate_complete(&self, yaml_content: &str) -> Result<()> {
+        log::debug!("Validating complete YAML document");
         let yaml_value: serde_yaml::Value =
             serde_yaml::from_str(yaml_content).context("Failed to parse YAML content")?;
 
@@ -229,6 +232,7 @@ impl SchemaValidator {
             anyhow::bail!("Schema validation failed:\n{}", error_messages.join("\n"));
         }
 
+        log::debug!("Complete YAML document validation successful");
         Ok(())
     }
 
@@ -312,6 +316,7 @@ impl SchemaValidator {
         &self,
         initial_conditions: &serde_yaml::Value,
     ) -> Result<()> {
+        log::debug!("Validating initial conditions structure");
         let json_value: JsonValue =
             serde_json::to_value(initial_conditions).context("Failed to convert to JSON")?;
 
@@ -342,6 +347,7 @@ impl SchemaValidator {
             anyhow::bail!("initial_conditions must be an object with device names as keys");
         }
 
+        log::debug!("Initial conditions validation successful");
         Ok(())
     }
 }

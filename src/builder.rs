@@ -60,7 +60,7 @@ impl TestCaseBuilder {
 
         let structure = if recovery_manager.prompt_for_recovery()? {
             if let Some(state) = recovery_manager.load_state()? {
-                println!("✓ Resuming from saved state\n");
+                log::info!("✓ Resuming from saved state\n");
                 state.structure
             } else {
                 IndexMap::new()
@@ -141,11 +141,11 @@ impl TestCaseBuilder {
     pub fn add_metadata(&mut self) -> Result<&mut Self> {
         let metadata = Prompts::prompt_metadata().context("Failed to prompt for metadata")?;
 
-        println!("\n=== Validating Metadata ===");
+        log::info!("\n=== Validating Metadata ===");
         metadata
             .validate(&self.validator)
             .context("Metadata validation failed")?;
-        println!("✓ Metadata is valid\n");
+        log::info!("✓ Metadata is valid\n");
 
         let yaml_map = metadata.to_yaml();
         for (key, value) in yaml_map {
@@ -172,9 +172,9 @@ impl TestCaseBuilder {
             git.commit_progress(&file_name, message, &author_name, &author_email)
                 .context("Failed to commit to git")?;
 
-            println!("✓ Committed: {}", message);
+            log::info!("✓ Committed: {}", message);
         } else {
-            println!("⚠ Git repository not available, skipping commit");
+            log::warn!("⚠ Git repository not available, skipping commit");
         }
 
         Ok(())
@@ -247,11 +247,11 @@ impl TestCaseBuilder {
         let conditions = db.get_general_conditions();
 
         if conditions.is_empty() {
-            println!("No general initial conditions found in database.");
+            log::info!("No general initial conditions found in database.");
             return Ok(self);
         }
 
-        println!(
+        log::info!(
             "Loaded {} unique general initial conditions from database\n",
             conditions.len()
         );
@@ -259,7 +259,7 @@ impl TestCaseBuilder {
         let mut selected_conditions = Vec::new();
 
         loop {
-            println!("\n=== Select General Initial Condition ===");
+            log::info!("\n=== Select General Initial Condition ===");
 
             let selected = TestCaseFuzzyFinder::search_strings(
                 conditions,
@@ -269,7 +269,7 @@ impl TestCaseBuilder {
             match selected {
                 Some(condition) => {
                     selected_conditions.push(condition.clone());
-                    println!("✓ Added: {}\n", condition);
+                    log::info!("✓ Added: {}\n", condition);
 
                     if !Prompts::confirm("Add another general initial condition?")? {
                         break;
@@ -277,7 +277,7 @@ impl TestCaseBuilder {
                 }
                 None => {
                     if selected_conditions.is_empty() {
-                        println!("No conditions selected.");
+                        log::info!("No conditions selected.");
                         if !Prompts::confirm("Continue without general initial conditions?")? {
                             continue;
                         }
@@ -304,7 +304,7 @@ impl TestCaseBuilder {
                 Value::Sequence(general_conditions_array),
             );
 
-            println!("\n✓ General initial conditions added to test case");
+            log::info!("\n✓ General initial conditions added to test case");
         }
 
         Ok(self)
@@ -323,11 +323,11 @@ impl TestCaseBuilder {
         let conditions = db.get_initial_conditions();
 
         if conditions.is_empty() {
-            println!("No initial conditions found in database.");
+            log::info!("No initial conditions found in database.");
             return Ok(self);
         }
 
-        println!(
+        log::info!(
             "Loaded {} unique initial conditions from database\n",
             conditions.len()
         );
@@ -335,7 +335,7 @@ impl TestCaseBuilder {
         let mut selected_conditions = Vec::new();
 
         loop {
-            println!("\n=== Select Initial Condition ===");
+            log::info!("\n=== Select Initial Condition ===");
 
             let selected = TestCaseFuzzyFinder::search_strings(
                 conditions,
@@ -345,7 +345,7 @@ impl TestCaseBuilder {
             match selected {
                 Some(condition) => {
                     selected_conditions.push(condition.clone());
-                    println!("✓ Added: {}\n", condition);
+                    log::info!("✓ Added: {}\n", condition);
 
                     if !Prompts::confirm("Add another initial condition?")? {
                         break;
@@ -353,7 +353,7 @@ impl TestCaseBuilder {
                 }
                 None => {
                     if selected_conditions.is_empty() {
-                        println!("No conditions selected.");
+                        log::info!("No conditions selected.");
                         if !Prompts::confirm("Continue without initial conditions?")? {
                             continue;
                         }
@@ -378,7 +378,7 @@ impl TestCaseBuilder {
                 Value::Mapping(initial_cond_map),
             );
 
-            println!("\n✓ Initial conditions added to test case");
+            log::info!("\n✓ Initial conditions added to test case");
         }
 
         Ok(self)
@@ -469,17 +469,17 @@ impl TestCaseBuilder {
         use crate::fuzzy::TestCaseFuzzyFinder;
         use crate::prompts::Prompts;
 
-        println!("\n=== Add Test Sequence ===\n");
+        log::info!("\n=== Add Test Sequence ===\n");
 
         let sequence_id = self.get_next_sequence_id();
-        println!("Sequence ID: {}", sequence_id);
+        log::debug!("Sequence ID: {}", sequence_id);
 
         let existing_sequences = self.get_existing_sequence_names();
         let sequence_name = if let Some(sample) = &self.sample {
             let prompts = Prompts::new_with_sample(sample);
             prompts.input_with_sample("Sequence name", &sample.sequence_name())?
         } else if !existing_sequences.is_empty() {
-            println!("\nYou can select from existing sequence names or type a new one.");
+            log::info!("\nYou can select from existing sequence names or type a new one.");
 
             if Prompts::confirm("Use fuzzy search to select from existing names?")? {
                 match TestCaseFuzzyFinder::search_strings(
@@ -488,7 +488,7 @@ impl TestCaseBuilder {
                 )? {
                     Some(name) => name,
                     None => {
-                        println!("No selection made, entering new name.");
+                        log::info!("No selection made, entering new name.");
                         Prompts::input("Sequence name")?
                     }
                 }
@@ -582,7 +582,7 @@ impl TestCaseBuilder {
                         match selected {
                             Some(condition) => {
                                 selected_conditions.push(condition.clone());
-                                println!("✓ Added: {}", condition);
+                                log::info!("✓ Added: {}", condition);
 
                                 if !Prompts::confirm("Add another condition?")? {
                                     break;
@@ -607,7 +607,7 @@ impl TestCaseBuilder {
                         None
                     }
                 } else {
-                    println!("No conditions in database, using manual entry.");
+                    log::info!("No conditions in database, using manual entry.");
                     Some(prompts.prompt_initial_conditions(None, &self.validator)?)
                 }
             } else {
@@ -649,9 +649,9 @@ impl TestCaseBuilder {
 
         let sequence_value = Value::Mapping(sequence_map);
 
-        println!("\n=== Validating Test Sequence ===");
+        log::info!("\n=== Validating Test Sequence ===");
         self.validate_and_append_sequence(sequence_value)?;
-        println!("✓ Test sequence validated and added\n");
+        log::info!("✓ Test sequence validated and added\n");
 
         Ok(self)
     }
@@ -705,9 +705,9 @@ impl TestCaseBuilder {
 
     /// Build test sequences interactively with git commits before each sequence
     pub fn build_test_sequences_with_commits(&mut self) -> Result<&mut Self> {
-        println!("\n╔═══════════════════════════════════════════════╗");
-        println!("║    Test Sequence Builder with Git Commits    ║");
-        println!("╚═══════════════════════════════════════════════╝\n");
+        log::info!("\n╔═══════════════════════════════════════════════╗");
+        log::info!("║    Test Sequence Builder with Git Commits    ║");
+        log::info!("╚═══════════════════════════════════════════════╝\n");
 
         loop {
             self.add_test_sequence_interactive()
@@ -725,7 +725,7 @@ impl TestCaseBuilder {
             }
         }
 
-        println!("\n✓ All test sequences added");
+        log::info!("\n✓ All test sequences added");
         Ok(self)
     }
 

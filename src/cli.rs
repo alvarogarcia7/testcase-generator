@@ -11,6 +11,10 @@ pub struct Cli {
     /// Path to the test cases directory
     #[arg(short, long, default_value = "./testcases", global = true)]
     pub path: String,
+
+    /// Enable verbose logging
+    #[arg(short, long, global = true)]
+    pub verbose: bool,
 }
 
 #[derive(Subcommand)]

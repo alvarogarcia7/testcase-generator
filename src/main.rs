@@ -9,6 +9,10 @@ use testcase_manager::{
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
+    // Initialize env_logger with appropriate log level
+    let log_level = if cli.verbose { "info" } else { "warn" };
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(log_level)).init();
+
     match cli.command {
         Commands::Create { id } => {
             handle_create(&cli.path, id)?;
@@ -128,7 +132,7 @@ fn handle_create(base_path: &str, id: Option<String>) -> Result<()> {
     let test_case = TestCase::new(requirement, item, tc, id, description);
 
     let file_path = storage.save_test_case(&test_case)?;
-    println!("Test case created: {}", file_path.display());
+    log::info!("Test case created: {}", file_path.display());
 
     Ok(())
 }
@@ -151,7 +155,7 @@ fn handle_edit(base_path: &str, id: Option<String>, fuzzy: bool) -> Result<()> {
     let edited_test_case = TestCaseEditor::edit_test_case(&test_case)?;
 
     let file_path = storage.save_test_case(&edited_test_case)?;
-    println!("Test case updated: {}", file_path.display());
+    log::info!("Test case updated: {}", file_path.display());
 
     Ok(())
 }
@@ -284,13 +288,13 @@ fn handle_delete(base_path: &str, id: &str, force: bool) -> Result<()> {
     if !force {
         let confirm = Prompts::confirm(&format!("Delete test case '{}'?", id))?;
         if !confirm {
-            println!("Cancelled.");
+            log::info!("Cancelled.");
             return Ok(());
         }
     }
 
     storage.delete_test_case(id)?;
-    println!("Test case deleted: {}", id);
+    log::info!("Test case deleted: {}", id);
 
     Ok(())
 }
@@ -402,7 +406,7 @@ fn handle_export(base_path: &str, output: &str, _tags: Option<String>) -> Result
     };
 
     let file_path = storage.save_test_suite(&test_suite, output)?;
-    println!("Test suite exported: {}", file_path.display());
+    log::info!("Test suite exported: {}", file_path.display());
 
     Ok(())
 }
@@ -420,7 +424,7 @@ fn handle_import(base_path: &str, file: &str, skip_validation: bool) -> Result<(
         }
 
         storage.save_test_case(&test_case)?;
-        println!("Imported: {}", test_case.id);
+        log::info!("Imported: {}", test_case.id);
     }
 
     Ok(())
@@ -433,7 +437,7 @@ fn handle_git(base_path: &str, command: GitCommands) -> Result<()> {
         GitCommands::Add { ids, all } => {
             if all {
                 git.add_all()?;
-                println!("All files added to staging");
+                log::info!("All files added to staging");
             } else {
                 let paths: Vec<_> = ids
                     .iter()
@@ -441,7 +445,7 @@ fn handle_git(base_path: &str, command: GitCommands) -> Result<()> {
                     .map(std::path::PathBuf::from)
                     .collect();
                 git.add(&paths)?;
-                println!("Added {} file(s) to staging", paths.len());
+                log::info!("Added {} file(s) to staging", paths.len());
             }
         }
 
@@ -452,16 +456,16 @@ fn handle_git(base_path: &str, command: GitCommands) -> Result<()> {
                 .unwrap_or_else(|_| "testcase@example.com".to_string());
 
             let oid = git.commit(&message, &author_name, &author_email)?;
-            println!("Committed: {}", oid);
+            log::info!("Committed: {}", oid);
         }
 
         GitCommands::Status => {
             let statuses = git.status()?;
             if statuses.is_empty() {
-                println!("No changes");
+                log::info!("No changes");
             } else {
                 for (path, status) in statuses {
-                    println!("{:?} {}", status, path);
+                    log::info!("{:?} {}", status, path);
                 }
             }
         }
@@ -469,7 +473,7 @@ fn handle_git(base_path: &str, command: GitCommands) -> Result<()> {
         GitCommands::Log { limit } => {
             let commits = git.log(limit)?;
             for commit in commits {
-                println!(
+                log::info!(
                     "{} - {} ({})",
                     &commit.id[..7],
                     commit.message.lines().next().unwrap_or(""),
@@ -484,19 +488,19 @@ fn handle_git(base_path: &str, command: GitCommands) -> Result<()> {
 
 fn handle_init(path: &str, init_git: bool) -> Result<()> {
     let storage = TestCaseStorage::new(path)?;
-    println!(
+    log::info!(
         "Initialized test case repository: {}",
         storage.base_path().display()
     );
 
     if init_git {
         GitManager::init(path)?;
-        println!("Initialized git repository");
+        log::info!("Initialized git repository");
 
         let gitignore_path = std::path::Path::new(path).join(".gitignore");
         if !gitignore_path.exists() {
             std::fs::write(&gitignore_path, "*.bak\n*.tmp\n.DS_Store\n")?;
-            println!("Created .gitignore");
+            log::info!("Created .gitignore");
         }
     }
 

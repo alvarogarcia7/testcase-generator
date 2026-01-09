@@ -243,7 +243,7 @@ impl<'a> Prompts<'a> {
 
     /// Prompt for test case metadata fields
     pub fn prompt_metadata() -> Result<TestCaseMetadata> {
-        println!("\n=== Test Case Metadata ===\n");
+        log::info!("\n=== Test Case Metadata ===\n");
 
         let requirement = Self::input("Requirement")?;
         let item = Self::input_integer("Item")?;
@@ -258,15 +258,21 @@ impl<'a> Prompts<'a> {
             id,
             description,
         };
+        log::debug!(
+            "Metadata collected: requirement={}, item={}, tc={}",
+            metadata.requirement,
+            metadata.item,
+            metadata.tc
+        );
         Ok(metadata)
     }
 
     /// Prompt for test case metadata fields with optional sample data
     pub fn prompt_metadata_with_sample(&self) -> Result<TestCaseMetadata> {
-        println!("\n=== Test Case Metadata ===\n");
+        log::info!("\n=== Test Case Metadata ===\n");
 
         if self.sample.is_some() {
-            println!(
+            log::info!(
                 "⚠ Sample values shown as editable text (Enter confirms, you can edit/delete)\n"
             );
         }
@@ -302,10 +308,10 @@ impl<'a> Prompts<'a> {
     pub fn prompt_metadata_with_recovery(
         recovered: Option<&TestCaseMetadata>,
     ) -> Result<TestCaseMetadata> {
-        println!("\n=== Test Case Metadata ===\n");
+        log::info!("\n=== Test Case Metadata ===\n");
 
         if recovered.is_some() {
-            println!(
+            log::info!(
                 "⚠ Recovered values shown as editable text (Enter confirms, you can edit/delete)\n"
             );
         }
@@ -337,7 +343,7 @@ impl<'a> Prompts<'a> {
         validator: &SchemaValidator,
         editor_config: &EditorConfig,
     ) -> Result<Value> {
-        println!("\n=== General Initial Conditions ===\n");
+        log::info!("\n=== General Initial Conditions ===\n");
 
         if let Some(default_value) = defaults {
             let yaml_str =
@@ -371,7 +377,7 @@ impl<'a> Prompts<'a> {
             validator.validate_partial_chunk(&yaml_for_validation)
         })?;
 
-        println!("✓ Valid structure");
+        log::info!("✓ Valid structure");
         Ok(parsed)
     }
 
@@ -503,7 +509,7 @@ impl<'a> Prompts<'a> {
         defaults: Option<&Value>,
         validator: &SchemaValidator,
     ) -> Result<Value> {
-        println!("\n=== Initial Conditions ===\n");
+        log::info!("\n=== Initial Conditions ===\n");
 
         if let Some(default_value) = defaults {
             let yaml_str =
@@ -604,7 +610,7 @@ impl<'a> Prompts<'a> {
             .validate_initial_conditions(&initial_conditions_value)
             .context("Initial conditions validation failed")?;
 
-        println!("✓ Valid structure");
+        log::info!("✓ Valid structure");
 
         Ok(initial_conditions_value)
     }

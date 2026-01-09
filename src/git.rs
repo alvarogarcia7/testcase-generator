@@ -10,6 +10,7 @@ pub struct GitManager {
 impl GitManager {
     /// Open an existing git repository
     pub fn open<P: AsRef<Path>>(path: P) -> Result<Self> {
+        log::debug!("Opening git repository at: {:?}", path.as_ref());
         let repo = Repository::open(path.as_ref()).context("Failed to open git repository")?;
 
         Ok(Self { repo })
@@ -17,6 +18,7 @@ impl GitManager {
 
     /// Initialize a new git repository
     pub fn init<P: AsRef<Path>>(path: P) -> Result<Self> {
+        log::info!("Initializing git repository at: {:?}", path.as_ref());
         let repo =
             Repository::init(path.as_ref()).context("Failed to initialize git repository")?;
 
@@ -41,6 +43,7 @@ impl GitManager {
             .context("Failed to get repository index")?;
 
         for path in paths {
+            log::debug!("Adding path to git staging: {}", path.as_ref().display());
             index
                 .add_path(path.as_ref())
                 .context(format!("Failed to add path: {}", path.as_ref().display()))?;
@@ -74,6 +77,7 @@ impl GitManager {
         author_name: &str,
         author_email: &str,
     ) -> Result<git2::Oid> {
+        log::info!("Creating git commit: {}", message);
         let signature =
             Signature::now(author_name, author_email).context("Failed to create signature")?;
 
@@ -113,6 +117,7 @@ impl GitManager {
             )
             .context("Failed to create commit")?;
 
+        log::debug!("Commit created with OID: {}", oid);
         Ok(oid)
     }
 
@@ -236,6 +241,10 @@ impl GitManager {
         author_name: &str,
         author_email: &str,
     ) -> Result<git2::Oid> {
+        log::debug!(
+            "Staging progress for: {}",
+            yaml_file_path.as_ref().display()
+        );
         self.add(&[yaml_file_path.as_ref()])
             .context("Failed to stage YAML file")?;
 
