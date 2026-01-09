@@ -2,6 +2,7 @@ use crate::config::EditorConfig;
 use crate::database::ConditionDatabase;
 use crate::git::GitManager;
 use crate::oracle::Oracle;
+use std::sync::Arc;
 use crate::prompts::Prompts;
 use crate::recovery::{RecoveryManager, RecoveryState};
 use crate::sample::SampleData;
@@ -20,12 +21,12 @@ pub struct TestCaseBuilder {
     recovery_manager: RecoveryManager,
     db: Option<ConditionDatabase>,
     sample: Option<SampleData>,
-    oracle: Box<dyn Oracle>,
+    oracle: Arc<dyn Oracle>,
 }
 
 impl TestCaseBuilder {
     /// Create a new test case builder
-    pub fn new<P: AsRef<Path>>(base_path: P, oracle: Box<dyn Oracle>) -> Result<Self> {
+    pub fn new<P: AsRef<Path>>(base_path: P, oracle: Arc<dyn Oracle>) -> Result<Self> {
         let base_path = base_path.as_ref().to_path_buf();
         let validator = SchemaValidator::new().context("Failed to create schema validator")?;
 
@@ -51,7 +52,7 @@ impl TestCaseBuilder {
     }
 
     /// Create a new test case builder and check for recovery
-    pub fn new_with_recovery<P: AsRef<Path>>(base_path: P, oracle: Box<dyn Oracle>) -> Result<Self> {
+    pub fn new_with_recovery<P: AsRef<Path>>(base_path: P, oracle: Arc<dyn Oracle>) -> Result<Self> {
         let base_path = base_path.as_ref().to_path_buf();
         let validator = SchemaValidator::new().context("Failed to create schema validator")?;
 
@@ -94,7 +95,7 @@ impl TestCaseBuilder {
     }
 
     /// Set oracle for the builder
-    pub fn with_oracle(mut self, oracle: Box<dyn Oracle>) -> Self {
+    pub fn with_oracle(mut self, oracle: Arc<dyn Oracle>) -> Self {
         self.oracle = oracle;
         self
     }
@@ -149,7 +150,7 @@ impl TestCaseBuilder {
 
     /// Prompt for and add metadata to the structure
     pub fn add_metadata(&mut self) -> Result<&mut Self> {
-        let metadata = Prompts::prompt_metadata_with_oracle(self.oracle.as_ref())
+        let metadata = Prompts::prompt_metadata_with_oracle(&self.oracle)
             .context("Failed to prompt for metadata")?;
 
         log::info!("\n=== Validating Metadata ===");
@@ -201,7 +202,7 @@ impl TestCaseBuilder {
             defaults,
             &self.validator,
             &editor_config,
-            self.oracle.as_ref(),
+            &self.oracle,
         )
         .context("Failed to prompt for general initial conditions")?;
 
@@ -223,7 +224,7 @@ impl TestCaseBuilder {
             &self.validator,
             storage,
             &editor_config,
-            self.oracle.as_ref(),
+            &self.oracle,
         )
         .context("Failed to prompt for general initial conditions")?;
 
@@ -241,7 +242,7 @@ impl TestCaseBuilder {
             Prompts::new()
         };
         let conditions = prompts
-            .prompt_initial_conditions_with_oracle(defaults, &self.validator, self.oracle.as_ref())
+            .prompt_initial_conditions_with_oracle(defaults, &self.validator, &self.oracle)
             .context("Failed to prompt for initial conditions")?;
 
         self.structure
@@ -287,14 +288,14 @@ impl TestCaseBuilder {
                     selected_conditions.push(condition.clone());
                     log::info!("✓ Added: {}\n", condition);
 
-                    if !Prompts::confirm_with_oracle("Add another general initial condition?", self.oracle.as_ref())? {
+                    if !Prompts::confirm_with_oracle("Add another general initial condition?", &self.oracle)? {
                         break;
                     }
                 }
                 None => {
                     if selected_conditions.is_empty() {
                         log::info!("No conditions selected.");
-                        if !Prompts::confirm_with_oracle("Continue without general initial conditions?", self.oracle.as_ref())? {
+                        if !Prompts::confirm_with_oracle("Continue without general initial conditions?", &self.oracle)? {
                             continue;
                         }
                     }
@@ -363,14 +364,14 @@ impl TestCaseBuilder {
                     selected_conditions.push(condition.clone());
                     log::info!("✓ Added: {}\n", condition);
 
-                    if !Prompts::confirm_with_oracle("Add another initial condition?", self.oracle.as_ref())? {
+                    if !Prompts::confirm_with_oracle("Add another initial condition?", &self.oracle)? {
                         break;
                     }
                 }
                 None => {
                     if selected_conditions.is_empty() {
                         log::info!("No conditions selected.");
-                        if !Prompts::confirm_with_oracle("Continue without initial conditions?", self.oracle.as_ref())? {
+                        if !Prompts::confirm_with_oracle("Continue without initial conditions?", &self.oracle)? {
                             continue;
                         }
                     }
@@ -493,11 +494,11 @@ impl TestCaseBuilder {
         let existing_sequences = self.get_existing_sequence_names();
         let sequence_name = if let Some(sample) = &self.sample {
             let prompts = Prompts::new_with_sample(sample);
-            prompts.input_with_sample_oracle("Sequence name", &sample.sequence_name(), self.oracle.as_ref())?
+            prompts.input_with_sample_oracle("Sequence name", &sample.sequence_name(), &self.oracle)?
         } else if !existing_sequences.is_empty() {
             log::info!("\nYou can select from existing sequence names or type a new one.");
 
-            if Prompts::confirm_with_oracle("Use fuzzy search to select from existing names?", self.oracle.as_ref())? {
+            if Prompts::confirm_with_oracle("Use fuzzy search to select from existing names?", &self.oracle)? {
                 match TestCaseFuzzyFinder::search_strings(
                     &existing_sequences,
                     "Select sequence name: ",
@@ -505,24 +506,24 @@ impl TestCaseBuilder {
                     Some(name) => name,
                     None => {
                         log::info!("No selection made, entering new name.");
-                        Prompts::input_with_oracle("Sequence name", self.oracle.as_ref())?
+                        Prompts::input_with_oracle("Sequence name", &self.oracle)?
                     }
                 }
             } else {
-                Prompts::input_with_oracle("Sequence name", self.oracle.as_ref())?
+                Prompts::input_with_oracle("Sequence name", &self.oracle)?
             }
         } else {
-            Prompts::input_with_oracle("Sequence name", self.oracle.as_ref())?
+            Prompts::input_with_oracle("Sequence name", &self.oracle)?
         };
 
         let description = if let Some(sample) = &self.sample {
             let prompts = Prompts::new_with_sample(sample);
             if let Some(desc) = sample.sequence_description() {
-                prompts.input_optional_with_sample_oracle("Description", &desc, self.oracle.as_ref())?
+                prompts.input_optional_with_sample_oracle("Description", &desc, &self.oracle)?
             } else {
                 None
             }
-        } else if Prompts::confirm_with_oracle("\nEdit description in editor?", self.oracle.as_ref())? {
+        } else if Prompts::confirm_with_oracle("\nEdit description in editor?", &self.oracle)? {
             let template = format!(
                 "# Description for: {}\n# Enter the sequence description below:\n\n",
                 sequence_name
@@ -544,7 +545,7 @@ impl TestCaseBuilder {
                 Some(cleaned)
             }
         } else {
-            Prompts::input_optional_with_oracle("Description", self.oracle.as_ref())?
+            Prompts::input_optional_with_oracle("Description", &self.oracle)?
         };
 
         let add_initial_conditions = if let Some(sample) = &self.sample {
@@ -552,16 +553,16 @@ impl TestCaseBuilder {
             prompts.confirm_with_sample_oracle(
                 "\nAdd sequence-specific initial conditions?",
                 sample.confirm_add_sequence_initial_conditions(),
-                self.oracle.as_ref(),
+                &self.oracle,
             )?
         } else {
-            Prompts::confirm_with_oracle("\nAdd sequence-specific initial conditions?", self.oracle.as_ref())?
+            Prompts::confirm_with_oracle("\nAdd sequence-specific initial conditions?", &self.oracle)?
         };
 
         let database_path = if let Some(sample) = &self.sample {
             sample.database_path()
         } else {
-            Prompts::input_with_default_oracle("Database path", "data", self.oracle.as_ref())?
+            Prompts::input_with_default_oracle("Database path", "data", &self.oracle)?
         };
 
         let db = ConditionDatabase::load_from_directory(&database_path)
@@ -579,10 +580,10 @@ impl TestCaseBuilder {
                 sample_prompts.confirm_with_sample_oracle(
                     "Use database for initial conditions?",
                     sample.confirm_use_database(),
-                    self.oracle.as_ref(),
+                    &self.oracle,
                 )?
             } else {
-                Prompts::confirm_with_oracle("Use database for initial conditions?", self.oracle.as_ref())?
+                Prompts::confirm_with_oracle("Use database for initial conditions?", &self.oracle)?
             };
 
             if use_db {
@@ -602,7 +603,7 @@ impl TestCaseBuilder {
                                 selected_conditions.push(condition.clone());
                                 log::info!("✓ Added: {}", condition);
 
-                                if !Prompts::confirm_with_oracle("Add another condition?", self.oracle.as_ref())? {
+                                if !Prompts::confirm_with_oracle("Add another condition?", &self.oracle)? {
                                     break;
                                 }
                             }
@@ -626,10 +627,10 @@ impl TestCaseBuilder {
                     }
                 } else {
                     log::info!("No conditions in database, using manual entry.");
-                    Some(prompts.prompt_initial_conditions_with_oracle(None, &self.validator, self.oracle.as_ref())?)
+                    Some(prompts.prompt_initial_conditions_with_oracle(None, &self.validator, &self.oracle)?)
                 }
             } else {
-                    Some(prompts.prompt_initial_conditions_with_oracle(None, &self.validator, self.oracle.as_ref())?)
+                    Some(prompts.prompt_initial_conditions_with_oracle(None, &self.validator, &self.oracle)?)
             }
         } else {
             None
@@ -731,14 +732,14 @@ impl TestCaseBuilder {
             self.add_test_sequence_interactive()
                 .context("Failed to add test sequence")?;
 
-            if Prompts::confirm_with_oracle("Commit this sequence to git?", self.oracle.as_ref())? {
+            if Prompts::confirm_with_oracle("Commit this sequence to git?", &self.oracle)? {
                 let sequence_id = self.get_next_sequence_id() - 1;
                 let commit_msg = format!("Add test sequence #{}", sequence_id);
                 self.commit(&commit_msg)
                     .context("Failed to commit test sequence")?;
             }
 
-            if !Prompts::confirm_with_oracle("\nAdd another test sequence?", self.oracle.as_ref())? {
+            if !Prompts::confirm_with_oracle("\nAdd another test sequence?", &self.oracle)? {
                 break;
             }
         }
@@ -775,7 +776,7 @@ impl TestCaseBuilder {
             let step_description = if !existing_steps.is_empty() {
                 println!("\nYou can select from existing step descriptions or enter a new one.");
 
-                if Prompts::confirm_with_oracle("Use fuzzy search to select from existing descriptions?", self.oracle.as_ref())? {
+                if Prompts::confirm_with_oracle("Use fuzzy search to select from existing descriptions?", &self.oracle)? {
                     match TestCaseFuzzyFinder::search_strings(
                         &existing_steps,
                         "Select step description: ",
@@ -783,23 +784,23 @@ impl TestCaseBuilder {
                         Some(desc) => desc,
                         None => {
                             println!("No selection made, entering new description.");
-                            Prompts::input_with_oracle("Step description", self.oracle.as_ref())?
+                            Prompts::input_with_oracle("Step description", &self.oracle)?
                         }
                     }
                 } else {
-                    Prompts::input_with_oracle("Step description", self.oracle.as_ref())?
+                    Prompts::input_with_oracle("Step description", &self.oracle)?
                 }
             } else {
-                Prompts::input_with_oracle("Step description", self.oracle.as_ref())?
+                Prompts::input_with_oracle("Step description", &self.oracle)?
             };
 
-            let manual = if Prompts::confirm_with_oracle("Is this a manual step?", self.oracle.as_ref())? {
+            let manual = if Prompts::confirm_with_oracle("Is this a manual step?", &self.oracle)? {
                 Some(true)
             } else {
                 None
             };
 
-            let command = Prompts::input_with_oracle("Command", self.oracle.as_ref())?;
+            let command = Prompts::input_with_oracle("Command", &self.oracle)?;
 
             let expected = self.prompt_for_expected_internal()?;
 
@@ -817,7 +818,7 @@ impl TestCaseBuilder {
 
             self.save().context("Failed to save file")?;
 
-            if Prompts::confirm_with_oracle("Commit this step to git?", self.oracle.as_ref())? {
+            if Prompts::confirm_with_oracle("Commit this step to git?", &self.oracle)? {
                 let commit_msg = format!(
                     "Add step #{} to sequence #{}: {}",
                     step_number, sequence_id, step_description
@@ -825,7 +826,7 @@ impl TestCaseBuilder {
                 self.commit(&commit_msg).context("Failed to commit step")?;
             }
 
-            if !Prompts::confirm_with_oracle("\nAdd another step to this sequence?", self.oracle.as_ref())? {
+            if !Prompts::confirm_with_oracle("\nAdd another step to this sequence?", &self.oracle)? {
                 break;
             }
         }
@@ -916,26 +917,26 @@ impl TestCaseBuilder {
             let include = prompts.confirm_with_sample_oracle(
                 "Include 'success' field?",
                 sample.confirm_include_success_field(),
-                self.oracle.as_ref(),
+                &self.oracle,
             )?;
-            let res = prompts.input_with_sample_oracle("Expected result", &sample.expected_result(), self.oracle.as_ref())?;
-            let out = prompts.input_with_sample_oracle("Expected output", &sample.expected_output(), self.oracle.as_ref())?;
+            let res = prompts.input_with_sample_oracle("Expected result", &sample.expected_result(), &self.oracle)?;
+            let out = prompts.input_with_sample_oracle("Expected output", &sample.expected_output(), &self.oracle)?;
             let success = if include {
                 prompts.confirm_with_sample_oracle(
                     "Success value (true/false)?",
                     sample.expected_success_value(),
-                    self.oracle.as_ref(),
+                    &self.oracle,
                 )?
             } else {
                 false
             };
             (include, res, out, success)
         } else {
-            let include = Prompts::confirm_with_oracle("Include 'success' field?", self.oracle.as_ref())?;
-            let res = Prompts::input_with_oracle("Expected result", self.oracle.as_ref())?;
-            let out = Prompts::input_with_oracle("Expected output", self.oracle.as_ref())?;
+            let include = Prompts::confirm_with_oracle("Include 'success' field?", &self.oracle)?;
+            let res = Prompts::input_with_oracle("Expected result", &self.oracle)?;
+            let out = Prompts::input_with_oracle("Expected output", &self.oracle)?;
             let success = if include {
-                Prompts::confirm_with_oracle("Success value (true/false)?", self.oracle.as_ref())?
+                Prompts::confirm_with_oracle("Success value (true/false)?", &self.oracle)?
             } else {
                 false
             };
@@ -1092,19 +1093,19 @@ impl TestCaseBuilder {
 
             let sequence_index = self.get_sequence_count() - 1;
 
-            if Prompts::confirm_with_oracle("Commit this sequence to git?", self.oracle.as_ref())? {
+            if Prompts::confirm_with_oracle("Commit this sequence to git?", &self.oracle)? {
                 let sequence_id = self.get_next_sequence_id() - 1;
                 let commit_msg = format!("Add test sequence #{}", sequence_id);
                 self.commit(&commit_msg)
                     .context("Failed to commit test sequence")?;
             }
 
-            if Prompts::confirm_with_oracle("\nAdd steps to this sequence now?", self.oracle.as_ref())? {
+            if Prompts::confirm_with_oracle("\nAdd steps to this sequence now?", &self.oracle)? {
                 self.add_steps_to_sequence_with_commits(sequence_index)
                     .context("Failed to add steps to sequence")?;
             }
 
-            if !Prompts::confirm_with_oracle("\nAdd another test sequence?", self.oracle.as_ref())? {
+            if !Prompts::confirm_with_oracle("\nAdd another test sequence?", &self.oracle)? {
                 break;
             }
         }
@@ -1157,14 +1158,14 @@ mod tests {
     #[test]
     fn test_builder_creation() {
         let temp_dir = TempDir::new().unwrap();
-        let builder = TestCaseBuilder::new(temp_dir.path(), Box::new(TtyCliOracle::new()));
+        let builder = TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new()));
         assert!(builder.is_ok());
     }
 
     #[test]
     fn test_add_field() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path(), Box::new(TtyCliOracle::new())).unwrap();
+        let mut builder = TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         builder
             .add_field(
@@ -1182,7 +1183,7 @@ mod tests {
     #[test]
     fn test_to_yaml_string() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path(), Box::new(TtyCliOracle::new())).unwrap();
+        let mut builder = TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         builder
             .add_field(
@@ -1204,7 +1205,7 @@ mod tests {
     #[test]
     fn test_save_file() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path(), Box::new(TtyCliOracle::new())).unwrap();
+        let mut builder = TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         builder
             .add_field("id".to_string(), Value::String("test_case_001".to_string()))
@@ -1225,7 +1226,7 @@ mod tests {
     #[test]
     fn test_complete_metadata() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path(), Box::new(TtyCliOracle::new())).unwrap();
+        let mut builder = TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         builder
             .add_field(
@@ -1260,7 +1261,7 @@ mod tests {
     #[test]
     fn test_get_next_sequence_id_empty() {
         let temp_dir = TempDir::new().unwrap();
-        let builder = TestCaseBuilder::new(temp_dir.path(), Box::new(TtyCliOracle::new())).unwrap();
+        let builder = TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         assert_eq!(builder.get_next_sequence_id(), 1);
     }
@@ -1268,7 +1269,7 @@ mod tests {
     #[test]
     fn test_get_next_sequence_id_with_sequences() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path(), Box::new(TtyCliOracle::new())).unwrap();
+        let mut builder = TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         let mut seq1 = serde_yaml::Mapping::new();
         seq1.insert(Value::String("id".to_string()), Value::Number(1.into()));
@@ -1305,7 +1306,7 @@ mod tests {
     #[test]
     fn test_validate_and_append_sequence() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path(), Box::new(TtyCliOracle::new())).unwrap();
+        let mut builder = TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         let mut seq_map = serde_yaml::Mapping::new();
         seq_map.insert(Value::String("id".to_string()), Value::Number(1.into()));
@@ -1333,7 +1334,7 @@ mod tests {
     #[test]
     fn test_validate_and_append_sequence_missing_id() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path(), Box::new(TtyCliOracle::new())).unwrap();
+        let mut builder = TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         let mut seq_map = serde_yaml::Mapping::new();
         seq_map.insert(
@@ -1356,7 +1357,7 @@ mod tests {
     #[test]
     fn test_validate_and_append_sequence_missing_name() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path(), Box::new(TtyCliOracle::new())).unwrap();
+        let mut builder = TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         let mut seq_map = serde_yaml::Mapping::new();
         seq_map.insert(Value::String("id".to_string()), Value::Number(1.into()));

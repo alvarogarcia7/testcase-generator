@@ -2,7 +2,6 @@ use anyhow::{Context, Error, Result};
 use clap::builder::Str;
 use dialoguer::{theme::ColorfulTheme, Confirm, Input, MultiSelect, Select};
 use std::collections::VecDeque;
-use std::fmt::format;
 use std::io::{self, Write};
 
 /// Trait defining the interface for user input operations
