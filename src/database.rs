@@ -44,9 +44,9 @@ impl ConditionDatabase {
                 }
             }
 
-            for euicc_cond in test_case.initial_conditions.euicc {
-                initial_conditions_set.insert(euicc_cond);
-            }
+            // for euicc_cond in test_case.initial_conditions.euicc {
+            //     initial_conditions_set.insert(euicc_cond);
+            // }
 
             // Extract device name from initial_conditions structure
             // The device name is "eUICC" by default but we should extract all device names used

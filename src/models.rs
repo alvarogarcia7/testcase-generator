@@ -85,7 +85,7 @@ pub struct TestCase {
     pub general_initial_conditions: HashMap<String, Vec<String>>,
 
     /// Initial conditions
-    pub initial_conditions: TopLevelInitialConditions,
+    pub initial_conditions: HashMap<String, Vec<String>>,
 
     /// Test sequences
     pub test_sequences: Vec<TestSequence>,
@@ -120,7 +120,7 @@ impl TestCase {
             id,
             description,
             general_initial_conditions,
-            initial_conditions: TopLevelInitialConditions { euicc: Vec::new() },
+            initial_conditions: HashMap::new(),
             test_sequences: Vec::new(),
         }
     }
@@ -320,7 +320,7 @@ mod tests {
         assert_eq!(test_case.id, "TC001");
         assert_eq!(test_case.description, "Test description");
         assert_eq!(test_case.general_initial_conditions.len(), 0);
-        assert_eq!(test_case.initial_conditions.euicc.len(), 0);
+        assert!(test_case.initial_conditions.is_empty());
         assert_eq!(test_case.test_sequences.len(), 0);
     }
 

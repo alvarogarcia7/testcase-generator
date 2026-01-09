@@ -136,7 +136,7 @@ impl TestCaseFuzzyFinder {
             .map(|tc| {
                 format!(
                     "{} - {} (Item: {}, TC: {})",
-                    tc.id, tc.requirement, tc.item, tc.tc
+                    tc.id, /*tc.requirement*/ "TODO AGB", tc.item, tc.tc
                 )
             })
             .collect();

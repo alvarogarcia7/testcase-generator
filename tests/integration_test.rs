@@ -538,11 +538,13 @@ fn validate_yaml_parsing(yaml_file: &Path) {
     //     "General initial conditions eUICC should not be empty"
     // );
 
+    let ic_euicc = parsed_test_case.initial_conditions.get("eUICC").unwrap();
+
     assert!(
-        !parsed_test_case.initial_conditions.euicc.is_empty(),
+        !ic_euicc.is_empty(),
         "Initial conditions should not be empty"
     );
-    assert_eq!(parsed_test_case.initial_conditions.euicc.len(), 2);
+    assert_eq!(ic_euicc.len(), 2);
 
     assert!(
         !parsed_test_case.test_sequences.is_empty(),

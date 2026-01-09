@@ -167,7 +167,7 @@ fn handle_list(
     let file_infos = storage.load_all_with_validation()?;
 
     if file_infos.is_empty() {
-        println!("No test case files found.");
+        println!("No test case files found in {} (len = 0).", base_path);
         return Ok(());
     }
 

@@ -311,8 +311,8 @@ fn test_valid_files_detailed_structure() {
         .expect("Missing general_initial_conditions");
 
     assert!(
-        general_ic.is_sequence(),
-        "general_initial_conditions should be an array"
+        general_ic.is_mapping(),
+        "general_initial_conditions should be an object"
     );
 
     // Check initial_conditions

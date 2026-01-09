@@ -277,14 +277,66 @@ impl TestCaseStorage {
     /// Load a single file with validation details
     fn load_file_with_validation(
         &self,
-        file_path: &Path,
+        payload_path: &Path,
         validator: &SchemaValidator,
     ) -> TestCaseFileInfo {
-        let content = match fs::read_to_string(file_path) {
+        // // Read the YAML file
+        // let yaml_content = fs::read_to_string(&cli.yaml_file).context(format!(
+        //     "Failed to read YAML file: {}",
+        //     cli.yaml_file.display()
+        // ))?;
+
+        // // Read the JSON schema file
+        // let schema_content = fs::read_to_string(&cli.schema_file).context(format!(
+        //     "Failed to read schema file: {}",
+        //     cli.schema_file.display()
+        // ))?;
+
+        // // Parse the schema
+        // let schema_value: serde_json::Value =
+        //     serde_json::from_str(&schema_content).context("Failed to parse JSON schema")?;
+
+        // // Parse the YAML content
+        // let yaml_value: serde_yaml::Value =
+        //     serde_yaml::from_str(&yaml_content).context("Failed to parse YAML content")?;
+
+        // // Convert YAML to JSON Value for validation
+        // let json_value: serde_json::Value =
+        //     serde_json::to_value(&yaml_value).context("Failed to convert YAML to JSON")?;
+
+        // // Compile the schema
+        // let compiled_schema = jsonschema::JSONSchema::compile(&schema_value)
+        //     .map_err(|e| anyhow::anyhow!("Failed to compile JSON schema: {}", e))?;
+
+        // // Validate
+        // if let Err(errors) = compiled_schema.validate(&json_value) {
+        //     println!("✗ Validation failed!\n");
+        //     println!("The following schema constraint violations were found:\n");
+
+        //     for (idx, error) in errors.enumerate() {
+        //         let path = if error.instance_path.to_string().is_empty() {
+        //             "root".to_string()
+        //         } else {
+        //             error.instance_path.to_string()
+        //         };
+
+        //         println!("Error #{}: Path '{}'", idx + 1, path);
+        //         println!("  Constraint: {}", error);
+
+        //         // Extract the actual value at the error path if possible
+        //         let instance = error.instance.as_ref();
+        //         println!("  Found value: {}", instance);
+        //         println!();
+        //     }
+
+        //     anyhow::bail!("Validation failed with schema constraint violations");
+        // }
+        println!("Validating payload file: {}", payload_path.display());
+        let content = match fs::read_to_string(payload_path) {
             Ok(c) => c,
             Err(e) => {
                 return TestCaseFileInfo {
-                    path: file_path.to_path_buf(),
+                    path: payload_path.to_path_buf(),
                     status: FileValidationStatus::ParseError {
                         message: format!("Failed to read file: {}", e),
                     },
@@ -293,13 +345,57 @@ impl TestCaseStorage {
             }
         };
 
-        match serde_yaml::from_str::<TestCase>(&content) {
+        println!("\tpath is valid: {}", payload_path.display());
+
+        let yaml_content = fs::read_to_string(payload_path)
+            .context(format!(
+                "Failed to read YAML file: {}",
+                payload_path.display()
+            ))
+            .unwrap();
+
+        // Parse the YAML content
+        let yaml_value: serde_yaml::Value = serde_yaml::from_str(&yaml_content)
+            .context("Failed to parse YAML content")
+            .unwrap();
+
+        println!("\tYaml parsed successfully as a string.\n");
+        println!("YAML Value: {:?}", yaml_value);
+
+        let deserializer = serde_yaml::Deserializer::from_str(&yaml_content);
+        // map_err(|e| {
+        //     println!("\tError creating deserializer: {}", e);
+        //     e
+        // }).unwrap();
+
+        let result: Result<TestCase, _> = serde_path_to_error::deserialize(deserializer);
+        match result {
+            Ok(_) => {
+                println!("\tDeserialization succeeded.\n");
+            }
+            Err(err) => {
+                let path = err.path().to_string();
+                println!("\tDeserialization error at path: {}", path);
+            }
+        }
+
+        // .map_err(|e| {
+        //     println!("\tDeserialization error: {} {}", e, e.path().to_string());
+        //     e
+        // }).unwrap();
+
+        let x1: Result<TestCase, serde_yaml::Error> =
+            serde_yaml::from_value(yaml_value).map_err(|e| {
+                println!("\tError parsing TestCase: {}", e);
+                e
+            });
+        match x1 {
             Ok(test_case) => {
                 let validation_errors = match validator.validate_with_details(&content) {
                     Ok(errors) => errors,
                     Err(e) => {
                         return TestCaseFileInfo {
-                            path: file_path.to_path_buf(),
+                            path: payload_path.to_path_buf(),
                             status: FileValidationStatus::ParseError {
                                 message: format!("Validation check failed: {}", e),
                             },
@@ -317,13 +413,13 @@ impl TestCaseStorage {
                 };
 
                 TestCaseFileInfo {
-                    path: file_path.to_path_buf(),
+                    path: payload_path.to_path_buf(),
                     status,
                     test_case: Some(test_case),
                 }
             }
             Err(e) => TestCaseFileInfo {
-                path: file_path.to_path_buf(),
+                path: payload_path.to_path_buf(),
                 status: FileValidationStatus::ParseError {
                     message: format!("YAML parsing error: {}", e),
                 },

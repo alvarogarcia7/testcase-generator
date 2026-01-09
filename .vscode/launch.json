@@ -49,15 +49,17 @@
             }
         },
         {
-            "name": "Debug executable 'testcase-manager'",
+            "name": "Debug executable 'tcm'",
             "type": "lldb",
             "request": "launch",
             "cargo": {
                 "args": [
                     "run",
-                    "--bin=testcase-manager",
+                    "--bin=tcm",
                     "--",
-                    "create-interactive"
+                    "--path",
+                    "data-new",
+                    "list"
                 ]
             },
             "args": [],
