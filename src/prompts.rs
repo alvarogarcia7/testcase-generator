@@ -1,15 +1,15 @@
 use crate::database::ConditionDatabase;
 use crate::editor::EditorFlow;
 use crate::fuzzy::TestCaseFuzzyFinder;
+use crate::oracle::{Oracle, TtyCliOracle};
 use crate::sample::SampleData;
-use crate::ui::print_section_title;
 use crate::validation::SchemaValidator;
 use crate::{config::EditorConfig, TestCaseEditor};
 use anyhow::{Context, Result};
-use dialoguer::{theme::ColorfulTheme, Confirm, Input, MultiSelect, Select};
 use indexmap::IndexMap;
 use serde_yaml::Value;
 use std::path::Path;
+use std::sync::Arc;
 
 /// Interactive prompt utilities
 pub struct Prompts<'a> {
@@ -50,49 +50,69 @@ impl<'a> Prompts<'a> {
         }
     }
 
-    /// Prompt for a string input
+    /// Prompt for a string input (backward compatibility - uses default TtyCliOracle)
     pub fn input(prompt: &str) -> Result<String> {
-        Input::with_theme(&ColorfulTheme::default())
-            .with_prompt(prompt)
-            .interact_text()
-            .context("Failed to read input")
+        let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
+        Self::input_with_oracle(prompt, &oracle)
+    }
+
+    pub fn input_with_escape(prompt: &str) -> Result<Option<String>> {
+        let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
+        oracle.input_with_ctrl_d(prompt)
+    }
+
+    /// Prompt for a string input with custom oracle
+    pub fn input_with_oracle(prompt: &str, oracle: &Arc<dyn Oracle>) -> Result<String> {
+        oracle.input(prompt)
     }
 
     /// Prompt for a string input with sample default
     pub fn input_with_sample(&self, prompt: &str, sample_value: &str) -> Result<String> {
-        Input::with_theme(&ColorfulTheme::default())
-            .with_prompt(prompt)
-            .with_initial_text(sample_value)
-            .interact_text()
-            .context("Failed to read input")
+        let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
+        self.input_with_sample_oracle(prompt, sample_value, &oracle)
+    }
+
+    /// Prompt for a string input with sample default and custom oracle
+    pub fn input_with_sample_oracle(
+        &self,
+        prompt: &str,
+        sample_value: &str,
+        oracle: &Arc<dyn Oracle>,
+    ) -> Result<String> {
+        oracle.input_with_initial_text(prompt, sample_value)
     }
 
     /// Prompt for a string input with a recovered value as initial text (for recovery)
     pub fn input_with_recovered_default(prompt: &str, recovered: Option<&str>) -> Result<String> {
+        let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
+        Self::input_with_recovered_default_oracle(prompt, recovered, &oracle)
+    }
+
+    /// Prompt for a string input with a recovered value as initial text and custom oracle
+    pub fn input_with_recovered_default_oracle(
+        prompt: &str,
+        recovered: Option<&str>,
+        oracle: &Arc<dyn Oracle>,
+    ) -> Result<String> {
         if let Some(recovered_value) = recovered {
-            Input::with_theme(&ColorfulTheme::default())
-                .with_prompt(prompt)
-                .with_initial_text(recovered_value)
-                .interact_text()
-                .context("Failed to read input")
+            oracle.input_with_initial_text(prompt, recovered_value)
         } else {
-            Self::input(prompt)
+            Self::input_with_oracle(prompt, oracle)
         }
     }
 
     /// Prompt for an optional string input
     pub fn input_optional(prompt: &str) -> Result<Option<String>> {
-        let input: String = Input::with_theme(&ColorfulTheme::default())
-            .with_prompt(prompt)
-            .allow_empty(true)
-            .interact_text()
-            .context("Failed to read input")?;
+        let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
+        Self::input_optional_with_oracle(prompt, &oracle)
+    }
 
-        if input.trim().is_empty() {
-            Ok(None)
-        } else {
-            Ok(Some(input))
-        }
+    /// Prompt for an optional string input with custom oracle
+    pub fn input_optional_with_oracle(
+        prompt: &str,
+        oracle: &Arc<dyn Oracle>,
+    ) -> Result<Option<String>> {
+        oracle.input_optional(prompt)
     }
 
     /// Prompt for an optional string input with sample default
@@ -101,135 +121,156 @@ impl<'a> Prompts<'a> {
         prompt: &str,
         sample_value: &str,
     ) -> Result<Option<String>> {
-        let input: String = Input::with_theme(&ColorfulTheme::default())
-            .with_prompt(prompt)
-            .with_initial_text(sample_value)
-            .allow_empty(true)
-            .interact_text()
-            .context("Failed to read input")?;
+        let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
+        self.input_optional_with_sample_oracle(prompt, sample_value, &oracle)
+    }
 
-        if input.trim().is_empty() {
-            Ok(None)
-        } else {
-            Ok(Some(input))
-        }
+    /// Prompt for an optional string input with sample default and custom oracle
+    pub fn input_optional_with_sample_oracle(
+        &self,
+        prompt: &str,
+        sample_value: &str,
+        oracle: &Arc<dyn Oracle>,
+    ) -> Result<Option<String>> {
+        oracle.input_optional_with_initial_text(prompt, sample_value)
     }
 
     /// Prompt for a string with a default value
     pub fn input_with_default(prompt: &str, default: &str) -> Result<String> {
-        Input::with_theme(&ColorfulTheme::default())
-            .with_prompt(prompt)
-            .default(default.to_string())
-            .interact_text()
-            .context("Failed to read input")
+        let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
+        Self::input_with_default_oracle(prompt, default, &oracle)
+    }
+
+    /// Prompt for a string with a default value and custom oracle
+    pub fn input_with_default_oracle(
+        prompt: &str,
+        default: &str,
+        oracle: &Arc<dyn Oracle>,
+    ) -> Result<String> {
+        oracle.input_with_default(prompt, default)
     }
 
     /// Prompt for an integer input
     pub fn input_integer(prompt: &str) -> Result<i64> {
-        loop {
-            let input: String = Input::with_theme(&ColorfulTheme::default())
-                .with_prompt(prompt)
-                .interact_text()
-                .context("Failed to read input")?;
+        let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
+        Self::input_integer_with_oracle(prompt, &oracle)
+    }
 
-            match input.trim().parse::<i64>() {
-                Ok(value) => return Ok(value),
-                Err(_) => println!("Please enter a valid integer"),
-            }
-        }
+    /// Prompt for an integer input with custom oracle
+    pub fn input_integer_with_oracle(prompt: &str, oracle: &Arc<dyn Oracle>) -> Result<i64> {
+        oracle.input_integer(prompt)
     }
 
     /// Prompt for an integer input with sample default
     pub fn input_integer_with_sample(&self, prompt: &str, sample_value: i64) -> Result<i64> {
-        loop {
-            let input: String = Input::with_theme(&ColorfulTheme::default())
-                .with_prompt(prompt)
-                .with_initial_text(sample_value.to_string())
-                .interact_text()
-                .context("Failed to read input")?;
+        let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
+        self.input_integer_with_sample_oracle(prompt, sample_value, &oracle)
+    }
 
-            match input.trim().parse::<i64>() {
-                Ok(value) => return Ok(value),
-                Err(_) => println!("Please enter a valid integer"),
-            }
-        }
+    /// Prompt for an integer input with sample default and custom oracle
+    pub fn input_integer_with_sample_oracle(
+        &self,
+        prompt: &str,
+        sample_value: i64,
+        oracle: &Arc<dyn Oracle>,
+    ) -> Result<i64> {
+        oracle.input_integer_with_initial_text(prompt, &sample_value.to_string())
     }
 
     /// Prompt for an integer input with a recovered value as initial text (for recovery)
     pub fn input_integer_with_default(prompt: &str, recovered: Option<i64>) -> Result<i64> {
-        if let Some(recovered_value) = recovered {
-            loop {
-                let input: String = Input::with_theme(&ColorfulTheme::default())
-                    .with_prompt(prompt)
-                    .with_initial_text(recovered_value.to_string())
-                    .interact_text()
-                    .context("Failed to read input")?;
+        let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
+        Self::input_integer_with_default_oracle(prompt, recovered, &oracle)
+    }
 
-                match input.trim().parse::<i64>() {
-                    Ok(value) => return Ok(value),
-                    Err(_) => println!("Please enter a valid integer"),
-                }
-            }
+    /// Prompt for an integer input with a recovered value as initial text and custom oracle
+    pub fn input_integer_with_default_oracle(
+        prompt: &str,
+        recovered: Option<i64>,
+        oracle: &Arc<dyn Oracle>,
+    ) -> Result<i64> {
+        if let Some(recovered_value) = recovered {
+            oracle.input_integer_with_initial_text(prompt, &recovered_value.to_string())
         } else {
-            Self::input_integer(prompt)
+            Self::input_integer_with_oracle(prompt, oracle)
         }
     }
 
     /// Prompt for a confirmation (yes/no)
     pub fn confirm(prompt: &str) -> Result<bool> {
-        Confirm::with_theme(&ColorfulTheme::default())
-            .with_prompt(prompt)
-            .interact()
-            .context("Failed to read confirmation")
+        let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
+        Self::confirm_with_oracle(prompt, &oracle)
+    }
+
+    /// Prompt for a confirmation with custom oracle
+    pub fn confirm_with_oracle(prompt: &str, oracle: &Arc<dyn Oracle>) -> Result<bool> {
+        oracle.confirm(prompt)
     }
 
     /// Prompt for a confirmation with a default value
     pub fn confirm_with_default(prompt: &str, default: bool) -> Result<bool> {
-        Confirm::with_theme(&ColorfulTheme::default())
-            .with_prompt(prompt)
-            .default(default)
-            .interact()
-            .context("Failed to read confirmation")
+        let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
+        Self::confirm_with_default_oracle(prompt, default, &oracle)
+    }
+
+    /// Prompt for a confirmation with a default value and custom oracle
+    pub fn confirm_with_default_oracle(
+        prompt: &str,
+        default: bool,
+        oracle: &Arc<dyn Oracle>,
+    ) -> Result<bool> {
+        oracle.confirm_with_default(prompt, default)
     }
 
     /// Prompt for a confirmation with sample default
     pub fn confirm_with_sample(&self, prompt: &str, sample_value: bool) -> Result<bool> {
-        Confirm::with_theme(&ColorfulTheme::default())
-            .with_prompt(prompt)
-            .default(sample_value)
-            .interact()
-            .context("Failed to read confirmation")
+        let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
+        self.confirm_with_sample_oracle(prompt, sample_value, &oracle)
+    }
+
+    /// Prompt for a confirmation with sample default and custom oracle
+    pub fn confirm_with_sample_oracle(
+        &self,
+        prompt: &str,
+        sample_value: bool,
+        oracle: &Arc<dyn Oracle>,
+    ) -> Result<bool> {
+        oracle.confirm_with_default(prompt, sample_value)
     }
 
     /// Select from a list of items
-    pub fn select<T: ToString>(prompt: &str, items: &[T]) -> Result<usize> {
-        let item_strings: Vec<String> = items.iter().map(|i| i.to_string()).collect();
+    pub fn select(prompt: &str, items: Vec<String>) -> Result<String> {
+        let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
+        Self::select_with_oracle(prompt, items, &oracle)
+    }
 
-        Select::with_theme(&ColorfulTheme::default())
-            .with_prompt(prompt)
-            .items(&item_strings)
-            .interact()
-            .context("Failed to read selection")
+    /// Select from a list of items with custom oracle
+    pub fn select_with_oracle(
+        prompt: &str,
+        items: Vec<String>,
+        oracle: &Arc<dyn Oracle>,
+    ) -> Result<String> {
+        oracle.select(prompt, items)
     }
 
     /// Multi-select from a list of items
-    pub fn multi_select<T: ToString>(prompt: &str, items: &[T]) -> Result<Vec<usize>> {
-        let item_strings: Vec<String> = items.iter().map(|i| i.to_string()).collect();
-
-        MultiSelect::with_theme(&ColorfulTheme::default())
-            .with_prompt(prompt)
-            .items(&item_strings)
-            .interact()
-            .context("Failed to read selection")
+    pub fn multi_select(prompt: &str, items: Vec<String>) -> Result<Vec<String>> {
+        let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
+        Self::multi_select_with_oracle(prompt, items, &oracle)
     }
 
-    /// Prompt for tags (comma-separated)
-    pub fn input_tags(prompt: &str) -> Result<Vec<String>> {
-        let input: String = Input::with_theme(&ColorfulTheme::default())
-            .with_prompt(prompt)
-            .allow_empty(true)
-            .interact_text()
-            .context("Failed to read input")?;
+    /// Multi-select from a list of items with custom oracle
+    pub fn multi_select_with_oracle(
+        prompt: &str,
+        items: Vec<String>,
+        oracle: &Arc<dyn Oracle>,
+    ) -> Result<Vec<String>> {
+        oracle.multi_select(prompt, items)
+    }
+
+    /// Prompt for tags with custom oracle
+    pub fn input_tags_with_oracle(prompt: &str, oracle: &Arc<dyn Oracle>) -> Result<Vec<String>> {
+        let input = oracle.input(prompt)?;
 
         if input.trim().is_empty() {
             Ok(Vec::new())
@@ -244,13 +285,19 @@ impl<'a> Prompts<'a> {
 
     /// Prompt for test case metadata fields
     pub fn prompt_metadata() -> Result<TestCaseMetadata> {
-        print_section_title("Test Case Metadata");
+        let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
+        Self::prompt_metadata_with_oracle(&oracle)
+    }
 
-        let requirement = Self::input("Requirement")?;
-        let item = Self::input_integer("Item")?;
-        let tc = Self::input_integer("TC")?;
-        let id = Self::input("ID")?;
-        let description = Self::input("Description")?;
+    /// Prompt for test case metadata fields with custom oracle
+    pub fn prompt_metadata_with_oracle(oracle: &Arc<dyn Oracle>) -> Result<TestCaseMetadata> {
+        println!("\n=== Test Case Metadata ===\n");
+
+        let requirement = Self::input_with_oracle("Requirement", oracle)?;
+        let item = Self::input_integer_with_oracle("Item", oracle)?;
+        let tc = Self::input_integer_with_oracle("TC", oracle)?;
+        let id = Self::input_with_oracle("ID", oracle)?;
+        let description = Self::input_with_oracle("Description", oracle)?;
 
         let metadata = TestCaseMetadata {
             requirement,
@@ -270,7 +317,16 @@ impl<'a> Prompts<'a> {
 
     /// Prompt for test case metadata fields with optional sample data
     pub fn prompt_metadata_with_sample(&self) -> Result<TestCaseMetadata> {
-        print_section_title("Test Case Metadata");
+        let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
+        self.prompt_metadata_with_sample_oracle(&oracle)
+    }
+
+    /// Prompt for test case metadata fields with optional sample data and custom oracle
+    pub fn prompt_metadata_with_sample_oracle(
+        &self,
+        oracle: &Arc<dyn Oracle>,
+    ) -> Result<TestCaseMetadata> {
+        println!("\n=== Test Case Metadata ===\n");
 
         if self.sample.is_some() {
             log::info!(
@@ -280,19 +336,27 @@ impl<'a> Prompts<'a> {
 
         let (requirement, item, tc, id, description) = if let Some(sample) = self.sample {
             (
-                self.input_with_sample("Requirement", &sample.metadata_requirement())?,
-                self.input_integer_with_sample("Item", sample.metadata_item())?,
-                self.input_integer_with_sample("TC", sample.metadata_tc())?,
-                self.input_with_sample("ID", &sample.metadata_id())?,
-                self.input_with_sample("Description", &sample.metadata_description())?,
+                self.input_with_sample_oracle(
+                    "Requirement",
+                    &sample.metadata_requirement(),
+                    oracle,
+                )?,
+                self.input_integer_with_sample_oracle("Item", sample.metadata_item(), oracle)?,
+                self.input_integer_with_sample_oracle("TC", sample.metadata_tc(), oracle)?,
+                self.input_with_sample_oracle("ID", &sample.metadata_id(), oracle)?,
+                self.input_with_sample_oracle(
+                    "Description",
+                    &sample.metadata_description(),
+                    oracle,
+                )?,
             )
         } else {
             (
-                Self::input("Requirement")?,
-                Self::input_integer("Item")?,
-                Self::input_integer("TC")?,
-                Self::input("ID")?,
-                Self::input("Description")?,
+                Self::input_with_oracle("Requirement", oracle)?,
+                Self::input_integer_with_oracle("Item", oracle)?,
+                Self::input_integer_with_oracle("TC", oracle)?,
+                Self::input_with_oracle("ID", oracle)?,
+                Self::input_with_oracle("Description", oracle)?,
             )
         };
 
@@ -309,7 +373,16 @@ impl<'a> Prompts<'a> {
     pub fn prompt_metadata_with_recovery(
         recovered: Option<&TestCaseMetadata>,
     ) -> Result<TestCaseMetadata> {
-        print_section_title("Test Case Metadata");
+        let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
+        Self::prompt_metadata_with_recovery_oracle(recovered, &oracle)
+    }
+
+    /// Prompt for test case metadata fields with recovery support and custom oracle
+    pub fn prompt_metadata_with_recovery_oracle(
+        recovered: Option<&TestCaseMetadata>,
+        oracle: &Arc<dyn Oracle>,
+    ) -> Result<TestCaseMetadata> {
+        log::info!("\n=== Test Case Metadata ===\n");
 
         if recovered.is_some() {
             log::info!(
@@ -317,16 +390,23 @@ impl<'a> Prompts<'a> {
             );
         }
 
-        let requirement = Self::input_with_recovered_default(
+        let requirement = Self::input_with_recovered_default_oracle(
             "Requirement",
             recovered.map(|m| m.requirement.as_str()),
+            oracle,
         )?;
-        let item = Self::input_integer_with_default("Item", recovered.map(|m| m.item))?;
-        let tc = Self::input_integer_with_default("TC", recovered.map(|m| m.tc))?;
-        let id = Self::input_with_recovered_default("ID", recovered.map(|m| m.id.as_str()))?;
-        let description = Self::input_with_recovered_default(
+        let item =
+            Self::input_integer_with_default_oracle("Item", recovered.map(|m| m.item), oracle)?;
+        let tc = Self::input_integer_with_default_oracle("TC", recovered.map(|m| m.tc), oracle)?;
+        let id = Self::input_with_recovered_default_oracle(
+            "ID",
+            recovered.map(|m| m.id.as_str()),
+            oracle,
+        )?;
+        let description = Self::input_with_recovered_default_oracle(
             "Description",
             recovered.map(|m| m.description.as_str()),
+            oracle,
         )?;
 
         Ok(TestCaseMetadata {
@@ -344,7 +424,23 @@ impl<'a> Prompts<'a> {
         validator: &SchemaValidator,
         editor_config: &EditorConfig,
     ) -> Result<Value> {
-        print_section_title("General Initial Conditions");
+        let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
+        Self::prompt_general_initial_conditions_with_oracle(
+            defaults,
+            validator,
+            editor_config,
+            &oracle,
+        )
+    }
+
+    /// Prompt for general initial conditions with fuzzy search and editor support with custom oracle
+    pub fn prompt_general_initial_conditions_with_oracle(
+        defaults: Option<&Value>,
+        validator: &SchemaValidator,
+        editor_config: &EditorConfig,
+        oracle: &Arc<dyn Oracle>,
+    ) -> Result<Value> {
+        log::info!("\n=== General Initial Conditions ===\n");
 
         if let Some(default_value) = defaults {
             let yaml_str =
@@ -354,7 +450,8 @@ impl<'a> Prompts<'a> {
             println!("{}", yaml_str);
             println!();
 
-            let keep_defaults = Self::confirm_with_default("Keep these defaults?", true)?;
+            let keep_defaults =
+                Self::confirm_with_default_oracle("Keep these defaults?", true, oracle)?;
 
             if keep_defaults {
                 return Ok(default_value.clone());
@@ -367,8 +464,8 @@ impl<'a> Prompts<'a> {
 #     - "Condition 1"
 #     - "Condition 2"
 
-- eUICC:
-    - ""
+eUICC:
+  - "Condition 1"
 "#;
 
         let editor_flow = EditorFlow::new(editor_config.clone());
@@ -389,11 +486,27 @@ impl<'a> Prompts<'a> {
         storage: &crate::storage::TestCaseStorage,
         editor_config: &EditorConfig,
     ) -> Result<Value> {
-        use crate::fuzzy::TestCaseFuzzyFinder;
-        use crate::ui::print_title;
-        use crate::TitleStyle;
+        let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
+        Self::prompt_general_initial_conditions_with_search_oracle(
+            defaults,
+            validator,
+            storage,
+            editor_config,
+            &oracle,
+        )
+    }
 
-        print_title("General Initial Conditions", TitleStyle::TripleEquals);
+    /// Prompt for general initial conditions with fuzzy search from database with custom oracle
+    pub fn prompt_general_initial_conditions_with_search_oracle(
+        defaults: Option<&Value>,
+        validator: &SchemaValidator,
+        storage: &crate::storage::TestCaseStorage,
+        editor_config: &EditorConfig,
+        oracle: &Arc<dyn Oracle>,
+    ) -> Result<Value> {
+        use crate::fuzzy::TestCaseFuzzyFinder;
+
+        println!("\n=== General Initial Conditions ===\n");
 
         if let Some(default_value) = defaults {
             let yaml_str =
@@ -403,7 +516,8 @@ impl<'a> Prompts<'a> {
             println!("{}", yaml_str);
             println!();
 
-            let keep_defaults = Self::confirm_with_default("Keep these defaults?", true)?;
+            let keep_defaults =
+                Self::confirm_with_default_oracle("Keep these defaults?", true, oracle)?;
 
             if keep_defaults {
                 return Ok(default_value.clone());
@@ -421,7 +535,7 @@ impl<'a> Prompts<'a> {
                 existing_conditions.len()
             );
 
-            if Self::confirm("Search existing general initial conditions?")? {
+            if Self::confirm_with_oracle("Search existing general initial conditions?", oracle)? {
                 if let Some(selected_yaml) = TestCaseFuzzyFinder::search_strings(
                     &existing_conditions,
                     "Select general initial condition: ",
@@ -433,10 +547,12 @@ impl<'a> Prompts<'a> {
                     println!("\n✓ Selected existing general initial conditions:");
                     println!("{}", selected_yaml);
 
-                    if Self::confirm("Use this as-is?")? {
+                    if Self::confirm_with_oracle("Use this as-is?", oracle)? {
                         return Ok(parsed);
-                    } else if Self::confirm("Edit this condition?")? {
-                        // Let user edit the selected condition
+                    } else if Self::confirm_with_oracle("Edit this condition?", oracle)? {
+                        // Let user edit the selected condition (1 initial attempt + max 3 retries = 4 total)
+                        let max_retries = 3;
+                        let mut retry_count = 0;
                         loop {
                             let edited_content =
                                 TestCaseEditor::edit_text(&selected_yaml, editor_config)
@@ -455,7 +571,15 @@ impl<'a> Prompts<'a> {
                                 }
                                 Err(e) => {
                                     println!("✗ Validation failed: {}", e);
-                                    let retry = Self::confirm("Try again?")?;
+                                    if retry_count >= max_retries {
+                                        anyhow::bail!(
+                                            "Validation failed after {} retries ({} total attempts), cancelling operation",
+                                            max_retries,
+                                            retry_count + 1
+                                        );
+                                    }
+                                    retry_count += 1;
+                                    let retry = Self::confirm_with_oracle("Try again?", oracle)?;
                                     if !retry {
                                         anyhow::bail!("Validation failed, user cancelled");
                                     }
@@ -470,6 +594,8 @@ impl<'a> Prompts<'a> {
 
         // Create new general initial condition
         println!("\nCreating new general initial condition...");
+        let max_retries = 3;
+        let mut retry_count = 0;
         loop {
             let template = r#"# General Initial Conditions
 # Example:
@@ -497,7 +623,15 @@ impl<'a> Prompts<'a> {
                 }
                 Err(e) => {
                     println!("✗ Validation failed: {}", e);
-                    let retry = Self::confirm("Try again?")?;
+                    if retry_count >= max_retries {
+                        anyhow::bail!(
+                            "Validation failed after {} retries ({} total attempts), cancelling operation",
+                            max_retries,
+                            retry_count + 1
+                        );
+                    }
+                    retry_count += 1;
+                    let retry = Self::confirm_with_oracle("Try again?", oracle)?;
                     if !retry {
                         anyhow::bail!("Validation failed, user cancelled");
                     }
@@ -512,7 +646,18 @@ impl<'a> Prompts<'a> {
         defaults: Option<&Value>,
         validator: &SchemaValidator,
     ) -> Result<Value> {
-        print_section_title("Initial Conditions");
+        let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
+        self.prompt_initial_conditions_with_oracle(defaults, validator, &oracle)
+    }
+
+    /// Prompt for initial conditions with device selection and iterative condition collection with custom oracle
+    pub fn prompt_initial_conditions_with_oracle(
+        &self,
+        defaults: Option<&Value>,
+        validator: &SchemaValidator,
+        oracle: &Arc<dyn Oracle>,
+    ) -> Result<Value> {
+        log::info!("\n=== Initial Conditions ===\n");
 
         if let Some(default_value) = defaults {
             let yaml_str =
@@ -523,9 +668,13 @@ impl<'a> Prompts<'a> {
             println!();
 
             let keep_defaults = if let Some(sample) = self.sample {
-                self.confirm_with_sample("Keep these defaults?", sample.confirm_keep_defaults())?
+                self.confirm_with_sample_oracle(
+                    "Keep these defaults?",
+                    sample.confirm_keep_defaults(),
+                    oracle,
+                )?
             } else {
-                Self::confirm_with_default("Keep these defaults?", true)?
+                Self::confirm_with_default_oracle("Keep these defaults?", true, oracle)?
             };
 
             if keep_defaults {
@@ -546,9 +695,10 @@ impl<'a> Prompts<'a> {
         };
 
         let device_name = if let Some(sample) = self.sample {
-            self.input_with_sample(
+            self.input_with_sample_oracle(
                 "Device name (e.g., eUICC)",
                 &sample.initial_condition_device_name(),
+                oracle,
             )?
         } else {
             match TestCaseFuzzyFinder::search_strings(
@@ -558,7 +708,7 @@ impl<'a> Prompts<'a> {
                 Some(name) => name,
                 None => {
                     println!("No selection made, entering manually.");
-                    Self::input("Device name (e.g., eUICC)")?
+                    Self::input_with_oracle("Device name (e.g., eUICC)", oracle)?
                 }
             }
         };
@@ -576,13 +726,17 @@ impl<'a> Prompts<'a> {
                 if sample.input_optional_stop(conditions.len()) {
                     None
                 } else {
-                    self.input_optional_with_sample(
+                    self.input_optional_with_sample_oracle(
                         &format!("Condition #{}", conditions.len() + 1),
                         &cond_value,
+                        oracle,
                     )?
                 }
             } else {
-                Self::input_optional(&format!("Condition #{}", conditions.len() + 1))?
+                Self::input_optional_with_oracle(
+                    &format!("Condition #{}", conditions.len() + 1),
+                    oracle,
+                )?
             };
 
             match condition {
@@ -624,13 +778,23 @@ impl<'a> Prompts<'a> {
         validator: &SchemaValidator,
         editor_config: &EditorConfig,
     ) -> Result<Value> {
-        use crate::ui::print_title;
-        use crate::TitleStyle;
+        let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
+        Self::prompt_general_initial_conditions_from_database_oracle(
+            database_path,
+            validator,
+            editor_config,
+            &oracle,
+        )
+    }
 
-        print_title(
-            "General Initial Conditions (from database)",
-            TitleStyle::TripleEquals,
-        );
+    /// Prompt for general initial conditions from database with fuzzy search with custom oracle
+    pub fn prompt_general_initial_conditions_from_database_oracle<P: AsRef<Path>>(
+        database_path: P,
+        validator: &SchemaValidator,
+        editor_config: &EditorConfig,
+        oracle: &Arc<dyn Oracle>,
+    ) -> Result<Value> {
+        println!("\n=== General Initial Conditions (from database) ===\n");
 
         let db = ConditionDatabase::load_from_directory(database_path)
             .context("Failed to load condition database")?;
@@ -640,7 +804,12 @@ impl<'a> Prompts<'a> {
         if conditions.is_empty() {
             println!("No general initial conditions found in database.");
             println!("Falling back to manual entry.\n");
-            return Self::prompt_general_initial_conditions(None, validator, editor_config);
+            return Self::prompt_general_initial_conditions_with_oracle(
+                None,
+                validator,
+                editor_config,
+                oracle,
+            );
         }
 
         println!(
@@ -661,18 +830,20 @@ impl<'a> Prompts<'a> {
                     selected_conditions.push(condition.clone());
                     println!("✓ Added: {}\n", condition);
 
-                    if !Self::confirm("Add another general initial condition?")? {
+                    if !Self::confirm_with_oracle("Add another general initial condition?", oracle)?
+                    {
                         break;
                     }
                 }
                 None => {
                     if selected_conditions.is_empty() {
                         println!("No conditions selected.");
-                        if Self::confirm("Use manual entry instead?")? {
-                            return Self::prompt_general_initial_conditions(
+                        if Self::confirm_with_oracle("Use manual entry instead?", oracle)? {
+                            return Self::prompt_general_initial_conditions_with_oracle(
                                 None,
                                 validator,
                                 editor_config,
+                                oracle,
                             );
                         }
                     }
@@ -705,13 +876,18 @@ impl<'a> Prompts<'a> {
         database_path: P,
         validator: &SchemaValidator,
     ) -> Result<Value> {
-        use crate::ui::print_title;
-        use crate::TitleStyle;
+        let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
+        self.prompt_initial_conditions_from_database_oracle(database_path, validator, &oracle)
+    }
 
-        print_title(
-            "Initial Conditions (from database)",
-            TitleStyle::TripleEquals,
-        );
+    /// Prompt for initial conditions from database with fuzzy search with custom oracle
+    pub fn prompt_initial_conditions_from_database_oracle<P: AsRef<Path>>(
+        &self,
+        database_path: P,
+        validator: &SchemaValidator,
+        oracle: &Arc<dyn Oracle>,
+    ) -> Result<Value> {
+        println!("\n=== Initial Conditions (from database) ===\n");
 
         let db = ConditionDatabase::load_from_directory(database_path)
             .context("Failed to load condition database")?;
@@ -721,7 +897,7 @@ impl<'a> Prompts<'a> {
         if conditions.is_empty() {
             println!("No initial conditions found in database.");
             println!("Falling back to manual entry.\n");
-            return self.prompt_initial_conditions(None, validator);
+            return self.prompt_initial_conditions_with_oracle(None, validator, oracle);
         }
 
         println!(
@@ -732,10 +908,7 @@ impl<'a> Prompts<'a> {
         // Fuzzy search for device name from database
         let device_names = db.get_device_names();
         let device_name = if !device_names.is_empty() {
-            use crate::ui::print_title;
-            use crate::TitleStyle;
-
-            print_title("Select Device Name", TitleStyle::TripleEquals);
+            println!("\n=== Select Device Name ===");
             println!(
                 "Available device names from database: {}\n",
                 device_names.len()
@@ -748,12 +921,12 @@ impl<'a> Prompts<'a> {
                 Some(name) => name,
                 None => {
                     println!("No device name selected, entering manually.");
-                    Self::input("Device name (e.g., eUICC)")?
+                    Self::input_with_oracle("Device name (e.g., eUICC)", oracle)?
                 }
             }
         } else {
             println!("No device names found in database, using manual entry.");
-            Self::input("Device name (e.g., eUICC)")?
+            Self::input_with_oracle("Device name (e.g., eUICC)", oracle)?
         };
 
         println!("\nSelected device: {}\n", device_name);
@@ -771,15 +944,16 @@ impl<'a> Prompts<'a> {
                     selected_conditions.push(condition.clone());
                     println!("✓ Added: {}\n", condition);
 
-                    if !Self::confirm("Add another initial condition?")? {
+                    if !Self::confirm_with_oracle("Add another initial condition?", oracle)? {
                         break;
                     }
                 }
                 None => {
                     if selected_conditions.is_empty() {
                         println!("No conditions selected.");
-                        if Self::confirm("Use manual entry instead?")? {
-                            return self.prompt_initial_conditions(None, validator);
+                        if Self::confirm_with_oracle("Use manual entry instead?", oracle)? {
+                            return self
+                                .prompt_initial_conditions_with_oracle(None, validator, oracle);
                         }
                     }
                     break;
@@ -801,6 +975,12 @@ impl<'a> Prompts<'a> {
         );
 
         Ok(Value::Mapping(initial_cond_map))
+    }
+}
+
+impl Default for Prompts<'_> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

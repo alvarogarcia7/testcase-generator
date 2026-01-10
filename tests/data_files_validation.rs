@@ -2,16 +2,17 @@ use std::fs;
 use std::path::Path;
 use testcase_manager::validation::SchemaValidator;
 
+/// Test that validates all YAML files in the testcases/ directory
+/// Valid files (gsma_*) should pass validation
+/// Invalid files should fail validation appropriately
+
 #[test]
 fn test_valid_gsma_files() {
     let _ = env_logger::builder().is_test(true).try_init();
 
     let validator = SchemaValidator::new().expect("Failed to create validator");
 
-    let valid_files = vec![
-        "testcases/gsma_4.4.2.2_TC.yaml",
-        "testcases/gsma_4.4.2.2_TC.yml",
-    ];
+    let valid_files = vec!["tests/sample/gsma_4.4.2.2_TC.yml"];
 
     for file_path in valid_files {
         log::info!("\n=== Testing valid file: {} ===", file_path);
@@ -135,10 +136,7 @@ fn test_chunk_validation_on_valid_files() {
 
     let validator = SchemaValidator::new().expect("Failed to create validator");
 
-    let valid_files = vec![
-        "testcases/gsma_4.4.2.2_TC.yaml",
-        "testcases/gsma_4.4.2.2_TC.yml",
-    ];
+    let valid_files = vec!["tests/sample/gsma_4.4.2.2_TC.yml"];
 
     for file_path in valid_files {
         log::info!(
@@ -188,12 +186,7 @@ fn test_all_data_files_exist() {
 
 #[test]
 fn test_valid_files_can_be_parsed_as_yaml() {
-    let _ = env_logger::builder().is_test(true).try_init();
-
-    let valid_files = vec![
-        "testcases/gsma_4.4.2.2_TC.yaml",
-        "testcases/gsma_4.4.2.2_TC.yml",
-    ];
+    let valid_files = vec!["tests/sample/gsma_4.4.2.2_TC.yml"];
 
     for file_path in valid_files {
         log::info!("\n=== Testing YAML parsing for: {} ===", file_path);
@@ -286,7 +279,7 @@ fn test_invalid_files_structure() {
 fn test_valid_files_detailed_structure() {
     let _ = env_logger::builder().is_test(true).try_init();
 
-    let file_path = "testcases/gsma_4.4.2.2_TC.yaml";
+    let file_path = "tests/sample/gsma_4.4.2.2_TC.yml";
 
     log::info!("\n=== Testing detailed structure of: {} ===", file_path);
 

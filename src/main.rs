@@ -1,9 +1,14 @@
+use std::sync::Arc;
+
 use anyhow::{Context, Result};
 use clap::Parser;
 use testcase_manager::{
     cli::{Cli, Commands, GitCommands},
-    print_title, ConditionDatabase, GitManager, Prompts, SampleData, TestCase, TestCaseBuilder,
-    TestCaseEditor, TestCaseFuzzyFinder, TestCaseMetadata, TestCaseStorage, TestSuite, TitleStyle,
+    fuzzy::MultiInput,
+    fuzzy::MultiInput::Input,
+    print_title, ConditionDatabase, GitManager, Oracle, Prompts, SampleData, TestCase,
+    TestCaseBuilder, TestCaseEditor, TestCaseFuzzyFinder, TestCaseMetadata, TestCaseStorage,
+    TestSuite, TitleStyle, TtyCliOracle,
 };
 
 fn main() -> Result<()> {
@@ -102,6 +107,11 @@ fn main() -> Result<()> {
         Commands::ParseInitialConditions { database, path } => {
             let work_path = path.as_deref().unwrap_or(&cli.path);
             handle_parse_initial_conditions(&database, work_path)?;
+        }
+
+        Commands::ParseInitialConditionsComplex { database, path } => {
+            let work_path = path.as_deref().unwrap_or(&cli.path);
+            handle_parse_initial_conditions2(&database, work_path)?;
         }
 
         Commands::ValidateYaml {
@@ -508,8 +518,9 @@ fn handle_init(path: &str, init_git: bool) -> Result<()> {
 }
 
 fn handle_create_interactive(path: &str) -> Result<()> {
-    let mut builder =
-        TestCaseBuilder::new_with_recovery(path).context("Failed to create test case builder")?;
+    let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
+    let mut builder = TestCaseBuilder::new(path, oracle)
+        .context("Failed to create test case builder")?;
 
     print_title("Interactive Test Case Creation Workflow", TitleStyle::Box);
 
@@ -534,8 +545,9 @@ fn handle_create_interactive(path: &str) -> Result<()> {
     }
 
     if Prompts::confirm_with_default("\nAdd initial conditions?", true)? {
-        builder
-            .add_initial_conditions(None)
+        builder.creator
+            .add_initial_conditions(&mut builder.structure, None)?;
+        Ok(&builder)
             .context("Failed to add initial conditions")?;
 
         println!("✓ Initial conditions added\n");
@@ -559,8 +571,9 @@ fn handle_create_interactive(path: &str) -> Result<()> {
 }
 
 fn handle_build_sequences(path: &str) -> Result<()> {
-    let mut builder =
-        TestCaseBuilder::new_with_recovery(path).context("Failed to create test case builder")?;
+    let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
+    let mut builder = TestCaseBuilder::new(path, oracle)
+        .context("Failed to create test case builder")?;
 
     print_title("Test Sequence Builder with Git Commits", TitleStyle::Box);
 
@@ -589,8 +602,9 @@ fn handle_build_sequences(path: &str) -> Result<()> {
     }
 
     if Prompts::confirm("\nAdd initial conditions?")? {
-        builder
-            .add_initial_conditions(None)
+        builder.creator
+            .add_initial_conditions(&mut builder.structure, None)?;
+        Ok(&builder)
             .context("Failed to add initial conditions")?;
 
         println!("✓ Initial conditions added\n");
@@ -624,8 +638,9 @@ fn handle_build_sequences(path: &str) -> Result<()> {
 }
 
 fn handle_add_steps(path: &str, sequence_id: Option<i64>) -> Result<()> {
-    let mut builder =
-        TestCaseBuilder::new_with_recovery(path).context("Failed to create test case builder")?;
+    let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
+    let mut builder = TestCaseBuilder::new(path, oracle)
+        .context("Failed to create test case builder")?;
 
     print_title("Add Steps to Sequence with Commits", TitleStyle::Box);
 
@@ -654,8 +669,9 @@ fn handle_add_steps(path: &str, sequence_id: Option<i64>) -> Result<()> {
     }
 
     if Prompts::confirm("\nAdd initial conditions?")? {
-        builder
-            .add_initial_conditions(None)
+        builder.creator
+            .add_initial_conditions(&mut builder.structure, None)?;
+        Ok(&builder)
             .context("Failed to add initial conditions")?;
 
         println!("✓ Initial conditions added\n");
@@ -707,8 +723,9 @@ fn handle_add_steps(path: &str, sequence_id: Option<i64>) -> Result<()> {
 }
 
 fn handle_build_sequences_with_steps(path: &str) -> Result<()> {
-    let mut builder =
-        TestCaseBuilder::new_with_recovery(path).context("Failed to create test case builder")?;
+    let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
+    let mut builder = TestCaseBuilder::new(path, oracle)
+        .context("Failed to create test case builder")?;
 
     print_title("Build Test Sequences & Steps with Commits", TitleStyle::Box);
 
@@ -737,8 +754,9 @@ fn handle_build_sequences_with_steps(path: &str) -> Result<()> {
     }
 
     if Prompts::confirm("\nAdd initial conditions?")? {
-        builder
-            .add_initial_conditions(None)
+        builder.creator
+            .add_initial_conditions(&mut builder.structure, None)?;
+        Ok(&builder)
             .context("Failed to add initial conditions")?;
 
         println!("✓ Initial conditions added\n");
@@ -791,7 +809,7 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
         base_dir.display()
     ))?;
 
-    let mut builder = TestCaseBuilder::new_with_recovery(base_dir)
+    let mut builder = TestCaseBuilder::new(base_dir)
         .context("Failed to create test case builder")?;
 
     let sample_data = if use_sample {
@@ -800,10 +818,19 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
         None
     };
 
-    print_title(
-        "Complete Interactive Test Case Workflow\nwith Git Commits & Validation Error Handling",
-        TitleStyle::Box,
-    );
+    let oracle: Arc<dyn Oracle> = if let Some(ref sample) = sample_data {
+        Arc::new(sample.create_oracle_for_complete())
+    } else {
+        Arc::new(TtyCliOracle::new())
+    };
+
+    let mut builder = TestCaseBuilder::new(base_dir, oracle)
+        .context("Failed to create test case builder")?;
+
+    println!("\n╔══════════════════════════════════════════════════════╗");
+    println!("║    Complete Interactive Test Case Workflow          ║");
+    println!("║  with Git Commits & Validation Error Handling       ║");
+    println!("╚══════════════════════════════════════════════════════╝\n");
 
     if use_sample {
         println!("📝 Sample mode enabled: Default values will be pre-populated\n");
@@ -934,7 +961,9 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
 
     if add_initial {
         loop {
-            match builder.add_initial_conditions(None) {
+            builder.creator
+                .add_initial_conditions(&mut builder.structure, None)?;
+            match Ok(&builder) {
                 Ok(_) => {
                     println!("✓ Initial conditions added\n");
                     builder.save_recovery_state("initial_conditions")?;
@@ -1319,7 +1348,8 @@ fn handle_parse_general_conditions(database_path: &str, work_path: &str) -> Resu
         conditions.len()
     );
 
-    let mut builder = TestCaseBuilder::new_with_recovery(work_path)
+    let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
+    let mut builder = TestCaseBuilder::new(work_path, oracle)
         .context("Failed to create test case builder")?;
 
     builder.add_metadata().context("Failed to add metadata")?;
@@ -1426,6 +1456,184 @@ fn handle_parse_general_conditions(database_path: &str, work_path: &str) -> Resu
     Ok(())
 }
 
+fn handle_parse_initial_conditions2(database_path: &str, work_path: &str) -> Result<()> {
+    println!();
+    println!("╔═══════════════════════════════════════════════╗");
+    println!("║   Parse Initial Conditions 2                  ║");
+    println!("╚═══════════════════════════════════════════════╝");
+    println!();
+
+    let db = ConditionDatabase::load_from_directory(database_path)
+        .context("Failed to load condition database")?;
+
+    let conditions = db.get_initial_conditions();
+    let devices = db.get_device_names();
+
+    if conditions.is_empty() {
+        println!("No initial conditions found in database.");
+        return Ok(());
+    }
+
+    println!(
+        "Loaded {} unique initial conditions from database\n",
+        conditions.len()
+    );
+
+    let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
+    let mut builder = TestCaseBuilder::new(work_path, oracle)
+        .context("Failed to create test case builder")?;
+
+    builder.add_metadata().context("Failed to add metadata")?;
+
+    println!("✓ Metadata added to structure\n");
+
+    let mut selected_conditions: Vec<String> = Vec::new();
+
+    let mut action_choice;
+    loop {
+        println!(
+            "\n=== Current Selection: {} condition(s) ===",
+            selected_conditions.len()
+        );
+        if !selected_conditions.is_empty() {
+            for (idx, cond) in selected_conditions.iter().enumerate() {
+                println!("  {}. {}", idx + 1, cond);
+            }
+        } else {
+            println!("  (none)");
+        }
+
+        // println!("\n=== Add Initial Condition ===");
+        // println!("Options:");
+        // println!("  1. Search from database (fuzzy search)");
+        // println!("  2. Create new condition (manual entry)");
+        // println!("  3. Finish selection");
+
+        let selected =
+            TestCaseFuzzyFinder::search_strings_multi(devices, "Select device (ESC to accept None, Ctrl-C to quit this step, Ctrl-D to finish input): ")?;
+
+        // loop {
+
+        match selected {
+            Input(selected) => {
+                println!("Selected: {}", selected);
+                selected_conditions.push(selected.clone());
+                println!("✓ Added from database: {}\n", selected);
+            }
+            MultiInput::Aborted => {
+                println!("(none): Aborted");
+                break;
+            }
+            MultiInput::Finished => {
+                println!("(none): Finished")
+            }
+            MultiInput::Error => {
+                println!("(none): Error")
+            }
+        }
+
+        // db.get_initial_conditions_for(&s[0]);
+
+        // let selected =
+        //     TestCaseFuzzyFinder::search_strings(conditions, "Select condition (ESC to cancel): ")?;
+
+        // }
+
+        action_choice = Prompts::input_with_escape("Start typing for search (ESC to cancel)")?;
+
+        match action_choice {
+            None => {
+                println!("ESC received");
+                break;
+            }
+            Some(_) => {
+                println!("Device: {}", action_choice.unwrap());
+
+                let selected = TestCaseFuzzyFinder::search_strings(
+                    conditions,
+                    "Select condition (ESC to cancel): ",
+                )?;
+
+                if let Some(condition) = selected {
+                    selected_conditions.push(condition.clone());
+                    println!("✓ Added from database: {}\n", condition);
+                }
+            }
+        }
+    }
+
+    //     match choice.trim() {
+    //         "1" => {
+    //             let selected = TestCaseFuzzyFinder::search_strings(
+    //                 conditions,
+    //                 "Select condition (ESC to cancel): ",
+    //             )?;
+    //
+    //             if let Some(condition) = selected {
+    //                 selected_conditions.push(condition.clone());
+    //                 println!("✓ Added from database: {}\n", condition);
+    //             }
+    //         }
+    //         "2" => {
+    //             let new_condition = Prompts::input("Enter new condition")?;
+    //             if !new_condition.trim().is_empty() {
+    //                 selected_conditions.push(new_condition.clone());
+    //                 println!("✓ Added new condition: {}\n", new_condition);
+    //             }
+    //         }
+    //         "3" => {
+    //             if selected_conditions.is_empty() {
+    //                 println!("No conditions selected.");
+    //                 if !Prompts::confirm("Continue without initial conditions?")? {
+    //                     continue;
+    //                 }
+    //             }
+    //             break;
+    //         }
+    //         _ => {
+    //             println!("Invalid choice. Please enter 1, 2, or 3.");
+    //         }
+    //     }
+    // }
+    //
+    // if !selected_conditions.is_empty() {
+    //     use serde_yaml::Value;
+    //
+    //     let euicc_conditions: Vec<Value> =
+    //         selected_conditions.into_iter().map(Value::String).collect();
+    //
+    //     let mut initial_cond_map = serde_yaml::Mapping::new();
+    //     initial_cond_map.insert(
+    //         Value::String("eUICC".to_string()),
+    //         Value::Sequence(euicc_conditions),
+    //     );
+    //
+    //     builder.structure_mut().insert(
+    //         "initial_conditions".to_string(),
+    //         Value::Mapping(initial_cond_map),
+    //     );
+    //
+    //     println!("\n✓ Initial conditions added to test case");
+    // }
+    //
+    // let file_path = builder.save().context("Failed to save test case")?;
+    //
+    // println!("\n╔═══════════════════════════════════════════════╗");
+    // println!("║    Test Case Saved Successfully               ║");
+    // println!("╚═══════════════════════════════════════════════╝");
+    // println!("\nSaved to: {}", file_path.display());
+    //
+    // if Prompts::confirm("\nCommit to git?")? {
+    //     builder
+    //         .commit("Add initial conditions")
+    //         .context("Failed to commit")?;
+    // }
+    //
+    // builder.delete_recovery_file()?;
+
+    Ok(())
+}
+
 fn handle_parse_initial_conditions(database_path: &str, work_path: &str) -> Result<()> {
     print_title("Parse Initial Conditions", TitleStyle::Box);
 
@@ -1444,7 +1652,8 @@ fn handle_parse_initial_conditions(database_path: &str, work_path: &str) -> Resu
         conditions.len()
     );
 
-    let mut builder = TestCaseBuilder::new_with_recovery(work_path)
+    let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
+    let mut builder = TestCaseBuilder::new(work_path, oracle)
         .context("Failed to create test case builder")?;
 
     builder.add_metadata().context("Failed to add metadata")?;

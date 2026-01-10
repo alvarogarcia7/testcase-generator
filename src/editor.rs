@@ -7,11 +7,15 @@ use std::process::Command;
 /// Editor integration with validation loop
 pub struct EditorFlow {
     config: EditorConfig,
+    max_retries: usize,
 }
 
 impl EditorFlow {
     pub fn new(config: EditorConfig) -> Self {
-        Self { config }
+        Self {
+            config,
+            max_retries: 3,
+        }
     }
 
     pub fn edit_with_validation_loop<T, F>(&self, template: &str, mut validate: F) -> Result<T>
@@ -20,18 +24,49 @@ impl EditorFlow {
         F: FnMut(&T) -> Result<()>,
     {
         let mut content = template.to_string();
+        let mut retry_count = 0;
 
         loop {
             let edited_content = self.open_editor(&content)?;
 
-            match serde_yaml::from_str::<T>(&edited_content) {
+            let result = serde_yaml::from_str::<T>(&edited_content);
+
+            match result {
                 Ok(parsed) => match validate(&parsed) {
                     Ok(()) => return Ok(parsed),
                     Err(validation_error) => {
+                        if retry_count >= self.max_retries {
+                            return Err(anyhow!(
+                                "Validation failed after {} retries ({}  total attempts): {}",
+                                self.max_retries,
+                                retry_count + 1,
+                                validation_error
+                            ));
+                        }
+                        retry_count += 1;
+                        eprintln!(
+                            "\n⚠ Validation failed (retry {}/{}): {}",
+                            retry_count, self.max_retries, validation_error
+                        );
+                        eprintln!("The editor will reopen with error annotations.\n");
                         content = self.annotate_with_error(&edited_content, &validation_error);
                     }
                 },
                 Err(parse_error) => {
+                    if retry_count >= self.max_retries {
+                        return Err(anyhow!(
+                            "Parse error after {} retries ({} total attempts): {}",
+                            self.max_retries,
+                            retry_count + 1,
+                            parse_error
+                        ));
+                    }
+                    retry_count += 1;
+                    eprintln!(
+                        "\n⚠ Parse error (retry {}/{}): {}",
+                        retry_count, self.max_retries, parse_error
+                    );
+                    eprintln!("The editor will reopen with error annotations.\n");
                     content = self.annotate_with_error(&edited_content, &parse_error.into());
                 }
             }

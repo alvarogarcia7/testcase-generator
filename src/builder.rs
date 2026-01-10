@@ -1,6 +1,9 @@
 use crate::config::EditorConfig;
+use crate::creator::TestCaseCreator;
 use crate::database::ConditionDatabase;
 use crate::git::GitManager;
+use crate::models::Step;
+use crate::oracle::Oracle;
 use crate::prompts::Prompts;
 use crate::recovery::{RecoveryManager, RecoveryState};
 use crate::sample::SampleData;
@@ -9,54 +12,29 @@ use anyhow::{Context, Result};
 use indexmap::IndexMap;
 use serde_yaml::Value;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 /// Builder for creating test cases interactively
+/// This struct now delegates to TestCaseCreator for all test case creation logic
 pub struct TestCaseBuilder {
     base_path: PathBuf,
-    validator: SchemaValidator,
     git_manager: Option<GitManager>,
     structure: IndexMap<String, Value>,
     recovery_manager: RecoveryManager,
-    db: Option<ConditionDatabase>,
     sample: Option<SampleData>,
+    creator: TestCaseCreator,
 }
 
 impl TestCaseBuilder {
     /// Create a new test case builder
-    pub fn new<P: AsRef<Path>>(base_path: P) -> Result<Self> {
-        let base_path = base_path.as_ref().to_path_buf();
-        let validator = SchemaValidator::new().context("Failed to create schema validator")?;
+    pub fn new<P: AsRef<Path>>(base_path: P, oracle: Arc<dyn Oracle>) -> Result<Self> {
+        let base_path2 = base_path.as_ref().to_path_buf();
 
-        let git_manager = GitManager::open(&base_path)
-            .or_else(|_| GitManager::init(&base_path))
+        let git_manager = GitManager::open(&base_path2)
+            .or_else(|_| GitManager::init(&base_path2))
             .ok();
 
-        let recovery_manager = RecoveryManager::new(&base_path);
-
-        // Try to load database from base_path
-        let db = ConditionDatabase::load_from_directory(&base_path).ok();
-
-        Ok(Self {
-            base_path,
-            validator,
-            git_manager,
-            structure: IndexMap::new(),
-            recovery_manager,
-            db,
-            sample: None,
-        })
-    }
-
-    /// Create a new test case builder and check for recovery
-    pub fn new_with_recovery<P: AsRef<Path>>(base_path: P) -> Result<Self> {
-        let base_path = base_path.as_ref().to_path_buf();
-        let validator = SchemaValidator::new().context("Failed to create schema validator")?;
-
-        let git_manager = GitManager::open(&base_path)
-            .or_else(|_| GitManager::init(&base_path))
-            .ok();
-
-        let recovery_manager = RecoveryManager::new(&base_path);
+        let recovery_manager = RecoveryManager::new(&base_path2);
 
         let structure = if recovery_manager.prompt_for_recovery()? {
             if let Some(state) = recovery_manager.load_state()? {
@@ -70,16 +48,18 @@ impl TestCaseBuilder {
         };
 
         // Try to load database from base_path
-        let db = ConditionDatabase::load_from_directory(&base_path).ok();
+        let db = ConditionDatabase::load_from_directory(&base_path2).ok();
+
+        let editor_config = EditorConfig::load();
+        let creator = TestCaseCreator::new(&base_path2, oracle, editor_config, db)?;
 
         Ok(Self {
-            base_path,
-            validator,
+            base_path: base_path2,
             git_manager,
             structure,
             recovery_manager,
-            db,
             sample: None,
+            creator,
         })
     }
 
@@ -88,6 +68,17 @@ impl TestCaseBuilder {
         self.sample = Some(sample);
         self
     }
+
+    // /// Set oracle for the builder
+    // pub fn with_oracle(self, oracle: Arc<dyn Oracle>) -> Self {
+    //     // Recreate the creator with the new oracle
+    //     let db = self.creator.database().cloned();
+    //     let editor_config = self.creator.editor_config().clone();
+    //     let creator = TestCaseCreator::new(&self.base_path, oracle, editor_config, db)
+    //         .expect("Failed to recreate creator with new oracle");
+    //
+    //     Self { creator, ..self }
+    // }
 
     /// Enable sample mode
     pub fn enable_sample_mode(&mut self) {
@@ -134,24 +125,12 @@ impl TestCaseBuilder {
 
     /// Get the validator
     pub fn validator(&self) -> &SchemaValidator {
-        &self.validator
+        self.creator.validator()
     }
 
     /// Prompt for and add metadata to the structure
     pub fn add_metadata(&mut self) -> Result<&mut Self> {
-        let metadata = Prompts::prompt_metadata().context("Failed to prompt for metadata")?;
-
-        log::info!("\n=== Validating Metadata ===");
-        metadata
-            .validate(&self.validator)
-            .context("Metadata validation failed")?;
-        log::info!("✓ Metadata is valid\n");
-
-        let yaml_map = metadata.to_yaml();
-        for (key, value) in yaml_map {
-            self.structure.insert(key, value);
-        }
-
+        self.creator.add_metadata(&mut self.structure)?;
         Ok(self)
     }
 
@@ -185,14 +164,8 @@ impl TestCaseBuilder {
         &mut self,
         defaults: Option<&Value>,
     ) -> Result<&mut Self> {
-        let editor_config = EditorConfig::load();
-        let conditions =
-            Prompts::prompt_general_initial_conditions(defaults, &self.validator, &editor_config)
-                .context("Failed to prompt for general initial conditions")?;
-
-        self.structure
-            .insert("general_initial_conditions".to_string(), conditions);
-
+        self.creator
+            .add_general_initial_conditions(&mut self.structure, defaults)?;
         Ok(self)
     }
 
@@ -202,35 +175,18 @@ impl TestCaseBuilder {
         defaults: Option<&Value>,
         storage: &crate::storage::TestCaseStorage,
     ) -> Result<&mut Self> {
-        let editor_config = EditorConfig::load();
-        let conditions = Prompts::prompt_general_initial_conditions_with_search(
+        self.creator.add_general_initial_conditions_with_search(
+            &mut self.structure,
             defaults,
-            &self.validator,
             storage,
-            &editor_config,
-        )
-        .context("Failed to prompt for general initial conditions")?;
-
-        self.structure
-            .insert("general_initial_conditions".to_string(), conditions);
-
+        )?;
         Ok(self)
     }
 
     /// Add initial conditions with interactive prompts
     pub fn add_initial_conditions(&mut self, defaults: Option<&Value>) -> Result<&mut Self> {
-        let prompts = if let Some(ref db) = self.db {
-            Prompts::new_with_database(db)
-        } else {
-            Prompts::new()
-        };
-        let conditions = prompts
-            .prompt_initial_conditions(defaults, &self.validator)
-            .context("Failed to prompt for initial conditions")?;
-
-        self.structure
-            .insert("initial_conditions".to_string(), conditions);
-
+        self.creator
+            .add_initial_conditions(&mut self.structure, defaults)?;
         Ok(self)
     }
 
@@ -239,74 +195,10 @@ impl TestCaseBuilder {
         &mut self,
         database_path: P,
     ) -> Result<&mut Self> {
-        use crate::fuzzy::TestCaseFuzzyFinder;
-
         let db = ConditionDatabase::load_from_directory(database_path)
             .context("Failed to load condition database")?;
-
-        let conditions = db.get_general_conditions();
-
-        if conditions.is_empty() {
-            log::info!("No general initial conditions found in database.");
-            return Ok(self);
-        }
-
-        log::info!(
-            "Loaded {} unique general initial conditions from database\n",
-            conditions.len()
-        );
-
-        let mut selected_conditions = Vec::new();
-
-        loop {
-            log::info!("\n=== Select General Initial Condition ===");
-
-            let selected = TestCaseFuzzyFinder::search_strings(
-                conditions,
-                "Select condition (ESC to finish): ",
-            )?;
-
-            match selected {
-                Some(condition) => {
-                    selected_conditions.push(condition.clone());
-                    log::info!("✓ Added: {}\n", condition);
-
-                    if !Prompts::confirm("Add another general initial condition?")? {
-                        break;
-                    }
-                }
-                None => {
-                    if selected_conditions.is_empty() {
-                        log::info!("No conditions selected.");
-                        if !Prompts::confirm("Continue without general initial conditions?")? {
-                            continue;
-                        }
-                    }
-                    break;
-                }
-            }
-        }
-
-        if !selected_conditions.is_empty() {
-            let euicc_conditions: Vec<Value> =
-                selected_conditions.into_iter().map(Value::String).collect();
-
-            let mut general_cond_map = serde_yaml::Mapping::new();
-            general_cond_map.insert(
-                Value::String("eUICC".to_string()),
-                Value::Sequence(euicc_conditions),
-            );
-
-            let general_conditions_array = vec![Value::Mapping(general_cond_map)];
-
-            self.structure.insert(
-                "general_initial_conditions".to_string(),
-                Value::Sequence(general_conditions_array),
-            );
-
-            log::info!("\n✓ General initial conditions added to test case");
-        }
-
+        self.creator
+            .add_general_initial_conditions_from_database(&mut self.structure, &db)?;
         Ok(self)
     }
 
@@ -315,72 +207,10 @@ impl TestCaseBuilder {
         &mut self,
         database_path: P,
     ) -> Result<&mut Self> {
-        use crate::fuzzy::TestCaseFuzzyFinder;
-
         let db = ConditionDatabase::load_from_directory(database_path)
             .context("Failed to load condition database")?;
-
-        let conditions = db.get_initial_conditions();
-
-        if conditions.is_empty() {
-            log::info!("No initial conditions found in database.");
-            return Ok(self);
-        }
-
-        log::info!(
-            "Loaded {} unique initial conditions from database\n",
-            conditions.len()
-        );
-
-        let mut selected_conditions = Vec::new();
-
-        loop {
-            log::info!("\n=== Select Initial Condition ===");
-
-            let selected = TestCaseFuzzyFinder::search_strings(
-                conditions,
-                "Select condition (ESC to finish): ",
-            )?;
-
-            match selected {
-                Some(condition) => {
-                    selected_conditions.push(condition.clone());
-                    log::info!("✓ Added: {}\n", condition);
-
-                    if !Prompts::confirm("Add another initial condition?")? {
-                        break;
-                    }
-                }
-                None => {
-                    if selected_conditions.is_empty() {
-                        log::info!("No conditions selected.");
-                        if !Prompts::confirm("Continue without initial conditions?")? {
-                            continue;
-                        }
-                    }
-                    break;
-                }
-            }
-        }
-
-        if !selected_conditions.is_empty() {
-            let euicc_conditions: Vec<Value> =
-                selected_conditions.into_iter().map(Value::String).collect();
-
-            let mut initial_cond_map = serde_yaml::Mapping::new();
-            initial_cond_map.insert(
-                Value::String("eUICC".to_string()),
-                Value::Sequence(euicc_conditions),
-            );
-
-            self.structure.insert(
-                "initial_conditions".to_string(),
-                Value::Mapping(initial_cond_map),
-            );
-
-            log::info!("\n✓ Initial conditions added to test case");
-        }
-
+        self.creator
+            .add_initial_conditions_from_database(&mut self.structure, &db)?;
         Ok(self)
     }
 
@@ -393,20 +223,15 @@ impl TestCaseBuilder {
     /// Validate the entire structure
     pub fn validate(&self) -> Result<()> {
         let yaml_content = self.to_yaml_string()?;
-        self.validator
+        self.creator
+            .validator()
             .validate_chunk(&yaml_content)
             .context("Structure validation failed")
     }
 
     /// Convert the structure to a YAML string
     pub fn to_yaml_string(&self) -> Result<String> {
-        let yaml_value = Value::Mapping(serde_yaml::Mapping::from_iter(
-            self.structure
-                .iter()
-                .map(|(k, v)| (Value::String(k.clone()), v.clone())),
-        ));
-
-        serde_yaml::to_string(&yaml_value).context("Failed to serialize structure to YAML")
+        TestCaseCreator::structure_to_yaml_string(&self.structure)
     }
 
     /// Get the file name for this test case
@@ -441,266 +266,19 @@ impl TestCaseBuilder {
 
     /// Get the next test sequence ID
     pub fn get_next_sequence_id(&self) -> i64 {
-        if let Some(Value::Sequence(sequences)) = self.structure.get("test_sequences") {
-            let max_id = sequences
-                .iter()
-                .filter_map(|seq| {
-                    if let Value::Mapping(map) = seq {
-                        map.get(Value::String("id".to_string()))
-                            .and_then(|v| match v {
-                                Value::Number(n) => n.as_i64(),
-                                _ => None,
-                            })
-                    } else {
-                        None
-                    }
-                })
-                .max()
-                .unwrap_or(0);
-            max_id + 1
-        } else {
-            1
-        }
+        self.creator.get_next_sequence_id(&self.structure)
     }
 
     /// Add a test sequence with interactive prompts
     pub fn add_test_sequence_interactive(&mut self) -> Result<&mut Self> {
-        use crate::editor::TestCaseEditor;
-        use crate::fuzzy::TestCaseFuzzyFinder;
-        use crate::prompts::Prompts;
-
-        log::info!("\n=== Add Test Sequence ===\n");
-
-        let sequence_id = self.get_next_sequence_id();
-        log::debug!("Sequence ID: {}", sequence_id);
-
-        let existing_sequences = self.get_existing_sequence_names();
-        let sequence_name = if let Some(sample) = &self.sample {
-            let prompts = Prompts::new_with_sample(sample);
-            prompts.input_with_sample("Sequence name", &sample.sequence_name())?
-        } else if !existing_sequences.is_empty() {
-            log::info!("\nYou can select from existing sequence names or type a new one.");
-
-            if Prompts::confirm("Use fuzzy search to select from existing names?")? {
-                match TestCaseFuzzyFinder::search_strings(
-                    &existing_sequences,
-                    "Select sequence name: ",
-                )? {
-                    Some(name) => name,
-                    None => {
-                        log::info!("No selection made, entering new name.");
-                        Prompts::input("Sequence name")?
-                    }
-                }
-            } else {
-                Prompts::input("Sequence name")?
-            }
-        } else {
-            Prompts::input("Sequence name")?
-        };
-
-        let description = if let Some(sample) = &self.sample {
-            let prompts = Prompts::new_with_sample(sample);
-            if let Some(desc) = sample.sequence_description() {
-                prompts.input_optional_with_sample("Description", &desc)?
-            } else {
-                None
-            }
-        } else if Prompts::confirm("\nEdit description in editor?")? {
-            let template = format!(
-                "# Description for: {}\n# Enter the sequence description below:\n\n",
-                sequence_name
-            );
-            let editor_config = EditorConfig::load();
-            let edited = TestCaseEditor::edit_text(&template, &editor_config)?;
-
-            let cleaned: String = edited
-                .lines()
-                .filter(|line| !line.trim().starts_with('#'))
-                .collect::<Vec<&str>>()
-                .join("\n")
-                .trim()
-                .to_string();
-
-            if cleaned.is_empty() {
-                None
-            } else {
-                Some(cleaned)
-            }
-        } else {
-            Prompts::input_optional("Description")?
-        };
-
-        let add_initial_conditions = if let Some(sample) = &self.sample {
-            let prompts = Prompts::new_with_sample(sample);
-            prompts.confirm_with_sample(
-                "\nAdd sequence-specific initial conditions?",
-                sample.confirm_add_sequence_initial_conditions(),
-            )?
-        } else {
-            Prompts::confirm("\nAdd sequence-specific initial conditions?")?
-        };
-
-        let database_path = if let Some(sample) = &self.sample {
-            sample.database_path()
-        } else {
-            Prompts::input_with_default("Database path", "data")?
-        };
-
-        let db = ConditionDatabase::load_from_directory(&database_path)
-            .context("Failed to load condition database")?;
-
-        let prompts = if let Some(sample) = &self.sample {
-            Prompts::new_with_database_and_sample(&db, sample)
-        } else {
-            Prompts::new_with_database(&db)
-        };
-
-        let initial_conditions = if add_initial_conditions {
-            let use_db = if let Some(sample) = &self.sample {
-                let sample_prompts = Prompts::new_with_sample(sample);
-                sample_prompts.confirm_with_sample(
-                    "Use database for initial conditions?",
-                    sample.confirm_use_database(),
-                )?
-            } else {
-                Prompts::confirm("Use database for initial conditions?")?
-            };
-
-            if use_db {
-                let conditions = db.get_initial_conditions();
-
-                if !conditions.is_empty() {
-                    let mut selected_conditions = Vec::new();
-
-                    loop {
-                        let selected = TestCaseFuzzyFinder::search_strings(
-                            conditions,
-                            "Select condition (ESC to finish): ",
-                        )?;
-
-                        match selected {
-                            Some(condition) => {
-                                selected_conditions.push(condition.clone());
-                                log::info!("✓ Added: {}", condition);
-
-                                if !Prompts::confirm("Add another condition?")? {
-                                    break;
-                                }
-                            }
-                            None => break,
-                        }
-                    }
-
-                    if !selected_conditions.is_empty() {
-                        let euicc_conditions: Vec<Value> =
-                            selected_conditions.into_iter().map(Value::String).collect();
-
-                        let mut initial_cond_map = serde_yaml::Mapping::new();
-                        initial_cond_map.insert(
-                            Value::String("eUICC".to_string()),
-                            Value::Sequence(euicc_conditions),
-                        );
-
-                        Some(Value::Mapping(initial_cond_map))
-                    } else {
-                        None
-                    }
-                } else {
-                    log::info!("No conditions in database, using manual entry.");
-                    Some(prompts.prompt_initial_conditions(None, &self.validator)?)
-                }
-            } else {
-                Some(prompts.prompt_initial_conditions(None, &self.validator)?)
-            }
-        } else {
-            None
-        };
-
-        let mut sequence_map = serde_yaml::Mapping::new();
-        sequence_map.insert(
-            Value::String("id".to_string()),
-            Value::Number(sequence_id.into()),
-        );
-        sequence_map.insert(
-            Value::String("name".to_string()),
-            Value::String(sequence_name.clone()),
-        );
-
-        if let Some(desc) = description {
-            sequence_map.insert(
-                Value::String("description".to_string()),
-                Value::String(desc),
-            );
-        }
-
-        if let Some(ic) = initial_conditions {
-            let ic_array = vec![ic];
-            sequence_map.insert(
-                Value::String("initial_conditions".to_string()),
-                Value::Sequence(ic_array),
-            );
-        }
-
-        sequence_map.insert(
-            Value::String("steps".to_string()),
-            Value::Sequence(Vec::new()),
-        );
-
-        let sequence_value = Value::Mapping(sequence_map);
-
-        log::info!("\n=== Validating Test Sequence ===");
-        self.validate_and_append_sequence(sequence_value)?;
-        log::info!("✓ Test sequence validated and added\n");
-
+        self.creator
+            .add_test_sequence_interactive(&mut self.structure, self.sample.as_ref())?;
         Ok(self)
-    }
-
-    /// Get existing sequence names from the structure
-    fn get_existing_sequence_names(&self) -> Vec<String> {
-        let mut names = Vec::new();
-
-        if let Some(Value::Sequence(sequences)) = self.structure.get("test_sequences") {
-            for seq in sequences {
-                if let Value::Mapping(map) = seq {
-                    if let Some(Value::String(name)) = map.get(Value::String("name".to_string())) {
-                        names.push(name.clone());
-                    }
-                }
-            }
-        }
-
-        names
     }
 
     /// Validate a test sequence structure and append it to test_sequences
     pub fn validate_and_append_sequence(&mut self, sequence: Value) -> Result<()> {
-        if let Value::Mapping(seq_map) = &sequence {
-            if !seq_map.contains_key(Value::String("id".to_string())) {
-                anyhow::bail!("Sequence must have an 'id' field");
-            }
-            if !seq_map.contains_key(Value::String("name".to_string())) {
-                anyhow::bail!("Sequence must have a 'name' field");
-            }
-            if !seq_map.contains_key(Value::String("steps".to_string())) {
-                anyhow::bail!("Sequence must have a 'steps' field");
-            }
-        } else {
-            anyhow::bail!("Sequence must be a mapping");
-        }
-
-        let sequences = self
-            .structure
-            .entry("test_sequences".to_string())
-            .or_insert_with(|| Value::Sequence(Vec::new()));
-
-        if let Value::Sequence(seq_vec) = sequences {
-            seq_vec.push(sequence);
-        } else {
-            anyhow::bail!("test_sequences must be a sequence");
-        }
-
-        Ok(())
+        TestCaseCreator::validate_and_append_sequence(&mut self.structure, sequence)
     }
 
     /// Build test sequences interactively with git commits before each sequence
@@ -713,14 +291,16 @@ impl TestCaseBuilder {
             self.add_test_sequence_interactive()
                 .context("Failed to add test sequence")?;
 
-            if Prompts::confirm("Commit this sequence to git?")? {
+            if Prompts::confirm_with_oracle("Commit this sequence to git?", self.creator.oracle())?
+            {
                 let sequence_id = self.get_next_sequence_id() - 1;
                 let commit_msg = format!("Add test sequence #{}", sequence_id);
                 self.commit(&commit_msg)
                     .context("Failed to commit test sequence")?;
             }
 
-            if !Prompts::confirm("\nAdd another test sequence?")? {
+            if !Prompts::confirm_with_oracle("\nAdd another test sequence?", self.creator.oracle())?
+            {
                 break;
             }
         }
@@ -740,8 +320,12 @@ impl TestCaseBuilder {
         println!("║      Step Collection Loop with Commits       ║");
         println!("╚═══════════════════════════════════════════════╝\n");
 
-        let sequence_id = self.get_sequence_id_by_index_internal(sequence_index)?;
-        let sequence_name = self.get_sequence_name_by_index_internal(sequence_index)?;
+        let sequence_id = self
+            .creator
+            .get_sequence_id_by_index(&self.structure, sequence_index)?;
+        let sequence_name = self
+            .creator
+            .get_sequence_name_by_index(&self.structure, sequence_index)?;
 
         println!(
             "Adding steps to Sequence #{}: {}\n",
@@ -1375,7 +959,8 @@ mod tests {
     #[test]
     fn test_get_existing_sequence_names() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path()).unwrap();
+        let mut builder =
+            TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         let mut seq1 = serde_yaml::Mapping::new();
         seq1.insert(Value::String("id".to_string()), Value::Number(1.into()));
@@ -1406,7 +991,7 @@ mod tests {
             .validate_and_append_sequence(Value::Mapping(seq2))
             .unwrap();
 
-        let names = builder.get_existing_sequence_names();
+        let names = TestCaseCreator::get_existing_sequence_names(builder.structure());
         assert_eq!(names.len(), 2);
         assert_eq!(names[0], "Sequence One");
         assert_eq!(names[1], "Sequence Two");
@@ -1415,7 +1000,8 @@ mod tests {
     #[test]
     fn test_sequence_with_description() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path()).unwrap();
+        let mut builder =
+            TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         let mut seq_map = serde_yaml::Mapping::new();
         seq_map.insert(Value::String("id".to_string()), Value::Number(1.into()));
@@ -1444,7 +1030,8 @@ mod tests {
     #[test]
     fn test_get_sequence_id_by_index() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path()).unwrap();
+        let mut builder =
+            TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         let mut seq_map = serde_yaml::Mapping::new();
         seq_map.insert(Value::String("id".to_string()), Value::Number(5.into()));
@@ -1468,7 +1055,8 @@ mod tests {
     #[test]
     fn test_get_sequence_name_by_index() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path()).unwrap();
+        let mut builder =
+            TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         let mut seq_map = serde_yaml::Mapping::new();
         seq_map.insert(Value::String("id".to_string()), Value::Number(1.into()));
@@ -1492,7 +1080,8 @@ mod tests {
     #[test]
     fn test_get_next_step_number_empty() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path()).unwrap();
+        let mut builder =
+            TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         let mut seq_map = serde_yaml::Mapping::new();
         seq_map.insert(Value::String("id".to_string()), Value::Number(1.into()));
@@ -1516,7 +1105,8 @@ mod tests {
     #[test]
     fn test_get_next_step_number_with_existing() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path()).unwrap();
+        let mut builder =
+            TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         let mut step1 = serde_yaml::Mapping::new();
         step1.insert(Value::String("step".to_string()), Value::Number(1.into()));
@@ -1567,7 +1157,7 @@ mod tests {
     #[test]
     fn test_create_step_value() {
         let temp_dir = TempDir::new().unwrap();
-        let builder = TestCaseBuilder::new(temp_dir.path()).unwrap();
+        let builder = TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         let mut expected = serde_yaml::Mapping::new();
         expected.insert(
@@ -1610,7 +1200,8 @@ mod tests {
     #[test]
     fn test_validate_and_append_step() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path()).unwrap();
+        let mut builder =
+            TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         let mut seq_map = serde_yaml::Mapping::new();
         seq_map.insert(Value::String("id".to_string()), Value::Number(1.into()));
@@ -1700,7 +1291,8 @@ mod tests {
     #[test]
     fn test_get_all_existing_steps() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path()).unwrap();
+        let mut builder =
+            TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         let mut expected = serde_yaml::Mapping::new();
         expected.insert(
@@ -1768,7 +1360,8 @@ mod tests {
     #[test]
     fn test_find_sequence_index_by_id() {
         let temp_dir = TempDir::new().unwrap();
-        let mut builder = TestCaseBuilder::new(temp_dir.path()).unwrap();
+        let mut builder =
+            TestCaseBuilder::new(temp_dir.path(), Arc::new(TtyCliOracle::new())).unwrap();
 
         let mut seq1 = serde_yaml::Mapping::new();
         seq1.insert(Value::String("id".to_string()), Value::Number(10.into()));

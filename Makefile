@@ -46,7 +46,7 @@ test-all: test test-e2e
 .PHONY: test-all
 
 test-e2e-validate-yaml: build
-	cargo run --bin validate-yaml testcases/gsma_4.4.2.2_TC.yml data/schema.json >/dev/null 2>&1
+	cargo run --bin validate-yaml tests/sample/gsma_4.4.2.2_TC.yml data/schema.json >/dev/null 2>&1
 	! cargo run --bin validate-yaml tests/sample/data.yml data/schema.json >/dev/null 2>&1
 .PHONY: test-e2e-validate-yaml
 

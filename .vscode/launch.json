@@ -14,7 +14,7 @@
             "sourceLanguages": [
                 "rust"
             ]
-        }
+        },
         {
             "type": "lldb",
             "request": "launch",

@@ -1,11 +1,14 @@
 pub mod builder;
 pub mod cli;
+pub mod complex_structure_editor;
 pub mod config;
+pub mod creator;
 pub mod database;
 pub mod editor;
 pub mod fuzzy;
 pub mod git;
 pub mod models;
+pub mod oracle;
 pub mod parser;
 pub mod prompts;
 pub mod recovery;
@@ -16,15 +19,18 @@ pub mod validation;
 
 pub use builder::TestCaseBuilder;
 pub use cli::Cli;
+pub use complex_structure_editor::ComplexStructureEditor;
 pub use config::{CommitMessageTemplates, Config, EditorConfig, GitAuthorInfo};
+pub use creator::TestCaseCreator;
 pub use database::ConditionDatabase;
 pub use editor::TestCaseEditor;
 pub use fuzzy::TestCaseFuzzyFinder;
 pub use git::GitManager;
 pub use models::{
     Expected, FileValidationStatus, Step, TestCase, TestCaseFileInfo, TestSequence, TestSuite,
-    TopLevelInitialConditions, ValidationErrorDetail,
+    ValidationErrorDetail,
 };
+pub use oracle::{AnswerVariant, HardcodedOracle, MenuCliOracle, Oracle, TtyCliOracle};
 pub use parser::{SearchableCollections, TestCaseParser};
 pub use prompts::{Prompts, TestCaseMetadata};
 pub use recovery::{RecoveryManager, RecoveryState};

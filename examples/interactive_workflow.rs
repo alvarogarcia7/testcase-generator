@@ -1,5 +1,7 @@
 use anyhow::Result;
 use testcase_manager::{print_title, TestCaseBuilder, TitleStyle};
+use std::sync::Arc;
+use testcase_manager::{TtyCliOracle};
 
 fn main() -> Result<()> {
     let temp_dir = std::env::temp_dir().join("testcase_example");
@@ -13,7 +15,7 @@ fn main() -> Result<()> {
     println!("with sequences and steps, including git commits at each stage.\n");
     println!("Working directory: {}\n", temp_dir.display());
 
-    let mut builder = TestCaseBuilder::new(&temp_dir)?;
+    let mut builder = TestCaseBuilder::new(&temp_dir, Arc::new(TtyCliOracle::default()))?;
 
     println!("Creating a test case with metadata...\n");
 

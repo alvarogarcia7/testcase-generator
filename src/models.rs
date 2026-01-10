@@ -1,10 +1,11 @@
 use std::collections::HashMap;
+use std::fmt;
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
 /// Expected outcome for a test step
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct Expected {
     /// Whether the step should succeed (optional)
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -17,8 +18,23 @@ pub struct Expected {
     pub output: String,
 }
 
+impl fmt::Display for Expected {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let success_str = match self.success {
+            Some(true) => "true",
+            Some(false) => "false",
+            None => "None",
+        };
+        write!(
+            f,
+            "success: {} | result: {} | output: {}",
+            success_str, self.result, self.output
+        )
+    }
+}
+
 /// Represents a single step in a test sequence
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct Step {
     /// Step number
     pub step: i64,
@@ -37,8 +53,14 @@ pub struct Step {
     pub expected: Expected,
 }
 
+impl fmt::Display for Step {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "#{}: {} ({})", self.step, self.description, self.command)
+    }
+}
+
 /// A sequence of test steps
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TestSequence {
     /// Sequence identifier
     pub id: i64,
@@ -56,11 +78,10 @@ pub struct TestSequence {
     pub steps: Vec<Step>,
 }
 
-/// Top-level initial conditions
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct TopLevelInitialConditions {
-    #[serde(rename = "eUICC")]
-    pub euicc: Vec<String>,
+impl fmt::Display for TestSequence {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "#{}: {} - {}", self.id, self.name, self.description)
+    }
 }
 
 /// A complete test case following the GSMA schema
@@ -295,14 +316,6 @@ mod tests {
         );
         sequence.steps.push(step);
         assert_eq!(sequence.steps.len(), 1);
-    }
-
-    #[test]
-    fn test_top_level_initial_conditions_creation() {
-        let conditions = TopLevelInitialConditions {
-            euicc: vec!["Condition 1".to_string(), "Condition 2".to_string()],
-        };
-        assert_eq!(conditions.euicc.len(), 2);
     }
 
     #[test]
