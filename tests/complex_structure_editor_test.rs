@@ -1,5 +1,5 @@
 use anyhow::Result;
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
 use std::sync::Arc;
 use tempfile::{NamedTempFile, TempDir};
 use testcase_manager::{
@@ -40,11 +40,10 @@ output: "Template Success"
 
     // Create a mock editor that just returns the input content
     let temp_file = NamedTempFile::new()?;
-    let editor_script = format!(
-        r#"#!/bin/bash
+    let editor_script = r#"#!/bin/bash
 cat "$1"
 "#
-    );
+    .to_string();
     std::fs::write(temp_file.path(), editor_script)?;
     #[cfg(unix)]
     {
@@ -72,7 +71,11 @@ cat "$1"
     );
 
     // Should succeed with template content
-    assert!(result.is_ok(), "Expected edit to succeed: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "Expected edit to succeed: {:?}",
+        result.err()
+    );
     let edited = result.unwrap();
     assert_eq!(edited.success, Some(true));
     assert_eq!(edited.result, "SW=0x9000");
@@ -464,7 +467,7 @@ steps: []
     assert_eq!(edited.id, 10);
     assert_eq!(edited.name, "Non-TTY Sequence");
     assert_eq!(edited.description, "Sequence created via non-TTY");
-    
+
     let euicc_conditions = edited.initial_conditions.get("eUICC");
     assert!(euicc_conditions.is_some(), "eUICC key should exist");
     assert_eq!(euicc_conditions.unwrap().len(), 1);

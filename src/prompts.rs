@@ -545,7 +545,9 @@ eUICC:
                     if Self::confirm_with_oracle("Use this as-is?", oracle)? {
                         return Ok(parsed);
                     } else if Self::confirm_with_oracle("Edit this condition?", oracle)? {
-                        // Let user edit the selected condition
+                        // Let user edit the selected condition (1 initial attempt + max 3 retries = 4 total)
+                        let max_retries = 3;
+                        let mut retry_count = 0;
                         loop {
                             let edited_content =
                                 TestCaseEditor::edit_text(&selected_yaml, editor_config)
@@ -564,6 +566,14 @@ eUICC:
                                 }
                                 Err(e) => {
                                     println!("✗ Validation failed: {}", e);
+                                    if retry_count >= max_retries {
+                                        anyhow::bail!(
+                                            "Validation failed after {} retries ({} total attempts), cancelling operation",
+                                            max_retries,
+                                            retry_count + 1
+                                        );
+                                    }
+                                    retry_count += 1;
                                     let retry = Self::confirm_with_oracle("Try again?", oracle)?;
                                     if !retry {
                                         anyhow::bail!("Validation failed, user cancelled");
@@ -579,6 +589,8 @@ eUICC:
 
         // Create new general initial condition
         println!("\nCreating new general initial condition...");
+        let max_retries = 3;
+        let mut retry_count = 0;
         loop {
             let template = r#"# General Initial Conditions
 # Example:
@@ -606,6 +618,14 @@ eUICC:
                 }
                 Err(e) => {
                     println!("✗ Validation failed: {}", e);
+                    if retry_count >= max_retries {
+                        anyhow::bail!(
+                            "Validation failed after {} retries ({} total attempts), cancelling operation",
+                            max_retries,
+                            retry_count + 1
+                        );
+                    }
+                    retry_count += 1;
                     let retry = Self::confirm_with_oracle("Try again?", oracle)?;
                     if !retry {
                         anyhow::bail!("Validation failed, user cancelled");
