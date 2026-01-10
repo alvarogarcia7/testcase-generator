@@ -53,26 +53,20 @@ impl ConditionDatabase {
                 }
             }
 
-            // for euicc_cond in test_case.initial_conditions.euicc {
-            //     initial_conditions_set.insert(euicc_cond);
-            // }
-
-            // Extract device name from initial_conditions structure
-            // The device name is "eUICC" by default but we should extract all device names used
-            device_names_set.insert("eUICC".to_string());
-
             // Also extract from sequence-level initial conditions
             for sequence in &test_case.test_sequences {
                 sequence_items.push(sequence.clone());
 
                 initial_conditions_map.extend(sequence.initial_conditions.clone());
+                // Extract device name from initial_conditions structure
+                for ic_key in sequence.initial_conditions.keys() {
+                    device_names_set.insert(ic_key.clone());
+                }
 
                 for conditions in sequence.initial_conditions.values() {
                     for condition in conditions {
                         initial_conditions_set.insert(condition.clone());
                     }
-                    // Extract device names from sequence initial conditions too
-                    device_names_set.insert("eUICC".to_string());
                 }
 
                 for step in &sequence.steps {
