@@ -547,9 +547,8 @@ fn handle_create_interactive(path: &str) -> Result<()> {
     }
 
     if Prompts::confirm_with_default("\nAdd initial conditions?", true)? {
-        builder.creator
-            .add_initial_conditions(&mut builder.structure, None)?;
-        Ok(&builder)
+        builder
+            .add_initial_conditions(None)
             .context("Failed to add initial conditions")?;
 
         println!("✓ Initial conditions added\n");
@@ -604,9 +603,8 @@ fn handle_build_sequences(path: &str) -> Result<()> {
     }
 
     if Prompts::confirm("\nAdd initial conditions?")? {
-        builder.creator
-            .add_initial_conditions(&mut builder.structure, None)?;
-        Ok(&builder)
+        builder
+            .add_initial_conditions(None)
             .context("Failed to add initial conditions")?;
 
         println!("✓ Initial conditions added\n");
@@ -671,9 +669,8 @@ fn handle_add_steps(path: &str, sequence_id: Option<i64>) -> Result<()> {
     }
 
     if Prompts::confirm("\nAdd initial conditions?")? {
-        builder.creator
-            .add_initial_conditions(&mut builder.structure, None)?;
-        Ok(&builder)
+        builder
+            .add_initial_conditions(None)
             .context("Failed to add initial conditions")?;
 
         println!("✓ Initial conditions added\n");
@@ -756,9 +753,8 @@ fn handle_build_sequences_with_steps(path: &str) -> Result<()> {
     }
 
     if Prompts::confirm("\nAdd initial conditions?")? {
-        builder.creator
-            .add_initial_conditions(&mut builder.structure, None)?;
-        Ok(&builder)
+        builder
+            .add_initial_conditions(None)
             .context("Failed to add initial conditions")?;
 
         println!("✓ Initial conditions added\n");
@@ -960,9 +956,7 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
 
     if add_initial {
         loop {
-            builder.creator
-                .add_initial_conditions(&mut builder.structure, None)?;
-            match Ok(&builder) {
+            match builder.add_initial_conditions(None) {
                 Ok(_) => {
                     println!("✓ Initial conditions added\n");
                     builder.save_recovery_state("initial_conditions")?;
