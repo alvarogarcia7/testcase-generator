@@ -1,9 +1,8 @@
 use anyhow::Result;
-use testcase_manager::TestCaseFuzzyFinder;
+use testcase_manager::{print_title, TestCaseFuzzyFinder, TitleStyle};
 
 fn main() -> Result<()> {
-    println!("TTY Fallback Demo");
-    println!("=================\n");
+    print_title("TTY Fallback Demo", TitleStyle::SimpleEquals);
     println!("This example demonstrates the TTY detection and fallback mechanism.");
     println!("When running in a non-TTY environment (e.g., VS Code debug console),");
     println!("the fuzzy finder will automatically switch to numbered selection.\n");
@@ -16,7 +15,7 @@ fn main() -> Result<()> {
         "Option E: Fifth choice".to_string(),
     ];
 
-    println!("=== Single Selection Demo ===\n");
+    print_title("Single Selection Demo", TitleStyle::TripleEquals);
     match TestCaseFuzzyFinder::search_strings(&options, "Select an option:")? {
         Some(selected) => {
             println!("\n✓ You selected: {}", selected);
@@ -26,7 +25,7 @@ fn main() -> Result<()> {
         }
     }
 
-    println!("\n=== Multi-Selection Demo ===\n");
+    print_title("Multi-Selection Demo", TitleStyle::TripleEquals);
     let multi_options = vec![
         "Feature 1: Authentication".to_string(),
         "Feature 2: Authorization".to_string(),

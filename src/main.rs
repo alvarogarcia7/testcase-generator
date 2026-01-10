@@ -6,9 +6,9 @@ use testcase_manager::fuzzy::MultiInput;
 use testcase_manager::fuzzy::MultiInput::Input;
 use testcase_manager::{
     cli::{Cli, Commands, GitCommands},
-    ConditionDatabase, GitManager, Oracle, Prompts, SampleData, TestCase, TestCaseBuilder,
-    TestCaseEditor, TestCaseFuzzyFinder, TestCaseMetadata, TestCaseStorage, TestSuite,
-    TtyCliOracle,
+    print_title, ConditionDatabase, GitManager, Oracle, Prompts, SampleData, TestCase,
+    TestCaseBuilder, TestCaseEditor, TestCaseFuzzyFinder, TestCaseMetadata, TestCaseStorage,
+    TestSuite, TitleStyle, TtyCliOracle,
 };
 
 fn main() -> Result<()> {
@@ -375,7 +375,7 @@ fn handle_validate(base_path: &str, file: Option<String>, all: bool) -> Result<(
             }
         }
 
-        println!("\n=== Validation Summary ===");
+        print_title("Validation Summary", TitleStyle::TripleEquals);
         println!("Total files: {}", file_infos.len());
         println!("✓ Valid: {}", valid_count);
         println!("✗ Schema violations: {}", error_count);
@@ -524,9 +524,7 @@ fn handle_create_interactive(path: &str) -> Result<()> {
     let mut builder = TestCaseBuilder::new_with_recovery(path, oracle)
         .context("Failed to create test case builder")?;
 
-    println!("\n╔═══════════════════════════════════════════════╗");
-    println!("║   Interactive Test Case Creation Workflow    ║");
-    println!("╚═══════════════════════════════════════════════╝\n");
+    print_title("Interactive Test Case Creation Workflow", TitleStyle::Box);
 
     builder.add_metadata().context("Failed to add metadata")?;
 
@@ -549,8 +547,9 @@ fn handle_create_interactive(path: &str) -> Result<()> {
     }
 
     if Prompts::confirm_with_default("\nAdd initial conditions?", true)? {
-        builder
-            .add_initial_conditions(None)
+        builder.creator
+            .add_initial_conditions(&mut builder.structure, None)?;
+        Ok(&builder)
             .context("Failed to add initial conditions")?;
 
         println!("✓ Initial conditions added\n");
@@ -567,10 +566,8 @@ fn handle_create_interactive(path: &str) -> Result<()> {
     builder.delete_recovery_file()?;
     println!("✓ Recovery file deleted");
 
-    println!("\n╔═══════════════════════════════════════════════╗");
-    println!("║          Test Case Created Successfully       ║");
-    println!("╚═══════════════════════════════════════════════╝");
-    println!("\nSaved to: {}", file_path.display());
+    print_title("Test Case Created Successfully", TitleStyle::Box);
+    println!("Saved to: {}", file_path.display());
 
     Ok(())
 }
@@ -580,9 +577,7 @@ fn handle_build_sequences(path: &str) -> Result<()> {
     let mut builder = TestCaseBuilder::new_with_recovery(path, oracle)
         .context("Failed to create test case builder")?;
 
-    println!("\n╔═══════════════════════════════════════════════╗");
-    println!("║   Test Sequence Builder with Git Commits     ║");
-    println!("╚═══════════════════════════════════════════════╝\n");
+    print_title("Test Sequence Builder with Git Commits", TitleStyle::Box);
 
     builder.add_metadata().context("Failed to add metadata")?;
 
@@ -609,8 +604,9 @@ fn handle_build_sequences(path: &str) -> Result<()> {
     }
 
     if Prompts::confirm("\nAdd initial conditions?")? {
-        builder
-            .add_initial_conditions(None)
+        builder.creator
+            .add_initial_conditions(&mut builder.structure, None)?;
+        Ok(&builder)
             .context("Failed to add initial conditions")?;
 
         println!("✓ Initial conditions added\n");
@@ -628,10 +624,8 @@ fn handle_build_sequences(path: &str) -> Result<()> {
 
     let file_path = builder.save().context("Failed to save test case")?;
 
-    println!("\n╔═══════════════════════════════════════════════╗");
-    println!("║    Test Sequences Built Successfully          ║");
-    println!("╚═══════════════════════════════════════════════╝");
-    println!("\nSaved to: {}", file_path.display());
+    print_title("Test Sequences Built Successfully", TitleStyle::Box);
+    println!("Saved to: {}", file_path.display());
 
     if Prompts::confirm("\nCommit final file?")? {
         builder
@@ -650,9 +644,7 @@ fn handle_add_steps(path: &str, sequence_id: Option<i64>) -> Result<()> {
     let mut builder = TestCaseBuilder::new_with_recovery(path, oracle)
         .context("Failed to create test case builder")?;
 
-    println!("\n╔═══════════════════════════════════════════════╗");
-    println!("║      Add Steps to Sequence with Commits      ║");
-    println!("╚═══════════════════════════════════════════════╝\n");
+    print_title("Add Steps to Sequence with Commits", TitleStyle::Box);
 
     builder.add_metadata().context("Failed to add metadata")?;
 
@@ -679,8 +671,9 @@ fn handle_add_steps(path: &str, sequence_id: Option<i64>) -> Result<()> {
     }
 
     if Prompts::confirm("\nAdd initial conditions?")? {
-        builder
-            .add_initial_conditions(None)
+        builder.creator
+            .add_initial_conditions(&mut builder.structure, None)?;
+        Ok(&builder)
             .context("Failed to add initial conditions")?;
 
         println!("✓ Initial conditions added\n");
@@ -716,10 +709,8 @@ fn handle_add_steps(path: &str, sequence_id: Option<i64>) -> Result<()> {
 
     let file_path = builder.save().context("Failed to save test case")?;
 
-    println!("\n╔═══════════════════════════════════════════════╗");
-    println!("║        Steps Added Successfully               ║");
-    println!("╚═══════════════════════════════════════════════╝");
-    println!("\nSaved to: {}", file_path.display());
+    print_title("Steps Added Successfully", TitleStyle::Box);
+    println!("Saved to: {}", file_path.display());
 
     if Prompts::confirm("\nCommit final file?")? {
         builder
@@ -738,9 +729,7 @@ fn handle_build_sequences_with_steps(path: &str) -> Result<()> {
     let mut builder = TestCaseBuilder::new_with_recovery(path, oracle)
         .context("Failed to create test case builder")?;
 
-    println!("\n╔═══════════════════════════════════════════════╗");
-    println!("║ Build Test Sequences & Steps with Commits    ║");
-    println!("╚═══════════════════════════════════════════════╝\n");
+    print_title("Build Test Sequences & Steps with Commits", TitleStyle::Box);
 
     builder.add_metadata().context("Failed to add metadata")?;
 
@@ -767,8 +756,9 @@ fn handle_build_sequences_with_steps(path: &str) -> Result<()> {
     }
 
     if Prompts::confirm("\nAdd initial conditions?")? {
-        builder
-            .add_initial_conditions(None)
+        builder.creator
+            .add_initial_conditions(&mut builder.structure, None)?;
+        Ok(&builder)
             .context("Failed to add initial conditions")?;
 
         println!("✓ Initial conditions added\n");
@@ -786,10 +776,8 @@ fn handle_build_sequences_with_steps(path: &str) -> Result<()> {
 
     let file_path = builder.save().context("Failed to save test case")?;
 
-    println!("\n╔═══════════════════════════════════════════════╗");
-    println!("║  Test Sequences & Steps Built Successfully   ║");
-    println!("╚═══════════════════════════════════════════════╝");
-    println!("\nSaved to: {}", file_path.display());
+    print_title("Test Sequences & Steps Built Successfully", TitleStyle::Box);
+    println!("Saved to: {}", file_path.display());
 
     if Prompts::confirm("\nCommit final file?")? {
         builder
@@ -865,7 +853,7 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
                 .context("Failed to prompt for metadata")?
         };
 
-        println!("\n=== Validating Metadata ===");
+        print_title("Validating Metadata", TitleStyle::TripleEquals);
         match metadata.validate(builder.validator()) {
             Ok(_) => {
                 println!("✓ Metadata is valid\n");
@@ -972,7 +960,9 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
 
     if add_initial {
         loop {
-            match builder.add_initial_conditions(None) {
+            builder.creator
+                .add_initial_conditions(&mut builder.structure, None)?;
+            match Ok(&builder) {
                 Ok(_) => {
                     println!("✓ Initial conditions added\n");
                     builder.save_recovery_state("initial_conditions")?;
@@ -1015,9 +1005,7 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
         }
     }
 
-    println!("\n╔══════════════════════════════════════════════════════╗");
-    println!("║         Build Test Sequences with Validation        ║");
-    println!("╚══════════════════════════════════════════════════════╝\n");
+    print_title("Build Test Sequences with Validation", TitleStyle::Box);
 
     loop {
         let sequence_added = loop {
@@ -1118,12 +1106,10 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
                 .get_sequence_name_by_index(sequence_index)
                 .unwrap_or_else(|_| "Unknown".to_string());
 
-            println!("\n╔══════════════════════════════════════════════════════╗");
-            println!(
-                "║      Add Steps to Sequence #{}: {}",
-                sequence_id, sequence_name
+            print_title(
+                &format!("Add Steps to Sequence #{}: {}", sequence_id, sequence_name),
+                TitleStyle::Box,
             );
-            println!("╚══════════════════════════════════════════════════════╝\n");
 
             let existing_steps = builder.get_all_existing_steps();
 
@@ -1131,7 +1117,10 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
                 let step_number = builder.get_next_step_number(sequence_index)?;
 
                 'step_retry: loop {
-                    println!("\n=== Add Step #{} ===", step_number);
+                    print_title(
+                        &format!("Add Step #{}", step_number),
+                        TitleStyle::TripleEquals,
+                    );
 
                     let step_description = if let Some(sample) = &sample_data {
                         let prompts = Prompts::new_with_sample(sample);
@@ -1194,7 +1183,7 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
                         expected,
                     )?;
 
-                    println!("\n=== Validating Step ===");
+                    print_title("Validating Step", TitleStyle::TripleEquals);
                     match builder.validate_and_append_step(sequence_index, step) {
                         Ok(_) => {
                             println!("✓ Step validated and added\n");
@@ -1289,9 +1278,7 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
         }
     }
 
-    println!("\n╔══════════════════════════════════════════════════════╗");
-    println!("║           Saving Complete Test Case                 ║");
-    println!("╚══════════════════════════════════════════════════════╝\n");
+    print_title("Saving Complete Test Case", TitleStyle::Box);
 
     let final_yaml_content = builder.to_yaml_string()?;
     std::fs::write(output_path, &final_yaml_content)
@@ -1337,18 +1324,13 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
     builder.delete_recovery_file()?;
     println!("✓ Recovery file deleted\n");
 
-    println!("╔══════════════════════════════════════════════════════╗");
-    println!("║         Test Case Workflow Completed!               ║");
-    println!("╚══════════════════════════════════════════════════════╝");
+    print_title("Test Case Workflow Completed!", TitleStyle::Box);
 
     Ok(())
 }
 
 fn handle_parse_general_conditions(database_path: &str, work_path: &str) -> Result<()> {
-    // TODO AGB: Create function to print title
-    println!("\n╔═══════════════════════════════════════════════╗");
-    println!("║   Parse General Initial Conditions           ║");
-    println!("╚═══════════════════════════════════════════════╝\n");
+    print_title("Parse General Initial Conditions", TitleStyle::Box);
 
     let db = ConditionDatabase::load_from_directory(database_path)
         .context("Failed to load condition database")?;
@@ -1376,9 +1358,12 @@ fn handle_parse_general_conditions(database_path: &str, work_path: &str) -> Resu
     let mut selected_conditions = Vec::new();
 
     loop {
-        println!(
-            "\n=== Current Selection: {} condition(s) ===",
-            selected_conditions.len()
+        print_title(
+            &format!(
+                "Current Selection: {} condition(s)",
+                selected_conditions.len()
+            ),
+            TitleStyle::TripleEquals,
         );
         if !selected_conditions.is_empty() {
             for (idx, cond) in selected_conditions.iter().enumerate() {
@@ -1388,7 +1373,7 @@ fn handle_parse_general_conditions(database_path: &str, work_path: &str) -> Resu
             println!("  (none)");
         }
 
-        println!("\n=== Add General Initial Condition ===");
+        print_title("Add General Initial Condition", TitleStyle::TripleEquals);
         println!("Options:");
         println!("  1. Search from database (fuzzy search)");
         println!("  2. Create new condition (manual entry)");
@@ -1649,9 +1634,7 @@ fn handle_parse_initial_conditions2(database_path: &str, work_path: &str) -> Res
 }
 
 fn handle_parse_initial_conditions(database_path: &str, work_path: &str) -> Result<()> {
-    println!("\n╔═══════════════════════════════════════════════╗");
-    println!("║   Parse Initial Conditions                    ║");
-    println!("╚═══════════════════════════════════════════════╝\n");
+    print_title("Parse Initial Conditions", TitleStyle::Box);
 
     let db = ConditionDatabase::load_from_directory(database_path)
         .context("Failed to load condition database")?;
@@ -1679,9 +1662,12 @@ fn handle_parse_initial_conditions(database_path: &str, work_path: &str) -> Resu
     let mut selected_conditions = Vec::new();
 
     loop {
-        println!(
-            "\n=== Current Selection: {} condition(s) ===",
-            selected_conditions.len()
+        print_title(
+            &format!(
+                "Current Selection: {} condition(s)",
+                selected_conditions.len()
+            ),
+            TitleStyle::TripleEquals,
         );
         if !selected_conditions.is_empty() {
             for (idx, cond) in selected_conditions.iter().enumerate() {
@@ -1691,7 +1677,7 @@ fn handle_parse_initial_conditions(database_path: &str, work_path: &str) -> Resu
             println!("  (none)");
         }
 
-        println!("\n=== Add Initial Condition ===");
+        print_title("Add Initial Condition", TitleStyle::TripleEquals);
         println!("Options:");
         println!("  1. Search from database (fuzzy search)");
         println!("  2. Create new condition (manual entry)");
@@ -1755,10 +1741,8 @@ fn handle_parse_initial_conditions(database_path: &str, work_path: &str) -> Resu
 
     let file_path = builder.save().context("Failed to save test case")?;
 
-    println!("\n╔═══════════════════════════════════════════════╗");
-    println!("║    Test Case Saved Successfully               ║");
-    println!("╚═══════════════════════════════════════════════╝");
-    println!("\nSaved to: {}", file_path.display());
+    print_title("Test Case Saved Successfully", TitleStyle::Box);
+    println!("Saved to: {}", file_path.display());
 
     if Prompts::confirm("\nCommit to git?")? {
         builder
