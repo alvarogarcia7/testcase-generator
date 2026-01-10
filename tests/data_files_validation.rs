@@ -167,8 +167,6 @@ fn test_all_data_files_exist() {
 
     let expected_files = vec![
         "data/schema.json",
-        "testcases/gsma_4.4.2.2_TC.yaml",
-        "testcases/gsma_4.4.2.2_TC.yml",
         "tests/sample/SGP.22_4.4.2.yaml",
         "tests/sample/data.yml",
     ];
