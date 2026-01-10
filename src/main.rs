@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Error, Result};
 use clap::Parser;
 use testcase_manager::fuzzy::MultiInput;
 use testcase_manager::fuzzy::MultiInput::Input;
@@ -596,17 +596,7 @@ fn handle_build_sequences(path: &str) -> Result<()> {
             .context("Failed to commit general initial conditions")?;
     }
 
-    if Prompts::confirm("\nAdd initial conditions?")? {
-        builder
-            .add_initial_conditions(None)
-            .context("Failed to add initial conditions")?;
-
-        println!("✓ Initial conditions added\n");
-
-        builder
-            .commit("Add initial conditions")
-            .context("Failed to commit initial conditions")?;
-    }
+    prompt_then_do_add_initial_conditions(&mut builder)?;
 
     builder
         .build_test_sequences_with_commits()
@@ -654,17 +644,7 @@ fn handle_add_steps(path: &str, sequence_id: Option<i64>) -> Result<()> {
             .context("Failed to commit general initial conditions")?;
     }
 
-    if Prompts::confirm("\nAdd initial conditions?")? {
-        builder
-            .add_initial_conditions(None)
-            .context("Failed to add initial conditions")?;
-
-        println!("✓ Initial conditions added\n");
-
-        builder
-            .commit("Add initial conditions")
-            .context("Failed to commit initial conditions")?;
-    }
+    prompt_then_do_add_initial_conditions(&mut builder)?;
 
     builder
         .add_test_sequence_interactive()
@@ -701,6 +681,21 @@ fn handle_add_steps(path: &str, sequence_id: Option<i64>) -> Result<()> {
     Ok(())
 }
 
+fn prompt_then_do_add_initial_conditions(builder: &mut TestCaseBuilder) -> Result<(), Error> {
+    if Prompts::confirm("\nAdd initial conditions?")? {
+        builder
+            .add_initial_conditions(None)
+            .context("Failed to add initial conditions")?;
+
+        println!("✓ Initial conditions added\n");
+
+        builder
+            .commit("Add initial conditions")
+            .context("Failed to commit initial conditions")?;
+    }
+    Ok(())
+}
+
 fn handle_build_sequences_with_steps(path: &str) -> Result<()> {
     let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
     let mut builder = TestCaseBuilder::new_with_recovery(path, oracle)
@@ -728,17 +723,7 @@ fn handle_build_sequences_with_steps(path: &str) -> Result<()> {
             .context("Failed to commit general initial conditions")?;
     }
 
-    if Prompts::confirm("\nAdd initial conditions?")? {
-        builder
-            .add_initial_conditions(None)
-            .context("Failed to add initial conditions")?;
-
-        println!("✓ Initial conditions added\n");
-
-        builder
-            .commit("Add initial conditions")
-            .context("Failed to commit initial conditions")?;
-    }
+    prompt_then_do_add_initial_conditions(&mut builder)?;
 
     builder
         .build_test_sequences_with_step_commits()
@@ -1008,17 +993,8 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
                 Ok(id) => id,
                 Err(e) => {
                     println!("✗ Failed to get sequence ID: {}", e);
-                    let add_another_seq = if let Some(sample) = &sample_data {
-                        let prompts = Prompts::new_with_sample(sample);
-                        prompts.confirm_with_sample(
-                            "\nAdd another test sequence?",
-                            sample.confirm_add_another_sequence(),
-                        )?
-                    } else {
-                        Prompts::confirm("\nAdd another test sequence?")?
-                    };
 
-                    if !add_another_seq {
+                    if !add_another_test_sequence(&sample_data)? {
                         break;
                     }
                     continue;
@@ -1120,17 +1096,7 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
                                 )))
                                 .context("Failed to commit step")?;
 
-                            let add_another_step = if let Some(sample) = &sample_data {
-                                let prompts = Prompts::new_with_sample(sample);
-                                prompts.confirm_with_sample(
-                                    "\nAdd another step to this sequence?",
-                                    sample.confirm_add_another_step(),
-                                )?
-                            } else {
-                                Prompts::confirm("\nAdd another step to this sequence?")?
-                            };
-
-                            if !add_another_step {
+                            if !add_another_step(&sample_data)? {
                                 break 'add_steps;
                             }
                             break 'step_retry;
@@ -1151,17 +1117,8 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
 
                             if !should_retry_step {
                                 println!("⚠ Skipping this step\n");
-                                let add_another_step = if let Some(sample) = &sample_data {
-                                    let prompts = Prompts::new_with_sample(sample);
-                                    prompts.confirm_with_sample(
-                                        "\nAdd another step to this sequence?",
-                                        sample.confirm_add_another_step(),
-                                    )?
-                                } else {
-                                    Prompts::confirm("\nAdd another step to this sequence?")?
-                                };
 
-                                if !add_another_step {
+                                if !add_another_step(&sample_data)? {
                                     break 'add_steps;
                                 }
                                 break 'step_retry;
@@ -1174,17 +1131,7 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
             println!("\n✓ All steps added to sequence");
         }
 
-        let add_another_seq = if let Some(sample) = &sample_data {
-            let prompts = Prompts::new_with_sample(sample);
-            prompts.confirm_with_sample(
-                "\nAdd another test sequence?",
-                sample.confirm_add_another_sequence(),
-            )?
-        } else {
-            Prompts::confirm("\nAdd another test sequence?")?
-        };
-
-        if !add_another_seq {
+        if !add_another_test_sequence(&sample_data)? {
             break;
         }
     }
@@ -1205,6 +1152,32 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
     print_title("Test Case Workflow Completed!", TitleStyle::Box);
 
     Ok(())
+}
+
+fn add_another_step(sample_data: &Option<SampleData>) -> Result<bool, Error> {
+    let add_another_step = if let Some(sample) = &sample_data {
+        let prompts = Prompts::new_with_sample(sample);
+        prompts.confirm_with_sample(
+            "\nAdd another step to this sequence?",
+            sample.confirm_add_another_step(),
+        )?
+    } else {
+        Prompts::confirm("\nAdd another step to this sequence?")?
+    };
+    Ok(add_another_step)
+}
+
+fn add_another_test_sequence(sample_data: &Option<SampleData>) -> Result<bool, Error> {
+    let add_another_seq = if let Some(sample) = &sample_data {
+        let prompts = Prompts::new_with_sample(sample);
+        prompts.confirm_with_sample(
+            "\nAdd another test sequence?",
+            sample.confirm_add_another_sequence(),
+        )?
+    } else {
+        Prompts::confirm("\nAdd another test sequence?")?
+    };
+    Ok(add_another_seq)
 }
 
 fn handle_parse_general_conditions(database_path: &str, work_path: &str) -> Result<()> {
