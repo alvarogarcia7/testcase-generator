@@ -15,6 +15,7 @@ use std::sync::Arc;
 pub struct Prompts<'a> {
     db: Option<&'a ConditionDatabase>,
     sample: Option<&'a SampleData>,
+    oracle: Option<Arc<dyn Oracle>>,
 }
 
 impl<'a> Prompts<'a> {
@@ -263,26 +264,26 @@ impl<'a> Prompts<'a> {
         oracle.multi_select(prompt, items)
     }
 
-    /// Prompt for tags with custom oracle
-    pub fn input_tags_with_oracle(prompt: &str, oracle: &Arc<dyn Oracle>) -> Result<Vec<String>> {
-        let input = oracle.input(prompt)?;
+    // /// Prompt for tags with custom oracle
+    // pub fn input_tags_with_oracle(prompt: &str, oracle: &Arc<dyn Oracle>) -> Result<Vec<String>> {
+    //     let input = oracle.input(prompt)?;
 
-        if input.trim().is_empty() {
-            Ok(Vec::new())
-        } else {
-            Ok(input
-                .split(',')
-                .map(|s| s.trim().to_string())
-                .filter(|s| !s.is_empty())
-                .collect())
-        }
-    }
+    //     if input.trim().is_empty() {
+    //         Ok(Vec::new())
+    //     } else {
+    //         Ok(input
+    //             .split(',')
+    //             .map(|s| s.trim().to_string())
+    //             .filter(|s| !s.is_empty())
+    //             .collect())
+    //     }
+    // }
 
-    /// Prompt for test case metadata fields
-    pub fn prompt_metadata() -> Result<TestCaseMetadata> {
-        let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
-        Self::prompt_metadata_with_oracle(&oracle)
-    }
+    // /// Prompt for test case metadata fields
+    // pub fn prompt_metadata() -> Result<TestCaseMetadata> {
+    //     let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
+    //     Self::prompt_metadata_with_oracle(&oracle)
+    // }
 
     /// Prompt for test case metadata fields with custom oracle
     pub fn prompt_metadata_with_oracle(oracle: &Arc<dyn Oracle>) -> Result<TestCaseMetadata> {
@@ -462,7 +463,6 @@ impl<'a> Prompts<'a> {
 eUICC:
   - "Condition 1"
 "#;
-
         let editor_flow = EditorFlow::new(editor_config.clone());
         let parsed = editor_flow.edit_with_validation_loop(template, |value: &Value| {
             let yaml_for_validation =
@@ -950,12 +950,6 @@ eUICC:
         );
 
         Ok(Value::Mapping(initial_cond_map))
-    }
-}
-
-impl Default for Prompts<'_> {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

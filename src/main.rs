@@ -11,6 +11,7 @@ use testcase_manager::{
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
+    let test_case_editor = TestCaseEditor::new(&cli.path, cli.verbose, fuzzy, sample)?;
 
     // Initialize env_logger with appropriate log level
     let log_level = if cli.verbose { "info" } else { "warn" };
@@ -18,7 +19,7 @@ fn main() -> Result<()> {
 
     match cli.command {
         Commands::Create { id } => {
-            handle_create(&cli.path, id)?;
+            test_case_editor.create(id)?;
         }
 
         Commands::Edit { id, fuzzy } => {

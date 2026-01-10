@@ -1,5 +1,6 @@
 use crate::config::EditorConfig;
 use crate::models::TestCase;
+use crate::{Prompts, TestCaseStorage};
 use anyhow::{anyhow, Context, Result};
 use std::fs;
 use std::process::Command;
@@ -79,9 +80,37 @@ impl EditorFlow {
 }
 
 /// Editor integration for test cases
-pub struct TestCaseEditor;
+pub struct TestCaseEditor {
+    path: String,
+}
 
 impl TestCaseEditor {
+    fn handle_create(&self, id: Option<String>) -> Result<()> {
+        let storage = TestCaseStorage::new(self.path)?;
+
+        let xs =storage.load_all_with_validation()?;
+
+        let xxxs = xs.iter().flat_map(move |tcfi| tcfi.test_case.as_ref().map(|tc| *tc.requirement.as_ref())).collect::<Vec<String>>();
+
+        let requirement = Prompts::input("Requirement")?;
+        let item = Prompts::input_integer("Item")?;
+        let tc = Prompts::input_integer("TC")?;
+
+        let id = match id {
+            Some(id) => id,
+            None => Prompts::input("Test Case ID")?,
+        };
+
+        let description = Prompts::input("Description")?;
+
+        let test_case = TestCase::new(requirement, item, tc, id, description);
+
+        let file_path = storage.save_test_case(&test_case)?;
+        log::info!("Test case created: {}", file_path.display());
+
+        Ok(())
+    }
+
     /// Open a test case in the default editor
     pub fn edit_test_case(test_case: &TestCase) -> Result<TestCase> {
         let yaml_content =
