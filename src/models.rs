@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 
 /// Expected outcome for a test step
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Expected {
     /// Whether the step should succeed (optional)
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -34,7 +34,7 @@ impl fmt::Display for Expected {
 }
 
 /// Represents a single step in a test sequence
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct Step {
     /// Step number
     pub step: i64,

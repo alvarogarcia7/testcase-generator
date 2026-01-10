@@ -76,8 +76,8 @@ impl ConditionDatabase {
             }
         }
 
-        fn sort(set: HashSet<String>) -> Vec<String> {
-            let mut as_vec: Vec<String> = set.into_iter().collect();
+        fn sort<T: Ord>(set: HashSet<T>) -> Vec<T> {
+            let mut as_vec: Vec<T> = set.into_iter().collect();
             as_vec.sort();
             as_vec
         }
@@ -87,8 +87,8 @@ impl ConditionDatabase {
             initial_conditions: sort(initial_conditions_set),
             initial_conditions_map,
             device_names: sort(device_names_set),
-            expected_items: expected_set.into_iter().collect(),
-            step_items: step_set.into_iter().collect(),
+            expected_items: sort(expected_set),
+            step_items: sort(step_set),
             sequence_items,
         })
     }
