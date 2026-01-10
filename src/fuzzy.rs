@@ -7,6 +7,15 @@ use std::io::{self, Cursor, Write};
 /// Fuzzy finder for test cases
 pub struct TestCaseFuzzyFinder;
 
+pub enum MultiInput<T> {
+    Input(T),
+    Finished,
+    Aborted,
+    Error,
+}
+
+impl<T> MultiInput<T> {}
+
 impl TestCaseFuzzyFinder {
     /// Check if we're in a TTY environment
     fn is_tty() -> bool {
@@ -186,6 +195,12 @@ impl TestCaseFuzzyFinder {
         use crate::oracle::TtyCliOracle;
         let oracle = TtyCliOracle::new();
         oracle.fuzzy_search_strings(items, prompt)
+    }
+
+    pub fn search_strings_multi(items: &[String], prompt: &str) -> Result<MultiInput<String>> {
+        use crate::oracle::TtyCliOracle;
+        let oracle = TtyCliOracle::new();
+        oracle.fuzzy_search_strings_multi(prompt, items)
     }
 
     /// Fuzzy search with TTY fallback (delegates to MenuCliOracle for non-TTY handling)

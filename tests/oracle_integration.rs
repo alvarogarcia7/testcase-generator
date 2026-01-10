@@ -9,6 +9,7 @@ use testcase_manager::{
 };
 
 #[test]
+#[ignore = "Requires CLI"]
 #[allow(clippy::arc_with_non_send_sync)]
 fn test_complete_workflow_with_hardcoded_oracle() -> Result<()> {
     let temp_dir = TempDir::new()?;

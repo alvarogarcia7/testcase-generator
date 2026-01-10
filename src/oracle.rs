@@ -1,3 +1,5 @@
+use crate::fuzzy::MultiInput;
+use crate::fuzzy::MultiInput::{Error, Finished, Input as Input_};
 use anyhow::{Context, Result};
 use dialoguer::{theme::ColorfulTheme, Confirm, Input, MultiSelect, Select};
 use std::collections::VecDeque;
@@ -16,6 +18,8 @@ pub trait Oracle {
 
     /// Prompt for an optional string input
     fn input_optional(&self, prompt: &str) -> Result<Option<String>>;
+
+    fn input_with_ctrl_d(&self, prompt: &str) -> Result<Option<String>>;
 
     /// Prompt for an optional string input with initial text
     fn input_optional_with_initial_text(
@@ -41,6 +45,11 @@ pub trait Oracle {
 
     /// Multi-select from a list of items, returns indices of selected items
     fn multi_select(&self, prompt: &str, items: Vec<String>) -> Result<Vec<String>>;
+    fn fuzzy_search_strings_multi(
+        &self,
+        prompt: &str,
+        items: &[String],
+    ) -> Result<MultiInput<String>>;
 
     /// Fuzzy search through a list of strings, returns the selected string
     fn fuzzy_search_strings(&self, items: &[String], prompt: &str) -> Result<Option<String>>;
@@ -103,6 +112,33 @@ impl Oracle for TtyCliOracle {
             Ok(None)
         } else {
             Ok(Some(input))
+        }
+    }
+
+    fn input_with_ctrl_d(&self, prompt: &str) -> Result<Option<String>> {
+        println!("{}", prompt);
+        println!("(Enter your text below. Press Ctrl+D when finished)");
+        println!();
+
+        let mut lines = Vec::new();
+        let mut handle = io::stdin().lock();
+
+        let mut line = String::new();
+        match handle.read_line(&mut line) {
+            Ok(0) => {
+                println!("Received EOF, exiting");
+            }
+            Ok(_) => {
+                println!("Received: {}", line);
+                lines.push(line);
+            }
+            Err(e) => return Err(anyhow::anyhow!("Failed to read line: {}", e)),
+        }
+
+        if lines.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(lines[0].clone()))
         }
     }
 
@@ -197,6 +233,51 @@ impl Oracle for TtyCliOracle {
         indices
     }
 
+    fn fuzzy_search_strings_multi(
+        &self,
+        prompt: &str,
+        items: &[String],
+    ) -> Result<MultiInput<String>> {
+        use skim::prelude::*;
+        use std::io::Cursor;
+
+        let item_reader = SkimItemReader::default();
+
+        let options = SkimOptionsBuilder::default()
+            .multi(false)
+            .exact(false)
+            .prompt(Some(prompt))
+            .build()
+            .map_err(|e| anyhow::anyhow!("Failed to build skim options: {}", e))?;
+
+        let skim_items = item_reader.of_bufread(Cursor::new(items.join("\n")));
+        let selected: Option<MultiInput<String>> =
+            Skim::run_with(&options, Some(skim_items)).map(|output| {
+                match output.final_event {
+                    Event::EvActIfNonMatched(x) => {
+                        println!("fuzzy_search_strings_multi: NonMatched {:?}", x);
+                        Finished
+                    }
+                    Event::EvActAccept(x) => Input_(x.unwrap()),
+                    _ => {
+                        println!(
+                            "fuzzy_search_strings_multi: Something else: {:?}",
+                            output.final_event
+                        );
+                        Error
+                    }
+                }
+                // match output
+                //     .selected_items
+                //     .first()
+                //     .map(|item| item.output().to_string())
+                // {
+                //     None => Finished,
+                //     Some(x) => Input_(x),
+                // })
+            });
+        Ok(selected.unwrap())
+    }
     fn fuzzy_search_strings(&self, items: &[String], prompt: &str) -> Result<Option<String>> {
         use skim::prelude::*;
         use std::io::Cursor;
@@ -620,6 +701,10 @@ impl Oracle for MenuCliOracle {
         }
     }
 
+    fn input_with_ctrl_d(&self, _prompt: &str) -> Result<Option<String>> {
+        todo!()
+    }
+
     fn input_optional_with_initial_text(
         &self,
         prompt: &str,
@@ -766,6 +851,14 @@ impl Oracle for MenuCliOracle {
             .context("Failed to read selection")
     }
 
+    fn fuzzy_search_strings_multi(
+        &self,
+        _prompt: &str,
+        _items: &[String],
+    ) -> Result<MultiInput<String>> {
+        todo!()
+    }
+
     fn fuzzy_search_strings(&self, items: &[String], prompt: &str) -> Result<Option<String>> {
         use crate::fuzzy::TestCaseFuzzyFinder;
         TestCaseFuzzyFinder::search_strings_with_fallback(items, prompt)
@@ -877,6 +970,10 @@ impl Oracle for HardcodedOracle {
         }
     }
 
+    fn input_with_ctrl_d(&self, _prompt: &str) -> Result<Option<String>> {
+        todo!()
+    }
+
     fn input_optional_with_initial_text(
         &self,
         _prompt: &str,
@@ -949,6 +1046,14 @@ impl Oracle for HardcodedOracle {
             }
             _ => anyhow::bail!("Expected Strings answer variant"),
         }
+    }
+
+    fn fuzzy_search_strings_multi(
+        &self,
+        _prompt: &str,
+        _items: &[String],
+    ) -> Result<MultiInput<String>> {
+        todo!()
     }
 
     fn fuzzy_search_strings(&self, _items: &[String], _prompt: &str) -> Result<Option<String>> {

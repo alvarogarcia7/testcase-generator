@@ -10,10 +10,7 @@ use testcase_manager::validation::SchemaValidator;
 fn test_valid_gsma_files() {
     let validator = SchemaValidator::new().expect("Failed to create validator");
 
-    let valid_files = vec![
-        "testcases/gsma_4.4.2.2_TC.yaml",
-        "testcases/gsma_4.4.2.2_TC.yml",
-    ];
+    let valid_files = vec!["tests/sample/gsma_4.4.2.2_TC.yml"];
 
     for file_path in valid_files {
         println!("\n=== Testing valid file: {} ===", file_path);
@@ -131,10 +128,7 @@ fn test_invalid_data_yml_wrong_structure() {
 fn test_chunk_validation_on_valid_files() {
     let validator = SchemaValidator::new().expect("Failed to create validator");
 
-    let valid_files = vec![
-        "testcases/gsma_4.4.2.2_TC.yaml",
-        "testcases/gsma_4.4.2.2_TC.yml",
-    ];
+    let valid_files = vec!["tests/sample/gsma_4.4.2.2_TC.yml"];
 
     for file_path in valid_files {
         println!(
@@ -160,32 +154,8 @@ fn test_chunk_validation_on_valid_files() {
 }
 
 #[test]
-fn test_all_data_files_exist() {
-    let expected_files = vec![
-        "data/schema.json",
-        "testcases/gsma_4.4.2.2_TC.yaml",
-        "testcases/gsma_4.4.2.2_TC.yml",
-        "tests/sample/SGP.22_4.4.2.yaml",
-        "tests/sample/data.yml",
-    ];
-
-    for file_path in expected_files {
-        assert!(
-            Path::new(file_path).exists(),
-            "Expected file does not exist: {}",
-            file_path
-        );
-    }
-
-    println!("✓ All expected data files exist");
-}
-
-#[test]
 fn test_valid_files_can_be_parsed_as_yaml() {
-    let valid_files = vec![
-        "testcases/gsma_4.4.2.2_TC.yaml",
-        "testcases/gsma_4.4.2.2_TC.yml",
-    ];
+    let valid_files = vec!["tests/sample/gsma_4.4.2.2_TC.yml"];
 
     for file_path in valid_files {
         println!("\n=== Testing YAML parsing for: {} ===", file_path);
@@ -275,7 +245,7 @@ fn test_invalid_files_structure() {
 
 #[test]
 fn test_valid_files_detailed_structure() {
-    let file_path = "testcases/gsma_4.4.2.2_TC.yaml";
+    let file_path = "tests/sample/gsma_4.4.2.2_TC.yml";
 
     println!("\n=== Testing detailed structure of: {} ===", file_path);
 

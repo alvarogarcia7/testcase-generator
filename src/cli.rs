@@ -198,6 +198,17 @@ pub enum Commands {
         path: Option<String>,
     },
 
+    /// Parse initial conditions from database with fuzzy search
+    ParseInitialConditionsComplex {
+        /// Path to the database file
+        #[arg(short, long, default_value = "data")]
+        database: String,
+
+        /// Path to the test cases directory
+        #[arg(short = 'p', long)]
+        path: Option<String>,
+    },
+
     /// Validate a YAML payload against a JSON schema
     ValidateYaml {
         /// Path to the YAML payload file

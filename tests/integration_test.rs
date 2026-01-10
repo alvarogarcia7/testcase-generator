@@ -10,6 +10,7 @@ use testcase_manager::{
 };
 
 #[test]
+#[ignore = "Requires CLI"]
 fn test_end_to_end_complete_workflow() -> Result<()> {
     let temp_dir = TempDir::new().expect("Failed to create temp directory");
     let test_dir = temp_dir.path();

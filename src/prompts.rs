@@ -56,6 +56,11 @@ impl<'a> Prompts<'a> {
         Self::input_with_oracle(prompt, &oracle)
     }
 
+    pub fn input_with_escape(prompt: &str) -> Result<Option<String>> {
+        let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
+        oracle.input_with_ctrl_d(prompt)
+    }
+
     /// Prompt for a string input with custom oracle
     pub fn input_with_oracle(prompt: &str, oracle: &Arc<dyn Oracle>) -> Result<String> {
         oracle.input(prompt)
