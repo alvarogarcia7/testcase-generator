@@ -108,10 +108,14 @@ impl EditorFlow {
 
     fn annotate_with_error(&self, content: &str, error: &anyhow::Error) -> String {
         let error_message = format!("# VALIDATION ERROR: {}", error);
-        let separator = "# ".repeat(40);
+        let separator = "#".repeat(40);
 
         format!(
-            "{}\n{}\n{}\n\n{}",
+            r#"{}
+{}
+{}
+{}
+"#,
             separator, error_message, separator, content
         )
     }
