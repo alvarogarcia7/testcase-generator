@@ -4,6 +4,7 @@ use anyhow::{Context, Error, Result};
 use clap::Parser;
 use testcase_manager::fuzzy::MultiInput;
 use testcase_manager::fuzzy::MultiInput::Input;
+use testcase_manager::yaml_utils::log_yaml_parse_error;
 use testcase_manager::{
     cli::{Cli, Commands, GitCommands},
     print_title, ConditionDatabase, GitManager, Oracle, Prompts, SampleData, TestCase,
@@ -41,9 +42,9 @@ fn main() -> Result<()> {
             tag,
             status,
             priority,
-            verbose,
+            verbose: _,
         } => {
-            handle_list(&cli.path, tag, status, priority, verbose)?;
+            handle_list(&cli.path, tag, status, priority, true)?;
         }
 
         Commands::View { id, fuzzy } => {
@@ -1530,8 +1531,13 @@ fn handle_validate_yaml(yaml_file: &str, schema_file: &str) -> Result<()> {
         serde_json::from_str(&schema_content).context("Failed to parse JSON schema")?;
 
     // Parse the YAML content
-    let yaml_value: serde_yaml::Value =
-        serde_yaml::from_str(&yaml_content).context("Failed to parse YAML content")?;
+    let yaml_value: serde_yaml::Value = match serde_yaml::from_str(&yaml_content) {
+        Ok(value) => value,
+        Err(e) => {
+            log_yaml_parse_error(&e, &yaml_content, yaml_file);
+            return Err(anyhow::anyhow!("Failed to parse YAML content: {}", e));
+        }
+    };
 
     // Convert YAML to JSON Value for validation
     let json_value: serde_json::Value =

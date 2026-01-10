@@ -1,5 +1,6 @@
 use crate::config::EditorConfig;
 use crate::models::TestCase;
+use crate::yaml_utils::log_yaml_parse_error;
 use anyhow::{anyhow, Context, Result};
 use std::fs;
 use std::process::Command;
@@ -33,7 +34,7 @@ impl EditorFlow {
         loop {
             let edited_content = self.open_editor(&content)?;
 
-            let result = serde_yaml::from_str::<T>(&edited_content);
+            let result: Result<T, serde_yaml::Error> = serde_yaml::from_str(&edited_content);
 
             match result {
                 Ok(parsed) => match validate(&parsed) {
@@ -57,6 +58,7 @@ impl EditorFlow {
                     }
                 },
                 Err(parse_error) => {
+                    log_yaml_parse_error(&parse_error, &edited_content, "editor buffer");
                     if retry_count >= self.max_retries {
                         return Err(anyhow!(
                             "Parse error after {} retries ({} total attempts): {}",
@@ -132,8 +134,13 @@ impl TestCaseEditor {
 
         let edited_content = edit::edit(yaml_content).context("Failed to open editor")?;
 
-        let edited_test_case: TestCase =
-            serde_yaml::from_str(&edited_content).context("Failed to parse edited YAML")?;
+        let edited_test_case: TestCase = match serde_yaml::from_str(&edited_content) {
+            Ok(tc) => tc,
+            Err(e) => {
+                log_yaml_parse_error(&e, &edited_content, "editor buffer");
+                return Err(anyhow::anyhow!("Failed to parse edited YAML: {}", e));
+            }
+        };
 
         Ok(edited_test_case)
     }

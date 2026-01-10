@@ -2,6 +2,7 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use std::fs;
 use std::path::PathBuf;
+use testcase_manager::yaml_utils::log_yaml_parse_error;
 
 #[derive(Parser)]
 #[command(name = "validate-yaml")]
@@ -43,8 +44,13 @@ fn main() -> Result<()> {
         serde_json::from_str(&schema_content).context("Failed to parse JSON schema")?;
 
     // Parse the YAML content
-    let yaml_value: serde_yaml::Value =
-        serde_yaml::from_str(&yaml_content).context("Failed to parse YAML content")?;
+    let yaml_value: serde_yaml::Value = match serde_yaml::from_str(&yaml_content) {
+        Ok(value) => value,
+        Err(e) => {
+            log_yaml_parse_error(&e, &yaml_content, &cli.yaml_file.to_string_lossy());
+            return Err(anyhow::anyhow!("Failed to parse YAML content: {}", e));
+        }
+    };
 
     // Convert YAML to JSON Value for validation
     let json_value: serde_json::Value =

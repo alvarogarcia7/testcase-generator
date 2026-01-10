@@ -1,4 +1,5 @@
 use crate::models::ValidationErrorDetail;
+use crate::yaml_utils::log_yaml_parse_error;
 use anyhow::{Context, Result};
 use jsonschema::JSONSchema;
 use serde_json::Value as JsonValue;
@@ -42,8 +43,13 @@ impl SchemaValidator {
     /// * `Err` with validation errors if the chunk is invalid
     pub fn validate_chunk(&self, yaml_content: &str) -> Result<()> {
         log::debug!("Validating YAML chunk");
-        let yaml_value: serde_yaml::Value =
-            serde_yaml::from_str(yaml_content).context("Failed to parse YAML content")?;
+        let yaml_value: serde_yaml::Value = match serde_yaml::from_str(yaml_content) {
+            Ok(value) => value,
+            Err(e) => {
+                log_yaml_parse_error(&e, yaml_content, "YAML chunk");
+                return Err(anyhow::anyhow!("Failed to parse YAML content: {}", e));
+            }
+        };
 
         let json_value: JsonValue =
             serde_json::to_value(&yaml_value).context("Failed to convert YAML to JSON")?;
@@ -64,6 +70,10 @@ impl SchemaValidator {
             }
 
             if !errors.is_empty() {
+                log::error!("Schema validation failed for YAML chunk:");
+                for error in &errors {
+                    log::error!("{}", error);
+                }
                 anyhow::bail!("Schema validation failed:\n{}", errors.join("\n"));
             }
         }
@@ -96,12 +106,21 @@ impl SchemaValidator {
                 };
 
                 if !type_matches {
-                    errors.push(format!(
+                    let error_msg = format!(
                         "  - Path '{}': Invalid type (expected {}, got {})",
                         path,
                         type_str,
                         get_value_type(value)
-                    ));
+                    );
+                    let actual_value = format_value_for_log(value);
+                    log::error!(
+                        "Type constraint violation at path '{}': expected type '{}', got type '{}', actual value: {}",
+                        path,
+                        type_str,
+                        get_value_type(value),
+                        actual_value
+                    );
+                    errors.push(error_msg);
                     return Err(errors);
                 }
             }
@@ -179,10 +198,16 @@ impl SchemaValidator {
                 for req_field in required {
                     if let Some(field_name) = req_field.as_str() {
                         if !obj.contains_key(field_name) {
-                            errors.push(format!(
+                            let error_msg = format!(
                                 "  - Path '{}': Missing required property '{}'",
                                 path, field_name
-                            ));
+                            );
+                            log::error!(
+                                "Missing required property at path '{}': property '{}' is required but not present",
+                                path,
+                                field_name
+                            );
+                            errors.push(error_msg);
                         }
                     }
                 }
@@ -209,8 +234,13 @@ impl SchemaValidator {
     /// * `Err` with validation errors if the document is invalid or missing required fields
     pub fn validate_complete(&self, yaml_content: &str) -> Result<()> {
         log::debug!("Validating complete YAML document");
-        let yaml_value: serde_yaml::Value =
-            serde_yaml::from_str(yaml_content).context("Failed to parse YAML content")?;
+        let yaml_value: serde_yaml::Value = match serde_yaml::from_str(yaml_content) {
+            Ok(value) => value,
+            Err(e) => {
+                log_yaml_parse_error(&e, yaml_content, "complete YAML document");
+                return Err(anyhow::anyhow!("Failed to parse YAML content: {}", e));
+            }
+        };
 
         let json_value: JsonValue =
             serde_json::to_value(&yaml_value).context("Failed to convert YAML to JSON")?;
@@ -218,6 +248,7 @@ impl SchemaValidator {
         let validation_result = self.schema.validate(&json_value);
 
         if let Err(errors) = validation_result {
+            log::error!("Schema validation failed for complete YAML document:");
             let error_messages: Vec<String> = errors
                 .map(|e| {
                     let path = if e.instance_path.to_string().is_empty() {
@@ -225,7 +256,19 @@ impl SchemaValidator {
                     } else {
                         e.instance_path.to_string()
                     };
-                    format!("  - Path '{}': {}", path, format_validation_error(&e))
+                    let formatted_error = format_validation_error(&e);
+                    let error_str = e.to_string();
+                    let actual_value =
+                        extract_instance_value(&json_value, &e.instance_path.to_string());
+
+                    log::error!(
+                        "Validation error at path '{}': {} | Actual value: {}",
+                        path,
+                        error_str,
+                        actual_value
+                    );
+
+                    format!("  - Path '{}': {}", path, formatted_error)
                 })
                 .collect();
 
@@ -248,8 +291,13 @@ impl SchemaValidator {
     /// * `Ok(())` if valid
     /// * `Err` with structured validation error details
     pub fn validate_with_details(&self, yaml_content: &str) -> Result<Vec<ValidationErrorDetail>> {
-        let yaml_value: serde_yaml::Value =
-            serde_yaml::from_str(yaml_content).context("Failed to parse YAML content")?;
+        let yaml_value: serde_yaml::Value = match serde_yaml::from_str(yaml_content) {
+            Ok(value) => value,
+            Err(e) => {
+                log_yaml_parse_error(&e, yaml_content, "YAML content");
+                return Err(anyhow::anyhow!("Failed to parse YAML content: {}", e));
+            }
+        };
 
         let json_value: JsonValue =
             serde_json::to_value(&yaml_value).context("Failed to convert YAML to JSON")?;
@@ -271,8 +319,16 @@ impl SchemaValidator {
 
                 let found_value = extract_instance_value(&json_value, &e.instance_path.to_string());
 
-                error_details.push(ValidationErrorDetail {
+                log::error!(
+                    "Schema validation error at path '{}': constraint='{}', expected='{}', found='{}'",
                     path,
+                    constraint,
+                    expected_constraint,
+                    found_value
+                );
+
+                error_details.push(ValidationErrorDetail {
+                    path: path.clone(),
                     constraint,
                     found_value,
                     expected_constraint,
@@ -297,8 +353,13 @@ impl SchemaValidator {
     /// * `Ok(())` if the chunk is valid or empty
     /// * `Err` with validation errors if the chunk is invalid
     pub fn validate_partial_chunk(&self, yaml_content: &str) -> Result<()> {
-        let yaml_value: serde_yaml::Value =
-            serde_yaml::from_str(yaml_content).context("Failed to parse YAML content")?;
+        let yaml_value: serde_yaml::Value = match serde_yaml::from_str(yaml_content) {
+            Ok(value) => value,
+            Err(e) => {
+                log_yaml_parse_error(&e, yaml_content, "partial YAML chunk");
+                return Err(anyhow::anyhow!("Failed to parse YAML content: {}", e));
+            }
+        };
 
         let json_value: JsonValue =
             serde_json::to_value(&yaml_value).context("Failed to convert YAML to JSON")?;
@@ -323,6 +384,11 @@ impl SchemaValidator {
         if let JsonValue::Object(obj) = &json_value {
             for (device_name, conditions) in obj.iter() {
                 if !conditions.is_array() {
+                    log::error!(
+                        "Initial conditions validation error: device '{}' has invalid type. Expected: array of strings, Found: {:?}",
+                        device_name,
+                        conditions
+                    );
                     anyhow::bail!(
                         "Device '{}' must have an array of conditions, got: {:?}",
                         device_name,
@@ -333,6 +399,12 @@ impl SchemaValidator {
                 if let JsonValue::Array(arr) = conditions {
                     for (idx, item) in arr.iter().enumerate() {
                         if !item.is_string() {
+                            log::error!(
+                                "Initial conditions validation error at device '{}', index {}: expected string, got {:?}",
+                                device_name,
+                                idx,
+                                item
+                            );
                             anyhow::bail!(
                                 "Condition #{} for device '{}' must be a string, got: {:?}",
                                 idx + 1,
@@ -344,6 +416,10 @@ impl SchemaValidator {
                 }
             }
         } else {
+            log::error!(
+                "Initial conditions validation error: root structure must be an object with device names as keys, got: {:?}",
+                json_value
+            );
             anyhow::bail!("initial_conditions must be an object with device names as keys");
         }
 
@@ -367,6 +443,38 @@ fn get_value_type(value: &JsonValue) -> &'static str {
         JsonValue::Array(_) => "array",
         JsonValue::Object(_) => "object",
         JsonValue::Null => "null",
+    }
+}
+
+fn format_value_for_log(value: &JsonValue) -> String {
+    match value {
+        JsonValue::String(s) => {
+            if s.len() > 100 {
+                format!("\"{}...\" (truncated, length: {})", &s[..100], s.len())
+            } else {
+                format!("\"{}\"", s)
+            }
+        }
+        JsonValue::Number(n) => format!("{}", n),
+        JsonValue::Bool(b) => format!("{}", b),
+        JsonValue::Null => "null".to_string(),
+        JsonValue::Array(arr) => {
+            if arr.is_empty() {
+                "[]".to_string()
+            } else if arr.len() <= 3 {
+                let items: Vec<String> = arr.iter().map(format_value_for_log).collect();
+                format!("[{}]", items.join(", "))
+            } else {
+                format!("[array with {} items]", arr.len())
+            }
+        }
+        JsonValue::Object(obj) => {
+            if obj.is_empty() {
+                "{}".to_string()
+            } else {
+                format!("{{object with {} fields}}", obj.len())
+            }
+        }
     }
 }
 

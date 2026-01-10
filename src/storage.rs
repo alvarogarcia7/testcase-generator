@@ -1,5 +1,6 @@
 use crate::models::{FileValidationStatus, TestCase, TestCaseFileInfo, TestSuite};
 use crate::validation::SchemaValidator;
+use crate::yaml_utils::log_yaml_parse_error;
 use anyhow::{Context, Result};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -142,7 +143,13 @@ impl TestCaseStorage {
         let content = fs::read_to_string(&full_path)
             .context(format!("Failed to read file: {}", full_path.display()))?;
 
-        let test_case: TestCase = serde_yaml::from_str(&content).context("Failed to parse YAML")?;
+        let test_case: TestCase = match serde_yaml::from_str(&content) {
+            Ok(tc) => tc,
+            Err(e) => {
+                log_yaml_parse_error(&e, &content, full_path.to_str().unwrap_or("unknown"));
+                return Err(anyhow::anyhow!("Failed to parse YAML: {}", e));
+            }
+        };
 
         Ok(test_case)
     }
@@ -247,6 +254,7 @@ impl TestCaseStorage {
                         test_cases.push(test_case);
                     }
                     Err(e) => {
+                        log_yaml_parse_error(&e, &content, file_name);
                         log::warn!("Warning: Failed to parse {}: {}", file_name, e);
                     }
                 },
@@ -363,13 +371,20 @@ impl TestCaseStorage {
                     test_case: Some(test_case),
                 }
             }
-            Err(e) => TestCaseFileInfo {
-                path: payload_path.to_path_buf(),
-                status: FileValidationStatus::ParseError {
-                    message: format!("YAML parsing error: {}", e),
-                },
-                test_case: None,
-            },
+            Err(e) => {
+                let file_name = payload_path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("unknown");
+                log_yaml_parse_error(&e, &yaml_content, file_name);
+                TestCaseFileInfo {
+                    path: payload_path.to_path_buf(),
+                    status: FileValidationStatus::ParseError {
+                        message: format!("YAML parsing error: {}", e),
+                    },
+                    test_case: None,
+                }
+            }
         }
     }
 

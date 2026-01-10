@@ -16,6 +16,7 @@ pub mod sample;
 pub mod storage;
 pub mod ui;
 pub mod validation;
+pub mod yaml_utils;
 
 pub use builder::TestCaseBuilder;
 pub use cli::Cli;
