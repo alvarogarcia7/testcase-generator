@@ -202,10 +202,7 @@ fn test_end_to_end_complete_workflow() -> Result<()> {
     builder.save()?;
 
     // Commit final test case
-    let commit_final = oracle.confirm("Commit final complete test case?")?;
-    if commit_final {
-        builder.commit("TEST: Complete test case with all sequences and steps")?;
-    }
+    builder.commit("TEST: Complete test case with all sequences and steps")?;
 
     println!("\n=== Workflow completed successfully ===");
 

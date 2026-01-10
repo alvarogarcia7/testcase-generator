@@ -1197,40 +1197,7 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
 
     println!("✓ Complete test case saved to: {}\n", output_path);
 
-    let should_commit_final = if let Some(sample) = &sample_data {
-        let prompts = Prompts::new_with_sample(sample);
-        prompts.confirm_with_sample(
-            "Commit final complete test case?",
-            sample.confirm_final_commit(),
-        )?
-    } else {
-        Prompts::confirm("Commit final complete test case?")?
-    };
-
-    if should_commit_final {
-        let git = match GitManager::open(base_dir) {
-            Ok(git) => git,
-            Err(_) => GitManager::init(base_dir)?,
-        };
-
-        let author_name =
-            std::env::var("GIT_AUTHOR_NAME").unwrap_or_else(|_| "Test Case Manager".to_string());
-        let author_email = std::env::var("GIT_AUTHOR_EMAIL")
-            .unwrap_or_else(|_| "testcase@example.com".to_string());
-
-        let relative_path = output_file
-            .file_name()
-            .ok_or_else(|| anyhow::anyhow!("Invalid output filename"))?;
-
-        git.add(&[relative_path])?;
-        git.commit(
-            &commit_msg("Complete test case with all sequences and steps"),
-            &author_name,
-            &author_email,
-        )?;
-
-        println!("✓ Committed to git\n");
-    }
+    builder.commit("Complete test case with all sequences and steps")?;
 
     builder.delete_recovery_file()?;
     println!("✓ Recovery file deleted\n");
