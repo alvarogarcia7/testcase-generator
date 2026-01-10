@@ -182,12 +182,12 @@ fn handle_list(
     let file_infos = storage.load_all_with_validation()?;
 
     if file_infos.is_empty() {
-        println!("No test case files found in {} (len = 0).", base_path);
+        log::info!("No test case files found in {} (len = 0).", base_path);
         return Ok(());
     }
 
     if verbose {
-        println!("Found {} test case file(s):\n", file_infos.len());
+        log::info!("Found {} test case file(s):\n", file_infos.len());
 
         for file_info in file_infos {
             let file_name = file_info
@@ -199,33 +199,33 @@ fn handle_list(
             match &file_info.status {
                 testcase_manager::FileValidationStatus::Valid => {
                     if let Some(tc) = &file_info.test_case {
-                        println!("✓ {} (Valid)", file_name);
-                        println!("  ID: {}", tc.id);
-                        println!("  Requirement: {}", tc.requirement);
-                        println!("  Item: {}", tc.item);
-                        println!("  TC: {}", tc.tc);
-                        println!("  Description: {}", tc.description);
-                        println!("  Test Sequences: {}", tc.test_sequences.len());
+                        log::info!("✓ {} (Valid)", file_name);
+                        log::info!("  ID: {}", tc.id);
+                        log::info!("  Requirement: {}", tc.requirement);
+                        log::info!("  Item: {}", tc.item);
+                        log::info!("  TC: {}", tc.tc);
+                        log::info!("  Description: {}", tc.description);
+                        log::info!("  Test Sequences: {}", tc.test_sequences.len());
                     } else {
-                        println!("✓ {} (Valid)", file_name);
+                        log::info!("✓ {} (Valid)", file_name);
                     }
                 }
                 testcase_manager::FileValidationStatus::ParseError { message } => {
-                    println!("✗ {} (Parse Error)", file_name);
-                    println!("  Error: {}", message);
+                    log::warn!("✗ {} (Parse Error)", file_name);
+                    log::warn!("  Error: {}", message);
                 }
                 testcase_manager::FileValidationStatus::ValidationError { errors } => {
-                    println!(
+                    log::warn!(
                         "✗ {} (Schema Validation Failed: {} error(s))",
                         file_name,
                         errors.len()
                     );
                     if let Some(tc) = &file_info.test_case {
-                        println!("  ID: {}", tc.id);
-                        println!("  Requirement: {}", tc.requirement);
+                        log::warn!("  ID: {}", tc.id);
+                        log::warn!("  Requirement: {}", tc.requirement);
                     }
                     for (idx, error) in errors.iter().enumerate().take(3) {
-                        println!(
+                        log::warn!(
                             "  Error #{}: Path '{}' - {}",
                             idx + 1,
                             error.path,
@@ -233,14 +233,14 @@ fn handle_list(
                         );
                     }
                     if errors.len() > 3 {
-                        println!("  ... and {} more error(s)", errors.len() - 3);
+                        log::warn!("  ... and {} more error(s)", errors.len() - 3);
                     }
                 }
             }
-            println!();
+            log::info!("");
         }
     } else {
-        println!("Found {} test case(s):\n", file_infos.len());
+        log::info!("Found {} test case(s):\n", file_infos.len());
 
         for file_info in file_infos {
             if let Some(tc) = &file_info.test_case {
@@ -250,9 +250,13 @@ fn handle_list(
                     testcase_manager::FileValidationStatus::ValidationError { .. } => "✗",
                 };
 
-                println!(
+                log::info!(
                     "{} {:<30} {:<20} Item: {}, TC: {}",
-                    status_marker, tc.id, tc.requirement, tc.item, tc.tc
+                    status_marker,
+                    tc.id,
+                    tc.requirement,
+                    tc.item,
+                    tc.tc
                 );
             } else {
                 let file_name = file_info
@@ -260,7 +264,7 @@ fn handle_list(
                     .file_name()
                     .and_then(|n| n.to_str())
                     .unwrap_or("unknown");
-                println!("✗ {:<30} (Failed to load)", file_name);
+                log::warn!("✗ {:<30} (Failed to load)", file_name);
             }
         }
     }
@@ -285,7 +289,7 @@ fn handle_view(base_path: &str, id: Option<String>, fuzzy: bool) -> Result<()> {
     };
 
     let yaml = serde_yaml::to_string(&test_case)?;
-    println!("{}", yaml);
+    log::info!("{}", yaml);
 
     Ok(())
 }
@@ -322,15 +326,15 @@ fn handle_validate(base_path: &str, file: Option<String>, all: bool) -> Result<(
         let validation_errors = validator.validate_with_details(&yaml)?;
 
         if validation_errors.is_empty() {
-            println!("✓ Valid: {}", file_path);
+            log::info!("✓ Valid: {}", file_path);
         } else {
-            println!("✗ Invalid: {}", file_path);
-            println!("\nValidation Errors:");
+            log::error!("✗ Invalid: {}", file_path);
+            log::error!("\nValidation Errors:");
             for (idx, error) in validation_errors.iter().enumerate() {
-                println!("\n  Error #{}: Path '{}'", idx + 1, error.path);
-                println!("    Constraint: {}", error.constraint);
-                println!("    Expected: {}", error.expected_constraint);
-                println!("    Found: {}", error.found_value);
+                log::error!("\n  Error #{}: Path '{}'", idx + 1, error.path);
+                log::error!("    Constraint: {}", error.constraint);
+                log::error!("    Expected: {}", error.expected_constraint);
+                log::error!("    Found: {}", error.found_value);
             }
             anyhow::bail!(
                 "Validation failed with {} error(s)",
@@ -352,34 +356,34 @@ fn handle_validate(base_path: &str, file: Option<String>, all: bool) -> Result<(
 
             match &file_info.status {
                 testcase_manager::FileValidationStatus::Valid => {
-                    println!("✓ Valid: {}", file_name);
+                    log::info!("✓ Valid: {}", file_name);
                     valid_count += 1;
                 }
                 testcase_manager::FileValidationStatus::ParseError { message } => {
-                    println!("✗ Parse Error: {}", file_name);
-                    println!("  {}", message);
+                    log::error!("✗ Parse Error: {}", file_name);
+                    log::error!("  {}", message);
                     parse_error_count += 1;
                 }
                 testcase_manager::FileValidationStatus::ValidationError { errors } => {
-                    println!("✗ Invalid: {}", file_name);
-                    println!("  Validation Errors ({}):", errors.len());
+                    log::error!("✗ Invalid: {}", file_name);
+                    log::error!("  Validation Errors ({}):", errors.len());
                     for (idx, error) in errors.iter().enumerate() {
-                        println!("\n    Error #{}: Path '{}'", idx + 1, error.path);
-                        println!("      Constraint: {}", error.constraint);
-                        println!("      Expected: {}", error.expected_constraint);
-                        println!("      Found: {}", error.found_value);
+                        log::error!("\n    Error #{}: Path '{}'", idx + 1, error.path);
+                        log::error!("      Constraint: {}", error.constraint);
+                        log::error!("      Expected: {}", error.expected_constraint);
+                        log::error!("      Found: {}", error.found_value);
                     }
-                    println!();
+                    log::error!("");
                     error_count += 1;
                 }
             }
         }
 
         print_title("Validation Summary", TitleStyle::TripleEquals);
-        println!("Total files: {}", file_infos.len());
-        println!("✓ Valid: {}", valid_count);
-        println!("✗ Schema violations: {}", error_count);
-        println!("✗ Parse errors: {}", parse_error_count);
+        log::info!("Total files: {}", file_infos.len());
+        log::info!("✓ Valid: {}", valid_count);
+        log::warn!("✗ Schema violations: {}", error_count);
+        log::warn!("✗ Parse errors: {}", parse_error_count);
 
         if error_count > 0 || parse_error_count > 0 {
             anyhow::bail!(
@@ -400,7 +404,7 @@ fn handle_search(base_path: &str, _query: Option<String>) -> Result<()> {
 
     if let Some(selected) = TestCaseFuzzyFinder::search(&test_cases)? {
         let yaml = serde_yaml::to_string(&selected)?;
-        println!("{}", yaml);
+        log::info!("{}", yaml);
     }
 
     Ok(())
@@ -528,7 +532,7 @@ fn handle_create_interactive(path: &str) -> Result<()> {
 
     builder.add_metadata().context("Failed to add metadata")?;
 
-    println!("✓ Metadata added to structure\n");
+    log::info!("✓ Metadata added to structure\n");
 
     builder
         .commit("Add test case metadata")
@@ -539,7 +543,7 @@ fn handle_create_interactive(path: &str) -> Result<()> {
             .add_general_initial_conditions(None)
             .context("Failed to add general initial conditions")?;
 
-        println!("✓ General initial conditions added\n");
+        log::info!("✓ General initial conditions added\n");
 
         builder
             .commit("Add general initial conditions")
@@ -551,7 +555,7 @@ fn handle_create_interactive(path: &str) -> Result<()> {
             .add_initial_conditions(None)
             .context("Failed to add initial conditions")?;
 
-        println!("✓ Initial conditions added\n");
+        log::info!("✓ Initial conditions added\n");
 
         builder
             .commit("Add initial conditions")
@@ -561,10 +565,10 @@ fn handle_create_interactive(path: &str) -> Result<()> {
     let file_path = builder.save().context("Failed to save test case")?;
 
     builder.delete_recovery_file()?;
-    println!("✓ Recovery file deleted");
+    log::info!("✓ Recovery file deleted");
 
     print_title("Test Case Created Successfully", TitleStyle::Box);
-    println!("Saved to: {}", file_path.display());
+    log::info!("Saved to: {}", file_path.display());
 
     Ok(())
 }
@@ -578,7 +582,7 @@ fn handle_build_sequences(path: &str) -> Result<()> {
 
     builder.add_metadata().context("Failed to add metadata")?;
 
-    println!("✓ Metadata added to structure\n");
+    log::info!("✓ Metadata added to structure\n");
 
     builder
         .commit("Add test case metadata")
@@ -589,7 +593,7 @@ fn handle_build_sequences(path: &str) -> Result<()> {
             .add_general_initial_conditions(None)
             .context("Failed to add general initial conditions")?;
 
-        println!("✓ General initial conditions added\n");
+        log::info!("✓ General initial conditions added\n");
 
         builder
             .commit("Add general initial conditions")
@@ -605,14 +609,14 @@ fn handle_build_sequences(path: &str) -> Result<()> {
     let file_path = builder.save().context("Failed to save test case")?;
 
     print_title("Test Sequences Built Successfully", TitleStyle::Box);
-    println!("Saved to: {}", file_path.display());
+    log::info!("Saved to: {}", file_path.display());
 
     builder
         .commit("Complete test case with all sequences")
         .context("Failed to commit final file")?;
 
     builder.delete_recovery_file()?;
-    println!("✓ Recovery file deleted");
+    log::info!("✓ Recovery file deleted");
 
     Ok(())
 }
@@ -626,7 +630,7 @@ fn handle_add_steps(path: &str, sequence_id: Option<i64>) -> Result<()> {
 
     builder.add_metadata().context("Failed to add metadata")?;
 
-    println!("✓ Metadata added to structure\n");
+    log::info!("✓ Metadata added to structure\n");
 
     builder
         .commit("Add test case metadata")
@@ -637,7 +641,7 @@ fn handle_add_steps(path: &str, sequence_id: Option<i64>) -> Result<()> {
             .add_general_initial_conditions(None)
             .context("Failed to add general initial conditions")?;
 
-        println!("✓ General initial conditions added\n");
+        log::info!("✓ General initial conditions added\n");
 
         builder
             .commit("Add general initial conditions")
@@ -669,14 +673,14 @@ fn handle_add_steps(path: &str, sequence_id: Option<i64>) -> Result<()> {
     let file_path = builder.save().context("Failed to save test case")?;
 
     print_title("Steps Added Successfully", TitleStyle::Box);
-    println!("Saved to: {}", file_path.display());
+    log::info!("Saved to: {}", file_path.display());
 
     builder
         .commit("Complete test sequence with all steps")
         .context("Failed to commit final file")?;
 
     builder.delete_recovery_file()?;
-    println!("✓ Recovery file deleted");
+    log::info!("✓ Recovery file deleted");
 
     Ok(())
 }
@@ -687,7 +691,7 @@ fn prompt_then_do_add_initial_conditions(builder: &mut TestCaseBuilder) -> Resul
             .add_initial_conditions(None)
             .context("Failed to add initial conditions")?;
 
-        println!("✓ Initial conditions added\n");
+        log::info!("✓ Initial conditions added\n");
 
         builder
             .commit("Add initial conditions")
@@ -705,7 +709,7 @@ fn handle_build_sequences_with_steps(path: &str) -> Result<()> {
 
     builder.add_metadata().context("Failed to add metadata")?;
 
-    println!("✓ Metadata added to structure\n");
+    log::info!("✓ Metadata added to structure\n");
 
     builder
         .commit("Add test case metadata")
@@ -716,7 +720,7 @@ fn handle_build_sequences_with_steps(path: &str) -> Result<()> {
             .add_general_initial_conditions(None)
             .context("Failed to add general initial conditions")?;
 
-        println!("✓ General initial conditions added\n");
+        log::info!("✓ General initial conditions added\n");
 
         builder
             .commit("Add general initial conditions")
@@ -732,14 +736,14 @@ fn handle_build_sequences_with_steps(path: &str) -> Result<()> {
     let file_path = builder.save().context("Failed to save test case")?;
 
     print_title("Test Sequences & Steps Built Successfully", TitleStyle::Box);
-    println!("Saved to: {}", file_path.display());
+    log::info!("Saved to: {}", file_path.display());
 
     builder
         .commit("Complete test case with all sequences and steps")
         .context("Failed to commit final file")?;
 
     builder.delete_recovery_file()?;
-    println!("✓ Recovery file deleted");
+    log::info!("✓ Recovery file deleted");
 
     Ok(())
 }
@@ -782,7 +786,7 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
     print_title("Complete Interactive Test Case Workflow", TitleStyle::Box);
 
     if use_sample {
-        println!("📝 Sample mode enabled: Default values will be pre-populated\n");
+        log::info!("📝 Sample mode enabled: Default values will be pre-populated\n");
     }
 
     let recovered_metadata = TestCaseMetadata::from_structure(builder.structure());
@@ -806,7 +810,7 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
         print_title("Validating Metadata", TitleStyle::TripleEquals);
         match metadata.validate(builder.validator()) {
             Ok(_) => {
-                println!("✓ Metadata is valid\n");
+                log::info!("✓ Metadata is valid\n");
 
                 let yaml_map = metadata.to_yaml();
                 for (key, value) in yaml_map {
@@ -817,7 +821,7 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
                 break;
             }
             Err(e) => {
-                println!("✗ Metadata validation failed: {}\n", e);
+                log::warn!("✗ Metadata validation failed: {}\n", e);
 
                 builder.save_recovery_state_with_errors("metadata", &e)?;
 
@@ -846,12 +850,12 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
         loop {
             match builder.add_general_initial_conditions(None) {
                 Ok(_) => {
-                    println!("✓ General initial conditions added\n");
+                    log::info!("✓ General initial conditions added\n");
                     builder.save_recovery_state("general_initial_conditions")?;
                     break;
                 }
                 Err(e) => {
-                    println!("✗ General initial conditions validation failed: {}\n", e);
+                    log::warn!("✗ General initial conditions validation failed: {}\n", e);
                     builder.save_recovery_state_with_errors("general_initial_conditions", &e)?;
 
                     let should_retry = if let Some(sample) = &sample_data {
@@ -865,7 +869,7 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
                     };
 
                     if !should_retry {
-                        println!("⚠ Skipping general initial conditions\n");
+                        log::warn!("⚠ Skipping general initial conditions\n");
                         break;
                     }
                 }
@@ -891,12 +895,12 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
         loop {
             match builder.add_initial_conditions(None) {
                 Ok(_) => {
-                    println!("✓ Initial conditions added\n");
+                    log::info!("✓ Initial conditions added\n");
                     builder.save_recovery_state("initial_conditions")?;
                     break;
                 }
                 Err(e) => {
-                    println!("✗ Initial conditions validation failed: {}\n", e);
+                    log::warn!("✗ Initial conditions validation failed: {}\n", e);
                     builder.save_recovery_state_with_errors("initial_conditions", &e)?;
 
                     let should_retry = if let Some(sample) = &sample_data {
@@ -910,7 +914,7 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
                     };
 
                     if !should_retry {
-                        println!("⚠ Skipping initial conditions\n");
+                        log::warn!("⚠ Skipping initial conditions\n");
                         break;
                     }
                 }
@@ -932,7 +936,7 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
                     break true;
                 }
                 Err(e) => {
-                    println!("✗ Test sequence validation failed: {}\n", e);
+                    log::warn!("✗ Test sequence validation failed: {}\n", e);
                     builder.save_recovery_state_with_errors("test_sequences", &e)?;
 
                     let should_retry = if let Some(sample) = &sample_data {
@@ -946,7 +950,7 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
                     };
 
                     if !should_retry {
-                        println!("⚠ Skipping this test sequence\n");
+                        log::warn!("⚠ Skipping this test sequence\n");
                         break false;
                     }
                 }
@@ -992,7 +996,7 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
             let sequence_id = match builder.get_sequence_id_by_index(sequence_index) {
                 Ok(id) => id,
                 Err(e) => {
-                    println!("✗ Failed to get sequence ID: {}", e);
+                    log::error!("✗ Failed to get sequence ID: {}", e);
 
                     if !add_another_test_sequence(&sample_data)? {
                         break;
@@ -1025,7 +1029,7 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
                         let prompts = Prompts::new_with_sample(sample);
                         prompts.input_with_sample("Step description", &sample.step_description())?
                     } else if !existing_steps.is_empty() {
-                        println!(
+                        log::info!(
                             "\nYou can select from existing step descriptions or enter a new one."
                         );
 
@@ -1038,7 +1042,7 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
                             )? {
                                 Some(desc) => desc,
                                 None => {
-                                    println!("No selection made, entering new description.");
+                                    log::info!("No selection made, entering new description.");
                                     Prompts::input("Step description")?
                                 }
                             }
@@ -1085,7 +1089,7 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
                     print_title("Validating Step", TitleStyle::TripleEquals);
                     match builder.validate_and_append_step(sequence_index, step) {
                         Ok(_) => {
-                            println!("✓ Step validated and added\n");
+                            log::info!("✓ Step validated and added\n");
                             builder.save().context("Failed to save file")?;
                             builder.save_recovery_state("steps")?;
 
@@ -1102,7 +1106,7 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
                             break 'step_retry;
                         }
                         Err(e) => {
-                            println!("✗ Step validation failed: {}\n", e);
+                            log::warn!("✗ Step validation failed: {}\n", e);
                             builder.save_recovery_state_with_errors("steps", &e)?;
 
                             let should_retry_step = if let Some(sample) = &sample_data {
@@ -1116,7 +1120,7 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
                             };
 
                             if !should_retry_step {
-                                println!("⚠ Skipping this step\n");
+                                log::warn!("⚠ Skipping this step\n");
 
                                 if !add_another_step(&sample_data)? {
                                     break 'add_steps;
@@ -1128,7 +1132,7 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
                 }
             }
 
-            println!("\n✓ All steps added to sequence");
+            log::info!("\n✓ All steps added to sequence");
         }
 
         if !add_another_test_sequence(&sample_data)? {
@@ -1142,12 +1146,12 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
     std::fs::write(output_path, &final_yaml_content)
         .context(format!("Failed to write output file: {}", output_path))?;
 
-    println!("✓ Complete test case saved to: {}\n", output_path);
+    log::info!("✓ Complete test case saved to: {}\n", output_path);
 
     builder.commit("Complete test case with all sequences and steps")?;
 
     builder.delete_recovery_file()?;
-    println!("✓ Recovery file deleted\n");
+    log::info!("✓ Recovery file deleted\n");
 
     print_title("Test Case Workflow Completed!", TitleStyle::Box);
 
@@ -1189,11 +1193,11 @@ fn handle_parse_general_conditions(database_path: &str, work_path: &str) -> Resu
     let conditions = db.get_general_conditions();
 
     if conditions.is_empty() {
-        println!("No general initial conditions found in database.");
+        log::info!("No general initial conditions found in database.");
         return Ok(());
     }
 
-    println!(
+    log::info!(
         "Loaded {} unique general initial conditions from database\n",
         conditions.len()
     );
@@ -1204,7 +1208,7 @@ fn handle_parse_general_conditions(database_path: &str, work_path: &str) -> Resu
 
     builder.add_metadata().context("Failed to add metadata")?;
 
-    println!("✓ Metadata added to structure\n");
+    log::info!("✓ Metadata added to structure\n");
 
     let mut selected_conditions = Vec::new();
 
@@ -1218,17 +1222,17 @@ fn handle_parse_general_conditions(database_path: &str, work_path: &str) -> Resu
         );
         if !selected_conditions.is_empty() {
             for (idx, cond) in selected_conditions.iter().enumerate() {
-                println!("  {}. {}", idx + 1, cond);
+                log::info!("  {}. {}", idx + 1, cond);
             }
         } else {
-            println!("  (none)");
+            log::info!("  (none)");
         }
 
         print_title("Add General Initial Condition", TitleStyle::TripleEquals);
-        println!("Options:");
-        println!("  1. Search from database (fuzzy search)");
-        println!("  2. Create new condition (manual entry)");
-        println!("  3. Finish selection");
+        log::info!("Options:");
+        log::info!("  1. Search from database (fuzzy search)");
+        log::info!("  2. Create new condition (manual entry)");
+        log::info!("  3. Finish selection");
 
         let choice = Prompts::input("\nChoice (1/2/3)")?;
 
@@ -1241,19 +1245,19 @@ fn handle_parse_general_conditions(database_path: &str, work_path: &str) -> Resu
 
                 if let Some(condition) = selected {
                     selected_conditions.push(condition.clone());
-                    println!("✓ Added from database: {}\n", condition);
+                    log::info!("✓ Added from database: {}\n", condition);
                 }
             }
             "2" => {
                 let new_condition = Prompts::input("Enter new condition")?;
                 if !new_condition.trim().is_empty() {
                     selected_conditions.push(new_condition.clone());
-                    println!("✓ Added new condition: {}\n", new_condition);
+                    log::info!("✓ Added new condition: {}\n", new_condition);
                 }
             }
             "3" => {
                 if selected_conditions.is_empty() {
-                    println!("No conditions selected.");
+                    log::info!("No conditions selected.");
                     if !Prompts::confirm("Continue without general initial conditions?")? {
                         continue;
                     }
@@ -1261,7 +1265,7 @@ fn handle_parse_general_conditions(database_path: &str, work_path: &str) -> Resu
                 break;
             }
             _ => {
-                println!("Invalid choice. Please enter 1, 2, or 3.");
+                log::warn!("Invalid choice. Please enter 1, 2, or 3.");
             }
         }
     }
@@ -1285,15 +1289,13 @@ fn handle_parse_general_conditions(database_path: &str, work_path: &str) -> Resu
             Value::Sequence(general_conditions_array),
         );
 
-        println!("\n✓ General initial conditions added to test case");
+        log::info!("\n✓ General initial conditions added to test case");
     }
 
     let file_path = builder.save().context("Failed to save test case")?;
 
-    println!("\n╔═══════════════════════════════════════════════╗");
-    println!("║    Test Case Saved Successfully               ║");
-    println!("╚═══════════════════════════════════════════════╝");
-    println!("\nSaved to: {}", file_path.display());
+    print_title("Test Case Saved Successfully", TitleStyle::Box);
+    log::info!("Saved to: {}", file_path.display());
 
     builder
         .commit("Add general initial conditions")
@@ -1305,11 +1307,7 @@ fn handle_parse_general_conditions(database_path: &str, work_path: &str) -> Resu
 }
 
 fn handle_parse_initial_conditions2(database_path: &str, work_path: &str) -> Result<()> {
-    println!();
-    println!("╔═══════════════════════════════════════════════╗");
-    println!("║   Parse Initial Conditions 2                  ║");
-    println!("╚═══════════════════════════════════════════════╝");
-    println!();
+    print_title("Parse Initial Conditions 2", TitleStyle::Box);
 
     let db = ConditionDatabase::load_from_directory(database_path)
         .context("Failed to load condition database")?;
@@ -1318,11 +1316,11 @@ fn handle_parse_initial_conditions2(database_path: &str, work_path: &str) -> Res
     let devices = db.get_device_names();
 
     if conditions.is_empty() {
-        println!("No initial conditions found in database.");
+        log::info!("No initial conditions found in database.");
         return Ok(());
     }
 
-    println!(
+    log::info!(
         "Loaded {} unique initial conditions from database\n",
         conditions.len()
     );
@@ -1333,69 +1331,54 @@ fn handle_parse_initial_conditions2(database_path: &str, work_path: &str) -> Res
 
     builder.add_metadata().context("Failed to add metadata")?;
 
-    println!("✓ Metadata added to structure\n");
+    log::info!("✓ Metadata added to structure\n");
 
     let mut selected_conditions: Vec<String> = Vec::new();
 
     let mut action_choice;
     loop {
-        println!(
+        log::info!(
             "\n=== Current Selection: {} condition(s) ===",
             selected_conditions.len()
         );
         if !selected_conditions.is_empty() {
             for (idx, cond) in selected_conditions.iter().enumerate() {
-                println!("  {}. {}", idx + 1, cond);
+                log::info!("  {}. {}", idx + 1, cond);
             }
         } else {
-            println!("  (none)");
+            log::info!("  (none)");
         }
-
-        // println!("\n=== Add Initial Condition ===");
-        // println!("Options:");
-        // println!("  1. Search from database (fuzzy search)");
-        // println!("  2. Create new condition (manual entry)");
-        // println!("  3. Finish selection");
 
         let selected =
             TestCaseFuzzyFinder::search_strings_multi(devices, "Select device (ESC to accept None, Ctrl-C to quit this step, Ctrl-D to finish input): ")?;
 
-        // loop {
-
         match selected {
             Input(selected) => {
-                println!("Selected: {}", selected);
+                log::info!("Selected: {}", selected);
                 selected_conditions.push(selected.clone());
-                println!("✓ Added from database: {}\n", selected);
+                log::info!("✓ Added from database: {}\n", selected);
             }
             MultiInput::Aborted => {
-                println!("(none): Aborted");
+                log::info!("(none): Aborted");
                 break;
             }
             MultiInput::Finished => {
-                println!("(none): Finished")
+                log::info!("(none): Finished")
             }
             MultiInput::Error => {
-                println!("(none): Error")
+                log::warn!("(none): Error")
             }
         }
-
-        // db.get_initial_conditions_for(&s[0]);
-
-        // let selected =
-        //     TestCaseFuzzyFinder::search_strings(conditions, "Select condition (ESC to cancel): ")?;
-
-        // }
 
         action_choice = Prompts::input_with_escape("Start typing for search (ESC to cancel)")?;
 
         match action_choice {
             None => {
-                println!("ESC received");
+                log::info!("ESC received");
                 break;
             }
             Some(_) => {
-                println!("Device: {}", action_choice.unwrap());
+                log::info!("Device: {}", action_choice.unwrap());
 
                 let selected = TestCaseFuzzyFinder::search_strings(
                     conditions,
@@ -1404,80 +1387,11 @@ fn handle_parse_initial_conditions2(database_path: &str, work_path: &str) -> Res
 
                 if let Some(condition) = selected {
                     selected_conditions.push(condition.clone());
-                    println!("✓ Added from database: {}\n", condition);
+                    log::info!("✓ Added from database: {}\n", condition);
                 }
             }
         }
     }
-
-    //     match choice.trim() {
-    //         "1" => {
-    //             let selected = TestCaseFuzzyFinder::search_strings(
-    //                 conditions,
-    //                 "Select condition (ESC to cancel): ",
-    //             )?;
-    //
-    //             if let Some(condition) = selected {
-    //                 selected_conditions.push(condition.clone());
-    //                 println!("✓ Added from database: {}\n", condition);
-    //             }
-    //         }
-    //         "2" => {
-    //             let new_condition = Prompts::input("Enter new condition")?;
-    //             if !new_condition.trim().is_empty() {
-    //                 selected_conditions.push(new_condition.clone());
-    //                 println!("✓ Added new condition: {}\n", new_condition);
-    //             }
-    //         }
-    //         "3" => {
-    //             if selected_conditions.is_empty() {
-    //                 println!("No conditions selected.");
-    //                 if !Prompts::confirm("Continue without initial conditions?")? {
-    //                     continue;
-    //                 }
-    //             }
-    //             break;
-    //         }
-    //         _ => {
-    //             println!("Invalid choice. Please enter 1, 2, or 3.");
-    //         }
-    //     }
-    // }
-    //
-    // if !selected_conditions.is_empty() {
-    //     use serde_yaml::Value;
-    //
-    //     let euicc_conditions: Vec<Value> =
-    //         selected_conditions.into_iter().map(Value::String).collect();
-    //
-    //     let mut initial_cond_map = serde_yaml::Mapping::new();
-    //     initial_cond_map.insert(
-    //         Value::String("eUICC".to_string()),
-    //         Value::Sequence(euicc_conditions),
-    //     );
-    //
-    //     builder.structure_mut().insert(
-    //         "initial_conditions".to_string(),
-    //         Value::Mapping(initial_cond_map),
-    //     );
-    //
-    //     println!("\n✓ Initial conditions added to test case");
-    // }
-    //
-    // let file_path = builder.save().context("Failed to save test case")?;
-    //
-    // println!("\n╔═══════════════════════════════════════════════╗");
-    // println!("║    Test Case Saved Successfully               ║");
-    // println!("╚═══════════════════════════════════════════════╝");
-    // println!("\nSaved to: {}", file_path.display());
-    //
-    // if Prompts::confirm("\nCommit to git?")? {
-    //     builder
-    //         .commit("Add initial conditions")
-    //         .context("Failed to commit")?;
-    // }
-    //
-    // builder.delete_recovery_file()?;
 
     Ok(())
 }
@@ -1491,11 +1405,11 @@ fn handle_parse_initial_conditions(database_path: &str, work_path: &str) -> Resu
     let conditions = db.get_initial_conditions();
 
     if conditions.is_empty() {
-        println!("No initial conditions found in database.");
+        log::info!("No initial conditions found in database.");
         return Ok(());
     }
 
-    println!(
+    log::info!(
         "Loaded {} unique initial conditions from database\n",
         conditions.len()
     );
@@ -1504,9 +1418,7 @@ fn handle_parse_initial_conditions(database_path: &str, work_path: &str) -> Resu
     let mut builder = TestCaseBuilder::new_with_recovery(work_path, oracle)
         .context("Failed to create test case builder")?;
 
-    // builder.add_metadata().context("Failed to add metadata")?;
-
-    println!("✓ Metadata added to structure\n");
+    log::info!("✓ Metadata added to structure\n");
 
     let mut selected_conditions = Vec::new();
 
@@ -1520,17 +1432,17 @@ fn handle_parse_initial_conditions(database_path: &str, work_path: &str) -> Resu
         );
         if !selected_conditions.is_empty() {
             for (idx, cond) in selected_conditions.iter().enumerate() {
-                println!("  {}. {}", idx + 1, cond);
+                log::info!("  {}. {}", idx + 1, cond);
             }
         } else {
-            println!("  (none)");
+            log::info!("  (none)");
         }
 
         print_title("Add Initial Condition", TitleStyle::TripleEquals);
-        println!("Options:");
-        println!("  1. Search from database (fuzzy search)");
-        println!("  2. Create new condition (manual entry)");
-        println!("  3. Finish selection");
+        log::info!("Options:");
+        log::info!("  1. Search from database (fuzzy search)");
+        log::info!("  2. Create new condition (manual entry)");
+        log::info!("  3. Finish selection");
 
         let choice = Prompts::input("\nChoice (1/2/3)")?;
 
@@ -1543,19 +1455,19 @@ fn handle_parse_initial_conditions(database_path: &str, work_path: &str) -> Resu
 
                 if let Some(condition) = selected {
                     selected_conditions.push(condition.clone());
-                    println!("✓ Added from database: {}\n", condition);
+                    log::info!("✓ Added from database: {}\n", condition);
                 }
             }
             "2" => {
                 let new_condition = Prompts::input("Enter new condition")?;
                 if !new_condition.trim().is_empty() {
                     selected_conditions.push(new_condition.clone());
-                    println!("✓ Added new condition: {}\n", new_condition);
+                    log::info!("✓ Added new condition: {}\n", new_condition);
                 }
             }
             "3" => {
                 if selected_conditions.is_empty() {
-                    println!("No conditions selected.");
+                    log::info!("No conditions selected.");
                     if !Prompts::confirm("Continue without initial conditions?")? {
                         continue;
                     }
@@ -1563,7 +1475,7 @@ fn handle_parse_initial_conditions(database_path: &str, work_path: &str) -> Resu
                 break;
             }
             _ => {
-                println!("Invalid choice. Please enter 1, 2, or 3.");
+                log::warn!("Invalid choice. Please enter 1, 2, or 3.");
             }
         }
     }
@@ -1585,13 +1497,13 @@ fn handle_parse_initial_conditions(database_path: &str, work_path: &str) -> Resu
             Value::Mapping(initial_cond_map),
         );
 
-        println!("\n✓ Initial conditions added to test case");
+        log::info!("\n✓ Initial conditions added to test case");
     }
 
     let file_path = builder.save().context("Failed to save test case")?;
 
     print_title("Test Case Saved Successfully", TitleStyle::Box);
-    println!("Saved to: {}", file_path.display());
+    log::info!("Saved to: {}", file_path.display());
 
     builder
         .commit("Add initial conditions")
@@ -1631,8 +1543,8 @@ fn handle_validate_yaml(yaml_file: &str, schema_file: &str) -> Result<()> {
 
     // Validate
     if let Err(errors) = compiled_schema.validate(&json_value) {
-        println!("✗ Validation failed!\n");
-        println!("The following schema constraint violations were found:\n");
+        log::error!("✗ Validation failed!\n");
+        log::error!("The following schema constraint violations were found:\n");
 
         for (idx, error) in errors.enumerate() {
             let path = if error.instance_path.to_string().is_empty() {
@@ -1641,19 +1553,19 @@ fn handle_validate_yaml(yaml_file: &str, schema_file: &str) -> Result<()> {
                 error.instance_path.to_string()
             };
 
-            println!("Error #{}: Path '{}'", idx + 1, path);
-            println!("  Constraint: {}", error);
+            log::error!("Error #{}: Path '{}'", idx + 1, path);
+            log::error!("  Constraint: {}", error);
 
             // Extract the actual value at the error path if possible
             let instance = error.instance.as_ref();
-            println!("  Found value: {}", instance);
-            println!();
+            log::error!("  Found value: {}", instance);
+            log::error!("");
         }
 
         anyhow::bail!("Validation failed with schema constraint violations");
     }
 
-    println!("✓ Validation successful!");
-    println!("\nThe YAML payload is valid according to the provided schema.");
+    log::info!("✓ Validation successful!");
+    log::info!("\nThe YAML payload is valid according to the provided schema.");
     Ok(())
 }

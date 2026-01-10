@@ -7,6 +7,7 @@ use crate::oracle::Oracle;
 use crate::prompts::Prompts;
 use crate::recovery::{RecoveryManager, RecoveryState};
 use crate::sample::SampleData;
+use crate::ui::{print_title, TitleStyle};
 use crate::validation::SchemaValidator;
 use anyhow::{Context, Result};
 use indexmap::IndexMap;
@@ -312,9 +313,7 @@ impl TestCaseBuilder {
 
     /// Build test sequences interactively with git commits before each sequence
     pub fn build_test_sequences_with_commits(&mut self) -> Result<&mut Self> {
-        log::info!("\n╔═══════════════════════════════════════════════╗");
-        log::info!("║    Test Sequence Builder with Git Commits    ║");
-        log::info!("╚═══════════════════════════════════════════════╝\n");
+        print_title("Test Sequence Builder with Git Commits", TitleStyle::Box);
 
         loop {
             self.add_test_sequence_interactive()
@@ -343,9 +342,7 @@ impl TestCaseBuilder {
         &mut self,
         sequence_index: usize,
     ) -> Result<&mut Self> {
-        println!("\n╔═══════════════════════════════════════════════╗");
-        println!("║      Step Collection Loop with Commits       ║");
-        println!("╚═══════════════════════════════════════════════╝\n");
+        print_title("Step Collection Loop with Commits", TitleStyle::Box);
 
         let sequence_id = self
             .creator
@@ -354,16 +351,17 @@ impl TestCaseBuilder {
             .creator
             .get_sequence_name_by_index(&self.structure, sequence_index)?;
 
-        println!(
+        log::info!(
             "Adding steps to Sequence #{}: {}\n",
-            sequence_id, sequence_name
+            sequence_id,
+            sequence_name
         );
 
         loop {
             let step_number = self
                 .creator
                 .get_next_step_number(&self.structure, sequence_index)?;
-            println!("\n=== Add Step #{} ===", step_number);
+            log::info!("\n=== Add Step #{} ===", step_number);
 
             let step = if let Some(db) = self.creator.database() {
                 let step_items = db.get_all_steps();
@@ -408,13 +406,13 @@ expected:
             let step_value =
                 serde_yaml::to_value(&step).context("Failed to convert Step to YAML value")?;
 
-            println!("\n=== Validating Step ===");
+            log::info!("\n=== Validating Step ===");
             self.creator.validate_and_append_step(
                 &mut self.structure,
                 sequence_index,
                 step_value,
             )?;
-            println!("✓ Step validated and added\n");
+            log::info!("✓ Step validated and added\n");
 
             self.save().context("Failed to save file")?;
 
@@ -434,7 +432,7 @@ expected:
             }
         }
 
-        println!("\n✓ All steps added to sequence");
+        log::info!("\n✓ All steps added to sequence");
         Ok(self)
     }
 
@@ -487,9 +485,7 @@ expected:
 
     /// Build test sequences with step collection loops and commits
     pub fn build_test_sequences_with_step_commits(&mut self) -> Result<&mut Self> {
-        println!("\n╔═══════════════════════════════════════════════╗");
-        println!("║  Test Sequence & Step Builder with Commits   ║");
-        println!("╚═══════════════════════════════════════════════╝\n");
+        print_title("Test Sequence & Step Builder with Commits", TitleStyle::Box);
 
         loop {
             self.add_test_sequence_interactive()
@@ -519,7 +515,7 @@ expected:
             }
         }
 
-        println!("\n✓ All test sequences and steps added");
+        log::info!("\n✓ All test sequences and steps added");
         Ok(self)
     }
 
