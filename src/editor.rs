@@ -12,9 +12,13 @@ pub struct EditorFlow {
 
 impl EditorFlow {
     pub fn new(config: EditorConfig) -> Self {
+        Self::new_with_max_retries(config, 3)
+    }
+
+    pub fn new_with_max_retries(config: EditorConfig, max_retries: usize) -> Self {
         Self {
             config,
-            max_retries: 3,
+            max_retries,
         }
     }
 
@@ -104,10 +108,14 @@ impl EditorFlow {
 
     fn annotate_with_error(&self, content: &str, error: &anyhow::Error) -> String {
         let error_message = format!("# VALIDATION ERROR: {}", error);
-        let separator = "# ".repeat(40);
+        let separator = "#".repeat(40);
 
         format!(
-            "{}\n{}\n{}\n\n{}",
+            r#"{}
+{}
+{}
+{}
+"#,
             separator, error_message, separator, content
         )
     }

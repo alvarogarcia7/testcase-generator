@@ -333,14 +333,7 @@ impl TestCaseCreator {
         let sequence_id = self.get_next_sequence_id(structure);
         log::debug!("Sequence ID: {}", sequence_id);
 
-        // Load database to get existing sequences
-        let database_path = if let Some(sample) = sample {
-            sample.database_path()
-        } else {
-            Prompts::input_with_default_oracle("Database path", "data", &self.oracle)?
-        };
-
-        let db = ConditionDatabase::load_from_directory(&database_path)
+        let db = ConditionDatabase::load_from_directory(&self.base_path)
             .context("Failed to load condition database")?;
 
         let sequence_items = db.get_all_sequences();
@@ -484,13 +477,7 @@ steps: []
             )?
         };
 
-        let database_path = if let Some(sample) = sample {
-            sample.database_path()
-        } else {
-            Prompts::input_with_default_oracle("Database path", "data", &self.oracle)?
-        };
-
-        let db = ConditionDatabase::load_from_directory(&database_path)
+        let db = ConditionDatabase::load_from_directory(&self.base_path)
             .context("Failed to load condition database")?;
 
         let prompts = if let Some(sample) = sample {

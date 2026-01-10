@@ -1,210 +1,210 @@
+use anyhow::Result;
+use std::collections::VecDeque;
 use std::fs;
-use std::io::Write;
-use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::path::Path;
+use std::sync::Arc;
 use tempfile::TempDir;
-
-#[allow(dead_code)]
-struct Conversation {
-    input: String,
-    output: String,
-    dialogue: Vec<String>,
-}
-
-#[allow(dead_code)]
-impl Conversation {
-    fn new() -> Self {
-        Self {
-            input: String::new(),
-            output: String::new(),
-            dialogue: Vec::new(),
-        }
-    }
-
-    fn answerln(&mut self, answer: &str) {
-        self.input.push_str(answer);
-        self.input.push('\n');
-        self.dialogue.push(format!("USER: {}", answer));
-    }
-
-    fn set_output(&mut self, output: String) {
-        self.output = output;
-    }
-
-    fn askln(&self) -> Option<String> {
-        self.output.lines().last().map(|s| s.to_string())
-    }
-
-    fn get_conversation(&self) -> Vec<String> {
-        self.dialogue.clone()
-    }
-
-    fn get_input(&self) -> &str {
-        &self.input
-    }
-}
-
-/// TestInputReader - Injectable stdin replacement for testing
-#[allow(dead_code)]
-struct TestInputReader {
-    inputs: Vec<String>,
-    current_index: usize,
-}
-
-#[allow(dead_code)]
-impl TestInputReader {
-    fn new(inputs: Vec<String>) -> Self {
-        Self {
-            inputs,
-            current_index: 0,
-        }
-    }
-
-    #[allow(dead_code)]
-    fn read_line(&mut self) -> Option<String> {
-        if self.current_index < self.inputs.len() {
-            let line = self.inputs[self.current_index].clone();
-            self.current_index += 1;
-            Some(line)
-        } else {
-            None
-        }
-    }
-}
+use testcase_manager::{
+    oracle::{AnswerVariant, HardcodedOracle, Oracle},
+    GitManager, Prompts, TestCase, TestCaseBuilder,
+};
 
 #[test]
-#[ignore] // Ignore by default since it requires terminal interaction
-fn test_end_to_end_complete_workflow() {
+#[ignore = "Requires CLI"]
+fn test_end_to_end_complete_workflow() -> Result<()> {
     let temp_dir = TempDir::new().expect("Failed to create temp directory");
     let test_dir = temp_dir.path();
     let output_file = test_dir.join("test_case_001.yaml");
 
-    let binary_path = get_binary_path();
-
     println!("Test directory: {}", test_dir.display());
-    println!("Binary path: {}", binary_path.display());
     println!("Output file: {}", output_file.display());
 
-    let mut conversation = Conversation::new();
+    // Set up all hardcoded answers for complete workflow
+    let mut answers = VecDeque::new();
 
     // Metadata prompts
-    conversation.answerln("REQ-TEST-001");
-    conversation.answerln("42");
-    conversation.answerln("1");
-    conversation.answerln("TC_Integration_Test_001");
-    conversation.answerln("End-to-end integration test for testcase-manager workflow");
+    answers.push_back(AnswerVariant::String("REQ-TEST-001".to_string()));
+    answers.push_back(AnswerVariant::Int(42));
+    answers.push_back(AnswerVariant::Int(1));
+    answers.push_back(AnswerVariant::String("TC_Integration_Test_001".to_string()));
+    answers.push_back(AnswerVariant::String(
+        "End-to-end integration test for testcase-manager workflow".to_string(),
+    ));
 
     // Commit metadata?
-    conversation.answerln("y");
+    answers.push_back(AnswerVariant::Bool(true));
 
     // Add general initial conditions?
-    conversation.answerln("y");
-    conversation.answerln("eUICC");
-    conversation.answerln("General initial condition 1");
-    conversation.answerln("");
+    answers.push_back(AnswerVariant::Bool(true));
+    answers.push_back(AnswerVariant::String("eUICC".to_string()));
+    answers.push_back(AnswerVariant::String(
+        "General initial condition 1".to_string(),
+    ));
+    answers.push_back(AnswerVariant::String("".to_string()));
 
     // Commit general initial conditions?
-    conversation.answerln("y");
+    answers.push_back(AnswerVariant::Bool(true));
 
     // Add initial conditions?
-    conversation.answerln("y");
-    conversation.answerln("eUICC");
-    conversation.answerln("Initial condition 1");
-    conversation.answerln("Initial condition 2");
-    conversation.answerln("");
+    answers.push_back(AnswerVariant::Bool(true));
+    answers.push_back(AnswerVariant::String("eUICC".to_string()));
+    answers.push_back(AnswerVariant::String("Initial condition 1".to_string()));
+    answers.push_back(AnswerVariant::String("Initial condition 2".to_string()));
+    answers.push_back(AnswerVariant::String("".to_string()));
 
     // Commit initial conditions?
-    conversation.answerln("y");
+    answers.push_back(AnswerVariant::Bool(true));
 
     // Test Sequence 1
-    conversation.answerln("Test Sequence 1");
-    conversation.answerln("n");
-    conversation.answerln("y");
-    conversation.answerln("eUICC");
-    conversation.answerln("Sequence-specific condition 1");
-    conversation.answerln("");
+    answers.push_back(AnswerVariant::String("Test Sequence 1".to_string()));
+    answers.push_back(AnswerVariant::Bool(false)); // Use fuzzy search?
+    answers.push_back(AnswerVariant::Bool(false)); // Edit description in editor?
+    answers.push_back(AnswerVariant::Bool(true)); // Add sequence-specific initial conditions?
+    answers.push_back(AnswerVariant::Bool(false)); // Use database?
+    answers.push_back(AnswerVariant::String("eUICC".to_string()));
+    answers.push_back(AnswerVariant::String(
+        "Sequence-specific condition 1".to_string(),
+    ));
+    answers.push_back(AnswerVariant::String("".to_string()));
 
     // Commit this sequence?
-    conversation.answerln("y");
+    answers.push_back(AnswerVariant::Bool(true));
 
     // Add steps to this sequence now?
-    conversation.answerln("y");
+    answers.push_back(AnswerVariant::Bool(true));
 
     // Step 1
-    conversation.answerln("n");
-    conversation.answerln("Execute test command");
-    conversation.answerln("n");
-    conversation.answerln("ssh test-device");
-    conversation.answerln("n");
-    conversation.answerln("0x9000");
-    conversation.answerln("Success output");
+    answers.push_back(AnswerVariant::Bool(false)); // Use fuzzy search?
+    answers.push_back(AnswerVariant::String("Execute test command".to_string()));
+    answers.push_back(AnswerVariant::Bool(false)); // Is manual step?
+    answers.push_back(AnswerVariant::String("ssh test-device".to_string()));
+    answers.push_back(AnswerVariant::Bool(false)); // Include 'success' field?
+    answers.push_back(AnswerVariant::String("0x9000".to_string()));
+    answers.push_back(AnswerVariant::String("Success output".to_string()));
 
     // Commit this step?
-    conversation.answerln("y");
+    answers.push_back(AnswerVariant::Bool(true));
 
     // Add another step to this sequence?
-    conversation.answerln("y");
+    answers.push_back(AnswerVariant::Bool(true));
 
     // Step 2
-    conversation.answerln("n");
-    conversation.answerln("Verify results");
-    conversation.answerln("n");
-    conversation.answerln("ssh verify");
-    conversation.answerln("n");
-    conversation.answerln("OK");
-    conversation.answerln("Verification passed");
+    answers.push_back(AnswerVariant::Bool(false)); // Use fuzzy search?
+    answers.push_back(AnswerVariant::String("Verify results".to_string()));
+    answers.push_back(AnswerVariant::Bool(false)); // Is manual step?
+    answers.push_back(AnswerVariant::String("ssh verify".to_string()));
+    answers.push_back(AnswerVariant::Bool(false)); // Include 'success' field?
+    answers.push_back(AnswerVariant::String("OK".to_string()));
+    answers.push_back(AnswerVariant::String("Verification passed".to_string()));
 
     // Commit this step?
-    conversation.answerln("y");
+    answers.push_back(AnswerVariant::Bool(true));
 
     // Add another step to this sequence?
-    conversation.answerln("n");
+    answers.push_back(AnswerVariant::Bool(false));
 
     // Add another test sequence?
-    conversation.answerln("n");
+    answers.push_back(AnswerVariant::Bool(false));
 
     // Commit final complete test case?
-    conversation.answerln("y");
+    answers.push_back(AnswerVariant::Bool(true));
 
-    println!("Starting testcase-manager process...");
+    let oracle: Arc<dyn Oracle> = Arc::new(HardcodedOracle::new(answers));
 
-    let scripted_input = conversation.get_input();
+    println!("Starting test case workflow...");
 
-    let mut child = Command::new(&binary_path)
-        .arg("complete")
-        .arg("--output")
-        .arg(&output_file)
-        .arg("--commit-prefix")
-        .arg("TEST")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .expect("Failed to spawn testcase-manager process");
+    // Build the complete test case using HardcodedOracle
+    let metadata = Prompts::prompt_metadata_with_oracle(&oracle)?;
+    assert_eq!(metadata.requirement, "REQ-TEST-001");
+    assert_eq!(metadata.item, 42);
+    assert_eq!(metadata.tc, 1);
+    assert_eq!(metadata.id, "TC_Integration_Test_001");
 
-    {
-        let stdin = child.stdin.as_mut().expect("Failed to open stdin");
-        stdin
-            .write_all(scripted_input.as_bytes())
-            .expect("Failed to write to stdin");
+    let mut builder = TestCaseBuilder::new(test_dir, oracle.clone())?;
+
+    let yaml_map = metadata.to_yaml();
+    for (key, value) in yaml_map {
+        builder.structure_mut().insert(key, value);
     }
 
-    let output = child
-        .wait_with_output()
-        .expect("Failed to wait for process");
+    // Commit metadata
+    let commit_metadata = oracle.confirm("Commit metadata to git?")?;
+    if commit_metadata {
+        builder.commit("TEST: Add test case metadata")?;
+    }
 
-    println!("\n=== STDOUT ===");
-    println!("{}", String::from_utf8_lossy(&output.stdout));
-    println!("\n=== STDERR ===");
-    println!("{}", String::from_utf8_lossy(&output.stderr));
-    println!("\n=== STATUS ===");
-    println!("{}", output.status);
+    // Add general initial conditions
+    let add_general = oracle.confirm("Add general initial conditions?")?;
+    if add_general {
+        builder.add_general_initial_conditions(None)?;
+    }
 
-    assert!(
-        output.status.success(),
-        "testcase-manager process failed with status: {}",
-        output.status
-    );
+    // Commit general initial conditions
+    let commit_general = oracle.confirm("Commit general initial conditions?")?;
+    if commit_general {
+        builder.commit("TEST: Add general initial conditions")?;
+    }
+
+    // Add initial conditions
+    let add_ic = oracle.confirm("Add initial conditions?")?;
+    if add_ic {
+        builder.add_initial_conditions(None)?;
+    }
+
+    // Commit initial conditions
+    let commit_ic = oracle.confirm("Commit initial conditions?")?;
+    if commit_ic {
+        builder.commit("TEST: Add initial conditions")?;
+    }
+
+    // Add test sequence
+    builder.add_test_sequence_interactive()?;
+
+    // Commit sequence
+    let commit_seq = oracle.confirm("Commit this sequence?")?;
+    if commit_seq {
+        builder.commit("TEST: Add test sequence")?;
+    }
+
+    // Add steps to sequence
+    let add_steps = oracle.confirm("Add steps to this sequence now?")?;
+    if add_steps {
+        // Add Step 1
+        builder.add_steps_to_sequence_with_commits(1 - 1)?;
+
+        // Commit step 1
+        let commit_step1 = oracle.confirm("Commit this step?")?;
+        if commit_step1 {
+            builder.commit("TEST: Add step 1")?;
+        }
+
+        // Add another step?
+        let add_step2 = oracle.confirm("Add another step to this sequence?")?;
+        if add_step2 {
+            // Add Step 2
+            builder.add_steps_to_sequence_by_id_with_commits(2 - 1)?;
+
+            // Commit step 2
+            let commit_step2 = oracle.confirm("Commit this step?")?;
+            if commit_step2 {
+                builder.commit("TEST: Add step 2")?;
+            }
+        }
+
+        // Add another step?
+        oracle.confirm("Add another step to this sequence?")?; // false
+    }
+
+    // Add another sequence?
+    oracle.confirm("Add another test sequence?")?; // false
+
+    // Save final test case
+    builder.save()?;
+
+    // Commit final test case
+    builder.commit("TEST: Complete test case with all sequences and steps")?;
+
+    println!("\n=== Workflow completed successfully ===");
 
     assert!(
         output_file.exists(),
@@ -225,6 +225,8 @@ fn test_end_to_end_complete_workflow() {
     validate_git_commits(test_dir);
 
     println!("\n✓ All validations passed!");
+
+    Ok(())
 }
 
 #[test]
@@ -269,7 +271,6 @@ test_sequences:
 
     validate_yaml_structure(yaml_content);
 
-    use testcase_manager::TestCase;
     let parsed: TestCase = serde_yaml::from_str(yaml_content).expect("Failed to parse YAML");
 
     assert_eq!(parsed.requirement, "REQ-TEST-001");
@@ -278,136 +279,6 @@ test_sequences:
     assert_eq!(parsed.id, "TC_Integration_Test_001");
     assert_eq!(parsed.test_sequences.len(), 1);
     assert_eq!(parsed.test_sequences[0].steps.len(), 2);
-}
-
-fn get_binary_path() -> PathBuf {
-    let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    let mut binary_path = PathBuf::from(manifest_dir);
-    binary_path.push("target");
-    binary_path.push("debug");
-    binary_path.push("testcase-manager");
-
-    if !binary_path.exists() {
-        panic!(
-            "Binary not found at {}. Please run 'cargo build' first.",
-            binary_path.display()
-        );
-    }
-
-    binary_path
-}
-
-#[allow(dead_code)]
-fn create_scripted_input() -> String {
-    let mut conversation = Conversation::new();
-
-    // Metadata prompts
-    conversation.answerln("REQ-TEST-001"); // Requirement
-    conversation.answerln("42"); // Item
-    conversation.answerln("1"); // TC
-    conversation.answerln("TC_Integration_Test_001"); // ID
-    conversation.answerln("End-to-end integration test for testcase-manager workflow"); // Description
-
-    // Commit metadata?
-    conversation.answerln("y");
-
-    // Add general initial conditions?
-    conversation.answerln("y");
-    // Device name for general initial conditions
-    conversation.answerln("eUICC");
-    // Condition #1
-    conversation.answerln("General initial condition 1");
-    // Condition #2 (empty to finish)
-    conversation.answerln("");
-
-    // Commit general initial conditions?
-    conversation.answerln("y");
-
-    // Add initial conditions?
-    conversation.answerln("y");
-    // Device name for initial conditions
-    conversation.answerln("eUICC");
-    // Condition #1
-    conversation.answerln("Initial condition 1");
-    // Condition #2
-    conversation.answerln("Initial condition 2");
-    // Condition #3 (empty to finish)
-    conversation.answerln("");
-
-    // Commit initial conditions?
-    conversation.answerln("y");
-
-    // === First Test Sequence ===
-    // Sequence name
-    conversation.answerln("Test Sequence 1");
-    // Edit description in editor?
-    conversation.answerln("n");
-    // Add sequence-specific initial conditions?
-    conversation.answerln("y");
-    // Device name for sequence initial conditions
-    conversation.answerln("eUICC");
-    // Sequence condition #1
-    conversation.answerln("Sequence-specific condition 1");
-    // Sequence condition #2 (empty to finish)
-    conversation.answerln("");
-
-    // Commit this sequence?
-    conversation.answerln("y");
-
-    // Add steps to this sequence now?
-    conversation.answerln("y");
-
-    // === Step 1 ===
-    // Use fuzzy search for existing descriptions?
-    conversation.answerln("n");
-    // Step description
-    conversation.answerln("Execute test command");
-    // Is this a manual step?
-    conversation.answerln("n");
-    // Command
-    conversation.answerln("ssh test-device");
-    // Include 'success' field?
-    conversation.answerln("n");
-    // Expected result
-    conversation.answerln("0x9000");
-    // Expected output
-    conversation.answerln("Success output");
-
-    // Commit this step?
-    conversation.answerln("y");
-
-    // Add another step to this sequence?
-    conversation.answerln("y");
-
-    // === Step 2 ===
-    // Use fuzzy search for existing descriptions?
-    conversation.answerln("n");
-    // Step description
-    conversation.answerln("Verify results");
-    // Is this a manual step?
-    conversation.answerln("n");
-    // Command
-    conversation.answerln("ssh verify");
-    // Include 'success' field?
-    conversation.answerln("n");
-    // Expected result
-    conversation.answerln("OK");
-    // Expected output
-    conversation.answerln("Verification passed");
-
-    // Commit this step?
-    conversation.answerln("y");
-
-    // Add another step to this sequence?
-    conversation.answerln("n");
-
-    // Add another test sequence?
-    conversation.answerln("n");
-
-    // Commit final complete test case?
-    conversation.answerln("y");
-
-    conversation.get_input().to_string()
 }
 
 fn validate_yaml_structure(yaml_content: &str) {
@@ -514,8 +385,6 @@ fn validate_yaml_structure(yaml_content: &str) {
 }
 
 fn validate_yaml_parsing(yaml_file: &Path) {
-    use testcase_manager::TestCase;
-
     let yaml_content = fs::read_to_string(yaml_file).expect("Failed to read YAML file for parsing");
 
     let parsed_test_case: TestCase =
@@ -533,10 +402,6 @@ fn validate_yaml_parsing(yaml_file: &Path) {
         !parsed_test_case.general_initial_conditions.is_empty(),
         "General initial conditions should not be empty"
     );
-    // assert!(
-    //     !parsed_test_case.general_initial_conditions.get("eUICC".to_string()).is_empty(),
-    //     "General initial conditions eUICC should not be empty"
-    // );
 
     let ic_euicc = parsed_test_case.initial_conditions.get("eUICC").unwrap();
 
@@ -581,8 +446,6 @@ fn validate_yaml_parsing(yaml_file: &Path) {
 }
 
 fn validate_git_commits(repo_path: &Path) {
-    use testcase_manager::GitManager;
-
     let git = GitManager::open(repo_path).expect("Failed to open git repository");
 
     let commits = git.log(20).expect("Failed to get commit log");

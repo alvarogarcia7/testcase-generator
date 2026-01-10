@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Error, Result};
 use clap::Parser;
+use testcase_manager::fuzzy::MultiInput;
+use testcase_manager::fuzzy::MultiInput::Input;
 use testcase_manager::{
     cli::{Cli, Commands, GitCommands},
-    fuzzy::MultiInput,
-    fuzzy::MultiInput::Input,
     print_title, ConditionDatabase, GitManager, Oracle, Prompts, SampleData, TestCase,
     TestCaseBuilder, TestCaseEditor, TestCaseFuzzyFinder, TestCaseMetadata, TestCaseStorage,
     TestSuite, TitleStyle, TtyCliOracle,
@@ -158,8 +158,9 @@ fn handle_edit(base_path: &str, id: Option<String>, fuzzy: bool) -> Result<()> {
     } else {
         let test_cases = storage.load_all_test_cases()?;
         let ids: Vec<String> = test_cases.iter().map(|tc| tc.id.clone()).collect();
-        let index = Prompts::select("Select a test case", &ids)?;
-        test_cases[index].clone()
+        let index = Prompts::select("Select a test case", ids)?;
+        let my_int: usize = index.parse().unwrap();
+        test_cases[my_int].clone()
     };
 
     let edited_test_case = TestCaseEditor::edit_test_case(&test_case)?;
@@ -278,8 +279,9 @@ fn handle_view(base_path: &str, id: Option<String>, fuzzy: bool) -> Result<()> {
     } else {
         let test_cases = storage.load_all_test_cases()?;
         let ids: Vec<String> = test_cases.iter().map(|tc| tc.id.clone()).collect();
-        let index = Prompts::select("Select a test case", &ids)?;
-        test_cases[index].clone()
+        let index = Prompts::select("Select a test case", ids)?;
+        let my_int: usize = index.parse().unwrap();
+        test_cases[my_int].clone()
     };
 
     let yaml = serde_yaml::to_string(&test_case)?;
@@ -519,7 +521,7 @@ fn handle_init(path: &str, init_git: bool) -> Result<()> {
 
 fn handle_create_interactive(path: &str) -> Result<()> {
     let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
-    let mut builder = TestCaseBuilder::new(path, oracle)
+    let mut builder = TestCaseBuilder::new_with_recovery(path, oracle)
         .context("Failed to create test case builder")?;
 
     print_title("Interactive Test Case Creation Workflow", TitleStyle::Box);
@@ -545,18 +547,15 @@ fn handle_create_interactive(path: &str) -> Result<()> {
     }
 
     if Prompts::confirm_with_default("\nAdd initial conditions?", true)? {
-        builder.creator
-            .add_initial_conditions(&mut builder.structure, None)?;
-        Ok(&builder)
+        builder
+            .add_initial_conditions(None)
             .context("Failed to add initial conditions")?;
 
         println!("✓ Initial conditions added\n");
 
-        if Prompts::confirm("Commit initial conditions to git?")? {
-            builder
-                .commit("Add initial conditions")
-                .context("Failed to commit initial conditions")?;
-        }
+        builder
+            .commit("Add initial conditions")
+            .context("Failed to commit initial conditions")?;
     }
 
     let file_path = builder.save().context("Failed to save test case")?;
@@ -572,7 +571,7 @@ fn handle_create_interactive(path: &str) -> Result<()> {
 
 fn handle_build_sequences(path: &str) -> Result<()> {
     let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
-    let mut builder = TestCaseBuilder::new(path, oracle)
+    let mut builder = TestCaseBuilder::new_with_recovery(path, oracle)
         .context("Failed to create test case builder")?;
 
     print_title("Test Sequence Builder with Git Commits", TitleStyle::Box);
@@ -581,11 +580,9 @@ fn handle_build_sequences(path: &str) -> Result<()> {
 
     println!("✓ Metadata added to structure\n");
 
-    if Prompts::confirm("Commit metadata to git?")? {
-        builder
-            .commit("Add test case metadata")
-            .context("Failed to commit metadata")?;
-    }
+    builder
+        .commit("Add test case metadata")
+        .context("Failed to commit metadata")?;
 
     if Prompts::confirm("\nAdd general initial conditions?")? {
         builder
@@ -594,27 +591,12 @@ fn handle_build_sequences(path: &str) -> Result<()> {
 
         println!("✓ General initial conditions added\n");
 
-        if Prompts::confirm("Commit general initial conditions to git?")? {
-            builder
-                .commit("Add general initial conditions")
-                .context("Failed to commit general initial conditions")?;
-        }
+        builder
+            .commit("Add general initial conditions")
+            .context("Failed to commit general initial conditions")?;
     }
 
-    if Prompts::confirm("\nAdd initial conditions?")? {
-        builder.creator
-            .add_initial_conditions(&mut builder.structure, None)?;
-        Ok(&builder)
-            .context("Failed to add initial conditions")?;
-
-        println!("✓ Initial conditions added\n");
-
-        if Prompts::confirm("Commit initial conditions to git?")? {
-            builder
-                .commit("Add initial conditions")
-                .context("Failed to commit initial conditions")?;
-        }
-    }
+    prompt_then_do_add_initial_conditions(&mut builder)?;
 
     builder
         .build_test_sequences_with_commits()
@@ -625,11 +607,9 @@ fn handle_build_sequences(path: &str) -> Result<()> {
     print_title("Test Sequences Built Successfully", TitleStyle::Box);
     println!("Saved to: {}", file_path.display());
 
-    if Prompts::confirm("\nCommit final file?")? {
-        builder
-            .commit("Complete test case with all sequences")
-            .context("Failed to commit final file")?;
-    }
+    builder
+        .commit("Complete test case with all sequences")
+        .context("Failed to commit final file")?;
 
     builder.delete_recovery_file()?;
     println!("✓ Recovery file deleted");
@@ -639,7 +619,7 @@ fn handle_build_sequences(path: &str) -> Result<()> {
 
 fn handle_add_steps(path: &str, sequence_id: Option<i64>) -> Result<()> {
     let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
-    let mut builder = TestCaseBuilder::new(path, oracle)
+    let mut builder = TestCaseBuilder::new_with_recovery(path, oracle)
         .context("Failed to create test case builder")?;
 
     print_title("Add Steps to Sequence with Commits", TitleStyle::Box);
@@ -648,11 +628,9 @@ fn handle_add_steps(path: &str, sequence_id: Option<i64>) -> Result<()> {
 
     println!("✓ Metadata added to structure\n");
 
-    if Prompts::confirm("Commit metadata to git?")? {
-        builder
-            .commit("Add test case metadata")
-            .context("Failed to commit metadata")?;
-    }
+    builder
+        .commit("Add test case metadata")
+        .context("Failed to commit metadata")?;
 
     if Prompts::confirm("\nAdd general initial conditions?")? {
         builder
@@ -661,39 +639,22 @@ fn handle_add_steps(path: &str, sequence_id: Option<i64>) -> Result<()> {
 
         println!("✓ General initial conditions added\n");
 
-        if Prompts::confirm("Commit general initial conditions to git?")? {
-            builder
-                .commit("Add general initial conditions")
-                .context("Failed to commit general initial conditions")?;
-        }
+        builder
+            .commit("Add general initial conditions")
+            .context("Failed to commit general initial conditions")?;
     }
 
-    if Prompts::confirm("\nAdd initial conditions?")? {
-        builder.creator
-            .add_initial_conditions(&mut builder.structure, None)?;
-        Ok(&builder)
-            .context("Failed to add initial conditions")?;
-
-        println!("✓ Initial conditions added\n");
-
-        if Prompts::confirm("Commit initial conditions to git?")? {
-            builder
-                .commit("Add initial conditions")
-                .context("Failed to commit initial conditions")?;
-        }
-    }
+    prompt_then_do_add_initial_conditions(&mut builder)?;
 
     builder
         .add_test_sequence_interactive()
         .context("Failed to add test sequence")?;
 
-    if Prompts::confirm("Commit this sequence to git?")? {
-        let sequence_id_val = builder.get_next_sequence_id() - 1;
-        let commit_msg = format!("Add test sequence #{}", sequence_id_val);
-        builder
-            .commit(&commit_msg)
-            .context("Failed to commit test sequence")?;
-    }
+    let sequence_id_val = builder.get_next_sequence_id() - 1;
+    let commit_msg = format!("Add test sequence #{}", sequence_id_val);
+    builder
+        .commit(&commit_msg)
+        .context("Failed to commit test sequence")?;
 
     let seq_id = if let Some(id) = sequence_id {
         id
@@ -710,11 +671,9 @@ fn handle_add_steps(path: &str, sequence_id: Option<i64>) -> Result<()> {
     print_title("Steps Added Successfully", TitleStyle::Box);
     println!("Saved to: {}", file_path.display());
 
-    if Prompts::confirm("\nCommit final file?")? {
-        builder
-            .commit("Complete test sequence with all steps")
-            .context("Failed to commit final file")?;
-    }
+    builder
+        .commit("Complete test sequence with all steps")
+        .context("Failed to commit final file")?;
 
     builder.delete_recovery_file()?;
     println!("✓ Recovery file deleted");
@@ -722,9 +681,24 @@ fn handle_add_steps(path: &str, sequence_id: Option<i64>) -> Result<()> {
     Ok(())
 }
 
+fn prompt_then_do_add_initial_conditions(builder: &mut TestCaseBuilder) -> Result<(), Error> {
+    if Prompts::confirm("\nAdd initial conditions?")? {
+        builder
+            .add_initial_conditions(None)
+            .context("Failed to add initial conditions")?;
+
+        println!("✓ Initial conditions added\n");
+
+        builder
+            .commit("Add initial conditions")
+            .context("Failed to commit initial conditions")?;
+    }
+    Ok(())
+}
+
 fn handle_build_sequences_with_steps(path: &str) -> Result<()> {
     let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
-    let mut builder = TestCaseBuilder::new(path, oracle)
+    let mut builder = TestCaseBuilder::new_with_recovery(path, oracle)
         .context("Failed to create test case builder")?;
 
     print_title("Build Test Sequences & Steps with Commits", TitleStyle::Box);
@@ -733,11 +707,9 @@ fn handle_build_sequences_with_steps(path: &str) -> Result<()> {
 
     println!("✓ Metadata added to structure\n");
 
-    if Prompts::confirm("Commit metadata to git?")? {
-        builder
-            .commit("Add test case metadata")
-            .context("Failed to commit metadata")?;
-    }
+    builder
+        .commit("Add test case metadata")
+        .context("Failed to commit metadata")?;
 
     if Prompts::confirm("\nAdd general initial conditions?")? {
         builder
@@ -746,27 +718,12 @@ fn handle_build_sequences_with_steps(path: &str) -> Result<()> {
 
         println!("✓ General initial conditions added\n");
 
-        if Prompts::confirm("Commit general initial conditions to git?")? {
-            builder
-                .commit("Add general initial conditions")
-                .context("Failed to commit general initial conditions")?;
-        }
+        builder
+            .commit("Add general initial conditions")
+            .context("Failed to commit general initial conditions")?;
     }
 
-    if Prompts::confirm("\nAdd initial conditions?")? {
-        builder.creator
-            .add_initial_conditions(&mut builder.structure, None)?;
-        Ok(&builder)
-            .context("Failed to add initial conditions")?;
-
-        println!("✓ Initial conditions added\n");
-
-        if Prompts::confirm("Commit initial conditions to git?")? {
-            builder
-                .commit("Add initial conditions")
-                .context("Failed to commit initial conditions")?;
-        }
-    }
+    prompt_then_do_add_initial_conditions(&mut builder)?;
 
     builder
         .build_test_sequences_with_step_commits()
@@ -777,11 +734,9 @@ fn handle_build_sequences_with_steps(path: &str) -> Result<()> {
     print_title("Test Sequences & Steps Built Successfully", TitleStyle::Box);
     println!("Saved to: {}", file_path.display());
 
-    if Prompts::confirm("\nCommit final file?")? {
-        builder
-            .commit("Complete test case with all sequences and steps")
-            .context("Failed to commit final file")?;
-    }
+    builder
+        .commit("Complete test case with all sequences and steps")
+        .context("Failed to commit final file")?;
 
     builder.delete_recovery_file()?;
     println!("✓ Recovery file deleted");
@@ -809,9 +764,6 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
         base_dir.display()
     ))?;
 
-    let mut builder = TestCaseBuilder::new(base_dir)
-        .context("Failed to create test case builder")?;
-
     let sample_data = if use_sample {
         Some(SampleData::new())
     } else {
@@ -824,13 +776,10 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
         Arc::new(TtyCliOracle::new())
     };
 
-    let mut builder = TestCaseBuilder::new(base_dir, oracle)
+    let mut builder = TestCaseBuilder::new_with_recovery(base_dir, oracle)
         .context("Failed to create test case builder")?;
 
-    println!("\n╔══════════════════════════════════════════════════════╗");
-    println!("║    Complete Interactive Test Case Workflow          ║");
-    println!("║  with Git Commits & Validation Error Handling       ║");
-    println!("╚══════════════════════════════════════════════════════╝\n");
+    print_title("Complete Interactive Test Case Workflow", TitleStyle::Box);
 
     if use_sample {
         println!("📝 Sample mode enabled: Default values will be pre-populated\n");
@@ -879,18 +828,9 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
         }
     }
 
-    let should_commit = if let Some(sample) = &sample_data {
-        let prompts = Prompts::new_with_sample(sample);
-        prompts.confirm_with_sample("Commit metadata to git?", sample.confirm_commit())?
-    } else {
-        Prompts::confirm("Commit metadata to git?")?
-    };
-
-    if should_commit {
-        builder
-            .commit(&commit_msg("Add test case metadata"))
-            .context("Failed to commit metadata")?;
-    }
+    builder
+        .commit(&commit_msg("Add test case metadata"))
+        .context("Failed to commit metadata")?;
 
     let add_general = if let Some(sample) = &sample_data {
         let prompts = Prompts::new_with_sample(sample);
@@ -932,21 +872,9 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
             }
         }
 
-        let should_commit_general = if let Some(sample) = &sample_data {
-            let prompts = Prompts::new_with_sample(sample);
-            prompts.confirm_with_sample(
-                "Commit general initial conditions to git?",
-                sample.confirm_commit(),
-            )?
-        } else {
-            Prompts::confirm("Commit general initial conditions to git?")?
-        };
-
-        if should_commit_general {
-            builder
-                .commit(&commit_msg("Add general initial conditions"))
-                .context("Failed to commit general initial conditions")?;
-        }
+        builder
+            .commit(&commit_msg("Add general initial conditions"))
+            .context("Failed to commit general initial conditions")?;
     }
 
     let add_initial = if let Some(sample) = &sample_data {
@@ -961,9 +889,7 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
 
     if add_initial {
         loop {
-            builder.creator
-                .add_initial_conditions(&mut builder.structure, None)?;
-            match Ok(&builder) {
+            match builder.add_initial_conditions(None) {
                 Ok(_) => {
                     println!("✓ Initial conditions added\n");
                     builder.save_recovery_state("initial_conditions")?;
@@ -991,19 +917,9 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
             }
         }
 
-        let should_commit_initial = if let Some(sample) = &sample_data {
-            let prompts = Prompts::new_with_sample(sample);
-            prompts
-                .confirm_with_sample("Commit initial conditions to git?", sample.confirm_commit())?
-        } else {
-            Prompts::confirm("Commit initial conditions to git?")?
-        };
-
-        if should_commit_initial {
-            builder
-                .commit(&commit_msg("Add initial conditions"))
-                .context("Failed to commit initial conditions")?;
-        }
+        builder
+            .commit(&commit_msg("Add initial conditions"))
+            .context("Failed to commit initial conditions")?;
     }
 
     print_title("Build Test Sequences with Validation", TitleStyle::Box);
@@ -1057,19 +973,10 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
 
         let sequence_index = builder.get_sequence_count() - 1;
 
-        let should_commit_seq = if let Some(sample) = &sample_data {
-            let prompts = Prompts::new_with_sample(sample);
-            prompts.confirm_with_sample("Commit this sequence to git?", sample.confirm_commit())?
-        } else {
-            Prompts::confirm("Commit this sequence to git?")?
-        };
-
-        if should_commit_seq {
-            let sequence_id = builder.get_next_sequence_id() - 1;
-            builder
-                .commit(&commit_msg(&format!("Add test sequence #{}", sequence_id)))
-                .context("Failed to commit test sequence")?;
-        }
+        let sequence_id = builder.get_next_sequence_id() - 1;
+        builder
+            .commit(&commit_msg(&format!("Add test sequence #{}", sequence_id)))
+            .context("Failed to commit test sequence")?;
 
         let add_steps = if let Some(sample) = &sample_data {
             let prompts = Prompts::new_with_sample(sample);
@@ -1086,17 +993,8 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
                 Ok(id) => id,
                 Err(e) => {
                     println!("✗ Failed to get sequence ID: {}", e);
-                    let add_another_seq = if let Some(sample) = &sample_data {
-                        let prompts = Prompts::new_with_sample(sample);
-                        prompts.confirm_with_sample(
-                            "\nAdd another test sequence?",
-                            sample.confirm_add_another_sequence(),
-                        )?
-                    } else {
-                        Prompts::confirm("\nAdd another test sequence?")?
-                    };
 
-                    if !add_another_seq {
+                    if !add_another_test_sequence(&sample_data)? {
                         break;
                     }
                     continue;
@@ -1191,36 +1089,14 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
                             builder.save().context("Failed to save file")?;
                             builder.save_recovery_state("steps")?;
 
-                            let should_commit_step = if let Some(sample) = &sample_data {
-                                let prompts = Prompts::new_with_sample(sample);
-                                prompts.confirm_with_sample(
-                                    "Commit this step to git?",
-                                    sample.confirm_commit(),
-                                )?
-                            } else {
-                                Prompts::confirm("Commit this step to git?")?
-                            };
+                            builder
+                                .commit(&commit_msg(&format!(
+                                    "Add step #{} to sequence #{}: {}",
+                                    step_number, sequence_id, step_description
+                                )))
+                                .context("Failed to commit step")?;
 
-                            if should_commit_step {
-                                builder
-                                    .commit(&commit_msg(&format!(
-                                        "Add step #{} to sequence #{}: {}",
-                                        step_number, sequence_id, step_description
-                                    )))
-                                    .context("Failed to commit step")?;
-                            }
-
-                            let add_another_step = if let Some(sample) = &sample_data {
-                                let prompts = Prompts::new_with_sample(sample);
-                                prompts.confirm_with_sample(
-                                    "\nAdd another step to this sequence?",
-                                    sample.confirm_add_another_step(),
-                                )?
-                            } else {
-                                Prompts::confirm("\nAdd another step to this sequence?")?
-                            };
-
-                            if !add_another_step {
+                            if !add_another_step(&sample_data)? {
                                 break 'add_steps;
                             }
                             break 'step_retry;
@@ -1241,17 +1117,8 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
 
                             if !should_retry_step {
                                 println!("⚠ Skipping this step\n");
-                                let add_another_step = if let Some(sample) = &sample_data {
-                                    let prompts = Prompts::new_with_sample(sample);
-                                    prompts.confirm_with_sample(
-                                        "\nAdd another step to this sequence?",
-                                        sample.confirm_add_another_step(),
-                                    )?
-                                } else {
-                                    Prompts::confirm("\nAdd another step to this sequence?")?
-                                };
 
-                                if !add_another_step {
+                                if !add_another_step(&sample_data)? {
                                     break 'add_steps;
                                 }
                                 break 'step_retry;
@@ -1264,17 +1131,7 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
             println!("\n✓ All steps added to sequence");
         }
 
-        let add_another_seq = if let Some(sample) = &sample_data {
-            let prompts = Prompts::new_with_sample(sample);
-            prompts.confirm_with_sample(
-                "\nAdd another test sequence?",
-                sample.confirm_add_another_sequence(),
-            )?
-        } else {
-            Prompts::confirm("\nAdd another test sequence?")?
-        };
-
-        if !add_another_seq {
+        if !add_another_test_sequence(&sample_data)? {
             break;
         }
     }
@@ -1287,40 +1144,7 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
 
     println!("✓ Complete test case saved to: {}\n", output_path);
 
-    let should_commit_final = if let Some(sample) = &sample_data {
-        let prompts = Prompts::new_with_sample(sample);
-        prompts.confirm_with_sample(
-            "Commit final complete test case?",
-            sample.confirm_final_commit(),
-        )?
-    } else {
-        Prompts::confirm("Commit final complete test case?")?
-    };
-
-    if should_commit_final {
-        let git = match GitManager::open(base_dir) {
-            Ok(git) => git,
-            Err(_) => GitManager::init(base_dir)?,
-        };
-
-        let author_name =
-            std::env::var("GIT_AUTHOR_NAME").unwrap_or_else(|_| "Test Case Manager".to_string());
-        let author_email = std::env::var("GIT_AUTHOR_EMAIL")
-            .unwrap_or_else(|_| "testcase@example.com".to_string());
-
-        let relative_path = output_file
-            .file_name()
-            .ok_or_else(|| anyhow::anyhow!("Invalid output filename"))?;
-
-        git.add(&[relative_path])?;
-        git.commit(
-            &commit_msg("Complete test case with all sequences and steps"),
-            &author_name,
-            &author_email,
-        )?;
-
-        println!("✓ Committed to git\n");
-    }
+    builder.commit("Complete test case with all sequences and steps")?;
 
     builder.delete_recovery_file()?;
     println!("✓ Recovery file deleted\n");
@@ -1328,6 +1152,32 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
     print_title("Test Case Workflow Completed!", TitleStyle::Box);
 
     Ok(())
+}
+
+fn add_another_step(sample_data: &Option<SampleData>) -> Result<bool, Error> {
+    let add_another_step = if let Some(sample) = &sample_data {
+        let prompts = Prompts::new_with_sample(sample);
+        prompts.confirm_with_sample(
+            "\nAdd another step to this sequence?",
+            sample.confirm_add_another_step(),
+        )?
+    } else {
+        Prompts::confirm("\nAdd another step to this sequence?")?
+    };
+    Ok(add_another_step)
+}
+
+fn add_another_test_sequence(sample_data: &Option<SampleData>) -> Result<bool, Error> {
+    let add_another_seq = if let Some(sample) = &sample_data {
+        let prompts = Prompts::new_with_sample(sample);
+        prompts.confirm_with_sample(
+            "\nAdd another test sequence?",
+            sample.confirm_add_another_sequence(),
+        )?
+    } else {
+        Prompts::confirm("\nAdd another test sequence?")?
+    };
+    Ok(add_another_seq)
 }
 
 fn handle_parse_general_conditions(database_path: &str, work_path: &str) -> Result<()> {
@@ -1349,7 +1199,7 @@ fn handle_parse_general_conditions(database_path: &str, work_path: &str) -> Resu
     );
 
     let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
-    let mut builder = TestCaseBuilder::new(work_path, oracle)
+    let mut builder = TestCaseBuilder::new_with_recovery(work_path, oracle)
         .context("Failed to create test case builder")?;
 
     builder.add_metadata().context("Failed to add metadata")?;
@@ -1445,11 +1295,9 @@ fn handle_parse_general_conditions(database_path: &str, work_path: &str) -> Resu
     println!("╚═══════════════════════════════════════════════╝");
     println!("\nSaved to: {}", file_path.display());
 
-    if Prompts::confirm("\nCommit to git?")? {
-        builder
-            .commit("Add general initial conditions")
-            .context("Failed to commit")?;
-    }
+    builder
+        .commit("Add general initial conditions")
+        .context("Failed to commit")?;
 
     builder.delete_recovery_file()?;
 
@@ -1480,7 +1328,7 @@ fn handle_parse_initial_conditions2(database_path: &str, work_path: &str) -> Res
     );
 
     let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
-    let mut builder = TestCaseBuilder::new(work_path, oracle)
+    let mut builder = TestCaseBuilder::new_with_recovery(work_path, oracle)
         .context("Failed to create test case builder")?;
 
     builder.add_metadata().context("Failed to add metadata")?;
@@ -1653,10 +1501,10 @@ fn handle_parse_initial_conditions(database_path: &str, work_path: &str) -> Resu
     );
 
     let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
-    let mut builder = TestCaseBuilder::new(work_path, oracle)
+    let mut builder = TestCaseBuilder::new_with_recovery(work_path, oracle)
         .context("Failed to create test case builder")?;
 
-    builder.add_metadata().context("Failed to add metadata")?;
+    // builder.add_metadata().context("Failed to add metadata")?;
 
     println!("✓ Metadata added to structure\n");
 
@@ -1745,11 +1593,9 @@ fn handle_parse_initial_conditions(database_path: &str, work_path: &str) -> Resu
     print_title("Test Case Saved Successfully", TitleStyle::Box);
     println!("Saved to: {}", file_path.display());
 
-    if Prompts::confirm("\nCommit to git?")? {
-        builder
-            .commit("Add initial conditions")
-            .context("Failed to commit")?;
-    }
+    builder
+        .commit("Add initial conditions")
+        .context("Failed to commit")?;
 
     builder.delete_recovery_file()?;
 

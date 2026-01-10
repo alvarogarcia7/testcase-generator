@@ -1,7 +1,6 @@
 use anyhow::Result;
-use testcase_manager::{print_title, TestCaseBuilder, TitleStyle};
 use std::sync::Arc;
-use testcase_manager::{TtyCliOracle};
+use testcase_manager::{print_title, TestCaseBuilder, TitleStyle, TtyCliOracle};
 
 fn main() -> Result<()> {
     let temp_dir = std::env::temp_dir().join("testcase_example");
