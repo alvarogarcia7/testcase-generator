@@ -966,4 +966,396 @@ output: ""
             anyhow::bail!("ID field not found in structure")
         }
     }
+
+    /// Update metadata section with pre-populated values from the structure
+    pub fn update_metadata(&self, structure: &mut IndexMap<String, Value>) -> Result<()> {
+        use crate::prompts::TestCaseMetadata;
+
+        log::info!("\n=== Update Metadata ===\n");
+
+        // Extract existing metadata from structure
+        let existing_metadata = TestCaseMetadata::from_structure(structure);
+
+        let metadata = if let Some(existing) = existing_metadata {
+            log::info!("⚠ Existing values shown as editable text (Enter confirms, you can edit/delete)\n");
+
+            let requirement = self.oracle.input_with_initial_text(
+                "Requirement",
+                &existing.requirement,
+            )?;
+            let item = self.oracle.input_integer_with_initial_text(
+                "Item",
+                &existing.item.to_string(),
+            )?;
+            let tc = self.oracle.input_integer_with_initial_text(
+                "TC",
+                &existing.tc.to_string(),
+            )?;
+            let id = self.oracle.input_with_initial_text(
+                "ID",
+                &existing.id,
+            )?;
+            let description = self.oracle.input_with_initial_text(
+                "Description",
+                &existing.description,
+            )?;
+
+            TestCaseMetadata {
+                requirement,
+                item,
+                tc,
+                id,
+                description,
+            }
+        } else {
+            // No existing metadata, use regular add_metadata flow
+            return self.add_metadata(structure);
+        };
+
+        // Reuse validation logic from add_metadata
+        log::info!("\n=== Validating Metadata ===");
+        metadata
+            .validate(&self.validator)
+            .context("Metadata validation failed")?;
+        log::info!("✓ Metadata is valid\n");
+
+        // Update structure with new values
+        let yaml_map = metadata.to_yaml();
+        for (key, value) in yaml_map {
+            structure.insert(key, value);
+        }
+
+        Ok(())
+    }
+
+    /// Update general initial conditions with pre-populated values from the structure
+    pub fn update_general_initial_conditions(
+        &self,
+        structure: &mut IndexMap<String, Value>,
+    ) -> Result<()> {
+        log::info!("\n=== Update General Initial Conditions ===\n");
+
+        // Extract existing general initial conditions
+        let existing_conditions = structure.get("general_initial_conditions").cloned();
+
+        // Use the existing prompt method which already supports defaults
+        let conditions = Prompts::prompt_general_initial_conditions_with_oracle(
+            existing_conditions.as_ref(),
+            &self.validator,
+            &self.editor_config,
+            &self.oracle,
+        )
+        .context("Failed to update general initial conditions")?;
+
+        structure.insert("general_initial_conditions".to_string(), conditions);
+
+        Ok(())
+    }
+
+    /// Update initial conditions with pre-populated values from the structure
+    pub fn update_initial_conditions(
+        &self,
+        structure: &mut IndexMap<String, Value>,
+    ) -> Result<()> {
+        log::info!("\n=== Update Initial Conditions ===\n");
+
+        // Extract existing initial conditions
+        let existing_conditions = structure.get("initial_conditions").cloned();
+
+        // Use the existing prompt method which already supports defaults
+        let prompts = if let Some(ref db) = self.database {
+            Prompts::new_with_database(db)
+        } else {
+            Prompts::new()
+        };
+        let conditions = prompts
+            .prompt_initial_conditions_with_oracle(
+                existing_conditions.as_ref(),
+                &self.validator,
+                &self.oracle,
+            )
+            .context("Failed to update initial conditions")?;
+
+        structure.insert("initial_conditions".to_string(), conditions);
+
+        Ok(())
+    }
+
+    /// Update a test sequence with pre-populated values from the structure
+    pub fn update_test_sequence(
+        &self,
+        structure: &mut IndexMap<String, Value>,
+        sequence_index: usize,
+    ) -> Result<()> {
+        log::info!("\n=== Update Test Sequence ===\n");
+
+        // Extract existing sequence at the given index
+        let existing_sequence = if let Some(Value::Sequence(sequences)) = structure.get("test_sequences") {
+            if let Some(seq_value) = sequences.get(sequence_index) {
+                // Convert to TestSequence for editing
+                let seq: TestSequence = serde_yaml::from_value(seq_value.clone())
+                    .context("Failed to parse existing sequence")?;
+                Some(seq)
+            } else {
+                anyhow::bail!("Sequence not found at index {}", sequence_index);
+            }
+        } else {
+            anyhow::bail!("No test_sequences found in structure");
+        };
+
+        let sequence = if let Some(existing) = existing_sequence {
+            log::info!("Editing sequence: {} (ID: {})", existing.name, existing.id);
+
+            // Load database for fuzzy search
+            let db = ConditionDatabase::load_from_directory(&self.base_path)
+                .context("Failed to load condition database")?;
+            let sequence_items = db.get_all_sequences();
+
+            // Convert existing sequence to YAML for editing
+            let yaml_content = serde_yaml::to_string(&existing)
+                .context("Failed to serialize existing sequence to YAML")?;
+
+            // Use ComplexStructureEditor to allow fuzzy search and editing
+            // Pre-populate the editor with the existing sequence content
+            let edited_sequence = if !sequence_items.is_empty() {
+                match ComplexStructureEditor::<TestSequence>::edit_with_fuzzy_search(
+                    &sequence_items,
+                    "Select sequence template (ESC to edit current): ",
+                    self.oracle.as_ref(),
+                    &self.editor_config,
+                    &self.validator,
+                    &yaml_content,
+                ) {
+                    Ok(mut seq) => {
+                        // Preserve the original ID
+                        seq.id = existing.id;
+                        seq
+                    }
+                    Err(e) => {
+                        log::warn!("Fuzzy search failed or cancelled: {}", e);
+                        log::info!("Falling back to direct editing");
+                        return self.update_test_sequence_fallback(structure, sequence_index, &existing);
+                    }
+                }
+            } else {
+                log::info!("No sequences in database, using direct editing.");
+                return self.update_test_sequence_fallback(structure, sequence_index, &existing);
+            };
+
+            edited_sequence
+        } else {
+            anyhow::bail!("No sequence found at index {}", sequence_index);
+        };
+
+        // Convert to YAML Value and update the structure
+        let sequence_value = serde_yaml::to_value(&sequence)
+            .context("Failed to convert TestSequence to YAML value")?;
+
+        // Validate the updated sequence
+        log::info!("\n=== Validating Test Sequence ===");
+        if let Value::Mapping(seq_map) = &sequence_value {
+            if !seq_map.contains_key(Value::String("id".to_string())) {
+                anyhow::bail!("Sequence must have an 'id' field");
+            }
+            if !seq_map.contains_key(Value::String("name".to_string())) {
+                anyhow::bail!("Sequence must have a 'name' field");
+            }
+            if !seq_map.contains_key(Value::String("steps".to_string())) {
+                anyhow::bail!("Sequence must have a 'steps' field");
+            }
+        } else {
+            anyhow::bail!("Sequence must be a mapping");
+        }
+        log::info!("✓ Test sequence validated\n");
+
+        // Replace the sequence at the given index
+        if let Some(Value::Sequence(sequences)) = structure.get_mut("test_sequences") {
+            if sequence_index < sequences.len() {
+                sequences[sequence_index] = sequence_value;
+            } else {
+                anyhow::bail!("Invalid sequence index: {}", sequence_index);
+            }
+        } else {
+            anyhow::bail!("test_sequences is not a sequence");
+        }
+
+        Ok(())
+    }
+
+    /// Fallback method for updating test sequence when fuzzy search is unavailable or cancelled
+    fn update_test_sequence_fallback(
+        &self,
+        structure: &mut IndexMap<String, Value>,
+        sequence_index: usize,
+        existing: &TestSequence,
+    ) -> Result<()> {
+        use crate::editor::TestCaseEditor;
+
+        let sequence_id = existing.id;
+
+        // Prompt for name with existing value
+        let sequence_name = self.oracle.input_with_initial_text(
+            "Sequence name",
+            &existing.name,
+        )?;
+
+        // Prompt for description with existing value
+        let description = if Prompts::confirm_with_oracle(
+            "\nEdit description in editor?",
+            &self.oracle,
+        )? {
+            let template = format!(
+                "# Description for: {}\n# Enter the sequence description below:\n\n{}",
+                sequence_name,
+                existing.description
+            );
+            let edited = TestCaseEditor::edit_text(&template, &self.editor_config)?;
+
+            let cleaned: String = edited
+                .lines()
+                .filter(|line| !line.trim().starts_with('#'))
+                .collect::<Vec<&str>>()
+                .join("\n")
+                .trim()
+                .to_string();
+
+            if cleaned.is_empty() {
+                None
+            } else {
+                Some(cleaned)
+            }
+        } else {
+            self.oracle.input_optional_with_initial_text(
+                "Description",
+                &existing.description,
+            )?
+        };
+
+        // Ask about initial conditions
+        let has_initial_conditions = !existing.initial_conditions.is_empty();
+        let update_initial_conditions = if has_initial_conditions {
+            Prompts::confirm_with_oracle(
+                "\nUpdate sequence-specific initial conditions?",
+                &self.oracle,
+            )?
+        } else {
+            Prompts::confirm_with_oracle(
+                "\nAdd sequence-specific initial conditions?",
+                &self.oracle,
+            )?
+        };
+
+        let db = ConditionDatabase::load_from_directory(&self.base_path)
+            .context("Failed to load condition database")?;
+
+        let prompts = Prompts::new_with_database(&db);
+
+        let initial_conditions = if update_initial_conditions {
+            // Convert existing HashMap to YAML Value for defaults
+            let existing_ic = if !existing.initial_conditions.is_empty() {
+                let mut ic_map = serde_yaml::Mapping::new();
+                for (key, values) in &existing.initial_conditions {
+                    let values_seq: Vec<Value> = values.iter().map(|v| Value::String(v.clone())).collect();
+                    ic_map.insert(Value::String(key.clone()), Value::Sequence(values_seq));
+                }
+                Some(Value::Mapping(ic_map))
+            } else {
+                None
+            };
+
+            Some(prompts.prompt_initial_conditions_with_oracle(
+                existing_ic.as_ref(),
+                &self.validator,
+                &self.oracle,
+            )?)
+        } else if has_initial_conditions {
+            // Keep existing initial conditions
+            let mut ic_map = serde_yaml::Mapping::new();
+            for (key, values) in &existing.initial_conditions {
+                let values_seq: Vec<Value> = values.iter().map(|v| Value::String(v.clone())).collect();
+                ic_map.insert(Value::String(key.clone()), Value::Sequence(values_seq));
+            }
+            Some(Value::Mapping(ic_map))
+        } else {
+            None
+        };
+
+        // Build the updated sequence
+        let mut sequence_map = serde_yaml::Mapping::new();
+        sequence_map.insert(
+            Value::String("id".to_string()),
+            Value::Number(sequence_id.into()),
+        );
+        sequence_map.insert(
+            Value::String("name".to_string()),
+            Value::String(sequence_name.clone()),
+        );
+
+        if let Some(desc) = description {
+            sequence_map.insert(
+                Value::String("description".to_string()),
+                Value::String(desc),
+            );
+        } else {
+            // Use empty string if no description provided
+            sequence_map.insert(
+                Value::String("description".to_string()),
+                Value::String(String::new()),
+            );
+        }
+
+        if let Some(ic) = initial_conditions {
+            let ic_array = vec![ic];
+            sequence_map.insert(
+                Value::String("initial_conditions".to_string()),
+                Value::Sequence(ic_array),
+            );
+        } else {
+            // Keep empty HashMap
+            sequence_map.insert(
+                Value::String("initial_conditions".to_string()),
+                Value::Mapping(serde_yaml::Mapping::new()),
+            );
+        }
+
+        // Preserve existing steps
+        let steps_value = serde_yaml::to_value(&existing.steps)
+            .context("Failed to serialize existing steps")?;
+        sequence_map.insert(
+            Value::String("steps".to_string()),
+            steps_value,
+        );
+
+        let sequence_value = Value::Mapping(sequence_map);
+
+        // Validate
+        log::info!("\n=== Validating Test Sequence ===");
+        if let Value::Mapping(seq_map) = &sequence_value {
+            if !seq_map.contains_key(Value::String("id".to_string())) {
+                anyhow::bail!("Sequence must have an 'id' field");
+            }
+            if !seq_map.contains_key(Value::String("name".to_string())) {
+                anyhow::bail!("Sequence must have a 'name' field");
+            }
+            if !seq_map.contains_key(Value::String("steps".to_string())) {
+                anyhow::bail!("Sequence must have a 'steps' field");
+            }
+        } else {
+            anyhow::bail!("Sequence must be a mapping");
+        }
+        log::info!("✓ Test sequence validated\n");
+
+        // Replace the sequence at the given index
+        if let Some(Value::Sequence(sequences)) = structure.get_mut("test_sequences") {
+            if sequence_index < sequences.len() {
+                sequences[sequence_index] = sequence_value;
+            } else {
+                anyhow::bail!("Invalid sequence index: {}", sequence_index);
+            }
+        } else {
+            anyhow::bail!("test_sequences is not a sequence");
+        }
+
+        Ok(())
+    }
 }
