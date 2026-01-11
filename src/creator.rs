@@ -977,28 +977,23 @@ output: ""
         let existing_metadata = TestCaseMetadata::from_structure(structure);
 
         let metadata = if let Some(existing) = existing_metadata {
-            log::info!("⚠ Existing values shown as editable text (Enter confirms, you can edit/delete)\n");
+            log::info!(
+                "⚠ Existing values shown as editable text (Enter confirms, you can edit/delete)\n"
+            );
 
-            let requirement = self.oracle.input_with_initial_text(
-                "Requirement",
-                &existing.requirement,
-            )?;
-            let item = self.oracle.input_integer_with_initial_text(
-                "Item",
-                &existing.item.to_string(),
-            )?;
-            let tc = self.oracle.input_integer_with_initial_text(
-                "TC",
-                &existing.tc.to_string(),
-            )?;
-            let id = self.oracle.input_with_initial_text(
-                "ID",
-                &existing.id,
-            )?;
-            let description = self.oracle.input_with_initial_text(
-                "Description",
-                &existing.description,
-            )?;
+            let requirement = self
+                .oracle
+                .input_with_initial_text("Requirement", &existing.requirement)?;
+            let item = self
+                .oracle
+                .input_integer_with_initial_text("Item", &existing.item.to_string())?;
+            let tc = self
+                .oracle
+                .input_integer_with_initial_text("TC", &existing.tc.to_string())?;
+            let id = self.oracle.input_with_initial_text("ID", &existing.id)?;
+            let description = self
+                .oracle
+                .input_with_initial_text("Description", &existing.description)?;
 
             TestCaseMetadata {
                 requirement,
@@ -1053,10 +1048,7 @@ output: ""
     }
 
     /// Update initial conditions with pre-populated values from the structure
-    pub fn update_initial_conditions(
-        &self,
-        structure: &mut IndexMap<String, Value>,
-    ) -> Result<()> {
+    pub fn update_initial_conditions(&self, structure: &mut IndexMap<String, Value>) -> Result<()> {
         log::info!("\n=== Update Initial Conditions ===\n");
 
         // Extract existing initial conditions
@@ -1090,18 +1082,19 @@ output: ""
         log::info!("\n=== Update Test Sequence ===\n");
 
         // Extract existing sequence at the given index
-        let existing_sequence = if let Some(Value::Sequence(sequences)) = structure.get("test_sequences") {
-            if let Some(seq_value) = sequences.get(sequence_index) {
-                // Convert to TestSequence for editing
-                let seq: TestSequence = serde_yaml::from_value(seq_value.clone())
-                    .context("Failed to parse existing sequence")?;
-                Some(seq)
+        let existing_sequence =
+            if let Some(Value::Sequence(sequences)) = structure.get("test_sequences") {
+                if let Some(seq_value) = sequences.get(sequence_index) {
+                    // Convert to TestSequence for editing
+                    let seq: TestSequence = serde_yaml::from_value(seq_value.clone())
+                        .context("Failed to parse existing sequence")?;
+                    Some(seq)
+                } else {
+                    anyhow::bail!("Sequence not found at index {}", sequence_index);
+                }
             } else {
-                anyhow::bail!("Sequence not found at index {}", sequence_index);
-            }
-        } else {
-            anyhow::bail!("No test_sequences found in structure");
-        };
+                anyhow::bail!("No test_sequences found in structure");
+            };
 
         let sequence = if let Some(existing) = existing_sequence {
             log::info!("Editing sequence: {} (ID: {})", existing.name, existing.id);
@@ -1134,7 +1127,11 @@ output: ""
                     Err(e) => {
                         log::warn!("Fuzzy search failed or cancelled: {}", e);
                         log::info!("Falling back to direct editing");
-                        return self.update_test_sequence_fallback(structure, sequence_index, &existing);
+                        return self.update_test_sequence_fallback(
+                            structure,
+                            sequence_index,
+                            &existing,
+                        );
                     }
                 }
             } else {
@@ -1194,42 +1191,36 @@ output: ""
         let sequence_id = existing.id;
 
         // Prompt for name with existing value
-        let sequence_name = self.oracle.input_with_initial_text(
-            "Sequence name",
-            &existing.name,
-        )?;
+        let sequence_name = self
+            .oracle
+            .input_with_initial_text("Sequence name", &existing.name)?;
 
         // Prompt for description with existing value
-        let description = if Prompts::confirm_with_oracle(
-            "\nEdit description in editor?",
-            &self.oracle,
-        )? {
-            let template = format!(
-                "# Description for: {}\n# Enter the sequence description below:\n\n{}",
-                sequence_name,
-                existing.description
-            );
-            let edited = TestCaseEditor::edit_text(&template, &self.editor_config)?;
+        let description =
+            if Prompts::confirm_with_oracle("\nEdit description in editor?", &self.oracle)? {
+                let template = format!(
+                    "# Description for: {}\n# Enter the sequence description below:\n\n{}",
+                    sequence_name, existing.description
+                );
+                let edited = TestCaseEditor::edit_text(&template, &self.editor_config)?;
 
-            let cleaned: String = edited
-                .lines()
-                .filter(|line| !line.trim().starts_with('#'))
-                .collect::<Vec<&str>>()
-                .join("\n")
-                .trim()
-                .to_string();
+                let cleaned: String = edited
+                    .lines()
+                    .filter(|line| !line.trim().starts_with('#'))
+                    .collect::<Vec<&str>>()
+                    .join("\n")
+                    .trim()
+                    .to_string();
 
-            if cleaned.is_empty() {
-                None
+                if cleaned.is_empty() {
+                    None
+                } else {
+                    Some(cleaned)
+                }
             } else {
-                Some(cleaned)
-            }
-        } else {
-            self.oracle.input_optional_with_initial_text(
-                "Description",
-                &existing.description,
-            )?
-        };
+                self.oracle
+                    .input_optional_with_initial_text("Description", &existing.description)?
+            };
 
         // Ask about initial conditions
         let has_initial_conditions = !existing.initial_conditions.is_empty();
@@ -1255,7 +1246,8 @@ output: ""
             let existing_ic = if !existing.initial_conditions.is_empty() {
                 let mut ic_map = serde_yaml::Mapping::new();
                 for (key, values) in &existing.initial_conditions {
-                    let values_seq: Vec<Value> = values.iter().map(|v| Value::String(v.clone())).collect();
+                    let values_seq: Vec<Value> =
+                        values.iter().map(|v| Value::String(v.clone())).collect();
                     ic_map.insert(Value::String(key.clone()), Value::Sequence(values_seq));
                 }
                 Some(Value::Mapping(ic_map))
@@ -1272,7 +1264,8 @@ output: ""
             // Keep existing initial conditions
             let mut ic_map = serde_yaml::Mapping::new();
             for (key, values) in &existing.initial_conditions {
-                let values_seq: Vec<Value> = values.iter().map(|v| Value::String(v.clone())).collect();
+                let values_seq: Vec<Value> =
+                    values.iter().map(|v| Value::String(v.clone())).collect();
                 ic_map.insert(Value::String(key.clone()), Value::Sequence(values_seq));
             }
             Some(Value::Mapping(ic_map))
@@ -1319,12 +1312,9 @@ output: ""
         }
 
         // Preserve existing steps
-        let steps_value = serde_yaml::to_value(&existing.steps)
-            .context("Failed to serialize existing steps")?;
-        sequence_map.insert(
-            Value::String("steps".to_string()),
-            steps_value,
-        );
+        let steps_value =
+            serde_yaml::to_value(&existing.steps).context("Failed to serialize existing steps")?;
+        sequence_map.insert(Value::String("steps".to_string()), steps_value);
 
         let sequence_value = Value::Mapping(sequence_map);
 
