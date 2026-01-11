@@ -121,6 +121,10 @@ fn main() -> Result<()> {
         } => {
             handle_validate_yaml(&yaml_file, &schema_file)?;
         }
+
+        Commands::EditInteractive { id, fuzzy } => {
+            handle_edit_interactive(&cli.path, id, fuzzy)?;
+        }
     }
 
     Ok(())
@@ -1155,6 +1159,256 @@ fn handle_complete(output_path: &str, commit_prefix: Option<&str>, use_sample: b
     log::info!("✓ Recovery file deleted\n");
 
     print_title("Test Case Workflow Completed!", TitleStyle::Box);
+
+    Ok(())
+}
+
+fn handle_edit_interactive(base_path: &str, id: Option<String>, fuzzy: bool) -> Result<()> {
+    let storage = TestCaseStorage::new(base_path)?;
+
+    let test_case = if let Some(id) = id {
+        storage.load_test_case_by_id(&id)?
+    } else if fuzzy {
+        let test_cases = storage.load_all_test_cases()?;
+        TestCaseFuzzyFinder::search(&test_cases)?.context("No test case selected")?
+    } else {
+        let test_cases = storage.load_all_test_cases()?;
+        let ids: Vec<String> = test_cases.iter().map(|tc| tc.id.clone()).collect();
+        let index = Prompts::select("Select a test case", ids)?;
+        let my_int: usize = index.parse().unwrap();
+        test_cases[my_int].clone()
+    };
+
+    let git = GitManager::open(base_path).or_else(|_| GitManager::init(base_path))?;
+
+    print_title(
+        &format!("Interactive Editor: {}", test_case.id),
+        TitleStyle::Box,
+    );
+
+    let mut current_test_case = test_case.clone();
+
+    loop {
+        print_title("Edit Sections Menu", TitleStyle::TripleEquals);
+        log::info!("Select a section to edit:\n");
+        log::info!("  1. Metadata (requirement, item, tc, id, description)");
+        log::info!("  2. General Initial Conditions");
+        log::info!("  3. Initial Conditions");
+        log::info!("  4. Test Sequences");
+        log::info!("  5. Save and Exit");
+        log::info!("  6. Exit without Saving\n");
+
+        let choice = Prompts::input("Choice (1-6)")?;
+
+        match choice.trim() {
+            "1" => {
+                if let Err(e) = edit_metadata_section(&mut current_test_case, &storage, &git) {
+                    log::error!("Failed to edit metadata: {}", e);
+                }
+            }
+            "2" => {
+                if let Err(e) =
+                    edit_general_initial_conditions_section(&mut current_test_case, &storage, &git)
+                {
+                    log::error!("Failed to edit general initial conditions: {}", e);
+                }
+            }
+            "3" => {
+                if let Err(e) =
+                    edit_initial_conditions_section(&mut current_test_case, &storage, &git)
+                {
+                    log::error!("Failed to edit initial conditions: {}", e);
+                }
+            }
+            "4" => {
+                if let Err(e) = edit_test_sequences_section(&mut current_test_case, &storage, &git)
+                {
+                    log::error!("Failed to edit test sequences: {}", e);
+                }
+            }
+            "5" => {
+                let file_path = storage.save_test_case(&current_test_case)?;
+                log::info!("\n✓ Test case saved: {}", file_path.display());
+
+                let author_name = std::env::var("GIT_AUTHOR_NAME")
+                    .unwrap_or_else(|_| "Test Case Manager".to_string());
+                let author_email = std::env::var("GIT_AUTHOR_EMAIL")
+                    .unwrap_or_else(|_| "testcase@example.com".to_string());
+
+                git.commit(
+                    &format!("Update test case: {}", current_test_case.id),
+                    &author_name,
+                    &author_email,
+                )?;
+                log::info!("✓ Changes committed to git\n");
+
+                break;
+            }
+            "6" => {
+                if Prompts::confirm("Exit without saving changes?")? {
+                    log::info!("Exited without saving.");
+                    break;
+                }
+            }
+            _ => {
+                log::warn!("Invalid choice. Please enter 1-6.");
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn edit_metadata_section(
+    test_case: &mut TestCase,
+    storage: &TestCaseStorage,
+    git: &GitManager,
+) -> Result<()> {
+    print_title("Edit Metadata", TitleStyle::TripleEquals);
+
+    test_case.requirement = Prompts::input_with_default("Requirement", &test_case.requirement)?;
+    test_case.item = Prompts::input_integer_with_default("Item", Some(test_case.item))?;
+    test_case.tc = Prompts::input_integer_with_default("TC", Some(test_case.tc))?;
+    test_case.id = Prompts::input_with_default("ID", &test_case.id)?;
+    test_case.description = Prompts::input_with_default("Description", &test_case.description)?;
+
+    storage.save_test_case(test_case)?;
+
+    let author_name =
+        std::env::var("GIT_AUTHOR_NAME").unwrap_or_else(|_| "Test Case Manager".to_string());
+    let author_email =
+        std::env::var("GIT_AUTHOR_EMAIL").unwrap_or_else(|_| "testcase@example.com".to_string());
+
+    git.commit("Edit metadata section", &author_name, &author_email)?;
+    log::info!("✓ Metadata updated and committed\n");
+
+    Ok(())
+}
+
+fn edit_general_initial_conditions_section(
+    test_case: &mut TestCase,
+    storage: &TestCaseStorage,
+    git: &GitManager,
+) -> Result<()> {
+    print_title("Edit General Initial Conditions", TitleStyle::TripleEquals);
+
+    let yaml_content = serde_yaml::to_string(&test_case.general_initial_conditions)
+        .context("Failed to serialize general initial conditions")?;
+
+    log::info!("\nCurrent general initial conditions:\n{}", yaml_content);
+
+    if Prompts::confirm("\nEdit general initial conditions in text editor?")? {
+        let edited_content = TestCaseEditor::edit_test_case(&TestCase {
+            requirement: "".to_string(),
+            item: 0,
+            tc: 0,
+            id: "temp".to_string(),
+            description: "".to_string(),
+            general_initial_conditions: test_case.general_initial_conditions.clone(),
+            initial_conditions: std::collections::HashMap::new(),
+            test_sequences: vec![],
+        })?;
+
+        test_case.general_initial_conditions = edited_content.general_initial_conditions;
+
+        storage.save_test_case(test_case)?;
+
+        let author_name =
+            std::env::var("GIT_AUTHOR_NAME").unwrap_or_else(|_| "Test Case Manager".to_string());
+        let author_email = std::env::var("GIT_AUTHOR_EMAIL")
+            .unwrap_or_else(|_| "testcase@example.com".to_string());
+
+        git.commit(
+            "Edit general initial conditions section",
+            &author_name,
+            &author_email,
+        )?;
+        log::info!("✓ General initial conditions updated and committed\n");
+    }
+
+    Ok(())
+}
+
+fn edit_initial_conditions_section(
+    test_case: &mut TestCase,
+    storage: &TestCaseStorage,
+    git: &GitManager,
+) -> Result<()> {
+    print_title("Edit Initial Conditions", TitleStyle::TripleEquals);
+
+    let yaml_content = serde_yaml::to_string(&test_case.initial_conditions)
+        .context("Failed to serialize initial conditions")?;
+
+    log::info!("\nCurrent initial conditions:\n{}", yaml_content);
+
+    if Prompts::confirm("\nEdit initial conditions in text editor?")? {
+        let edited_content = TestCaseEditor::edit_test_case(&TestCase {
+            requirement: "".to_string(),
+            item: 0,
+            tc: 0,
+            id: "temp".to_string(),
+            description: "".to_string(),
+            general_initial_conditions: std::collections::HashMap::new(),
+            initial_conditions: test_case.initial_conditions.clone(),
+            test_sequences: vec![],
+        })?;
+
+        test_case.initial_conditions = edited_content.initial_conditions;
+
+        storage.save_test_case(test_case)?;
+
+        let author_name =
+            std::env::var("GIT_AUTHOR_NAME").unwrap_or_else(|_| "Test Case Manager".to_string());
+        let author_email = std::env::var("GIT_AUTHOR_EMAIL")
+            .unwrap_or_else(|_| "testcase@example.com".to_string());
+
+        git.commit(
+            "Edit initial conditions section",
+            &author_name,
+            &author_email,
+        )?;
+        log::info!("✓ Initial conditions updated and committed\n");
+    }
+
+    Ok(())
+}
+
+fn edit_test_sequences_section(
+    test_case: &mut TestCase,
+    storage: &TestCaseStorage,
+    git: &GitManager,
+) -> Result<()> {
+    print_title("Edit Test Sequences", TitleStyle::TripleEquals);
+
+    let yaml_content = serde_yaml::to_string(&test_case.test_sequences)
+        .context("Failed to serialize test sequences")?;
+
+    log::info!("\nCurrent test sequences:\n{}", yaml_content);
+
+    if Prompts::confirm("\nEdit test sequences in text editor?")? {
+        let edited_content = TestCaseEditor::edit_test_case(&TestCase {
+            requirement: "".to_string(),
+            item: 0,
+            tc: 0,
+            id: "temp".to_string(),
+            description: "".to_string(),
+            general_initial_conditions: std::collections::HashMap::new(),
+            initial_conditions: std::collections::HashMap::new(),
+            test_sequences: test_case.test_sequences.clone(),
+        })?;
+
+        test_case.test_sequences = edited_content.test_sequences;
+
+        storage.save_test_case(test_case)?;
+
+        let author_name =
+            std::env::var("GIT_AUTHOR_NAME").unwrap_or_else(|_| "Test Case Manager".to_string());
+        let author_email = std::env::var("GIT_AUTHOR_EMAIL")
+            .unwrap_or_else(|_| "testcase@example.com".to_string());
+
+        git.commit("Edit test sequences section", &author_name, &author_email)?;
+        log::info!("✓ Test sequences updated and committed\n");
+    }
 
     Ok(())
 }

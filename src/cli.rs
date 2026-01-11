@@ -217,6 +217,17 @@ pub enum Commands {
         /// Path to the JSON schema file
         schema_file: String,
     },
+
+    /// Edit a test case interactively with section menu
+    EditInteractive {
+        /// ID of the test case to edit
+        #[arg(short, long)]
+        id: Option<String>,
+
+        /// Use fuzzy finder if ID not provided
+        #[arg(short, long)]
+        fuzzy: bool,
+    },
 }
 
 #[derive(Subcommand)]
