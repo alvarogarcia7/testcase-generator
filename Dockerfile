@@ -38,7 +38,7 @@ RUN cargo build --release
 # Stage 3: runtime - Final lightweight image
 FROM debian:bookworm-slim as runtime
 
-# Install git
+# Install runtime dependencies: git
 RUN apt-get update && \
     apt-get install -y git && \
     rm -rf /var/lib/apt/lists/*
