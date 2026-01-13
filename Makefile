@@ -70,6 +70,14 @@ test-e2e-validate-yaml: build
 	! cargo run --bin validate-yaml tests/sample/data.yml data/schema.json >/dev/null 2>&1
 .PHONY: test-e2e-validate-yaml
 
+docker-build:
+	docker build -t testcase-manager:latest .
+.PHONY: docker-build
+
+docker-run:
+	docker run -v $(PWD)/testcases:/app/testcases testcase-manager:latest
+.PHONY: docker-run
+
 test-verify-sample: build
 	./tests/integration/test_verify_e2e.sh
 .PHONY: test-verify-sample
