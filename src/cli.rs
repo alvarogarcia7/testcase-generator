@@ -26,6 +26,11 @@ pub enum Commands {
         id: Option<String>,
     },
 
+    CreateGeneralInitialConditions {
+        #[arg(short, long)]
+        id: Option<String>,
+    },
+
     /// Edit an existing test case
     Edit {
         /// ID of the test case to edit

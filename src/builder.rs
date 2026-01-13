@@ -9,6 +9,7 @@ use crate::recovery::{RecoveryManager, RecoveryState};
 use crate::sample::SampleData;
 use crate::ui::{print_title, TitleStyle};
 use crate::validation::SchemaValidator;
+use crate::TestCaseMetadata;
 use anyhow::{Context, Result};
 use indexmap::IndexMap;
 use serde_yaml::Value;
@@ -161,6 +162,11 @@ impl TestCaseBuilder {
     /// Prompt for and add metadata to the structure
     pub fn add_metadata(&mut self) -> Result<&mut Self> {
         self.creator.add_metadata(&mut self.structure)?;
+        Ok(self)
+    }
+
+    pub fn append_metadata(&self, p0: TestCaseMetadata) -> Result<&Self> {
+        self.creator.append_metadata(p0)?;
         Ok(self)
     }
 

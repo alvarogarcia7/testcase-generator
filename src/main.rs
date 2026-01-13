@@ -24,6 +24,10 @@ fn main() -> Result<()> {
             handle_create(&cli.path, id)?;
         }
 
+        Commands::CreateGeneralInitialConditions { id} =>{
+            handle_create_general_initial_conditions(&cli.path, id)?;
+        }
+
         Commands::Edit { id, fuzzy } => {
             handle_edit(&cli.path, id, fuzzy)?;
         }
@@ -126,6 +130,32 @@ fn main() -> Result<()> {
     Ok(())
 }
 
+fn handle_create_general_initial_conditions(base_path: &str, id: Option<String>) -> Result<()> {
+    let mut test_case_builder = TestCaseBuilder::new_with_recovery(base_path, Arc::new(TtyCliOracle::new()))?;
+    let metadata = TestCaseMetadata { requirement: "Req Hardcoded 1".to_string(), item: 0x101, tc: 0x1, id: "Hardcoded Id".to_string(), description: "Description".to_string() };
+    let x = test_case_builder.append_metadata(metadata)?;
+    test_case_builder.add_general_initial_conditions(None);
+    test_case_builder.save();
+    // let storage = TestCaseStorage::new(base_path)?;
+
+    // let requirement = Prompts::input("Requirement")?;
+    // let item = Prompts::input_integer("Item")?;
+    // let tc = Prompts::input_integer("TC")?;
+    //
+    // let id = match id {
+    //     Some(id) => id,
+    //     None => Prompts::input("Test Case ID")?,
+    // };
+    //
+    // let description = Prompts::input("Description")?;
+
+    // let test_case = TestCase::new(metadata.requirement, item, tc, id, description);
+
+    // let file_path = storage.save_test_case(&test_case)?;
+    // log::info!("Test case created: {}", file_path.display());
+
+    Ok(())
+}
 fn handle_create(base_path: &str, id: Option<String>) -> Result<()> {
     let storage = TestCaseStorage::new(base_path)?;
 

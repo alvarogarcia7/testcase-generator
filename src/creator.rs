@@ -7,6 +7,7 @@ use crate::oracle::Oracle;
 use crate::prompts::Prompts;
 use crate::sample::SampleData;
 use crate::validation::SchemaValidator;
+use crate::TestCaseMetadata;
 use anyhow::{Context, Result};
 use indexmap::IndexMap;
 use serde_yaml::Value;
@@ -59,6 +60,26 @@ impl TestCaseCreator {
     /// Get a reference to the database (if available)
     pub fn database(&self) -> Option<&ConditionDatabase> {
         self.database.as_ref()
+    }
+
+    pub fn append_metadata(
+        &self,
+        metadata: TestCaseMetadata,
+    ) -> Result<IndexMap<String, Value>> {
+        log::info!("\n=== Validating Metadata ===");
+        metadata
+            .validate(&self.validator)
+            .context("Metadata validation failed")?;
+        log::info!("✓ Metadata is valid\n");
+
+        let mut structure = IndexMap::new();
+
+        let yaml_map = metadata.to_yaml();
+        for (key, value) in yaml_map {
+            structure.insert(key, value);
+        }
+
+        Ok(structure)
     }
 
     /// Prompt for and add metadata to the structure
