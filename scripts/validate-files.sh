@@ -285,14 +285,19 @@ fi
 
 log_info "Found ${#FILES[@]} file(s) matching pattern"
 
+# Initialize statistics tracking
+TOTAL_FILES=${#FILES[@]}
 FAILED_FILES=()
 PASSED_COUNT=0
+FAILED_COUNT=0
 CACHED_COUNT=0
 VALIDATED_COUNT=0
 
+# Process each file
 for file in "${FILES[@]}"; do
     log_verbose "Processing: $file"
     
+    # Check if validation can be skipped based on cache
     cache_result=$(check_cache "$file")
     
     case "$cache_result" in
@@ -304,28 +309,47 @@ for file in "${FILES[@]}"; do
         cached_invalid)
             log_verbose "✗ Cached (invalid): $file"
             FAILED_FILES+=("$file")
+            ((FAILED_COUNT++))
             ((CACHED_COUNT++))
             ;;
         validate)
             log_verbose "Validating: $file"
             ((VALIDATED_COUNT++))
             
-            if "$VALIDATOR" "$file"; then
+            # Invoke validator script and capture exit code
+            EXIT_CODE=0
+            "$VALIDATOR" "$file" || EXIT_CODE=$?
+            
+            if [[ $EXIT_CODE -eq 0 ]]; then
                 log_verbose "✓ Passed: $file"
                 ((PASSED_COUNT++))
                 update_cache "$file" "true"
             else
-                log_error "✗ Failed: $file"
+                log_error "✗ Failed: $file (exit code: $EXIT_CODE)"
                 FAILED_FILES+=("$file")
+                ((FAILED_COUNT++))
                 update_cache "$file" "false"
             fi
             ;;
     esac
 done
 
+# Calculate cache hit rate
+CACHE_HIT_RATE=0
+if [[ $TOTAL_FILES -gt 0 ]]; then
+    CACHE_HIT_RATE=$(awk "BEGIN {printf \"%.1f\", ($CACHED_COUNT / $TOTAL_FILES) * 100}")
+fi
+
+# Report statistics
 echo ""
-log_info "Validation complete: $PASSED_COUNT passed, ${#FAILED_FILES[@]} failed"
-log_info "Cache stats: $CACHED_COUNT cached, $VALIDATED_COUNT validated"
+log_info "=== Validation Summary ==="
+log_info "Total files:     $TOTAL_FILES"
+log_info "Validated:       $VALIDATED_COUNT"
+log_info "Cached:          $CACHED_COUNT"
+log_info "Passed:          $PASSED_COUNT"
+log_info "Failed:          $FAILED_COUNT"
+log_info "Cache hit rate:  ${CACHE_HIT_RATE}%"
+echo ""
 
 if [[ ${#FAILED_FILES[@]} -gt 0 ]]; then
     log_error "Failed files:"
@@ -335,4 +359,5 @@ if [[ ${#FAILED_FILES[@]} -gt 0 ]]; then
     exit 1
 fi
 
+log_info "All validations passed!"
 exit 0
