@@ -1,12 +1,14 @@
 use anyhow::{Context, Result};
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use clap::{Parser, Subcommand};
-use dialoguer::{Input, Select};
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
+use testcase_manager::fuzzy::TestCaseFuzzyFinder;
+use testcase_manager::models::{TestRun, TestRunStatus};
+use testcase_manager::prompts::Prompts;
 use testcase_manager::storage::TestCaseStorage;
+use testcase_manager::test_run_storage::TestRunStorage;
 
 #[derive(Parser)]
 #[command(name = "test-run-manager")]
@@ -23,34 +25,6 @@ struct Cli {
 enum Commands {
     List,
     Add,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct TestRun {
-    test_case_id: String,
-    timestamp: DateTime<Utc>,
-    status: ExecutionStatus,
-    output: String,
-    duration_ms: u64,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-enum ExecutionStatus {
-    Passed,
-    Failed,
-    Skipped,
-    Error,
-}
-
-impl std::fmt::Display for ExecutionStatus {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ExecutionStatus::Passed => write!(f, "PASSED"),
-            ExecutionStatus::Failed => write!(f, "FAILED"),
-            ExecutionStatus::Skipped => write!(f, "SKIPPED"),
-            ExecutionStatus::Error => write!(f, "ERROR"),
-        }
-    }
 }
 
 fn main() -> Result<()> {
@@ -74,40 +48,25 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn list_test_runs(_base_path: &Path, test_runs_dir: &Path) -> Result<()> {
-    let mut runs_by_test_case: HashMap<String, Vec<TestRun>> = HashMap::new();
+fn list_test_runs(base_path: &Path, _test_runs_dir: &Path) -> Result<()> {
+    let test_run_storage = TestRunStorage::new(base_path.join("test-runs"))
+        .context("Failed to initialize test run storage")?;
 
-    if test_runs_dir.exists() {
-        for entry in fs::read_dir(test_runs_dir).context(format!(
-            "Failed to read directory: {}",
-            test_runs_dir.display()
-        ))? {
-            let entry = entry.context("Failed to read directory entry")?;
-            let path = entry.path();
+    let all_runs = test_run_storage
+        .load_all_test_runs()
+        .context("Failed to load test runs")?;
 
-            if path.is_file()
-                && path
-                    .extension()
-                    .is_some_and(|ext| ext == "yaml" || ext == "yml")
-            {
-                match load_test_run(&path) {
-                    Ok(test_run) => {
-                        runs_by_test_case
-                            .entry(test_run.test_case_id.clone())
-                            .or_default()
-                            .push(test_run);
-                    }
-                    Err(e) => {
-                        log::warn!("Failed to load test run from {}: {}", path.display(), e);
-                    }
-                }
-            }
-        }
-    }
-
-    if runs_by_test_case.is_empty() {
+    if all_runs.is_empty() {
         println!("No test runs found.");
         return Ok(());
+    }
+
+    let mut runs_by_test_case: HashMap<String, Vec<TestRun>> = HashMap::new();
+    for run in all_runs {
+        runs_by_test_case
+            .entry(run.test_case_id.clone())
+            .or_default()
+            .push(run);
     }
 
     let mut test_case_ids: Vec<String> = runs_by_test_case.keys().cloned().collect();
@@ -121,17 +80,29 @@ fn list_test_runs(_base_path: &Path, test_runs_dir: &Path) -> Result<()> {
             println!("{}", "=".repeat(50));
 
             for run in runs {
+                let status_str = match run.status {
+                    TestRunStatus::Pass => "PASS",
+                    TestRunStatus::Fail => "FAIL",
+                    TestRunStatus::Skip => "SKIP",
+                };
+
+                let log_preview = if run.execution_log.len() > 50 {
+                    format!("{}...", &run.execution_log[..47])
+                } else {
+                    run.execution_log.clone()
+                };
+
                 println!(
                     "  {} | {} | {}ms | {}",
                     run.timestamp.format("%Y-%m-%d %H:%M:%S UTC"),
-                    run.status,
-                    run.duration_ms,
-                    if run.output.len() > 50 {
-                        format!("{}...", &run.output[..47])
-                    } else {
-                        run.output.clone()
-                    }
+                    status_str,
+                    run.duration,
+                    log_preview
                 );
+
+                if let Some(ref error) = run.error_message {
+                    println!("    Error: {}", error);
+                }
             }
         }
     }
@@ -139,80 +110,84 @@ fn list_test_runs(_base_path: &Path, test_runs_dir: &Path) -> Result<()> {
     Ok(())
 }
 
-fn add_test_run(base_path: &Path, test_runs_dir: &Path) -> Result<()> {
-    let storage =
+fn add_test_run(base_path: &Path, _test_runs_dir: &Path) -> Result<()> {
+    let test_case_storage =
         TestCaseStorage::new(base_path).context("Failed to initialize test case storage")?;
 
-    let test_case_id: String = Input::new()
-        .with_prompt("Test Case ID")
-        .interact_text()
-        .context("Failed to read test case ID")?;
+    let test_run_storage = TestRunStorage::new(base_path.join("test-runs"))
+        .context("Failed to initialize test run storage")?;
 
-    if !storage.test_case_exists(&test_case_id) {
+    println!("\n=== Add Test Run ===\n");
+
+    let test_case_id: String = loop {
+        let id_input: String = Prompts::input("Test Case ID (or press Enter to search)")
+            .context("Failed to read test case ID")?;
+
+        if id_input.trim().is_empty() {
+            let all_test_cases = test_case_storage
+                .load_all_test_cases()
+                .context("Failed to load test cases")?;
+
+            if all_test_cases.is_empty() {
+                anyhow::bail!("No test cases found in storage");
+            }
+
+            let test_case_ids: Vec<String> =
+                all_test_cases.iter().map(|tc| tc.id.clone()).collect();
+
+            match TestCaseFuzzyFinder::search_strings(&test_case_ids, "Select test case: ")? {
+                Some(id) => break id,
+                None => {
+                    println!("No test case selected. Try entering ID manually.");
+                    continue;
+                }
+            }
+        } else {
+            break id_input;
+        }
+    };
+
+    if !test_case_storage.test_case_exists(&test_case_id) {
         anyhow::bail!("Test case '{}' does not exist", test_case_id);
     }
 
-    let status_options = vec!["Passed", "Failed", "Skipped", "Error"];
-    let status_selection = Select::new()
-        .with_prompt("Execution status")
-        .items(&status_options)
-        .default(0)
-        .interact()
-        .context("Failed to read execution status")?;
+    let status_options = vec!["Pass".to_string(), "Fail".to_string(), "Skip".to_string()];
+    let status_str = Prompts::select("Execution status", status_options)?;
 
-    let status = match status_selection {
-        0 => ExecutionStatus::Passed,
-        1 => ExecutionStatus::Failed,
-        2 => ExecutionStatus::Skipped,
-        3 => ExecutionStatus::Error,
-        _ => ExecutionStatus::Error,
+    let status = match status_str.as_str() {
+        "Pass" => TestRunStatus::Pass,
+        "Fail" => TestRunStatus::Fail,
+        "Skip" => TestRunStatus::Skip,
+        _ => TestRunStatus::Fail,
     };
 
-    let output: String = Input::new()
-        .with_prompt("Output/Notes")
-        .allow_empty(true)
-        .interact_text()
-        .context("Failed to read output")?;
-
-    let duration_str: String = Input::new()
-        .with_prompt("Duration (milliseconds)")
-        .default("0".to_string())
-        .interact_text()
-        .context("Failed to read duration")?;
-
-    let duration_ms: u64 = duration_str
+    let duration: u64 = Prompts::input_with_default("Duration (milliseconds)", "0")
+        .context("Failed to read duration")?
         .parse()
         .context("Failed to parse duration as number")?;
+
+    let execution_log: String = Prompts::input_with_default("Execution log/notes", "")?;
+
+    let error_message: Option<String> = if status == TestRunStatus::Fail {
+        Some(Prompts::input_with_default("Error message", "")?)
+    } else {
+        None
+    };
 
     let test_run = TestRun {
         test_case_id: test_case_id.clone(),
         timestamp: Utc::now(),
         status,
-        output,
-        duration_ms,
+        duration,
+        execution_log,
+        error_message,
     };
 
-    let timestamp_str = test_run.timestamp.format("%Y%m%d_%H%M%S");
-    let filename = format!("{}_{}.yaml", test_case_id, timestamp_str);
-    let file_path = test_runs_dir.join(filename);
-
-    let yaml_content =
-        serde_yaml::to_string(&test_run).context("Failed to serialize test run to YAML")?;
-
-    fs::write(&file_path, yaml_content)
-        .context(format!("Failed to write file: {}", file_path.display()))?;
+    let file_path = test_run_storage
+        .save_test_run(&test_run)
+        .context("Failed to save test run")?;
 
     println!("\n✓ Test run saved to: {}", file_path.display());
 
     Ok(())
-}
-
-fn load_test_run(path: &Path) -> Result<TestRun> {
-    let content =
-        fs::read_to_string(path).context(format!("Failed to read file: {}", path.display()))?;
-
-    let test_run: TestRun = serde_yaml::from_str(&content)
-        .context(format!("Failed to parse YAML from: {}", path.display()))?;
-
-    Ok(test_run)
 }
