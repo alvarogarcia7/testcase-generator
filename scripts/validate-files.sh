@@ -1,4 +1,59 @@
 #!/usr/bin/env bash
+#
+# validate-files.sh - Generic file validation with caching
+#
+# DESCRIPTION:
+#   This script provides a generic framework for validating files matching a regex pattern
+#   using a custom validator script. It implements a two-layer caching system (mtime and
+#   content hash) to avoid redundant validations and improve performance.
+#
+# USAGE:
+#   validate-files.sh --pattern PATTERN --validator SCRIPT [OPTIONS]
+#
+# REQUIRED ARGUMENTS:
+#   --pattern PATTERN       Regex pattern to match files (POSIX extended regex)
+#   --validator SCRIPT      Path to validation script that accepts a file path as argument
+#
+# OPTIONAL ARGUMENTS:
+#   --cache-dir DIR        Cache directory for validation results (default: .validation-cache)
+#   --verbose              Enable verbose output for debugging
+#   -h, --help             Show help message and exit
+#
+# VALIDATOR SCRIPT REQUIREMENTS:
+#   The validator script must:
+#   - Accept a single argument: the file path to validate
+#   - Exit with code 0 on successful validation
+#   - Exit with non-zero code on validation failure
+#   - Be executable (chmod +x)
+#
+# CACHING BEHAVIOR:
+#   The script uses a two-layer caching strategy:
+#   1. Layer 1 (fast): Check modification time (mtime) - if unchanged, use cached result
+#   2. Layer 2 (thorough): Check SHA256 hash - if unchanged despite mtime change, use cached result
+#   
+#   Cache entries are stored as JSON files in the cache directory, containing:
+#   - File path, mtime, content hash, validation result, and timestamp
+#
+# EXAMPLES:
+#   # Validate all Rust files with a custom validator
+#   validate-files.sh --pattern '\.rs$' --validator ./scripts/rust-validator.sh
+#
+#   # Validate JSON files with verbose output and custom cache directory
+#   validate-files.sh --pattern '\.json$' --validator ./validate-json.sh \
+#       --cache-dir /tmp/validation-cache --verbose
+#
+#   # Validate YAML files using a wrapper script that calls validate-yaml binary
+#   validate-files.sh --pattern '\.ya?ml$' --validator ./scripts/validate-yaml-wrapper.sh
+#
+# EXIT CODES:
+#   0 - All validations passed
+#   1 - One or more validations failed or script error occurred
+#
+# INTEGRATION:
+#   This script is designed to work with any validation tool. See scripts/validate-yaml-wrapper.sh
+#   for an example of integrating with the validate-yaml binary that validates YAML files
+#   against JSON schemas.
+#
 
 set -euo pipefail
 
