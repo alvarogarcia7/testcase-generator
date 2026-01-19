@@ -72,38 +72,40 @@ fn list_test_runs(base_path: &Path, _test_runs_dir: &Path) -> Result<()> {
     let mut test_case_ids: Vec<String> = runs_by_test_case.keys().cloned().collect();
     test_case_ids.sort();
 
+    println!(
+        "\n{:<30} {:<10} {:<25} {:<15}",
+        "Test Case ID", "Run Count", "Latest Run", "Status Summary"
+    );
+    println!("{}", "=".repeat(85));
+
     for test_case_id in test_case_ids {
         if let Some(runs) = runs_by_test_case.get_mut(&test_case_id) {
-            runs.sort_by_key(|r| r.timestamp);
+            runs.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
 
-            println!("\nTest Case: {}", test_case_id);
-            println!("{}", "=".repeat(50));
+            let run_count = runs.len();
+            let latest_timestamp = runs.first().map(|r| r.timestamp).unwrap();
 
-            for run in runs {
-                let status_str = match run.status {
-                    TestRunStatus::Pass => "PASS",
-                    TestRunStatus::Fail => "FAIL",
-                    TestRunStatus::Skip => "SKIP",
-                };
+            let mut pass_count = 0;
+            let mut fail_count = 0;
+            let mut skip_count = 0;
 
-                let log_preview = if run.execution_log.len() > 50 {
-                    format!("{}...", &run.execution_log[..47])
-                } else {
-                    run.execution_log.clone()
-                };
-
-                println!(
-                    "  {} | {} | {}ms | {}",
-                    run.timestamp.format("%Y-%m-%d %H:%M:%S UTC"),
-                    status_str,
-                    run.duration,
-                    log_preview
-                );
-
-                if let Some(ref error) = run.error_message {
-                    println!("    Error: {}", error);
+            for run in runs.iter() {
+                match run.status {
+                    TestRunStatus::Pass => pass_count += 1,
+                    TestRunStatus::Fail => fail_count += 1,
+                    TestRunStatus::Skip => skip_count += 1,
                 }
             }
+
+            let status_summary = format!("P:{} F:{} S:{}", pass_count, fail_count, skip_count);
+
+            println!(
+                "{:<30} {:<10} {:<25} {:<15}",
+                test_case_id,
+                run_count,
+                latest_timestamp.format("%Y-%m-%d %H:%M:%S UTC"),
+                status_summary
+            );
         }
     }
 
