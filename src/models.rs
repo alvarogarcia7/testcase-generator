@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::path::PathBuf;
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 /// Verification information for a test step
@@ -265,6 +266,53 @@ pub struct TestCaseFileInfo {
 
     /// Test case data if successfully loaded
     pub test_case: Option<TestCase>,
+}
+
+/// Status of a test run
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum TestRunStatus {
+    /// Test passed successfully
+    Pass,
+    /// Test failed
+    Fail,
+    /// Test was skipped
+    Skip,
+}
+
+/// Metadata for a test run
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct TestRunMetadata {
+    /// Identifier of the test case that was run
+    pub test_case_id: String,
+
+    /// Timestamp when the test was executed
+    pub timestamp: DateTime<Utc>,
+
+    /// Duration of the test run in milliseconds
+    pub duration: u64,
+}
+
+/// Represents a single test run execution
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct TestRun {
+    /// Identifier of the test case that was run
+    pub test_case_id: String,
+
+    /// Timestamp when the test was executed
+    pub timestamp: DateTime<Utc>,
+
+    /// Status of the test run
+    pub status: TestRunStatus,
+
+    /// Duration of the test run in milliseconds
+    pub duration: u64,
+
+    /// Execution log capturing output and events
+    pub execution_log: String,
+
+    /// Optional error message if the test failed
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error_message: Option<String>,
 }
 
 #[cfg(test)]
