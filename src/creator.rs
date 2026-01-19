@@ -62,10 +62,7 @@ impl TestCaseCreator {
         self.database.as_ref()
     }
 
-    pub fn append_metadata(
-        &self,
-        metadata: TestCaseMetadata,
-    ) -> Result<IndexMap<String, Value>> {
+    pub fn append_metadata(&self, metadata: TestCaseMetadata) -> Result<IndexMap<String, Value>> {
         log::info!("\n=== Validating Metadata ===");
         metadata
             .validate(&self.validator)

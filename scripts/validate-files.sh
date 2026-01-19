@@ -42,6 +42,177 @@ log_error() {
     echo "[ERROR] $*" >&2
 }
 
+# Get mtime of a file in seconds since epoch
+get_mtime() {
+    local file="$1"
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        stat -f %m "$file"
+    else
+        stat -c %Y "$file"
+    fi
+}
+
+# Get SHA256 hash of a file
+get_hash() {
+    local file="$1"
+    if command -v sha256sum >/dev/null 2>&1; then
+        sha256sum "$file" | awk '{print $1}'
+    elif command -v shasum >/dev/null 2>&1; then
+        shasum -a 256 "$file" | awk '{print $1}'
+    else
+        log_error "No SHA256 utility found (sha256sum or shasum)"
+        exit 1
+    fi
+}
+
+# Get cache file path for a given file
+get_cache_file() {
+    local file="$1"
+    local hash_input="${file}"
+    local cache_hash
+    
+    if command -v sha256sum >/dev/null 2>&1; then
+        cache_hash=$(echo -n "$hash_input" | sha256sum | awk '{print $1}')
+    elif command -v shasum >/dev/null 2>&1; then
+        cache_hash=$(echo -n "$hash_input" | shasum -a 256 | awk '{print $1}')
+    else
+        log_error "No SHA256 utility found (sha256sum or shasum)"
+        exit 1
+    fi
+    
+    echo "${CACHE_DIR}/${cache_hash}.json"
+}
+
+# Read cache entry for a file
+read_cache() {
+    local cache_file="$1"
+    
+    if [[ ! -f "$cache_file" ]]; then
+        echo ""
+        return
+    fi
+    
+    cat "$cache_file"
+}
+
+# Parse JSON field from cache entry
+parse_json_field() {
+    local json="$1"
+    local field="$2"
+    
+    # Simple JSON parsing for our specific format
+    echo "$json" | grep -o "\"$field\":[^,}]*" | sed 's/^"[^"]*":\s*"\?\([^"]*\)"\?$/\1/' | sed 's/"$//'
+}
+
+# Write cache entry for a file
+write_cache() {
+    local file="$1"
+    local mtime="$2"
+    local hash="$3"
+    local valid="$4"
+    local cache_file="$5"
+    local timestamp
+    timestamp=$(date +%s)
+    
+    local json_content
+    json_content=$(cat <<EOF
+{
+  "path": "$file",
+  "mtime": $mtime,
+  "hash": "$hash",
+  "valid": $valid,
+  "timestamp": $timestamp
+}
+EOF
+)
+    
+    echo "$json_content" > "$cache_file"
+    log_verbose "Cache written: $cache_file"
+}
+
+# Check if file validation can be skipped based on cache
+check_cache() {
+    local file="$1"
+    local cache_file
+    cache_file=$(get_cache_file "$file")
+    
+    log_verbose "Checking cache for: $file"
+    log_verbose "Cache file: $cache_file"
+    
+    local cache_content
+    cache_content=$(read_cache "$cache_file")
+    
+    if [[ -z "$cache_content" ]]; then
+        log_verbose "No cache entry found"
+        echo "validate"
+        return
+    fi
+    
+    # Extract cached values
+    local cached_mtime
+    local cached_hash
+    local cached_valid
+    cached_mtime=$(parse_json_field "$cache_content" "mtime")
+    cached_hash=$(parse_json_field "$cache_content" "hash")
+    cached_valid=$(parse_json_field "$cache_content" "valid")
+    
+    log_verbose "Cached mtime: $cached_mtime"
+    log_verbose "Cached hash: $cached_hash"
+    log_verbose "Cached valid: $cached_valid"
+    
+    # Layer 1: Check mtime (fast path)
+    local current_mtime
+    current_mtime=$(get_mtime "$file")
+    log_verbose "Current mtime: $current_mtime"
+    
+    if [[ "$current_mtime" == "$cached_mtime" ]]; then
+        log_verbose "Mtime unchanged, using cached result"
+        if [[ "$cached_valid" == "true" ]]; then
+            echo "cached_valid"
+        else
+            echo "cached_invalid"
+        fi
+        return
+    fi
+    
+    log_verbose "Mtime changed, checking hash"
+    
+    # Layer 2: Check hash (content-based)
+    local current_hash
+    current_hash=$(get_hash "$file")
+    log_verbose "Current hash: $current_hash"
+    
+    if [[ "$current_hash" == "$cached_hash" ]]; then
+        log_verbose "Hash unchanged, updating mtime in cache"
+        # Content unchanged, update cache with new mtime
+        write_cache "$file" "$current_mtime" "$current_hash" "$cached_valid" "$cache_file"
+        if [[ "$cached_valid" == "true" ]]; then
+            echo "cached_valid"
+        else
+            echo "cached_invalid"
+        fi
+        return
+    fi
+    
+    log_verbose "Hash changed, validation required"
+    echo "validate"
+}
+
+# Update cache after validation
+update_cache() {
+    local file="$1"
+    local valid="$2"
+    local cache_file
+    cache_file=$(get_cache_file "$file")
+    
+    local mtime
+    local hash
+    mtime=$(get_mtime "$file")
+    hash=$(get_hash "$file")
+    
+    write_cache "$file" "$mtime" "$hash" "$valid" "$cache_file"
+}
+
 while [[ $# -gt 0 ]]; do
     case $1 in
         --pattern)
@@ -116,21 +287,45 @@ log_info "Found ${#FILES[@]} file(s) matching pattern"
 
 FAILED_FILES=()
 PASSED_COUNT=0
+CACHED_COUNT=0
+VALIDATED_COUNT=0
 
 for file in "${FILES[@]}"; do
-    log_verbose "Validating: $file"
+    log_verbose "Processing: $file"
     
-    if "$VALIDATOR" "$file"; then
-        log_verbose "✓ Passed: $file"
-        ((PASSED_COUNT++))
-    else
-        log_error "✗ Failed: $file"
-        FAILED_FILES+=("$file")
-    fi
+    cache_result=$(check_cache "$file")
+    
+    case "$cache_result" in
+        cached_valid)
+            log_verbose "✓ Cached (valid): $file"
+            ((PASSED_COUNT++))
+            ((CACHED_COUNT++))
+            ;;
+        cached_invalid)
+            log_verbose "✗ Cached (invalid): $file"
+            FAILED_FILES+=("$file")
+            ((CACHED_COUNT++))
+            ;;
+        validate)
+            log_verbose "Validating: $file"
+            ((VALIDATED_COUNT++))
+            
+            if "$VALIDATOR" "$file"; then
+                log_verbose "✓ Passed: $file"
+                ((PASSED_COUNT++))
+                update_cache "$file" "true"
+            else
+                log_error "✗ Failed: $file"
+                FAILED_FILES+=("$file")
+                update_cache "$file" "false"
+            fi
+            ;;
+    esac
 done
 
 echo ""
 log_info "Validation complete: $PASSED_COUNT passed, ${#FAILED_FILES[@]} failed"
+log_info "Cache stats: $CACHED_COUNT cached, $VALIDATED_COUNT validated"
 
 if [[ ${#FAILED_FILES[@]} -gt 0 ]]; then
     log_error "Failed files:"
