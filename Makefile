@@ -50,3 +50,11 @@ test-e2e-validate-yaml: build
 	! cargo run --bin validate-yaml tests/sample/data.yml data/schema.json >/dev/null 2>&1
 .PHONY: test-e2e-validate-yaml
 
+validate-all-testcases: build
+	SCHEMA_FILE=data/schema.json ./scripts/validate-files.sh --pattern '\.ya?ml$$' --validator ./scripts/validate-yaml-wrapper.sh
+.PHONY: validate-all-testcases
+
+clean-validation-cache:
+	rm -rf .validation-cache/
+.PHONY: clean-validation-cache
+
