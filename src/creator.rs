@@ -681,9 +681,12 @@ steps: []
         let expected: Expected = serde_yaml::from_value(expected_value)
             .context("Failed to convert expected value to Expected struct")?;
 
+        let verification_result = Prompts::prompt_verification_result(&self.oracle)?;
+        let verification_output = Prompts::prompt_verification_output(&self.oracle)?;
+
         let verification = Verification {
-            result: expected.result.clone(),
-            output: expected.output.clone(),
+            result: verification_result,
+            output: verification_output,
         };
 
         Ok(Step {

@@ -76,8 +76,8 @@ pub struct Step {
 /// Default verification based on expected values (for backward compatibility)
 fn default_verification_from_expected() -> Verification {
     Verification {
-        result: "exit_code == 0".to_string(),
-        output: "".to_string(),
+        result: "[[ $? -eq 0 ]]".to_string(),
+        output: "cat $COMMAND_OUTPUT | grep -q \"${OUTPUT}\"".to_string(),
     }
 }
 
@@ -205,10 +205,10 @@ impl Step {
             command,
             expected: Expected {
                 success: None,
-                result: result.clone(),
-                output: output.clone(),
+                result,
+                output,
             },
-            verification: Verification { result, output },
+            verification: default_verification_from_expected(),
         }
     }
 }
