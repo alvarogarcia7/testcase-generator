@@ -69,7 +69,16 @@ pub struct Step {
     pub expected: Expected,
 
     /// Verification information
+    #[serde(default = "default_verification_from_expected")]
     pub verification: Verification,
+}
+
+/// Default verification based on expected values (for backward compatibility)
+fn default_verification_from_expected() -> Verification {
+    Verification {
+        result: "exit_code == 0".to_string(),
+        output: "".to_string(),
+    }
 }
 
 impl fmt::Display for Step {

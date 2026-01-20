@@ -31,12 +31,18 @@ test_sequences:
           success: False # Field is optional. Assumed to be True if not specified.
           result: "SW=0x91XX"
           output: "This operation was successful."
+        verification:
+          result: "exit_code == 0"
+          output: "grep -q 'SW=0x91' <<< \"$output\""
       - step: 2
         description: "Fetch 'XX'"
         command: ssh
         expected:
           result: "MTD_CHECK_SMS_POR(0x9000)"
           output: "This operation was successful."
+        verification:
+          result: "exit_code == 0"
+          output: "grep -q 'MTD_CHECK_SMS_POR(0x9000)' <<< \"$output\""
   - id: 2
     name: "Test Sequence #02 Nominal: Unset PPPR2 and update icon"
     description: |
@@ -53,9 +59,15 @@ test_sequences:
           success: False # Field is optional. Assumed to be True if not specified.
           result: "SW=0x91XX"
           output: "This operation was successful."
+        verification:
+          result: "exit_code == 0"
+          output: "grep -q 'SW=0x91' <<< \"$output\""
       - step: 2
         description: "Fetch 'XX'"
         command: ssh
         expected:
           result: "MTD_CHECK_SMS_POR(0x9000)"
           output: "This operation was successful."
+        verification:
+          result: "exit_code == 0"
+          output: "grep -q 'MTD_CHECK_SMS_POR(0x9000)' <<< \"$output\""

@@ -113,8 +113,7 @@
                 "step",
                 "description",
                 "command",
-                "expected",
-                "verification"
+                "expected"
               ]
             }
           }
