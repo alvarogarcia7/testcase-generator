@@ -2,7 +2,7 @@ use crate::complex_structure_editor::ComplexStructureEditor;
 use crate::config::EditorConfig;
 use crate::database::ConditionDatabase;
 use crate::git::GitManager;
-use crate::models::{Expected, Step, TestSequence};
+use crate::models::{Expected, Step, TestSequence, Verification};
 use crate::oracle::Oracle;
 use crate::prompts::Prompts;
 use crate::sample::SampleData;
@@ -681,12 +681,18 @@ steps: []
         let expected: Expected = serde_yaml::from_value(expected_value)
             .context("Failed to convert expected value to Expected struct")?;
 
+        let verification = Verification {
+            result: expected.result.clone(),
+            output: expected.output.clone(),
+        };
+
         Ok(Step {
             step: step_number,
             manual,
             description,
             command,
             expected,
+            verification,
         })
     }
 
