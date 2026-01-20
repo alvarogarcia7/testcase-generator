@@ -16,6 +16,7 @@ pub mod sample;
 pub mod storage;
 pub mod ui;
 pub mod validation;
+pub mod verification;
 pub mod yaml_utils;
 
 pub use builder::TestCaseBuilder;
@@ -39,3 +40,7 @@ pub use sample::SampleData;
 pub use storage::TestCaseStorage;
 pub use ui::{print_title, TitleStyle};
 pub use validation::SchemaValidator;
+pub use verification::{
+    BatchVerificationReport, JUnitTestSuite, StepVerificationResult, TestCaseVerificationResult,
+    TestExecutionLog, TestVerifier,
+};
