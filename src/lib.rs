@@ -5,6 +5,7 @@ pub mod config;
 pub mod creator;
 pub mod database;
 pub mod editor;
+pub mod executor;
 pub mod fuzzy;
 pub mod git;
 pub mod models;
@@ -26,6 +27,7 @@ pub use config::{CommitMessageTemplates, Config, EditorConfig, GitAuthorInfo};
 pub use creator::TestCaseCreator;
 pub use database::ConditionDatabase;
 pub use editor::TestCaseEditor;
+pub use executor::TestExecutor;
 pub use fuzzy::TestCaseFuzzyFinder;
 pub use git::GitManager;
 pub use models::{
