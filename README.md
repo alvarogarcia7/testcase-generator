@@ -189,7 +189,22 @@ steps:
       success: false  # optional
       result: "SW=0x9000"
       output: "This operation was successful."
+    verification:  # optional, bash expressions for automated testing
+      result: "[ $EXIT_CODE -eq 0 ]"
+      output: "[ \"$COMMAND_OUTPUT\" = \"SW=0x9000\" ]"
 ```
+
+### Verification Field
+
+The `verification` field (optional) contains bash expressions used by the `test-executor` binary for automated test execution:
+
+- **result**: Bash expression to verify the exit code of the command
+- **output**: Bash expression to verify the command output
+
+Available variables in verification expressions:
+- `$EXIT_CODE`: The exit code of the executed command
+- `$COMMAND_OUTPUT`: The stdout output from the executed command
+- `$?`: Alternative to `$EXIT_CODE` (shell exit status variable)
 
 ## TTY Fallback
 
@@ -208,6 +223,253 @@ For more details, see [docs/TTY_FALLBACK.md](docs/TTY_FALLBACK.md)
 **Try the demo:**
 ```bash
 cargo run --example tty_fallback_demo
+```
+
+## Test Executor
+
+The `test-executor` binary provides automated test execution from YAML test case files.
+
+### Commands
+
+#### Generate Test Scripts
+
+Generate a bash script from a YAML test case:
+
+```bash
+test-executor generate <input.yaml> <output.sh>
+```
+
+This command:
+1. Parses the YAML test case file
+2. Generates a bash script with verification logic
+3. Saves the executable script to the specified output path
+
+#### Execute Tests
+
+Execute a test case directly:
+
+```bash
+test-executor execute <input.yaml>
+```
+
+This command:
+1. Generates a temporary bash script from the YAML
+2. Executes the script with proper error handling
+3. Reports test results (PASS/FAIL for each step)
+4. Exits with 0 on success, non-zero on failure
+
+### Verification Expressions
+
+Verification expressions are bash conditional expressions that evaluate to true or false. They are used to validate test step results.
+
+#### Basic Examples
+
+**Exit Code Verification:**
+```yaml
+verification:
+  result: "[ $EXIT_CODE -eq 0 ]"  # Command succeeded
+  output: "true"  # Always pass output check
+```
+
+**String Comparison:**
+```yaml
+verification:
+  result: "[ $EXIT_CODE -eq 0 ]"
+  output: "[ \"$COMMAND_OUTPUT\" = \"expected output\" ]"  # Exact match
+```
+
+**Pattern Matching with Regex:**
+```yaml
+verification:
+  result: "[ $EXIT_CODE -eq 0 ]"
+  output: "[[ \"$COMMAND_OUTPUT\" =~ ^SUCCESS ]]"  # Starts with SUCCESS
+```
+
+#### Advanced Examples
+
+**Multiple Conditions:**
+```yaml
+verification:
+  result: "[ $EXIT_CODE -eq 0 ] && [ -n \"$COMMAND_OUTPUT\" ]"  # Success and non-empty output
+  output: "[[ \"$COMMAND_OUTPUT\" =~ OK ]] && [[ \"$COMMAND_OUTPUT\" =~ READY ]]"  # Contains both patterns
+```
+
+**Numeric Comparisons:**
+```yaml
+verification:
+  result: "[ $EXIT_CODE -eq 0 ]"
+  output: "[ \"$COMMAND_OUTPUT\" -gt 100 ]"  # Output is a number greater than 100
+```
+
+**String Length Checks:**
+```yaml
+verification:
+  result: "[ $EXIT_CODE -eq 0 ]"
+  output: "[ -n \"$COMMAND_OUTPUT\" ]"  # Output is not empty
+```
+
+**Complex Regex:**
+```yaml
+verification:
+  result: "[ $EXIT_CODE -eq 0 ]"
+  output: "[[ \"$COMMAND_OUTPUT\" =~ [0-9]+\\.[0-9]+\\.[0-9]+ ]]"  # Matches version pattern
+```
+
+**File System Checks:**
+```yaml
+verification:
+  result: "[ $EXIT_CODE -eq 0 ] && [ -f /tmp/output.txt ]"  # File exists
+  output: "true"
+```
+
+**Failure Cases:**
+```yaml
+verification:
+  result: "[ $EXIT_CODE -ne 0 ]"  # Command should fail
+  output: "[[ \"$COMMAND_OUTPUT\" =~ error ]]"  # Contains error message
+```
+
+### Best Practices for Verification Expressions
+
+#### 1. Always Quote Variables
+
+**Good:**
+```bash
+[ "$COMMAND_OUTPUT" = "test" ]
+```
+
+**Bad:**
+```bash
+[ $COMMAND_OUTPUT = "test" ]  # Can fail with spaces in output
+```
+
+#### 2. Use `[[` for Advanced Pattern Matching
+
+The `[[` operator supports regex and is more robust:
+
+```bash
+[[ "$COMMAND_OUTPUT" =~ pattern ]]  # Regex matching
+[[ "$COMMAND_OUTPUT" == *substring* ]]  # Glob pattern
+```
+
+#### 3. Prefer `$EXIT_CODE` over `$?`
+
+While both work, `$EXIT_CODE` is more explicit and clearer:
+
+**Good:**
+```bash
+[ $EXIT_CODE -eq 0 ]
+```
+
+**Acceptable:**
+```bash
+[ $? -eq 0 ]
+```
+
+#### 4. Handle Empty Output
+
+Check for empty output to avoid false positives:
+
+```bash
+[ -n "$COMMAND_OUTPUT" ] && [[ "$COMMAND_OUTPUT" =~ pattern ]]
+```
+
+#### 5. Use `true` for Always-Pass Conditions
+
+When you don't need to verify a particular aspect:
+
+```yaml
+verification:
+  result: "[ $EXIT_CODE -eq 0 ]"
+  output: "true"  # Don't care about output
+```
+
+#### 6. Escape Special Characters
+
+In YAML, escape backslashes and quotes properly:
+
+```yaml
+verification:
+  output: "[[ \"$COMMAND_OUTPUT\" =~ [0-9]+\\.[0-9]+ ]]"  # Note double backslash
+```
+
+### Common Bash Test Operators
+
+**Numeric Comparisons:**
+- `-eq`: Equal to
+- `-ne`: Not equal to
+- `-gt`: Greater than
+- `-lt`: Less than
+- `-ge`: Greater than or equal to
+- `-le`: Less than or equal to
+
+**String Comparisons:**
+- `=`: Equal to (POSIX)
+- `==`: Equal to (bash)
+- `!=`: Not equal to
+- `<`: Less than (lexicographical)
+- `>`: Greater than (lexicographical)
+
+**String Tests:**
+- `-z "$str"`: String is empty
+- `-n "$str"`: String is not empty
+
+**File Tests:**
+- `-f "$file"`: File exists and is a regular file
+- `-d "$dir"`: Directory exists
+- `-e "$path"`: Path exists (file or directory)
+- `-r "$file"`: File is readable
+- `-w "$file"`: File is writable
+- `-x "$file"`: File is executable
+
+**Logical Operators:**
+- `&&`: AND
+- `||`: OR
+- `!`: NOT
+
+### Example Test Case
+
+```yaml
+requirement: TEST001
+item: 1
+tc: 1
+id: EXAMPLE_TEST
+description: Example test with verification
+test_sequences:
+  - id: 1
+    name: Basic Test Sequence
+    description: Demonstrates verification usage
+    initial_conditions: {}
+    steps:
+      - step: 1
+        description: Test echo command
+        command: echo 'hello world'
+        expected:
+          result: "0"
+          output: "hello world"
+        verification:
+          result: "[ $EXIT_CODE -eq 0 ]"
+          output: "[ \"$COMMAND_OUTPUT\" = \"hello world\" ]"
+      
+      - step: 2
+        description: Test grep with pattern
+        command: echo 'Version 1.2.3' | grep -o '[0-9.]*'
+        expected:
+          result: "0"
+          output: "1.2.3"
+        verification:
+          result: "[ $EXIT_CODE -eq 0 ]"
+          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+\\.[0-9]+\\.[0-9]+$ ]]"
+      
+      - step: 3
+        description: Test file creation
+        command: touch /tmp/testfile && echo 'created'
+        expected:
+          result: "0"
+          output: "created"
+        verification:
+          result: "[ $EXIT_CODE -eq 0 ] && [ -f /tmp/testfile ]"
+          output: "[ \"$COMMAND_OUTPUT\" = \"created\" ]"
 ```
 
 ## Test Verification (test-verify)
