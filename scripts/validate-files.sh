@@ -156,7 +156,7 @@ parse_json_field() {
     local field="$2"
     
     # Simple JSON parsing for our specific format
-    echo "$json" | grep -o "\"$field\":[^,}]*" | sed 's/^"[^"]*":\s*"\?\([^"]*\)"\?$/\1/' | sed 's/"$//'
+    echo "$json" | grep -o "\"$field\":[^,}]*" | sed 's/^"[^"]*":\s*"\?\([^"]*\)"\?$/\1/' | sed 's/"$//' | cut -d: -f2 | sed 's/^"//' | sed 's/^ *//'
 }
 
 # Write cache entry for a file
@@ -309,15 +309,19 @@ if [[ -z "$VALIDATOR" ]]; then
     exit 1
 fi
 
-if [[ ! -f "$VALIDATOR" ]]; then
+if command "$VALIDATOR"; then
+  log_info "Using command '$VALIDATOR' as validator"
+elif [[ -f "$VALIDATOR" ]]; then
+  log_info "Using file '$VALIDATOR' as validator"
+  if [[ ! -x "$VALIDATOR" ]]; then
+      log_error "Validator script is not executable: $VALIDATOR"
+      exit 1
+  fi
+else
     log_error "Validator script not found: $VALIDATOR"
     exit 1
 fi
 
-if [[ ! -x "$VALIDATOR" ]]; then
-    log_error "Validator script is not executable: $VALIDATOR"
-    exit 1
-fi
 
 log_verbose "Pattern: $PATTERN"
 log_verbose "Validator: $VALIDATOR"
@@ -331,7 +335,7 @@ log_info "Searching for files matching pattern: $PATTERN"
 FILES=()
 while IFS= read -r -d '' file; do
     FILES+=("$file")
-done < <(find . -type f -regextype posix-extended -regex ".*${PATTERN}.*" -print0 2>/dev/null)
+done < <(find -E . -type f -regex ".*${PATTERN}.*" -print0 2>/dev/null)
 
 if [[ ${#FILES[@]} -eq 0 ]]; then
     log_info "No files found matching pattern: $PATTERN"
