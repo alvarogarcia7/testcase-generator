@@ -39,7 +39,7 @@ test-e2e-failing-all: build
 	./tests/integration/run_all_tests.sh
 .PHONY: test-e2e-failing-all
 
-test-e2e: test-e2e-validate-yaml
+test-e2e: test-e2e-validate-yaml test-e2e-executor
 .PHONY: test-e2e
 
 test-all: test test-e2e
@@ -80,4 +80,8 @@ test-executor-sample: build
 	@echo "✓ Script generation verified for SGP.22_4.4.2.yaml"
 	@echo "All test-executor sample verifications passed!"
 .PHONY: test-executor-sample
+
+test-e2e-executor: build
+	./tests/integration/test_executor_e2e.sh
+.PHONY: test-e2e-executor
 
