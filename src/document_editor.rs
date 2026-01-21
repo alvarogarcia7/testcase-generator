@@ -4,6 +4,12 @@ use serde_yaml::Value;
 use sha2::{Digest, Sha256};
 use std::path::Path;
 
+use crate::complex_structure_editor::ComplexStructureEditor;
+use crate::config::EditorConfig;
+use crate::models::Step;
+use crate::oracle::Oracle;
+use crate::validation::SchemaValidator;
+
 pub struct DocumentEditor;
 
 impl DocumentEditor {
@@ -101,6 +107,399 @@ impl DocumentEditor {
             .context("Failed to display section menu")?;
 
         Ok(sections[selection].clone())
+    }
+
+    /// Edit steps in a sequence with fuzzy search, validation, and add/delete options
+    ///
+    /// This method provides an interactive flow for editing steps within a sequence:
+    /// 1. Lists all steps in the specified sequence
+    /// 2. Allows fuzzy selection of a specific step to edit
+    /// 3. Uses ComplexStructureEditor<Step> to edit the selected step
+    /// 4. Validates the edited step against the schema
+    /// 5. Replaces the step in the sequence
+    /// 6. Provides options to add new steps or delete existing steps
+    ///
+    /// # Arguments
+    /// * `document` - Mutable reference to the document structure
+    /// * `sequence_index` - Index of the sequence in the test_sequences array
+    /// * `oracle` - Oracle for user interaction
+    /// * `editor_config` - Editor configuration
+    /// * `validator` - Schema validator for validation
+    ///
+    /// # Returns
+    /// * `Ok(())` - Successfully completed the editing flow
+    /// * `Err` - If editing fails, validation fails, or required data is missing
+    pub fn edit_sequence_steps(
+        document: &mut IndexMap<String, Value>,
+        sequence_index: usize,
+        oracle: &dyn Oracle,
+        editor_config: &EditorConfig,
+        validator: &SchemaValidator,
+    ) -> Result<()> {
+        log::info!("\n=== Edit Sequence Steps ===\n");
+
+        // Get the sequence at the specified index
+        let sequences = document
+            .get_mut("test_sequences")
+            .and_then(|v| {
+                if let Value::Sequence(seq) = v {
+                    Some(seq)
+                } else {
+                    None
+                }
+            })
+            .ok_or_else(|| anyhow::anyhow!("test_sequences not found or not a sequence"))?;
+
+        if sequence_index >= sequences.len() {
+            anyhow::bail!("Invalid sequence index: {}", sequence_index);
+        }
+
+        loop {
+            // Get the current sequence
+            let sequence = sequences
+                .get_mut(sequence_index)
+                .ok_or_else(|| anyhow::anyhow!("Sequence not found at index {}", sequence_index))?;
+
+            // Extract sequence name for display
+            let sequence_name = if let Value::Mapping(seq_map) = sequence {
+                seq_map
+                    .get(Value::String("name".to_string()))
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("Unknown")
+                    .to_string()
+            } else {
+                anyhow::bail!("Sequence is not a mapping");
+            };
+
+            // Extract steps from the sequence
+            let steps_value = if let Value::Mapping(seq_map) = sequence {
+                seq_map
+                    .get_mut(Value::String("steps".to_string()))
+                    .ok_or_else(|| anyhow::anyhow!("steps field not found in sequence"))?
+            } else {
+                anyhow::bail!("Sequence is not a mapping");
+            };
+
+            let steps_array = if let Value::Sequence(steps) = steps_value {
+                steps
+            } else {
+                anyhow::bail!("steps is not a sequence");
+            };
+
+            // Convert steps to Step structs for display
+            let step_items: Vec<Step> = steps_array
+                .iter()
+                .filter_map(|step_value| serde_yaml::from_value(step_value.clone()).ok())
+                .collect();
+
+            if step_items.is_empty() {
+                log::info!(
+                    "No steps in sequence '{}'. Would you like to add a step?",
+                    sequence_name
+                );
+                if oracle.confirm("Add a new step?")? {
+                    Self::add_step_to_sequence(
+                        sequences,
+                        sequence_index,
+                        oracle,
+                        editor_config,
+                        validator,
+                    )?;
+                    continue;
+                } else {
+                    log::info!("No steps to edit. Exiting step editor.");
+                    break;
+                }
+            }
+
+            log::info!("\nSequence: {}", sequence_name);
+            log::info!("Total steps: {}\n", step_items.len());
+
+            // Display available actions
+            let actions = vec![
+                "Edit a step".to_string(),
+                "Add a new step".to_string(),
+                "Delete a step".to_string(),
+                "Done (exit step editor)".to_string(),
+            ];
+
+            let action = oracle.select("Select action", actions)?;
+
+            match action.as_str() {
+                "Edit a step" => {
+                    // List all steps for fuzzy selection
+                    let step_displays: Vec<String> = step_items
+                        .iter()
+                        .map(|step| {
+                            format!(
+                                "Step {}: {} ({})",
+                                step.step, step.description, step.command
+                            )
+                        })
+                        .collect();
+
+                    let selected_display = oracle
+                        .fuzzy_search_strings(&step_displays, "Select step to edit: ")?
+                        .ok_or_else(|| anyhow::anyhow!("No step selected"))?;
+
+                    // Find the index of the selected step
+                    let step_index = step_displays
+                        .iter()
+                        .position(|s| s == &selected_display)
+                        .ok_or_else(|| anyhow::anyhow!("Selected step not found"))?;
+
+                    let selected_step = &step_items[step_index];
+                    log::info!("\nEditing: {}", selected_display);
+
+                    // Create a template from the existing step
+                    let template = serde_yaml::to_string(selected_step)
+                        .context("Failed to serialize step to YAML")?;
+
+                    // Use ComplexStructureEditor to edit the step
+                    let edited_step = ComplexStructureEditor::<Step>::edit_with_fuzzy_search(
+                        &step_items,
+                        "Select step template (ESC to edit current): ",
+                        oracle,
+                        editor_config,
+                        validator,
+                        &template,
+                    )?;
+
+                    // Validate the edited step
+                    log::info!("\n=== Validating Step ===");
+                    let step_yaml = serde_yaml::to_string(&edited_step)
+                        .context("Failed to serialize edited step to YAML")?;
+                    validator
+                        .validate_chunk(&format!("test_sequences:\n  - id: 1\n    name: temp\n    description: temp\n    initial_conditions: {{}}\n    steps:\n      - {}", step_yaml))
+                        .context("Step validation failed")?;
+                    log::info!("✓ Step is valid\n");
+
+                    // Convert edited step back to Value and replace in sequence
+                    let edited_step_value = serde_yaml::to_value(&edited_step)
+                        .context("Failed to convert edited step to YAML value")?;
+
+                    // Replace the step in the sequence
+                    if let Value::Mapping(seq_map) = sequences.get_mut(sequence_index).unwrap() {
+                        if let Some(Value::Sequence(steps)) =
+                            seq_map.get_mut(Value::String("steps".to_string()))
+                        {
+                            if step_index < steps.len() {
+                                steps[step_index] = edited_step_value;
+                                log::info!("✓ Step {} updated successfully\n", step_index + 1);
+                            } else {
+                                anyhow::bail!("Invalid step index: {}", step_index);
+                            }
+                        }
+                    }
+                }
+                "Add a new step" => {
+                    Self::add_step_to_sequence(
+                        sequences,
+                        sequence_index,
+                        oracle,
+                        editor_config,
+                        validator,
+                    )?;
+                }
+                "Delete a step" => {
+                    Self::delete_step_from_sequence(sequences, sequence_index, oracle)?;
+                }
+                "Done (exit step editor)" => {
+                    log::info!("Exiting step editor.");
+                    break;
+                }
+                _ => {
+                    log::warn!("Unknown action selected");
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Add a new step to the sequence
+    fn add_step_to_sequence(
+        sequences: &mut [Value],
+        sequence_index: usize,
+        oracle: &dyn Oracle,
+        editor_config: &EditorConfig,
+        validator: &SchemaValidator,
+    ) -> Result<()> {
+        log::info!("\n=== Add New Step ===\n");
+
+        // Get the next step number
+        let next_step_number = if let Some(Value::Mapping(seq_map)) = sequences.get(sequence_index)
+        {
+            if let Some(Value::Sequence(steps)) = seq_map.get(Value::String("steps".to_string())) {
+                let max_step = steps
+                    .iter()
+                    .filter_map(|step| {
+                        if let Value::Mapping(step_map) = step {
+                            step_map
+                                .get(Value::String("step".to_string()))
+                                .and_then(|v| v.as_i64())
+                        } else {
+                            None
+                        }
+                    })
+                    .max()
+                    .unwrap_or(0);
+                max_step + 1
+            } else {
+                1
+            }
+        } else {
+            1
+        };
+
+        // Create a template for a new step
+        let template = format!(
+            r#"step: {}
+description: ""
+command: ""
+expected:
+  result: ""
+  output: ""
+"#,
+            next_step_number
+        );
+
+        // Get all existing steps for template selection
+        let step_items: Vec<Step> = if let Some(Value::Mapping(seq_map)) =
+            sequences.get(sequence_index)
+        {
+            if let Some(Value::Sequence(steps)) = seq_map.get(Value::String("steps".to_string())) {
+                steps
+                    .iter()
+                    .filter_map(|step_value| serde_yaml::from_value(step_value.clone()).ok())
+                    .collect()
+            } else {
+                Vec::new()
+            }
+        } else {
+            Vec::new()
+        };
+
+        // Use ComplexStructureEditor to create the new step
+        let new_step = ComplexStructureEditor::<Step>::edit_with_fuzzy_search(
+            &step_items,
+            "Select step template (ESC to create new): ",
+            oracle,
+            editor_config,
+            validator,
+            &template,
+        )?;
+
+        // Validate the new step
+        log::info!("\n=== Validating Step ===");
+        let step_yaml =
+            serde_yaml::to_string(&new_step).context("Failed to serialize new step to YAML")?;
+        validator
+            .validate_chunk(&format!(
+                "test_sequences:\n  - id: 1\n    name: temp\n    description: temp\n    initial_conditions: {{}}\n    steps:\n      - {}",
+                step_yaml
+            ))
+            .context("Step validation failed")?;
+        log::info!("✓ Step is valid\n");
+
+        // Convert new step to Value and append to sequence
+        let new_step_value =
+            serde_yaml::to_value(&new_step).context("Failed to convert new step to YAML value")?;
+
+        // Append the step to the sequence
+        if let Some(Value::Mapping(seq_map)) = sequences.get_mut(sequence_index) {
+            if let Some(Value::Sequence(steps)) =
+                seq_map.get_mut(Value::String("steps".to_string()))
+            {
+                steps.push(new_step_value);
+                log::info!("✓ Step {} added successfully\n", new_step.step);
+            } else {
+                anyhow::bail!("steps is not a sequence");
+            }
+        } else {
+            anyhow::bail!("Sequence is not a mapping");
+        }
+
+        Ok(())
+    }
+
+    /// Delete a step from the sequence
+    fn delete_step_from_sequence(
+        sequences: &mut [Value],
+        sequence_index: usize,
+        oracle: &dyn Oracle,
+    ) -> Result<()> {
+        log::info!("\n=== Delete Step ===\n");
+
+        // Get the steps from the sequence
+        let steps_array = if let Some(Value::Mapping(seq_map)) = sequences.get(sequence_index) {
+            if let Some(Value::Sequence(steps)) = seq_map.get(Value::String("steps".to_string())) {
+                steps.clone()
+            } else {
+                anyhow::bail!("steps is not a sequence");
+            }
+        } else {
+            anyhow::bail!("Sequence is not a mapping");
+        };
+
+        if steps_array.is_empty() {
+            log::info!("No steps to delete.");
+            return Ok(());
+        }
+
+        // Convert steps to Step structs for display
+        let step_items: Vec<Step> = steps_array
+            .iter()
+            .filter_map(|step_value| serde_yaml::from_value(step_value.clone()).ok())
+            .collect();
+
+        // List all steps for selection
+        let step_displays: Vec<String> = step_items
+            .iter()
+            .map(|step| {
+                format!(
+                    "Step {}: {} ({})",
+                    step.step, step.description, step.command
+                )
+            })
+            .collect();
+
+        let selected_display = oracle
+            .fuzzy_search_strings(&step_displays, "Select step to delete: ")?
+            .ok_or_else(|| anyhow::anyhow!("No step selected"))?;
+
+        // Find the index of the selected step
+        let step_index = step_displays
+            .iter()
+            .position(|s| s == &selected_display)
+            .ok_or_else(|| anyhow::anyhow!("Selected step not found"))?;
+
+        // Confirm deletion
+        let confirm_msg = format!("Are you sure you want to delete '{}'?", selected_display);
+        if !oracle.confirm(&confirm_msg)? {
+            log::info!("Deletion cancelled.");
+            return Ok(());
+        }
+
+        // Remove the step from the sequence
+        if let Some(Value::Mapping(seq_map)) = sequences.get_mut(sequence_index) {
+            if let Some(Value::Sequence(steps)) =
+                seq_map.get_mut(Value::String("steps".to_string()))
+            {
+                if step_index < steps.len() {
+                    steps.remove(step_index);
+                    log::info!("✓ Step deleted successfully\n");
+                } else {
+                    anyhow::bail!("Invalid step index: {}", step_index);
+                }
+            } else {
+                anyhow::bail!("steps is not a sequence");
+            }
+        } else {
+            anyhow::bail!("Sequence is not a mapping");
+        }
+
+        Ok(())
     }
 }
 

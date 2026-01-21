@@ -163,9 +163,13 @@ fn handle_edit(base_path: &str, id: Option<String>, fuzzy: bool) -> Result<()> {
     } else {
         let test_cases = storage.load_all_test_cases()?;
         let ids: Vec<String> = test_cases.iter().map(|tc| tc.id.clone()).collect();
-        let index = Prompts::select("Select a test case", ids)?;
-        let my_int: usize = index.parse().unwrap();
-        test_cases[my_int].clone()
+        let selected_id = Prompts::select("Select a test case", ids)?;
+        
+        // Find the test case with the selected ID
+        test_cases
+            .into_iter()
+            .find(|tc| tc.id == selected_id)
+            .ok_or_else(|| anyhow::anyhow!("Test case not found: {}", selected_id))?
     };
 
     let edited_test_case = TestCaseEditor::edit_test_case(&test_case)?;
@@ -288,9 +292,13 @@ fn handle_view(base_path: &str, id: Option<String>, fuzzy: bool) -> Result<()> {
     } else {
         let test_cases = storage.load_all_test_cases()?;
         let ids: Vec<String> = test_cases.iter().map(|tc| tc.id.clone()).collect();
-        let index = Prompts::select("Select a test case", ids)?;
-        let my_int: usize = index.parse().unwrap();
-        test_cases[my_int].clone()
+        let selected_id = Prompts::select("Select a test case", ids)?;
+        
+        // Find the test case with the selected ID
+        test_cases
+            .into_iter()
+            .find(|tc| tc.id == selected_id)
+            .ok_or_else(|| anyhow::anyhow!("Test case not found: {}", selected_id))?
     };
 
     let yaml = serde_yaml::to_string(&test_case)?;
@@ -1174,9 +1182,13 @@ fn handle_edit_interactive(base_path: &str, id: Option<String>, fuzzy: bool) -> 
     } else {
         let test_cases = storage.load_all_test_cases()?;
         let ids: Vec<String> = test_cases.iter().map(|tc| tc.id.clone()).collect();
-        let index = Prompts::select("Select a test case", ids)?;
-        let my_int: usize = index.parse().unwrap();
-        test_cases[my_int].clone()
+        let selected_id = Prompts::select("Select a test case", ids)?;
+        
+        // Find the test case with the selected ID
+        test_cases
+            .into_iter()
+            .find(|tc| tc.id == selected_id)
+            .ok_or_else(|| anyhow::anyhow!("Test case not found: {}", selected_id))?
     };
 
     let git = GitManager::open(base_path).or_else(|_| GitManager::init(base_path))?;
@@ -1190,45 +1202,45 @@ fn handle_edit_interactive(base_path: &str, id: Option<String>, fuzzy: bool) -> 
 
     loop {
         print_title("Edit Sections Menu", TitleStyle::TripleEquals);
-        log::info!("Select a section to edit:\n");
-        log::info!("  1. Metadata (requirement, item, tc, id, description)");
-        log::info!("  2. General Initial Conditions");
-        log::info!("  3. Initial Conditions");
-        log::info!("  4. Test Sequences");
-        log::info!("  5. Save and Exit");
-        log::info!("  6. Exit without Saving\n");
+        println!("Select a section to edit:\n");
+        println!("  1. Metadata (requirement, item, tc, id, description)");
+        println!("  2. General Initial Conditions");
+        println!("  3. Initial Conditions");
+        println!("  4. Test Sequences");
+        println!("  5. Save and Exit");
+        println!("  6. Exit without Saving\n");
 
         let choice = Prompts::input("Choice (1-6)")?;
 
         match choice.trim() {
             "1" => {
                 if let Err(e) = edit_metadata_section(&mut current_test_case, &storage, &git) {
-                    log::error!("Failed to edit metadata: {}", e);
+                    println!("Failed to edit metadata: {}", e);
                 }
             }
             "2" => {
                 if let Err(e) =
                     edit_general_initial_conditions_section(&mut current_test_case, &storage, &git)
                 {
-                    log::error!("Failed to edit general initial conditions: {}", e);
+                    println!("Failed to edit general initial conditions: {}", e);
                 }
             }
             "3" => {
                 if let Err(e) =
                     edit_initial_conditions_section(&mut current_test_case, &storage, &git)
                 {
-                    log::error!("Failed to edit initial conditions: {}", e);
+                    println!("Failed to edit initial conditions: {}", e);
                 }
             }
             "4" => {
                 if let Err(e) = edit_test_sequences_section(&mut current_test_case, &storage, &git)
                 {
-                    log::error!("Failed to edit test sequences: {}", e);
+                    println!("Failed to edit test sequences: {}", e);
                 }
             }
             "5" => {
                 let file_path = storage.save_test_case(&current_test_case)?;
-                log::info!("\n✓ Test case saved: {}", file_path.display());
+                println!("\n✓ Test case saved: {}", file_path.display());
 
                 let author_name = std::env::var("GIT_AUTHOR_NAME")
                     .unwrap_or_else(|_| "Test Case Manager".to_string());
@@ -1240,18 +1252,18 @@ fn handle_edit_interactive(base_path: &str, id: Option<String>, fuzzy: bool) -> 
                     &author_name,
                     &author_email,
                 )?;
-                log::info!("✓ Changes committed to git\n");
+                println!("✓ Changes committed to git\n");
 
                 break;
             }
             "6" => {
                 if Prompts::confirm("Exit without saving changes?")? {
-                    log::info!("Exited without saving.");
+                    println!("Exited without saving.");
                     break;
                 }
             }
             _ => {
-                log::warn!("Invalid choice. Please enter 1-6.");
+                println!("Invalid choice. Please enter 1-6.");
             }
         }
     }

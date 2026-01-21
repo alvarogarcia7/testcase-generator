@@ -283,6 +283,7 @@ fn test_section_selection_with_oracle() -> Result<()> {
     assert!(sections.contains(&"initial_conditions".to_string()));
     assert!(sections.contains(&"test_sequences".to_string()));
 
+    // Test that Prompts::select returns the selected text, not an index
     let mut answers = VecDeque::new();
     answers.push_back(AnswerVariant::String("item".to_string()));
     answers.push_back(AnswerVariant::String("tc".to_string()));
@@ -290,13 +291,14 @@ fn test_section_selection_with_oracle() -> Result<()> {
 
     let oracle: Arc<dyn Oracle> = Arc::new(HardcodedOracle::new(answers));
 
-    let section1 = oracle.input("Select section 1")?;
+    // Oracle.select returns the selected string directly
+    let section1 = oracle.select("Select section 1", vec!["requirement".to_string(), "item".to_string(), "tc".to_string()])?;
     assert_eq!(section1, "item");
 
-    let section2 = oracle.input("Select section 2")?;
+    let section2 = oracle.select("Select section 2", vec!["requirement".to_string(), "tc".to_string(), "description".to_string()])?;
     assert_eq!(section2, "tc");
 
-    let section3 = oracle.input("Select section 3")?;
+    let section3 = oracle.select("Select section 3", vec!["id".to_string(), "description".to_string()])?;
     assert_eq!(section3, "description");
 
     log::info!("✓ Section selection with oracle completed successfully");
