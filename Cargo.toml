@@ -51,6 +51,10 @@ path = "src/bin/test-executor.rs"
 name = "tcm"
 path = "src/main.rs"
 
+[[bin]]
+name = "test-orchestrator"
+path = "src/bin/test-orchestrator.rs"
+
 [[example]]
 name = "tty_fallback_demo"
 path = "examples/tty_fallback_demo.rs"

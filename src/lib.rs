@@ -11,6 +11,7 @@ pub mod git;
 pub mod junit_xml_validator;
 pub mod models;
 pub mod oracle;
+pub mod orchestrator;
 pub mod parser;
 pub mod prompts;
 pub mod recovery;
