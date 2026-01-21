@@ -201,8 +201,51 @@ impl TestExecutor {
             Path::new(&format!("{}_execution_log.json", test_case.id)).to_path_buf()
         };
 
-        // Create empty execution entries template
-        let template_entries: Vec<TestStepExecutionEntry> = Vec::new();
+        // Create execution entries template with all steps from the test case
+        let mut template_entries: Vec<TestStepExecutionEntry> = Vec::new();
+        
+        // Base timestamp for template (arbitrary starting point)
+        let base_time = chrono::DateTime::parse_from_rfc3339("2024-01-15T10:30:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+        let mut step_index = 0;
+
+        for sequence in &test_case.test_sequences {
+            for step in &sequence.steps {
+                // Skip manual steps
+                if step.manual == Some(true) {
+                    continue;
+                }
+
+                // Parse expected exit code from expected.result field
+                let exit_code = step.expected.result.parse::<i32>().unwrap_or(0);
+
+                // Use expected output, handling special cases
+                let output = if step.expected.output == "true" 
+                    || step.expected.output.is_empty() {
+                    String::new()
+                } else {
+                    // Replace escaped newlines with actual newlines
+                    step.expected.output.replace("\\n", "\n")
+                };
+
+                // Generate timestamp incrementing by 1 second per step
+                let timestamp = base_time + chrono::Duration::seconds(step_index);
+
+                // Create a template entry with expected values
+                let entry = TestStepExecutionEntry {
+                    test_sequence: sequence.id,
+                    step: step.step,
+                    command: step.command.clone(),
+                    exit_code,
+                    output,
+                    timestamp: Some(timestamp.format("%Y-%m-%dT%H:%M:%SZ").to_string()),
+                };
+
+                template_entries.push(entry);
+                step_index += 1;
+            }
+        }
 
         // Serialize to JSON
         let json_content = serde_json::to_string_pretty(&template_entries)
