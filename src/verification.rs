@@ -873,6 +873,89 @@ impl TestVerifier {
         Self::with_strategies(storage, result_strategy, output_strategy)
     }
 
+    /// Verify a single step against an execution log (new two-stage workflow)
+    pub fn verify_step_from_log(
+        &self,
+        step: &Step,
+        log: &TestExecutionLog,
+    ) -> StepVerificationResult {
+        let result_match = self.matches(
+            &step.expected.result,
+            &log.actual_result,
+            self.result_strategy,
+        );
+        let output_match = self.matches(
+            &step.expected.output,
+            &log.actual_output,
+            self.output_strategy,
+        );
+
+        let mut success_match = true;
+        let mut success_diff = None;
+
+        if let Some(expected_success) = step.expected.success {
+            if let Some(actual_success) = log.success {
+                success_match = expected_success == actual_success;
+                if !success_match {
+                    success_diff = Some(DiffDetail {
+                        expected: expected_success.to_string(),
+                        actual: actual_success.to_string(),
+                        message: "Success flag mismatch".to_string(),
+                    });
+                }
+            }
+        }
+
+        let passed = result_match && output_match && success_match;
+
+        let result_diff = if !result_match {
+            Some(DiffDetail {
+                expected: step.expected.result.clone(),
+                actual: log.actual_result.clone(),
+                message: format!(
+                    "Result mismatch ({})",
+                    self.strategy_name(self.result_strategy)
+                ),
+            })
+        } else {
+            None
+        };
+
+        let output_diff = if !output_match {
+            Some(DiffDetail {
+                expected: step.expected.output.clone(),
+                actual: log.actual_output.clone(),
+                message: format!(
+                    "Output mismatch ({})",
+                    self.strategy_name(self.output_strategy)
+                ),
+            })
+        } else {
+            None
+        };
+
+        StepVerificationResult {
+            step_number: step.step,
+            passed,
+            result_match,
+            output_match,
+            success_match,
+            diff: VerificationDiff {
+                result_diff,
+                output_diff,
+                success_diff,
+            },
+        }
+    }
+
+    fn strategy_name(&self, strategy: MatchStrategy) -> &'static str {
+        match strategy {
+            MatchStrategy::Exact => "Exact",
+            MatchStrategy::Regex => "Regex",
+            MatchStrategy::Contains => "Contains",
+        }
+    }
+
     /// Verify a single step with old-style result (struct-based)
     pub fn verify_step(&self, step: &Step, actual: &ActualResult) -> StepVerificationResult {
         let result_match =
