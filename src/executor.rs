@@ -46,7 +46,8 @@ impl TestExecutor {
                 "# Test Sequence {}: {}\n",
                 sequence.id, sequence.name
             ));
-            script.push_str(&format!("# {}\n", sequence.description));
+            let lines = sequence.description.split("\n");
+            lines.for_each(|line| script.push_str(&format!("# {}\n", line)));
 
             if !sequence.initial_conditions.is_empty() {
                 script.push_str("# Sequence Initial Conditions\n");

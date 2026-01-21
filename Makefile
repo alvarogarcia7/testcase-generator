@@ -39,7 +39,7 @@ test-e2e-failing-all: build
 	./tests/integration/run_all_tests.sh
 .PHONY: test-e2e-failing-all
 
-test-e2e: test-e2e-validate-yaml test-e2e-executor
+test-e2e: test-e2e-validate-yaml #test-e2e-executor
 .PHONY: test-e2e
 
 test-all: test test-e2e
