@@ -928,6 +928,8 @@ fn test_verification_with_string_length_check() {
 
 #[test]
 fn test_verification_with_file_test() {
+    use tempfile::NamedTempFile;
+    
     let executor = TestExecutor::new();
     let mut test_case = TestCase::new(
         "REQ001".to_string(),
@@ -937,19 +939,24 @@ fn test_verification_with_file_test() {
         "File test".to_string(),
     );
 
+    let temp_file = NamedTempFile::new().unwrap();
+    let temp_path = temp_file.path().to_string_lossy().to_string();
+    let command = format!("touch {}", temp_path);
+    let result_check = format!("[ $EXIT_CODE -eq 0 ] && [ -f {} ]", temp_path);
+
     let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
     let step = Step {
         step: 1,
         manual: None,
         description: "File existence check".to_string(),
-        command: "touch /tmp/testfile".to_string(),
+        command: command.clone(),
         expected: Expected {
             success: Some(true),
-            result: "[ $EXIT_CODE -eq 0 ] && [ -f /tmp/testfile ]".to_string(),
+            result: result_check.clone(),
             output: "true".to_string(),
         },
         verification: Verification {
-            result: "[ $EXIT_CODE -eq 0 ] && [ -f /tmp/testfile ]".to_string(),
+            result: result_check.clone(),
             output: "true".to_string(),
         },
     };
@@ -958,7 +965,7 @@ fn test_verification_with_file_test() {
 
     let script = executor.generate_test_script(&test_case);
 
-    assert!(script.contains("if [ $EXIT_CODE -eq 0 ] && [ -f /tmp/testfile ]; then"));
+    assert!(script.contains(&format!("if {} ; then", result_check)));
 }
 
 #[test]
