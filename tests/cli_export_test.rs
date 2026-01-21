@@ -53,7 +53,7 @@ fn test_export_junit_xml_to_file() {
 
     let xml_content = fs::read_to_string(&output_path).unwrap();
 
-    assert!(xml_content.contains("<?xml version=\"1000\" encoding=\"UTF-8\"?>"));
+    assert!(xml_content.contains("<?xml version=\"1.0\" encoding=\"UTF-8\"?>"));
     assert!(xml_content.contains("<testsuite"));
     assert!(xml_content.contains("tests=\"2\""));
     assert!(xml_content.contains("failures=\"1\""));
@@ -191,6 +191,6 @@ fn test_multiple_test_runs_aggregation() {
     assert!(xml_content.contains("failures=\"1\""));
     assert!(xml_content.contains("skipped=\"1\""));
 
-    let total_time = 1000 + 2000 + 3000 + 0;
-    assert!(xml_content.contains(&format!("time=\"{:0.3}\"", total_time as f64 / 1000f64)));
+    let total_time = 1.000 + 2.000 + 3.000 + 0.000;
+    assert!(xml_content.contains(&format!("time=\"{:.3}\"", total_time)));
 }
