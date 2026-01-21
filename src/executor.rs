@@ -127,7 +127,6 @@ impl TestExecutor {
 
         for sequence in &test_case.test_sequences {
             for step in &sequence.steps {
-                // Skip manual steps
                 if step.manual == Some(true) {
                     println!(
                         "[SKIP] Step {} (Sequence {}): {} - Manual step",
@@ -140,9 +139,7 @@ impl TestExecutor {
                     "[RUN] Step {} (Sequence {}): {}",
                     step.step, sequence.id, step.description
                 );
-                println!("  Command: {}", step.command);
 
-                // Execute the command using bash -c
                 let output = Command::new("bash")
                     .arg("-c")
                     .arg(&step.command)
@@ -151,18 +148,7 @@ impl TestExecutor {
 
                 let exit_code = output.status.code().unwrap_or(-1);
                 let command_output = String::from_utf8_lossy(&output.stdout).to_string();
-                let stderr_output = String::from_utf8_lossy(&output.stderr);
 
-                // Display output
-                if !command_output.is_empty() {
-                    println!("  Output: {}", command_output.trim());
-                }
-                if !stderr_output.is_empty() {
-                    println!("  Stderr: {}", stderr_output.trim());
-                }
-                println!("  Exit code: {}", exit_code);
-
-                // Create execution entry with timestamp
                 let timestamp = Utc::now().to_rfc3339();
                 let entry = TestStepExecutionEntry::with_timestamp(
                     sequence.id,
@@ -174,11 +160,9 @@ impl TestExecutor {
                 );
 
                 execution_entries.push(entry);
-                println!();
             }
         }
 
-        // Write execution log to JSON file
         self.write_execution_log(test_case, &execution_entries)?;
 
         Ok(())
@@ -189,19 +173,14 @@ impl TestExecutor {
         test_case: &TestCase,
         entries: &[TestStepExecutionEntry],
     ) -> Result<()> {
-        // Generate log file name based on test case ID only
         let log_filename = format!("{}_execution_log.json", test_case.id);
         let log_path = Path::new(&log_filename);
 
-        // Serialize entries to JSON
         let json_content = serde_json::to_string_pretty(entries)
             .context("Failed to serialize execution entries to JSON")?;
 
-        // Write to file
         fs::write(log_path, json_content)
             .context(format!("Failed to write log file: {}", log_path.display()))?;
-
-        println!("Execution log written to: {}", log_path.display());
 
         Ok(())
     }

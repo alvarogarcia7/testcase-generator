@@ -88,14 +88,7 @@ fn main() -> Result<()> {
             let test_case = load_test_case(&yaml_file)?;
             let executor = TestExecutor::new();
 
-            println!("Executing test case: {}", test_case.id);
-            println!("Description: {}", test_case.description);
-            println!();
-
             executor.execute_test_case(&test_case)?;
-
-            println!();
-            println!("Test execution completed successfully!");
 
             Ok(())
         }
