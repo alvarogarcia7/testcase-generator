@@ -380,6 +380,9 @@ command: ""
 expected:
   result: ""
   output: ""
+verification:
+  result: "[[ $? -eq 0 ]]"
+  output: "cat $COMMAND_OUTPUT | grep -q \"${{OUTPUT}}\""
 "#,
                         step_number
                     );

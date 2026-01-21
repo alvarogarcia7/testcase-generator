@@ -18,6 +18,42 @@ The integration tests use the [Expect](https://core.tcl-lang.org/expect/index) a
 
 ## Test Files
 
+### `test_executor_e2e.sh`
+
+End-to-end integration test for the `test-executor` binary that validates:
+
+1. **YAML Schema Validation**
+   - Validates test case YAML files against the JSON schema
+   - Tests both passing and failing test cases
+
+2. **Shell Script Generation**
+   - Generates executable shell scripts from YAML test cases
+   - Validates bash syntax of generated scripts
+   - Verifies script structure and essential components
+
+3. **Test Execution with Passing Verification**
+   - Executes test cases with passing verification expressions
+   - Validates exit code 0 for successful tests
+   - Checks for success messages in output
+
+4. **Test Execution with Failing Verification**
+   - Executes test cases with failing verification expressions
+   - Validates non-zero exit code for failed tests
+   - Checks for error messages and verification details in output
+
+5. **Generated Script Structure**
+   - Verifies presence of essential bash components (shebang, set -e)
+   - Checks for command output and exit code capturing
+   - Validates verification logic implementation
+   - Confirms PASS/FAIL output formatting
+
+Run with:
+```bash
+make test-e2e-executor
+# or directly
+./tests/integration/test_executor_e2e.sh
+```
+
 ### `e2e_complete_workflow.exp`
 
 The main end-to-end integration test that validates:

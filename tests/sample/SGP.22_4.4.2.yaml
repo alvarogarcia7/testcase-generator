@@ -20,6 +20,9 @@ test_sequences:
       success: true
       result: '0'
       output: none
+    verification:
+      result: "exit_code == 0"
+      output: ""
   - step: 2
     description: 'Sample step 2: Perform test action'
     command: AT+COMMAND
@@ -27,3 +30,6 @@ test_sequences:
       success: true
       result: '0'
       output: none
+    verification:
+      result: "exit_code == 0"
+      output: ""

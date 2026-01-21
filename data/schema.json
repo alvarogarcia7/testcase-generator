@@ -92,6 +92,21 @@
                     "result",
                     "output"
                   ]
+                },
+                "verification": {
+                  "type": "object",
+                  "properties": {
+                    "result": {
+                      "type": "string"
+                    },
+                    "output": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "result",
+                    "output"
+                  ]
                 }
               },
               "required": [

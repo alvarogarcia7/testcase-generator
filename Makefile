@@ -39,7 +39,7 @@ test-e2e-failing-all: build
 	./tests/integration/run_all_tests.sh
 .PHONY: test-e2e-failing-all
 
-test-e2e: test-e2e-validate-yaml
+test-e2e: test-e2e-validate-yaml #test-e2e-executor
 .PHONY: test-e2e
 
 test-all: test test-e2e
@@ -65,4 +65,23 @@ watch-verbose: build
 clean-validation-cache:
 	rm -rf .validation-cache/
 .PHONY: clean-validation-cache
+
+run-test-executor: build
+	cargo run --bin test-executor
+.PHONY: run-test-executor
+
+test-executor-sample: build
+	@echo "Testing test-executor against sample test cases..."
+	@echo "Generating script from gsma_4.4.2.2_TC.yml..."
+	cargo run --bin test-executor -- generate tests/sample/gsma_4.4.2.2_TC.yml >/dev/null
+	@echo "✓ Script generation verified for gsma_4.4.2.2_TC.yml"
+	@echo "Generating script from SGP.22_4.4.2.yaml..."
+	cargo run --bin test-executor -- generate tests/sample/SGP.22_4.4.2.yaml >/dev/null
+	@echo "✓ Script generation verified for SGP.22_4.4.2.yaml"
+	@echo "All test-executor sample verifications passed!"
+.PHONY: test-executor-sample
+
+test-e2e-executor: build
+	./tests/integration/test_executor_e2e.sh
+.PHONY: test-e2e-executor
 

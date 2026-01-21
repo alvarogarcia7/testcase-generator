@@ -4,6 +4,22 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
+/// Verification information for a test step
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct Verification {
+    /// Verification result value
+    pub result: String,
+
+    /// Verification output
+    pub output: String,
+}
+
+impl fmt::Display for Verification {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "result: {} | output: {}", self.result, self.output)
+    }
+}
+
 /// Expected outcome for a test step
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Expected {
@@ -51,6 +67,18 @@ pub struct Step {
 
     /// Expected outcome
     pub expected: Expected,
+
+    /// Verification information
+    #[serde(default = "default_verification_from_expected")]
+    pub verification: Verification,
+}
+
+/// Default verification based on expected values (for backward compatibility)
+fn default_verification_from_expected() -> Verification {
+    Verification {
+        result: "[[ $? -eq 0 ]]".to_string(),
+        output: "cat $COMMAND_OUTPUT | grep -q \"${OUTPUT}\"".to_string(),
+    }
 }
 
 impl fmt::Display for Step {
@@ -180,6 +208,7 @@ impl Step {
                 result,
                 output,
             },
+            verification: default_verification_from_expected(),
         }
     }
 }

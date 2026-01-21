@@ -37,6 +37,10 @@ name = "test-verify"
 path = "src/bin/test-verify.rs"
 
 [[bin]]
+name = "test-executor"
+path = "src/bin/test-executor.rs"
+
+[[bin]]
 name = "tcm"
 path = "src/main.rs"
 

@@ -976,6 +976,36 @@ eUICC:
 
         Ok(Value::Mapping(initial_cond_map))
     }
+
+    /// Prompt for verification result expression
+    pub fn prompt_verification_result(oracle: &Arc<dyn Oracle>) -> Result<String> {
+        println!("\n=== Result Verification Expression ===");
+        println!("Example: [[ $? -eq 0 ]]");
+        println!("This expression verifies the command exit code.\n");
+
+        let result = Self::input_with_default_oracle(
+            "Result verification expression",
+            "[[ $? -eq 0 ]]",
+            oracle,
+        )?;
+
+        Ok(result)
+    }
+
+    /// Prompt for verification output expression
+    pub fn prompt_verification_output(oracle: &Arc<dyn Oracle>) -> Result<String> {
+        println!("\n=== Output Verification Expression ===");
+        println!("Example: cat $COMMAND_OUTPUT | grep -q \"${{OUTPUT}}\"");
+        println!("This expression verifies the command output contains expected text.\n");
+
+        let output = Self::input_with_default_oracle(
+            "Output verification expression",
+            "cat $COMMAND_OUTPUT | grep -q \"${OUTPUT}\"",
+            oracle,
+        )?;
+
+        Ok(output)
+    }
 }
 
 impl Default for Prompts<'_> {
