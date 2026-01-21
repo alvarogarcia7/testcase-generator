@@ -13,6 +13,7 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
+use crate::MatchStrategy::Exact;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RetryStrategy {
@@ -498,7 +499,7 @@ impl TestOrchestrator {
         &self,
         log_files: Vec<PathBuf>,
     ) -> Result<Vec<TestCaseVerificationResult>> {
-        let verifier = TestVerifier::new(self.test_case_storage.clone());
+        let verifier = TestVerifier::new(Exact, Exact);
         let mut verification_results = Vec::new();
 
         for log_file in log_files {

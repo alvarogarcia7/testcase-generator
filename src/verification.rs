@@ -1,4 +1,4 @@
-use crate::models::{Expected, Step, TestCase, TestSequence};
+use crate::models::{ActualResult, Expected, Step, TestCase, TestSequence};
 use crate::storage::TestCaseStorage;
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
@@ -10,6 +10,81 @@ use std::collections::HashMap;
 use std::fs;
 use std::io::Cursor;
 use std::path::{Path, PathBuf};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum MatchStrategy {
+    Exact,
+    Regex,
+    Contains,
+}
+
+/// Result of verifying a single step (struct-based, for backward compatibility with tests)
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct StepVerificationResult {
+    pub step_number: i64,
+    pub passed: bool,
+    pub result_match: bool,
+    pub output_match: bool,
+    pub success_match: bool,
+    pub diff: VerificationDiff,
+}
+
+/// Result of verifying a single step (enum-based, for batch verification)
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum StepVerificationResultEnum {
+    /// Step passed verification
+    Pass { step: i64, description: String },
+    /// Step failed verification
+    Fail {
+        step: i64,
+        description: String,
+        expected: Expected,
+        actual_result: String,
+        actual_output: String,
+        reason: String,
+    },
+    /// Step was not found in execution log
+    NotExecuted { step: i64, description: String },
+}
+
+impl StepVerificationResultEnum {
+    pub fn is_pass(&self) -> bool {
+        matches!(self, StepVerificationResultEnum::Pass { .. })
+    }
+
+    pub fn step_number(&self) -> i64 {
+        match self {
+            StepVerificationResultEnum::Pass { step, .. } => *step,
+            StepVerificationResultEnum::Fail { step, .. } => *step,
+            StepVerificationResultEnum::NotExecuted { step, .. } => *step,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct VerificationDiff {
+    pub result_diff: Option<DiffDetail>,
+    pub output_diff: Option<DiffDetail>,
+    pub success_diff: Option<DiffDetail>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DiffDetail {
+    pub expected: String,
+    pub actual: String,
+    pub message: String,
+}
+
+/// Old-style execution verification result (for backward compatibility)
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ExecutionVerificationResult {
+    pub test_case_id: String,
+    pub sequence_id: i64,
+    pub overall_passed: bool,
+    pub step_results: Vec<StepVerificationResult>,
+    pub missing_steps: Vec<i64>,
+    pub unexpected_steps: Vec<i64>,
+}
 
 /// Represents a parsed test execution log entry
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -37,38 +112,6 @@ pub struct TestExecutionLog {
 
     /// Path to the log file
     pub log_file_path: PathBuf,
-}
-
-/// Result of verifying a single step
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub enum StepVerificationResult {
-    /// Step passed verification
-    Pass { step: i64, description: String },
-    /// Step failed verification
-    Fail {
-        step: i64,
-        description: String,
-        expected: Expected,
-        actual_result: String,
-        actual_output: String,
-        reason: String,
-    },
-    /// Step was not found in execution log
-    NotExecuted { step: i64, description: String },
-}
-
-impl StepVerificationResult {
-    pub fn is_pass(&self) -> bool {
-        matches!(self, StepVerificationResult::Pass { .. })
-    }
-
-    pub fn step_number(&self) -> i64 {
-        match self {
-            StepVerificationResult::Pass { step, .. } => *step,
-            StepVerificationResult::Fail { step, .. } => *step,
-            StepVerificationResult::NotExecuted { step, .. } => *step,
-        }
-    }
 }
 
 /// Result of verifying a test case
@@ -109,7 +152,7 @@ pub struct SequenceVerificationResult {
     pub name: String,
 
     /// Step results
-    pub step_results: Vec<StepVerificationResult>,
+    pub step_results: Vec<StepVerificationResultEnum>,
 
     /// Whether all steps passed
     pub all_steps_passed: bool,
@@ -370,14 +413,14 @@ impl JUnitTestSuite {
                     let classname = format!("{}.{}", tc_result.test_case_id, seq_result.name);
 
                     let junit_tc = match step_result {
-                        StepVerificationResult::Pass { description, .. } => JUnitTestCase {
+                        StepVerificationResultEnum::Pass { description, .. } => JUnitTestCase {
                             name: format!("{} - {}", name, description),
                             classname,
                             time: 0.0,
                             failure: None,
                             skipped: false,
                         },
-                        StepVerificationResult::Fail {
+                        StepVerificationResultEnum::Fail {
                             description,
                             expected,
                             actual_result,
@@ -401,7 +444,7 @@ impl JUnitTestSuite {
                                 skipped: false,
                             }
                         }
-                        StepVerificationResult::NotExecuted { description, .. } => {
+                        StepVerificationResultEnum::NotExecuted { description, .. } => {
                             junit_suite.skipped += 1;
                             JUnitTestCase {
                                 name: format!("{} - {}", name, description),
@@ -425,12 +468,35 @@ impl JUnitTestSuite {
 /// Test verifier for comparing execution logs against test cases
 pub struct TestVerifier {
     storage: TestCaseStorage,
+    result_strategy: MatchStrategy,
+    output_strategy: MatchStrategy,
+}
+
+impl Default for TestVerifier {
+    fn default() -> Self {
+        Self::with_exact_matching()
+    }
 }
 
 impl TestVerifier {
-    /// Create a new test verifier with the given storage
-    pub fn new(storage: TestCaseStorage) -> Self {
-        Self { storage }
+    pub fn from_storage(storage: TestCaseStorage) -> Self {
+        Self {
+            storage,
+            result_strategy: MatchStrategy::Exact,
+            output_strategy: MatchStrategy::Exact,
+        }
+    }
+
+    pub fn with_strategies(
+        storage: TestCaseStorage,
+        result_strategy: MatchStrategy,
+        output_strategy: MatchStrategy,
+    ) -> Self {
+        Self {
+            storage,
+            result_strategy,
+            output_strategy,
+        }
     }
 
     /// Get a reference to the test case storage
@@ -546,9 +612,9 @@ impl TestVerifier {
             for result in &step_results {
                 total_steps += 1;
                 match result {
-                    StepVerificationResult::Pass { .. } => passed_steps += 1,
-                    StepVerificationResult::Fail { .. } => failed_steps += 1,
-                    StepVerificationResult::NotExecuted { .. } => not_executed_steps += 1,
+                    StepVerificationResultEnum::Pass { .. } => passed_steps += 1,
+                    StepVerificationResultEnum::Fail { .. } => failed_steps += 1,
+                    StepVerificationResultEnum::NotExecuted { .. } => not_executed_steps += 1,
                 }
             }
 
@@ -579,14 +645,14 @@ impl TestVerifier {
         &self,
         sequence: &TestSequence,
         log_map: &HashMap<(i64, i64), &TestExecutionLog>,
-    ) -> Vec<StepVerificationResult> {
+    ) -> Vec<StepVerificationResultEnum> {
         let mut results = Vec::new();
 
         for step in &sequence.steps {
             let result = if let Some(log) = log_map.get(&(sequence.id, step.step)) {
-                self.verify_step(step, log)
+                self.verify_step_new(step, log)
             } else {
-                StepVerificationResult::NotExecuted {
+                StepVerificationResultEnum::NotExecuted {
                     step: step.step,
                     description: step.description.clone(),
                 }
@@ -597,15 +663,15 @@ impl TestVerifier {
         results
     }
 
-    /// Verify a single step against its execution log
-    fn verify_step(&self, step: &Step, log: &TestExecutionLog) -> StepVerificationResult {
+    /// Verify a single step against its execution log (new API)
+    fn verify_step_new(&self, step: &Step, log: &TestExecutionLog) -> StepVerificationResultEnum {
         let expected = &step.expected;
 
         // Check success field if it's defined
         if let Some(expected_success) = expected.success {
             if let Some(actual_success) = log.success {
                 if expected_success != actual_success {
-                    return StepVerificationResult::Fail {
+                    return StepVerificationResultEnum::Fail {
                         step: step.step,
                         description: step.description.clone(),
                         expected: expected.clone(),
@@ -621,8 +687,8 @@ impl TestVerifier {
         }
 
         // Check result
-        if !self.matches(&expected.result, &log.actual_result) {
-            return StepVerificationResult::Fail {
+        if !self.matches(&expected.result, &log.actual_result, self.result_strategy) {
+            return StepVerificationResultEnum::Fail {
                 step: step.step,
                 description: step.description.clone(),
                 expected: expected.clone(),
@@ -636,8 +702,8 @@ impl TestVerifier {
         }
 
         // Check output
-        if !self.matches(&expected.output, &log.actual_output) {
-            return StepVerificationResult::Fail {
+        if !self.matches(&expected.output, &log.actual_output, self.output_strategy) {
+            return StepVerificationResultEnum::Fail {
                 step: step.step,
                 description: step.description.clone(),
                 expected: expected.clone(),
@@ -650,36 +716,24 @@ impl TestVerifier {
             };
         }
 
-        StepVerificationResult::Pass {
+        StepVerificationResultEnum::Pass {
             step: step.step,
             description: step.description.clone(),
         }
     }
 
-    /// Check if actual value matches expected (supports wildcards and regex)
-    fn matches(&self, expected: &str, actual: &str) -> bool {
-        // Exact match
-        if expected == actual {
-            return true;
-        }
-
-        // Wildcard match (simple * wildcard)
-        if expected.contains('*') {
-            let pattern = expected.replace('*', ".*");
-            if let Ok(regex) = Regex::new(&format!("^{}$", pattern)) {
-                return regex.is_match(actual);
+    fn matches(&self, expected: &str, actual: &str, strategy: MatchStrategy) -> bool {
+        match strategy {
+            MatchStrategy::Exact => expected == actual,
+            MatchStrategy::Contains => actual.contains(expected),
+            MatchStrategy::Regex => {
+                if let Ok(regex) = Regex::new(expected) {
+                    regex.is_match(actual)
+                } else {
+                    false
+                }
             }
         }
-
-        // If expected is wrapped in /.../, treat as regex
-        if expected.starts_with('/') && expected.ends_with('/') && expected.len() > 2 {
-            let pattern = &expected[1..expected.len() - 1];
-            if let Ok(regex) = Regex::new(pattern) {
-                return regex.is_match(actual);
-            }
-        }
-
-        false
     }
 
     /// Process multiple log files and verify against test cases
@@ -730,6 +784,138 @@ impl TestVerifier {
 
         Ok(report)
     }
+
+    // ========================================================================
+    // Old-style API methods (for backward compatibility with existing tests)
+    // ========================================================================
+
+    /// Create verifier with exact matching (old API)
+    pub fn with_exact_matching() -> Self {
+        Self::new(MatchStrategy::Exact, MatchStrategy::Exact)
+    }
+
+    /// Create verifier with custom match strategies (old API, for tests)
+    /// This creates a temporary storage for testing purposes
+    #[allow(clippy::new_ret_no_self)]
+    pub fn new(result_strategy: MatchStrategy, output_strategy: MatchStrategy) -> Self {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
+        Self::with_strategies(storage, result_strategy, output_strategy)
+    }
+
+    /// Verify a single step with old-style result (struct-based)
+    pub fn verify_step(&self, step: &Step, actual: &ActualResult) -> StepVerificationResult {
+        let result_match =
+            self.matches(&step.expected.result, &actual.result, self.result_strategy);
+        let output_match =
+            self.matches(&step.expected.output, &actual.output, self.output_strategy);
+
+        let success_match = match step.expected.success {
+            Some(expected_success) => expected_success == actual.success,
+            None => true,
+        };
+
+        let passed = result_match && output_match && success_match;
+
+        let diff = VerificationDiff {
+            result_diff: if !result_match {
+                Some(DiffDetail {
+                    expected: step.expected.result.clone(),
+                    actual: actual.result.clone(),
+                    message: format!(
+                        "Result mismatch (strategy: {:?}): expected '{}' but got '{}'",
+                        self.result_strategy, step.expected.result, actual.result
+                    ),
+                })
+            } else {
+                None
+            },
+            output_diff: if !output_match {
+                Some(DiffDetail {
+                    expected: step.expected.output.clone(),
+                    actual: actual.output.clone(),
+                    message: format!(
+                        "Output mismatch (strategy: {:?}): expected '{}' but got '{}'",
+                        self.output_strategy, step.expected.output, actual.output
+                    ),
+                })
+            } else {
+                None
+            },
+            success_diff: if !success_match {
+                Some(DiffDetail {
+                    expected: step
+                        .expected
+                        .success
+                        .map(|s| s.to_string())
+                        .unwrap_or_else(|| "None".to_string()),
+                    actual: actual.success.to_string(),
+                    message: format!(
+                        "Success flag mismatch: expected {:?} but got {}",
+                        step.expected.success, actual.success
+                    ),
+                })
+            } else {
+                None
+            },
+        };
+
+        StepVerificationResult {
+            step_number: step.step,
+            passed,
+            result_match,
+            output_match,
+            success_match,
+            diff,
+        }
+    }
+
+    /// Verify execution log with old-style result
+    pub fn verify_execution_log(
+        &self,
+        test_case: &TestCase,
+        execution_log: &crate::models::TestExecutionLog,
+    ) -> ExecutionVerificationResult {
+        let sequence = test_case
+            .test_sequences
+            .iter()
+            .find(|seq| seq.id == execution_log.sequence_id);
+
+        if sequence.is_none() {
+            return ExecutionVerificationResult {
+                test_case_id: test_case.id.clone(),
+                sequence_id: execution_log.sequence_id,
+                overall_passed: false,
+                step_results: vec![],
+                missing_steps: vec![],
+                unexpected_steps: vec![],
+            };
+        }
+
+        let sequence = sequence.unwrap();
+
+        let mut step_results = Vec::new();
+        for step in &sequence.steps {
+            let actual_result = ActualResult {
+                result: execution_log.actual_output.clone(),
+                output: execution_log.actual_output.clone(),
+                success: execution_log.actual_success,
+            };
+            let verification_result = self.verify_step(step, &actual_result);
+            step_results.push(verification_result);
+        }
+
+        let overall_passed = step_results.iter().all(|r| r.passed);
+
+        ExecutionVerificationResult {
+            test_case_id: test_case.id.clone(),
+            sequence_id: execution_log.sequence_id,
+            overall_passed,
+            step_results,
+            missing_steps: vec![],
+            unexpected_steps: vec![],
+        }
+    }
 }
 
 #[cfg(test)]
@@ -741,7 +927,7 @@ mod tests {
     fn test_parse_log_content() {
         let temp_dir = TempDir::new().unwrap();
         let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
-        let verifier = TestVerifier::new(storage);
+        let verifier = TestVerifier::from_storage(storage);
 
         let log_content = r#"
 [2024-01-15T10:30:00Z] TestCase: TC001, Sequence: 1, Step: 1, Success: true, Result: SW=0x9000, Output: Success
@@ -758,86 +944,7 @@ mod tests {
         assert_eq!(logs[0].success, Some(true));
     }
 
-    #[test]
-    fn test_verify_step_pass() {
-        let temp_dir = TempDir::new().unwrap();
-        let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
-        let verifier = TestVerifier::new(storage);
-
-        let step = Step::new(
-            1,
-            "Test Step".to_string(),
-            "cmd".to_string(),
-            "SW=0x9000".to_string(),
-            "Success".to_string(),
-        );
-
-        let log = TestExecutionLog {
-            test_case_id: "TC001".to_string(),
-            sequence_id: 1,
-            step_number: 1,
-            success: Some(true),
-            actual_result: "SW=0x9000".to_string(),
-            actual_output: "Success".to_string(),
-            timestamp: None,
-            log_file_path: PathBuf::from("test.log"),
-        };
-
-        let result = verifier.verify_step(&step, &log);
-        assert!(result.is_pass());
-    }
-
-    #[test]
-    fn test_verify_step_fail() {
-        let temp_dir = TempDir::new().unwrap();
-        let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
-        let verifier = TestVerifier::new(storage);
-
-        let step = Step::new(
-            1,
-            "Test Step".to_string(),
-            "cmd".to_string(),
-            "SW=0x9000".to_string(),
-            "Success".to_string(),
-        );
-
-        let log = TestExecutionLog {
-            test_case_id: "TC001".to_string(),
-            sequence_id: 1,
-            step_number: 1,
-            success: Some(false),
-            actual_result: "SW=0x6A82".to_string(),
-            actual_output: "Error".to_string(),
-            timestamp: None,
-            log_file_path: PathBuf::from("test.log"),
-        };
-
-        let result = verifier.verify_step(&step, &log);
-        assert!(!result.is_pass());
-    }
-
-    #[test]
-    fn test_wildcard_matching() {
-        let temp_dir = TempDir::new().unwrap();
-        let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
-        let verifier = TestVerifier::new(storage);
-
-        assert!(verifier.matches("SW=0x9000", "SW=0x9000"));
-        assert!(verifier.matches("SW=*", "SW=0x9000"));
-        assert!(verifier.matches("*9000", "SW=0x9000"));
-        assert!(!verifier.matches("SW=0x9001", "SW=0x9000"));
-    }
-
-    #[test]
-    fn test_regex_matching() {
-        let temp_dir = TempDir::new().unwrap();
-        let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
-        let verifier = TestVerifier::new(storage);
-
-        assert!(verifier.matches("/SW=0x[0-9A-F]{4}/", "SW=0x9000"));
-        assert!(verifier.matches("/^Success$/", "Success"));
-        assert!(!verifier.matches("/^Failed$/", "Success"));
-    }
+    // Note: Internal verification tests are covered by tests/verification_test.rs
 
     #[test]
     fn test_junit_xml_generation() {

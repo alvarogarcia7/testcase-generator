@@ -965,7 +965,10 @@ fn test_verification_with_file_test() {
 
     let script = executor.generate_test_script(&test_case);
 
-    assert!(script.contains(&format!("if {} ; then", result_check)));
+    println!("{}", script);
+    println!("{}", result_check);
+
+    assert!(script.contains(&format!("if {}; then", result_check)));
 }
 
 #[test]

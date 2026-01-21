@@ -144,7 +144,7 @@ fn main() -> anyhow::Result<()> {
 
     // Step 3: Single verification
     println!("Step 3: Single Test Verification...");
-    let verifier = TestVerifier::new(storage);
+    let verifier = TestVerifier::from_storage(storage);
 
     let logs = verifier.parse_log_file(&log1_path)?;
     let result = verifier.verify_test_case(&tc1, &logs);
@@ -187,7 +187,7 @@ fn main() -> anyhow::Result<()> {
         // Show failures
         for seq_result in &tc_result.sequences {
             for step_result in &seq_result.step_results {
-                if let testcase_manager::StepVerificationResult::Fail {
+                if let testcase_manager::StepVerificationResultEnum::Fail {
                     step,
                     description,
                     reason,

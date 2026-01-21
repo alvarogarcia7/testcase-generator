@@ -2,14 +2,18 @@ use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use std::fs;
 use std::path::PathBuf;
-use testcase_manager::{BatchVerificationReport, JUnitTestSuite, TestCaseStorage, TestVerifier};
+use testcase_manager::BatchVerificationReport;
+use testcase_manager::JUnitTestSuite;
+use testcase_manager::LogCleaner;
+use testcase_manager::TestCaseStorage;
+use testcase_manager::TestVerifier;
 
 #[derive(Parser)]
 #[command(name = "test-verify")]
+#[command(version)]
 #[command(
     about = "Test verification tool for comparing test execution logs against test case definitions"
 )]
-#[command(version)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -17,6 +21,13 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    /// Verify execution log against test case
+    /// Clean and display an execution log
+    Clean {
+        /// Path to the execution log file (YAML)
+        #[arg(value_name = "LOG_FILE")]
+        log_file: PathBuf,
+    },
     /// Verify a single test execution log against a test case
     Single {
         /// Path to test execution log file
@@ -68,11 +79,12 @@ enum Commands {
 }
 
 fn main() -> Result<()> {
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
-
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn")).init();
     let cli = Cli::parse();
 
     match cli.command {
+
+        Commands::Clean { log_file } => clean_command(log_file),
         Commands::Single {
             log,
             test_case_id,
@@ -91,102 +103,50 @@ fn main() -> Result<()> {
     }
 }
 
-fn handle_single_verify(
-    log_path: PathBuf,
-    test_case_id: String,
-    test_case_dir: PathBuf,
-    format: String,
-) -> Result<()> {
-    let storage =
-        TestCaseStorage::new(&test_case_dir).context("Failed to initialize test case storage")?;
-    let verifier = TestVerifier::new(storage);
+fn verify_command(log_file: PathBuf, test_case_file: PathBuf) -> Result<()> {
+    let log_content = fs::read_to_string(&log_file)
+        .context(format!("Failed to read log file: {}", log_file.display()))?;
 
-    // Parse log file
-    let logs = verifier
-        .parse_log_file(&log_path)
-        .context("Failed to parse test execution log")?;
+    let test_case_content = fs::read_to_string(&test_case_file).context(format!(
+        "Failed to read test case file: {}",
+        test_case_file.display()
+    ))?;
 
-    // Load test case
-    let test_case = verifier
-        .storage()
-        .load_test_case_by_id(&test_case_id)
-        .context("Failed to load test case")?;
+    let mut execution_log: testcase_manager::TestExecutionLog =
+        serde_yaml::from_str(&log_content).context("Failed to parse execution log YAML")?;
 
-    // Verify
-    let result = verifier.verify_test_case(&test_case, &logs);
+    let test_case: testcase_manager::TestCase =
+        serde_yaml::from_str(&test_case_content).context("Failed to parse test case YAML")?;
 
-    // Check pass status before moving result
-    let overall_pass = result.overall_pass;
+    let cleaner = LogCleaner::new();
+    execution_log = cleaner.clean_execution_log(&execution_log);
 
-    // Output results
-    match format.as_str() {
-        "json" => {
-            let json = serde_json::to_string_pretty(&result)
-                .context("Failed to serialize result to JSON")?;
-            println!("{}", json);
-        }
-        "junit" => {
-            let mut report = BatchVerificationReport::new();
-            report.add_test_case_result(result);
-            let junit = JUnitTestSuite::from_batch_report(&report, "Single Test Verification");
-            let xml = junit.to_xml().context("Failed to generate JUnit XML")?;
-            println!("{}", xml);
-        }
-        _ => {
-            print_verification_result(&result);
-        }
-    }
-
-    if !overall_pass {
-        std::process::exit(1);
-    }
+    println!("=== Legacy Verify Command ===");
+    println!("Test Case ID: {}", test_case.id);
+    println!(
+        "Execution Log: test_case_id={}, sequence_id={}",
+        execution_log.test_case_id, execution_log.sequence_id
+    );
+    println!();
+    println!("Note: This is a legacy command. Please use 'single' or 'batch' commands for proper verification.");
 
     Ok(())
 }
 
-fn handle_batch_verify(
-    log_paths: Vec<PathBuf>,
-    test_case_dir: PathBuf,
-    format: String,
-    output_path: Option<PathBuf>,
-) -> Result<()> {
-    let storage =
-        TestCaseStorage::new(&test_case_dir).context("Failed to initialize test case storage")?;
-    let verifier = TestVerifier::new(storage);
+fn clean_command(log_file: PathBuf) -> Result<()> {
+    let log_content = fs::read_to_string(&log_file)
+        .context(format!("Failed to read log file: {}", log_file.display()))?;
 
-    log::info!("Processing {} log file(s)...", log_paths.len());
+    let execution_log: testcase_manager::TestExecutionLog =
+        serde_yaml::from_str(&log_content).context("Failed to parse execution log YAML")?;
 
-    // Perform batch verification
-    let report = verifier
-        .batch_verify(&log_paths)
-        .context("Failed to perform batch verification")?;
+    let cleaner = LogCleaner::new();
+    let cleaned_log = cleaner.clean_execution_log(&execution_log);
 
-    // Generate output
-    let output = match format.as_str() {
-        "json" => {
-            serde_json::to_string_pretty(&report).context("Failed to serialize report to JSON")?
-        }
-        "junit" => {
-            let junit = JUnitTestSuite::from_batch_report(&report, "Batch Test Verification");
-            junit.to_xml().context("Failed to generate JUnit XML")?
-        }
-        _ => format_batch_report_text(&report),
-    };
+    let cleaned_yaml =
+        serde_yaml::to_string(&cleaned_log).context("Failed to serialize cleaned log to YAML")?;
 
-    // Write output
-    if let Some(output_file) = output_path {
-        fs::write(&output_file, &output).context(format!(
-            "Failed to write output to {}",
-            output_file.display()
-        ))?;
-        log::info!("Report written to {}", output_file.display());
-    } else {
-        println!("{}", output);
-    }
-
-    if report.failed_test_cases > 0 {
-        std::process::exit(1);
-    }
+    println!("{}", cleaned_yaml);
 
     Ok(())
 }
@@ -194,7 +154,7 @@ fn handle_batch_verify(
 fn handle_parse_log(log_path: PathBuf, format: String) -> Result<()> {
     let storage =
         TestCaseStorage::new("testcases").context("Failed to initialize test case storage")?;
-    let verifier = TestVerifier::new(storage);
+    let verifier = TestVerifier::from_storage(storage);
 
     let logs = verifier
         .parse_log_file(&log_path)
@@ -267,10 +227,10 @@ fn print_verification_result(result: &testcase_manager::TestCaseVerificationResu
 
         for step_result in &seq_result.step_results {
             match step_result {
-                testcase_manager::StepVerificationResult::Pass { step, description } => {
+                testcase_manager::StepVerificationResultEnum::Pass { step, description } => {
                     println!("  ✓ Step {}: {} - PASS", step, description);
                 }
-                testcase_manager::StepVerificationResult::Fail {
+                testcase_manager::StepVerificationResultEnum::Fail {
                     step,
                     description,
                     expected,
@@ -290,7 +250,7 @@ fn print_verification_result(result: &testcase_manager::TestCaseVerificationResu
                     println!("      Result: {}", actual_result);
                     println!("      Output: {}", actual_output);
                 }
-                testcase_manager::StepVerificationResult::NotExecuted { step, description } => {
+                testcase_manager::StepVerificationResultEnum::NotExecuted { step, description } => {
                     println!("  ○ Step {}: {} - NOT EXECUTED", step, description);
                 }
             }
@@ -377,7 +337,7 @@ fn format_batch_report_text(report: &BatchVerificationReport) -> String {
 
                 for step_result in &seq_result.step_results {
                     match step_result {
-                        testcase_manager::StepVerificationResult::Fail {
+                        testcase_manager::StepVerificationResultEnum::Fail {
                             step,
                             description,
                             reason,
@@ -388,7 +348,7 @@ fn format_batch_report_text(report: &BatchVerificationReport) -> String {
                                 step, description, reason
                             ));
                         }
-                        testcase_manager::StepVerificationResult::NotExecuted {
+                        testcase_manager::StepVerificationResultEnum::NotExecuted {
                             step,
                             description,
                         } => {
@@ -410,4 +370,101 @@ fn format_batch_report_text(report: &BatchVerificationReport) -> String {
     output.push_str("═══════════════════════════════════════════════════════════\n");
 
     output
+}
+
+fn handle_single_verify(
+    log_path: PathBuf,
+    test_case_id: String,
+    test_case_dir: PathBuf,
+    format: String,
+) -> Result<()> {
+    let storage =
+        TestCaseStorage::new(&test_case_dir).context("Failed to initialize test case storage")?;
+    let verifier = TestVerifier::from_storage(storage);
+
+    // Parse log file
+    let logs = verifier
+        .parse_log_file(&log_path)
+        .context("Failed to parse test execution log")?;
+
+    // Load test case
+    let test_case = verifier
+        .storage()
+        .load_test_case_by_id(&test_case_id)
+        .context("Failed to load test case")?;
+    // Verify
+    let result = verifier.verify_test_case(&test_case, &logs);
+
+    // Check pass status before moving result
+    let overall_pass = result.overall_pass;
+
+    // Output results
+    match format.as_str() {
+        "json" => {
+            let json = serde_json::to_string_pretty(&result)
+                .context("Failed to serialize result to JSON")?;
+            println!("{}", json);
+        }
+        "junit" => {
+            let mut report = BatchVerificationReport::new();
+            report.add_test_case_result(result);
+            let junit = JUnitTestSuite::from_batch_report(&report, "Single Test Verification");
+            let xml = junit.to_xml().context("Failed to generate JUnit XML")?;
+            println!("{}", xml);
+        }
+        _ => {
+            print_verification_result(&result);
+        }
+    }
+
+    if !overall_pass {
+        std::process::exit(1);
+    }
+
+    Ok(())
+}
+
+fn handle_batch_verify(
+    log_paths: Vec<PathBuf>,
+    test_case_dir: PathBuf,
+    format: String,
+    output_path: Option<PathBuf>,
+) -> Result<()> {
+    let storage =
+        TestCaseStorage::new(&test_case_dir).context("Failed to initialize test case storage")?;
+    let verifier = TestVerifier::from_storage(storage);
+
+    log::info!("Processing {} log file(s)...", log_paths.len());
+
+    // Perform batch verification
+    let report = verifier
+        .batch_verify(&log_paths)
+        .context("Failed to perform batch verification")?;
+
+    // Generate output
+    let output = match format.as_str() {
+        "json" => {
+            serde_json::to_string_pretty(&report).context("Failed to serialize report to JSON")?
+        }
+        "junit" => {
+            let junit = JUnitTestSuite::from_batch_report(&report, "Batch Test Verification");
+            junit.to_xml().context("Failed to generate JUnit XML")?
+        }
+        _ => format_batch_report_text(&report),
+    };
+
+    // Write output
+    if let Some(output_file) = output_path {
+        fs::write(&output_file, &output).context(format!(
+            "Failed to write output to {}",
+            output_file.display()
+        ))?;
+        log::info!("Report written to {}", output_file.display());
+    } else {
+        println!("{}", output);
+    }
+    if report.failed_test_cases > 0 {
+        std::process::exit(1);
+    }
+    Ok(())
 }

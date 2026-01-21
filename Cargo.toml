@@ -22,8 +22,10 @@ tempfile = "3.8"
 toml = "0.8"
 log = "0.4"
 env_logger = "0.11"
-quick-xml = "0.31"
 regex = "1.10"
+colored = "2.1"
+similar = "2.3"
+quick-xml = "0.39.0"
 roxmltree = "0.20"
 
 [dev-dependencies]

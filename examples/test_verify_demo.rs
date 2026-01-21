@@ -60,7 +60,7 @@ fn main() -> anyhow::Result<()> {
     println!();
 
     // Create test verifier
-    let verifier = TestVerifier::new(storage);
+    let verifier = TestVerifier::from_storage(storage);
 
     // Demo 1: Successful verification
     println!("--- Demo 1: All Steps Pass ---");
@@ -114,7 +114,7 @@ fn main() -> anyhow::Result<()> {
 
     for seq_result in &result.sequences {
         for step_result in &seq_result.step_results {
-            if let testcase_manager::StepVerificationResult::Fail {
+            if let testcase_manager::StepVerificationResultEnum::Fail {
                 step,
                 description,
                 reason,
