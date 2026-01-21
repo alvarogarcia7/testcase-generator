@@ -268,15 +268,179 @@ pub struct TestCaseFileInfo {
     pub test_case: Option<TestCase>,
 }
 
-/// Status of a test run
+/// Test execution status
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum TestRunStatus {
-    /// Test passed successfully
+    /// Test passed
     Pass,
     /// Test failed
     Fail,
     /// Test was skipped
     Skip,
+}
+
+impl fmt::Display for TestRunStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            TestRunStatus::Pass => write!(f, "Pass"),
+            TestRunStatus::Fail => write!(f, "Fail"),
+            TestRunStatus::Skip => write!(f, "Skip"),
+        }
+    }
+}
+
+/// Test run execution result
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct TestRun {
+    /// Test case ID
+    pub test_case_id: String,
+
+    /// Test execution status
+    pub status: TestRunStatus,
+
+    /// Timestamp when the test was executed
+    pub timestamp: DateTime<Utc>,
+
+    /// Duration in seconds
+    pub duration: f64,
+
+    /// Execution log capturing output and events
+    pub execution_log: String,
+    /// Optional error message (for failed or skipped tests)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error_message: Option<String>,
+
+    /// Optional test name/description
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+}
+
+impl TestRun {
+    /// Create a new test run
+    pub fn new(
+        test_case_id: String,
+        status: TestRunStatus,
+        timestamp: DateTime<Utc>,
+        duration: f64,
+        execution_log: String,
+    ) -> Self {
+        Self {
+            test_case_id,
+            status,
+            timestamp,
+            duration,
+            error_message: None,
+            name: None,
+            execution_log,
+        }
+    }
+
+    /// Create a test run with error message
+    pub fn with_error(
+        test_case_id: String,
+        status: TestRunStatus,
+        timestamp: DateTime<Utc>,
+        duration: f64,
+        error_message: String,
+    ) -> Self {
+        Self {
+            test_case_id,
+            status,
+            timestamp,
+            duration,
+            error_message: Some(error_message),
+            name: None,
+            execution_log: "".to_string(),
+        }
+    }
+
+    /// Serialize to JUnit XML format
+    pub fn to_junit_xml(&self) -> String {
+        use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event};
+        use quick_xml::Writer;
+        use std::io::Cursor;
+
+        let mut writer = Writer::new_with_indent(Cursor::new(Vec::new()), b' ', 2);
+
+        writer
+            .write_event(Event::Decl(BytesDecl::new("1.0", Some("UTF-8"), None)))
+            .unwrap();
+
+        let mut testsuite = BytesStart::new("testsuite");
+        testsuite.push_attribute(("name", "TestRun"));
+        testsuite.push_attribute(("tests", "1"));
+        testsuite.push_attribute(("time", format!("{0:.3}", self.duration).as_str()));
+
+        let (failures, skipped) = match self.status {
+            TestRunStatus::Fail => ("1", "0"),
+            TestRunStatus::Skip => ("0", "1"),
+            TestRunStatus::Pass => ("0", "0"),
+        };
+        testsuite.push_attribute(("failures", failures));
+        testsuite.push_attribute(("skipped", skipped));
+
+        writer.write_event(Event::Start(testsuite)).unwrap();
+
+        let mut testcase = BytesStart::new("testcase");
+        testcase.push_attribute(("id", self.test_case_id.as_str()));
+
+        let name = self.name.as_deref().unwrap_or(&self.test_case_id);
+        testcase.push_attribute(("name", name));
+        testcase.push_attribute(("time", format!("{0:.3}", self.duration).as_str()));
+        testcase.push_attribute(("timestamp", self.timestamp.to_rfc3339().as_str()));
+
+        match self.status {
+            TestRunStatus::Pass => {
+                writer.write_event(Event::Empty(testcase)).unwrap();
+            }
+            TestRunStatus::Fail => {
+                writer.write_event(Event::Start(testcase)).unwrap();
+
+                let mut failure = BytesStart::new("failure");
+                failure.push_attribute(("message", "Test failed"));
+
+                if let Some(ref error_msg) = self.error_message {
+                    writer.write_event(Event::Start(failure)).unwrap();
+                    writer
+                        .write_event(Event::Text(BytesText::new(error_msg)))
+                        .unwrap();
+                    writer
+                        .write_event(Event::End(BytesEnd::new("failure")))
+                        .unwrap();
+                } else {
+                    writer.write_event(Event::Empty(failure)).unwrap();
+                }
+
+                writer
+                    .write_event(Event::End(BytesEnd::new("testcase")))
+                    .unwrap();
+            }
+            TestRunStatus::Skip => {
+                writer.write_event(Event::Start(testcase)).unwrap();
+
+                let mut skipped = BytesStart::new("skipped");
+
+                if let Some(ref error_msg) = self.error_message {
+                    skipped.push_attribute(("message", error_msg.as_str()));
+                    writer.write_event(Event::Empty(skipped)).unwrap();
+                } else {
+                    skipped.push_attribute(("message", "Test skipped"));
+                    writer.write_event(Event::Empty(skipped)).unwrap();
+                }
+
+                writer
+                    .write_event(Event::End(BytesEnd::new("testcase")))
+                    .unwrap();
+            }
+        }
+
+        writer
+            .write_event(Event::End(BytesEnd::new("testsuite")))
+            .unwrap();
+
+        let result = writer.into_inner().into_inner();
+        String::from_utf8(result).unwrap()
+    }
 }
 
 /// Metadata for a test run
@@ -290,29 +454,6 @@ pub struct TestRunMetadata {
 
     /// Duration of the test run in milliseconds
     pub duration: u64,
-}
-
-/// Represents a single test run execution
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct TestRun {
-    /// Identifier of the test case that was run
-    pub test_case_id: String,
-
-    /// Timestamp when the test was executed
-    pub timestamp: DateTime<Utc>,
-
-    /// Status of the test run
-    pub status: TestRunStatus,
-
-    /// Duration of the test run in milliseconds
-    pub duration: u64,
-
-    /// Execution log capturing output and events
-    pub execution_log: String,
-
-    /// Optional error message if the test failed
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub error_message: Option<String>,
 }
 
 #[cfg(test)]
@@ -506,5 +647,207 @@ mod tests {
         let yaml = serde_yaml::to_string(&step).unwrap();
         assert!(!yaml.contains("manual:"));
         assert!(!yaml.contains("success:"));
+    }
+
+    #[test]
+    fn test_test_run_creation() {
+        let timestamp = Utc::now();
+        let test_run = TestRun::new(
+            "TC001".to_string(),
+            TestRunStatus::Pass,
+            timestamp,
+            1.500,
+            "".to_string(),
+        );
+
+        assert_eq!(test_run.test_case_id, "TC001");
+        assert_eq!(test_run.status, TestRunStatus::Pass);
+        assert_eq!(test_run.duration, 1.500);
+        assert_eq!(test_run.error_message, None);
+    }
+
+    #[test]
+    fn test_test_run_with_error() {
+        let timestamp = Utc::now();
+        let test_run = TestRun::with_error(
+            "TC002".to_string(),
+            TestRunStatus::Fail,
+            timestamp,
+            2.500,
+            "Test failed due to assertion error".to_string(),
+        );
+
+        assert_eq!(test_run.test_case_id, "TC002");
+        assert_eq!(test_run.status, TestRunStatus::Fail);
+        assert_eq!(test_run.duration, 2.500);
+        assert_eq!(
+            test_run.error_message,
+            Some("Test failed due to assertion error".to_string())
+        );
+    }
+
+    #[test]
+    fn test_junit_xml_pass() {
+        let timestamp = "2024-01-15T10:30:00Z".parse::<DateTime<Utc>>().unwrap();
+        let test_run = TestRun::new(
+            "TC001".to_string(),
+            TestRunStatus::Pass,
+            timestamp,
+            1.234,
+            "".to_string(),
+        );
+
+        let xml = test_run.to_junit_xml();
+
+        assert!(xml.contains("<?xml version=\"1.0\" encoding=\"UTF-8\"?>"));
+        assert!(xml.contains("<testsuite"));
+        assert!(xml.contains("name=\"TestRun\""));
+        assert!(xml.contains("tests=\"1\""));
+        assert!(xml.contains("failures=\"0\""));
+        assert!(xml.contains("skipped=\"0\""));
+        assert!(xml.contains("time=\"1.234\""));
+        assert!(xml.contains("<testcase"));
+        assert!(xml.contains("id=\"TC001\""));
+        assert!(xml.contains("name=\"TC001\""));
+        assert!(xml.contains("timestamp=\"2024-01-15T10:30:00+00:00\""));
+        assert!(!xml.contains("<failure"));
+        assert!(!xml.contains("<skipped"));
+    }
+
+    #[test]
+    fn test_junit_xml_fail_with_error_message() {
+        let timestamp = "2024-01-15T10:30:00Z".parse::<DateTime<Utc>>().unwrap();
+        let test_run = TestRun::with_error(
+            "TC002".to_string(),
+            TestRunStatus::Fail,
+            timestamp,
+            2.500,
+            "Assertion failed: expected true, got false".to_string(),
+        );
+
+        let xml = test_run.to_junit_xml();
+
+        assert!(xml.contains("<?xml version=\"1.0\" encoding=\"UTF-8\"?>"));
+        assert!(xml.contains("<testsuite"));
+        assert!(xml.contains("failures=\"1\""));
+        assert!(xml.contains("skipped=\"0\""));
+        assert!(xml.contains("time=\"2.500\""));
+        assert!(xml.contains("<testcase"));
+        assert!(xml.contains("id=\"TC002\""));
+        assert!(xml.contains("<failure"));
+        assert!(xml.contains("message=\"Test failed\""));
+        assert!(xml.contains("Assertion failed: expected true, got false"));
+        assert!(xml.contains("</failure>"));
+        assert!(xml.contains("</testcase>"));
+    }
+
+    #[test]
+    fn test_junit_xml_fail_without_error_message() {
+        let timestamp = "2024-01-15T10:30:00Z".parse::<DateTime<Utc>>().unwrap();
+        let test_run = TestRun::new(
+            "TC003".to_string(),
+            TestRunStatus::Fail,
+            timestamp,
+            0.500,
+            "".to_string(),
+        );
+
+        let xml = test_run.to_junit_xml();
+
+        assert!(xml.contains("<testsuite"));
+        assert!(xml.contains("failures=\"1\""));
+        assert!(xml.contains("<testcase"));
+        assert!(xml.contains("id=\"TC003\""));
+        assert!(xml.contains("<failure"));
+        assert!(xml.contains("message=\"Test failed\""));
+        assert!(!xml.contains("</failure>"));
+    }
+
+    #[test]
+    fn test_junit_xml_skip_with_message() {
+        let timestamp = "2024-01-15T10:30:00Z".parse::<DateTime<Utc>>().unwrap();
+        let test_run = TestRun::with_error(
+            "TC004".to_string(),
+            TestRunStatus::Skip,
+            timestamp,
+            0.,
+            "Test skipped due to missing dependencies".to_string(),
+        );
+
+        let xml = test_run.to_junit_xml();
+
+        assert!(xml.contains("<testsuite"));
+        assert!(xml.contains("failures=\"0\""));
+        assert!(xml.contains("skipped=\"1\""));
+        assert!(xml.contains("time=\"0.000\""));
+        assert!(xml.contains("<testcase"));
+        assert!(xml.contains("id=\"TC004\""));
+        assert!(xml.contains("<skipped"));
+        assert!(xml.contains("message=\"Test skipped due to missing dependencies\""));
+        assert!(xml.contains("</testcase>"));
+    }
+
+    #[test]
+    fn test_junit_xml_skip_without_message() {
+        let timestamp = "2024-01-15T10:30:00Z".parse::<DateTime<Utc>>().unwrap();
+        let test_run = TestRun::new(
+            "TC005".to_string(),
+            TestRunStatus::Skip,
+            timestamp,
+            0.0,
+            "".to_string(),
+        );
+
+        let xml = test_run.to_junit_xml();
+
+        assert!(xml.contains("<testsuite"));
+        assert!(xml.contains("skipped=\"1\""));
+        assert!(xml.contains("<testcase"));
+        assert!(xml.contains("id=\"TC005\""));
+        assert!(xml.contains("<skipped"));
+        assert!(xml.contains("message=\"Test skipped\""));
+    }
+
+    #[test]
+    fn test_junit_xml_zero_duration() {
+        let timestamp = "2024-01-15T10:30:00Z".parse::<DateTime<Utc>>().unwrap();
+        let test_run = TestRun::new(
+            "TC006".to_string(),
+            TestRunStatus::Pass,
+            timestamp,
+            0.0,
+            "".to_string(),
+        );
+
+        let xml = test_run.to_junit_xml();
+
+        assert!(xml.contains("time=\"0.000\""));
+        assert!(xml.contains("<testcase"));
+        assert!(xml.contains("id=\"TC006\""));
+    }
+
+    #[test]
+    fn test_junit_xml_with_name() {
+        let timestamp = "2024-01-15T10:30:00Z".parse::<DateTime<Utc>>().unwrap();
+        let mut test_run = TestRun::new(
+            "TC007".to_string(),
+            TestRunStatus::Pass,
+            timestamp,
+            1.000,
+            "".to_string(),
+        );
+        test_run.name = Some("User Authentication Test".to_string());
+
+        let xml = test_run.to_junit_xml();
+
+        assert!(xml.contains("id=\"TC007\""));
+        assert!(xml.contains("name=\"User Authentication Test\""));
+    }
+
+    #[test]
+    fn test_test_run_status_display() {
+        assert_eq!(format!("{}", TestRunStatus::Pass), "Pass");
+        assert_eq!(format!("{}", TestRunStatus::Fail), "Fail");
+        assert_eq!(format!("{}", TestRunStatus::Skip), "Skip");
     }
 }

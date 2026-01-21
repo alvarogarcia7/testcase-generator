@@ -44,7 +44,12 @@ test-e2e-failing-all: build
 .PHONY: test-e2e-failing-all
 
 test-e2e: test-e2e-validate-yaml #test-e2e-executor
+	${MAKE} example_export-demo
 .PHONY: test-e2e
+
+example_export-demo:
+	./examples/export_demo.sh
+.PHONY: example_export-demo
 
 test-all: test test-e2e
 .PHONY: test-all

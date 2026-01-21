@@ -222,6 +222,22 @@ pub enum Commands {
         /// Path to the JSON schema file
         schema_file: String,
     },
+
+    /// Export test runs to JUnit XML format
+    ExportJunitXml {
+        /// Input file containing test run data (JSON format)
+        input: String,
+
+        /// Output file path (use '-' for stdout)
+        #[arg(short, long, default_value = "-")]
+        output: String,
+    },
+
+    /// Validate JUnit XML file against XSD schema
+    ValidateJunitXml {
+        /// Path to the JUnit XML file to validate
+        xml_file: String,
+    },
 }
 
 #[derive(Subcommand)]

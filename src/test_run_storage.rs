@@ -146,12 +146,13 @@ mod tests {
     use chrono::{Duration, Utc};
     use tempfile::TempDir;
 
-    fn create_test_run(test_case_id: &str, duration_ms: u64) -> TestRun {
+    fn create_test_run(test_case_id: &str, duration_s: f64) -> TestRun {
         TestRun {
             test_case_id: test_case_id.to_string(),
+            name: Some(test_case_id.to_string()),
             timestamp: Utc::now(),
             status: TestRunStatus::Pass,
-            duration: duration_ms,
+            duration: duration_s,
             execution_log: "Test execution log".to_string(),
             error_message: None,
         }
@@ -178,7 +179,7 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let storage = TestRunStorage::new(temp_dir.path()).unwrap();
 
-        let test_run = create_test_run("TC001", 1000);
+        let test_run = create_test_run("TC001", 1.000);
         let saved_path = storage.save_test_run(&test_run).unwrap();
 
         assert!(saved_path.exists());
@@ -191,7 +192,7 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let storage = TestRunStorage::new(temp_dir.path()).unwrap();
 
-        let test_run = create_test_run("TC002", 2000);
+        let test_run = create_test_run("TC002", 2.000);
         storage.save_test_run(&test_run).unwrap();
 
         let runs_folder = storage.get_test_run_folder("TC002");
@@ -204,8 +205,8 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let storage = TestRunStorage::new(temp_dir.path()).unwrap();
 
-        let test_run1 = create_test_run("TC001", 1000);
-        let test_run2 = create_test_run("TC001", 2000);
+        let test_run1 = create_test_run("TC001", 1.000);
+        let test_run2 = create_test_run("TC001", 2.000);
 
         storage.save_test_run(&test_run1).unwrap();
         storage.save_test_run(&test_run2).unwrap();
@@ -214,6 +215,7 @@ mod tests {
         assert_eq!(loaded_runs.len(), 2);
         assert_eq!(loaded_runs[0].test_case_id, "TC001");
         assert_eq!(loaded_runs[1].test_case_id, "TC001");
+        temp_dir.close().unwrap();
     }
 
     #[test]
@@ -230,9 +232,9 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let storage = TestRunStorage::new(temp_dir.path()).unwrap();
 
-        let test_run1 = create_test_run("TC001", 1000);
-        let test_run2 = create_test_run("TC002", 2000);
-        let test_run3 = create_test_run("TC001", 3000);
+        let test_run1 = create_test_run("TC001", 1.000);
+        let test_run2 = create_test_run("TC002", 2.000);
+        let test_run3 = create_test_run("TC001", 3.000);
 
         storage.save_test_run(&test_run1).unwrap();
         storage.save_test_run(&test_run2).unwrap();
@@ -258,9 +260,10 @@ mod tests {
 
         let original_run = TestRun {
             test_case_id: "TC123".to_string(),
+            name: Some("TC123".to_string()),
             timestamp: Utc::now(),
             status: TestRunStatus::Fail,
-            duration: 5000,
+            duration: 5.000,
             execution_log: "Detailed log\nwith multiple lines".to_string(),
             error_message: Some("Error occurred".to_string()),
         };
@@ -286,18 +289,20 @@ mod tests {
 
         let test_run2 = TestRun {
             test_case_id: "TC001".to_string(),
+            name: Some("TC001".to_string()),
             timestamp: now + Duration::seconds(10),
             status: TestRunStatus::Pass,
-            duration: 2000,
+            duration: 2.000,
             execution_log: "Second run".to_string(),
             error_message: None,
         };
 
         let test_run1 = TestRun {
             test_case_id: "TC001".to_string(),
+            name: Some("TC001".to_string()),
             timestamp: now,
             status: TestRunStatus::Pass,
-            duration: 1000,
+            duration: 1.000,
             execution_log: "First run".to_string(),
             error_message: None,
         };

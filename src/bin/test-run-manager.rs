@@ -163,7 +163,7 @@ fn add_test_run(base_path: &Path, _test_runs_dir: &Path) -> Result<()> {
         _ => TestRunStatus::Fail,
     };
 
-    let duration: u64 = Prompts::input_with_default("Duration (milliseconds)", "0")
+    let duration: f64 = Prompts::input_with_default("Duration (milliseconds)", "0")
         .context("Failed to read duration")?
         .parse()
         .context("Failed to parse duration as number")?;
@@ -177,6 +177,7 @@ fn add_test_run(base_path: &Path, _test_runs_dir: &Path) -> Result<()> {
     };
 
     let test_run = TestRun {
+        name: Some("HARDCODED NAME".to_string()),
         test_case_id: test_case_id.clone(),
         timestamp: Utc::now(),
         status,

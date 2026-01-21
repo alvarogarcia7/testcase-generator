@@ -125,6 +125,14 @@ fn main() -> Result<()> {
         } => {
             handle_validate_yaml(&yaml_file, &schema_file)?;
         }
+
+        Commands::ExportJunitXml { input, output } => {
+            handle_export_junit_xml(&input, &output)?;
+        }
+
+        Commands::ValidateJunitXml { xml_file } => {
+            handle_validate_junit_xml(&xml_file)?;
+        }
     }
 
     Ok(())
@@ -1611,4 +1619,123 @@ fn handle_validate_yaml(yaml_file: &str, schema_file: &str) -> Result<()> {
     log::info!("✓ Validation successful!");
     log::info!("\nThe YAML payload is valid according to the provided schema.");
     Ok(())
+}
+
+fn handle_export_junit_xml(input_path: &str, output_path: &str) -> Result<()> {
+    use std::fs;
+    use std::io::Write;
+    use testcase_manager::{TestRun, TestRunStatus};
+
+    let content = fs::read_to_string(input_path)
+        .context(format!("Failed to read input file: {}", input_path))?;
+
+    let test_runs: Vec<TestRun> = if input_path.ends_with(".json") {
+        serde_json::from_str(&content)
+            .context("Failed to parse JSON input. Expected an array of TestRun objects")?
+    } else if input_path.ends_with(".yaml") || input_path.ends_with(".yml") {
+        serde_yaml::from_str(&content)
+            .context("Failed to parse YAML input. Expected an array of TestRun objects")?
+    } else {
+        serde_json::from_str(&content).or_else(|_| {
+            serde_yaml::from_str(&content).context("Failed to parse input as JSON or YAML")
+        })?
+    };
+
+    if test_runs.is_empty() {
+        log::warn!("No test runs found in input file");
+        return Ok(());
+    }
+
+    let mut combined_xml = String::from("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
+
+    let total_tests = test_runs.len();
+    let total_failures = test_runs
+        .iter()
+        .filter(|tr| tr.status == TestRunStatus::Fail)
+        .count();
+    let total_skipped = test_runs
+        .iter()
+        .filter(|tr| tr.status == TestRunStatus::Skip)
+        .count();
+    let total_time: f64 = test_runs.iter().map(|tr| tr.duration).sum();
+
+    combined_xml.push_str(&format!(
+        "<testsuite name=\"TestRuns\" tests=\"{}\" failures=\"{}\" skipped=\"{}\" time=\"{:0.3}\">\n",
+        total_tests, total_failures, total_skipped, total_time
+    ));
+
+    for test_run in &test_runs {
+        let single_xml = test_run.to_junit_xml();
+
+        for line in single_xml.lines() {
+            if line.contains("<?xml") {
+                continue;
+            }
+            if line.contains("<testsuite") || line.contains("</testsuite>") {
+                continue;
+            }
+            combined_xml.push_str("  ");
+            combined_xml.push_str(line);
+            combined_xml.push('\n');
+        }
+    }
+
+    combined_xml.push_str("</testsuite>\n");
+
+    if output_path == "-" {
+        print!("{}", combined_xml);
+        std::io::stdout().flush()?;
+    } else {
+        fs::write(output_path, &combined_xml)
+            .context(format!("Failed to write output file: {}", output_path))?;
+
+        // Validate the written XML file
+        match testcase_manager::validate_junit_xml(&combined_xml) {
+            Ok(_) => {
+                log::info!("✓ JUnit XML exported to: {}", output_path);
+                log::info!("✓ XML validated successfully against XSD schema");
+                log::info!(
+                    "  Total: {} tests, {} failures, {} skipped",
+                    total_tests,
+                    total_failures,
+                    total_skipped
+                );
+            }
+            Err(e) => {
+                log::warn!("✓ JUnit XML exported to: {}", output_path);
+                log::warn!("⚠ XML validation warning: {}", e);
+                log::info!(
+                    "  Total: {} tests, {} failures, {} skipped",
+                    total_tests,
+                    total_failures,
+                    total_skipped
+                );
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn handle_validate_junit_xml(xml_file: &str) -> Result<()> {
+    use std::fs;
+
+    let xml_content =
+        fs::read_to_string(xml_file).context(format!("Failed to read XML file: {}", xml_file))?;
+
+    log::info!("Validating JUnit XML file: {}", xml_file);
+
+    match testcase_manager::validate_junit_xml(&xml_content) {
+        Ok(_) => {
+            log::info!("✓ XML validation successful!");
+            log::info!("  File conforms to Maven Surefire XSD schema");
+            log::info!("  Schema: https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report.xsd");
+            Ok(())
+        }
+        Err(e) => {
+            log::error!("✗ XML validation failed!");
+            log::error!("  {}", e);
+            anyhow::bail!("XML validation failed: {}", e)
+        }
+    }
 }

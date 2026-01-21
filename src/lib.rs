@@ -8,6 +8,7 @@ pub mod editor;
 pub mod executor;
 pub mod fuzzy;
 pub mod git;
+pub mod junit_xml_validator;
 pub mod models;
 pub mod oracle;
 pub mod parser;
@@ -31,9 +32,10 @@ pub use editor::TestCaseEditor;
 pub use executor::TestExecutor;
 pub use fuzzy::TestCaseFuzzyFinder;
 pub use git::GitManager;
+pub use junit_xml_validator::validate_junit_xml;
 pub use models::{
-    Expected, FileValidationStatus, Step, TestCase, TestCaseFileInfo, TestSequence, TestSuite,
-    ValidationErrorDetail,
+    Expected, FileValidationStatus, Step, TestCase, TestCaseFileInfo, TestRun, TestRunStatus,
+    TestSequence, TestSuite, ValidationErrorDetail,
 };
 pub use oracle::{AnswerVariant, HardcodedOracle, MenuCliOracle, Oracle, TtyCliOracle};
 pub use parser::{SearchableCollections, TestCaseParser};

@@ -1,0 +1,34 @@
+[
+  {
+    "test_case_id": "TC001",
+    "status": "Pass",
+    "timestamp": "2024-01-15T10:30:00Z",
+    "duration": 1.234,
+    "name": "User Authentication Test",
+    "execution_log": ""
+  },
+  {
+    "test_case_id": "TC002",
+    "status": "Fail",
+    "timestamp": "2024-01-15T10:31:30Z",
+    "duration": 2.567,
+    "error_message": "Assertion failed: expected true, got false",
+    "name": "Database Connection Test",
+    "execution_log": ""
+  },
+  {
+    "test_case_id": "TC003",
+    "status": "Skip",
+    "timestamp": "2024-01-15T10:32:00Z",
+    "duration": 0.0,
+    "error_message": "Test skipped due to missing dependencies",
+    "execution_log": ""
+  },
+  {
+    "test_case_id": "TC004",
+    "status": "Pass",
+    "timestamp": "2024-01-15T10:33:00Z",
+    "duration": 0.891,
+    "execution_log": ""
+  }
+]
