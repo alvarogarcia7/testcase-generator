@@ -165,7 +165,7 @@ echo ""
 echo "=== Test 5: Testing verify with passing execution log ==="
 
 VERIFY_PASSING_OUTPUT="$TEST_DIR/verify_passing_output.txt"
-if "$TEST_VERIFY_BINARY" verify "$PASSING_LOG_FILE" "$TEST_CASE_FILE" > "$VERIFY_PASSING_OUTPUT" 2>&1; then
+if "$TEST_VERIFY_BINARY" single --log "$PASSING_LOG_FILE" --test-case-id "$TEST_CASE_FILE" > "$VERIFY_PASSING_OUTPUT" 2>&1; then
     EXIT_CODE=$?
     if [[ $EXIT_CODE -eq 0 ]]; then
         echo -e "${GREEN}✓ Verify command returned exit code 0 for passing log${NC}"
@@ -241,7 +241,7 @@ echo ""
 echo "=== Test 6: Testing verify with failing execution log ==="
 
 VERIFY_FAILING_OUTPUT="$TEST_DIR/verify_failing_output.txt"
-if "$TEST_VERIFY_BINARY" verify "$FAILING_LOG_FILE" "$TEST_CASE_FILE" > "$VERIFY_FAILING_OUTPUT" 2>&1; then
+if "$TEST_VERIFY_BINARY" single --log "$FAILING_LOG_FILE" --test-case-id "$TEST_CASE_FILE" > "$VERIFY_FAILING_OUTPUT" 2>&1; then
     EXIT_CODE=$?
     echo -e "${RED}✗ Verify command returned exit code 0 for failing log (expected non-zero)${NC}"
     cat "$VERIFY_FAILING_OUTPUT"
@@ -372,7 +372,7 @@ echo ""
 echo "=== Test 9: Testing error handling with invalid files ==="
 
 # Test with non-existent log file
-if "$TEST_VERIFY_BINARY" verify "$TEST_DIR/nonexistent.yaml" "$TEST_CASE_FILE" > /dev/null 2>&1; then
+if "$TEST_VERIFY_BINARY" single --log "$TEST_DIR/nonexistent.yaml" --test-case-id "$TEST_CASE_FILE" > /dev/null 2>&1; then
     echo -e "${RED}✗ Command should fail with non-existent log file${NC}"
     exit 1
 else
@@ -380,7 +380,7 @@ else
 fi
 
 # Test with non-existent test case file
-if "$TEST_VERIFY_BINARY" verify "$PASSING_LOG_FILE" "$TEST_DIR/nonexistent.yaml" > /dev/null 2>&1; then
+if "$TEST_VERIFY_BINARY" single --log "$PASSING_LOG_FILE" --test-case-id "$TEST_DIR/nonexistent.yaml" > /dev/null 2>&1; then
     echo -e "${RED}✗ Command should fail with non-existent test case file${NC}"
     exit 1
 else

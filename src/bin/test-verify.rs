@@ -5,17 +5,14 @@ use std::path::PathBuf;
 use testcase_manager::BatchVerificationReport;
 use testcase_manager::JUnitTestSuite;
 use testcase_manager::LogCleaner;
-use testcase_manager::TestCase;
 use testcase_manager::TestCaseStorage;
-use testcase_manager::TestExecutionLog;
 use testcase_manager::TestVerifier;
 
 #[derive(Parser)]
 #[command(name = "test-verify")]
 #[command(version)]
 #[command(
-    about = "Test verification tool for comparing test execution logs against test case definitions. Verify test execution logs against test cases",
-    version
+    about = "Test verification tool for comparing test execution logs against test case definitions"
 )]
 struct Cli {
     #[command(subcommand)]
@@ -25,15 +22,6 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     /// Verify execution log against test case
-    Verify {
-        /// Path to the execution log file (YAML)
-        #[arg(value_name = "LOG_FILE")]
-        log_file: PathBuf,
-
-        /// Path to the test case file (YAML)
-        #[arg(value_name = "TEST_CASE_FILE")]
-        test_case_file: PathBuf,
-    },
     /// Clean and display an execution log
     Clean {
         /// Path to the execution log file (YAML)
@@ -95,10 +83,7 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Verify {
-            log_file,
-            test_case_file,
-        } => verify_command(log_file, test_case_file),
+
         Commands::Clean { log_file } => clean_command(log_file),
         Commands::Single {
             log,
@@ -127,89 +112,32 @@ fn verify_command(log_file: PathBuf, test_case_file: PathBuf) -> Result<()> {
         test_case_file.display()
     ))?;
 
-    let mut execution_log: TestExecutionLog =
+    let mut execution_log: testcase_manager::TestExecutionLog =
         serde_yaml::from_str(&log_content).context("Failed to parse execution log YAML")?;
 
-    let test_case: TestCase =
+    let test_case: testcase_manager::TestCase =
         serde_yaml::from_str(&test_case_content).context("Failed to parse test case YAML")?;
 
     let cleaner = LogCleaner::new();
     execution_log = cleaner.clean_execution_log(&execution_log);
 
-    let verifier = TestVerifier::with_exact_matching();
-    let result = verifier.verify_execution_log(&test_case, &execution_log);
-
-    println!("=== Verification Summary ===");
-    println!("Test Case ID: {}", result.test_case_id);
-    println!("Sequence ID: {}", result.sequence_id);
+    println!("=== Legacy Verify Command ===");
+    println!("Test Case ID: {}", test_case.id);
     println!(
-        "Overall: {}",
-        if result.overall_passed {
-            "✓ PASS"
-        } else {
-            "✗ FAIL"
-        }
+        "Execution Log: test_case_id={}, sequence_id={}",
+        execution_log.test_case_id, execution_log.sequence_id
     );
     println!();
+    println!("Note: This is a legacy command. Please use 'single' or 'batch' commands for proper verification.");
 
-    let passed_count = result.step_results.iter().filter(|r| r.passed).count();
-    let failed_count = result.step_results.len() - passed_count;
-
-    println!(
-        "Steps: {} total, {} passed, {} failed",
-        result.step_results.len(),
-        passed_count,
-        failed_count
-    );
-    println!();
-
-    if !result.missing_steps.is_empty() {
-        println!("Missing steps: {:?}", result.missing_steps);
-    }
-    if !result.unexpected_steps.is_empty() {
-        println!("Unexpected steps: {:?}", result.unexpected_steps);
-    }
-
-    if failed_count > 0 {
-        println!("=== Failure Details ===");
-        for step_result in &result.step_results {
-            if !step_result.passed {
-                println!();
-                println!("Step {}: ✗ FAILED", step_result.step_number);
-
-                if let Some(ref result_diff) = step_result.diff.result_diff {
-                    println!("  Result mismatch:");
-                    println!("    Expected: {}", result_diff.expected);
-                    println!("    Actual:   {}", result_diff.actual);
-                }
-
-                if let Some(ref output_diff) = step_result.diff.output_diff {
-                    println!("  Output mismatch:");
-                    println!("    Expected: {}", output_diff.expected);
-                    println!("    Actual:   {}", output_diff.actual);
-                }
-
-                if let Some(ref success_diff) = step_result.diff.success_diff {
-                    println!("  Success flag mismatch:");
-                    println!("    Expected: {}", success_diff.expected);
-                    println!("    Actual:   {}", success_diff.actual);
-                }
-            }
-        }
-    }
-
-    if result.overall_passed {
-        Ok(())
-    } else {
-        anyhow::bail!("Verification failed")
-    }
+    Ok(())
 }
 
 fn clean_command(log_file: PathBuf) -> Result<()> {
     let log_content = fs::read_to_string(&log_file)
         .context(format!("Failed to read log file: {}", log_file.display()))?;
 
-    let execution_log: TestExecutionLog =
+    let execution_log: testcase_manager::TestExecutionLog =
         serde_yaml::from_str(&log_content).context("Failed to parse execution log YAML")?;
 
     let cleaner = LogCleaner::new();
@@ -226,7 +154,7 @@ fn clean_command(log_file: PathBuf) -> Result<()> {
 fn handle_parse_log(log_path: PathBuf, format: String) -> Result<()> {
     let storage =
         TestCaseStorage::new("testcases").context("Failed to initialize test case storage")?;
-    let verifier = TestVerifier::new(storage);
+    let verifier = TestVerifier::from_storage(storage);
 
     let logs = verifier
         .parse_log_file(&log_path)
@@ -299,10 +227,10 @@ fn print_verification_result(result: &testcase_manager::TestCaseVerificationResu
 
         for step_result in &seq_result.step_results {
             match step_result {
-                testcase_manager::StepVerificationResult::Pass { step, description } => {
+                testcase_manager::StepVerificationResultEnum::Pass { step, description } => {
                     println!("  ✓ Step {}: {} - PASS", step, description);
                 }
-                testcase_manager::StepVerificationResult::Fail {
+                testcase_manager::StepVerificationResultEnum::Fail {
                     step,
                     description,
                     expected,
@@ -322,7 +250,7 @@ fn print_verification_result(result: &testcase_manager::TestCaseVerificationResu
                     println!("      Result: {}", actual_result);
                     println!("      Output: {}", actual_output);
                 }
-                testcase_manager::StepVerificationResult::NotExecuted { step, description } => {
+                testcase_manager::StepVerificationResultEnum::NotExecuted { step, description } => {
                     println!("  ○ Step {}: {} - NOT EXECUTED", step, description);
                 }
             }
@@ -409,7 +337,7 @@ fn format_batch_report_text(report: &BatchVerificationReport) -> String {
 
                 for step_result in &seq_result.step_results {
                     match step_result {
-                        testcase_manager::StepVerificationResult::Fail {
+                        testcase_manager::StepVerificationResultEnum::Fail {
                             step,
                             description,
                             reason,
@@ -420,7 +348,7 @@ fn format_batch_report_text(report: &BatchVerificationReport) -> String {
                                 step, description, reason
                             ));
                         }
-                        testcase_manager::StepVerificationResult::NotExecuted {
+                        testcase_manager::StepVerificationResultEnum::NotExecuted {
                             step,
                             description,
                         } => {
@@ -452,7 +380,7 @@ fn handle_single_verify(
 ) -> Result<()> {
     let storage =
         TestCaseStorage::new(&test_case_dir).context("Failed to initialize test case storage")?;
-    let verifier = TestVerifier::new(storage);
+    let verifier = TestVerifier::from_storage(storage);
 
     // Parse log file
     let logs = verifier
@@ -504,7 +432,7 @@ fn handle_batch_verify(
 ) -> Result<()> {
     let storage =
         TestCaseStorage::new(&test_case_dir).context("Failed to initialize test case storage")?;
-    let verifier = TestVerifier::new(storage);
+    let verifier = TestVerifier::from_storage(storage);
 
     log::info!("Processing {} log file(s)...", log_paths.len());
 

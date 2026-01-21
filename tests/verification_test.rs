@@ -1,5 +1,5 @@
 use testcase_manager::models::{
-    ActualResult, Expected, Step, TestCase, TestExecutionLog, TestSequence,
+    ActualResult, Expected, Step, TestCase, TestExecutionLog, TestSequence, Verification,
 };
 use testcase_manager::verification::{
     DiffDetail, ExecutionVerificationResult, MatchStrategy, StepVerificationResult, TestVerifier,
@@ -16,6 +16,10 @@ fn create_step(step_num: i64, result: &str, output: &str, success: Option<bool>)
             success,
             result: result.to_string(),
             output: output.to_string(),
+        },
+        verification: Verification {
+            result: "[[ $? -eq 0 ]]".to_string(),
+            output: "cat $COMMAND_OUTPUT | grep -q \"${OUTPUT}\"".to_string(),
         },
     }
 }

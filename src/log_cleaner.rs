@@ -22,7 +22,7 @@ impl LogCleaner {
                 r"\b\d+\s*(?:second|sec|minute|min|hour|hr|day|week|month|year)s?\s+ago\b",
             )
             .unwrap(),
-            ansi_code_regex: Regex::new(r"\x1b\[[0-9;]*[a-zA-Z]").unwrap(),
+            ansi_code_regex: Regex::new(r"(?:\x1b\[[0-9;]*[a-zA-Z]|\[[0-9;]*m)").unwrap(),
             absolute_path_regex: Regex::new(r#"(?:^|[\s'"(])((?:[A-Za-z]:[/\\]|/)[\w\-./\\]+)"#)
                 .unwrap(),
         }
@@ -77,7 +77,11 @@ impl LogCleaner {
         let text = multiple_spaces.replace_all(text, " ");
         let text = multiple_newlines.replace_all(&text, "\n\n");
 
-        text.trim().to_string()
+        // Trim each line individually to remove leading/trailing spaces per line
+        let lines: Vec<&str> = text.lines().collect();
+        let trimmed_lines: Vec<String> = lines.iter().map(|line| line.trim().to_string()).collect();
+        
+        trimmed_lines.join("\n").trim().to_string()
     }
 
     pub fn clean_execution_log(&self, log: &TestExecutionLog) -> TestExecutionLog {
