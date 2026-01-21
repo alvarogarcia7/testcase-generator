@@ -15,6 +15,7 @@ pub mod prompts;
 pub mod recovery;
 pub mod sample;
 pub mod storage;
+pub mod test_run_storage;
 pub mod ui;
 pub mod validation;
 pub mod verification;
@@ -40,6 +41,7 @@ pub use prompts::{Prompts, TestCaseMetadata};
 pub use recovery::{RecoveryManager, RecoveryState};
 pub use sample::SampleData;
 pub use storage::TestCaseStorage;
+pub use test_run_storage::TestRunStorage;
 pub use ui::{print_title, TitleStyle};
 pub use validation::SchemaValidator;
 pub use verification::{

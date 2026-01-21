@@ -33,6 +33,10 @@ name = "validate-yaml"
 path = "src/bin/validate-yaml.rs"
 
 [[bin]]
+name = "trm"
+path = "src/bin/test-run-manager.rs"
+
+[[bin]]
 name = "test-verify"
 path = "src/bin/test-verify.rs"
 

@@ -31,6 +31,10 @@ run: build
 	./target/debug/testcase-manager
 .PHONY: run
 
+run-trm: build
+	./target/debug/trm
+.PHONY: run-trm
+
 test-e2e-failing: build
 	./tests/integration/run_e2e_test.sh
 .PHONY: test-e2e-failing
