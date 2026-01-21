@@ -127,6 +127,10 @@ enum Commands {
         /// Specific execution log JSON file to verify against
         #[arg(long = "execution-log")]
         execution_log_file: Option<PathBuf>,
+
+        /// Enable verbose output showing detailed steps and verification results
+        #[arg(short, long)]
+        verbose: bool,
     },
 
     /// Show orchestrator configuration and status
@@ -302,6 +306,7 @@ fn main() -> Result<()> {
             log_files,
             test_case_file,
             execution_log_file,
+            verbose,
         } => {
             // Check if specific test case and execution log are provided
             if test_case_file.is_some() || execution_log_file.is_some() {
@@ -314,6 +319,12 @@ fn main() -> Result<()> {
                 })?;
 
                 println!("\n=== Verifying Specific Test Case ===\n");
+
+                if verbose {
+                    println!("Test case file: {}", tc_file.display());
+                    println!("Execution log file: {}", log_file.display());
+                    println!();
+                }
 
                 let verification_results = orchestrator
                     .verify_test_case_with_log(&tc_file, &log_file)
@@ -333,15 +344,47 @@ fn main() -> Result<()> {
                     verification_results.total_steps
                 );
 
-                if !verification_results.overall_pass {
+                if verbose || !verification_results.overall_pass {
                     for sequence in &verification_results.sequences {
+                        println!("\n  Sequence {}: {}", sequence.sequence_id, sequence.name);
+                        println!("  {}", "-".repeat(60));
+                        
                         for step_result in &sequence.step_results {
-                            if !step_result.is_pass() {
-                                println!(
-                                    "  ✗ Sequence {}: Step {}",
-                                    sequence.sequence_id,
-                                    step_result.step_number()
-                                );
+                            use testcase_manager::verification::StepVerificationResultEnum;
+                            
+                            match step_result {
+                                StepVerificationResultEnum::Pass { step, description } => {
+                                    if verbose {
+                                        println!("  ✓ Step {}: {}", step, description);
+                                    }
+                                }
+                                StepVerificationResultEnum::Fail {
+                                    step,
+                                    description,
+                                    expected,
+                                    actual_result,
+                                    actual_output,
+                                    reason,
+                                } => {
+                                    println!("  ✗ Step {}: {}", step, description);
+                                    if verbose {
+                                        println!("    Reason: {}", reason);
+                                        println!("    Expected:");
+                                        if let Some(success) = expected.success {
+                                            println!("      Success: {}", success);
+                                        }
+                                        println!("      Result: {}", expected.result);
+                                        println!("      Output: {}", expected.output);
+                                        println!("    Actual:");
+                                        println!("      Result: {}", actual_result);
+                                        println!("      Output: {}", actual_output);
+                                    } else {
+                                        println!("    {}", reason);
+                                    }
+                                }
+                                StepVerificationResultEnum::NotExecuted { step, description } => {
+                                    println!("  ⚠ Step {}: {} (NOT EXECUTED)", step, description);
+                                }
                             }
                         }
                     }
@@ -357,6 +400,14 @@ fn main() -> Result<()> {
                 }
 
                 println!("\n=== Verifying Test Results ===\n");
+
+                if verbose {
+                    println!("Log files to verify:");
+                    for log_file in &log_files {
+                        println!("  - {}", log_file.display());
+                    }
+                    println!();
+                }
 
                 let verification_results = orchestrator
                     .verify_results(log_files)
@@ -393,15 +444,47 @@ fn main() -> Result<()> {
                         total_failed += 1;
                     }
 
-                    if !result.overall_pass {
+                    if verbose || !result.overall_pass {
                         for sequence in &result.sequences {
+                            println!("\n  Sequence {}: {}", sequence.sequence_id, sequence.name);
+                            println!("  {}", "-".repeat(60));
+                            
                             for step_result in &sequence.step_results {
-                                if !step_result.is_pass() {
-                                    println!(
-                                        "  ✗ Sequence {}: Step {}",
-                                        sequence.sequence_id,
-                                        step_result.step_number()
-                                    );
+                                use testcase_manager::verification::StepVerificationResultEnum;
+                                
+                                match step_result {
+                                    StepVerificationResultEnum::Pass { step, description } => {
+                                        if verbose {
+                                            println!("  ✓ Step {}: {}", step, description);
+                                        }
+                                    }
+                                    StepVerificationResultEnum::Fail {
+                                        step,
+                                        description,
+                                        expected,
+                                        actual_result,
+                                        actual_output,
+                                        reason,
+                                    } => {
+                                        println!("  ✗ Step {}: {}", step, description);
+                                        if verbose {
+                                            println!("    Reason: {}", reason);
+                                            println!("    Expected:");
+                                            if let Some(success) = expected.success {
+                                                println!("      Success: {}", success);
+                                            }
+                                            println!("      Result: {}", expected.result);
+                                            println!("      Output: {}", expected.output);
+                                            println!("    Actual:");
+                                            println!("      Result: {}", actual_result);
+                                            println!("      Output: {}", actual_output);
+                                        } else {
+                                            println!("    {}", reason);
+                                        }
+                                    }
+                                    StepVerificationResultEnum::NotExecuted { step, description } => {
+                                        println!("  ⚠ Step {}: {} (NOT EXECUTED)", step, description);
+                                    }
                                 }
                             }
                         }
