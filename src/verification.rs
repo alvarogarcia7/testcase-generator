@@ -521,6 +521,19 @@ impl TestVerifier {
     ) -> Result<Vec<TestExecutionLog>> {
         let mut logs = Vec::new();
 
+        // Try to parse as JSON first
+        let trimmed_content = content.trim();
+        if trimmed_content.starts_with('[') {
+            // Attempt to parse as JSON array of TestStepExecutionEntry
+            match self.parse_json_log_content(content, log_path) {
+                Ok(json_logs) => return Ok(json_logs),
+                Err(e) => {
+                    log::debug!("Failed to parse as JSON, falling back to text format: {}", e);
+                }
+            }
+        }
+
+        // Fall back to text format parsing
         // Regular expressions for parsing log entries
         // Format: [TIMESTAMP] TestCase: <id>, Sequence: <seq_id>, Step: <step_num>, Success: <true/false>, Result: <result>, Output: <output>
         let log_regex = Regex::new(
@@ -579,6 +592,60 @@ impl TestVerifier {
                     log_file_path: log_path.to_path_buf(),
                 });
             }
+        }
+
+        Ok(logs)
+    }
+
+    /// Parse JSON-formatted execution log content
+    fn parse_json_log_content(
+        &self,
+        content: &str,
+        log_path: &Path,
+    ) -> Result<Vec<TestExecutionLog>> {
+        use crate::models::TestStepExecutionEntry;
+        
+        let entries: Vec<TestStepExecutionEntry> = serde_json::from_str(content)
+            .context("Failed to parse JSON execution log")?;
+
+        // Extract test_case_id from the log file path
+        // Expected format: {test_case_id}_execution_log.json
+        let test_case_id = log_path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .and_then(|s| s.strip_suffix("_execution_log"))
+            .unwrap_or("UNKNOWN")
+            .to_string();
+
+        let mut logs = Vec::new();
+        for entry in entries {
+            // Derive success from exit_code (0 = success, non-zero = failure)
+            let success = Some(entry.exit_code == 0);
+
+            // Derive actual_result from exit_code
+            let actual_result = if entry.exit_code == 0 {
+                "SUCCESS".to_string()
+            } else {
+                format!("FAILED (exit code: {})", entry.exit_code)
+            };
+
+            // Parse timestamp if present
+            let timestamp = entry.timestamp.as_ref().and_then(|ts| {
+                DateTime::parse_from_rfc3339(ts)
+                    .ok()
+                    .map(|dt| dt.with_timezone(&Utc))
+            });
+
+            logs.push(TestExecutionLog {
+                test_case_id: test_case_id.clone(),
+                sequence_id: entry.test_sequence,
+                step_number: entry.step,
+                success,
+                actual_result,
+                actual_output: entry.output.clone(),
+                timestamp,
+                log_file_path: log_path.to_path_buf(),
+            });
         }
 
         Ok(logs)
