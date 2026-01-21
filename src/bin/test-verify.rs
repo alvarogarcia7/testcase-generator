@@ -83,7 +83,6 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-
         Commands::Clean { log_file } => clean_command(log_file),
         Commands::Single {
             log,

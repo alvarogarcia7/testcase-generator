@@ -1,7 +1,9 @@
-use crate::models::TestCase;
+use crate::models::{TestCase, TestStepExecutionEntry};
 use anyhow::{Context, Result};
+use chrono::Utc;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
+use std::path::Path;
 use std::process::Command;
 use tempfile::NamedTempFile;
 
@@ -121,35 +123,153 @@ impl TestExecutor {
     }
 
     pub fn execute_test_case(&self, test_case: &TestCase) -> Result<()> {
-        let script_content = self.generate_test_script(test_case);
+        let mut execution_entries = Vec::new();
+
+        for sequence in &test_case.test_sequences {
+            for step in &sequence.steps {
+                // Skip manual steps
+                if step.manual == Some(true) {
+                    println!(
+                        "[SKIP] Step {} (Sequence {}): {} - Manual step",
+                        step.step, sequence.id, step.description
+                    );
+                    continue;
+                }
+
+                println!(
+                    "[RUN] Step {} (Sequence {}): {}",
+                    step.step, sequence.id, step.description
+                );
+                println!("  Command: {}", step.command);
+
+                // Execute the command using bash -c
+                let output = Command::new("bash")
+                    .arg("-c")
+                    .arg(&step.command)
+                    .output()
+                    .context(format!("Failed to execute command: {}", step.command))?;
+
+                let exit_code = output.status.code().unwrap_or(-1);
+                let command_output = String::from_utf8_lossy(&output.stdout).to_string();
+                let stderr_output = String::from_utf8_lossy(&output.stderr);
+
+                // Display output
+                if !command_output.is_empty() {
+                    println!("  Output: {}", command_output.trim());
+                }
+                if !stderr_output.is_empty() {
+                    println!("  Stderr: {}", stderr_output.trim());
+                }
+                println!("  Exit code: {}", exit_code);
+
+                // Create execution entry with timestamp
+                let timestamp = Utc::now().to_rfc3339();
+                let entry = TestStepExecutionEntry::with_timestamp(
+                    sequence.id,
+                    step.step,
+                    step.command.clone(),
+                    exit_code,
+                    command_output.clone(),
+                    timestamp,
+                );
+
+                execution_entries.push(entry);
+
+                // Check if step verification passes
+                let result_pass = self.evaluate_verification(
+                    &step.verification.result,
+                    exit_code,
+                    &command_output,
+                )?;
+                let output_pass = self.evaluate_verification(
+                    &step.verification.output,
+                    exit_code,
+                    &command_output,
+                )?;
+
+                if result_pass && output_pass {
+                    println!("[PASS] Step {} (Sequence {})", step.step, sequence.id);
+                } else {
+                    println!("[FAIL] Step {} (Sequence {})", step.step, sequence.id);
+                    println!("  Result verification: {}", result_pass);
+                    println!("  Output verification: {}", output_pass);
+
+                    // Write log file before failing
+                    self.write_execution_log(test_case, &execution_entries)?;
+
+                    anyhow::bail!(
+                        "Step {} (Sequence {}) failed verification",
+                        step.step,
+                        sequence.id
+                    );
+                }
+                println!();
+            }
+        }
+
+        // Write execution log to JSON file
+        self.write_execution_log(test_case, &execution_entries)?;
+
+        Ok(())
+    }
+
+    fn evaluate_verification(
+        &self,
+        verification_expr: &str,
+        exit_code: i32,
+        output: &str,
+    ) -> Result<bool> {
+        // Create a bash script to evaluate the verification expression
+        let mut script = String::new();
+        script.push_str("#!/bin/bash\n");
+        script.push_str(&format!("EXIT_CODE={}\n", exit_code));
+        script.push_str("COMMAND_OUTPUT=\"");
+        script.push_str(&output.replace("\"", "\\\"").replace("\n", "\\n"));
+        script.push_str("\"\n");
+        script.push_str(&format!("if {}; then\n", verification_expr));
+        script.push_str("  exit 0\n");
+        script.push_str("else\n");
+        script.push_str("  exit 1\n");
+        script.push_str("fi\n");
 
         let temp_file =
-            NamedTempFile::new().context("Failed to create temporary file for test script")?;
+            NamedTempFile::new().context("Failed to create temporary file for verification")?;
+        fs::write(temp_file.path(), script).context("Failed to write verification script")?;
 
-        fs::write(temp_file.path(), script_content)
-            .context("Failed to write test script to temporary file")?;
-
-        let mut perms = fs::metadata(temp_file.path())
-            .context("Failed to get file metadata")?
-            .permissions();
+        let mut perms = fs::metadata(temp_file.path())?.permissions();
         perms.set_mode(0o755);
-        fs::set_permissions(temp_file.path(), perms)
-            .context("Failed to set executable permissions on test script")?;
+        fs::set_permissions(temp_file.path(), perms)?;
 
-        let output = Command::new(temp_file.path())
+        let verification_output = Command::new(temp_file.path())
             .output()
-            .context("Failed to execute test script")?;
+            .context("Failed to execute verification script")?;
 
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        println!("{}", stdout);
+        Ok(verification_output.status.success())
+    }
 
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            anyhow::bail!(
-                "Test execution failed:\nStderr:\n{}",
-                stderr
-            );
-        }
+    fn write_execution_log(
+        &self,
+        test_case: &TestCase,
+        entries: &[TestStepExecutionEntry],
+    ) -> Result<()> {
+        // Create logs directory if it doesn't exist
+        let logs_dir = Path::new("logs");
+        fs::create_dir_all(logs_dir).context("Failed to create logs directory")?;
+
+        // Generate log file name based on test case ID and timestamp
+        let timestamp = Utc::now().format("%Y%m%d_%H%M%S");
+        let log_filename = format!("{}_{}.json", test_case.id, timestamp);
+        let log_path = logs_dir.join(log_filename);
+
+        // Serialize entries to JSON
+        let json_content = serde_json::to_string_pretty(entries)
+            .context("Failed to serialize execution entries to JSON")?;
+
+        // Write to file
+        fs::write(&log_path, json_content)
+            .context(format!("Failed to write log file: {}", log_path.display()))?;
+
+        println!("Execution log written to: {}", log_path.display());
 
         Ok(())
     }

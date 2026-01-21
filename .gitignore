@@ -41,3 +41,6 @@ test_basic_*/
 junit-report.xml
 test-verification-report.json
 verification-results/
+
+# Test executor logs
+logs/

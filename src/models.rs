@@ -792,7 +792,6 @@ impl fmt::Display for VerificationReport {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;

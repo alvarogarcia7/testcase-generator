@@ -3,6 +3,7 @@ use crate::models::{TestCase, TestRun, TestRunStatus};
 use crate::storage::TestCaseStorage;
 use crate::test_run_storage::TestRunStorage;
 use crate::verification::{TestCaseVerificationResult, TestExecutionLog, TestVerifier};
+use crate::MatchStrategy::Exact;
 use anyhow::{Context, Result};
 use chrono::Utc;
 use std::collections::HashMap;
@@ -13,7 +14,6 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
-use crate::MatchStrategy::Exact;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RetryStrategy {

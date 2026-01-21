@@ -929,7 +929,7 @@ fn test_verification_with_string_length_check() {
 #[test]
 fn test_verification_with_file_test() {
     use tempfile::NamedTempFile;
-    
+
     let executor = TestExecutor::new();
     let mut test_case = TestCase::new(
         "REQ001".to_string(),
