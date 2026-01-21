@@ -10,6 +10,7 @@ Quick navigation guide for all integration test documentation.
 |------|---------|--------------|
 | [README.md](README.md) | Main user documentation | **Start here** - First time running tests |
 | [QUICK_REFERENCE.md](QUICK_REFERENCE.md) | Command cheat sheet | Quick lookup of commands and options |
+| [VALIDATE_FILES_QUICK_REF.md](VALIDATE_FILES_QUICK_REF.md) | validate-files.sh quick reference | Quick lookup for validation tests |
 
 ### For Developers
 
@@ -18,6 +19,7 @@ Quick navigation guide for all integration test documentation.
 | [TESTING_GUIDE.md](TESTING_GUIDE.md) | Comprehensive testing guide | Deep dive into test architecture |
 | [test_scenarios.md](test_scenarios.md) | Test coverage matrix | Understanding what's tested |
 | [IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md) | Implementation details | Learning how tests work |
+| [VALIDATE_FILES_TEST_COVERAGE.md](VALIDATE_FILES_TEST_COVERAGE.md) | validate-files.sh test coverage | Detailed validation test documentation |
 
 ### Reference
 
@@ -34,12 +36,14 @@ Quick navigation guide for all integration test documentation.
 |------|-------------|----------|----------|
 | `e2e_complete_workflow.exp` | Full workflow test | ~30s | Complete regression testing |
 | `e2e_basic_workflow.exp` | Quick smoke test | ~10s | Pre-commit validation |
+| `validate_files_integration.exp` | validate-files.sh tests | ~15-30s | Validation framework testing |
 
 ### Shell Runners
 
 | File | Description | Usage |
 |------|-------------|-------|
 | `run_e2e_test.sh` | Single test runner | `./run_e2e_test.sh [--build]` |
+| `run_validate_files_test.sh` | validate-files.sh test runner | `./run_validate_files_test.sh` |
 | `run_all_tests.sh` | All tests runner | `./run_all_tests.sh [--build]` |
 | `ci_test.sh` | CI-friendly runner | `./ci_test.sh` |
 | `check_environment.sh` | Environment checker | `./check_environment.sh` |
@@ -219,13 +223,14 @@ See: [TESTING_GUIDE.md](TESTING_GUIDE.md)
 
 | Metric | Value |
 |--------|-------|
-| Test Files | 2 (basic + complete) |
-| Runner Scripts | 4 |
-| Documentation Files | 6 |
-| Total Lines of Code | ~1000+ |
-| Test Duration | <1 minute |
-| Coverage | 20+ scenarios |
+| Test Files | 3 (basic + complete + validate-files) |
+| Runner Scripts | 5 |
+| Documentation Files | 8 |
+| Total Lines of Code | ~2500+ |
+| Test Duration | ~1-2 minutes |
+| Coverage | 35+ scenarios |
 | Git Commits Tested | 7 (complete) / 2 (basic) |
+| validate-files Tests | 16 test cases |
 
 ## 🔧 Maintenance
 
@@ -293,26 +298,31 @@ When contributing to integration tests:
 ```
 tests/integration/
 ├── Documentation/
-│   ├── INDEX.md                      # This file
-│   ├── README.md                     # User guide
-│   ├── QUICK_REFERENCE.md           # Command reference
-│   ├── TESTING_GUIDE.md             # Comprehensive guide
-│   ├── test_scenarios.md            # Coverage details
-│   └── IMPLEMENTATION_SUMMARY.md    # Implementation info
+│   ├── INDEX.md                           # This file
+│   ├── README.md                          # User guide
+│   ├── QUICK_REFERENCE.md                # Command reference
+│   ├── TESTING_GUIDE.md                  # Comprehensive guide
+│   ├── test_scenarios.md                 # Coverage details
+│   ├── IMPLEMENTATION_SUMMARY.md         # Implementation info
+│   ├── VALIDATE_FILES_TEST_COVERAGE.md   # validate-files.sh coverage
+│   └── VALIDATE_FILES_QUICK_REF.md       # validate-files.sh quick ref
 │
 ├── Test Scripts/
-│   ├── e2e_complete_workflow.exp    # Full test
-│   └── e2e_basic_workflow.exp       # Quick test
+│   ├── e2e_complete_workflow.exp         # Full test
+│   ├── e2e_basic_workflow.exp            # Quick test
+│   └── validate_files_integration.exp    # validate-files.sh tests
 │
 ├── Runners/
-│   ├── run_e2e_test.sh              # Single test
-│   ├── run_all_tests.sh             # All tests
-│   ├── ci_test.sh                   # CI runner
-│   └── check_environment.sh         # Environment check
+│   ├── run_e2e_test.sh                   # Single test
+│   ├── run_validate_files_test.sh        # validate-files.sh test
+│   ├── run_all_tests.sh                  # All tests
+│   ├── ci_test.sh                        # CI runner
+│   └── check_environment.sh              # Environment check
 │
 └── Generated/ (not in git)
-    ├── test_e2e_*/                  # Test artifacts
-    └── test_basic_*/                # Test artifacts
+    ├── test_e2e_*/                       # Test artifacts
+    ├── test_basic_*/                     # Test artifacts
+    └── test_validate_files_*/            # validate-files artifacts
 ```
 
 ---

@@ -16,6 +16,16 @@ The integration tests use the [Expect](https://core.tcl-lang.org/expect/index) a
 - **Git**: Required for validating git commit functionality
 - **Rust toolchain**: Required to build the testcase-manager binary
 
+## Test Suites
+
+### testcase-manager CLI Tests
+
+End-to-end integration tests for the interactive CLI workflow.
+
+### validate-files.sh Tests
+
+Comprehensive integration tests for the file validation framework with caching.
+
 ## Test Files
 
 ### `test_executor_e2e.sh`
@@ -95,6 +105,53 @@ The main end-to-end integration test that validates:
    - Checks commit messages
    - Validates repository state
 
+### `e2e_basic_workflow.exp`
+
+A simplified version of the complete workflow test that runs faster for smoke testing.
+
+### `validate_files_integration.exp`
+
+Comprehensive integration test suite for `validate-files.sh` that validates:
+
+1. **Validator Command Detection**
+   - File-based validator detection and execution
+   - Command-based validator detection (e.g., `true`, `false`)
+   - Validator accessibility and permission checking
+
+2. **Dual-Layer Caching**
+   - Layer 1: Modification time (mtime) checking for fast cache hits
+   - Layer 2: SHA256 hash comparison for content-based caching
+   - Cache invalidation on content changes
+
+3. **Cache Hit Rate Calculation**
+   - Accurate percentage calculation (0%, partial, 100%)
+   - Statistics tracking for validated vs cached files
+
+4. **Regex Pattern Matching**
+   - POSIX extended regex pattern support
+   - Nested directory traversal
+   - Multiple file extension matching
+   - Edge cases (no matches, hidden files)
+
+5. **Parallel Validation**
+   - Multiple file validation in sequence
+   - Bulk cache operations
+   - Statistics accuracy with many files
+
+6. **Error Propagation**
+   - Validation failure detection and reporting
+   - Caching of failed validation results
+   - Missing validator error handling
+   - Non-executable validator detection
+
+7. **CLI Options**
+   - Custom cache directories
+   - Verbose mode output
+   - Help documentation
+   - Missing argument detection
+
+See [VALIDATE_FILES_TEST_COVERAGE.md](VALIDATE_FILES_TEST_COVERAGE.md) for detailed coverage documentation.
+
 ### `run_e2e_test.sh`
 
 A wrapper script that:
@@ -102,6 +159,14 @@ A wrapper script that:
 - Optionally builds the project
 - Runs the Expect test script
 - Reports results
+
+### `run_validate_files_test.sh`
+
+A wrapper script for running the validate-files.sh integration test suite:
+- Checks for expect installation
+- Validates test environment
+- Runs comprehensive test suite
+- Reports test results
 
 ## Running the Tests
 
@@ -138,11 +203,21 @@ make test-e2e
 make test-all
 ```
 
+### Run validate-files.sh tests
+
+```bash
+./tests/integration/run_validate_files_test.sh
+```
+
 ### Direct execution
 
 ```bash
+# CLI workflow tests
 cd /path/to/project
 ./tests/integration/e2e_complete_workflow.exp ./target/debug/testcase-manager
+
+# validate-files.sh tests
+./tests/integration/validate_files_integration.exp
 ```
 
 ## Test Workflow

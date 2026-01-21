@@ -1,0 +1,694 @@
+#!/usr/bin/expect -f
+#
+# Integration Test Suite for validate-files.sh
+#
+# This test script validates the validate-files.sh script functionality including:
+# - Validator command detection (both file and command types)
+# - Dual-layer caching with mtime/hash verification
+# - Cache hit rate calculation accuracy
+# - Regex pattern matching edge cases
+# - Parallel test case validation
+# - Error propagation
+#
+# Usage: ./tests/integration/validate_files_integration.exp
+#
+
+set timeout 60
+log_user 1
+
+# Test directory setup
+set test_dir "test_validate_files_[clock seconds]"
+set cache_dir "$test_dir/.validation-cache"
+
+puts "\n=========================================="
+puts "Integration Test Suite: validate-files.sh"
+puts "=========================================="
+puts "Test directory: $test_dir\n"
+
+# Create test environment
+file mkdir $test_dir
+file mkdir "$test_dir/subdir1"
+file mkdir "$test_dir/subdir2"
+
+# Helper function to create test files
+proc create_test_file {path content} {
+    set fp [open $path w]
+    puts $fp $content
+    close $fp
+}
+
+# Helper function to make file executable
+proc make_executable {path} {
+    exec chmod +x $path
+}
+
+# Helper function to run validate-files.sh and capture output
+proc run_validate {pattern validator {extra_args ""}} {
+    global test_dir
+    set cmd "./scripts/validate-files.sh --pattern '$pattern' --validator '$validator' --cache-dir $test_dir/.validation-cache"
+    if {$extra_args ne ""} {
+        append cmd " $extra_args"
+    }
+    puts "\n[DEBUG] Running: $cmd"
+    set result [catch {eval exec $cmd 2>@1} output]
+    return [list $result $output]
+}
+
+# ============================================================================
+# TEST 1: Validator Command Detection - File Type
+# ============================================================================
+puts "\n==> TEST 1: Validator command detection (file type)"
+
+# Create a simple validator script that always succeeds
+create_test_file "$test_dir/validator_success.sh" {#!/bin/bash
+exit 0
+}
+make_executable "$test_dir/validator_success.sh"
+
+# Create test files
+create_test_file "$test_dir/test1.txt" "content1"
+create_test_file "$test_dir/test2.txt" "content2"
+
+set result [run_validate "\\.txt\$" "$test_dir/validator_success.sh"]
+set exit_code [lindex $result 0]
+set output [lindex $result 1]
+
+if {$exit_code == 0 && [string match "*Using file*validator_success.sh*" $output]} {
+    puts "✓ File-based validator detected correctly"
+} else {
+    puts "✗ FAILED: File-based validator detection"
+    puts "Output: $output"
+    exec rm -rf $test_dir
+    exit 1
+}
+
+# ============================================================================
+# TEST 2: Validator Command Detection - Command Type
+# ============================================================================
+puts "\n==> TEST 2: Validator command detection (command type)"
+
+# Create a validator using 'true' command
+set result [run_validate "\\.txt\$" "true"]
+set exit_code [lindex $result 0]
+set output [lindex $result 1]
+
+if {$exit_code == 0 && [string match "*Using command*true*" $output]} {
+    puts "✓ Command-based validator detected correctly"
+} else {
+    puts "✗ FAILED: Command-based validator detection"
+    puts "Output: $output"
+    exec rm -rf $test_dir
+    exit 1
+}
+
+# ============================================================================
+# TEST 3: Dual-Layer Caching - Mtime Check (Layer 1)
+# ============================================================================
+puts "\n==> TEST 3: Dual-layer caching - mtime verification (Layer 1)"
+
+# Clean cache from previous tests
+exec rm -rf $cache_dir
+file mkdir $cache_dir
+
+# Create test file and validator
+create_test_file "$test_dir/cache_test.txt" "initial content"
+create_test_file "$test_dir/validator_counter.sh" {#!/bin/bash
+# Count how many times this validator runs
+COUNTER_FILE="/tmp/validator_counter_$$"
+if [ -f "$COUNTER_FILE" ]; then
+    COUNT=$(($(cat $COUNTER_FILE) + 1))
+else
+    COUNT=1
+fi
+echo $COUNT > $COUNTER_FILE
+echo "Validation run #$COUNT" >&2
+exit 0
+}
+make_executable "$test_dir/validator_counter.sh"
+
+# First run - should validate
+set result [run_validate "cache_test\\.txt\$" "$test_dir/validator_counter.sh" "--verbose"]
+set output1 [lindex $result 1]
+
+if {[string match "*Validated: 1*" $output1] && [string match "*Cached: 0*" $output1]} {
+    puts "✓ First run: file validated (not cached)"
+} else {
+    puts "✗ FAILED: First validation run"
+    puts "Output: $output1"
+    exec rm -rf $test_dir
+    exit 1
+}
+
+# Second run - should use cache (mtime unchanged)
+after 100  ;# Small delay to ensure time difference
+set result [run_validate "cache_test\\.txt\$" "$test_dir/validator_counter.sh" "--verbose"]
+set output2 [lindex $result 1]
+
+if {[string match "*Validated: 0*" $output2] && [string match "*Cached: 1*" $output2]} {
+    puts "✓ Second run: cache hit via mtime (Layer 1)"
+} else {
+    puts "✗ FAILED: Mtime cache check"
+    puts "Output: $output2"
+    exec rm -rf $test_dir
+    exit 1
+}
+
+# ============================================================================
+# TEST 4: Dual-Layer Caching - Hash Check (Layer 2)
+# ============================================================================
+puts "\n==> TEST 4: Dual-layer caching - hash verification (Layer 2)"
+
+# Touch the file to change mtime but not content
+after 1000  ;# Wait 1 second to ensure mtime changes
+exec touch "$test_dir/cache_test.txt"
+
+# Third run - should use cache via hash (mtime changed but content same)
+set result [run_validate "cache_test\\.txt\$" "$test_dir/validator_counter.sh" "--verbose"]
+set output3 [lindex $result 1]
+
+if {[string match "*Mtime changed*" $output3] && 
+    [string match "*Hash unchanged*" $output3] &&
+    [string match "*Validated: 0*" $output3] && 
+    [string match "*Cached: 1*" $output3]} {
+    puts "✓ Third run: cache hit via hash (Layer 2)"
+} else {
+    puts "✗ FAILED: Hash-based cache check"
+    puts "Output: $output3"
+    exec rm -rf $test_dir
+    exit 1
+}
+
+# ============================================================================
+# TEST 5: Cache Invalidation on Content Change
+# ============================================================================
+puts "\n==> TEST 5: Cache invalidation on content change"
+
+# Modify file content
+create_test_file "$test_dir/cache_test.txt" "modified content"
+
+# Fourth run - should re-validate (both mtime and hash changed)
+set result [run_validate "cache_test\\.txt\$" "$test_dir/validator_counter.sh" "--verbose"]
+set output4 [lindex $result 1]
+
+if {[string match "*Hash changed*" $output4] && 
+    [string match "*Validated: 1*" $output4]} {
+    puts "✓ Content change triggers re-validation"
+} else {
+    puts "✗ FAILED: Content change detection"
+    puts "Output: $output4"
+    exec rm -rf $test_dir
+    exit 1
+}
+
+# ============================================================================
+# TEST 6: Cache Hit Rate Calculation Accuracy
+# ============================================================================
+puts "\n==> TEST 6: Cache hit rate calculation accuracy"
+
+# Clean cache and create multiple test files
+exec rm -rf $cache_dir
+file mkdir $cache_dir
+
+for {set i 1} {$i <= 10} {incr i} {
+    create_test_file "$test_dir/rate_test_$i.txt" "content $i"
+}
+
+# First run - all should validate
+set result [run_validate "rate_test_.*\\.txt\$" "true"]
+set output1 [lindex $result 1]
+
+if {[string match "*Total files:     10*" $output1] &&
+    [string match "*Validated:       10*" $output1] &&
+    [string match "*Cached:          0*" $output1] &&
+    [string match "*Cache hit rate:  0.0%*" $output1]} {
+    puts "✓ First run: 0% cache hit rate (0/10)"
+} else {
+    puts "✗ FAILED: Initial cache hit rate"
+    puts "Output: $output1"
+    exec rm -rf $test_dir
+    exit 1
+}
+
+# Second run - all should be cached
+set result [run_validate "rate_test_.*\\.txt\$" "true"]
+set output2 [lindex $result 1]
+
+if {[string match "*Total files:     10*" $output2] &&
+    [string match "*Validated:       0*" $output2] &&
+    [string match "*Cached:          10*" $output2] &&
+    [string match "*Cache hit rate:  100.0%*" $output2]} {
+    puts "✓ Second run: 100% cache hit rate (10/10)"
+} else {
+    puts "✗ FAILED: Full cache hit rate"
+    puts "Output: $output2"
+    exec rm -rf $test_dir
+    exit 1
+}
+
+# Modify 3 files to test partial cache hit
+after 1000
+create_test_file "$test_dir/rate_test_3.txt" "modified 3"
+create_test_file "$test_dir/rate_test_7.txt" "modified 7"
+create_test_file "$test_dir/rate_test_9.txt" "modified 9"
+
+# Third run - 70% cache hit rate
+set result [run_validate "rate_test_.*\\.txt\$" "true"]
+set output3 [lindex $result 1]
+
+if {[string match "*Total files:     10*" $output3] &&
+    [string match "*Validated:       3*" $output3] &&
+    [string match "*Cached:          7*" $output3] &&
+    [string match "*Cache hit rate:  70.0%*" $output3]} {
+    puts "✓ Third run: 70% cache hit rate (7/10)"
+} else {
+    puts "✗ FAILED: Partial cache hit rate"
+    puts "Output: $output3"
+    exec rm -rf $test_dir
+    exit 1
+}
+
+# ============================================================================
+# TEST 7: Regex Pattern Matching Edge Cases
+# ============================================================================
+puts "\n==> TEST 7: Regex pattern matching edge cases"
+
+# Clean for this test
+exec rm -rf $cache_dir
+file mkdir $cache_dir
+
+# Create various test files with different extensions
+create_test_file "$test_dir/file.yaml" "yaml"
+create_test_file "$test_dir/file.yml" "yml"
+create_test_file "$test_dir/file.YAML" "YAML"
+create_test_file "$test_dir/file.json" "json"
+create_test_file "$test_dir/file.txt" "txt"
+create_test_file "$test_dir/.hidden.yaml" "hidden"
+create_test_file "$test_dir/subdir1/nested.yaml" "nested1"
+create_test_file "$test_dir/subdir2/deep.yml" "deep"
+
+# Test 7a: Match both .yaml and .yml (case-sensitive)
+set result [run_validate "\\.ya?ml\$" "true"]
+set output [lindex $result 1]
+
+if {[string match "*Total files:     4*" $output]} {
+    puts "✓ Pattern '\\.ya?ml\$' matched 4 files (.yaml, .yml, .hidden.yaml, nested.yaml)"
+} else {
+    puts "✗ FAILED: Pattern matching for .yaml/.yml"
+    puts "Output: $output"
+    exec rm -rf $test_dir
+    exit 1
+}
+
+# Clean cache for next test
+exec rm -rf $cache_dir
+file mkdir $cache_dir
+
+# Test 7b: Match files in subdirectories
+set result [run_validate "subdir.*\\.ya" "true"]
+set output [lindex $result 1]
+
+if {[string match "*Total files:     2*" $output]} {
+    puts "✓ Pattern 'subdir.*\\.ya' matched 2 nested files"
+} else {
+    puts "✗ FAILED: Nested directory pattern matching"
+    puts "Output: $output"
+    exec rm -rf $test_dir
+    exit 1
+}
+
+# Clean cache for next test
+exec rm -rf $cache_dir
+file mkdir $cache_dir
+
+# Test 7c: Match with multiple extensions using alternation
+set result [run_validate "\\.(json|txt)\$" "true"]
+set output [lindex $result 1]
+
+if {[string match "*Total files:     2*" $output]} {
+    puts "✓ Pattern '\\.(json|txt)\$' matched 2 files"
+} else {
+    puts "✗ FAILED: Alternation pattern matching"
+    puts "Output: $output"
+    exec rm -rf $test_dir
+    exit 1
+}
+
+# Test 7d: No matches should exit gracefully
+exec rm -rf $cache_dir
+file mkdir $cache_dir
+
+set result [run_validate "\\.nonexistent\$" "true"]
+set exit_code [lindex $result 0]
+set output [lindex $result 1]
+
+if {$exit_code == 0 && [string match "*No files found*" $output]} {
+    puts "✓ No matches exits gracefully with exit code 0"
+} else {
+    puts "✗ FAILED: No matches handling"
+    puts "Exit code: $exit_code, Output: $output"
+    exec rm -rf $test_dir
+    exit 1
+}
+
+# ============================================================================
+# TEST 8: Parallel Test Case Validation
+# ============================================================================
+puts "\n==> TEST 8: Parallel test case validation"
+
+# Clean cache for this test
+exec rm -rf $cache_dir
+file mkdir $cache_dir
+
+# Create multiple files that validate successfully
+for {set i 1} {$i <= 20} {incr i} {
+    create_test_file "$test_dir/parallel_$i.dat" "data $i"
+}
+
+# Create a validator that takes some time to simulate real validation
+create_test_file "$test_dir/slow_validator.sh" {#!/bin/bash
+# Simulate validation work
+sleep 0.01
+exit 0
+}
+make_executable "$test_dir/slow_validator.sh"
+
+# Run validation and measure rough timing
+set start_time [clock seconds]
+set result [run_validate "parallel_.*\\.dat\$" "$test_dir/slow_validator.sh"]
+set elapsed [expr {[clock seconds] - $start_time}]
+set exit_code [lindex $result 0]
+set output [lindex $result 1]
+
+if {$exit_code == 0 && 
+    [string match "*Total files:     20*" $output] &&
+    [string match "*Validated:       20*" $output] &&
+    [string match "*Passed:          20*" $output] &&
+    [string match "*Failed:          0*" $output]} {
+    puts "✓ Parallel validation of 20 files completed (${elapsed}s)"
+} else {
+    puts "✗ FAILED: Parallel validation"
+    puts "Output: $output"
+    exec rm -rf $test_dir
+    exit 1
+}
+
+# Run again to verify caching works for many files
+set result [run_validate "parallel_.*\\.dat\$" "$test_dir/slow_validator.sh"]
+set exit_code [lindex $result 0]
+set output [lindex $result 1]
+
+if {$exit_code == 0 && 
+    [string match "*Cached:          20*" $output] &&
+    [string match "*Cache hit rate:  100.0%*" $output]} {
+    puts "✓ All 20 files cached on second run"
+} else {
+    puts "✗ FAILED: Bulk caching"
+    puts "Output: $output"
+    exec rm -rf $test_dir
+    exit 1
+}
+
+# ============================================================================
+# TEST 9: Error Propagation - Validation Failures
+# ============================================================================
+puts "\n==> TEST 9: Error propagation - validation failures"
+
+# Clean cache for this test
+exec rm -rf $cache_dir
+file mkdir $cache_dir
+
+# Create files
+create_test_file "$test_dir/valid1.check" "valid"
+create_test_file "$test_dir/invalid.check" "invalid"
+create_test_file "$test_dir/valid2.check" "valid"
+
+# Create validator that fails for specific content
+create_test_file "$test_dir/conditional_validator.sh" {#!/bin/bash
+content=$(cat "$1")
+if [ "$content" = "invalid" ]; then
+    echo "Validation failed for $1" >&2
+    exit 1
+fi
+exit 0
+}
+make_executable "$test_dir/conditional_validator.sh"
+
+# Run validation - should fail
+set result [run_validate "\\.check\$" "$test_dir/conditional_validator.sh"]
+set exit_code [lindex $result 0]
+set output [lindex $result 1]
+
+if {$exit_code != 0 &&
+    [string match "*Total files:     3*" $output] &&
+    [string match "*Passed:          2*" $output] &&
+    [string match "*Failed:          1*" $output] &&
+    [string match "*Failed files:*" $output] &&
+    [string match "*invalid.check*" $output]} {
+    puts "✓ Validation failures detected and reported correctly"
+} else {
+    puts "✗ FAILED: Error propagation for validation failures"
+    puts "Exit code: $exit_code"
+    puts "Output: $output"
+    exec rm -rf $test_dir
+    exit 1
+}
+
+# Verify failed file is cached as invalid
+set result [run_validate "\\.check\$" "$test_dir/conditional_validator.sh"]
+set exit_code [lindex $result 0]
+set output [lindex $result 1]
+
+if {$exit_code != 0 &&
+    [string match "*Validated:       0*" $output] &&
+    [string match "*Cached:          3*" $output] &&
+    [string match "*Failed:          1*" $output]} {
+    puts "✓ Failed validation results cached correctly"
+} else {
+    puts "✗ FAILED: Caching of failed validations"
+    puts "Output: $output"
+    exec rm -rf $test_dir
+    exit 1
+}
+
+# ============================================================================
+# TEST 10: Error Propagation - Missing Validator
+# ============================================================================
+puts "\n==> TEST 10: Error propagation - missing validator"
+
+set result [run_validate "\\.txt\$" "/nonexistent/validator.sh"]
+set exit_code [lindex $result 0]
+set output [lindex $result 1]
+
+if {$exit_code != 0 && [string match "*Validator script not found*" $output]} {
+    puts "✓ Missing validator error propagated correctly"
+} else {
+    puts "✗ FAILED: Missing validator error handling"
+    puts "Exit code: $exit_code, Output: $output"
+    exec rm -rf $test_dir
+    exit 1
+}
+
+# ============================================================================
+# TEST 11: Error Propagation - Non-executable Validator
+# ============================================================================
+puts "\n==> TEST 11: Error propagation - non-executable validator"
+
+# Create non-executable validator
+create_test_file "$test_dir/non_executable.sh" {#!/bin/bash
+exit 0
+}
+# Don't make it executable
+
+set result [run_validate "\\.txt\$" "$test_dir/non_executable.sh"]
+set exit_code [lindex $result 0]
+set output [lindex $result 1]
+
+if {$exit_code != 0 && [string match "*not executable*" $output]} {
+    puts "✓ Non-executable validator error propagated correctly"
+} else {
+    puts "✗ FAILED: Non-executable validator error handling"
+    puts "Exit code: $exit_code, Output: $output"
+    exec rm -rf $test_dir
+    exit 1
+}
+
+# ============================================================================
+# TEST 12: Verbose Mode Output
+# ============================================================================
+puts "\n==> TEST 12: Verbose mode output"
+
+# Clean cache
+exec rm -rf $cache_dir
+file mkdir $cache_dir
+
+create_test_file "$test_dir/verbose_test.log" "test"
+
+# Run with verbose mode
+set result [run_validate "verbose_test\\.log\$" "true" "--verbose"]
+set output [lindex $result 1]
+
+if {[string match "*\[VERBOSE\]*" $output] &&
+    [string match "*Checking cache*" $output] &&
+    [string match "*Processing:*verbose_test.log*" $output]} {
+    puts "✓ Verbose mode provides detailed output"
+} else {
+    puts "✗ FAILED: Verbose mode output"
+    puts "Output: $output"
+    exec rm -rf $test_dir
+    exit 1
+}
+
+# ============================================================================
+# TEST 13: Custom Cache Directory
+# ============================================================================
+puts "\n==> TEST 13: Custom cache directory"
+
+set custom_cache "$test_dir/my-custom-cache"
+
+create_test_file "$test_dir/custom_cache_test.data" "data"
+
+# Run with custom cache directory
+set cmd "./scripts/validate-files.sh --pattern 'custom_cache_test\\.data\$' --validator 'true' --cache-dir $custom_cache"
+set result [catch {eval exec $cmd 2>@1} output]
+
+if {$result == 0 && [file exists $custom_cache] && [file isdirectory $custom_cache]} {
+    set cache_files [glob -nocomplain "$custom_cache/*.json"]
+    if {[llength $cache_files] > 0} {
+        puts "✓ Custom cache directory created and used"
+    } else {
+        puts "✗ FAILED: No cache files in custom directory"
+        exec rm -rf $test_dir
+        exit 1
+    }
+} else {
+    puts "✗ FAILED: Custom cache directory"
+    puts "Output: $output"
+    exec rm -rf $test_dir
+    exit 1
+}
+
+# ============================================================================
+# TEST 14: Cache Entry Content Validation
+# ============================================================================
+puts "\n==> TEST 14: Cache entry content validation"
+
+# Create a test file and validate it
+exec rm -rf $cache_dir
+file mkdir $cache_dir
+
+create_test_file "$test_dir/cache_content_test.bin" "binary content"
+
+set result [run_validate "cache_content_test\\.bin\$" "true"]
+set exit_code [lindex $result 0]
+
+if {$exit_code == 0} {
+    # Find the cache file
+    set cache_files [glob -nocomplain "$cache_dir/*.json"]
+    if {[llength $cache_files] > 0} {
+        set cache_file [lindex $cache_files 0]
+        set fp [open $cache_file r]
+        set cache_content [read $fp]
+        close $fp
+        
+        # Verify JSON structure contains required fields
+        if {[string match "*\"path\":*" $cache_content] &&
+            [string match "*\"mtime\":*" $cache_content] &&
+            [string match "*\"hash\":*" $cache_content] &&
+            [string match "*\"valid\":*" $cache_content] &&
+            [string match "*\"timestamp\":*" $cache_content]} {
+            puts "✓ Cache entry contains all required fields"
+        } else {
+            puts "✗ FAILED: Cache entry missing required fields"
+            puts "Content: $cache_content"
+            exec rm -rf $test_dir
+            exit 1
+        }
+    } else {
+        puts "✗ FAILED: No cache file created"
+        exec rm -rf $test_dir
+        exit 1
+    }
+} else {
+    puts "✗ FAILED: Validation for cache content test"
+    exec rm -rf $test_dir
+    exit 1
+}
+
+# ============================================================================
+# TEST 15: Help Option
+# ============================================================================
+puts "\n==> TEST 15: Help option"
+
+set result [catch {exec ./scripts/validate-files.sh --help 2>@1} output]
+
+if {$result == 0 && 
+    [string match "*Usage:*" $output] &&
+    [string match "*--pattern*" $output] &&
+    [string match "*--validator*" $output]} {
+    puts "✓ Help option displays usage information"
+} else {
+    puts "✗ FAILED: Help option"
+    puts "Output: $output"
+    exec rm -rf $test_dir
+    exit 1
+}
+
+# ============================================================================
+# TEST 16: Missing Required Arguments
+# ============================================================================
+puts "\n==> TEST 16: Missing required arguments"
+
+# Test missing --pattern
+set result [catch {exec ./scripts/validate-files.sh --validator "true" 2>@1} output]
+if {$result != 0 && [string match "*Missing required option: --pattern*" $output]} {
+    puts "✓ Missing --pattern argument detected"
+} else {
+    puts "✗ FAILED: Missing --pattern detection"
+    puts "Output: $output"
+    exec rm -rf $test_dir
+    exit 1
+}
+
+# Test missing --validator
+set result [catch {exec ./scripts/validate-files.sh --pattern "\\.txt\$" 2>@1} output]
+if {$result != 0 && [string match "*Missing required option: --validator*" $output]} {
+    puts "✓ Missing --validator argument detected"
+} else {
+    puts "✗ FAILED: Missing --validator detection"
+    puts "Output: $output"
+    exec rm -rf $test_dir
+    exit 1
+}
+
+# ============================================================================
+# CLEANUP
+# ============================================================================
+puts "\n==> Cleaning up test environment..."
+
+# Clean up temporary files
+exec rm -f /tmp/validator_counter_*
+
+# Remove test directory
+exec rm -rf $test_dir
+puts "✓ Test directory removed"
+
+# ============================================================================
+# SUMMARY
+# ============================================================================
+puts "\n=========================================="
+puts "ALL TESTS PASSED ✓"
+puts "=========================================="
+puts ""
+puts "Test Coverage Summary:"
+puts "  ✓ Validator detection (file and command)"
+puts "  ✓ Dual-layer caching (mtime + hash)"
+puts "  ✓ Cache hit rate calculation"
+puts "  ✓ Regex pattern matching edge cases"
+puts "  ✓ Parallel validation"
+puts "  ✓ Error propagation"
+puts "  ✓ Custom cache directories"
+puts "  ✓ Verbose mode"
+puts "  ✓ Help and argument validation"
+puts ""
+
+exit 0

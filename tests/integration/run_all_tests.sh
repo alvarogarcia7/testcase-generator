@@ -78,6 +78,19 @@ else
 fi
 echo ""
 
+# Run validate-files.sh integration tests
+echo "=========================================="
+echo "Test 3: validate-files.sh Integration"
+echo "=========================================="
+if "$SCRIPT_DIR/validate_files_integration.exp"; then
+    echo "✓ validate-files.sh test PASSED"
+    ((TESTS_PASSED++))
+else
+    echo "✗ validate-files.sh test FAILED"
+    ((TESTS_FAILED++))
+fi
+echo ""
+
 # Summary
 echo "=========================================="
 echo "Test Summary"
