@@ -1,0 +1,37 @@
+requirement: "XXX100"
+item: 1
+tc: 4
+id: '4.2.2.2.1 TC_eUICC_ES6.UpdateMetadata'
+description: 'Throughout all the ES6.UpdateMetadata test cases, SMS is used as the secure OTA channel.'
+
+general_initial_conditions:
+  eUICC:
+    - "The profile The PROFILE_OPERATIONAL1 with #METADATA_WITH_PPRS_AND_ICON is loaded on the eUICC."
+
+initial_conditions:
+  eUICC:
+    - "The PROFILE_OPERATIONAL1 is Enabled."
+    - "The PROFILE_OPERATIONAL2 is Enabled."
+
+test_sequences:
+  - id: 1
+    name: "Test Sequence #01 Nominal: Unset PPR1"
+    description: |
+                   This test case verifies that the eUICC correctly processes an ES6.UpdateMetadata command to unset PPR1
+                   when the profile is in the operational state and PPR1 is currently set.
+    initial_conditions:
+      eUICC:
+        - "The PROFILE_OPERATIONAL3 is Enabled."
+    steps:
+      - step: 1
+        description: "modify the file"
+        command: |-
+          echo "HELLO" > /tmp/file.txt
+        expected:
+          result:
+          output: ""
+        verification:
+          result: |-
+              [[ $EXIT_CODE -eq 0 ]]
+          output: |-
+            [[ -z "$COMMAND_OUTPUT" ]] && [[ $(wc -l < /tmp/file.txt) -eq 1 ]]

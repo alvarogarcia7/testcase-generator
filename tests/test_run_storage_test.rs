@@ -638,7 +638,7 @@ fn test_yml_extension_also_loaded() {
     fs::create_dir_all(&runs_folder).unwrap();
 
     let yaml_content = serde_yaml::to_string(&test_run).unwrap();
-    fs::write(runs_folder.join("test1.yml"), &yaml_content).unwrap();
+    fs::write(runs_folder.join("steps-in-json.yml"), &yaml_content).unwrap();
     fs::write(runs_folder.join("test2.yaml"), &yaml_content).unwrap();
 
     let loaded_runs = storage.load_test_runs_for_case("TC001").unwrap();
