@@ -4,7 +4,6 @@ use crate::yaml_utils::log_yaml_parse_error;
 use anyhow::{Context, Result};
 use std::fs;
 use std::path::{Path, PathBuf};
-use serde::{Deserialize, Serialize};
 
 /// Supported YAML file extensions
 const YAML_EXTENSIONS: &[&str] = &["yaml", "yml"];
