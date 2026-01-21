@@ -207,7 +207,7 @@ mod tests {
 
         let test_run1 = create_test_run("TC001", 1.000);
         let mut test_run2 = create_test_run("TC001", 2.000);
-        
+
         // Ensure unique timestamps to avoid file name collisions
         test_run2.timestamp = test_run1.timestamp + chrono::Duration::seconds(1);
 
@@ -238,7 +238,7 @@ mod tests {
         let mut test_run1 = create_test_run("TC001", 1.000);
         let mut test_run2 = create_test_run("TC002", 2.000);
         let mut test_run3 = create_test_run("TC001", 3.000);
-        
+
         // Ensure unique timestamps to avoid file name collisions
         test_run2.timestamp = test_run1.timestamp + chrono::Duration::seconds(1);
         test_run3.timestamp = test_run1.timestamp + chrono::Duration::seconds(2);

@@ -18,8 +18,13 @@ use crate::MatchStrategy::Exact;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RetryStrategy {
     NoRetry,
-    FixedRetries { max_attempts: usize },
-    ExponentialBackoff { max_attempts: usize, base_delay_ms: u64 },
+    FixedRetries {
+        max_attempts: usize,
+    },
+    ExponentialBackoff {
+        max_attempts: usize,
+        base_delay_ms: u64,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -300,7 +305,9 @@ impl TestOrchestrator {
 
         reporter.start_live_display();
 
-        let test_queue = Arc::new(Mutex::new(test_cases.into_iter().enumerate().collect::<Vec<_>>()));
+        let test_queue = Arc::new(Mutex::new(
+            test_cases.into_iter().enumerate().collect::<Vec<_>>(),
+        ));
         let results = Arc::new(Mutex::new(Vec::new()));
         let active_workers = Arc::new(AtomicUsize::new(0));
 
@@ -416,7 +423,10 @@ impl TestOrchestrator {
             let success = result.is_ok();
 
             let (execution_log, error_message) = match result {
-                Ok(_) => (format!("Test case {} executed successfully", test_case.id), None),
+                Ok(_) => (
+                    format!("Test case {} executed successfully", test_case.id),
+                    None,
+                ),
                 Err(e) => (
                     format!("Test case {} failed", test_case.id),
                     Some(e.to_string()),
@@ -539,13 +549,14 @@ impl TestOrchestrator {
         println!("=== Execution Summary ===");
         println!("Total test cases: {}", stats.total_tests);
         println!("Completed: {}", stats.completed_tests);
-        println!("Passed: {} ({}%)", stats.passed_tests, stats.success_rate() as u32);
+        println!(
+            "Passed: {} ({}%)",
+            stats.passed_tests,
+            stats.success_rate() as u32
+        );
         println!("Failed: {}", stats.failed_tests);
         println!("Total attempts: {}", stats.total_attempts);
-        println!(
-            "Total time: {:.2}s",
-            stats.elapsed_time_ms as f64 / 1000.0
-        );
+        println!("Total time: {:.2}s", stats.elapsed_time_ms as f64 / 1000.0);
     }
 
     pub fn generate_execution_report(
@@ -565,8 +576,16 @@ impl TestOrchestrator {
 
         report.push_str("## Summary\n\n");
         report.push_str(&format!("- **Total Tests**: {}\n", total));
-        report.push_str(&format!("- **Passed**: {} ({:.1}%)\n", passed, (passed as f64 / total as f64) * 100.0));
-        report.push_str(&format!("- **Failed**: {} ({:.1}%)\n", failed, (failed as f64 / total as f64) * 100.0));
+        report.push_str(&format!(
+            "- **Passed**: {} ({:.1}%)\n",
+            passed,
+            (passed as f64 / total as f64) * 100.0
+        ));
+        report.push_str(&format!(
+            "- **Failed**: {} ({:.1}%)\n",
+            failed,
+            (failed as f64 / total as f64) * 100.0
+        ));
         report.push_str(&format!("- **Total Attempts**: {}\n", total_attempts));
         report.push_str(&format!("- **Total Duration**: {:.2}s\n\n", total_duration));
 
@@ -575,7 +594,11 @@ impl TestOrchestrator {
         report.push_str("|--------------|--------|----------|----------|\n");
 
         for result in results {
-            let status = if result.success { "✓ PASS" } else { "✗ FAIL" };
+            let status = if result.success {
+                "✓ PASS"
+            } else {
+                "✗ FAIL"
+            };
             report.push_str(&format!(
                 "| {} | {} | {}ms | {} |\n",
                 result.test_case_id, status, result.duration_s, result.attempts
@@ -647,7 +670,10 @@ mod tests {
         assert_eq!(no_retry.strategy, RetryStrategy::NoRetry);
 
         let fixed = RetryPolicy::fixed_retries(3);
-        assert_eq!(fixed.strategy, RetryStrategy::FixedRetries { max_attempts: 3 });
+        assert_eq!(
+            fixed.strategy,
+            RetryStrategy::FixedRetries { max_attempts: 3 }
+        );
 
         let exponential = RetryPolicy::exponential_backoff(5, 100);
         assert_eq!(
@@ -665,7 +691,8 @@ mod tests {
         assert_eq!(config.num_workers, 8);
         assert_eq!(config.retry_policy.strategy, RetryStrategy::NoRetry);
 
-        let config_with_retry = WorkerConfig::new(4).with_retry_policy(RetryPolicy::fixed_retries(2));
+        let config_with_retry =
+            WorkerConfig::new(4).with_retry_policy(RetryPolicy::fixed_retries(2));
         assert_eq!(config_with_retry.num_workers, 4);
         assert_eq!(
             config_with_retry.retry_policy.strategy,

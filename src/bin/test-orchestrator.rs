@@ -135,8 +135,9 @@ fn main() -> Result<()> {
     let test_run_storage = TestRunStorage::new(cli.path.join("test-runs"))
         .context("Failed to initialize test run storage")?;
 
-    let orchestrator = TestOrchestrator::new(test_case_storage, test_run_storage, cli.output.clone())
-        .context("Failed to initialize test orchestrator")?;
+    let orchestrator =
+        TestOrchestrator::new(test_case_storage, test_run_storage, cli.output.clone())
+            .context("Failed to initialize test orchestrator")?;
 
     match cli.command {
         Commands::Run {
@@ -166,7 +167,10 @@ fn main() -> Result<()> {
                         .map(|tc| format!("{} - {}", tc.id, tc.description))
                         .collect();
 
-                    match TestCaseFuzzyFinder::search_strings(&test_case_options, "Select test cases to execute (Tab to select multiple, Enter to confirm): ")? {
+                    match TestCaseFuzzyFinder::search_strings(
+                        &test_case_options,
+                        "Select test cases to execute (Tab to select multiple, Enter to confirm): ",
+                    )? {
                         Some(selected) => {
                             test_case_ids = selected
                                 .split(" - ")
@@ -308,7 +312,11 @@ fn main() -> Result<()> {
             let mut total_failed = 0;
 
             for result in &verification_results {
-                let status = if result.overall_pass { "✓ PASS" } else { "✗ FAIL" };
+                let status = if result.overall_pass {
+                    "✓ PASS"
+                } else {
+                    "✗ FAIL"
+                };
                 println!(
                     "{} {} - {} ({}/{} steps passed)",
                     status,
@@ -328,7 +336,11 @@ fn main() -> Result<()> {
                     for sequence in &result.sequences {
                         for step_result in &sequence.step_results {
                             if !step_result.is_pass() {
-                                println!("  ✗ Sequence {}: Step {}", sequence.sequence_id, step_result.step_number());
+                                println!(
+                                    "  ✗ Sequence {}: Step {}",
+                                    sequence.sequence_id,
+                                    step_result.step_number()
+                                );
                             }
                         }
                     }
@@ -382,7 +394,9 @@ fn main() -> Result<()> {
             println!("  test-orchestrator run TC001 --retry --max-retries 3");
             println!();
             println!("  # Run with exponential backoff");
-            println!("  test-orchestrator run TC001 --retry --exponential-backoff --backoff-delay 100");
+            println!(
+                "  test-orchestrator run TC001 --retry --exponential-backoff --backoff-delay 100"
+            );
             println!();
             println!("  # Run interactively with fuzzy search");
             println!("  test-orchestrator run --fuzzy");

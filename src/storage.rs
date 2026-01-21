@@ -2,6 +2,7 @@ use crate::models::{FileValidationStatus, TestCase, TestCaseFileInfo, TestSuite}
 use crate::validation::SchemaValidator;
 use crate::yaml_utils::log_yaml_parse_error;
 use anyhow::{Context, Result};
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
 
