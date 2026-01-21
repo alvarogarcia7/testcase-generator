@@ -137,15 +137,11 @@ fn test_json_log_invalid_schema() {
 #[test]
 fn test_executor_generates_valid_json_log() -> Result<()> {
     let temp_dir = TempDir::new()?;
-    let original_dir = std::env::current_dir()?;
-    std::env::set_current_dir(temp_dir.path())?;
 
     let test_case = create_simple_test_case();
-    let executor = TestExecutor::new();
+    let executor = TestExecutor::with_output_dir(temp_dir.path());
 
     let result = executor.execute_test_case(&test_case);
-
-    std::env::set_current_dir(original_dir)?;
 
     assert!(result.is_ok(), "Test execution should succeed");
 
@@ -166,15 +162,11 @@ fn test_executor_generates_valid_json_log() -> Result<()> {
 #[test]
 fn test_executor_json_log_structure_and_content() -> Result<()> {
     let temp_dir = TempDir::new()?;
-    let original_dir = std::env::current_dir()?;
-    std::env::set_current_dir(temp_dir.path())?;
 
     let test_case = create_multi_sequence_test_case();
-    let executor = TestExecutor::new();
+    let executor = TestExecutor::with_output_dir(temp_dir.path());
 
     let result = executor.execute_test_case(&test_case);
-
-    std::env::set_current_dir(original_dir)?;
 
     assert!(result.is_ok(), "Test execution should succeed");
 
@@ -198,7 +190,7 @@ fn test_executor_json_log_structure_and_content() -> Result<()> {
 
     assert_eq!(entries[1].test_sequence, 1);
     assert_eq!(entries[1].step, 2);
-    assert_eq!(entries[1].command, "/bin/true");
+    assert_eq!(entries[1].command, "true");
     assert_eq!(entries[1].exit_code, 0);
 
     assert_eq!(entries[2].test_sequence, 2);
@@ -219,15 +211,11 @@ fn test_executor_json_log_structure_and_content() -> Result<()> {
 #[test]
 fn test_executor_json_log_with_manual_steps() -> Result<()> {
     let temp_dir = TempDir::new()?;
-    let original_dir = std::env::current_dir()?;
-    std::env::set_current_dir(temp_dir.path())?;
 
     let test_case = create_test_case_with_manual_steps();
-    let executor = TestExecutor::new();
+    let executor = TestExecutor::with_output_dir(temp_dir.path());
 
     let result = executor.execute_test_case(&test_case);
-
-    std::env::set_current_dir(original_dir)?;
 
     assert!(result.is_ok(), "Test execution should succeed");
 
@@ -264,13 +252,9 @@ fn test_executor_with_gsma_yaml_example() -> Result<()> {
     let test_case: TestCase = serde_yaml::from_str(&yaml_content)?;
 
     let temp_dir = TempDir::new()?;
-    let original_dir = std::env::current_dir()?;
-    std::env::set_current_dir(temp_dir.path())?;
 
-    let executor = TestExecutor::new();
+    let executor = TestExecutor::with_output_dir(temp_dir.path());
     let _result = executor.execute_test_case(&test_case);
-
-    std::env::set_current_dir(original_dir)?;
 
     let log_file = temp_dir
         .path()
@@ -317,13 +301,9 @@ fn test_executor_with_self_validated_example() -> Result<()> {
     let test_case: TestCase = serde_yaml::from_str(&yaml_content)?;
 
     let temp_dir = TempDir::new()?;
-    let original_dir = std::env::current_dir()?;
-    std::env::set_current_dir(temp_dir.path())?;
 
-    let executor = TestExecutor::new();
+    let executor = TestExecutor::with_output_dir(temp_dir.path());
     let result = executor.execute_test_case(&test_case);
-
-    std::env::set_current_dir(original_dir)?;
 
     if result.is_err() {
         println!("Note: Test case execution may fail, but we're validating the log format");
@@ -393,15 +373,11 @@ fn test_json_log_via_test_executor_binary() -> Result<()> {
 #[test]
 fn test_json_log_format_compliance() -> Result<()> {
     let temp_dir = TempDir::new()?;
-    let original_dir = std::env::current_dir()?;
-    std::env::set_current_dir(temp_dir.path())?;
 
     let test_case = create_test_case_with_special_characters();
-    let executor = TestExecutor::new();
+    let executor = TestExecutor::with_output_dir(temp_dir.path());
 
     let _result = executor.execute_test_case(&test_case);
-
-    std::env::set_current_dir(original_dir)?;
 
     let log_file = temp_dir
         .path()
@@ -500,7 +476,7 @@ fn create_multi_sequence_test_case() -> TestCase {
         step: 2,
         manual: None,
         description: "Run true".to_string(),
-        command: "/bin/true".to_string(),
+        command: "true".to_string(),
         expected: Expected {
             success: Some(true),
             result: "[ $EXIT_CODE -eq 0 ]".to_string(),

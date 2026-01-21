@@ -406,7 +406,6 @@ impl TestOrchestrator {
         };
 
         let mut last_result = None;
-        let mut total_duration_s = 0.0f64;
 
         for attempt in 1..=max_attempts {
             {
@@ -418,7 +417,6 @@ impl TestOrchestrator {
             let result = executor.execute_test_case(test_case);
             let duration = start.elapsed();
             let duration_s = duration.as_secs_f64();
-            total_duration_s += duration_s;
 
             let success = result.is_ok();
 
@@ -545,6 +543,39 @@ impl TestOrchestrator {
         Ok(verification_results)
     }
 
+    pub fn verify_test_case_with_log(
+        &self,
+        test_case_file: &Path,
+        execution_log_file: &Path,
+    ) -> Result<TestCaseVerificationResult> {
+        use crate::models::TestCase;
+
+        // Load the test case from YAML file
+        let content = fs::read_to_string(test_case_file).context(format!(
+            "Failed to read test case file: {}",
+            test_case_file.display()
+        ))?;
+
+        let test_case: TestCase = serde_yaml::from_str(&content).context(format!(
+            "Failed to parse test case YAML: {}",
+            test_case_file.display()
+        ))?;
+
+        // Parse the execution log
+        let verifier = TestVerifier::new(Exact, Exact);
+        let logs = verifier
+            .parse_log_file_with_test_case_id(execution_log_file, &test_case.id)
+            .context(format!(
+                "Failed to parse execution log file: {}",
+                execution_log_file.display()
+            ))?;
+
+        // Verify the test case against the logs
+        let result = verifier.verify_test_case(&test_case, &logs);
+
+        Ok(result)
+    }
+
     fn print_summary(&self, stats: &OrchestratorStats) {
         println!("=== Execution Summary ===");
         println!("Total test cases: {}", stats.total_tests);
@@ -614,7 +645,7 @@ impl TestOrchestrator {
                 if let Some(error) = &result.error_message {
                     report.push_str(&format!("- **Error**: {}\n", error));
                 }
-                report.push_str("\n");
+                report.push('\n');
             }
         }
 

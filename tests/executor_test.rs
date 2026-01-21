@@ -151,11 +151,11 @@ fn test_execution_log_json_array_serialization() {
     let json = serde_json::to_string_pretty(&entries).unwrap();
     assert!(json.starts_with('['));
     assert!(json.ends_with(']'));
-    assert!(json.contains("\"step\":1"));
-    assert!(json.contains("\"step\":2"));
-    assert!(json.contains("\"step\":3"));
-    assert!(json.contains("\"exit_code\":0"));
-    assert!(json.contains("\"exit_code\":1"));
+    assert!(json.contains("\"step\": 1"));
+    assert!(json.contains("\"step\": 2"));
+    assert!(json.contains("\"step\": 3"));
+    assert!(json.contains("\"exit_code\": 0"));
+    assert!(json.contains("\"exit_code\": 1"));
 }
 
 #[test]

@@ -117,8 +117,16 @@ enum Commands {
 
     /// Verify test execution results from log files
     Verify {
-        /// Log files to verify
+        /// Log files to verify (when used without --test-case and --execution-log)
         log_files: Vec<PathBuf>,
+
+        /// Specific test case YAML file to verify
+        #[arg(long = "test-case")]
+        test_case_file: Option<PathBuf>,
+
+        /// Specific execution log JSON file to verify against
+        #[arg(long = "execution-log")]
+        execution_log_file: Option<PathBuf>,
     },
 
     /// Show orchestrator configuration and status
@@ -290,29 +298,28 @@ fn main() -> Result<()> {
             }
         }
 
-        Commands::Verify { log_files } => {
-            if log_files.is_empty() {
-                anyhow::bail!("No log files provided for verification");
-            }
+        Commands::Verify {
+            log_files,
+            test_case_file,
+            execution_log_file,
+        } => {
+            // Check if specific test case and execution log are provided
+            if test_case_file.is_some() || execution_log_file.is_some() {
+                // Both must be provided together
+                let tc_file = test_case_file.ok_or_else(|| {
+                    anyhow::anyhow!("--test-case must be provided when using --execution-log")
+                })?;
+                let log_file = execution_log_file.ok_or_else(|| {
+                    anyhow::anyhow!("--execution-log must be provided when using --test-case")
+                })?;
 
-            println!("\n=== Verifying Test Results ===\n");
+                println!("\n=== Verifying Specific Test Case ===\n");
 
-            let verification_results = orchestrator
-                .verify_results(log_files.clone())
-                .context("Failed to verify test results")?;
+                let verification_results = orchestrator
+                    .verify_test_case_with_log(&tc_file, &log_file)
+                    .context("Failed to verify test case")?;
 
-            if verification_results.is_empty() {
-                println!("No test cases found in the provided log files.");
-                return Ok(());
-            }
-
-            println!("Verification Results:\n");
-
-            let mut total_passed = 0;
-            let mut total_failed = 0;
-
-            for result in &verification_results {
-                let status = if result.overall_pass {
+                let status = if verification_results.overall_pass {
                     "✓ PASS"
                 } else {
                     "✗ FAIL"
@@ -320,20 +327,14 @@ fn main() -> Result<()> {
                 println!(
                     "{} {} - {} ({}/{} steps passed)",
                     status,
-                    result.test_case_id,
-                    result.description,
-                    result.passed_steps,
-                    result.total_steps
+                    verification_results.test_case_id,
+                    verification_results.description,
+                    verification_results.passed_steps,
+                    verification_results.total_steps
                 );
 
-                if result.overall_pass {
-                    total_passed += 1;
-                } else {
-                    total_failed += 1;
-                }
-
-                if !result.overall_pass {
-                    for sequence in &result.sequences {
+                if !verification_results.overall_pass {
+                    for sequence in &verification_results.sequences {
                         for step_result in &sequence.step_results {
                             if !step_result.is_pass() {
                                 println!(
@@ -345,15 +346,76 @@ fn main() -> Result<()> {
                         }
                     }
                 }
-            }
 
-            println!("\n=== Verification Summary ===");
-            println!("Total test cases: {}", verification_results.len());
-            println!("Passed: {}", total_passed);
-            println!("Failed: {}", total_failed);
+                if !verification_results.overall_pass {
+                    std::process::exit(1);
+                }
+            } else {
+                // Original batch verification logic
+                if log_files.is_empty() {
+                    anyhow::bail!("No log files provided for verification");
+                }
 
-            if total_failed > 0 {
-                std::process::exit(1);
+                println!("\n=== Verifying Test Results ===\n");
+
+                let verification_results = orchestrator
+                    .verify_results(log_files)
+                    .context("Failed to verify test results")?;
+
+                if verification_results.is_empty() {
+                    println!("No test cases found in the provided log files.");
+                    return Ok(());
+                }
+
+                println!("Verification Results:\n");
+
+                let mut total_passed = 0;
+                let mut total_failed = 0;
+
+                for result in &verification_results {
+                    let status = if result.overall_pass {
+                        "✓ PASS"
+                    } else {
+                        "✗ FAIL"
+                    };
+                    println!(
+                        "{} {} - {} ({}/{} steps passed)",
+                        status,
+                        result.test_case_id,
+                        result.description,
+                        result.passed_steps,
+                        result.total_steps
+                    );
+
+                    if result.overall_pass {
+                        total_passed += 1;
+                    } else {
+                        total_failed += 1;
+                    }
+
+                    if !result.overall_pass {
+                        for sequence in &result.sequences {
+                            for step_result in &sequence.step_results {
+                                if !step_result.is_pass() {
+                                    println!(
+                                        "  ✗ Sequence {}: Step {}",
+                                        sequence.sequence_id,
+                                        step_result.step_number()
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+
+                println!("\n=== Verification Summary ===");
+                println!("Total test cases: {}", verification_results.len());
+                println!("Passed: {}", total_passed);
+                println!("Failed: {}", total_failed);
+
+                if total_failed > 0 {
+                    std::process::exit(1);
+                }
             }
         }
 

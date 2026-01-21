@@ -2,14 +2,22 @@ use crate::models::{TestCase, TestStepExecutionEntry};
 use anyhow::{Context, Result};
 use chrono::Utc;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
-pub struct TestExecutor;
+pub struct TestExecutor {
+    output_dir: Option<PathBuf>,
+}
 
 impl TestExecutor {
     pub fn new() -> Self {
-        Self
+        Self { output_dir: None }
+    }
+
+    pub fn with_output_dir<P: Into<PathBuf>>(output_dir: P) -> Self {
+        Self {
+            output_dir: Some(output_dir.into()),
+        }
     }
 
     pub fn generate_test_script(&self, test_case: &TestCase) -> String {
@@ -124,6 +132,7 @@ impl TestExecutor {
 
     pub fn execute_test_case(&self, test_case: &TestCase) -> Result<()> {
         let mut execution_entries = Vec::new();
+        let mut execution_error = None;
 
         for sequence in &test_case.test_sequences {
             for step in &sequence.steps {
@@ -140,30 +149,56 @@ impl TestExecutor {
                     step.step, sequence.id, step.description
                 );
 
-                let output = Command::new("bash")
-                    .arg("-c")
-                    .arg(&step.command)
-                    .output()
-                    .context(format!("Failed to execute command: {}", step.command))?;
+                match Command::new("bash").arg("-c").arg(&step.command).output() {
+                    Ok(output) => {
+                        let exit_code = output.status.code().unwrap_or(-1);
+                        let command_output = String::from_utf8_lossy(&output.stdout).to_string();
 
-                let exit_code = output.status.code().unwrap_or(-1);
-                let command_output = String::from_utf8_lossy(&output.stdout).to_string();
+                        let timestamp = Utc::now().to_rfc3339();
+                        let entry = TestStepExecutionEntry::with_timestamp(
+                            sequence.id,
+                            step.step,
+                            step.command.clone(),
+                            exit_code,
+                            command_output.clone(),
+                            timestamp,
+                        );
 
-                let timestamp = Utc::now().to_rfc3339();
-                let entry = TestStepExecutionEntry::with_timestamp(
-                    sequence.id,
-                    step.step,
-                    step.command.clone(),
-                    exit_code,
-                    command_output.clone(),
-                    timestamp,
-                );
+                        execution_entries.push(entry);
+                    }
+                    Err(e) => {
+                        // Store the error but continue to write the log
+                        // Create an entry with exit code -1 to indicate execution failure
+                        let timestamp = Utc::now().to_rfc3339();
+                        let entry = TestStepExecutionEntry::with_timestamp(
+                            sequence.id,
+                            step.step,
+                            step.command.clone(),
+                            -1,
+                            format!("Failed to execute: {}", e),
+                            timestamp,
+                        );
+                        execution_entries.push(entry);
 
-                execution_entries.push(entry);
+                        if execution_error.is_none() {
+                            execution_error = Some(anyhow::anyhow!(
+                                "Failed to execute command '{}': {}",
+                                step.command,
+                                e
+                            ));
+                        }
+                    }
+                }
             }
         }
 
+        // Always write the execution log, even if there were errors
         self.write_execution_log(test_case, &execution_entries)?;
+
+        // Now return any execution error after the log is written
+        if let Some(err) = execution_error {
+            return Err(err);
+        }
 
         Ok(())
     }
@@ -174,12 +209,16 @@ impl TestExecutor {
         entries: &[TestStepExecutionEntry],
     ) -> Result<()> {
         let log_filename = format!("{}_execution_log.json", test_case.id);
-        let log_path = Path::new(&log_filename);
+        let log_path = if let Some(ref output_dir) = self.output_dir {
+            output_dir.join(&log_filename)
+        } else {
+            PathBuf::from(&log_filename)
+        };
 
         let json_content = serde_json::to_string_pretty(entries)
             .context("Failed to serialize execution entries to JSON")?;
 
-        fs::write(log_path, json_content)
+        fs::write(&log_path, json_content)
             .context(format!("Failed to write log file: {}", log_path.display()))?;
 
         Ok(())
@@ -203,7 +242,7 @@ impl TestExecutor {
 
         // Create execution entries template with all steps from the test case
         let mut template_entries: Vec<TestStepExecutionEntry> = Vec::new();
-        
+
         // Base timestamp for template (arbitrary starting point)
         let base_time = chrono::DateTime::parse_from_rfc3339("2024-01-15T10:30:00Z")
             .unwrap()
@@ -221,8 +260,7 @@ impl TestExecutor {
                 let exit_code = step.expected.result.parse::<i32>().unwrap_or(0);
 
                 // Use expected output, handling special cases
-                let output = if step.expected.output == "true" 
-                    || step.expected.output.is_empty() {
+                let output = if step.expected.output == "true" || step.expected.output.is_empty() {
                     String::new()
                 } else {
                     // Replace escaped newlines with actual newlines

@@ -513,6 +513,105 @@ impl TestVerifier {
         self.parse_log_content(&content, log_path)
     }
 
+    /// Parse a test execution log file with a specified test case ID
+    /// This is useful when the log file doesn't follow the naming convention
+    pub fn parse_log_file_with_test_case_id<P: AsRef<Path>>(
+        &self,
+        log_path: P,
+        test_case_id: &str,
+    ) -> Result<Vec<TestExecutionLog>> {
+        let log_path = log_path.as_ref();
+        let content =
+            fs::read_to_string(log_path).context("Failed to read test execution log file")?;
+
+        self.parse_log_content_with_test_case_id(&content, log_path, test_case_id)
+    }
+
+    /// Parse test execution log content with a specified test case ID
+    pub fn parse_log_content_with_test_case_id(
+        &self,
+        content: &str,
+        log_path: &Path,
+        test_case_id: &str,
+    ) -> Result<Vec<TestExecutionLog>> {
+        let mut logs = Vec::new();
+
+        // Try to parse as JSON first
+        let trimmed_content = content.trim();
+        if trimmed_content.starts_with('[') {
+            // Attempt to parse as JSON array of TestStepExecutionEntry
+            match self.parse_json_log_content_with_test_case_id(content, log_path, test_case_id) {
+                Ok(json_logs) => return Ok(json_logs),
+                Err(e) => {
+                    log::debug!(
+                        "Failed to parse as JSON, falling back to text format: {}",
+                        e
+                    );
+                }
+            }
+        }
+
+        // Fall back to text format parsing with the provided test_case_id
+        let log_regex = Regex::new(
+            r"(?x)
+            (?:\[([^\]]+)\]\s+)?  # Optional timestamp
+            TestCase:\s+([^,]+),\s+
+            Sequence:\s+(\d+),\s+
+            Step:\s+(\d+),\s+
+            Success:\s+(true|false|null|none|-),\s+
+            Result:\s+([^,]+),\s+
+            Output:\s+(.+)
+            ",
+        )
+        .context("Failed to compile log regex")?;
+
+        for line in content.lines() {
+            if let Some(caps) = log_regex.captures(line) {
+                let timestamp = caps.get(1).and_then(|m| {
+                    DateTime::parse_from_rfc3339(m.as_str())
+                        .ok()
+                        .map(|dt| dt.with_timezone(&Utc))
+                });
+
+                let sequence_id = caps
+                    .get(3)
+                    .unwrap()
+                    .as_str()
+                    .parse::<i64>()
+                    .context("Failed to parse sequence ID")?;
+                let step_number = caps
+                    .get(4)
+                    .unwrap()
+                    .as_str()
+                    .parse::<i64>()
+                    .context("Failed to parse step number")?;
+
+                let success_str = caps.get(5).unwrap().as_str().to_lowercase();
+                let success = match success_str.as_str() {
+                    "true" => Some(true),
+                    "false" => Some(false),
+                    _ => None,
+                };
+
+                let actual_result = caps.get(6).unwrap().as_str().trim().to_string();
+                let actual_output = caps.get(7).unwrap().as_str().trim().to_string();
+
+                logs.push(TestExecutionLog {
+                    test_case_id: test_case_id.to_string(),
+                    sequence_id,
+                    step_number,
+                    success,
+                    actual_result,
+                    actual_output,
+                    timestamp,
+                    log_file_path: log_path.to_path_buf(),
+                });
+            }
+        }
+
+        Ok(logs)
+    }
+
     /// Parse test execution log content
     pub fn parse_log_content(
         &self,
@@ -595,6 +694,48 @@ impl TestVerifier {
                     log_file_path: log_path.to_path_buf(),
                 });
             }
+        }
+
+        Ok(logs)
+    }
+
+    /// Parse JSON-formatted execution log content with a specified test case ID
+    fn parse_json_log_content_with_test_case_id(
+        &self,
+        content: &str,
+        log_path: &Path,
+        test_case_id: &str,
+    ) -> Result<Vec<TestExecutionLog>> {
+        use crate::models::TestStepExecutionEntry;
+
+        let entries: Vec<TestStepExecutionEntry> =
+            serde_json::from_str(content).context("Failed to parse JSON execution log")?;
+
+        let mut logs = Vec::new();
+        for entry in entries {
+            // Derive success from exit_code (0 = success, non-zero = failure)
+            let success = Some(entry.exit_code == 0);
+
+            // Derive actual_result from exit_code
+            let actual_result = entry.exit_code.to_string();
+
+            // Parse timestamp if present
+            let timestamp = entry.timestamp.as_ref().and_then(|ts| {
+                DateTime::parse_from_rfc3339(ts)
+                    .ok()
+                    .map(|dt| dt.with_timezone(&Utc))
+            });
+
+            logs.push(TestExecutionLog {
+                test_case_id: test_case_id.to_string(),
+                sequence_id: entry.test_sequence,
+                step_number: entry.step,
+                success,
+                actual_result,
+                actual_output: entry.output.clone(),
+                timestamp,
+                log_file_path: log_path.to_path_buf(),
+            });
         }
 
         Ok(logs)
