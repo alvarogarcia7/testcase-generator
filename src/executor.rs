@@ -2,10 +2,8 @@ use crate::models::{TestCase, TestStepExecutionEntry};
 use anyhow::{Context, Result};
 use chrono::Utc;
 use std::fs;
-use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::process::Command;
-use tempfile::NamedTempFile;
 
 pub struct TestExecutor;
 
@@ -176,35 +174,6 @@ impl TestExecutor {
                 );
 
                 execution_entries.push(entry);
-
-                // Check if step verification passes
-                let result_pass = self.evaluate_verification(
-                    &step.verification.result,
-                    exit_code,
-                    &command_output,
-                )?;
-                let output_pass = self.evaluate_verification(
-                    &step.verification.output,
-                    exit_code,
-                    &command_output,
-                )?;
-
-                if result_pass && output_pass {
-                    println!("[PASS] Step {} (Sequence {})", step.step, sequence.id);
-                } else {
-                    println!("[FAIL] Step {} (Sequence {})", step.step, sequence.id);
-                    println!("  Result verification: {}", result_pass);
-                    println!("  Output verification: {}", output_pass);
-
-                    // Write log file before failing
-                    self.write_execution_log(test_case, &execution_entries)?;
-
-                    anyhow::bail!(
-                        "Step {} (Sequence {}) failed verification",
-                        step.step,
-                        sequence.id
-                    );
-                }
                 println!();
             }
         }
@@ -213,40 +182,6 @@ impl TestExecutor {
         self.write_execution_log(test_case, &execution_entries)?;
 
         Ok(())
-    }
-
-    fn evaluate_verification(
-        &self,
-        verification_expr: &str,
-        exit_code: i32,
-        output: &str,
-    ) -> Result<bool> {
-        // Create a bash script to evaluate the verification expression
-        let mut script = String::new();
-        script.push_str("#!/bin/bash\n");
-        script.push_str(&format!("EXIT_CODE={}\n", exit_code));
-        script.push_str("COMMAND_OUTPUT=\"");
-        script.push_str(&output.replace("\"", "\\\"").replace("\n", "\\n"));
-        script.push_str("\"\n");
-        script.push_str(&format!("if {}; then\n", verification_expr));
-        script.push_str("  exit 0\n");
-        script.push_str("else\n");
-        script.push_str("  exit 1\n");
-        script.push_str("fi\n");
-
-        let temp_file =
-            NamedTempFile::new().context("Failed to create temporary file for verification")?;
-        fs::write(temp_file.path(), script).context("Failed to write verification script")?;
-
-        let mut perms = fs::metadata(temp_file.path())?.permissions();
-        perms.set_mode(0o755);
-        fs::set_permissions(temp_file.path(), perms)?;
-
-        let verification_output = Command::new(temp_file.path())
-            .output()
-            .context("Failed to execute verification script")?;
-
-        Ok(verification_output.status.success())
     }
 
     fn write_execution_log(
