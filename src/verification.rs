@@ -1,8 +1,16 @@
-use crate::models::{Expected, Step, TestCase, TestSequence};
+use crate::models::ActualResult;
+
+use crate::models::Step;
+use crate::models::TestCase;
+use crate::models::TestSequence;
 use crate::storage::TestCaseStorage;
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
-use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event};
+use quick_xml::events::BytesDecl;
+use quick_xml::events::BytesEnd;
+use quick_xml::events::BytesStart;
+use quick_xml::events::BytesText;
+use quick_xml::events::Event;
 use quick_xml::Writer;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -10,6 +18,357 @@ use std::collections::HashMap;
 use std::fs;
 use std::io::Cursor;
 use std::path::{Path, PathBuf};
+
+use crate::models::Expected;
+use crate::storage;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum MatchStrategy {
+    Exact,
+    Regex,
+    Contains,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct StepVerificationResultY {
+    pub step_number: i64,
+    pub passed: bool,
+    pub result_match: bool,
+    pub output_match: bool,
+    pub success_match: bool,
+    pub diff: VerificationDiff,
+}
+
+/// Result of verifying a single step
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum StepVerificationResultX {
+    /// Step passed verification
+    Pass { step: i64, description: String },
+    /// Step failed verification
+    Fail {
+        step: i64,
+        description: String,
+        expected: Expected,
+        actual_result: String,
+        actual_output: String,
+        reason: String,
+    },
+    /// Step was not found in execution log
+    NotExecuted { step: i64, description: String },
+}
+
+impl StepVerificationResultX {
+    pub fn is_pass(&self) -> bool {
+        matches!(self, StepVerificationResultX::Pass { .. })
+    }
+
+    pub fn step_number(&self) -> i64 {
+        match self {
+            StepVerificationResultX::Pass { step, .. } => *step,
+            StepVerificationResultX::Fail { step, .. } => *step,
+            StepVerificationResultX::NotExecuted { step, .. } => *step,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct VerificationDiff {
+    pub result_diff: Option<DiffDetail>,
+    pub output_diff: Option<DiffDetail>,
+    pub success_diff: Option<DiffDetail>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DiffDetail {
+    pub expected: String,
+    pub actual: String,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ExecutionVerificationResult {
+    pub test_case_id: String,
+    pub sequence_id: i64,
+    pub overall_passed: bool,
+    pub step_results: Vec<StepVerificationResultX>,
+    pub missing_steps: Vec<i64>,
+    pub unexpected_steps: Vec<i64>,
+}
+
+impl Default for TestVerifier {
+    fn default() -> Self {
+        Self::with_exact_matching()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::models::Verification;
+    use super::*;
+
+    fn create_test_step(step_num: i64, result: &str, output: &str, success: Option<bool>) -> Step {
+        Step {
+            verification: Verification,
+            step: step_num,
+            manual: None,
+            description: "Test step".to_string(),
+            command: "test command".to_string(),
+            expected: Expected {
+                success,
+                result: result.to_string(),
+                output: output.to_string(),
+            },
+        }
+    }
+
+    fn create_actual_result(result: &str, output: &str, success: bool) -> ActualResult {
+        ActualResult {
+            result: result.to_string(),
+            output: output.to_string(),
+            success,
+        }
+    }
+
+    #[test]
+    fn test_exact_match_success() {
+        let verifier = TestVerifier::with_exact_matching();
+        let step = create_test_step(1, "SW=0x9000", "Success", Some(true));
+        let actual = create_actual_result("SW=0x9000", "Success", true);
+
+        let result = verifier.verify_step(&step, &actual);
+
+        assert!(result.passed);
+        assert!(result.result_match);
+        assert!(result.output_match);
+        assert!(result.success_match);
+        assert!(result.diff.result_diff.is_none());
+        assert!(result.diff.output_diff.is_none());
+        assert!(result.diff.success_diff.is_none());
+    }
+
+    #[test]
+    fn test_exact_match_failure() {
+        let verifier = TestVerifier::with_exact_matching();
+        let step = create_test_step(1, "SW=0x9000", "Success", Some(true));
+        let actual = create_actual_result("SW=0x6A82", "Failed", false);
+
+        let result = verifier.verify_step(&step, &actual);
+
+        assert!(!result.passed);
+        assert!(!result.result_match);
+        assert!(!result.output_match);
+        assert!(!result.success_match);
+        assert!(result.diff.result_diff.is_some());
+        assert!(result.diff.output_diff.is_some());
+        assert!(result.diff.success_diff.is_some());
+    }
+
+    #[test]
+    fn test_contains_strategy() {
+        let verifier = TestVerifier::new(MatchStrategy::Contains, MatchStrategy::Contains);
+        let step = create_test_step(1, "9000", "Success", None);
+        let actual = create_actual_result("SW=0x9000", "Operation Success", true);
+
+        let result = verifier.verify_step(&step, &actual);
+
+        assert!(result.passed);
+        assert!(result.result_match);
+        assert!(result.output_match);
+        assert!(result.success_match);
+    }
+
+    #[test]
+    fn test_regex_strategy() {
+        let verifier = TestVerifier::new(MatchStrategy::Regex, MatchStrategy::Regex);
+        let step = create_test_step(1, r"SW=0x[0-9A-Fa-f]{4}", r"Suc\w+", None);
+        let actual = create_actual_result("SW=0x9000", "Success", true);
+
+        let result = verifier.verify_step(&step, &actual);
+
+        assert!(result.passed);
+        assert!(result.result_match);
+        assert!(result.output_match);
+    }
+
+    #[test]
+    fn test_regex_strategy_invalid_regex() {
+        let verifier = TestVerifier::new(MatchStrategy::Regex, MatchStrategy::Exact);
+        let step = create_test_step(1, "[invalid(regex", "Success", None);
+        let actual = create_actual_result("[invalid(regex", "Success", true);
+
+        let result = verifier.verify_step(&step, &actual);
+
+        assert!(!result.result_match);
+    }
+
+    #[test]
+    fn test_success_flag_none_always_matches() {
+        let verifier = TestVerifier::with_exact_matching();
+        let step = create_test_step(1, "result", "output", None);
+        let actual_true = create_actual_result("result", "output", true);
+        let actual_false = create_actual_result("result", "output", false);
+
+        let result_true = verifier.verify_step(&step, &actual_true);
+        let result_false = verifier.verify_step(&step, &actual_false);
+
+        assert!(result_true.success_match);
+        assert!(result_false.success_match);
+        assert!(result_true.passed);
+        assert!(result_false.passed);
+    }
+
+    #[test]
+    fn test_partial_match() {
+        let verifier = TestVerifier::with_exact_matching();
+        let step = create_test_step(1, "SW=0x9000", "Wrong", Some(true));
+        let actual = create_actual_result("SW=0x9000", "Success", true);
+
+        let result = verifier.verify_step(&step, &actual);
+
+        assert!(!result.passed);
+        assert!(result.result_match);
+        assert!(!result.output_match);
+        assert!(result.success_match);
+        assert!(result.diff.result_diff.is_none());
+        assert!(result.diff.output_diff.is_some());
+        assert!(result.diff.success_diff.is_none());
+    }
+
+    #[test]
+    fn test_diff_messages() {
+        let verifier = TestVerifier::with_exact_matching();
+        let step = create_test_step(1, "expected_result", "expected_output", Some(true));
+        let actual = create_actual_result("actual_result", "actual_output", false);
+
+        let result = verifier.verify_step(&step, &actual);
+
+        let result_diff = result.diff.result_diff.as_ref().unwrap();
+        assert_eq!(result_diff.expected, "expected_result");
+        assert_eq!(result_diff.actual, "actual_result");
+        assert!(result_diff.message.contains("Result mismatch"));
+
+        let output_diff = result.diff.output_diff.as_ref().unwrap();
+        assert_eq!(output_diff.expected, "expected_output");
+        assert_eq!(output_diff.actual, "actual_output");
+        assert!(output_diff.message.contains("Output mismatch"));
+
+        let success_diff = result.diff.success_diff.as_ref().unwrap();
+        assert_eq!(success_diff.expected, "true");
+        assert_eq!(success_diff.actual, "false");
+        assert!(success_diff.message.contains("Success flag mismatch"));
+    }
+
+    #[test]
+    fn test_verify_execution_log_with_missing_sequence() {
+        let verifier = TestVerifier::with_exact_matching();
+        let test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test case".to_string(),
+        );
+
+        let execution_log = TestExecutionLog {
+            test_case_id: "TC001".to_string(),
+            sequence_id: 999,
+            timestamp: "2024-01-01T00:00:00Z".to_string(),
+            actual_output: "output".to_string(),
+            actual_success: true,
+            duration_ms: 1000,
+            error_message: None,
+        };
+
+        let result = verifier.verify_execution_log(&test_case, &execution_log);
+
+        assert!(!result.overall_passed);
+        assert!(result.step_results.is_empty());
+        assert_eq!(result.test_case_id, "TC001");
+        assert_eq!(result.sequence_id, 999);
+    }
+
+    #[test]
+    fn test_verify_execution_log_all_steps_pass() {
+        let verifier = TestVerifier::new(MatchStrategy::Contains, MatchStrategy::Contains);
+
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test case".to_string(),
+        );
+
+        let mut sequence = crate::models::TestSequence::new(
+            1,
+            "Sequence 1".to_string(),
+            "Description".to_string(),
+        );
+
+        let step1 = create_test_step(1, "Success", "Output", Some(true));
+        let step2 = create_test_step(2, "Complete", "Done", Some(true));
+        sequence.steps.push(step1);
+        sequence.steps.push(step2);
+        test_case.test_sequences.push(sequence);
+
+        let execution_log = TestExecutionLog {
+            test_case_id: "TC001".to_string(),
+            sequence_id: 1,
+            timestamp: "2024-01-01T00:00:00Z".to_string(),
+            actual_output: "Success Output Complete Done".to_string(),
+            actual_success: true,
+            duration_ms: 1000,
+            error_message: None,
+        };
+
+        let result = verifier.verify_execution_log(&test_case, &execution_log);
+
+        assert!(result.overall_passed);
+        assert_eq!(result.step_results.len(), 2);
+        assert!(result.step_results.iter().all(|r| r.passed));
+    }
+
+    #[test]
+    fn test_verify_execution_log_some_steps_fail() {
+        let verifier = TestVerifier::with_exact_matching();
+
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test case".to_string(),
+        );
+
+        let mut sequence = crate::models::TestSequence::new(
+            1,
+            "Sequence 1".to_string(),
+            "Description".to_string(),
+        );
+
+        let step1 = create_test_step(1, "Expected", "Output", Some(true));
+        let step2 = create_test_step(2, "Another", "Result", Some(true));
+        sequence.steps.push(step1);
+        sequence.steps.push(step2);
+        test_case.test_sequences.push(sequence);
+
+        let execution_log = TestExecutionLog {
+            test_case_id: "TC001".to_string(),
+            sequence_id: 1,
+            timestamp: "2024-01-01T00:00:00Z".to_string(),
+            actual_output: "Wrong output".to_string(),
+            actual_success: true,
+            duration_ms: 1000,
+            error_message: None,
+        };
+
+        let result = verifier.verify_execution_log(&test_case, &execution_log);
+
+        assert!(!result.overall_passed);
+        assert_eq!(result.step_results.len(), 2);
+        assert!(result.step_results.iter().all(|r| !r.passed));
+    }
+}
 
 /// Represents a parsed test execution log entry
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -37,38 +396,6 @@ pub struct TestExecutionLog {
 
     /// Path to the log file
     pub log_file_path: PathBuf,
-}
-
-/// Result of verifying a single step
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub enum StepVerificationResult {
-    /// Step passed verification
-    Pass { step: i64, description: String },
-    /// Step failed verification
-    Fail {
-        step: i64,
-        description: String,
-        expected: Expected,
-        actual_result: String,
-        actual_output: String,
-        reason: String,
-    },
-    /// Step was not found in execution log
-    NotExecuted { step: i64, description: String },
-}
-
-impl StepVerificationResult {
-    pub fn is_pass(&self) -> bool {
-        matches!(self, StepVerificationResult::Pass { .. })
-    }
-
-    pub fn step_number(&self) -> i64 {
-        match self {
-            StepVerificationResult::Pass { step, .. } => *step,
-            StepVerificationResult::Fail { step, .. } => *step,
-            StepVerificationResult::NotExecuted { step, .. } => *step,
-        }
-    }
 }
 
 /// Result of verifying a test case
@@ -401,7 +728,7 @@ impl JUnitTestSuite {
                                 skipped: false,
                             }
                         }
-                        StepVerificationResult::NotExecuted { description, .. } => {
+                        StepVerificationResultX::NotExecuted { description, .. } => {
                             junit_suite.skipped += 1;
                             JUnitTestCase {
                                 name: format!("{} - {}", name, description),
@@ -425,13 +752,76 @@ impl JUnitTestSuite {
 /// Test verifier for comparing execution logs against test cases
 pub struct TestVerifier {
     storage: TestCaseStorage,
+    result_strategy: MatchStrategy,
+    output_strategy: MatchStrategy,
 }
 
 impl TestVerifier {
-    /// Create a new test verifier with the given storage
-    pub fn new(storage: TestCaseStorage) -> Self {
-        Self { storage }
+    pub fn new(result_strategy: MatchStrategy, output_strategy: MatchStrategy, storage: TestCaseStorage) -> Self {
+        Self {
+            storage,
+            result_strategy,
+            output_strategy,
+        }
     }
+
+    /// Create a new test verifier with the given storage
+    pub fn with_exact_matching() -> Self {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
+        Self::new(MatchStrategy::Exact, MatchStrategy::Exact, storage)
+    }
+
+
+
+    pub fn verify_execution_log(
+        &self,
+        test_case: &TestCase,
+        execution_log: &TestExecutionLog,
+    ) -> ExecutionVerificationResult {
+        let sequence = test_case
+            .test_sequences
+            .iter()
+            .find(|seq| seq.id == execution_log.sequence_id);
+
+        if sequence.is_none() {
+            return ExecutionVerificationResult {
+                test_case_id: test_case.id.clone(),
+                sequence_id: execution_log.sequence_id,
+                overall_passed: false,
+                step_results: vec![],
+                missing_steps: vec![],
+                unexpected_steps: vec![],
+            };
+        }
+
+        let sequence = sequence.unwrap();
+
+        let mut step_results = Vec::new();
+        for step in &sequence.steps {
+            let actual_result = ActualResult {
+                result: execution_log.actual_output.clone(),
+                output: execution_log.actual_output.clone(),
+                success: execution_log.actual_success,
+            };
+            let verification_result = self.verify_step(step, &actual_result);
+            step_results.push(verification_result);
+        }
+
+        let overall_passed = step_results.iter().all(|r| r.passed);
+
+        ExecutionVerificationResult {
+            test_case_id: test_case.id.clone(),
+            sequence_id: execution_log.sequence_id,
+            overall_passed,
+            step_results,
+            missing_steps: vec![],
+            unexpected_steps: vec![],
+        }
+    }
+
+
+
 
     /// Get a reference to the test case storage
     pub fn storage(&self) -> &TestCaseStorage {
@@ -597,8 +987,7 @@ impl TestVerifier {
         results
     }
 
-    /// Verify a single step against its execution log
-    fn verify_step(&self, step: &Step, log: &TestExecutionLog) -> StepVerificationResult {
+    pub fn verify_step(&self, step: &Step, actual: &ActualResult, log: &TestExecutionLog) -> StepVerificationResultY {
         let expected = &step.expected;
 
         // Check success field if it's defined
@@ -654,32 +1043,116 @@ impl TestVerifier {
             step: step.step,
             description: step.description.clone(),
         }
+
+        ////
+        let result_match =
+            self.matches(&step.expected.result, &actual.result, self.result_strategy);
+        let output_match =
+            self.matches(&step.expected.output, &actual.output, self.output_strategy);
+
+        let success_match = match step.expected.success {
+            Some(expected_success) => expected_success == actual.success,
+            None => true,
+        };
+
+        let passed = result_match && output_match && success_match;
+
+        let diff = VerificationDiff {
+            result_diff: if !result_match {
+                Some(DiffDetail {
+                    expected: step.expected.result.clone(),
+                    actual: actual.result.clone(),
+                    message: format!(
+                        "Result mismatch (strategy: {:?}): expected '{}' but got '{}'",
+                        self.result_strategy, step.expected.result, actual.result
+                    ),
+                })
+            } else {
+                None
+            },
+            output_diff: if !output_match {
+                Some(DiffDetail {
+                    expected: step.expected.output.clone(),
+                    actual: actual.output.clone(),
+                    message: format!(
+                        "Output mismatch (strategy: {:?}): expected '{}' but got '{}'",
+                        self.output_strategy, step.expected.output, actual.output
+                    ),
+                })
+            } else {
+                None
+            },
+            success_diff: if !success_match {
+                Some(DiffDetail {
+                    expected: step
+                        .expected
+                        .success
+                        .map(|s| s.to_string())
+                        .unwrap_or_else(|| "None".to_string()),
+                    actual: actual.success.to_string(),
+                    message: format!(
+                        "Success flag mismatch: expected {:?} but got {}",
+                        step.expected.success, actual.success
+                    ),
+                })
+            } else {
+                None
+            },
+        };
+
+        StepVerificationResultY {
+            step_number: step.step,
+            passed,
+            result_match,
+            output_match,
+            success_match,
+            diff,
+        }
     }
 
-    /// Check if actual value matches expected (supports wildcards and regex)
-    fn matches(&self, expected: &str, actual: &str) -> bool {
-        // Exact match
-        if expected == actual {
-            return true;
-        }
+    /// Verify a single step against its execution log
+    fn verify_step(&self, step: &Step, log: &TestExecutionLog) -> StepVerificationResult {
 
-        // Wildcard match (simple * wildcard)
-        if expected.contains('*') {
-            let pattern = expected.replace('*', ".*");
-            if let Ok(regex) = Regex::new(&format!("^{}$", pattern)) {
-                return regex.is_match(actual);
+    }
+
+    // /// Check if actual value matches expected (supports wildcards and regex)
+    // fn matches(&self, expected: &str, actual: &str) -> bool {
+    //     // Exact match
+    //     if expected == actual {
+    //         return true;
+    //     }
+    //
+    //     // Wildcard match (simple * wildcard)
+    //     if expected.contains('*') {
+    //         let pattern = expected.replace('*', ".*");
+    //         if let Ok(regex) = Regex::new(&format!("^{}$", pattern)) {
+    //             return regex.is_match(actual);
+    //         }
+    //     }
+    //
+    //     // If expected is wrapped in /.../, treat as regex
+    //     if expected.starts_with('/') && expected.ends_with('/') && expected.len() > 2 {
+    //         let pattern = &expected[1..expected.len() - 1];
+    //         if let Ok(regex) = Regex::new(pattern) {
+    //             return regex.is_match(actual);
+    //         }
+    //     }
+    //
+    //     false
+    // }
+
+    fn matches(&self, expected: &str, actual: &str, strategy: MatchStrategy) -> bool {
+        match strategy {
+            MatchStrategy::Exact => expected == actual,
+            MatchStrategy::Contains => actual.contains(expected),
+            MatchStrategy::Regex => {
+                if let Ok(regex) = Regex::new(expected) {
+                    regex.is_match(actual)
+                } else {
+                    false
+                }
             }
         }
-
-        // If expected is wrapped in /.../, treat as regex
-        if expected.starts_with('/') && expected.ends_with('/') && expected.len() > 2 {
-            let pattern = &expected[1..expected.len() - 1];
-            if let Ok(regex) = Regex::new(pattern) {
-                return regex.is_match(actual);
-            }
-        }
-
-        false
     }
 
     /// Process multiple log files and verify against test cases
@@ -733,15 +1206,16 @@ impl TestVerifier {
 }
 
 #[cfg(test)]
-mod tests {
+mod tests2 {
     use super::*;
     use tempfile::TempDir;
+    use crate::MatchStrategy::{Exact, Regex};
 
     #[test]
     fn test_parse_log_content() {
         let temp_dir = TempDir::new().unwrap();
         let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
-        let verifier = TestVerifier::new(storage);
+        let verifier = TestVerifier::new(Exact, Exact, storage);
 
         let log_content = r#"
 [2024-01-15T10:30:00Z] TestCase: TC001, Sequence: 1, Step: 1, Success: true, Result: SW=0x9000, Output: Success
@@ -762,7 +1236,7 @@ mod tests {
     fn test_verify_step_pass() {
         let temp_dir = TempDir::new().unwrap();
         let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
-        let verifier = TestVerifier::new(storage);
+        let verifier = TestVerifier::new(Exact, Exact, storage);
 
         let step = Step::new(
             1,
@@ -791,7 +1265,7 @@ mod tests {
     fn test_verify_step_fail() {
         let temp_dir = TempDir::new().unwrap();
         let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
-        let verifier = TestVerifier::new(storage);
+        let verifier = TestVerifier::new(Exact, Exact, storage);
 
         let step = Step::new(
             1,
@@ -820,23 +1294,23 @@ mod tests {
     fn test_wildcard_matching() {
         let temp_dir = TempDir::new().unwrap();
         let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
-        let verifier = TestVerifier::new(storage);
+        let verifier = TestVerifier::new(Exact, Exact, storage);
 
-        assert!(verifier.matches("SW=0x9000", "SW=0x9000"));
-        assert!(verifier.matches("SW=*", "SW=0x9000"));
-        assert!(verifier.matches("*9000", "SW=0x9000"));
-        assert!(!verifier.matches("SW=0x9001", "SW=0x9000"));
+        assert!(verifier.matches("SW=0x9000", "SW=0x9000", Exact));
+        assert!(verifier.matches("SW=*", "SW=0x9000", Exact));
+        assert!(verifier.matches("*9000", "SW=0x9000", Exact));
+        assert!(!verifier.matches("SW=0x9001", "SW=0x9000", Exact));
     }
 
     #[test]
     fn test_regex_matching() {
         let temp_dir = TempDir::new().unwrap();
         let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
-        let verifier = TestVerifier::new(storage);
+        let verifier = TestVerifier::new(Exact, Exact, storage);
 
-        assert!(verifier.matches("/SW=0x[0-9A-F]{4}/", "SW=0x9000"));
-        assert!(verifier.matches("/^Success$/", "Success"));
-        assert!(!verifier.matches("/^Failed$/", "Success"));
+        assert!(verifier.matches("/SW=0x[0-9A-F]{4}/", "SW=0x9000", Regex));
+        assert!(verifier.matches("/^Success$/", "Success", Regex));
+        assert!(!verifier.matches("/^Failed$/", "Success", Regex));
     }
 
     #[test]

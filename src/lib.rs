@@ -9,6 +9,7 @@ pub mod executor;
 pub mod fuzzy;
 pub mod git;
 pub mod junit_xml_validator;
+pub mod log_cleaner;
 pub mod models;
 pub mod oracle;
 pub mod orchestrator;
@@ -35,10 +36,20 @@ pub use executor::TestExecutor;
 pub use fuzzy::TestCaseFuzzyFinder;
 pub use git::GitManager;
 pub use junit_xml_validator::validate_junit_xml;
-pub use models::{
-    Expected, FileValidationStatus, Step, TestCase, TestCaseFileInfo, TestRun, TestRunStatus,
-    TestSequence, TestSuite, ValidationErrorDetail,
-};
+pub use log_cleaner::LogCleaner;
+pub use models::ActualResult;
+pub use models::Expected;
+pub use models::FileValidationStatus;
+pub use models::Step;
+pub use models::StepExecutionResult;
+pub use models::TestCase;
+pub use models::TestCaseFileInfo;
+pub use models::TestExecutionLog;
+pub use models::TestRun;
+pub use models::TestRunStatus;
+pub use models::TestSequence;
+pub use models::TestSuite;
+pub use models::ValidationErrorDetail;
 pub use oracle::{AnswerVariant, HardcodedOracle, MenuCliOracle, Oracle, TtyCliOracle};
 pub use parser::{SearchableCollections, TestCaseParser};
 pub use prompts::{Prompts, TestCaseMetadata};
@@ -48,10 +59,9 @@ pub use storage::TestCaseStorage;
 pub use test_run_storage::TestRunStorage;
 pub use ui::{print_title, TitleStyle};
 pub use validation::SchemaValidator;
-pub use verification::{
-    BatchVerificationReport, JUnitTestSuite, StepVerificationResult, TestCaseVerificationResult,
-    TestExecutionLog, TestVerifier,
-};
-pub use verification_templates::{
-    TemplateCategory, VerificationTemplate, VerificationTemplateLibrary,
-};
+pub use verification::BatchVerificationReport;
+pub use verification::JUnitTestSuite;
+pub use verification::StepVerificationResult;
+pub use verification::TestCaseVerificationResult;
+pub use verification::TestExecutionLog;
+pub use verification::TestVerifier;

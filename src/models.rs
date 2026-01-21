@@ -456,6 +456,216 @@ pub struct TestRunMetadata {
     pub duration: u64,
 }
 
+/// Actual result of a test step execution
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ActualResult {
+    /// Actual result value
+    pub result: String,
+
+    /// Actual output
+    pub output: String,
+
+    /// Whether the step succeeded
+    pub success: bool,
+}
+
+/// Result of executing a single test step
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct StepExecutionResult {
+    /// Step number
+    pub step_number: i64,
+
+    /// Timestamp when the step was executed
+    pub timestamp: String,
+
+    /// Actual result of the step
+    pub actual_result: ActualResult,
+
+    /// Duration of the step execution in milliseconds
+    pub duration_ms: u64,
+
+    /// Optional error message if the step failed
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error_message: Option<String>,
+}
+
+/// Execution log for a test case
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct TestExecutionLog {
+    /// Test case identifier
+    pub test_case_id: String,
+
+    /// Sequence identifier
+    pub sequence_id: i64,
+
+    /// Timestamp when the execution started
+    pub timestamp: String,
+
+    /// Actual output of the execution
+    pub actual_output: String,
+
+    /// Whether the overall execution was successful
+    pub actual_success: bool,
+
+    /// Total duration of the execution in milliseconds
+    pub duration_ms: u64,
+
+    /// Optional error message if the execution failed
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error_message: Option<String>,
+}
+
+/// Field-level difference between expected and actual values
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct FieldDiff {
+    /// Name of the field
+    pub field_name: String,
+
+    /// Expected value
+    pub expected: String,
+
+    /// Actual value
+    pub actual: String,
+
+    /// Whether the field matched
+    pub matched: bool,
+}
+
+impl fmt::Display for FieldDiff {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let status = if self.matched {
+            "\x1b[32m✓\x1b[0m" // Green checkmark
+        } else {
+            "\x1b[31m✗\x1b[0m" // Red X
+        };
+        write!(
+            f,
+            "    {} {}: expected '{}', actual '{}'",
+            status, self.field_name, self.expected, self.actual
+        )
+    }
+}
+
+/// Overall status of verification
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum VerificationStatus {
+    /// All steps passed
+    Passed,
+
+    /// Some steps failed
+    Failed,
+
+    /// Some steps were skipped
+    PartiallySkipped,
+
+    /// All steps were skipped
+    AllSkipped,
+}
+
+impl fmt::Display for VerificationStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            VerificationStatus::Passed => write!(f, "\x1b[32mPASSED\x1b[0m"),
+            VerificationStatus::Failed => write!(f, "\x1b[31mFAILED\x1b[0m"),
+            VerificationStatus::PartiallySkipped => write!(f, "\x1b[33mPARTIALLY SKIPPED\x1b[0m"),
+            VerificationStatus::AllSkipped => write!(f, "\x1b[33mALL SKIPPED\x1b[0m"),
+        }
+    }
+}
+
+/// Result of verifying a single step
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct StepVerificationResult {
+    /// Step number
+    pub step_number: i64,
+
+    /// Whether the step passed verification
+    pub passed: bool,
+
+    /// Whether the step was skipped
+    pub skipped: bool,
+
+    /// Field-level differences between expected and actual
+    pub field_diffs: Vec<FieldDiff>,
+
+    /// Optional error or failure message
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
+}
+
+impl fmt::Display for StepVerificationResult {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let status = if self.skipped {
+            "\x1b[33mSKIPPED\x1b[0m"
+        } else if self.passed {
+            "\x1b[32mPASS\x1b[0m"
+        } else {
+            "\x1b[31mFAIL\x1b[0m"
+        };
+
+        writeln!(f, "  Step {}: {}", self.step_number, status)?;
+
+        if let Some(ref msg) = self.message {
+            writeln!(f, "    Message: {}", msg)?;
+        }
+
+        if !self.field_diffs.is_empty() {
+            writeln!(f, "    Field Differences:")?;
+            for diff in &self.field_diffs {
+                writeln!(f, "{}", diff)?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
+/// Complete verification report for a test execution
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct VerificationReport {
+    /// Total number of steps
+    pub total_steps: usize,
+
+    /// Number of steps that passed
+    pub passed_steps: usize,
+
+    /// Number of steps that failed
+    pub failed_steps: usize,
+
+    /// Number of steps that were skipped
+    pub skipped_steps: usize,
+
+    /// Detailed results for each step
+    pub step_results: Vec<StepVerificationResult>,
+
+    /// Overall verification status
+    pub overall_status: VerificationStatus,
+}
+
+impl fmt::Display for VerificationReport {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "Verification Report")?;
+        writeln!(f, "===================")?;
+        writeln!(f, "Overall Status: {}", self.overall_status)?;
+        writeln!(f)?;
+        writeln!(
+            f,
+            "Summary: {} total, {} passed, {} failed, {} skipped",
+            self.total_steps, self.passed_steps, self.failed_steps, self.skipped_steps
+        )?;
+        writeln!(f)?;
+
+        if !self.step_results.is_empty() {
+            writeln!(f, "Step Results:")?;
+            for result in &self.step_results {
+                write!(f, "{}", result)?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

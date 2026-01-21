@@ -35,6 +35,10 @@ run-trm: build
 	./target/debug/trm
 .PHONY: run-trm
 
+run-test-verify: build
+	./target/debug/test-verify
+.PHONY: run-test-verify
+
 test-e2e-failing: build
 	./tests/integration/run_e2e_test.sh
 .PHONY: test-e2e-failing
@@ -44,6 +48,7 @@ test-e2e-failing-all: build
 .PHONY: test-e2e-failing-all
 
 test-e2e: test-e2e-validate-yaml #test-e2e-executor
+	${MAKE} test-verify-sample
 	${MAKE} example_export-demo
 .PHONY: test-e2e
 
@@ -58,6 +63,10 @@ test-e2e-validate-yaml: build
 	cargo run --bin validate-yaml tests/sample/gsma_4.4.2.2_TC.yml data/schema.json >/dev/null 2>&1
 	! cargo run --bin validate-yaml tests/sample/data.yml data/schema.json >/dev/null 2>&1
 .PHONY: test-e2e-validate-yaml
+
+test-verify-sample: build
+	./tests/integration/test_verify_e2e.sh
+.PHONY: test-verify-sample
 
 validate-all-testcases: build
 	SCHEMA_FILE=data/schema.json ./scripts/validate-files.sh --pattern '\.ya?ml$$' --validator ./scripts/validate-yaml-wrapper.sh
