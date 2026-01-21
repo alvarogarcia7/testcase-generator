@@ -206,7 +206,10 @@ mod tests {
         let storage = TestRunStorage::new(temp_dir.path()).unwrap();
 
         let test_run1 = create_test_run("TC001", 1.000);
-        let test_run2 = create_test_run("TC001", 2.000);
+        let mut test_run2 = create_test_run("TC001", 2.000);
+        
+        // Ensure unique timestamps to avoid file name collisions
+        test_run2.timestamp = test_run1.timestamp + chrono::Duration::seconds(1);
 
         storage.save_test_run(&test_run1).unwrap();
         storage.save_test_run(&test_run2).unwrap();
@@ -232,9 +235,13 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let storage = TestRunStorage::new(temp_dir.path()).unwrap();
 
-        let test_run1 = create_test_run("TC001", 1.000);
-        let test_run2 = create_test_run("TC002", 2.000);
-        let test_run3 = create_test_run("TC001", 3.000);
+        let mut test_run1 = create_test_run("TC001", 1.000);
+        let mut test_run2 = create_test_run("TC002", 2.000);
+        let mut test_run3 = create_test_run("TC001", 3.000);
+        
+        // Ensure unique timestamps to avoid file name collisions
+        test_run2.timestamp = test_run1.timestamp + chrono::Duration::seconds(1);
+        test_run3.timestamp = test_run1.timestamp + chrono::Duration::seconds(2);
 
         storage.save_test_run(&test_run1).unwrap();
         storage.save_test_run(&test_run2).unwrap();

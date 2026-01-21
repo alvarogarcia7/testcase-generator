@@ -1006,6 +1006,220 @@ eUICC:
 
         Ok(output)
     }
+
+    /// Prompt for verification expressions with template suggestions
+    pub fn prompt_verification_with_templates(
+        oracle: &Arc<dyn Oracle>,
+    ) -> Result<crate::models::Verification> {
+        use crate::fuzzy::TestCaseFuzzyFinder;
+        use crate::verification_templates::VerificationTemplateLibrary;
+
+        println!("\n=== Verification Expressions ===");
+
+        let use_template = Self::confirm_with_oracle("Use a verification template?", oracle)?;
+
+        if use_template {
+            let library = VerificationTemplateLibrary::new();
+            let display_names = library.get_template_display_names();
+
+            match TestCaseFuzzyFinder::search_strings(
+                &display_names,
+                "Select verification template (ESC to skip): ",
+            )? {
+                Some(selected_display) => {
+                    if let Some(template) = library.get_template_by_display_name(&selected_display)
+                    {
+                        println!("\n✓ Selected template: {}", template.name);
+                        println!("  Description: {}", template.description);
+
+                        if !template.variables.is_empty() {
+                            println!("\n  This template uses the following variables:");
+                            for var in &template.variables {
+                                println!("    - ${{{}}}", var);
+                            }
+                            println!();
+                        }
+
+                        if !template.examples.is_empty() {
+                            println!("  Examples:");
+                            for example in &template.examples {
+                                println!("    • {}", example);
+                            }
+                            println!();
+                        }
+
+                        // Show the expressions
+                        println!("  Result expression: {}", template.result_expression);
+                        println!("  Output expression: {}", template.output_expression);
+                        println!();
+
+                        let use_as_is = Self::confirm_with_oracle("Use template as-is?", oracle)?;
+
+                        if use_as_is {
+                            return Ok(template.expand_default());
+                        } else {
+                            // Allow editing
+                            let result = Self::input_with_default_oracle(
+                                "Result verification expression",
+                                &template.result_expression,
+                                oracle,
+                            )?;
+                            let output = Self::input_with_default_oracle(
+                                "Output verification expression",
+                                &template.output_expression,
+                                oracle,
+                            )?;
+                            return Ok(crate::models::Verification { result, output });
+                        }
+                    }
+                }
+                None => {
+                    println!("No template selected, using manual entry.");
+                }
+            }
+        }
+
+        // Manual entry (fallback or if user chose not to use templates)
+        let result = Self::prompt_verification_result(oracle)?;
+        let output = Self::prompt_verification_output(oracle)?;
+
+        Ok(crate::models::Verification { result, output })
+    }
+
+    /// Prompt for verification expressions with template suggestions and category selection
+    pub fn prompt_verification_with_category_templates(
+        oracle: &Arc<dyn Oracle>,
+    ) -> Result<crate::models::Verification> {
+        use crate::fuzzy::TestCaseFuzzyFinder;
+        use crate::verification_templates::VerificationTemplateLibrary;
+
+        println!("\n=== Verification Expressions ===");
+
+        let use_template = Self::confirm_with_oracle("Use a verification template?", oracle)?;
+
+        if use_template {
+            let library = VerificationTemplateLibrary::new();
+
+            // First, let user select a category
+            let categories = library.get_categories();
+            let category_names: Vec<String> = categories
+                .iter()
+                .map(|c| c.display_name().to_string())
+                .collect();
+
+            println!("\nAvailable template categories:");
+            match TestCaseFuzzyFinder::search_strings(
+                &category_names,
+                "Select template category (ESC to see all): ",
+            )? {
+                Some(selected_category_name) => {
+                    // Find the matching category
+                    let selected_category = categories
+                        .iter()
+                        .find(|c| c.display_name() == selected_category_name)
+                        .cloned();
+
+                    if let Some(category) = selected_category {
+                        let templates = library.get_templates_by_category(&category);
+                        let template_displays: Vec<String> = templates
+                            .iter()
+                            .map(|t| format!("{} - {}", t.name, t.description))
+                            .collect();
+
+                        match TestCaseFuzzyFinder::search_strings(
+                            &template_displays,
+                            "Select verification template (ESC to skip): ",
+                        )? {
+                            Some(selected_display) => {
+                                if let Some(template) =
+                                    library.get_template_by_display_name(&selected_display)
+                                {
+                                    return Self::apply_selected_template(template, oracle);
+                                }
+                            }
+                            None => {
+                                println!("No template selected from category.");
+                            }
+                        }
+                    }
+                }
+                None => {
+                    // Show all templates
+                    let display_names = library.get_template_display_names();
+                    match TestCaseFuzzyFinder::search_strings(
+                        &display_names,
+                        "Select verification template (ESC to skip): ",
+                    )? {
+                        Some(selected_display) => {
+                            if let Some(template) =
+                                library.get_template_by_display_name(&selected_display)
+                            {
+                                return Self::apply_selected_template(template, oracle);
+                            }
+                        }
+                        None => {
+                            println!("No template selected.");
+                        }
+                    }
+                }
+            }
+        }
+
+        // Manual entry (fallback or if user chose not to use templates)
+        let result = Self::prompt_verification_result(oracle)?;
+        let output = Self::prompt_verification_output(oracle)?;
+
+        Ok(crate::models::Verification { result, output })
+    }
+
+    /// Helper to apply a selected template with optional editing
+    fn apply_selected_template(
+        template: &crate::verification_templates::VerificationTemplate,
+        oracle: &Arc<dyn Oracle>,
+    ) -> Result<crate::models::Verification> {
+        println!("\n✓ Selected template: {}", template.name);
+        println!("  Description: {}", template.description);
+
+        if !template.variables.is_empty() {
+            println!("\n  This template uses the following variables:");
+            for var in &template.variables {
+                println!("    - ${{{}}}", var);
+            }
+            println!();
+        }
+
+        if !template.examples.is_empty() {
+            println!("  Examples:");
+            for example in &template.examples {
+                println!("    • {}", example);
+            }
+            println!();
+        }
+
+        // Show the expressions
+        println!("  Result expression: {}", template.result_expression);
+        println!("  Output expression: {}", template.output_expression);
+        println!();
+
+        let use_as_is = Self::confirm_with_oracle("Use template as-is?", oracle)?;
+
+        if use_as_is {
+            Ok(template.expand_default())
+        } else {
+            // Allow editing
+            let result = Self::input_with_default_oracle(
+                "Result verification expression",
+                &template.result_expression,
+                oracle,
+            )?;
+            let output = Self::input_with_default_oracle(
+                "Output verification expression",
+                &template.output_expression,
+                oracle,
+            )?;
+            Ok(crate::models::Verification { result, output })
+        }
+    }
 }
 
 impl Default for Prompts<'_> {

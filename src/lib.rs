@@ -21,6 +21,7 @@ pub mod test_run_storage;
 pub mod ui;
 pub mod validation;
 pub mod verification;
+pub mod verification_templates;
 pub mod yaml_utils;
 
 pub use builder::TestCaseBuilder;
@@ -50,4 +51,7 @@ pub use validation::SchemaValidator;
 pub use verification::{
     BatchVerificationReport, JUnitTestSuite, StepVerificationResult, TestCaseVerificationResult,
     TestExecutionLog, TestVerifier,
+};
+pub use verification_templates::{
+    TemplateCategory, VerificationTemplate, VerificationTemplateLibrary,
 };

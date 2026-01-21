@@ -325,9 +325,12 @@ fn test_load_runs_for_specific_test_case() {
     let temp_dir = TempDir::new().unwrap();
     let storage = TestRunStorage::new(temp_dir.path()).unwrap();
 
-    let test_run1 = create_test_run("TC001", 1.000,);
-    let test_run2 = create_test_run("TC001", 2.000,);
-    let test_run3 = create_test_run("TC002", 3.000,);
+    let base_time = Utc::now();
+    
+    // Use create_test_run_with_timestamp to ensure unique timestamps
+    let test_run1 = create_test_run_with_timestamp("TC001", base_time, 1.000);
+    let test_run2 = create_test_run_with_timestamp("TC001", base_time + Duration::seconds(1), 2.000);
+    let test_run3 = create_test_run_with_timestamp("TC002", base_time + Duration::seconds(2), 3.000);
 
     storage.save_test_run(&test_run1).unwrap();
     storage.save_test_run(&test_run2).unwrap();
@@ -379,10 +382,13 @@ fn test_load_all_runs_across_multiple_test_cases() {
     let temp_dir = TempDir::new().unwrap();
     let storage = TestRunStorage::new(temp_dir.path()).unwrap();
 
-    let test_run1 = create_test_run("TC001", 1.000,);
-    let test_run2 = create_test_run("TC002", 2.000,);
-    let test_run3 = create_test_run("TC003", 3.000,);
-    let test_run4 = create_test_run("TC001", 1.500,);
+    let base_time = Utc::now();
+    
+    // Use unique timestamps to avoid file name collisions
+    let test_run1 = create_test_run_with_timestamp("TC001", base_time, 1.000);
+    let test_run2 = create_test_run_with_timestamp("TC002", base_time + Duration::seconds(1), 2.000);
+    let test_run3 = create_test_run_with_timestamp("TC003", base_time + Duration::seconds(2), 3.000);
+    let test_run4 = create_test_run_with_timestamp("TC001", base_time + Duration::seconds(3), 1.500);
 
     storage.save_test_run(&test_run1).unwrap();
     storage.save_test_run(&test_run2).unwrap();
