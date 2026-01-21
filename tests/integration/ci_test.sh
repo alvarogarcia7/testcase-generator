@@ -10,7 +10,17 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-BINARY="$PROJECT_ROOT/target/debug/testcase-manager"
+
+# Source shared library for finding binaries
+source "$PROJECT_ROOT/scripts/lib/find-binary.sh"
+
+# Find the binary
+cd "$PROJECT_ROOT"
+BINARY=$(find_binary "testcase-manager")
+if [[ -z "$BINARY" ]]; then
+    echo "::error::Binary not found in target/release or target/debug"
+    exit 1
+fi
 
 echo "::group::Integration Test Setup"
 echo "Project root: $PROJECT_ROOT"
@@ -21,11 +31,6 @@ echo "::endgroup::"
 # Verify prerequisites
 if ! command -v expect &> /dev/null; then
     echo "::error::expect command not found"
-    exit 1
-fi
-
-if [[ ! -f "$BINARY" ]]; then
-    echo "::error::Binary not found at $BINARY"
     exit 1
 fi
 

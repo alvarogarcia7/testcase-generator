@@ -9,7 +9,9 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-BINARY="$PROJECT_ROOT/target/debug/testcase-manager"
+
+# Source shared library for finding binaries
+source "$PROJECT_ROOT/scripts/lib/find-binary.sh"
 
 BUILD=false
 if [[ "$1" == "--build" ]]; then
@@ -30,12 +32,16 @@ if [[ "$BUILD" == true ]]; then
     echo ""
 fi
 
-# Check binary exists
-if [[ ! -f "$BINARY" ]]; then
-    echo "ERROR: Binary not found at $BINARY"
+# Find the binary
+cd "$PROJECT_ROOT"
+BINARY=$(find_binary "testcase-manager")
+if [[ -z "$BINARY" ]]; then
+    echo "ERROR: Binary not found in target/release or target/debug"
     echo "Run with --build flag to build first"
     exit 1
 fi
+echo "Using binary: $BINARY"
+echo ""
 
 # Check expect is installed
 if ! command -v expect &> /dev/null; then

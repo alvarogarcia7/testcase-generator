@@ -9,11 +9,12 @@ A comprehensive CLI tool for managing test cases in YAML format with interactive
 - **Test Sequence Builder**: Create test sequences with automatic numbering and validation
 - **Step Collection Loop**: Add steps to sequences with fuzzy search for existing steps
 - **Git Integration**: Commit progress after each step or sequence
-- **Schema Validation**: Validate test cases against a JSON schema
+- **Schema Validation**: Validate test cases against a JSON schema with watch mode for continuous monitoring
 - **Fuzzy Search**: Search through test cases, sequences, steps, and conditions
 - **TTY Fallback**: Automatic detection of non-TTY environments (e.g., VS Code debug console) with graceful fallback to numbered selection
 - **Recovery Mechanism**: Automatically saves progress after each operation and can resume from saved state if interrupted
 - **Test Verification**: Batch verification mode that processes test execution logs and generates reports with JUnit XML output for CI/CD integration
+- **Watch Mode**: Continuously monitor directories for file changes with automatic validation and instant feedback
 
 ## Binaries
 
@@ -100,6 +101,45 @@ Build test sequences without steps:
 ```bash
 testcase-manager build-sequences
 ```
+
+## File Validation and Watch Mode
+
+The project includes a powerful file validation system with watch mode for continuous monitoring:
+
+### Basic Validation
+
+Validate all YAML files matching a pattern:
+
+```bash
+./scripts/validate-files.sh \
+    --pattern '\.ya?ml$' \
+    --validator ./scripts/validate-yaml-wrapper.sh
+```
+
+### Watch Mode
+
+Monitor directories for file changes and automatically validate modified files:
+
+```bash
+./scripts/validate-files.sh \
+    --pattern '\.ya?ml$' \
+    --validator ./scripts/validate-yaml-wrapper.sh \
+    --watch
+```
+
+**Watch mode features:**
+- Runs initial validation on all matching files
+- Monitors directory recursively for changes (modifications, creations, deletions)
+- Instantly validates changed files
+- Displays live results with color-coded output (green for pass, red for fail)
+- Maintains persistent cache across sessions
+- Auto-cleans cache for deleted files
+
+**Requirements:**
+- Linux: `sudo apt-get install inotify-tools`
+- macOS: `brew install fswatch`
+
+See [Watch Mode Guide](scripts/WATCH_MODE_GUIDE.md) for detailed documentation.
 
 ## Step Collection Loop Features
 

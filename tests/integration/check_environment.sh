@@ -5,6 +5,12 @@
 # Usage: ./tests/integration/check_environment.sh
 #
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+# Source shared library for finding binaries
+source "$PROJECT_ROOT/scripts/lib/find-binary.sh"
+
 echo "=========================================="
 echo "Integration Test Environment Check"
 echo "=========================================="
@@ -47,10 +53,10 @@ fi
 
 # Check if binary exists
 echo -n "Checking for testcase-manager binary... "
-if [[ -f "./target/debug/testcase-manager" ]]; then
-    echo "✓ Found at ./target/debug/testcase-manager"
-elif [[ -f "./target/release/testcase-manager" ]]; then
-    echo "✓ Found at ./target/release/testcase-manager"
+cd "$PROJECT_ROOT"
+BINARY=$(find_binary "testcase-manager")
+if [[ -n "$BINARY" ]]; then
+    echo "✓ Found at $BINARY"
 else
     echo "⚠ NOT FOUND"
     echo "  Run: cargo build"
@@ -59,7 +65,6 @@ fi
 
 # Check for test scripts
 echo -n "Checking for test scripts... "
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MISSING_SCRIPTS=0
 
 for script in e2e_basic_workflow.exp e2e_complete_workflow.exp run_e2e_test.sh run_all_tests.sh; do

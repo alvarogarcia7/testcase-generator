@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 #
-# validate-files.sh - Generic file validation with caching
+# validate-files.sh - Generic file validation with caching and watch mode
 #
 # DESCRIPTION:
 #   This script provides a generic framework for validating files matching a regex pattern
 #   using a custom validator script. It implements a two-layer caching system (mtime and
-#   content hash) to avoid redundant validations and improve performance.
+#   content hash) to avoid redundant validations and improve performance. It also supports
+#   watch mode for continuous monitoring and automatic validation of file changes.
 #
 # USAGE:
 #   validate-files.sh --pattern PATTERN --validator SCRIPT [OPTIONS]
@@ -17,6 +18,7 @@
 # OPTIONAL ARGUMENTS:
 #   --cache-dir DIR        Cache directory for validation results (default: .validation-cache)
 #   --verbose              Enable verbose output for debugging
+#   --watch [DIR]          Enable watch mode to monitor directory for changes (default: testcases/)
 #   -h, --help             Show help message and exit
 #
 # VALIDATOR SCRIPT REQUIREMENTS:
@@ -45,8 +47,29 @@
 #   # Validate YAML files using a wrapper script that calls validate-yaml binary
 #   validate-files.sh --pattern '\.ya?ml$' --validator ./scripts/validate-yaml-wrapper.sh
 #
+#   # Watch mode: continuously monitor testcases/ directory for YAML file changes
+#   validate-files.sh --pattern '\.ya?ml$' --validator ./scripts/validate-yaml-wrapper.sh --watch
+#
+#   # Watch mode with custom directory and verbose output
+#   validate-files.sh --pattern '\.ya?ml$' --validator ./scripts/validate-yaml-wrapper.sh \
+#       --watch custom-dir/ --verbose
+#
+# WATCH MODE:
+#   Watch mode continuously monitors a directory for file changes and automatically triggers
+#   validation on modified files. It requires platform-specific tools:
+#   - Linux: inotify-tools (install with: sudo apt-get install inotify-tools)
+#   - macOS: fswatch (install with: brew install fswatch)
+#   
+#   Features:
+#   - Runs initial full validation on startup
+#   - Monitors directory recursively for file modifications, creations, deletions, and moves
+#   - Instantly validates changed files matching the pattern
+#   - Displays live validation results with color-coded output
+#   - Maintains persistent cache across watch sessions for fast re-validation
+#   - Cleans up cache entries for deleted files
+#
 # EXIT CODES:
-#   0 - All validations passed
+#   0 - All validations passed (normal mode only)
 #   1 - One or more validations failed or script error occurred
 #
 # INTEGRATION:
@@ -61,6 +84,8 @@ PATTERN=""
 VALIDATOR=""
 CACHE_DIR=".validation-cache"
 VERBOSE=0
+WATCH_MODE=0
+WATCH_DIR=""
 
 usage() {
     cat << EOF
@@ -73,11 +98,13 @@ OPTIONS:
     --validator SCRIPT      Path to validation script (required)
     --cache-dir DIR        Cache directory for validation results (default: .validation-cache)
     --verbose              Enable verbose output
+    --watch [DIR]          Enable watch mode to monitor directory for changes (default: testcases/)
     -h, --help             Show this help message
 
 EXAMPLES:
     $(basename "$0") --pattern '\.rs$' --validator ./scripts/rust-validator.sh
     $(basename "$0") --pattern '\.json$' --validator ./validate.sh --cache-dir /tmp/cache --verbose
+    $(basename "$0") --pattern '\.ya?ml$' --validator ./scripts/validate-yaml-wrapper.sh --watch
 
 EOF
     exit 0
@@ -268,6 +295,248 @@ update_cache() {
     write_cache "$file" "$mtime" "$hash" "$valid" "$cache_file"
 }
 
+# Validate a single file and return result
+validate_single_file() {
+    local file="$1"
+    local show_output="${2:-1}"
+    
+    if [[ $show_output -eq 1 ]]; then
+        log_verbose "Processing: $file"
+    fi
+    
+    # Check if validation can be skipped based on cache
+    cache_result=$(check_cache "$file")
+    
+    local result=""
+    case "$cache_result" in
+        cached_valid)
+            if [[ $show_output -eq 1 ]]; then
+                log_verbose "✓ Cached (valid): $file"
+            fi
+            result="passed"
+            ;;
+        cached_invalid)
+            if [[ $show_output -eq 1 ]]; then
+                log_verbose "✗ Cached (invalid): $file"
+            fi
+            result="failed"
+            ;;
+        validate)
+            if [[ $show_output -eq 1 ]]; then
+                log_verbose "Validating: $file"
+            fi
+            
+            # Invoke validator script and capture exit code
+            EXIT_CODE=0
+            "$VALIDATOR" "$file" 2>&1 || EXIT_CODE=$?
+            
+            if [[ $EXIT_CODE -eq 0 ]]; then
+                if [[ $show_output -eq 1 ]]; then
+                    log_verbose "✓ Passed: $file"
+                fi
+                update_cache "$file" "true"
+                result="passed"
+            else
+                if [[ $show_output -eq 1 ]]; then
+                    log_error "✗ Failed: $file (exit code: $EXIT_CODE)"
+                fi
+                update_cache "$file" "false"
+                result="failed"
+            fi
+            ;;
+    esac
+    
+    echo "$result"
+}
+
+# Run validation on all matching files
+run_validation() {
+    local show_summary="${1:-1}"
+    
+    if [[ $show_summary -eq 1 ]]; then
+        log_info "Searching for files matching pattern: $PATTERN"
+    fi
+    
+    FILES=()
+    while IFS= read -r -d '' file; do
+        FILES+=("$file")
+    done < <(find -E . -type f -regex ".*${PATTERN}.*" -print0 2>/dev/null)
+    
+    if [[ ${#FILES[@]} -eq 0 ]]; then
+        if [[ $show_summary -eq 1 ]]; then
+            log_info "No files found matching pattern: $PATTERN"
+        fi
+        return 0
+    fi
+    
+    if [[ $show_summary -eq 1 ]]; then
+        log_info "Found ${#FILES[@]} file(s) matching pattern"
+    fi
+    
+    # Initialize statistics tracking
+    TOTAL_FILES=${#FILES[@]}
+    FAILED_FILES=()
+    PASSED_COUNT=0
+    FAILED_COUNT=0
+    
+    # Process each file
+    for file in "${FILES[@]}"; do
+        result=$(validate_single_file "$file" "$VERBOSE")
+        
+        if [[ "$result" == "passed" ]]; then
+            ((PASSED_COUNT++))
+        else
+            FAILED_FILES+=("$file")
+            ((FAILED_COUNT++))
+        fi
+    done
+    
+    # Report statistics if requested
+    if [[ $show_summary -eq 1 ]]; then
+        echo ""
+        log_info "=== Validation Summary ==="
+        log_info "Total files:     $TOTAL_FILES"
+        log_info "Passed:          $PASSED_COUNT"
+        log_info "Failed:          $FAILED_COUNT"
+        echo ""
+        
+        if [[ ${#FAILED_FILES[@]} -gt 0 ]]; then
+            log_error "Failed files:"
+            for file in "${FAILED_FILES[@]}"; do
+                log_error "  - $file"
+            done
+            return 1
+        fi
+        
+        log_info "All validations passed!"
+    fi
+    
+    return 0
+}
+
+# Watch mode implementation
+run_watch_mode() {
+    log_info "Starting watch mode on directory: $WATCH_DIR"
+    log_info "Watching for file changes matching pattern: $PATTERN"
+    log_info "Press Ctrl+C to stop"
+    echo ""
+    
+    # Verify watch directory exists
+    if [[ ! -d "$WATCH_DIR" ]]; then
+        log_error "Watch directory does not exist: $WATCH_DIR"
+        exit 1
+    fi
+    
+    # Determine OS and check for file watcher availability
+    local watcher_cmd=""
+    local watcher_available=0
+    
+    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        # Linux: use inotifywait
+        if command -v inotifywait >/dev/null 2>&1; then
+            watcher_cmd="inotifywait"
+            watcher_available=1
+            log_info "Using inotifywait for file monitoring (Linux)"
+        else
+            log_error "inotifywait not found. Install with: sudo apt-get install inotify-tools"
+            exit 1
+        fi
+    elif [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS: use fswatch
+        if command -v fswatch >/dev/null 2>&1; then
+            watcher_cmd="fswatch"
+            watcher_available=1
+            log_info "Using fswatch for file monitoring (macOS)"
+        else
+            log_error "fswatch not found. Install with: brew install fswatch"
+            exit 1
+        fi
+    else
+        log_error "Watch mode not supported on this operating system: $OSTYPE"
+        exit 1
+    fi
+    
+    # Run initial validation
+    log_info "Running initial validation..."
+    echo ""
+    run_validation 1
+    initial_status=$?
+    
+    echo ""
+    log_info "Initial validation complete. Now monitoring for changes..."
+    echo ""
+    
+    # Start watching for changes
+    if [[ "$watcher_cmd" == "inotifywait" ]]; then
+        # inotifywait (Linux)
+        inotifywait -m -r -e modify,create,delete,move --format '%w%f' "$WATCH_DIR" 2>/dev/null | while read -r changed_file; do
+            # Check if file matches pattern
+            if echo "$changed_file" | grep -E "$PATTERN" >/dev/null 2>&1; then
+                # Small delay to ensure file is fully written
+                sleep 0.1
+                
+                # Check if file still exists (it might have been deleted)
+                if [[ -f "$changed_file" ]]; then
+                    echo ""
+                    log_info "File changed: $changed_file"
+                    log_info "Validating..."
+                    
+                    result=$(validate_single_file "$changed_file" 0)
+                    
+                    if [[ "$result" == "passed" ]]; then
+                        echo -e "\033[32m✓ PASSED\033[0m: $changed_file"
+                    else
+                        echo -e "\033[31m✗ FAILED\033[0m: $changed_file"
+                        # Run validator again to show error output
+                        "$VALIDATOR" "$changed_file" 2>&1 || true
+                    fi
+                    echo ""
+                else
+                    log_info "File deleted: $changed_file"
+                    # Remove from cache
+                    cache_file=$(get_cache_file "$changed_file")
+                    if [[ -f "$cache_file" ]]; then
+                        rm -f "$cache_file"
+                        log_verbose "Cache entry removed: $cache_file"
+                    fi
+                fi
+            fi
+        done
+    elif [[ "$watcher_cmd" == "fswatch" ]]; then
+        # fswatch (macOS)
+        fswatch -0 -r -e ".*" -i "$PATTERN" "$WATCH_DIR" | while read -d "" changed_file; do
+            # Small delay to ensure file is fully written
+            sleep 0.1
+            
+            # Check if file still exists
+            if [[ -f "$changed_file" ]]; then
+                echo ""
+                log_info "File changed: $changed_file"
+                log_info "Validating..."
+                
+                result=$(validate_single_file "$changed_file" 0)
+                
+                if [[ "$result" == "passed" ]]; then
+                    echo -e "\033[32m✓ PASSED\033[0m: $changed_file"
+                else
+                    echo -e "\033[31m✗ FAILED\033[0m: $changed_file"
+                    # Run validator again to show error output
+                    "$VALIDATOR" "$changed_file" 2>&1 || true
+                fi
+                echo ""
+            else
+                log_info "File deleted: $changed_file"
+                # Remove from cache
+                cache_file=$(get_cache_file "$changed_file")
+                if [[ -f "$cache_file" ]]; then
+                    rm -f "$cache_file"
+                    log_verbose "Cache entry removed: $cache_file"
+                fi
+            fi
+        done
+    fi
+}
+
 while [[ $# -gt 0 ]]; do
     case $1 in
         --pattern)
@@ -285,6 +554,16 @@ while [[ $# -gt 0 ]]; do
         --verbose)
             VERBOSE=1
             shift
+            ;;
+        --watch)
+            WATCH_MODE=1
+            if [[ $# -gt 1 && ! "$2" =~ ^-- ]]; then
+                WATCH_DIR="$2"
+                shift 2
+            else
+                WATCH_DIR="testcases/"
+                shift
+            fi
             ;;
         -h|--help)
             usage
@@ -326,97 +605,18 @@ fi
 log_verbose "Pattern: $PATTERN"
 log_verbose "Validator: $VALIDATOR"
 log_verbose "Cache directory: $CACHE_DIR"
+log_verbose "Watch mode: $WATCH_MODE"
+if [[ $WATCH_MODE -eq 1 ]]; then
+    log_verbose "Watch directory: $WATCH_DIR"
+fi
 
 mkdir -p "$CACHE_DIR"
 log_verbose "Cache directory created/verified: $CACHE_DIR"
 
-log_info "Searching for files matching pattern: $PATTERN"
-
-FILES=()
-while IFS= read -r -d '' file; do
-    FILES+=("$file")
-done < <(find -E . -type f -regex ".*${PATTERN}.*" -print0 2>/dev/null)
-
-if [[ ${#FILES[@]} -eq 0 ]]; then
-    log_info "No files found matching pattern: $PATTERN"
-    exit 0
+# Main execution: run watch mode or normal validation
+if [[ $WATCH_MODE -eq 1 ]]; then
+    run_watch_mode
+else
+    run_validation 1
+    exit $?
 fi
-
-log_info "Found ${#FILES[@]} file(s) matching pattern"
-
-# Initialize statistics tracking
-TOTAL_FILES=${#FILES[@]}
-FAILED_FILES=()
-PASSED_COUNT=0
-FAILED_COUNT=0
-CACHED_COUNT=0
-VALIDATED_COUNT=0
-
-# Process each file
-for file in "${FILES[@]}"; do
-    log_verbose "Processing: $file"
-    
-    # Check if validation can be skipped based on cache
-    cache_result=$(check_cache "$file")
-    
-    case "$cache_result" in
-        cached_valid)
-            log_verbose "✓ Cached (valid): $file"
-            ((PASSED_COUNT++))
-            ((CACHED_COUNT++))
-            ;;
-        cached_invalid)
-            log_verbose "✗ Cached (invalid): $file"
-            FAILED_FILES+=("$file")
-            ((FAILED_COUNT++))
-            ((CACHED_COUNT++))
-            ;;
-        validate)
-            log_verbose "Validating: $file"
-            ((VALIDATED_COUNT++))
-            
-            # Invoke validator script and capture exit code
-            EXIT_CODE=0
-            "$VALIDATOR" "$file" || EXIT_CODE=$?
-            
-            if [[ $EXIT_CODE -eq 0 ]]; then
-                log_verbose "✓ Passed: $file"
-                ((PASSED_COUNT++))
-                update_cache "$file" "true"
-            else
-                log_error "✗ Failed: $file (exit code: $EXIT_CODE)"
-                FAILED_FILES+=("$file")
-                ((FAILED_COUNT++))
-                update_cache "$file" "false"
-            fi
-            ;;
-    esac
-done
-
-# Calculate cache hit rate
-CACHE_HIT_RATE=0
-if [[ $TOTAL_FILES -gt 0 ]]; then
-    CACHE_HIT_RATE=$(awk "BEGIN {printf \"%.1f\", ($CACHED_COUNT / $TOTAL_FILES) * 100}")
-fi
-
-# Report statistics
-echo ""
-log_info "=== Validation Summary ==="
-log_info "Total files:     $TOTAL_FILES"
-log_info "Validated:       $VALIDATED_COUNT"
-log_info "Cached:          $CACHED_COUNT"
-log_info "Passed:          $PASSED_COUNT"
-log_info "Failed:          $FAILED_COUNT"
-log_info "Cache hit rate:  ${CACHE_HIT_RATE}%"
-echo ""
-
-if [[ ${#FAILED_FILES[@]} -gt 0 ]]; then
-    log_error "Failed files:"
-    for file in "${FAILED_FILES[@]}"; do
-        log_error "  - $file"
-    done
-    exit 1
-fi
-
-log_info "All validations passed!"
-exit 0

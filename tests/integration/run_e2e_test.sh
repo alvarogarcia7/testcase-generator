@@ -10,7 +10,9 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 E2E_TEST="$SCRIPT_DIR/e2e_complete_workflow.exp"
-BINARY="$PROJECT_ROOT/target/debug/testcase-manager"
+
+# Source shared library for finding binaries
+source "$PROJECT_ROOT/scripts/lib/find-binary.sh"
 
 # Check if --build flag is provided
 BUILD=false
@@ -34,12 +36,16 @@ if [[ "$BUILD" == true ]]; then
     echo ""
 fi
 
-# Check if binary exists
-if [[ ! -f "$BINARY" ]]; then
-    echo "ERROR: Binary not found at $BINARY"
+# Find the binary
+cd "$PROJECT_ROOT"
+BINARY=$(find_binary "testcase-manager")
+if [[ -z "$BINARY" ]]; then
+    echo "ERROR: Binary not found in target/release or target/debug"
     echo "Run with --build flag to build the project first"
     exit 1
 fi
+echo "Using binary: $BINARY"
+echo ""
 
 # Check if expect is installed
 if ! command -v expect &> /dev/null; then

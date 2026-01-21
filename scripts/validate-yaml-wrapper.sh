@@ -39,23 +39,15 @@
 
 set -euo pipefail
 
+# Get the script directory and source shared library
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/find-binary.sh"
+
 # Configuration: Schema file to validate against
 SCHEMA_FILE="${SCHEMA_FILE:-data/schema.json}"
 
 # Auto-detect validate-yaml binary location
-if [[ -n "${VALIDATE_YAML_BIN:-}" ]]; then
-    VALIDATE_YAML="$VALIDATE_YAML_BIN"
-elif [[ -x "target/release/validate-yaml" ]]; then
-    VALIDATE_YAML="target/release/validate-yaml"
-elif [[ -x "target/debug/validate-yaml" ]]; then
-    VALIDATE_YAML="target/debug/validate-yaml"
-elif command -v validate-yaml >/dev/null 2>&1; then
-    VALIDATE_YAML="validate-yaml"
-else
-    echo "[ERROR] validate-yaml binary not found" >&2
-    echo "[ERROR] Please build it with: cargo build --bin validate-yaml" >&2
-    exit 1
-fi
+VALIDATE_YAML=$(find_binary_or_exit "validate-yaml" "VALIDATE_YAML_BIN")
 
 # Validate arguments
 if [[ $# -eq 0 ]]; then

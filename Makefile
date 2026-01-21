@@ -54,6 +54,14 @@ validate-all-testcases: build
 	SCHEMA_FILE=data/schema.json ./scripts/validate-files.sh --pattern '\.ya?ml$$' --validator ./scripts/validate-yaml-wrapper.sh
 .PHONY: validate-all-testcases
 
+watch: build
+	./scripts/watch-yaml-files.sh
+.PHONY: watch
+
+watch-verbose: build
+	SCHEMA_FILE=data/schema.json ./scripts/validate-files.sh --pattern '\.ya?ml$$' --validator ./scripts/validate-yaml-wrapper.sh --watch --verbose
+.PHONY: watch-verbose
+
 clean-validation-cache:
 	rm -rf .validation-cache/
 .PHONY: clean-validation-cache
