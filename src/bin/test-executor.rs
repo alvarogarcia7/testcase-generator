@@ -26,6 +26,10 @@ enum Commands {
         /// Optional output file path (defaults to stdout)
         #[arg(short, long, value_name = "OUTPUT_FILE")]
         output: Option<PathBuf>,
+
+        /// Generate execution log JSON file alongside bash script
+        #[arg(long)]
+        json_log: bool,
     },
     /// Execute a test case by generating and running the script
     Execute {
@@ -49,7 +53,11 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Generate { yaml_file, output } => {
+        Commands::Generate {
+            yaml_file,
+            output,
+            json_log,
+        } => {
             let test_case = load_test_case(&yaml_file)?;
             let executor = TestExecutor::new();
             let script = executor.generate_test_script(&test_case);
@@ -63,8 +71,15 @@ fn main() -> Result<()> {
                     "Test script generated successfully: {}",
                     output_path.display()
                 );
+
+                if json_log {
+                    executor.generate_execution_log_template(&test_case, &output_path)?;
+                }
             } else {
                 print!("{}", script);
+                if json_log {
+                    eprintln!("Warning: --json-log requires --output to be specified");
+                }
             }
 
             Ok(())

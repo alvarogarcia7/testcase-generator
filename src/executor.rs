@@ -252,24 +252,56 @@ impl TestExecutor {
         test_case: &TestCase,
         entries: &[TestStepExecutionEntry],
     ) -> Result<()> {
-        // Create logs directory if it doesn't exist
-        let logs_dir = Path::new("logs");
-        fs::create_dir_all(logs_dir).context("Failed to create logs directory")?;
-
-        // Generate log file name based on test case ID and timestamp
-        let timestamp = Utc::now().format("%Y%m%d_%H%M%S");
-        let log_filename = format!("{}_{}.json", test_case.id, timestamp);
-        let log_path = logs_dir.join(log_filename);
+        // Generate log file name based on test case ID only
+        let log_filename = format!("{}_execution_log.json", test_case.id);
+        let log_path = Path::new(&log_filename);
 
         // Serialize entries to JSON
         let json_content = serde_json::to_string_pretty(entries)
             .context("Failed to serialize execution entries to JSON")?;
 
         // Write to file
-        fs::write(&log_path, json_content)
+        fs::write(log_path, json_content)
             .context(format!("Failed to write log file: {}", log_path.display()))?;
 
         println!("Execution log written to: {}", log_path.display());
+
+        Ok(())
+    }
+
+    pub fn generate_execution_log_template(
+        &self,
+        test_case: &TestCase,
+        script_path: &Path,
+    ) -> Result<()> {
+        // Determine the output path for the JSON log
+        let json_log_path = if let Some(parent) = script_path.parent() {
+            let stem = script_path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or(&test_case.id);
+            parent.join(format!("{}_execution_log.json", stem))
+        } else {
+            Path::new(&format!("{}_execution_log.json", test_case.id)).to_path_buf()
+        };
+
+        // Create empty execution entries template
+        let template_entries: Vec<TestStepExecutionEntry> = Vec::new();
+
+        // Serialize to JSON
+        let json_content = serde_json::to_string_pretty(&template_entries)
+            .context("Failed to serialize execution log template to JSON")?;
+
+        // Write to file
+        fs::write(&json_log_path, json_content).context(format!(
+            "Failed to write execution log template: {}",
+            json_log_path.display()
+        ))?;
+
+        println!(
+            "Execution log template generated: {}",
+            json_log_path.display()
+        );
 
         Ok(())
     }
