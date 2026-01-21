@@ -140,18 +140,16 @@ impl TestExecutor {
             .output()
             .context("Failed to execute test script")?;
 
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        println!("{}", stdout);
+
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            let stdout = String::from_utf8_lossy(&output.stdout);
             anyhow::bail!(
-                "Test execution failed:\nStdout:\n{}\nStderr:\n{}",
-                stdout,
+                "Test execution failed:\nStderr:\n{}",
                 stderr
             );
         }
-
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        println!("{}", stdout);
 
         Ok(())
     }
