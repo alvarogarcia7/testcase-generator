@@ -30,28 +30,28 @@ test_sequences:
           result: "0"
           output: "Hello World"
         verification:
-          result: "exit_code == 0"
-          output: "grep -q 'Hello World' <<< \"$output\""
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Hello World' <<< \"$COMMAND_OUTPUT\""
       - step: 2
         description: "Successful command with true"
-        command: /bin/true
+        command: true
         expected:
           success: true
           result: "0"
           output: ""
         verification:
-          result: "exit_code == 0"
-          output: ""
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: true
       - step: 3
         description: "Failed command with false"
-        command: /bin/false
+        command: false
         expected:
           success: false
           result: "1"
-          output: ""
+          output: true
         verification:
-          result: "exit_code != 0"
-          output: ""
+          result: "[[ $EXIT_CODE -ne 0 ]]"
+          output: true
   - id: 2
     name: "Echo with Different Outputs"
     description: |
@@ -63,13 +63,13 @@ test_sequences:
     steps:
       - step: 1
         description: "Echo success status"
-        command: echo "Status: SUCCESS"
+        command: 'echo "Status: SUCCESS"'
         expected:
           result: "0"
           output: "Status: SUCCESS"
         verification:
-          result: "exit_code == 0"
-          output: "grep -q 'SUCCESS' <<< \"$output\""
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'SUCCESS' <<< \"$COMMAND_OUTPUT\""
       - step: 2
         description: "Echo with exit code verification"
         command: echo "Operation completed"
@@ -77,8 +77,8 @@ test_sequences:
           result: "0"
           output: "Operation completed"
         verification:
-          result: "exit_code == 0"
-          output: "grep -q 'Operation completed' <<< \"$output\""
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Operation completed' <<< \"$COMMAND_OUTPUT\""
       - step: 3
         description: "Echo multiple lines"
         command: echo -e "Line 1\nLine 2\nLine 3"
@@ -86,8 +86,8 @@ test_sequences:
           result: "0"
           output: "Line 1\nLine 2\nLine 3"
         verification:
-          result: "exit_code == 0"
-          output: "[[ $(grep -c 'Line' <<< \"$output\") -eq 3 ]]"
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ $(grep -c 'Line' <<< \"$COMMAND_OUTPUT\") -eq 3 ]]"
   - id: 3
     name: "Exit Code Tests"
     description: |
@@ -102,27 +102,27 @@ test_sequences:
         expected:
           success: true
           result: "0"
-          output: ""
+          output: true
         verification:
-          result: "exit_code == 0"
-          output: ""
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: true
       - step: 2
         description: "Exit with code 1"
         command: /bin/sh -c "exit 1"
         expected:
           success: false
           result: "1"
-          output: ""
+          output: true
         verification:
-          result: "exit_code == 1"
-          output: ""
+          result: "[[ $EXIT_CODE -eq 1 ]]"
+          output: true
       - step: 3
         description: "Exit with code 2"
         command: /bin/sh -c "exit 2"
         expected:
           success: false
           result: "2"
-          output: ""
+          output: true
         verification:
-          result: "exit_code == 2"
-          output: ""
+          result: "[[ $EXIT_CODE -eq 2 ]]"
+          output: true

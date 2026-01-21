@@ -18,7 +18,7 @@ impl TestExecutor {
         let mut script = String::new();
 
         script.push_str("#!/bin/bash\n");
-        script.push_str("set -e\n\n");
+        script.push_str("set -euo pipefail\n\n");
 
         script.push_str("# Test Case: ");
         script.push_str(&test_case.id);
@@ -71,8 +71,10 @@ impl TestExecutor {
                 }
 
                 script.push_str("COMMAND_OUTPUT=\"\"\n");
+                script.push_str("set +e\n");
                 script.push_str(&format!("COMMAND_OUTPUT=$({})\n", step.command));
-                script.push_str("EXIT_CODE=$?\n\n");
+                script.push_str("EXIT_CODE=$?\n");
+                script.push_str("set -e\n\n");
 
                 script.push_str(&format!(
                     "# Verification result expression: {}\n",

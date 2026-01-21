@@ -45,3 +45,9 @@ verification-results/
 # Test executor logs
 logs/
 *_execution_log.json
+
+
+.crates.toml
+.crates2.json
+bin/cargo-watch
+
