@@ -24,7 +24,7 @@ fn main() -> Result<()> {
             handle_create(&cli.path, id)?;
         }
 
-        Commands::CreateGeneralInitialConditions { id} =>{
+        Commands::CreateGeneralInitialConditions { id } => {
             handle_create_general_initial_conditions(&cli.path, id)?;
         }
 
@@ -131,8 +131,15 @@ fn main() -> Result<()> {
 }
 
 fn handle_create_general_initial_conditions(base_path: &str, id: Option<String>) -> Result<()> {
-    let mut test_case_builder = TestCaseBuilder::new_with_recovery(base_path, Arc::new(TtyCliOracle::new()))?;
-    let metadata = TestCaseMetadata { requirement: "Req Hardcoded 1".to_string(), item: 0x101, tc: 0x1, id: "Hardcoded Id".to_string(), description: "Description".to_string() };
+    let mut test_case_builder =
+        TestCaseBuilder::new_with_recovery(base_path, Arc::new(TtyCliOracle::new()))?;
+    let metadata = TestCaseMetadata {
+        requirement: "Req Hardcoded 1".to_string(),
+        item: 0x101,
+        tc: 0x1,
+        id: "Hardcoded Id".to_string(),
+        description: "Description".to_string(),
+    };
     let x = test_case_builder.append_metadata(metadata)?;
     test_case_builder.add_general_initial_conditions(None);
     test_case_builder.save();

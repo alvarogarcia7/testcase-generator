@@ -7,6 +7,64 @@ The validation module provides JSON schema validation for YAML structures with d
 1. **SchemaValidator**: Validates YAML against the schema defined in `testcases/schema.json`
 2. **Detailed Error Reporting**: Captures validation errors with JSON path, constraint type, expected values, and actual values
 3. **File Loading with Validation**: Scans directories and provides validation status for each file
+4. **Watch Mode**: Continuously monitors directories for file changes and automatically validates modified files
+
+## Watch Mode for File Validation
+
+The `validate-files.sh` script now supports watch mode, which continuously monitors a directory for file changes and automatically triggers validation on modified files.
+
+### Installation Requirements
+
+**Linux:**
+```bash
+sudo apt-get install inotify-tools
+```
+
+**macOS:**
+```bash
+brew install fswatch
+```
+
+### Usage
+
+Basic watch mode (monitors `testcases/` directory by default):
+```bash
+./scripts/validate-files.sh --pattern '\.ya?ml$' --validator ./scripts/validate-yaml-wrapper.sh --watch
+```
+
+Watch a custom directory:
+```bash
+./scripts/validate-files.sh --pattern '\.ya?ml$' --validator ./scripts/validate-yaml-wrapper.sh --watch path/to/dir/
+```
+
+With verbose output:
+```bash
+./scripts/validate-files.sh --pattern '\.ya?ml$' --validator ./scripts/validate-yaml-wrapper.sh --watch --verbose
+```
+
+### Features
+
+- **Initial Validation**: Runs a complete validation of all matching files on startup
+- **Live Monitoring**: Detects file modifications, creations, deletions, and moves in real-time
+- **Instant Feedback**: Validates changed files immediately and displays results with color-coded output
+- **Persistent Cache**: Maintains validation cache across watch sessions for fast re-validation
+- **Cache Cleanup**: Automatically removes cache entries for deleted files
+- **Pattern Matching**: Only validates files matching the specified regex pattern
+
+### How It Works
+
+1. On startup, the script performs an initial validation of all files matching the pattern
+2. It then starts monitoring the specified directory recursively
+3. When a file change is detected:
+   - The script checks if the file matches the specified pattern
+   - If it matches, validation is triggered immediately
+   - Results are displayed with color-coded output (green for pass, red for fail)
+   - The cache is updated with the new validation result
+4. For deleted files, the corresponding cache entries are automatically removed
+
+### Exit
+
+Press `Ctrl+C` to stop watch mode and exit the script.
 
 ## SchemaValidator
 

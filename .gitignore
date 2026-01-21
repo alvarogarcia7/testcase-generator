@@ -32,3 +32,12 @@ Thumbs.db
 # Integration test artifacts
 test_e2e_*/
 test_basic_*/
+
+# Validation cache (validate-files.sh)
+.validation-cache/
+
+# Test verification outputs
+*.log
+junit-report.xml
+test-verification-report.json
+verification-results/

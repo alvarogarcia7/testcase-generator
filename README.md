@@ -1,6 +1,6 @@
 # Test Case Manager
 
-A comprehensive CLI tool for managing test cases in YAML format with interactive workflows, fuzzy search, and git integration.
+A comprehensive CLI tool for managing test cases in YAML format with interactive workflows, fuzzy search, git integration, and test verification capabilities.
 
 ## Features
 
@@ -9,12 +9,22 @@ A comprehensive CLI tool for managing test cases in YAML format with interactive
 - **Test Sequence Builder**: Create test sequences with automatic numbering and validation
 - **Step Collection Loop**: Add steps to sequences with fuzzy search for existing steps
 - **Git Integration**: Commit progress after each step or sequence
-- **Schema Validation**: Validate test cases against a JSON schema
+- **Schema Validation**: Validate test cases against a JSON schema with watch mode for continuous monitoring
 - **Fuzzy Search**: Search through test cases, sequences, steps, and conditions
 - **TTY Fallback**: Automatic detection of non-TTY environments (e.g., VS Code debug console) with graceful fallback to numbered selection
 - **Recovery Mechanism**: Automatically saves progress after each operation and can resume from saved state if interrupted
+- **Test Verification**: Batch verification mode that processes test execution logs and generates reports with JUnit XML output for CI/CD integration
+- **Watch Mode**: Continuously monitor directories for file changes with automatic validation and instant feedback
 
-## Commands
+## Binaries
+
+This project includes multiple binaries:
+
+- **tcm** (Test Case Manager): Interactive test case creation and management
+- **test-verify**: Test verification tool for validating test execution logs against test cases
+- **validate-yaml**: YAML validation tool
+
+## Test Case Manager (tcm) Commands
 
 ### Parse Conditions from Database
 
@@ -92,6 +102,45 @@ Build test sequences without steps:
 testcase-manager build-sequences
 ```
 
+## File Validation and Watch Mode
+
+The project includes a powerful file validation system with watch mode for continuous monitoring:
+
+### Basic Validation
+
+Validate all YAML files matching a pattern:
+
+```bash
+./scripts/validate-files.sh \
+    --pattern '\.ya?ml$' \
+    --validator ./scripts/validate-yaml-wrapper.sh
+```
+
+### Watch Mode
+
+Monitor directories for file changes and automatically validate modified files:
+
+```bash
+./scripts/validate-files.sh \
+    --pattern '\.ya?ml$' \
+    --validator ./scripts/validate-yaml-wrapper.sh \
+    --watch
+```
+
+**Watch mode features:**
+- Runs initial validation on all matching files
+- Monitors directory recursively for changes (modifications, creations, deletions)
+- Instantly validates changed files
+- Displays live results with color-coded output (green for pass, red for fail)
+- Maintains persistent cache across sessions
+- Auto-cleans cache for deleted files
+
+**Requirements:**
+- Linux: `sudo apt-get install inotify-tools`
+- macOS: `brew install fswatch`
+
+See [Watch Mode Guide](scripts/WATCH_MODE_GUIDE.md) for detailed documentation.
+
 ## Step Collection Loop Features
 
 The step collection loop includes:
@@ -160,6 +209,61 @@ For more details, see [docs/TTY_FALLBACK.md](docs/TTY_FALLBACK.md)
 ```bash
 cargo run --example tty_fallback_demo
 ```
+
+## Test Verification (test-verify)
+
+The `test-verify` binary provides batch verification capabilities for comparing test execution logs against test case definitions.
+
+### Features
+
+- **Batch Processing**: Process multiple test execution logs simultaneously
+- **Auto-locate Test Cases**: Uses TestCaseStorage to automatically find test case definitions
+- **Flexible Matching**: Supports exact matches, wildcards (`*`), and regex patterns (`/pattern/`)
+- **Multiple Output Formats**: Text, JSON, and JUnit XML
+- **Aggregated Reports**: Pass/fail statistics per test case with detailed failure reasons
+- **CI/CD Integration**: JUnit XML output for seamless integration with CI/CD pipelines
+
+### Quick Start
+
+```bash
+# Build the binary
+cargo build --release --bin test-verify
+
+# Verify a single test
+./target/release/test-verify single \
+  --log test-execution.log \
+  --test-case-id TC001
+
+# Batch verify multiple logs
+./target/release/test-verify batch \
+  --logs logs/*.log \
+  --format junit \
+  --output junit-report.xml
+
+# Run the demo
+cargo run --example test_verify_demo
+```
+
+### Log Format
+
+Test execution logs should follow this format:
+
+```
+[TIMESTAMP] TestCase: <id>, Sequence: <seq_id>, Step: <step_num>, Success: <true/false/null/->, Result: <result>, Output: <output>
+```
+
+Example:
+```
+[2024-01-15T10:30:00Z] TestCase: TC001, Sequence: 1, Step: 1, Success: true, Result: SW=0x9000, Output: Command executed successfully
+```
+
+### Commands
+
+- `single`: Verify a single test execution log against a specific test case
+- `batch`: Process multiple logs and generate aggregated reports
+- `parse-log`: Parse and display log contents without verification
+
+For detailed usage, see [docs/TEST_VERIFY_USAGE.md](docs/TEST_VERIFY_USAGE.md)
 
 ## Development
 

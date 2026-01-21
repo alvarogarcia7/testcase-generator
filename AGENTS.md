@@ -30,6 +30,7 @@ TESTCASE_EDITOR=nano
 - **Build**: make build
 - **Lint**: make lint
 - **Test**: make test
+- **Watch Mode**: make watch (monitors testcases/ for changes and auto-validates)
 - **Dev Server**: N/A
 You must build, test, and lint before committing
 

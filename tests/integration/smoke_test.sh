@@ -10,23 +10,23 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-BINARY="$PROJECT_ROOT/target/debug/testcase-manager"
+
+# Source shared library for finding binaries
+source "$PROJECT_ROOT/scripts/lib/find-binary.sh"
+
+# Change to project root for binary search
+cd "$PROJECT_ROOT"
 
 echo "=== Quick Smoke Test ==="
 
-# Check binary exists
-if [[ ! -f "$BINARY" ]]; then
-    echo "✗ Binary not found"
+# Find the testcase-manager binary
+BINARY=$(find_binary "testcase-manager")
+if [[ -z "$BINARY" ]]; then
+    echo "✗ Binary not found in target/release or target/debug"
+    echo "  Run: cargo build"
     exit 1
 fi
-echo "✓ Binary found"
-
-# Check binary is executable
-if [[ ! -x "$BINARY" ]]; then
-    echo "✗ Binary not executable"
-    exit 1
-fi
-echo "✓ Binary executable"
+echo "✓ Binary found: $BINARY"
 
 # Check help command works
 if "$BINARY" --help > /dev/null 2>&1; then
