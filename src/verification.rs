@@ -528,7 +528,10 @@ impl TestVerifier {
             match self.parse_json_log_content(content, log_path) {
                 Ok(json_logs) => return Ok(json_logs),
                 Err(e) => {
-                    log::debug!("Failed to parse as JSON, falling back to text format: {}", e);
+                    log::debug!(
+                        "Failed to parse as JSON, falling back to text format: {}",
+                        e
+                    );
                 }
             }
         }
@@ -604,9 +607,9 @@ impl TestVerifier {
         log_path: &Path,
     ) -> Result<Vec<TestExecutionLog>> {
         use crate::models::TestStepExecutionEntry;
-        
-        let entries: Vec<TestStepExecutionEntry> = serde_json::from_str(content)
-            .context("Failed to parse JSON execution log")?;
+
+        let entries: Vec<TestStepExecutionEntry> =
+            serde_json::from_str(content).context("Failed to parse JSON execution log")?;
 
         // Extract test_case_id from the log file path
         // Expected format: {test_case_id}_execution_log.json
