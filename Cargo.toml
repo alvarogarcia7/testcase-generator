@@ -38,6 +38,10 @@ name = "validate-yaml"
 path = "src/bin/validate-yaml.rs"
 
 [[bin]]
+name = "validate-json"
+path = "src/bin/validate-json.rs"
+
+[[bin]]
 name = "trm"
 path = "src/bin/test-run-manager.rs"
 
