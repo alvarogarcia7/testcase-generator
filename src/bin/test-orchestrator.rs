@@ -160,6 +160,45 @@ fn main() -> Result<()> {
         }
     }
 
+    // Validate verify subcommand parameters before proceeding
+    if let Commands::Verify {
+        ref log_files,
+        ref test_case_file,
+        ref execution_log_file,
+        ..
+    } = cli.command
+    {
+        let has_specific_files = test_case_file.is_some() || execution_log_file.is_some();
+        let has_log_files = !log_files.is_empty();
+
+        if !has_specific_files && !has_log_files {
+            let mut cmd = Cli::command();
+            cmd.error(
+                clap::error::ErrorKind::MissingRequiredArgument,
+                "No files provided for verification. Either provide log files or use --test-case with --execution-log.\n\nUsage: test-orchestrator verify [LOG_FILES]...\n       test-orchestrator verify --test-case <FILE> --execution-log <FILE>",
+            )
+            .exit();
+        }
+
+        if has_specific_files && (test_case_file.is_none() || execution_log_file.is_none()) {
+            let mut cmd = Cli::command();
+            cmd.error(
+                clap::error::ErrorKind::MissingRequiredArgument,
+                "Both --test-case and --execution-log must be provided together.\n\nUsage: test-orchestrator verify --test-case <FILE> --execution-log <FILE>",
+            )
+            .exit();
+        }
+
+        if has_specific_files && has_log_files {
+            let mut cmd = Cli::command();
+            cmd.error(
+                clap::error::ErrorKind::ArgumentConflict,
+                "Cannot use both positional log files and --test-case/--execution-log together.\n\nUsage: test-orchestrator verify [LOG_FILES]...\n       test-orchestrator verify --test-case <FILE> --execution-log <FILE>",
+            )
+            .exit();
+        }
+    }
+
     let test_case_storage =
         TestCaseStorage::new(&cli.path).context("Failed to initialize test case storage")?;
     let test_run_storage = TestRunStorage::new(cli.path.join("test-runs"))
@@ -321,15 +360,9 @@ fn main() -> Result<()> {
             execution_log_file,
             verbose,
         } => {
-            // Check if specific test case and execution log are provided
             if test_case_file.is_some() || execution_log_file.is_some() {
-                // Both must be provided together
-                let tc_file = test_case_file.ok_or_else(|| {
-                    anyhow::anyhow!("--test-case must be provided when using --execution-log")
-                })?;
-                let log_file = execution_log_file.ok_or_else(|| {
-                    anyhow::anyhow!("--execution-log must be provided when using --test-case")
-                })?;
+                let tc_file = test_case_file.unwrap();
+                let log_file = execution_log_file.unwrap();
 
                 println!("\n=== Verifying Specific Test Case ===\n");
 
@@ -407,11 +440,6 @@ fn main() -> Result<()> {
                     std::process::exit(1);
                 }
             } else {
-                // Original batch verification logic
-                if log_files.is_empty() {
-                    anyhow::bail!("No log files provided for verification");
-                }
-
                 println!("\n=== Verifying Test Results ===\n");
 
                 if verbose {
