@@ -47,7 +47,7 @@ test-e2e-failing-all: build
 	./tests/integration/run_all_tests.sh
 .PHONY: test-e2e-failing-all
 
-test-e2e: test-e2e-validate-yaml #test-e2e-executor
+test-e2e: test-e2e-validate-yaml test-e2e-orchestrator #test-e2e-executor
 	#${MAKE} test-verify-sample
 	${MAKE} example_export-demo
 .PHONY: test-e2e
@@ -102,4 +102,8 @@ test-executor-sample: build
 test-e2e-executor: build
 	./tests/integration/test_executor_e2e.sh
 .PHONY: test-e2e-executor
+
+test-e2e-orchestrator: build
+	./tests/integration/test_orchestrator_e2e.sh
+.PHONY: test-e2e-orchestrator
 
