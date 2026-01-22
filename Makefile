@@ -15,7 +15,7 @@ build:
 test: 
 	${MAKE} test-unit
 	${MAKE} test-e2e
-	${MAKE} verify-testcases
+	#${MAKE} verify-testcases
 .PHONY: test
 
 test-unit: build

@@ -569,6 +569,27 @@ impl TestOrchestrator {
             verification_report_path.display()
         ))?;
 
+        // Validate the verification JSON against the schema
+        use std::process::Command;
+        let validation_script = "scripts/validate-verification.sh";
+        let validation_output = Command::new("bash")
+            .arg(validation_script)
+            .arg(&verification_report_path)
+            .output();
+
+        match validation_output {
+            Ok(output) => {
+                if !output.status.success() {
+                    eprintln!("500 - internal script error");
+                    anyhow::bail!("Verification JSON validation failed");
+                }
+            }
+            Err(e) => {
+                eprintln!("500 - internal script error");
+                anyhow::bail!("Failed to execute validation script: {}", e);
+            }
+        }
+
         if !verification_result.overall_pass {
             anyhow::bail!(
                 "Test case {} failed verification: {}/{} steps passed",

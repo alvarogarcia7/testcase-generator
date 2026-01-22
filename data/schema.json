@@ -82,7 +82,7 @@
                       "type": "boolean"
                     },
                     "result": {
-                      "type": "integer"
+                      "type": ["string", "integer"]
                     },
                     "output": {
                       "type": "string"

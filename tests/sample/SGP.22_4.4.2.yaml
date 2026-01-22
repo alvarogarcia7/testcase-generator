@@ -4,10 +4,6 @@ tc: 42
 id: SGP.22_4.4.2
 description: Sample test case for demonstration
 
-general_initial_conditions:
-  eUICC:
-    - "The profile The PROFILE_OPERATIONAL1 with #METADATA_WITH_PPRS_AND_ICON is loaded on the eUICC."
-
 initial_conditions:
   LPA:
     - test
