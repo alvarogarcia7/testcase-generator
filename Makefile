@@ -109,5 +109,6 @@ test-e2e-executor: build
 test-e2e-orchestrator: build
 	./tests/integration/test_orchestrator_e2e.sh
 	cargo run --bin test-orchestrator run testcases/self_validated_example.yml --verbose
+	! cargo run --bin test-orchestrator run testcases/self_validated_example_wrong.yml
 .PHONY: test-e2e-orchestrator
 
