@@ -203,6 +203,7 @@ impl TestExecutor {
     pub fn execute_test_case(&self, test_case: &TestCase) -> Result<()> {
         let mut execution_entries = Vec::new();
         let mut execution_error = None;
+        let mut verification_failed = false;
 
         for sequence in &test_case.test_sequences {
             for step in &sequence.steps {
@@ -222,7 +223,9 @@ impl TestExecutor {
                 match Command::new("bash").arg("-c").arg(&step.command).output() {
                     Ok(output) => {
                         let exit_code = output.status.code().unwrap_or(-1);
-                        let command_output = String::from_utf8_lossy(&output.stdout).to_string();
+                        let command_output = String::from_utf8_lossy(&output.stdout)
+                            .trim_end()
+                            .to_string();
 
                         let timestamp = Local::now().to_rfc3339();
                         let entry = TestStepExecutionEntry::with_timestamp(
@@ -235,6 +238,37 @@ impl TestExecutor {
                         );
 
                         execution_entries.push(entry);
+
+                        // Perform verification
+                        let result_verification_passed =
+                            self.evaluate_verification(&step.verification.result, exit_code, &command_output)?;
+                        let output_verification_passed =
+                            self.evaluate_verification(&step.verification.output, exit_code, &command_output)?;
+
+                        if result_verification_passed && output_verification_passed {
+                            println!(
+                                "[PASS] Step {} (Sequence {}): {}",
+                                step.step, sequence.id, step.description
+                            );
+                        } else {
+                            println!(
+                                "[FAIL] Step {} (Sequence {}): {}",
+                                step.step, sequence.id, step.description
+                            );
+                            println!("  Command: {}", step.command);
+                            println!("  EXIT_CODE: {}", exit_code);
+                            println!("  COMMAND_OUTPUT: {}", command_output);
+                            println!("  Result verification: {}", result_verification_passed);
+                            println!("  Output verification: {}", output_verification_passed);
+                            verification_failed = true;
+                            
+                            if execution_error.is_none() {
+                                execution_error = Some(anyhow::anyhow!(
+                                    "Test execution failed: Step {} verification failed",
+                                    step.step
+                                ));
+                            }
+                        }
                     }
                     Err(e) => {
                         // Store the error but continue to write the log
@@ -270,7 +304,42 @@ impl TestExecutor {
             return Err(err);
         }
 
+        if !verification_failed {
+            println!("All test sequences completed successfully");
+        }
+
         Ok(())
+    }
+
+    fn evaluate_verification(&self, expression: &str, exit_code: i32, command_output: &str) -> Result<bool> {
+        // Handle simple true/false cases
+        let trimmed = expression.trim();
+        if trimmed == "true" {
+            return Ok(true);
+        }
+        if trimmed == "false" {
+            return Ok(false);
+        }
+
+        // Build a bash script that evaluates the verification expression
+        // We need to set EXIT_CODE and COMMAND_OUTPUT variables and then evaluate the expression
+        let script = format!(
+            r#"EXIT_CODE={}
+COMMAND_OUTPUT="{}"
+if {}; then
+    exit 0
+else
+    exit 1
+fi"#,
+            exit_code,
+            command_output.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n"),
+            expression
+        );
+
+        match Command::new("bash").arg("-c").arg(&script).output() {
+            Ok(output) => Ok(output.status.success()),
+            Err(_) => Ok(false),
+        }
     }
 
     fn write_execution_log(
