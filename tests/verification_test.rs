@@ -1,4 +1,4 @@
-use chrono::Utc;
+use chrono::{Local, Utc};
 use std::path::PathBuf;
 use testcase_manager::models::{Expected, Step, TestCase, TestSequence, Verification};
 use testcase_manager::verification::{
@@ -39,7 +39,7 @@ fn create_execution_log(
         success,
         actual_result: actual_result.to_string(),
         actual_output: actual_output.to_string(),
-        timestamp: Some(Utc::now()),
+        timestamp: Some(Local::now().with_timezone(&Utc)),
         log_file_path: PathBuf::from("test.json"),
     }
 }

@@ -25,7 +25,7 @@ impl RecoveryState {
             structure,
             validation_errors: Vec::new(),
             current_phase,
-            timestamp: chrono::Utc::now(),
+            timestamp: Local::now().with_timezone(&Utc),
         }
     }
 
@@ -38,7 +38,7 @@ impl RecoveryState {
             structure,
             validation_errors,
             current_phase,
-            timestamp: chrono::Utc::now(),
+            timestamp: Local::now().with_timezone(&Utc),
         }
     }
 
@@ -79,7 +79,7 @@ impl RecoveryManager {
 
     fn format_timestamp_with_relative(timestamp: &DateTime<Utc>) -> String {
         let local_time: DateTime<Local> = timestamp.with_timezone(&Local);
-        let now = Utc::now();
+        let now = Local::now().with_timezone(&Utc);
         let duration = now.signed_duration_since(*timestamp);
 
         let relative = if duration.num_seconds() < 60 {

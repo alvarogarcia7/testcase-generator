@@ -1,7 +1,7 @@
 use crate::models::{ActualResult, Expected, Step, TestCase, TestSequence};
 use crate::storage::TestCaseStorage;
 use anyhow::{Context, Result};
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Local, Utc};
 use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event};
 use quick_xml::Writer;
 use regex::Regex;
@@ -201,7 +201,7 @@ impl BatchVerificationReport {
             passed_steps: 0,
             failed_steps: 0,
             not_executed_steps: 0,
-            generated_at: Utc::now(),
+            generated_at: Local::now().with_timezone(&Utc),
         }
     }
 
@@ -1269,7 +1269,7 @@ mod tests {
                     skipped: false,
                 },
             ],
-            timestamp: Utc::now(),
+            timestamp: Local::now().with_timezone(&Utc),
         };
 
         let xml = suite.to_xml().unwrap();

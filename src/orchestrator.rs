@@ -5,7 +5,7 @@ use crate::test_run_storage::TestRunStorage;
 use crate::verification::{TestCaseVerificationResult, TestExecutionLog, TestVerifier};
 use crate::MatchStrategy::Exact;
 use anyhow::{Context, Result};
-use chrono::Utc;
+use chrono::Local;
 use std::collections::HashMap;
 use std::fs;
 use std::io::Write;
@@ -481,7 +481,7 @@ impl TestOrchestrator {
             let test_run = TestRun {
                 name: None,
                 test_case_id: result.test_case_id.clone(),
-                timestamp: Utc::now(),
+                timestamp: Local::now().with_timezone(&chrono::Utc),
                 status: if result.success {
                     TestRunStatus::Pass
                 } else {
@@ -597,7 +597,7 @@ impl TestOrchestrator {
     ) -> Result<()> {
         let mut report = String::new();
         report.push_str("# Test Execution Report\n\n");
-        report.push_str(&format!("Generated at: {}\n\n", Utc::now().to_rfc3339()));
+        report.push_str(&format!("Generated at: {}\n\n", Local::now().to_rfc3339()));
 
         let total = results.len();
         let passed = results.iter().filter(|r| r.success).count();
@@ -752,7 +752,7 @@ mod tests {
         let test_run_storage = TestRunStorage::new(temp_dir.path().join("runs")).unwrap();
         let output_dir = temp_dir.path().join("output");
 
-        let orchestrator =
+        let _orchestrator =
             TestOrchestrator::new(test_case_storage, test_run_storage, output_dir.clone()).unwrap();
 
         assert!(output_dir.exists());

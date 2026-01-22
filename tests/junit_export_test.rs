@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Local, Utc};
 use testcase_manager::{TestRun, TestRunStatus};
 
 /// Validates JUnit XML output against the Maven Surefire XSD schema requirements.
@@ -223,7 +223,7 @@ fn test_xml_escaping() {
 
 #[test]
 fn test_test_run_serialization() {
-    let timestamp = Utc::now();
+    let timestamp = Local::now().with_timezone(&Utc);
     let test_run = TestRun::new(
         "TC005".to_string(),
         TestRunStatus::Pass,
@@ -242,7 +242,7 @@ fn test_test_run_serialization() {
 
 #[test]
 fn test_test_run_array_serialization() {
-    let timestamp = Utc::now();
+    let timestamp = Local::now().with_timezone(&Utc);
     let test_runs = vec![
         TestRun::new(
             "TC001".to_string(),

@@ -116,10 +116,10 @@ fn test_export_junit_xml_yaml_input() {
 
 #[test]
 fn test_multiple_test_runs_aggregation() {
-    use chrono::Utc;
+    use chrono::{Local, Utc};
     use testcase_manager::{TestRun, TestRunStatus};
 
-    let timestamp = Utc::now();
+    let timestamp = Local::now().with_timezone(&Utc);
 
     let test_runs = vec![
         TestRun::new(

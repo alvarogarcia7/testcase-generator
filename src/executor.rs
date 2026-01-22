@@ -1,6 +1,6 @@
 use crate::models::{TestCase, TestStepExecutionEntry};
 use anyhow::{Context, Result};
-use chrono::Utc;
+use chrono::Local;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -154,7 +154,7 @@ impl TestExecutor {
                         let exit_code = output.status.code().unwrap_or(-1);
                         let command_output = String::from_utf8_lossy(&output.stdout).to_string();
 
-                        let timestamp = Utc::now().to_rfc3339();
+                        let timestamp = Local::now().to_rfc3339();
                         let entry = TestStepExecutionEntry::with_timestamp(
                             sequence.id,
                             step.step,
@@ -169,7 +169,7 @@ impl TestExecutor {
                     Err(e) => {
                         // Store the error but continue to write the log
                         // Create an entry with exit code -1 to indicate execution failure
-                        let timestamp = Utc::now().to_rfc3339();
+                        let timestamp = Local::now().to_rfc3339();
                         let entry = TestStepExecutionEntry::with_timestamp(
                             sequence.id,
                             step.step,
@@ -243,10 +243,10 @@ impl TestExecutor {
         // Create execution entries template with all steps from the test case
         let mut template_entries: Vec<TestStepExecutionEntry> = Vec::new();
 
-        // Base timestamp for template (arbitrary starting point)
-        let base_time = chrono::DateTime::parse_from_rfc3339("2024-01-15T10:30:00Z")
+        // Base timestamp for template (arbitrary starting point in local timezone)
+        let base_time = chrono::DateTime::parse_from_rfc3339("2026-01-22T10:30:00Z")
             .unwrap()
-            .with_timezone(&Utc);
+            .with_timezone(&Local);
         let mut step_index = 0;
 
         for sequence in &test_case.test_sequences {
@@ -277,7 +277,7 @@ impl TestExecutor {
                     command: step.command.clone(),
                     exit_code,
                     output,
-                    timestamp: Some(timestamp.format("%Y-%m-%dT%H:%M:%SZ").to_string()),
+                    timestamp: Some(timestamp.to_rfc3339()),
                 };
 
                 template_entries.push(entry);
