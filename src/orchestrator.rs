@@ -504,6 +504,22 @@ impl TestOrchestrator {
             fs::set_permissions(&script_path, perms)?;
         }
 
+        // Verify bash script syntax
+        let syntax_check = Command::new("bash")
+            .arg("-n")
+            .arg(&script_path)
+            .output()
+            .context("Failed to run bash syntax check")?;
+
+        if !syntax_check.status.success() {
+            let stderr = String::from_utf8_lossy(&syntax_check.stderr);
+            anyhow::bail!(
+                "Bash script syntax validation failed for {}: {}",
+                script_path.display(),
+                stderr
+            );
+        }
+
         let output = Command::new("bash")
             .arg(&script_path)
             .output()

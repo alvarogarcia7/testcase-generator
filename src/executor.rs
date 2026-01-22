@@ -240,10 +240,16 @@ impl TestExecutor {
                         execution_entries.push(entry);
 
                         // Perform verification
-                        let result_verification_passed =
-                            self.evaluate_verification(&step.verification.result, exit_code, &command_output)?;
-                        let output_verification_passed =
-                            self.evaluate_verification(&step.verification.output, exit_code, &command_output)?;
+                        let result_verification_passed = self.evaluate_verification(
+                            &step.verification.result,
+                            exit_code,
+                            &command_output,
+                        )?;
+                        let output_verification_passed = self.evaluate_verification(
+                            &step.verification.output,
+                            exit_code,
+                            &command_output,
+                        )?;
 
                         if result_verification_passed && output_verification_passed {
                             println!(
@@ -261,7 +267,7 @@ impl TestExecutor {
                             println!("  Result verification: {}", result_verification_passed);
                             println!("  Output verification: {}", output_verification_passed);
                             verification_failed = true;
-                            
+
                             if execution_error.is_none() {
                                 execution_error = Some(anyhow::anyhow!(
                                     "Test execution failed: Step {} verification failed",
@@ -311,7 +317,12 @@ impl TestExecutor {
         Ok(())
     }
 
-    fn evaluate_verification(&self, expression: &str, exit_code: i32, command_output: &str) -> Result<bool> {
+    fn evaluate_verification(
+        &self,
+        expression: &str,
+        exit_code: i32,
+        command_output: &str,
+    ) -> Result<bool> {
         // Handle simple true/false cases
         let trimmed = expression.trim();
         if trimmed == "true" {
@@ -332,7 +343,10 @@ else
     exit 1
 fi"#,
             exit_code,
-            command_output.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n"),
+            command_output
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n"),
             expression
         );
 
