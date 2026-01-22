@@ -1,5 +1,5 @@
 # Stage 1: deps - Build dependencies only
-FROM rust:1.75-bookworm as deps
+FROM rust:1.92-bookworm as deps
 
 WORKDIR /app
 
@@ -16,7 +16,7 @@ RUN mkdir src && \
 RUN cargo build --release
 
 # Stage 2: builder - Build the actual application
-FROM rust:1.75-bookworm as builder
+FROM rust:1.92-bookworm as builder
 
 WORKDIR /app
 
