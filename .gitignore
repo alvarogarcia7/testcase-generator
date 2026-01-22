@@ -4,9 +4,6 @@ Cargo.lock
 **/*.rs.bk
 *.pdb
 
-# Test data
-testcases/
-
 # Editor files
 .vscode/
 .idea/
