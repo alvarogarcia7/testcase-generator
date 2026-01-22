@@ -38,6 +38,10 @@ name = "validate-yaml"
 path = "src/bin/validate-yaml.rs"
 
 [[bin]]
+name = "validate-json"
+path = "src/bin/validate-json.rs"
+
+[[bin]]
 name = "trm"
 path = "src/bin/test-run-manager.rs"
 
@@ -50,8 +54,8 @@ name = "test-executor"
 path = "src/bin/test-executor.rs"
 
 [[bin]]
-name = "tcm"
-path = "src/main.rs"
+name = "editor"
+path = "src/main_editor.rs"
 
 [[bin]]
 name = "test-orchestrator"

@@ -80,7 +80,7 @@ impl LogCleaner {
         // Trim each line individually to remove leading/trailing spaces per line
         let lines: Vec<&str> = text.lines().collect();
         let trimmed_lines: Vec<String> = lines.iter().map(|line| line.trim().to_string()).collect();
-        
+
         trimmed_lines.join("\n").trim().to_string()
     }
 

@@ -73,7 +73,7 @@
                   "type": "string"
                 },
                 "command": {
-                  "type": "string"
+                  "type": ["string", "boolean"]
                 },
                 "expected": {
                   "type": "object",
@@ -82,7 +82,7 @@
                       "type": "boolean"
                     },
                     "result": {
-                      "type": "string"
+                      "type": ["string", "integer"]
                     },
                     "output": {
                       "type": "string"

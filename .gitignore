@@ -4,9 +4,6 @@ Cargo.lock
 **/*.rs.bk
 *.pdb
 
-# Test data
-testcases/
-
 # Editor files
 .vscode/
 .idea/
@@ -41,3 +38,18 @@ test_basic_*/
 junit-report.xml
 test-verification-report.json
 verification-results/
+
+# Test executor logs
+logs/
+*_execution_log.json
+
+
+.crates.toml
+.crates2.json
+bin/cargo-watch
+
+/test-output/
+
+/testcases/*.json
+/testcases/*.sh
+

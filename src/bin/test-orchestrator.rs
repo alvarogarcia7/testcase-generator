@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory, Parser, Subcommand};
 use std::path::PathBuf;
 use testcase_manager::fuzzy::TestCaseFuzzyFinder;
 use testcase_manager::orchestrator::{RetryPolicy, TestOrchestrator, WorkerConfig};
@@ -39,7 +39,7 @@ struct Cli {
 enum Commands {
     /// Execute specific test cases by ID
     Run {
-        /// Test case IDs to execute
+        /// Test case IDs to execute (required unless --fuzzy is used)
         #[arg(required = false)]
         test_case_ids: Vec<String>,
 
@@ -117,8 +117,20 @@ enum Commands {
 
     /// Verify test execution results from log files
     Verify {
-        /// Log files to verify
+        /// Log files to verify (when used without --test-case and --execution-log)
         log_files: Vec<PathBuf>,
+
+        /// Specific test case YAML file to verify
+        #[arg(long = "test-case")]
+        test_case_file: Option<PathBuf>,
+
+        /// Specific execution log JSON file to verify against
+        #[arg(long = "execution-log")]
+        execution_log_file: Option<PathBuf>,
+
+        /// Enable verbose output showing detailed steps and verification results
+        #[arg(short, long)]
+        verbose: bool,
     },
 
     /// Show orchestrator configuration and status
@@ -130,13 +142,71 @@ fn main() -> Result<()> {
 
     let cli = Cli::parse();
 
+    // Validate run subcommand parameters before proceeding
+    if let Commands::Run {
+        ref test_case_ids,
+        fuzzy,
+        ..
+    } = cli.command
+    {
+        if test_case_ids.is_empty() && !fuzzy {
+            // Print usage help and exit with non-zero status
+            let mut cmd = Cli::command();
+            cmd.error(
+                clap::error::ErrorKind::MissingRequiredArgument,
+                "No test case IDs provided. Either provide test case IDs as arguments or use --fuzzy for interactive selection.\n\nUsage: test-orchestrator run [TEST_CASE_IDS]... [OPTIONS]\n       test-orchestrator run --fuzzy [OPTIONS]",
+            )
+            .exit();
+        }
+    }
+
+    // Validate verify subcommand parameters before proceeding
+    if let Commands::Verify {
+        ref log_files,
+        ref test_case_file,
+        ref execution_log_file,
+        ..
+    } = cli.command
+    {
+        let has_specific_files = test_case_file.is_some() || execution_log_file.is_some();
+        let has_log_files = !log_files.is_empty();
+
+        if !has_specific_files && !has_log_files {
+            let mut cmd = Cli::command();
+            cmd.error(
+                clap::error::ErrorKind::MissingRequiredArgument,
+                "No files provided for verification. Either provide log files or use --test-case with --execution-log.\n\nUsage: test-orchestrator verify [LOG_FILES]...\n       test-orchestrator verify --test-case <FILE> --execution-log <FILE>",
+            )
+            .exit();
+        }
+
+        if has_specific_files && (test_case_file.is_none() || execution_log_file.is_none()) {
+            let mut cmd = Cli::command();
+            cmd.error(
+                clap::error::ErrorKind::MissingRequiredArgument,
+                "Both --test-case and --execution-log must be provided together.\n\nUsage: test-orchestrator verify --test-case <FILE> --execution-log <FILE>",
+            )
+            .exit();
+        }
+
+        if has_specific_files && has_log_files {
+            let mut cmd = Cli::command();
+            cmd.error(
+                clap::error::ErrorKind::ArgumentConflict,
+                "Cannot use both positional log files and --test-case/--execution-log together.\n\nUsage: test-orchestrator verify [LOG_FILES]...\n       test-orchestrator verify --test-case <FILE> --execution-log <FILE>",
+            )
+            .exit();
+        }
+    }
+
     let test_case_storage =
         TestCaseStorage::new(&cli.path).context("Failed to initialize test case storage")?;
     let test_run_storage = TestRunStorage::new(cli.path.join("test-runs"))
         .context("Failed to initialize test run storage")?;
 
-    let orchestrator = TestOrchestrator::new(test_case_storage, test_run_storage, cli.output.clone())
-        .context("Failed to initialize test orchestrator")?;
+    let orchestrator =
+        TestOrchestrator::new(test_case_storage, test_run_storage, cli.output.clone())
+            .context("Failed to initialize test orchestrator")?;
 
     match cli.command {
         Commands::Run {
@@ -149,43 +219,41 @@ fn main() -> Result<()> {
             verbose,
             save,
             report,
-            fuzzy,
+            fuzzy: _,
         } => {
             if test_case_ids.is_empty() {
-                if fuzzy {
-                    let all_test_cases = orchestrator
-                        .select_all_test_cases()
-                        .context("Failed to load test cases")?;
+                // This branch is only reached when fuzzy is true (due to validation above)
+                let all_test_cases = orchestrator
+                    .select_all_test_cases()
+                    .context("Failed to load test cases")?;
 
-                    if all_test_cases.is_empty() {
-                        anyhow::bail!("No test cases found in storage");
+                if all_test_cases.is_empty() {
+                    anyhow::bail!("No test cases found in storage");
+                }
+
+                let test_case_options: Vec<String> = all_test_cases
+                    .iter()
+                    .map(|tc| format!("{} - {}", tc.id, tc.description))
+                    .collect();
+
+                match TestCaseFuzzyFinder::search_strings(
+                    &test_case_options,
+                    "Select test cases to execute (Tab to select multiple, Enter to confirm): ",
+                )? {
+                    Some(selected) => {
+                        test_case_ids = selected
+                            .split(" - ")
+                            .next()
+                            .unwrap()
+                            .to_string()
+                            .split_whitespace()
+                            .map(String::from)
+                            .collect();
                     }
-
-                    let test_case_options: Vec<String> = all_test_cases
-                        .iter()
-                        .map(|tc| format!("{} - {}", tc.id, tc.description))
-                        .collect();
-
-                    match TestCaseFuzzyFinder::search_strings(&test_case_options, "Select test cases to execute (Tab to select multiple, Enter to confirm): ")? {
-                        Some(selected) => {
-                            test_case_ids = selected
-                                .split(" - ")
-                                .next()
-                                .unwrap()
-                                .to_string()
-                                .split_whitespace()
-                                .map(String::from)
-                                .collect();
-                        }
-                        None => {
-                            println!("No test cases selected. Exiting.");
-                            return Ok(());
-                        }
+                    None => {
+                        println!("No test cases selected. Exiting.");
+                        return Ok(());
                     }
-                } else {
-                    anyhow::bail!(
-                        "No test case IDs provided. Use --fuzzy for interactive selection or provide IDs as arguments."
-                    );
                 }
             }
 
@@ -286,62 +354,198 @@ fn main() -> Result<()> {
             }
         }
 
-        Commands::Verify { log_files } => {
-            if log_files.is_empty() {
-                anyhow::bail!("No log files provided for verification");
-            }
+        Commands::Verify {
+            log_files,
+            test_case_file,
+            execution_log_file,
+            verbose,
+        } => {
+            if test_case_file.is_some() || execution_log_file.is_some() {
+                let tc_file = test_case_file.unwrap();
+                let log_file = execution_log_file.unwrap();
 
-            println!("\n=== Verifying Test Results ===\n");
+                println!("\n=== Verifying Specific Test Case ===\n");
 
-            let verification_results = orchestrator
-                .verify_results(log_files.clone())
-                .context("Failed to verify test results")?;
+                if verbose {
+                    println!("Test case file: {}", tc_file.display());
+                    println!("Execution log file: {}", log_file.display());
+                    println!();
+                }
 
-            if verification_results.is_empty() {
-                println!("No test cases found in the provided log files.");
-                return Ok(());
-            }
+                let verification_results = orchestrator
+                    .verify_test_case_with_log(&tc_file, &log_file)
+                    .context("Failed to verify test case")?;
 
-            println!("Verification Results:\n");
-
-            let mut total_passed = 0;
-            let mut total_failed = 0;
-
-            for result in &verification_results {
-                let status = if result.overall_pass { "✓ PASS" } else { "✗ FAIL" };
+                let status = if verification_results.overall_pass {
+                    "✓ PASS"
+                } else {
+                    "✗ FAIL"
+                };
                 println!(
                     "{} {} - {} ({}/{} steps passed)",
                     status,
-                    result.test_case_id,
-                    result.description,
-                    result.passed_steps,
-                    result.total_steps
+                    verification_results.test_case_id,
+                    verification_results.description,
+                    verification_results.passed_steps,
+                    verification_results.total_steps
                 );
 
-                if result.overall_pass {
-                    total_passed += 1;
-                } else {
-                    total_failed += 1;
-                }
+                if verbose || !verification_results.overall_pass {
+                    for sequence in &verification_results.sequences {
+                        println!("\n  Sequence {}: {}", sequence.sequence_id, sequence.name);
+                        println!("  {}", "-".repeat(60));
 
-                if !result.overall_pass {
-                    for sequence in &result.sequences {
                         for step_result in &sequence.step_results {
-                            if !step_result.is_pass() {
-                                println!("  ✗ Sequence {}: Step {}", sequence.sequence_id, step_result.step_number());
+                            use testcase_manager::verification::StepVerificationResultEnum;
+
+                            match step_result {
+                                StepVerificationResultEnum::Pass { step, description } => {
+                                    if verbose {
+                                        println!("  ✓ Step {}: {}", step, description);
+                                    }
+                                }
+                                StepVerificationResultEnum::Fail {
+                                    step,
+                                    description,
+                                    expected,
+                                    actual_result,
+                                    actual_output,
+                                    reason,
+                                } => {
+                                    println!("  ✗ Step {}: {}", step, description);
+                                    if verbose {
+                                        println!("    Reason: {}", reason);
+                                        println!("    Expected:");
+                                        if let Some(success) = expected.success {
+                                            println!("      Success: {}", success);
+                                        }
+                                        println!("      Result: {}", expected.result);
+                                        println!("      Output: {}", expected.output);
+                                        println!("    Actual:");
+                                        println!("      Result: {}", actual_result);
+                                        println!("      Output: {}", actual_output);
+                                    } else {
+                                        println!("    {}", reason);
+                                    }
+                                }
+                                StepVerificationResultEnum::NotExecuted { step, description } => {
+                                    println!("  ⚠ Step {}: {} (NOT EXECUTED)", step, description);
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            println!("\n=== Verification Summary ===");
-            println!("Total test cases: {}", verification_results.len());
-            println!("Passed: {}", total_passed);
-            println!("Failed: {}", total_failed);
+                if !verification_results.overall_pass {
+                    std::process::exit(1);
+                }
+            } else {
+                println!("\n=== Verifying Test Results ===\n");
 
-            if total_failed > 0 {
-                std::process::exit(1);
+                if verbose {
+                    println!("Log files to verify:");
+                    for log_file in &log_files {
+                        println!("  - {}", log_file.display());
+                    }
+                    println!();
+                }
+
+                let verification_results = orchestrator
+                    .verify_results(log_files)
+                    .context("Failed to verify test results")?;
+
+                if verification_results.is_empty() {
+                    println!("No test cases found in the provided log files.");
+                    return Ok(());
+                }
+
+                println!("Verification Results:\n");
+
+                let mut total_passed = 0;
+                let mut total_failed = 0;
+
+                for result in &verification_results {
+                    let status = if result.overall_pass {
+                        "✓ PASS"
+                    } else {
+                        "✗ FAIL"
+                    };
+                    println!(
+                        "{} {} - {} ({}/{} steps passed)",
+                        status,
+                        result.test_case_id,
+                        result.description,
+                        result.passed_steps,
+                        result.total_steps
+                    );
+
+                    if result.overall_pass {
+                        total_passed += 1;
+                    } else {
+                        total_failed += 1;
+                    }
+
+                    if verbose || !result.overall_pass {
+                        for sequence in &result.sequences {
+                            println!("\n  Sequence {}: {}", sequence.sequence_id, sequence.name);
+                            println!("  {}", "-".repeat(60));
+
+                            for step_result in &sequence.step_results {
+                                use testcase_manager::verification::StepVerificationResultEnum;
+
+                                match step_result {
+                                    StepVerificationResultEnum::Pass { step, description } => {
+                                        if verbose {
+                                            println!("  ✓ Step {}: {}", step, description);
+                                        }
+                                    }
+                                    StepVerificationResultEnum::Fail {
+                                        step,
+                                        description,
+                                        expected,
+                                        actual_result,
+                                        actual_output,
+                                        reason,
+                                    } => {
+                                        println!("  ✗ Step {}: {}", step, description);
+                                        if verbose {
+                                            println!("    Reason: {}", reason);
+                                            println!("    Expected:");
+                                            if let Some(success) = expected.success {
+                                                println!("      Success: {}", success);
+                                            }
+                                            println!("      Result: {}", expected.result);
+                                            println!("      Output: {}", expected.output);
+                                            println!("    Actual:");
+                                            println!("      Result: {}", actual_result);
+                                            println!("      Output: {}", actual_output);
+                                        } else {
+                                            println!("    {}", reason);
+                                        }
+                                    }
+                                    StepVerificationResultEnum::NotExecuted {
+                                        step,
+                                        description,
+                                    } => {
+                                        println!(
+                                            "  ⚠ Step {}: {} (NOT EXECUTED)",
+                                            step, description
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                println!("\n=== Verification Summary ===");
+                println!("Total test cases: {}", verification_results.len());
+                println!("Passed: {}", total_passed);
+                println!("Failed: {}", total_failed);
+
+                if total_failed > 0 {
+                    std::process::exit(1);
+                }
             }
         }
 
@@ -382,7 +586,9 @@ fn main() -> Result<()> {
             println!("  test-orchestrator run TC001 --retry --max-retries 3");
             println!();
             println!("  # Run with exponential backoff");
-            println!("  test-orchestrator run TC001 --retry --exponential-backoff --backoff-delay 100");
+            println!(
+                "  test-orchestrator run TC001 --retry --exponential-backoff --backoff-delay 100"
+            );
             println!();
             println!("  # Run interactively with fuzzy search");
             println!("  test-orchestrator run --fuzzy");

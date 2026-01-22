@@ -48,6 +48,7 @@ pub use models::TestExecutionLog;
 pub use models::TestRun;
 pub use models::TestRunStatus;
 pub use models::TestSequence;
+pub use models::TestStepExecutionEntry;
 pub use models::TestSuite;
 pub use models::ValidationErrorDetail;
 pub use models::Verification;

@@ -3,8 +3,9 @@ use crate::models::{TestCase, TestRun, TestRunStatus};
 use crate::storage::TestCaseStorage;
 use crate::test_run_storage::TestRunStorage;
 use crate::verification::{TestCaseVerificationResult, TestExecutionLog, TestVerifier};
+use crate::MatchStrategy::Exact;
 use anyhow::{Context, Result};
-use chrono::Utc;
+use chrono::Local;
 use std::collections::HashMap;
 use std::fs;
 use std::io::Write;
@@ -13,13 +14,17 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
-use crate::MatchStrategy::Exact;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RetryStrategy {
     NoRetry,
-    FixedRetries { max_attempts: usize },
-    ExponentialBackoff { max_attempts: usize, base_delay_ms: u64 },
+    FixedRetries {
+        max_attempts: usize,
+    },
+    ExponentialBackoff {
+        max_attempts: usize,
+        base_delay_ms: u64,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -300,7 +305,9 @@ impl TestOrchestrator {
 
         reporter.start_live_display();
 
-        let test_queue = Arc::new(Mutex::new(test_cases.into_iter().enumerate().collect::<Vec<_>>()));
+        let test_queue = Arc::new(Mutex::new(
+            test_cases.into_iter().enumerate().collect::<Vec<_>>(),
+        ));
         let results = Arc::new(Mutex::new(Vec::new()));
         let active_workers = Arc::new(AtomicUsize::new(0));
 
@@ -379,7 +386,7 @@ impl TestOrchestrator {
         };
 
         let final_stats = stats.lock().unwrap();
-        self.print_summary(&final_stats);
+        self.print_summary(&final_stats, &final_results);
 
         Ok(final_results)
     }
@@ -399,7 +406,6 @@ impl TestOrchestrator {
         };
 
         let mut last_result = None;
-        let mut total_duration_s = 0.0f64;
 
         for attempt in 1..=max_attempts {
             {
@@ -408,15 +414,17 @@ impl TestOrchestrator {
             }
 
             let start = Instant::now();
-            let result = executor.execute_test_case(test_case);
+            let result = Self::execute_test_case_with_script(executor, test_case, output_dir);
             let duration = start.elapsed();
             let duration_s = duration.as_secs_f64();
-            total_duration_s += duration_s;
 
             let success = result.is_ok();
 
             let (execution_log, error_message) = match result {
-                Ok(_) => (format!("Test case {} executed successfully", test_case.id), None),
+                Ok(_) => (
+                    format!("Test case {} executed successfully", test_case.id),
+                    None,
+                ),
                 Err(e) => (
                     format!("Test case {} failed", test_case.id),
                     Some(e.to_string()),
@@ -468,12 +476,138 @@ impl TestOrchestrator {
         last_result.unwrap()
     }
 
+    fn execute_test_case_with_script(
+        executor: &TestExecutor,
+        test_case: &TestCase,
+        output_dir: &Path,
+    ) -> Result<()> {
+        use std::process::Command;
+
+        let json_log_path = output_dir.join(format!(
+            "{}_execution_log.json",
+            test_case.id.replace('/', "_")
+        ));
+        let script_content =
+            executor.generate_test_script_with_json_output(test_case, &json_log_path);
+
+        let script_path = output_dir.join(format!("{}_test.sh", test_case.id.replace('/', "_")));
+        fs::write(&script_path, &script_content).context(format!(
+            "Failed to write test script: {}",
+            script_path.display()
+        ))?;
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = fs::metadata(&script_path)?.permissions();
+            perms.set_mode(0o755);
+            fs::set_permissions(&script_path, perms)?;
+        }
+
+        // Verify bash script syntax
+        let syntax_check = Command::new("bash")
+            .arg("-n")
+            .arg(&script_path)
+            .output()
+            .context("Failed to run bash syntax check")?;
+
+        if !syntax_check.status.success() {
+            let stderr = String::from_utf8_lossy(&syntax_check.stderr);
+            anyhow::bail!(
+                "Bash script syntax validation failed for {}: {}",
+                script_path.display(),
+                stderr
+            );
+        }
+
+        let output = Command::new("bash")
+            .arg(&script_path)
+            .output()
+            .context(format!(
+                "Failed to execute test script: {}",
+                script_path.display()
+            ))?;
+
+        Self::verify_json_log(test_case, &json_log_path, output_dir)?;
+
+        if !output.status.success() {
+            anyhow::bail!(
+                "Test script execution failed with exit code: {:?}",
+                output.status.code()
+            );
+        }
+
+        Ok(())
+    }
+
+    fn verify_json_log(
+        test_case: &TestCase,
+        json_log_path: &Path,
+        output_dir: &Path,
+    ) -> Result<()> {
+        let verifier = TestVerifier::new(Exact, Exact);
+
+        let logs = verifier
+            .parse_log_file_with_test_case_id(json_log_path, &test_case.id)
+            .context(format!(
+                "Failed to parse JSON log: {}",
+                json_log_path.display()
+            ))?;
+
+        let verification_result = verifier.verify_test_case(test_case, &logs);
+
+        let verification_report_path = output_dir.join(format!(
+            "{}_verification.json",
+            test_case.id.replace('/', "_")
+        ));
+
+        let report_json = serde_json::to_string_pretty(&verification_result)
+            .context("Failed to serialize verification result")?;
+
+        fs::write(&verification_report_path, report_json).context(format!(
+            "Failed to write verification report: {}",
+            verification_report_path.display()
+        ))?;
+
+        // Validate the verification JSON against the schema
+        use std::process::Command;
+        let validation_script = "scripts/validate-verification.sh";
+        let validation_output = Command::new("bash")
+            .arg(validation_script)
+            .arg(&verification_report_path)
+            .output();
+
+        match validation_output {
+            Ok(output) => {
+                if !output.status.success() {
+                    eprintln!("500 - internal script error");
+                    anyhow::bail!("Verification JSON validation failed");
+                }
+            }
+            Err(e) => {
+                eprintln!("500 - internal script error");
+                anyhow::bail!("Failed to execute validation script: {}", e);
+            }
+        }
+
+        if !verification_result.overall_pass {
+            anyhow::bail!(
+                "Test case {} failed verification: {}/{} steps passed",
+                test_case.id,
+                verification_result.passed_steps,
+                verification_result.total_steps
+            );
+        }
+
+        Ok(())
+    }
+
     pub fn save_results(&self, results: &[TestExecutionResult]) -> Result<()> {
         for result in results {
             let test_run = TestRun {
                 name: None,
                 test_case_id: result.test_case_id.clone(),
-                timestamp: Utc::now(),
+                timestamp: Local::now().with_timezone(&chrono::Utc),
                 status: if result.success {
                     TestRunStatus::Pass
                 } else {
@@ -535,17 +669,184 @@ impl TestOrchestrator {
         Ok(verification_results)
     }
 
-    fn print_summary(&self, stats: &OrchestratorStats) {
+    pub fn verify_test_case_with_log(
+        &self,
+        test_case_file: &Path,
+        execution_log_file: &Path,
+    ) -> Result<TestCaseVerificationResult> {
+        use crate::models::TestCase;
+
+        // Load the test case from YAML file
+        let content = fs::read_to_string(test_case_file).context(format!(
+            "Failed to read test case file: {}",
+            test_case_file.display()
+        ))?;
+
+        let test_case: TestCase = serde_yaml::from_str(&content).context(format!(
+            "Failed to parse test case YAML: {}",
+            test_case_file.display()
+        ))?;
+
+        // Parse the execution log
+        let verifier = TestVerifier::new(Exact, Exact);
+        let logs = verifier
+            .parse_log_file_with_test_case_id(execution_log_file, &test_case.id)
+            .context(format!(
+                "Failed to parse execution log file: {}",
+                execution_log_file.display()
+            ))?;
+
+        // Verify the test case against the logs
+        let result = verifier.verify_test_case(&test_case, &logs);
+
+        Ok(result)
+    }
+
+    fn print_summary(&self, stats: &OrchestratorStats, results: &[TestExecutionResult]) {
         println!("=== Execution Summary ===");
         println!("Total test cases: {}", stats.total_tests);
         println!("Completed: {}", stats.completed_tests);
-        println!("Passed: {} ({}%)", stats.passed_tests, stats.success_rate() as u32);
+        println!(
+            "Passed: {} ({}%)",
+            stats.passed_tests,
+            stats.success_rate() as u32
+        );
         println!("Failed: {}", stats.failed_tests);
         println!("Total attempts: {}", stats.total_attempts);
-        println!(
-            "Total time: {:.2}s",
-            stats.elapsed_time_ms as f64 / 1000.0
-        );
+        println!("Total time: {:.2}s", stats.elapsed_time_ms as f64 / 1000.0);
+
+        // Show which test cases failed
+        if stats.failed_tests > 0 {
+            println!();
+            println!("Failed test cases:");
+
+            let failed_results: Vec<&TestExecutionResult> =
+                results.iter().filter(|r| !r.success).collect();
+
+            for result in &failed_results {
+                println!("  ✗ {}", result.test_case_id);
+                if let Some(ref error) = result.error_message {
+                    // Truncate long error messages
+                    let error_preview = if error.len() > 80 {
+                        format!("{}...", &error[..77])
+                    } else {
+                        error.clone()
+                    };
+                    println!("    Error: {}", error_preview);
+                }
+                if result.attempts > 1 {
+                    println!("    Attempts: {}", result.attempts);
+                }
+            }
+
+            // If only one test case failed, show detailed step information
+            if failed_results.len() == 1 {
+                println!();
+                self.print_detailed_failure(failed_results[0]);
+            }
+        }
+    }
+
+    fn print_detailed_failure(&self, result: &TestExecutionResult) {
+        println!("=== Detailed Failure Information ===");
+        println!("Test case: {}", result.test_case_id);
+
+        // Try to load the test case to get sequence and step information
+        match self
+            .test_case_storage
+            .load_test_case_by_id(&result.test_case_id)
+        {
+            Ok(test_case) => {
+                println!("Description: {}", test_case.description);
+                println!();
+
+                // Try to find and parse execution log
+                let log_file_pattern = format!("{}_attempt", test_case.id.replace('/', "_"));
+                let log_dir = &self.output_dir;
+
+                let mut found_log = false;
+                if log_dir.exists() {
+                    if let Ok(entries) = fs::read_dir(log_dir) {
+                        for entry in entries.flatten() {
+                            let path = entry.path();
+                            if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
+                                if file_name.contains(&log_file_pattern)
+                                    && file_name.ends_with(".log")
+                                {
+                                    found_log = true;
+
+                                    // Try to parse the log file to extract step information
+                                    if let Ok(log_content) = fs::read_to_string(&path) {
+                                        self.parse_and_display_log_details(
+                                            &test_case,
+                                            &log_content,
+                                        );
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // If no execution log found, just show test case structure
+                if !found_log {
+                    println!("Execution stages:");
+                    for sequence in &test_case.test_sequences {
+                        println!("  Sequence {}: {}", sequence.id, sequence.name);
+                        for step in &sequence.steps {
+                            // We don't know the actual status, so just list them
+                            println!("    • Step {}: {}", step.step, step.description);
+                        }
+                    }
+                }
+
+                if let Some(ref error) = result.error_message {
+                    println!();
+                    println!("Error details:");
+                    println!("  {}", error);
+                }
+            }
+            Err(e) => {
+                println!("Unable to load test case details: {}", e);
+                if let Some(ref error) = result.error_message {
+                    println!();
+                    println!("Error: {}", error);
+                }
+            }
+        }
+    }
+
+    fn parse_and_display_log_details(&self, test_case: &TestCase, log_content: &str) {
+        println!("Execution stages:");
+
+        // Parse the log to understand what happened
+        // The log format includes success/failure information
+        let success_in_log = log_content.contains("Success: true");
+
+        for sequence in &test_case.test_sequences {
+            println!("  Sequence {}: {}", sequence.id, sequence.name);
+
+            for step in &sequence.steps {
+                // Simple heuristic: if the test overall succeeded, all steps passed
+                // if it failed, we mark steps based on the test structure
+                // In a real implementation, you'd parse detailed step-by-step logs
+                if success_in_log {
+                    println!("    ✓ Step {}: {}", step.step, step.description);
+                } else {
+                    // For failed tests, we can't easily determine which step failed
+                    // without more detailed logging, so we mark them as uncertain
+                    println!("    ? Step {}: {}", step.step, step.description);
+                }
+            }
+        }
+
+        // Try to extract error information from log
+        if let Some(error_line) = log_content.lines().find(|line| line.starts_with("Error:")) {
+            println!();
+            println!("Log error:");
+            println!("  {}", error_line.trim_start_matches("Error:").trim());
+        }
     }
 
     pub fn generate_execution_report(
@@ -555,7 +856,7 @@ impl TestOrchestrator {
     ) -> Result<()> {
         let mut report = String::new();
         report.push_str("# Test Execution Report\n\n");
-        report.push_str(&format!("Generated at: {}\n\n", Utc::now().to_rfc3339()));
+        report.push_str(&format!("Generated at: {}\n\n", Local::now().to_rfc3339()));
 
         let total = results.len();
         let passed = results.iter().filter(|r| r.success).count();
@@ -565,8 +866,16 @@ impl TestOrchestrator {
 
         report.push_str("## Summary\n\n");
         report.push_str(&format!("- **Total Tests**: {}\n", total));
-        report.push_str(&format!("- **Passed**: {} ({:.1}%)\n", passed, (passed as f64 / total as f64) * 100.0));
-        report.push_str(&format!("- **Failed**: {} ({:.1}%)\n", failed, (failed as f64 / total as f64) * 100.0));
+        report.push_str(&format!(
+            "- **Passed**: {} ({:.1}%)\n",
+            passed,
+            (passed as f64 / total as f64) * 100.0
+        ));
+        report.push_str(&format!(
+            "- **Failed**: {} ({:.1}%)\n",
+            failed,
+            (failed as f64 / total as f64) * 100.0
+        ));
         report.push_str(&format!("- **Total Attempts**: {}\n", total_attempts));
         report.push_str(&format!("- **Total Duration**: {:.2}s\n\n", total_duration));
 
@@ -575,7 +884,11 @@ impl TestOrchestrator {
         report.push_str("|--------------|--------|----------|----------|\n");
 
         for result in results {
-            let status = if result.success { "✓ PASS" } else { "✗ FAIL" };
+            let status = if result.success {
+                "✓ PASS"
+            } else {
+                "✗ FAIL"
+            };
             report.push_str(&format!(
                 "| {} | {} | {}ms | {} |\n",
                 result.test_case_id, status, result.duration_s, result.attempts
@@ -591,7 +904,7 @@ impl TestOrchestrator {
                 if let Some(error) = &result.error_message {
                     report.push_str(&format!("- **Error**: {}\n", error));
                 }
-                report.push_str("\n");
+                report.push('\n');
             }
         }
 
@@ -647,7 +960,10 @@ mod tests {
         assert_eq!(no_retry.strategy, RetryStrategy::NoRetry);
 
         let fixed = RetryPolicy::fixed_retries(3);
-        assert_eq!(fixed.strategy, RetryStrategy::FixedRetries { max_attempts: 3 });
+        assert_eq!(
+            fixed.strategy,
+            RetryStrategy::FixedRetries { max_attempts: 3 }
+        );
 
         let exponential = RetryPolicy::exponential_backoff(5, 100);
         assert_eq!(
@@ -665,7 +981,8 @@ mod tests {
         assert_eq!(config.num_workers, 8);
         assert_eq!(config.retry_policy.strategy, RetryStrategy::NoRetry);
 
-        let config_with_retry = WorkerConfig::new(4).with_retry_policy(RetryPolicy::fixed_retries(2));
+        let config_with_retry =
+            WorkerConfig::new(4).with_retry_policy(RetryPolicy::fixed_retries(2));
         assert_eq!(config_with_retry.num_workers, 4);
         assert_eq!(
             config_with_retry.retry_policy.strategy,
@@ -694,7 +1011,7 @@ mod tests {
         let test_run_storage = TestRunStorage::new(temp_dir.path().join("runs")).unwrap();
         let output_dir = temp_dir.path().join("output");
 
-        let orchestrator =
+        let _orchestrator =
             TestOrchestrator::new(test_case_storage, test_run_storage, output_dir.clone()).unwrap();
 
         assert!(output_dir.exists());

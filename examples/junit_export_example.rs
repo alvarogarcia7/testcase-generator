@@ -7,7 +7,13 @@ fn main() {
     let timestamp = Utc::now();
 
     let test_runs = vec![
-        TestRun::new("TC001".to_string(), TestRunStatus::Pass, timestamp, 1.234, "".to_string()),
+        TestRun::new(
+            "TC001".to_string(),
+            TestRunStatus::Pass,
+            timestamp,
+            1.234,
+            "".to_string(),
+        ),
         TestRun::with_error(
             "TC002".to_string(),
             TestRunStatus::Fail,

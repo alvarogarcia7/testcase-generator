@@ -1,22 +1,34 @@
-use crate::models::TestCase;
+use crate::models::{TestCase, TestStepExecutionEntry};
 use anyhow::{Context, Result};
+use chrono::Local;
 use std::fs;
-use std::os::unix::fs::PermissionsExt;
+use std::path::{Path, PathBuf};
 use std::process::Command;
-use tempfile::NamedTempFile;
 
-pub struct TestExecutor;
+pub struct TestExecutor {
+    output_dir: Option<PathBuf>,
+}
 
 impl TestExecutor {
     pub fn new() -> Self {
-        Self
+        Self { output_dir: None }
     }
 
-    pub fn generate_test_script(&self, test_case: &TestCase) -> String {
+    pub fn with_output_dir<P: Into<PathBuf>>(output_dir: P) -> Self {
+        Self {
+            output_dir: Some(output_dir.into()),
+        }
+    }
+
+    pub fn generate_test_script_with_json_output(
+        &self,
+        test_case: &TestCase,
+        json_output_path: &Path,
+    ) -> String {
         let mut script = String::new();
 
         script.push_str("#!/bin/bash\n");
-        script.push_str("set -e\n\n");
+        script.push_str("set -euo pipefail\n\n");
 
         script.push_str("# Test Case: ");
         script.push_str(&test_case.id);
@@ -24,6 +36,33 @@ impl TestExecutor {
         script.push_str("# Description: ");
         script.push_str(&test_case.description);
         script.push_str("\n\n");
+
+        script.push_str(&format!("JSON_LOG=\"{}\"\n", json_output_path.display()));
+        script.push_str("TIMESTAMP=$(date  +\"%Y-%m-%dT%H:%M:%S\")\n\n");
+
+        // Add trap to ensure JSON file is properly closed on any exit
+        script.push_str("# Trap to ensure JSON file is closed properly on exit\n");
+        script.push_str("cleanup() {\n");
+        script.push_str("    if [ -f \"$JSON_LOG\" ]; then\n");
+        script.push_str("        # Check if JSON_LOG ends with '[' or ','\n");
+        script.push_str("        LAST_CHAR=$(tail -c 2 \"$JSON_LOG\" | head -c 1)\n");
+        script.push_str("        if [ \"$LAST_CHAR\" != \"]\" ]; then\n");
+        script.push_str("            echo '' >> \"$JSON_LOG\"\n");
+        script.push_str("            echo ']' >> \"$JSON_LOG\"\n");
+        script.push_str("        fi\n");
+        script.push_str("        # Validate JSON\n");
+        script.push_str("        if command -v jq >/dev/null 2>&1; then\n");
+        script.push_str("            if ! jq empty \"$JSON_LOG\" >/dev/null 2>&1; then\n");
+        script.push_str("                echo \"500 - Internal Script Error: Generated JSON is not valid\" >&2\n");
+        script.push_str("                exit 1\n");
+        script.push_str("            fi\n");
+        script.push_str("        fi\n");
+        script.push_str("    fi\n");
+        script.push_str("}\n");
+        script.push_str("trap cleanup EXIT\n\n");
+
+        script.push_str("echo '[' > \"$JSON_LOG\"\n");
+        script.push_str("FIRST_ENTRY=true\n\n");
 
         if !test_case.general_initial_conditions.is_empty() {
             script.push_str("# General Initial Conditions\n");
@@ -69,8 +108,30 @@ impl TestExecutor {
                 }
 
                 script.push_str("COMMAND_OUTPUT=\"\"\n");
+                script.push_str("set +e\n");
                 script.push_str(&format!("COMMAND_OUTPUT=$({})\n", step.command));
-                script.push_str("EXIT_CODE=$?\n\n");
+                script.push_str("EXIT_CODE=$?\n");
+                script.push_str("set -e\n\n");
+
+                let escaped_command = step.command.replace("\\", "\\\\").replace("\"", "\\\"");
+                script.push_str("# Escape output for JSON\n");
+                script.push_str("OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | sed 's/\\\\/\\\\\\\\/g' | sed 's/\"/\\\\\"/g' | sed -e ':a' -e '$!N;s/\\n/\\\\n/;ta')\n\n");
+
+                script.push_str("if [ \"$FIRST_ENTRY\" = false ]; then\n");
+                script.push_str("    echo ',' >> \"$JSON_LOG\"\n");
+                script.push_str("fi\n");
+                script.push_str("FIRST_ENTRY=false\n\n");
+
+                script.push_str("cat >> \"$JSON_LOG\" << EOF\n");
+                script.push_str("  {\n");
+                script.push_str(&format!("    \"test_sequence\": {},\n", sequence.id));
+                script.push_str(&format!("    \"step\": {},\n", step.step));
+                script.push_str(&format!("    \"command\": \"{}\",\n", escaped_command));
+                script.push_str("    \"exit_code\": $EXIT_CODE,\n");
+                script.push_str("    \"output\": \"$OUTPUT_ESCAPED\",\n");
+                script.push_str("    \"timestamp\": \"$TIMESTAMP\"\n");
+                script.push_str("  }\n");
+                script.push_str("EOF\n\n");
 
                 script.push_str(&format!(
                     "# Verification result expression: {}\n",
@@ -114,42 +175,283 @@ impl TestExecutor {
             }
         }
 
+        script.push_str("echo ']' >> \"$JSON_LOG\"\n\n");
+
+        // Add JSON schema validation
+        script.push_str("# Validate JSON against schema\n");
+        script.push_str("if command -v jq >/dev/null 2>&1; then\n");
+        script.push_str("    if ! jq empty \"$JSON_LOG\" >/dev/null 2>&1; then\n");
+        script.push_str(
+            "        echo \"500 - Internal Script Error: Generated JSON is not valid\"\n",
+        );
+        script.push_str("        exit 1\n");
+        script.push_str("    fi\n");
+        script.push_str("fi\n\n");
+
         script.push_str("echo \"All test sequences completed successfully\"\n");
         script.push_str("exit 0\n");
 
         script
     }
 
+    pub fn generate_test_script(&self, test_case: &TestCase) -> String {
+        let json_path_str = format!("{}_execution_log.json", test_case.id);
+        let json_path = Path::new(&json_path_str);
+        self.generate_test_script_with_json_output(test_case, json_path)
+    }
+
     pub fn execute_test_case(&self, test_case: &TestCase) -> Result<()> {
-        let script_content = self.generate_test_script(test_case);
+        let mut execution_entries = Vec::new();
+        let mut execution_error = None;
+        let mut verification_failed = false;
 
-        let temp_file =
-            NamedTempFile::new().context("Failed to create temporary file for test script")?;
+        for sequence in &test_case.test_sequences {
+            for step in &sequence.steps {
+                if step.manual == Some(true) {
+                    println!(
+                        "[SKIP] Step {} (Sequence {}): {} - Manual step",
+                        step.step, sequence.id, step.description
+                    );
+                    continue;
+                }
 
-        fs::write(temp_file.path(), script_content)
-            .context("Failed to write test script to temporary file")?;
+                println!(
+                    "[RUN] Step {} (Sequence {}): {}",
+                    step.step, sequence.id, step.description
+                );
 
-        let mut perms = fs::metadata(temp_file.path())
-            .context("Failed to get file metadata")?
-            .permissions();
-        perms.set_mode(0o755);
-        fs::set_permissions(temp_file.path(), perms)
-            .context("Failed to set executable permissions on test script")?;
+                match Command::new("bash").arg("-c").arg(&step.command).output() {
+                    Ok(output) => {
+                        let exit_code = output.status.code().unwrap_or(-1);
+                        let command_output = String::from_utf8_lossy(&output.stdout)
+                            .trim_end()
+                            .to_string();
 
-        let output = Command::new(temp_file.path())
-            .output()
-            .context("Failed to execute test script")?;
+                        let timestamp = Local::now().to_rfc3339();
+                        let entry = TestStepExecutionEntry::with_timestamp(
+                            sequence.id,
+                            step.step,
+                            step.command.clone(),
+                            exit_code,
+                            command_output.clone(),
+                            timestamp,
+                        );
 
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        println!("{}", stdout);
+                        execution_entries.push(entry);
 
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            anyhow::bail!(
-                "Test execution failed:\nStderr:\n{}",
-                stderr
-            );
+                        // Perform verification
+                        let result_verification_passed = self.evaluate_verification(
+                            &step.verification.result,
+                            exit_code,
+                            &command_output,
+                        )?;
+                        let output_verification_passed = self.evaluate_verification(
+                            &step.verification.output,
+                            exit_code,
+                            &command_output,
+                        )?;
+
+                        if result_verification_passed && output_verification_passed {
+                            println!(
+                                "[PASS] Step {} (Sequence {}): {}",
+                                step.step, sequence.id, step.description
+                            );
+                        } else {
+                            println!(
+                                "[FAIL] Step {} (Sequence {}): {}",
+                                step.step, sequence.id, step.description
+                            );
+                            println!("  Command: {}", step.command);
+                            println!("  EXIT_CODE: {}", exit_code);
+                            println!("  COMMAND_OUTPUT: {}", command_output);
+                            println!("  Result verification: {}", result_verification_passed);
+                            println!("  Output verification: {}", output_verification_passed);
+                            verification_failed = true;
+
+                            if execution_error.is_none() {
+                                execution_error = Some(anyhow::anyhow!(
+                                    "Test execution failed: Step {} verification failed",
+                                    step.step
+                                ));
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        // Store the error but continue to write the log
+                        // Create an entry with exit code -1 to indicate execution failure
+                        let timestamp = Local::now().to_rfc3339();
+                        let entry = TestStepExecutionEntry::with_timestamp(
+                            sequence.id,
+                            step.step,
+                            step.command.clone(),
+                            -1,
+                            format!("Failed to execute: {}", e),
+                            timestamp,
+                        );
+                        execution_entries.push(entry);
+
+                        if execution_error.is_none() {
+                            execution_error = Some(anyhow::anyhow!(
+                                "Failed to execute command '{}': {}",
+                                step.command,
+                                e
+                            ));
+                        }
+                    }
+                }
+            }
         }
+
+        // Always write the execution log, even if there were errors
+        self.write_execution_log(test_case, &execution_entries)?;
+
+        // Now return any execution error after the log is written
+        if let Some(err) = execution_error {
+            return Err(err);
+        }
+
+        if !verification_failed {
+            println!("All test sequences completed successfully");
+        }
+
+        Ok(())
+    }
+
+    fn evaluate_verification(
+        &self,
+        expression: &str,
+        exit_code: i32,
+        command_output: &str,
+    ) -> Result<bool> {
+        // Handle simple true/false cases
+        let trimmed = expression.trim();
+        if trimmed == "true" {
+            return Ok(true);
+        }
+        if trimmed == "false" {
+            return Ok(false);
+        }
+
+        // Build a bash script that evaluates the verification expression
+        // We need to set EXIT_CODE and COMMAND_OUTPUT variables and then evaluate the expression
+        let script = format!(
+            r#"EXIT_CODE={}
+COMMAND_OUTPUT="{}"
+if {}; then
+    exit 0
+else
+    exit 1
+fi"#,
+            exit_code,
+            command_output
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n"),
+            expression
+        );
+
+        match Command::new("bash").arg("-c").arg(&script).output() {
+            Ok(output) => Ok(output.status.success()),
+            Err(_) => Ok(false),
+        }
+    }
+
+    fn write_execution_log(
+        &self,
+        test_case: &TestCase,
+        entries: &[TestStepExecutionEntry],
+    ) -> Result<()> {
+        let log_filename = format!("{}_execution_log.json", test_case.id);
+        let log_path = if let Some(ref output_dir) = self.output_dir {
+            output_dir.join(&log_filename)
+        } else {
+            PathBuf::from(&log_filename)
+        };
+
+        let json_content = serde_json::to_string_pretty(entries)
+            .context("Failed to serialize execution entries to JSON")?;
+
+        fs::write(&log_path, json_content)
+            .context(format!("Failed to write log file: {}", log_path.display()))?;
+
+        Ok(())
+    }
+
+    pub fn generate_execution_log_template(
+        &self,
+        test_case: &TestCase,
+        script_path: &Path,
+    ) -> Result<()> {
+        // Determine the output path for the JSON log
+        let json_log_path = if let Some(parent) = script_path.parent() {
+            let stem = script_path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or(&test_case.id);
+            parent.join(format!("{}_execution_log.json", stem))
+        } else {
+            Path::new(&format!("{}_execution_log.json", test_case.id)).to_path_buf()
+        };
+
+        // Create execution entries template with all steps from the test case
+        let mut template_entries: Vec<TestStepExecutionEntry> = Vec::new();
+
+        // Base timestamp for template (arbitrary starting point in local timezone)
+        let base_time = chrono::DateTime::parse_from_rfc3339("2026-01-22T10:30:00Z")
+            .unwrap()
+            .with_timezone(&Local);
+        let mut step_index = 0;
+
+        for sequence in &test_case.test_sequences {
+            for step in &sequence.steps {
+                // Skip manual steps
+                if step.manual == Some(true) {
+                    continue;
+                }
+
+                // Parse expected exit code from expected.result field
+                let exit_code = step.expected.result.parse::<i32>().unwrap_or(0);
+
+                // Use expected output, handling special cases
+                let output = if step.expected.output == "true" || step.expected.output.is_empty() {
+                    String::new()
+                } else {
+                    // Replace escaped newlines with actual newlines
+                    step.expected.output.replace("\\n", "\n")
+                };
+
+                // Generate timestamp incrementing by 1 second per step
+                let timestamp = base_time + chrono::Duration::seconds(step_index);
+
+                // Create a template entry with expected values
+                let entry = TestStepExecutionEntry {
+                    test_sequence: sequence.id,
+                    step: step.step,
+                    command: step.command.clone(),
+                    exit_code,
+                    output,
+                    timestamp: Some(timestamp.to_rfc3339()),
+                };
+
+                template_entries.push(entry);
+                step_index += 1;
+            }
+        }
+
+        // Serialize to JSON
+        let json_content = serde_json::to_string_pretty(&template_entries)
+            .context("Failed to serialize execution log template to JSON")?;
+
+        // Write to file
+        fs::write(&json_log_path, json_content).context(format!(
+            "Failed to write execution log template: {}",
+            json_log_path.display()
+        ))?;
+
+        println!(
+            "Execution log template generated: {}",
+            json_log_path.display()
+        );
 
         Ok(())
     }

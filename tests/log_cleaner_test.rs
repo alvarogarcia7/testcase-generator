@@ -361,10 +361,10 @@ fn test_remove_ansi_codes_complex_terminal_output() {
 #[test]
 fn test_normalize_paths_unix_absolute() {
     let cleaner = LogCleaner::new();
-    let text = "File at /home/user/project/src/main.rs";
+    let text = "File at /home/user/project/src/main_editor";
     let result = cleaner.normalize_paths(text);
     // Should extract just the filename
-    assert!(result.contains("main.rs"));
+    assert!(result.contains("main_editor"));
     assert!(!result.contains("/home/user/project"));
 }
 
@@ -426,17 +426,17 @@ fn test_normalize_paths_unix_deep_hierarchy() {
 #[test]
 fn test_normalize_paths_windows_absolute() {
     let cleaner = LogCleaner::new();
-    let text = r"File at C:\Users\user\project\src\main.rs";
+    let text = r"File at C:\Users\user\project\src\main_editor.rs";
     let result = cleaner.normalize_paths(text);
-    assert!(result.contains("main.rs"));
+    assert!(result.contains("main_editor"));
 }
 
 #[test]
 fn test_normalize_paths_windows_forward_slash() {
     let cleaner = LogCleaner::new();
-    let text = "File at C:/Users/user/project/src/main.rs";
+    let text = "File at C:/Users/user/project/src/main_editor";
     let result = cleaner.normalize_paths(text);
-    assert!(result.contains("main.rs"));
+    assert!(result.contains("main_editor"));
 }
 
 #[test]
@@ -482,7 +482,7 @@ fn test_normalize_paths_url_should_not_match() {
 #[test]
 fn test_normalize_paths_relative_unchanged() {
     let cleaner = LogCleaner::new();
-    let text = "Relative: src/main.rs and ./test.rs";
+    let text = "Relative: src/main_editor and ./test.rs";
     let result = cleaner.normalize_paths(text);
     // Relative paths without leading / or drive letter should remain unchanged
     assert_eq!(result, text);
@@ -721,7 +721,7 @@ Date:   2024-01-15T10:30:45Z
     Updated configuration
 
  /home/user/project/config.yaml | 5 [32m+++++[0m
- /home/user/project/src/main.rs | 10 [31m----------[0m
+ /home/user/project/src/main_editor | 10 [31m----------[0m
  2 files changed, 5 insertions(+), 10 deletions(-)
  
 Modified 3 hours ago
@@ -735,7 +735,7 @@ Modified 3 hours ago
     assert!(result.contains("[TIMESTAMP]"));
     assert!(result.contains("[RELATIVE_TIME]"));
     assert!(result.contains("config.yaml"));
-    assert!(result.contains("main.rs"));
+    assert!(result.contains("main_editor"));
     assert!(!result.contains("[33m"));
 }
 

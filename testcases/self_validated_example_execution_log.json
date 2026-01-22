@@ -1,0 +1,74 @@
+[
+  {
+    "test_sequence": 1,
+    "step": 1,
+    "command": "echo \"Hello World\"",
+    "exit_code": 0,
+    "output": "Hello World",
+    "timestamp": "2024-01-15T10:30:00Z"
+  },
+  {
+    "test_sequence": 1,
+    "step": 2,
+    "command": "/bin/true",
+    "exit_code": 0,
+    "output": "",
+    "timestamp": "2024-01-15T10:30:01Z"
+  },
+  {
+    "test_sequence": 1,
+    "step": 3,
+    "command": "/bin/false",
+    "exit_code": 1,
+    "output": "",
+    "timestamp": "2024-01-15T10:30:02Z"
+  },
+  {
+    "test_sequence": 2,
+    "step": 1,
+    "command": "echo \"Status: SUCCESS\"",
+    "exit_code": 0,
+    "output": "Status: SUCCESS",
+    "timestamp": "2024-01-15T10:30:03Z"
+  },
+  {
+    "test_sequence": 2,
+    "step": 2,
+    "command": "echo \"Operation completed\"",
+    "exit_code": 0,
+    "output": "Operation completed",
+    "timestamp": "2024-01-15T10:30:04Z"
+  },
+  {
+    "test_sequence": 2,
+    "step": 3,
+    "command": "echo -e \"Line 1\\nLine 2\\nLine 3\"",
+    "exit_code": 0,
+    "output": "Line 1\nLine 2\nLine 3",
+    "timestamp": "2024-01-15T10:30:05Z"
+  },
+  {
+    "test_sequence": 3,
+    "step": 1,
+    "command": "/bin/sh -c \"exit 0\"",
+    "exit_code": 0,
+    "output": "",
+    "timestamp": "2024-01-15T10:30:06Z"
+  },
+  {
+    "test_sequence": 3,
+    "step": 2,
+    "command": "/bin/sh -c \"exit 1\"",
+    "exit_code": 1,
+    "output": "",
+    "timestamp": "2024-01-15T10:30:07Z"
+  },
+  {
+    "test_sequence": 3,
+    "step": 3,
+    "command": "/bin/sh -c \"exit 2\"",
+    "exit_code": 2,
+    "output": "",
+    "timestamp": "2024-01-15T10:30:08Z"
+  }
+]

@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use chrono::Utc;
+use chrono::Local;
 use clap::{Parser, Subcommand};
 use std::collections::HashMap;
 use std::fs;
@@ -179,7 +179,7 @@ fn add_test_run(base_path: &Path, _test_runs_dir: &Path) -> Result<()> {
     let test_run = TestRun {
         name: Some("HARDCODED NAME".to_string()),
         test_case_id: test_case_id.clone(),
-        timestamp: Utc::now(),
+        timestamp: Local::now().with_timezone(&chrono::Utc),
         status,
         duration,
         execution_log,

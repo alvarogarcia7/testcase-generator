@@ -1,7 +1,7 @@
 use crate::models::{ActualResult, Expected, Step, TestCase, TestSequence};
 use crate::storage::TestCaseStorage;
 use anyhow::{Context, Result};
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Local, Utc};
 use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event};
 use quick_xml::Writer;
 use regex::Regex;
@@ -201,7 +201,7 @@ impl BatchVerificationReport {
             passed_steps: 0,
             failed_steps: 0,
             not_executed_steps: 0,
-            generated_at: Utc::now(),
+            generated_at: Local::now().with_timezone(&Utc),
         }
     }
 
@@ -513,6 +513,105 @@ impl TestVerifier {
         self.parse_log_content(&content, log_path)
     }
 
+    /// Parse a test execution log file with a specified test case ID
+    /// This is useful when the log file doesn't follow the naming convention
+    pub fn parse_log_file_with_test_case_id<P: AsRef<Path>>(
+        &self,
+        log_path: P,
+        test_case_id: &str,
+    ) -> Result<Vec<TestExecutionLog>> {
+        let log_path = log_path.as_ref();
+        let content =
+            fs::read_to_string(log_path).context("Failed to read test execution log file")?;
+
+        self.parse_log_content_with_test_case_id(&content, log_path, test_case_id)
+    }
+
+    /// Parse test execution log content with a specified test case ID
+    pub fn parse_log_content_with_test_case_id(
+        &self,
+        content: &str,
+        log_path: &Path,
+        test_case_id: &str,
+    ) -> Result<Vec<TestExecutionLog>> {
+        let mut logs = Vec::new();
+
+        // Try to parse as JSON first
+        let trimmed_content = content.trim();
+        if trimmed_content.starts_with('[') {
+            // Attempt to parse as JSON array of TestStepExecutionEntry
+            match self.parse_json_log_content_with_test_case_id(content, log_path, test_case_id) {
+                Ok(json_logs) => return Ok(json_logs),
+                Err(e) => {
+                    log::debug!(
+                        "Failed to parse as JSON, falling back to text format: {}",
+                        e
+                    );
+                }
+            }
+        }
+
+        // Fall back to text format parsing with the provided test_case_id
+        let log_regex = Regex::new(
+            r"(?x)
+            (?:\[([^\]]+)\]\s+)?  # Optional timestamp
+            TestCase:\s+([^,]+),\s+
+            Sequence:\s+(\d+),\s+
+            Step:\s+(\d+),\s+
+            Success:\s+(true|false|null|none|-),\s+
+            Result:\s+([^,]+),\s+
+            Output:\s+(.+)
+            ",
+        )
+        .context("Failed to compile log regex")?;
+
+        for line in content.lines() {
+            if let Some(caps) = log_regex.captures(line) {
+                let timestamp = caps.get(1).and_then(|m| {
+                    DateTime::parse_from_rfc3339(m.as_str())
+                        .ok()
+                        .map(|dt| dt.with_timezone(&Utc))
+                });
+
+                let sequence_id = caps
+                    .get(3)
+                    .unwrap()
+                    .as_str()
+                    .parse::<i64>()
+                    .context("Failed to parse sequence ID")?;
+                let step_number = caps
+                    .get(4)
+                    .unwrap()
+                    .as_str()
+                    .parse::<i64>()
+                    .context("Failed to parse step number")?;
+
+                let success_str = caps.get(5).unwrap().as_str().to_lowercase();
+                let success = match success_str.as_str() {
+                    "true" => Some(true),
+                    "false" => Some(false),
+                    _ => None,
+                };
+
+                let actual_result = caps.get(6).unwrap().as_str().trim().to_string();
+                let actual_output = caps.get(7).unwrap().as_str().trim().to_string();
+
+                logs.push(TestExecutionLog {
+                    test_case_id: test_case_id.to_string(),
+                    sequence_id,
+                    step_number,
+                    success,
+                    actual_result,
+                    actual_output,
+                    timestamp,
+                    log_file_path: log_path.to_path_buf(),
+                });
+            }
+        }
+
+        Ok(logs)
+    }
+
     /// Parse test execution log content
     pub fn parse_log_content(
         &self,
@@ -521,6 +620,22 @@ impl TestVerifier {
     ) -> Result<Vec<TestExecutionLog>> {
         let mut logs = Vec::new();
 
+        // Try to parse as JSON first
+        let trimmed_content = content.trim();
+        if trimmed_content.starts_with('[') {
+            // Attempt to parse as JSON array of TestStepExecutionEntry
+            match self.parse_json_log_content(content, log_path) {
+                Ok(json_logs) => return Ok(json_logs),
+                Err(e) => {
+                    log::debug!(
+                        "Failed to parse as JSON, falling back to text format: {}",
+                        e
+                    );
+                }
+            }
+        }
+
+        // Fall back to text format parsing
         // Regular expressions for parsing log entries
         // Format: [TIMESTAMP] TestCase: <id>, Sequence: <seq_id>, Step: <step_num>, Success: <true/false>, Result: <result>, Output: <output>
         let log_regex = Regex::new(
@@ -579,6 +694,102 @@ impl TestVerifier {
                     log_file_path: log_path.to_path_buf(),
                 });
             }
+        }
+
+        Ok(logs)
+    }
+
+    /// Parse JSON-formatted execution log content with a specified test case ID
+    fn parse_json_log_content_with_test_case_id(
+        &self,
+        content: &str,
+        log_path: &Path,
+        test_case_id: &str,
+    ) -> Result<Vec<TestExecutionLog>> {
+        use crate::models::TestStepExecutionEntry;
+
+        let entries: Vec<TestStepExecutionEntry> =
+            serde_json::from_str(content).context("Failed to parse JSON execution log")?;
+
+        let mut logs = Vec::new();
+        for entry in entries {
+            // Derive success from exit_code (0 = success, non-zero = failure)
+            let success = Some(entry.exit_code == 0);
+
+            // Derive actual_result from exit_code
+            let actual_result = entry.exit_code.to_string();
+
+            // Parse timestamp if present
+            let timestamp = entry.timestamp.as_ref().and_then(|ts| {
+                DateTime::parse_from_rfc3339(ts)
+                    .ok()
+                    .map(|dt| dt.with_timezone(&Utc))
+            });
+
+            logs.push(TestExecutionLog {
+                test_case_id: test_case_id.to_string(),
+                sequence_id: entry.test_sequence,
+                step_number: entry.step,
+                success,
+                actual_result,
+                actual_output: entry.output.clone(),
+                timestamp,
+                log_file_path: log_path.to_path_buf(),
+            });
+        }
+
+        Ok(logs)
+    }
+
+    /// Parse JSON-formatted execution log content
+    fn parse_json_log_content(
+        &self,
+        content: &str,
+        log_path: &Path,
+    ) -> Result<Vec<TestExecutionLog>> {
+        use crate::models::TestStepExecutionEntry;
+
+        let entries: Vec<TestStepExecutionEntry> =
+            serde_json::from_str(content).context("Failed to parse JSON execution log")?;
+
+        // Extract test_case_id from the log file path
+        // Expected format: {test_case_id}_execution_log.json
+        let test_case_id = log_path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .and_then(|s| s.strip_suffix("_execution_log"))
+            .unwrap_or("UNKNOWN")
+            .to_string();
+
+        let mut logs = Vec::new();
+        for entry in entries {
+            // Derive success from exit_code (0 = success, non-zero = failure)
+            let success = Some(entry.exit_code == 0);
+
+            // Derive actual_result from exit_code
+            let actual_result = if entry.exit_code == 0 {
+                "SUCCESS".to_string()
+            } else {
+                format!("FAILED (exit code: {})", entry.exit_code)
+            };
+
+            // Parse timestamp if present
+            let timestamp = entry.timestamp.as_ref().and_then(|ts| {
+                DateTime::parse_from_rfc3339(ts)
+                    .ok()
+                    .map(|dt| dt.with_timezone(&Utc))
+            });
+
+            logs.push(TestExecutionLog {
+                test_case_id: test_case_id.clone(),
+                sequence_id: entry.test_sequence,
+                step_number: entry.step,
+                success,
+                actual_result,
+                actual_output: entry.output.clone(),
+                timestamp,
+                log_file_path: log_path.to_path_buf(),
+            });
         }
 
         Ok(logs)
@@ -803,6 +1014,89 @@ impl TestVerifier {
         Self::with_strategies(storage, result_strategy, output_strategy)
     }
 
+    /// Verify a single step against an execution log (new two-stage workflow)
+    pub fn verify_step_from_log(
+        &self,
+        step: &Step,
+        log: &TestExecutionLog,
+    ) -> StepVerificationResult {
+        let result_match = self.matches(
+            &step.expected.result,
+            &log.actual_result,
+            self.result_strategy,
+        );
+        let output_match = self.matches(
+            &step.expected.output,
+            &log.actual_output,
+            self.output_strategy,
+        );
+
+        let mut success_match = true;
+        let mut success_diff = None;
+
+        if let Some(expected_success) = step.expected.success {
+            if let Some(actual_success) = log.success {
+                success_match = expected_success == actual_success;
+                if !success_match {
+                    success_diff = Some(DiffDetail {
+                        expected: expected_success.to_string(),
+                        actual: actual_success.to_string(),
+                        message: "Success flag mismatch".to_string(),
+                    });
+                }
+            }
+        }
+
+        let passed = result_match && output_match && success_match;
+
+        let result_diff = if !result_match {
+            Some(DiffDetail {
+                expected: step.expected.result.clone(),
+                actual: log.actual_result.clone(),
+                message: format!(
+                    "Result mismatch ({})",
+                    self.strategy_name(self.result_strategy)
+                ),
+            })
+        } else {
+            None
+        };
+
+        let output_diff = if !output_match {
+            Some(DiffDetail {
+                expected: step.expected.output.clone(),
+                actual: log.actual_output.clone(),
+                message: format!(
+                    "Output mismatch ({})",
+                    self.strategy_name(self.output_strategy)
+                ),
+            })
+        } else {
+            None
+        };
+
+        StepVerificationResult {
+            step_number: step.step,
+            passed,
+            result_match,
+            output_match,
+            success_match,
+            diff: VerificationDiff {
+                result_diff,
+                output_diff,
+                success_diff,
+            },
+        }
+    }
+
+    fn strategy_name(&self, strategy: MatchStrategy) -> &'static str {
+        match strategy {
+            MatchStrategy::Exact => "Exact",
+            MatchStrategy::Regex => "Regex",
+            MatchStrategy::Contains => "Contains",
+        }
+    }
+
     /// Verify a single step with old-style result (struct-based)
     pub fn verify_step(&self, step: &Step, actual: &ActualResult) -> StepVerificationResult {
         let result_match =
@@ -975,7 +1269,7 @@ mod tests {
                     skipped: false,
                 },
             ],
-            timestamp: Utc::now(),
+            timestamp: Local::now().with_timezone(&Utc),
         };
 
         let xml = suite.to_xml().unwrap();

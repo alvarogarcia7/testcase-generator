@@ -7,6 +7,7 @@ use testcase_manager::JUnitTestSuite;
 use testcase_manager::LogCleaner;
 use testcase_manager::TestCaseStorage;
 use testcase_manager::TestVerifier;
+use testcase_manager::VerificationTestExecutionLog;
 
 #[derive(Parser)]
 #[command(name = "test-verify")]
@@ -45,6 +46,10 @@ enum Commands {
         /// Output format (text, json, junit)
         #[arg(short, long, default_value = "text")]
         format: String,
+
+        /// Enable verbose output with detailed step-by-step comparisons
+        #[arg(short, long)]
+        verbose: bool,
     },
 
     /// Batch verify multiple test execution logs
@@ -64,6 +69,10 @@ enum Commands {
         /// Output file path (optional, defaults to stdout)
         #[arg(short, long)]
         output: Option<PathBuf>,
+
+        /// Enable verbose output with detailed step-by-step comparisons
+        #[arg(short, long)]
+        verbose: bool,
     },
 
     /// Parse and display test execution log contents
@@ -83,26 +92,28 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-
         Commands::Clean { log_file } => clean_command(log_file),
         Commands::Single {
             log,
             test_case_id,
             test_case_dir,
             format,
-        } => handle_single_verify(log, test_case_id, test_case_dir, format),
+            verbose,
+        } => handle_single_verify(log, test_case_id, test_case_dir, format, verbose),
 
         Commands::Batch {
             logs,
             test_case_dir,
             format,
             output,
-        } => handle_batch_verify(logs, test_case_dir, format, output),
+            verbose,
+        } => handle_batch_verify(logs, test_case_dir, format, output, verbose),
 
         Commands::ParseLog { log, format } => handle_parse_log(log, format),
     }
 }
 
+#[allow(dead_code)]
 fn verify_command(log_file: PathBuf, test_case_file: PathBuf) -> Result<()> {
     let log_content = fs::read_to_string(&log_file)
         .context(format!("Failed to read log file: {}", log_file.display()))?;
@@ -259,6 +270,264 @@ fn print_verification_result(result: &testcase_manager::TestCaseVerificationResu
     }
 }
 
+fn print_verification_result_verbose(
+    result: &testcase_manager::TestCaseVerificationResult,
+    test_case: &testcase_manager::TestCase,
+    execution_logs: &[VerificationTestExecutionLog],
+) {
+    use std::collections::HashMap;
+
+    println!("═══════════════════════════════════════════════════════════");
+    println!("VERBOSE TEST VERIFICATION REPORT");
+    println!("═══════════════════════════════════════════════════════════");
+    println!();
+    println!("Test Case: {}", result.test_case_id);
+    println!("Description: {}", result.description);
+    println!();
+
+    // Create a lookup map for execution logs
+    let mut log_map: HashMap<(i64, i64), &VerificationTestExecutionLog> = HashMap::new();
+    for log in execution_logs {
+        if log.test_case_id == result.test_case_id {
+            log_map.insert((log.sequence_id, log.step_number), log);
+        }
+    }
+
+    // Process each sequence
+    for seq_result in &result.sequences {
+        println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        println!("SEQUENCE #{}: {}", seq_result.sequence_id, seq_result.name);
+        println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        println!();
+
+        // Get the sequence from the test case for additional details
+        let sequence = test_case
+            .test_sequences
+            .iter()
+            .find(|s| s.id == seq_result.sequence_id);
+
+        // Process each step
+        for step_result in &seq_result.step_results {
+            let step_num = step_result.step_number();
+            let log_entry = log_map.get(&(seq_result.sequence_id, step_num));
+
+            // Get step details from test case
+            let step_details = sequence.and_then(|s| s.steps.iter().find(|st| st.step == step_num));
+
+            println!(
+                "┌─ Step {} ─────────────────────────────────────────────────",
+                step_num
+            );
+
+            match step_result {
+                testcase_manager::StepVerificationResultEnum::Pass { description, .. } => {
+                    println!("│ Description: {}", description);
+                    println!("│ Status: ✓ PASS");
+                    println!("│");
+
+                    if let Some(step) = step_details {
+                        println!("│ Command: {}", step.command);
+                        println!("│");
+                        println!("│ Expected (from YAML):");
+                        if let Some(success) = step.expected.success {
+                            println!(
+                                "│   Exit Code: {} (success={})",
+                                if success { "0" } else { "non-zero" },
+                                success
+                            );
+                        }
+                        println!("│   Result: {}", step.expected.result);
+                        println!("│   Output: {}", step.expected.output);
+                        if !step.verification.result.is_empty() {
+                            println!(
+                                "│   Verification Expression (result): {}",
+                                step.verification.result
+                            );
+                        }
+                        if !step.verification.output.is_empty() {
+                            println!(
+                                "│   Verification Expression (output): {}",
+                                step.verification.output
+                            );
+                        }
+                    }
+
+                    if let Some(log) = log_entry {
+                        println!("│");
+                        println!("│ Actual (from JSON log):");
+                        if let Some(success) = log.success {
+                            println!(
+                                "│   Exit Code: {} (success={})",
+                                if success { "0" } else { "non-zero" },
+                                success
+                            );
+                        }
+                        println!("│   Result: {}", log.actual_result);
+                        println!("│   Output: {}", log.actual_output);
+                    }
+
+                    println!("│");
+                    println!("│ ✓ All comparisons PASSED");
+                }
+
+                testcase_manager::StepVerificationResultEnum::Fail {
+                    description,
+                    expected,
+                    actual_result,
+                    actual_output,
+                    reason,
+                    ..
+                } => {
+                    println!("│ Description: {}", description);
+                    println!("│ Status: ✗ FAIL");
+                    println!("│");
+
+                    if let Some(step) = step_details {
+                        println!("│ Command: {}", step.command);
+                        println!("│");
+                    }
+
+                    println!("│ Expected (from YAML):");
+                    if let Some(success) = expected.success {
+                        println!(
+                            "│   Exit Code: {} (success={})",
+                            if success { "0" } else { "non-zero" },
+                            success
+                        );
+                    }
+                    println!("│   Result: {}", expected.result);
+                    println!("│   Output: {}", expected.output);
+
+                    if let Some(step) = step_details {
+                        if !step.verification.result.is_empty() {
+                            println!(
+                                "│   Verification Expression (result): {}",
+                                step.verification.result
+                            );
+                        }
+                        if !step.verification.output.is_empty() {
+                            println!(
+                                "│   Verification Expression (output): {}",
+                                step.verification.output
+                            );
+                        }
+                    }
+
+                    println!("│");
+                    println!("│ Actual (from JSON log):");
+                    if let Some(log) = log_entry {
+                        if let Some(success) = log.success {
+                            println!(
+                                "│   Exit Code: {} (success={})",
+                                if success { "0" } else { "non-zero" },
+                                success
+                            );
+                        }
+                    }
+                    println!("│   Result: {}", actual_result);
+                    println!("│   Output: {}", actual_output);
+
+                    println!("│");
+                    println!("│ ✗ FAILURE REASON:");
+                    println!("│   {}", reason);
+
+                    // Show detailed comparison
+                    if let Some(log) = log_entry {
+                        println!("│");
+                        println!("│ Detailed Comparison:");
+
+                        if let Some(expected_success) = expected.success {
+                            if let Some(actual_success) = log.success {
+                                let exit_match = expected_success == actual_success;
+                                println!(
+                                    "│   Exit Code Match: {} (expected: {}, actual: {})",
+                                    if exit_match { "✓" } else { "✗" },
+                                    if expected_success { "0" } else { "non-zero" },
+                                    if actual_success { "0" } else { "non-zero" }
+                                );
+                            }
+                        }
+
+                        let result_match = expected.result == *actual_result;
+                        println!(
+                            "│   Result Match: {} (expected: '{}', actual: '{}')",
+                            if result_match { "✓" } else { "✗" },
+                            expected.result,
+                            actual_result
+                        );
+
+                        let output_match = expected.output == *actual_output;
+                        println!(
+                            "│   Output Match: {} (expected: '{}', actual: '{}')",
+                            if output_match { "✓" } else { "✗" },
+                            expected.output,
+                            actual_output
+                        );
+                    }
+                }
+
+                testcase_manager::StepVerificationResultEnum::NotExecuted {
+                    description, ..
+                } => {
+                    println!("│ Description: {}", description);
+                    println!("│ Status: ○ NOT EXECUTED");
+                    println!("│");
+
+                    if let Some(step) = step_details {
+                        println!("│ Command: {}", step.command);
+                        println!("│");
+                        println!("│ Expected (from YAML):");
+                        if let Some(success) = step.expected.success {
+                            println!(
+                                "│   Exit Code: {} (success={})",
+                                if success { "0" } else { "non-zero" },
+                                success
+                            );
+                        }
+                        println!("│   Result: {}", step.expected.result);
+                        println!("│   Output: {}", step.expected.output);
+                    }
+
+                    println!("│");
+                    println!("│ ○ No execution log found for this step");
+                }
+            }
+
+            println!("└───────────────────────────────────────────────────────────");
+            println!();
+        }
+
+        println!(
+            "Sequence Status: {}",
+            if seq_result.all_steps_passed {
+                "✓ PASS"
+            } else {
+                "✗ FAIL"
+            }
+        );
+        println!();
+    }
+
+    println!("═══════════════════════════════════════════════════════════");
+    println!("FINAL TEST RESULT");
+    println!("═══════════════════════════════════════════════════════════");
+    println!();
+    println!(
+        "Overall Status: {}",
+        if result.overall_pass {
+            "✓✓✓ PASS ✓✓✓"
+        } else {
+            "✗✗✗ FAIL ✗✗✗"
+        }
+    );
+    println!();
+    println!(
+        "Summary: {} total steps, {} passed, {} failed, {} not executed",
+        result.total_steps, result.passed_steps, result.failed_steps, result.not_executed_steps
+    );
+    println!("═══════════════════════════════════════════════════════════");
+}
+
 fn format_batch_report_text(report: &BatchVerificationReport) -> String {
     let mut output = String::new();
 
@@ -372,11 +641,331 @@ fn format_batch_report_text(report: &BatchVerificationReport) -> String {
     output
 }
 
+fn format_batch_report_verbose(
+    report: &BatchVerificationReport,
+    verifier: &TestVerifier,
+    log_paths: &[PathBuf],
+) -> String {
+    use std::collections::HashMap;
+
+    let mut output = String::new();
+
+    output.push_str("═══════════════════════════════════════════════════════════\n");
+    output.push_str("    VERBOSE BATCH VERIFICATION REPORT\n");
+    output.push_str("═══════════════════════════════════════════════════════════\n");
+    output.push_str(&format!("Generated: {}\n", report.generated_at));
+    output.push('\n');
+
+    // Parse all logs for detailed verbose output
+    let mut all_logs: HashMap<String, Vec<VerificationTestExecutionLog>> = HashMap::new();
+    for log_path in log_paths {
+        if let Ok(logs) = verifier.parse_log_file(log_path) {
+            for log in logs {
+                all_logs
+                    .entry(log.test_case_id.clone())
+                    .or_default()
+                    .push(log);
+            }
+        }
+    }
+
+    // Process each test case
+    for tc_result in &report.test_cases {
+        output.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+        output.push_str(&format!("TEST CASE: {}\n", tc_result.test_case_id));
+        output.push_str(&format!("Description: {}\n", tc_result.description));
+        output.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+        output.push('\n');
+
+        // Load test case details
+        let test_case = verifier
+            .storage()
+            .load_test_case_by_id(&tc_result.test_case_id)
+            .ok();
+        let logs = all_logs.get(&tc_result.test_case_id);
+
+        if let (Some(tc), Some(logs)) = (test_case, logs) {
+            // Create log map
+            let mut log_map: HashMap<(i64, i64), &VerificationTestExecutionLog> = HashMap::new();
+            for log in logs {
+                log_map.insert((log.sequence_id, log.step_number), log);
+            }
+
+            // Process each sequence
+            for seq_result in &tc_result.sequences {
+                output.push_str(&format!(
+                    "  SEQUENCE #{}: {}\n",
+                    seq_result.sequence_id, seq_result.name
+                ));
+                output.push_str("  ───────────────────────────────────────────────────────\n");
+                output.push('\n');
+
+                let sequence = tc
+                    .test_sequences
+                    .iter()
+                    .find(|s| s.id == seq_result.sequence_id);
+
+                for step_result in &seq_result.step_results {
+                    let step_num = step_result.step_number();
+                    let log_entry = log_map.get(&(seq_result.sequence_id, step_num));
+                    let step_details =
+                        sequence.and_then(|s| s.steps.iter().find(|st| st.step == step_num));
+
+                    output.push_str(&format!(
+                        "  ┌─ Step {} ─────────────────────────\n",
+                        step_num
+                    ));
+
+                    match step_result {
+                        testcase_manager::StepVerificationResultEnum::Pass {
+                            description, ..
+                        } => {
+                            output.push_str(&format!("  │ Description: {}\n", description));
+                            output.push_str("  │ Status: ✓ PASS\n");
+                            output.push_str("  │\n");
+
+                            if let Some(step) = step_details {
+                                output.push_str(&format!("  │ Command: {}\n", step.command));
+                                output.push_str("  │\n");
+                                output.push_str("  │ Expected (from YAML):\n");
+                                if let Some(success) = step.expected.success {
+                                    output.push_str(&format!(
+                                        "  │   Exit Code: {} (success={})\n",
+                                        if success { "0" } else { "non-zero" },
+                                        success
+                                    ));
+                                }
+                                output
+                                    .push_str(&format!("  │   Result: {}\n", step.expected.result));
+                                output
+                                    .push_str(&format!("  │   Output: {}\n", step.expected.output));
+                            }
+
+                            if let Some(log) = log_entry {
+                                output.push_str("  │\n");
+                                output.push_str("  │ Actual (from JSON log):\n");
+                                if let Some(success) = log.success {
+                                    output.push_str(&format!(
+                                        "  │   Exit Code: {} (success={})\n",
+                                        if success { "0" } else { "non-zero" },
+                                        success
+                                    ));
+                                }
+                                output.push_str(&format!("  │   Result: {}\n", log.actual_result));
+                                output.push_str(&format!("  │   Output: {}\n", log.actual_output));
+                            }
+
+                            output.push_str("  │\n");
+                            output.push_str("  │ ✓ All comparisons PASSED\n");
+                        }
+
+                        testcase_manager::StepVerificationResultEnum::Fail {
+                            description,
+                            expected,
+                            actual_result,
+                            actual_output,
+                            reason,
+                            ..
+                        } => {
+                            output.push_str(&format!("  │ Description: {}\n", description));
+                            output.push_str("  │ Status: ✗ FAIL\n");
+                            output.push_str("  │\n");
+
+                            if let Some(step) = step_details {
+                                output.push_str(&format!("  │ Command: {}\n", step.command));
+                                output.push_str("  │\n");
+                            }
+
+                            output.push_str("  │ Expected (from YAML):\n");
+                            if let Some(success) = expected.success {
+                                output.push_str(&format!(
+                                    "  │   Exit Code: {} (success={})\n",
+                                    if success { "0" } else { "non-zero" },
+                                    success
+                                ));
+                            }
+                            output.push_str(&format!("  │   Result: {}\n", expected.result));
+                            output.push_str(&format!("  │   Output: {}\n", expected.output));
+
+                            output.push_str("  │\n");
+                            output.push_str("  │ Actual (from JSON log):\n");
+                            if let Some(log) = log_entry {
+                                if let Some(success) = log.success {
+                                    output.push_str(&format!(
+                                        "  │   Exit Code: {} (success={})\n",
+                                        if success { "0" } else { "non-zero" },
+                                        success
+                                    ));
+                                }
+                            }
+                            output.push_str(&format!("  │   Result: {}\n", actual_result));
+                            output.push_str(&format!("  │   Output: {}\n", actual_output));
+
+                            output.push_str("  │\n");
+                            output.push_str("  │ ✗ FAILURE REASON:\n");
+                            output.push_str(&format!("  │   {}\n", reason));
+
+                            if let Some(log) = log_entry {
+                                output.push_str("  │\n");
+                                output.push_str("  │ Detailed Comparison:\n");
+
+                                if let Some(expected_success) = expected.success {
+                                    if let Some(actual_success) = log.success {
+                                        let exit_match = expected_success == actual_success;
+                                        output.push_str(&format!(
+                                            "  │   Exit Code Match: {} (expected: {}, actual: {})\n",
+                                            if exit_match { "✓" } else { "✗" },
+                                            if expected_success { "0" } else { "non-zero" },
+                                            if actual_success { "0" } else { "non-zero" }
+                                        ));
+                                    }
+                                }
+
+                                let result_match = expected.result == *actual_result;
+                                output.push_str(&format!(
+                                    "  │   Result Match: {} (expected: '{}', actual: '{}')\n",
+                                    if result_match { "✓" } else { "✗" },
+                                    expected.result,
+                                    actual_result
+                                ));
+
+                                let output_match = expected.output == *actual_output;
+                                output.push_str(&format!(
+                                    "  │   Output Match: {} (expected: '{}', actual: '{}')\n",
+                                    if output_match { "✓" } else { "✗" },
+                                    expected.output,
+                                    actual_output
+                                ));
+                            }
+                        }
+
+                        testcase_manager::StepVerificationResultEnum::NotExecuted {
+                            description,
+                            ..
+                        } => {
+                            output.push_str(&format!("  │ Description: {}\n", description));
+                            output.push_str("  │ Status: ○ NOT EXECUTED\n");
+                            output.push_str("  │\n");
+
+                            if let Some(step) = step_details {
+                                output.push_str(&format!("  │ Command: {}\n", step.command));
+                                output.push_str("  │\n");
+                                output.push_str("  │ Expected (from YAML):\n");
+                                if let Some(success) = step.expected.success {
+                                    output.push_str(&format!(
+                                        "  │   Exit Code: {} (success={})\n",
+                                        if success { "0" } else { "non-zero" },
+                                        success
+                                    ));
+                                }
+                                output
+                                    .push_str(&format!("  │   Result: {}\n", step.expected.result));
+                                output
+                                    .push_str(&format!("  │   Output: {}\n", step.expected.output));
+                            }
+
+                            output.push_str("  │\n");
+                            output.push_str("  │ ○ No execution log found for this step\n");
+                        }
+                    }
+
+                    output.push_str("  └────────────────────────────────────────\n");
+                    output.push('\n');
+                }
+
+                output.push_str(&format!(
+                    "  Sequence Status: {}\n",
+                    if seq_result.all_steps_passed {
+                        "✓ PASS"
+                    } else {
+                        "✗ FAIL"
+                    }
+                ));
+                output.push('\n');
+            }
+        }
+
+        // Test case summary
+        output.push_str(&format!(
+            "Test Case Status: {}\n",
+            if tc_result.overall_pass {
+                "✓✓✓ PASS ✓✓✓"
+            } else {
+                "✗✗✗ FAIL ✗✗✗"
+            }
+        ));
+        output.push_str(&format!(
+            "Summary: {}/{} steps passed",
+            tc_result.passed_steps, tc_result.total_steps
+        ));
+        if tc_result.failed_steps > 0 {
+            output.push_str(&format!(", {} failed", tc_result.failed_steps));
+        }
+        if tc_result.not_executed_steps > 0 {
+            output.push_str(&format!(", {} not executed", tc_result.not_executed_steps));
+        }
+        output.push_str("\n\n");
+    }
+
+    // Overall summary
+    output.push_str("═══════════════════════════════════════════════════════════\n");
+    output.push_str("FINAL BATCH RESULT\n");
+    output.push_str("═══════════════════════════════════════════════════════════\n");
+    output.push('\n');
+    output.push_str(&format!(
+        "Overall Status: {}\n",
+        if report.failed_test_cases == 0 {
+            "✓✓✓ PASS ✓✓✓"
+        } else {
+            "✗✗✗ FAIL ✗✗✗"
+        }
+    ));
+    output.push('\n');
+    output.push_str("SUMMARY:\n");
+    output.push_str(&format!(
+        "  Test Cases:  {} total\n",
+        report.total_test_cases
+    ));
+    output.push_str(&format!(
+        "               {} passed ({}%)\n",
+        report.passed_test_cases,
+        if report.total_test_cases > 0 {
+            (report.passed_test_cases * 100) / report.total_test_cases
+        } else {
+            0
+        }
+    ));
+    output.push_str(&format!(
+        "               {} failed\n",
+        report.failed_test_cases
+    ));
+    output.push('\n');
+    output.push_str(&format!("  Steps:       {} total\n", report.total_steps));
+    output.push_str(&format!(
+        "               {} passed ({}%)\n",
+        report.passed_steps,
+        if report.total_steps > 0 {
+            (report.passed_steps * 100) / report.total_steps
+        } else {
+            0
+        }
+    ));
+    output.push_str(&format!("               {} failed\n", report.failed_steps));
+    output.push_str(&format!(
+        "               {} not executed\n",
+        report.not_executed_steps
+    ));
+    output.push_str("═══════════════════════════════════════════════════════════\n");
+
+    output
+}
+
 fn handle_single_verify(
     log_path: PathBuf,
     test_case_id: String,
     test_case_dir: PathBuf,
     format: String,
+    verbose: bool,
 ) -> Result<()> {
     let storage =
         TestCaseStorage::new(&test_case_dir).context("Failed to initialize test case storage")?;
@@ -413,7 +1002,11 @@ fn handle_single_verify(
             println!("{}", xml);
         }
         _ => {
-            print_verification_result(&result);
+            if verbose {
+                print_verification_result_verbose(&result, &test_case, &logs);
+            } else {
+                print_verification_result(&result);
+            }
         }
     }
 
@@ -429,6 +1022,7 @@ fn handle_batch_verify(
     test_case_dir: PathBuf,
     format: String,
     output_path: Option<PathBuf>,
+    verbose: bool,
 ) -> Result<()> {
     let storage =
         TestCaseStorage::new(&test_case_dir).context("Failed to initialize test case storage")?;
@@ -450,7 +1044,13 @@ fn handle_batch_verify(
             let junit = JUnitTestSuite::from_batch_report(&report, "Batch Test Verification");
             junit.to_xml().context("Failed to generate JUnit XML")?
         }
-        _ => format_batch_report_text(&report),
+        _ => {
+            if verbose {
+                format_batch_report_verbose(&report, &verifier, &log_paths)
+            } else {
+                format_batch_report_text(&report)
+            }
+        }
     };
 
     // Write output

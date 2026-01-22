@@ -143,14 +143,14 @@ impl TestRunStorage {
 mod tests {
     use super::*;
     use crate::models::TestRunStatus;
-    use chrono::{Duration, Utc};
+    use chrono::{Duration, Local, Utc};
     use tempfile::TempDir;
 
     fn create_test_run(test_case_id: &str, duration_s: f64) -> TestRun {
         TestRun {
             test_case_id: test_case_id.to_string(),
             name: Some(test_case_id.to_string()),
-            timestamp: Utc::now(),
+            timestamp: Local::now().with_timezone(&Utc),
             status: TestRunStatus::Pass,
             duration: duration_s,
             execution_log: "Test execution log".to_string(),
@@ -207,7 +207,7 @@ mod tests {
 
         let test_run1 = create_test_run("TC001", 1.000);
         let mut test_run2 = create_test_run("TC001", 2.000);
-        
+
         // Ensure unique timestamps to avoid file name collisions
         test_run2.timestamp = test_run1.timestamp + chrono::Duration::seconds(1);
 
@@ -235,10 +235,10 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let storage = TestRunStorage::new(temp_dir.path()).unwrap();
 
-        let mut test_run1 = create_test_run("TC001", 1.000);
+        let test_run1 = create_test_run("TC001", 1.000);
         let mut test_run2 = create_test_run("TC002", 2.000);
         let mut test_run3 = create_test_run("TC001", 3.000);
-        
+
         // Ensure unique timestamps to avoid file name collisions
         test_run2.timestamp = test_run1.timestamp + chrono::Duration::seconds(1);
         test_run3.timestamp = test_run1.timestamp + chrono::Duration::seconds(2);
@@ -268,7 +268,7 @@ mod tests {
         let original_run = TestRun {
             test_case_id: "TC123".to_string(),
             name: Some("TC123".to_string()),
-            timestamp: Utc::now(),
+            timestamp: Local::now().with_timezone(&Utc),
             status: TestRunStatus::Fail,
             duration: 5.000,
             execution_log: "Detailed log\nwith multiple lines".to_string(),
@@ -292,7 +292,7 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let storage = TestRunStorage::new(temp_dir.path()).unwrap();
 
-        let now = Utc::now();
+        let now = Local::now().with_timezone(&Utc);
 
         let test_run2 = TestRun {
             test_case_id: "TC001".to_string(),

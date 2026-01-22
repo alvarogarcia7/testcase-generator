@@ -1,0 +1,128 @@
+requirement: "SELF_VALIDATED_EXAMPLE"
+item: 1
+tc: 1
+id: 'SELF_VALIDATED_EXAMPLE_001'
+description: 'Simple self-validated test case demonstrating shell commands with expected results'
+
+general_initial_conditions:
+  system:
+    - "Shell environment is available"
+
+initial_conditions:
+  system:
+    - "All commands can be executed"
+
+test_sequences:
+  - id: 1
+    name: "Basic Shell Commands"
+    description: |
+                   This test sequence demonstrates simple shell commands with verification.
+                   Uses echo, true, and false commands to show success and failure cases.
+    initial_conditions:
+      system:
+        - "Shell is ready"
+    steps:
+      - step: 1
+        description: "Echo a simple message"
+        command: echo "Hello World"
+        expected:
+          success: true
+          result: 0
+          output: "Hello World"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Hello World' <<< \"$COMMAND_OUTPUT\""
+      - step: 2
+        description: "Successful command with true"
+        command: true
+        expected:
+          success: true
+          result: 0
+          output: ""
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"
+      - step: 3
+        description: "Failed command with false"
+        command: false
+        expected:
+          success: false
+          result: 1
+          output: ""
+        verification:
+          result: "[[ $EXIT_CODE -ne 0 ]]"
+          output: "true"
+  - id: 2
+    name: "Echo with Different Outputs"
+    description: |
+                   This test sequence demonstrates echo commands with different outputs
+                   and verification patterns.
+    initial_conditions:
+      system:
+        - "Shell is ready"
+    steps:
+      - step: 1
+        description: "Echo success status"
+        command: 'echo "Status: SUCCESS"'
+        expected:
+          result: 0
+          output: "Status: SUCCESS"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'SUCCESS' <<< \"$COMMAND_OUTPUT\""
+      - step: 2
+        description: "Echo with exit code verification"
+        command: echo "Operation completed"
+        expected:
+          result: 0
+          output: "Operation completed"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Operation completed' <<< \"$COMMAND_OUTPUT\""
+      - step: 3
+        description: "Echo multiple lines"
+        command: echo -e "Line 1\nLine 2\nLine 3"
+        expected:
+          result: 0
+          output: "Line 1\nLine 2\nLine 3"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ $(grep -c 'Line' <<< \"$COMMAND_OUTPUT\") -eq 3 ]]"
+  - id: 3
+    name: "Exit Code Tests"
+    description: |
+                   This test sequence demonstrates different exit codes using shell commands.
+    initial_conditions:
+      system:
+        - "Shell is ready"
+    steps:
+      - step: 1
+        description: "Exit with code 0"
+        command: /bin/sh -c "exit 0"
+        expected:
+          success: true
+          result: 0
+          output: ""
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"
+      - step: 2
+        description: "Exit with code 1"
+        command: /bin/sh -c "exit 1"
+        expected:
+          success: false
+          result: 1
+          output: ""
+        verification:
+          result: "[[ $EXIT_CODE -eq 1 ]]"
+          output: "true"
+      - step: 3
+        description: "Exit with code 2"
+        command: /bin/sh -c "exit 2"
+        expected:
+          success: false
+          result: 2
+          output: ""
+        verification:
+          result: "[[ $EXIT_CODE -eq 2 ]]"
+          output: "true"

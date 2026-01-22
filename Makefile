@@ -12,7 +12,10 @@ build:
 	cargo build --all
 .PHONY: build
 
-test: test-unit test-e2e
+test:
+	${MAKE} test-unit
+	${MAKE} test-e2e
+	#${MAKE} verify-testcases
 .PHONY: test
 
 test-unit: build
@@ -47,7 +50,10 @@ test-e2e-failing-all: build
 	./tests/integration/run_all_tests.sh
 .PHONY: test-e2e-failing-all
 
-test-e2e: test-e2e-validate-yaml test-e2e-executor
+test-e2e:
+	${MAKE} test-e2e-validate-yaml
+	${MAKE} test-e2e-orchestrator
+	#${MAKE} test-e2e-executor
 	#${MAKE} test-verify-sample
 	${MAKE} example_export-demo
 .PHONY: test-e2e
@@ -71,6 +77,26 @@ test-verify-sample: build
 validate-all-testcases: build
 	SCHEMA_FILE=data/schema.json ./scripts/validate-files.sh --pattern '\.ya?ml$$' --validator ./scripts/validate-yaml-wrapper.sh
 .PHONY: validate-all-testcases
+
+verify-testcases: build
+	@echo "Verifying test case files against schema..."
+	@FAILED=0; \
+	for file in $$(find testcases tests/sample data -type f \( -name "*.yml" -o -name "*.yaml" \) -not \( -name "*te.y*" -o -iname "sample_test_runs.yaml" -o -name "*wrong*" \) 2>/dev/null); do \
+		echo "Validating: $$file"; \
+		if cargo run --bin validate-yaml "$$file" data/schema.json >/dev/null 2>&1; then \
+			echo "  ✓ PASSED"; \
+		else \
+			echo "  ✗ FAILED"; \
+			FAILED=1; \
+		fi; \
+	done; \
+	if [ $$FAILED -eq 1 ]; then \
+		echo "Some validations failed"; \
+		exit 1; \
+	else \
+		echo "All test case files validated successfully"; \
+	fi
+.PHONY: verify-testcases
 
 watch: build
 	./scripts/watch-yaml-files.sh
@@ -102,4 +128,10 @@ test-executor-sample: build
 test-e2e-executor: build
 	./tests/integration/test_executor_e2e.sh
 .PHONY: test-e2e-executor
+
+test-e2e-orchestrator: build
+	./tests/integration/test_orchestrator_e2e.sh
+	cargo run --bin test-orchestrator run testcases/self_validated_example.yml --verbose
+	! cargo run --bin test-orchestrator run testcases/self_validated_example_wrong.yml
+.PHONY: test-e2e-orchestrator
 

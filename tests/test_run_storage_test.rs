@@ -1,4 +1,4 @@
-use chrono::{DateTime, Duration, Utc};
+use chrono::{DateTime, Duration, Local, Utc};
 use std::fs;
 use std::thread;
 use std::time::Duration as StdDuration;
@@ -10,7 +10,7 @@ fn create_test_run(test_case_id: &str, duration_s: f64) -> TestRun {
     TestRun {
         name: None,
         test_case_id: test_case_id.to_string(),
-        timestamp: Utc::now(),
+        timestamp: Local::now().with_timezone(&Utc),
         status: TestRunStatus::Pass,
         duration: duration_s,
         execution_log: "Test execution log".to_string(),
@@ -61,7 +61,7 @@ fn test_folder_creation_on_save_test_run() {
     let temp_dir = TempDir::new().unwrap();
     let storage = TestRunStorage::new(temp_dir.path()).unwrap();
 
-    let test_run = create_test_run("TC001", 1.000,);
+    let test_run = create_test_run("TC001", 1.000);
     let runs_folder = storage.get_test_run_folder("TC001");
 
     assert!(
@@ -83,9 +83,9 @@ fn test_folder_structure_for_multiple_test_cases() {
     let temp_dir = TempDir::new().unwrap();
     let storage = TestRunStorage::new(temp_dir.path()).unwrap();
 
-    let test_run1 = create_test_run("TC001", 1.000,);
-    let test_run2 = create_test_run("TC002", 2.000,);
-    let test_run3 = create_test_run("TC003", 3.000,);
+    let test_run1 = create_test_run("TC001", 1.000);
+    let test_run2 = create_test_run("TC002", 2.000);
+    let test_run3 = create_test_run("TC003", 3.000);
 
     storage.save_test_run(&test_run1).unwrap();
     storage.save_test_run(&test_run2).unwrap();
@@ -109,8 +109,8 @@ fn test_timestamp_filename_generation() {
     let temp_dir = TempDir::new().unwrap();
     let storage = TestRunStorage::new(temp_dir.path()).unwrap();
 
-    let timestamp = Utc::now();
-    let test_run = create_test_run_with_timestamp("TC001", timestamp, 1.000,);
+    let timestamp = Local::now().with_timezone(&Utc);
+    let test_run = create_test_run_with_timestamp("TC001", timestamp, 1.000);
 
     let saved_path = storage.save_test_run(&test_run).unwrap();
     let filename = saved_path.file_name().unwrap().to_str().unwrap();
@@ -125,12 +125,12 @@ fn test_timestamp_filename_uniqueness() {
     let temp_dir = TempDir::new().unwrap();
     let storage = TestRunStorage::new(temp_dir.path()).unwrap();
 
-    let timestamp1 = Utc::now();
+    let timestamp1 = Local::now().with_timezone(&Utc);
     thread::sleep(StdDuration::from_millis(10));
-    let timestamp2 = Utc::now();
+    let timestamp2 = Local::now().with_timezone(&Utc);
 
-    let test_run1 = create_test_run_with_timestamp("TC001", timestamp1, 1.000,);
-    let test_run2 = create_test_run_with_timestamp("TC001", timestamp2, 2.000,);
+    let test_run1 = create_test_run_with_timestamp("TC001", timestamp1, 1.000);
+    let test_run2 = create_test_run_with_timestamp("TC001", timestamp2, 2.000);
 
     let path1 = storage.save_test_run(&test_run1).unwrap();
     let path2 = storage.save_test_run(&test_run2).unwrap();
@@ -155,7 +155,7 @@ fn test_timestamp_filename_uniqueness_across_multiple_runs() {
     let mut paths = Vec::new();
     for i in 0..5 {
         thread::sleep(StdDuration::from_millis(10));
-        let test_run = create_test_run("TC001", i as f64 * 1.000,);
+        let test_run = create_test_run("TC001", i as f64 * 1.000);
         let path = storage.save_test_run(&test_run).unwrap();
         paths.push(path);
     }
@@ -182,7 +182,7 @@ fn test_yaml_serialization_basic() {
     let test_run = TestRun {
         name: None,
         test_case_id: "TC001".to_string(),
-        timestamp: Utc::now(),
+        timestamp: Local::now().with_timezone(&Utc),
         status: TestRunStatus::Pass,
         duration: 1.500,
         execution_log: "Test passed successfully".to_string(),
@@ -206,7 +206,7 @@ fn test_yaml_serialization_with_error_message() {
     let test_run = TestRun {
         name: None,
         test_case_id: "TC002".to_string(),
-        timestamp: Utc::now(),
+        timestamp: Local::now().with_timezone(&Utc),
         status: TestRunStatus::Fail,
         duration: 2.500,
         execution_log: "Test execution log".to_string(),
@@ -229,7 +229,7 @@ fn test_yaml_serialization_multiline_log() {
     let test_run = TestRun {
         name: None,
         test_case_id: "TC003".to_string(),
-        timestamp: Utc::now(),
+        timestamp: Local::now().with_timezone(&Utc),
         status: TestRunStatus::Pass,
         duration: 3.000,
         execution_log: multiline_log.to_string(),
@@ -253,7 +253,7 @@ fn test_yaml_deserialization_basic() {
     let original = TestRun {
         name: None,
         test_case_id: "TC001".to_string(),
-        timestamp: Utc::now(),
+        timestamp: Local::now().with_timezone(&Utc),
         status: TestRunStatus::Pass,
         duration: 1.234,
         execution_log: "Test log".to_string(),
@@ -277,11 +277,12 @@ fn test_yaml_roundtrip_all_statuses() {
     let temp_dir = TempDir::new().unwrap();
     let storage = TestRunStorage::new(temp_dir.path()).unwrap();
 
+    let base_time = Local::now().with_timezone(&Utc);
     let test_runs = vec![
         TestRun {
             name: None,
             test_case_id: "TC001".to_string(),
-            timestamp: Utc::now(),
+            timestamp: base_time,
             status: TestRunStatus::Pass,
             duration: 1.000,
             execution_log: "Pass log".to_string(),
@@ -290,7 +291,7 @@ fn test_yaml_roundtrip_all_statuses() {
         TestRun {
             name: None,
             test_case_id: "TC002".to_string(),
-            timestamp: Utc::now(),
+            timestamp: base_time + Duration::seconds(1),
             status: TestRunStatus::Fail,
             duration: 2.000,
             execution_log: "Fail log".to_string(),
@@ -299,7 +300,7 @@ fn test_yaml_roundtrip_all_statuses() {
         TestRun {
             name: None,
             test_case_id: "TC003".to_string(),
-            timestamp: Utc::now(),
+            timestamp: base_time + Duration::seconds(2),
             status: TestRunStatus::Skip,
             duration: 0.0,
             execution_log: "Skip log".to_string(),
@@ -325,12 +326,14 @@ fn test_load_runs_for_specific_test_case() {
     let temp_dir = TempDir::new().unwrap();
     let storage = TestRunStorage::new(temp_dir.path()).unwrap();
 
-    let base_time = Utc::now();
-    
+    let base_time = Local::now().with_timezone(&Utc);
+
     // Use create_test_run_with_timestamp to ensure unique timestamps
     let test_run1 = create_test_run_with_timestamp("TC001", base_time, 1.000);
-    let test_run2 = create_test_run_with_timestamp("TC001", base_time + Duration::seconds(1), 2.000);
-    let test_run3 = create_test_run_with_timestamp("TC002", base_time + Duration::seconds(2), 3.000);
+    let test_run2 =
+        create_test_run_with_timestamp("TC001", base_time + Duration::seconds(1), 2.000);
+    let test_run3 =
+        create_test_run_with_timestamp("TC002", base_time + Duration::seconds(2), 3.000);
 
     storage.save_test_run(&test_run1).unwrap();
     storage.save_test_run(&test_run2).unwrap();
@@ -359,12 +362,12 @@ fn test_load_runs_sorted_by_timestamp() {
     let temp_dir = TempDir::new().unwrap();
     let storage = TestRunStorage::new(temp_dir.path()).unwrap();
 
-    let base_time = Utc::now();
+    let base_time = Local::now().with_timezone(&Utc);
     let test_run3 =
-        create_test_run_with_timestamp("TC001", base_time + Duration::seconds(20), 3.000,);
-    let test_run1 = create_test_run_with_timestamp("TC001", base_time, 1.000,);
+        create_test_run_with_timestamp("TC001", base_time + Duration::seconds(20), 3.000);
+    let test_run1 = create_test_run_with_timestamp("TC001", base_time, 1.000);
     let test_run2 =
-        create_test_run_with_timestamp("TC001", base_time + Duration::seconds(10), 2.000,);
+        create_test_run_with_timestamp("TC001", base_time + Duration::seconds(10), 2.000);
 
     storage.save_test_run(&test_run3).unwrap();
     storage.save_test_run(&test_run1).unwrap();
@@ -382,13 +385,16 @@ fn test_load_all_runs_across_multiple_test_cases() {
     let temp_dir = TempDir::new().unwrap();
     let storage = TestRunStorage::new(temp_dir.path()).unwrap();
 
-    let base_time = Utc::now();
-    
+    let base_time = Local::now().with_timezone(&Utc);
+
     // Use unique timestamps to avoid file name collisions
     let test_run1 = create_test_run_with_timestamp("TC001", base_time, 1.000);
-    let test_run2 = create_test_run_with_timestamp("TC002", base_time + Duration::seconds(1), 2.000);
-    let test_run3 = create_test_run_with_timestamp("TC003", base_time + Duration::seconds(2), 3.000);
-    let test_run4 = create_test_run_with_timestamp("TC001", base_time + Duration::seconds(3), 1.500);
+    let test_run2 =
+        create_test_run_with_timestamp("TC002", base_time + Duration::seconds(1), 2.000);
+    let test_run3 =
+        create_test_run_with_timestamp("TC003", base_time + Duration::seconds(2), 3.000);
+    let test_run4 =
+        create_test_run_with_timestamp("TC001", base_time + Duration::seconds(3), 1.500);
 
     storage.save_test_run(&test_run1).unwrap();
     storage.save_test_run(&test_run2).unwrap();
@@ -430,12 +436,12 @@ fn test_load_all_runs_sorted_by_timestamp() {
     let temp_dir = TempDir::new().unwrap();
     let storage = TestRunStorage::new(temp_dir.path()).unwrap();
 
-    let base_time = Utc::now();
+    let base_time = Local::now().with_timezone(&Utc);
     let test_run1 =
-        create_test_run_with_timestamp("TC003", base_time + Duration::seconds(30), 3.000,);
-    let test_run2 = create_test_run_with_timestamp("TC001", base_time, 1.000,);
+        create_test_run_with_timestamp("TC003", base_time + Duration::seconds(30), 3.000);
+    let test_run2 = create_test_run_with_timestamp("TC001", base_time, 1.000);
     let test_run3 =
-        create_test_run_with_timestamp("TC002", base_time + Duration::seconds(15), 2.000,);
+        create_test_run_with_timestamp("TC002", base_time + Duration::seconds(15), 2.000);
 
     storage.save_test_run(&test_run1).unwrap();
     storage.save_test_run(&test_run2).unwrap();
@@ -493,7 +499,7 @@ fn test_error_handling_mixed_valid_and_invalid_files() {
     let temp_dir = TempDir::new().unwrap();
     let storage = TestRunStorage::new(temp_dir.path()).unwrap();
 
-    let valid_run = create_test_run("TC001", 1.000,);
+    let valid_run = create_test_run("TC001", 1.000);
     storage.save_test_run(&valid_run).unwrap();
 
     let runs_folder = storage.get_test_run_folder("TC001");
@@ -512,7 +518,7 @@ fn test_error_handling_non_yaml_files_ignored() {
     let temp_dir = TempDir::new().unwrap();
     let storage = TestRunStorage::new(temp_dir.path()).unwrap();
 
-    let test_run = create_test_run("TC001", 1.000,);
+    let test_run = create_test_run("TC001", 1.000);
     storage.save_test_run(&test_run).unwrap();
 
     let runs_folder = storage.get_test_run_folder("TC001");
@@ -533,7 +539,7 @@ fn test_error_handling_invalid_test_case_id_characters() {
     let test_cases_with_special_chars = vec!["TC-001", "TC_001", "TC.001", "TC 001", "TC/001"];
 
     for test_case_id in test_cases_with_special_chars {
-        let test_run = create_test_run(test_case_id, 1.000,);
+        let test_run = create_test_run(test_case_id, 1.000);
         let result = storage.save_test_run(&test_run);
 
         match test_case_id {
@@ -556,7 +562,7 @@ fn test_error_handling_empty_test_case_id() {
     let temp_dir = TempDir::new().unwrap();
     let storage = TestRunStorage::new(temp_dir.path()).unwrap();
 
-    let test_run = create_test_run("", 1.000,);
+    let test_run = create_test_run("", 1.000);
     let result = storage.save_test_run(&test_run);
     assert!(result.is_ok());
 
@@ -572,7 +578,7 @@ fn test_load_all_runs_handles_empty_test_case_folders() {
     fs::create_dir_all(temp_dir.path().join("TC001")).unwrap();
     fs::create_dir_all(temp_dir.path().join("TC002")).unwrap();
 
-    let test_run = create_test_run("TC003", 1.000,);
+    let test_run = create_test_run("TC003", 1.000);
     storage.save_test_run(&test_run).unwrap();
 
     let all_runs = storage.load_all_test_runs().unwrap();
@@ -590,7 +596,7 @@ fn test_yaml_serialization_special_characters_in_log() {
     let test_run = TestRun {
         test_case_id: "TC001".to_string(),
         name: Some("TC001".to_string()),
-        timestamp: Utc::now(),
+        timestamp: Local::now().with_timezone(&Utc),
         status: TestRunStatus::Pass,
         duration: 1.000,
         execution_log: special_log.to_string(),
@@ -611,7 +617,7 @@ fn test_concurrent_saves_to_different_test_cases() {
 
     for i in 0..10 {
         let test_case_id = format!("TC{:03}", i);
-        let test_run = create_test_run(&test_case_id, i as f64 * 1.000,);
+        let test_run = create_test_run(&test_case_id, i as f64 * 1.000);
         storage.save_test_run(&test_run).unwrap();
     }
 
@@ -627,7 +633,7 @@ fn test_yml_extension_also_loaded() {
     let test_run = TestRun {
         test_case_id: "TC001".to_string(),
         name: Some("TC001".to_string()),
-        timestamp: Utc::now(),
+        timestamp: Local::now().with_timezone(&Utc),
         status: TestRunStatus::Pass,
         duration: 1.000,
         execution_log: "Test log".to_string(),
@@ -678,8 +684,8 @@ fn test_yaml_deserialization_preserves_timestamp_precision() {
     let temp_dir = TempDir::new().unwrap();
     let storage = TestRunStorage::new(temp_dir.path()).unwrap();
 
-    let precise_timestamp = Utc::now();
-    let test_run = create_test_run_with_timestamp("TC001", precise_timestamp, 1.000,);
+    let precise_timestamp = Local::now().with_timezone(&Utc);
+    let test_run = create_test_run_with_timestamp("TC001", precise_timestamp, 1.000);
 
     storage.save_test_run(&test_run).unwrap();
     let loaded_runs = storage.load_test_runs_for_case("TC001").unwrap();
@@ -700,7 +706,7 @@ fn test_load_all_with_deeply_nested_structure() {
     for test_case_id in test_cases {
         for i in 0..3 {
             thread::sleep(StdDuration::from_millis(10));
-            let test_run = create_test_run(test_case_id, i  as f64 * 1.000,);
+            let test_run = create_test_run(test_case_id, i as f64 * 1.000);
             storage.save_test_run(&test_run).unwrap();
         }
     }
@@ -714,7 +720,7 @@ fn test_error_handling_permission_denied_simulation() {
     let temp_dir = TempDir::new().unwrap();
     let storage = TestRunStorage::new(temp_dir.path()).unwrap();
 
-    let test_run = create_test_run("TC001", 1.000,);
+    let test_run = create_test_run("TC001", 1.000);
     let result = storage.save_test_run(&test_run);
     assert!(result.is_ok());
 }
@@ -727,7 +733,7 @@ fn test_load_preserves_all_test_run_fields() {
     let original = TestRun {
         test_case_id: "TC999".to_string(),
         name: Some("TC999".to_string()),
-        timestamp: Utc::now(),
+        timestamp: Local::now().with_timezone(&Utc),
         status: TestRunStatus::Fail,
         duration: 1.2345,
         execution_log: "Very detailed execution log with multiple lines\nLine 2\nLine 3"

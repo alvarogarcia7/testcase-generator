@@ -1,8 +1,8 @@
-use testcase_manager::models::{
-    ActualResult, Expected, Step, TestCase, TestExecutionLog, TestSequence, Verification,
-};
+use chrono::{Local, Utc};
+use std::path::PathBuf;
+use testcase_manager::models::{Expected, Step, TestCase, TestSequence, Verification};
 use testcase_manager::verification::{
-    DiffDetail, ExecutionVerificationResult, MatchStrategy, StepVerificationResult, TestVerifier,
+    DiffDetail, MatchStrategy, StepVerificationResult, TestExecutionLog, TestVerifier,
     VerificationDiff,
 };
 
@@ -24,11 +24,23 @@ fn create_step(step_num: i64, result: &str, output: &str, success: Option<bool>)
     }
 }
 
-fn create_actual(result: &str, output: &str, success: bool) -> ActualResult {
-    ActualResult {
-        result: result.to_string(),
-        output: output.to_string(),
+fn create_execution_log(
+    test_case_id: &str,
+    sequence_id: i64,
+    step_number: i64,
+    actual_result: &str,
+    actual_output: &str,
+    success: Option<bool>,
+) -> TestExecutionLog {
+    TestExecutionLog {
+        test_case_id: test_case_id.to_string(),
+        sequence_id,
+        step_number,
         success,
+        actual_result: actual_result.to_string(),
+        actual_output: actual_output.to_string(),
+        timestamp: Some(Local::now().with_timezone(&Utc)),
+        log_file_path: PathBuf::from("test.json"),
     }
 }
 
@@ -40,9 +52,9 @@ fn create_actual(result: &str, output: &str, success: bool) -> ActualResult {
 fn test_exact_match_all_fields_match() {
     let verifier = TestVerifier::with_exact_matching();
     let step = create_step(1, "SW=0x9000", "Success", Some(true));
-    let actual = create_actual("SW=0x9000", "Success", true);
+    let log = create_execution_log("TC001", 1, 1, "SW=0x9000", "Success", Some(true));
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(result.passed);
     assert!(result.result_match);
@@ -58,9 +70,9 @@ fn test_exact_match_all_fields_match() {
 fn test_exact_match_result_mismatch() {
     let verifier = TestVerifier::with_exact_matching();
     let step = create_step(1, "SW=0x9000", "Success", Some(true));
-    let actual = create_actual("SW=0x6A82", "Success", true);
+    let log = create_execution_log("TC001", 1, 1, "SW=0x6A82", "Success", Some(true));
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(!result.passed);
     assert!(!result.result_match);
@@ -77,9 +89,9 @@ fn test_exact_match_result_mismatch() {
 fn test_exact_match_output_mismatch() {
     let verifier = TestVerifier::with_exact_matching();
     let step = create_step(1, "SW=0x9000", "Success", Some(true));
-    let actual = create_actual("SW=0x9000", "Failed", true);
+    let log = create_execution_log("TC001", 1, 1, "SW=0x9000", "Failed", Some(true));
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(!result.passed);
     assert!(result.result_match);
@@ -96,9 +108,9 @@ fn test_exact_match_output_mismatch() {
 fn test_exact_match_case_sensitive() {
     let verifier = TestVerifier::with_exact_matching();
     let step = create_step(1, "success", "output", None);
-    let actual = create_actual("SUCCESS", "OUTPUT", true);
+    let log = create_execution_log("TC001", 1, 1, "SUCCESS", "OUTPUT", Some(true));
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(!result.passed);
     assert!(!result.result_match);
@@ -109,9 +121,9 @@ fn test_exact_match_case_sensitive() {
 fn test_exact_match_whitespace_sensitive() {
     let verifier = TestVerifier::with_exact_matching();
     let step = create_step(1, "result", "output", None);
-    let actual = create_actual(" result ", " output ", true);
+    let log = create_execution_log("TC001", 1, 1, " result ", " output ", Some(true));
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(!result.passed);
     assert!(!result.result_match);
@@ -122,9 +134,9 @@ fn test_exact_match_whitespace_sensitive() {
 fn test_exact_match_empty_strings() {
     let verifier = TestVerifier::with_exact_matching();
     let step = create_step(1, "", "", None);
-    let actual = create_actual("", "", true);
+    let log = create_execution_log("TC001", 1, 1, "", "", Some(true));
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(result.passed);
     assert!(result.result_match);
@@ -135,9 +147,9 @@ fn test_exact_match_empty_strings() {
 fn test_exact_match_empty_expected_vs_nonempty_actual() {
     let verifier = TestVerifier::with_exact_matching();
     let step = create_step(1, "", "", None);
-    let actual = create_actual("something", "output", true);
+    let log = create_execution_log("TC001", 1, 1, "something", "output", Some(true));
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(!result.passed);
     assert!(!result.result_match);
@@ -152,9 +164,9 @@ fn test_exact_match_empty_expected_vs_nonempty_actual() {
 fn test_regex_match_basic_pattern() {
     let verifier = TestVerifier::new(MatchStrategy::Regex, MatchStrategy::Regex);
     let step = create_step(1, r"SW=0x[0-9A-Fa-f]{4}", r"Suc\w+", None);
-    let actual = create_actual("SW=0x9000", "Success", true);
+    let log = create_execution_log("TC001", 1, 1, "SW=0x9000", "Success", Some(true));
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(result.passed);
     assert!(result.result_match);
@@ -170,9 +182,9 @@ fn test_regex_match_complex_pattern() {
         r"^[A-Z][a-z]+\s[A-Z][a-z]+$",
         None,
     );
-    let actual = create_actual("123-456-7890", "John Smith", true);
+    let log = create_execution_log("TC001", 1, 1, "123-456-7890", "John Smith", Some(true));
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(result.passed);
     assert!(result.result_match);
@@ -183,9 +195,9 @@ fn test_regex_match_complex_pattern() {
 fn test_regex_match_pattern_mismatch() {
     let verifier = TestVerifier::new(MatchStrategy::Regex, MatchStrategy::Regex);
     let step = create_step(1, r"^\d{4}$", r"^Success$", None);
-    let actual = create_actual("12345", "Failed", true);
+    let log = create_execution_log("TC001", 1, 1, "12345", "Failed", Some(true));
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(!result.passed);
     assert!(!result.result_match);
@@ -196,9 +208,9 @@ fn test_regex_match_pattern_mismatch() {
 fn test_regex_match_invalid_regex_pattern() {
     let verifier = TestVerifier::new(MatchStrategy::Regex, MatchStrategy::Exact);
     let step = create_step(1, "[invalid(regex", "Success", None);
-    let actual = create_actual("anything", "Success", true);
+    let log = create_execution_log("TC001", 1, 1, "anything", "Success", Some(true));
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(!result.passed);
     assert!(!result.result_match);
@@ -209,9 +221,9 @@ fn test_regex_match_invalid_regex_pattern() {
 fn test_regex_match_multiline_pattern() {
     let verifier = TestVerifier::new(MatchStrategy::Regex, MatchStrategy::Regex);
     let step = create_step(1, r"Line1", r"Out1", None);
-    let actual = create_actual("Line1\nLine2", "Out1\nOut2", true);
+    let log = create_execution_log("TC001", 1, 1, "Line1\nLine2", "Out1\nOut2", Some(true));
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(result.passed);
     assert!(result.result_match);
@@ -222,9 +234,9 @@ fn test_regex_match_multiline_pattern() {
 fn test_regex_match_special_characters() {
     let verifier = TestVerifier::new(MatchStrategy::Regex, MatchStrategy::Regex);
     let step = create_step(1, r"\$\d+\.\d{2}", r"\[.*\]", None);
-    let actual = create_actual("$99.99", "[SUCCESS]", true);
+    let log = create_execution_log("TC001", 1, 1, "$99.99", "[SUCCESS]", Some(true));
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(result.passed);
     assert!(result.result_match);
@@ -235,9 +247,9 @@ fn test_regex_match_special_characters() {
 fn test_regex_match_unicode_pattern() {
     let verifier = TestVerifier::new(MatchStrategy::Regex, MatchStrategy::Regex);
     let step = create_step(1, r"你好.*世界", r"🚀.*🎉", None);
-    let actual = create_actual("你好 世界", "🚀 Success 🎉", true);
+    let log = create_execution_log("TC001", 1, 1, "你好 世界", "🚀 Success 🎉", Some(true));
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(result.passed);
     assert!(result.result_match);
@@ -248,9 +260,9 @@ fn test_regex_match_unicode_pattern() {
 fn test_regex_match_anchored_vs_unanchored() {
     let verifier = TestVerifier::new(MatchStrategy::Regex, MatchStrategy::Regex);
     let step = create_step(1, r"test", r"^output$", None);
-    let actual = create_actual("this is a test string", "output", true);
+    let log = create_execution_log("TC001", 1, 1, "this is a test string", "output", Some(true));
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(result.passed);
     assert!(result.result_match);
@@ -265,9 +277,9 @@ fn test_regex_match_anchored_vs_unanchored() {
 fn test_contains_match_basic() {
     let verifier = TestVerifier::new(MatchStrategy::Contains, MatchStrategy::Contains);
     let step = create_step(1, "9000", "Success", None);
-    let actual = create_actual("SW=0x9000", "Operation Success", true);
+    let log = create_execution_log("TC001", 1, 1, "SW=0x9000", "Operation Success", Some(true));
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(result.passed);
     assert!(result.result_match);
@@ -278,9 +290,9 @@ fn test_contains_match_basic() {
 fn test_contains_match_substring_not_found() {
     let verifier = TestVerifier::new(MatchStrategy::Contains, MatchStrategy::Contains);
     let step = create_step(1, "9000", "Success", None);
-    let actual = create_actual("SW=0x6A82", "Failed", true);
+    let log = create_execution_log("TC001", 1, 1, "SW=0x6A82", "Failed", Some(true));
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(!result.passed);
     assert!(!result.result_match);
@@ -291,9 +303,9 @@ fn test_contains_match_substring_not_found() {
 fn test_contains_match_case_sensitive() {
     let verifier = TestVerifier::new(MatchStrategy::Contains, MatchStrategy::Contains);
     let step = create_step(1, "success", "output", None);
-    let actual = create_actual("SUCCESS", "OUTPUT", true);
+    let log = create_execution_log("TC001", 1, 1, "SUCCESS", "OUTPUT", Some(true));
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(!result.passed);
     assert!(!result.result_match);
@@ -304,9 +316,9 @@ fn test_contains_match_case_sensitive() {
 fn test_contains_match_empty_expected_matches_all() {
     let verifier = TestVerifier::new(MatchStrategy::Contains, MatchStrategy::Contains);
     let step = create_step(1, "", "", None);
-    let actual = create_actual("any result", "any output", true);
+    let log = create_execution_log("TC001", 1, 1, "any result", "any output", Some(true));
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(result.passed);
     assert!(result.result_match);
@@ -317,9 +329,16 @@ fn test_contains_match_empty_expected_matches_all() {
 fn test_contains_match_partial_word() {
     let verifier = TestVerifier::new(MatchStrategy::Contains, MatchStrategy::Contains);
     let step = create_step(1, "err", "warn", None);
-    let actual = create_actual("error occurred", "warning message", true);
+    let log = create_execution_log(
+        "TC001",
+        1,
+        1,
+        "error occurred",
+        "warning message",
+        Some(true),
+    );
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(result.passed);
     assert!(result.result_match);
@@ -330,9 +349,16 @@ fn test_contains_match_partial_word() {
 fn test_contains_match_multiline() {
     let verifier = TestVerifier::new(MatchStrategy::Contains, MatchStrategy::Contains);
     let step = create_step(1, "Line2", "Out2", None);
-    let actual = create_actual("Line1\nLine2\nLine3", "Out1\nOut2\nOut3", true);
+    let log = create_execution_log(
+        "TC001",
+        1,
+        1,
+        "Line1\nLine2\nLine3",
+        "Out1\nOut2\nOut3",
+        Some(true),
+    );
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(result.passed);
     assert!(result.result_match);
@@ -343,9 +369,9 @@ fn test_contains_match_multiline() {
 fn test_contains_match_special_characters() {
     let verifier = TestVerifier::new(MatchStrategy::Contains, MatchStrategy::Contains);
     let step = create_step(1, "$99", "[OK]", None);
-    let actual = create_actual("Price: $99.99", "Status: [OK]", true);
+    let log = create_execution_log("TC001", 1, 1, "Price: $99.99", "Status: [OK]", Some(true));
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(result.passed);
     assert!(result.result_match);
@@ -356,9 +382,9 @@ fn test_contains_match_special_characters() {
 fn test_contains_match_unicode() {
     let verifier = TestVerifier::new(MatchStrategy::Contains, MatchStrategy::Contains);
     let step = create_step(1, "你好", "🚀", None);
-    let actual = create_actual("测试 你好 世界", "Start 🚀 End", true);
+    let log = create_execution_log("TC001", 1, 1, "测试 你好 世界", "Start 🚀 End", Some(true));
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(result.passed);
     assert!(result.result_match);
@@ -373,9 +399,9 @@ fn test_contains_match_unicode() {
 fn test_success_flag_true_matches_true() {
     let verifier = TestVerifier::with_exact_matching();
     let step = create_step(1, "result", "output", Some(true));
-    let actual = create_actual("result", "output", true);
+    let log = create_execution_log("TC001", 1, 1, "result", "output", Some(true));
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(result.passed);
     assert!(result.success_match);
@@ -386,9 +412,9 @@ fn test_success_flag_true_matches_true() {
 fn test_success_flag_false_matches_false() {
     let verifier = TestVerifier::with_exact_matching();
     let step = create_step(1, "result", "output", Some(false));
-    let actual = create_actual("result", "output", false);
+    let log = create_execution_log("TC001", 1, 1, "result", "output", Some(false));
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(result.passed);
     assert!(result.success_match);
@@ -399,9 +425,9 @@ fn test_success_flag_false_matches_false() {
 fn test_success_flag_true_mismatch_false() {
     let verifier = TestVerifier::with_exact_matching();
     let step = create_step(1, "result", "output", Some(true));
-    let actual = create_actual("result", "output", false);
+    let log = create_execution_log("TC001", 1, 1, "result", "output", Some(false));
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(!result.passed);
     assert!(!result.success_match);
@@ -418,9 +444,9 @@ fn test_success_flag_true_mismatch_false() {
 fn test_success_flag_false_mismatch_true() {
     let verifier = TestVerifier::with_exact_matching();
     let step = create_step(1, "result", "output", Some(false));
-    let actual = create_actual("result", "output", true);
+    let log = create_execution_log("TC001", 1, 1, "result", "output", Some(true));
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(!result.passed);
     assert!(!result.success_match);
@@ -434,9 +460,9 @@ fn test_success_flag_false_mismatch_true() {
 fn test_success_flag_none_matches_true() {
     let verifier = TestVerifier::with_exact_matching();
     let step = create_step(1, "result", "output", None);
-    let actual = create_actual("result", "output", true);
+    let log = create_execution_log("TC001", 1, 1, "result", "output", Some(true));
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(result.passed);
     assert!(result.success_match);
@@ -447,9 +473,9 @@ fn test_success_flag_none_matches_true() {
 fn test_success_flag_none_matches_false() {
     let verifier = TestVerifier::with_exact_matching();
     let step = create_step(1, "result", "output", None);
-    let actual = create_actual("result", "output", false);
+    let log = create_execution_log("TC001", 1, 1, "result", "output", Some(false));
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(result.passed);
     assert!(result.success_match);
@@ -460,9 +486,9 @@ fn test_success_flag_none_matches_false() {
 fn test_success_flag_none_with_other_field_mismatch() {
     let verifier = TestVerifier::with_exact_matching();
     let step = create_step(1, "expected", "output", None);
-    let actual = create_actual("actual", "output", false);
+    let log = create_execution_log("TC001", 1, 1, "actual", "output", Some(false));
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(!result.passed);
     assert!(!result.result_match);
@@ -500,21 +526,18 @@ fn test_multi_step_all_pass() {
 
     test_case.test_sequences.push(sequence);
 
-    let execution_log = TestExecutionLog {
-        test_case_id: "TC001".to_string(),
-        sequence_id: 1,
-        timestamp: "2024-01-01T00:00:00Z".to_string(),
-        actual_output: "Success OK Complete Done Finished End".to_string(),
-        actual_success: true,
-        duration_ms: 1000,
-        error_message: None,
-    };
+    let logs = vec![
+        create_execution_log("TC001", 1, 1, "Success", "OK", Some(true)),
+        create_execution_log("TC001", 1, 2, "Complete", "Done", Some(true)),
+        create_execution_log("TC001", 1, 3, "Finished", "End", Some(true)),
+    ];
 
-    let result = verifier.verify_execution_log(&test_case, &execution_log);
+    let result = verifier.verify_test_case(&test_case, &logs);
 
-    assert!(result.overall_passed);
-    assert_eq!(result.step_results.len(), 3);
-    assert!(result.step_results.iter().all(|r| r.passed));
+    assert!(result.overall_pass);
+    assert_eq!(result.total_steps, 3);
+    assert_eq!(result.passed_steps, 3);
+    assert_eq!(result.failed_steps, 0);
 }
 
 #[test]
@@ -543,23 +566,18 @@ fn test_multi_step_mixed_pass_fail() {
 
     test_case.test_sequences.push(sequence);
 
-    let execution_log = TestExecutionLog {
-        test_case_id: "TC001".to_string(),
-        sequence_id: 1,
-        timestamp: "2024-01-01T00:00:00Z".to_string(),
-        actual_output: "output1".to_string(),
-        actual_success: true,
-        duration_ms: 1000,
-        error_message: None,
-    };
+    let logs = vec![
+        create_execution_log("TC001", 1, 1, "output1", "output1", Some(true)),
+        create_execution_log("TC001", 1, 2, "actual", "actual", Some(true)),
+        create_execution_log("TC001", 1, 3, "output1", "output1", Some(true)),
+    ];
 
-    let result = verifier.verify_execution_log(&test_case, &execution_log);
+    let result = verifier.verify_test_case(&test_case, &logs);
 
-    assert!(!result.overall_passed);
-    assert_eq!(result.step_results.len(), 3);
-    assert!(result.step_results[0].passed);
-    assert!(!result.step_results[1].passed);
-    assert!(result.step_results[2].passed);
+    assert!(!result.overall_pass);
+    assert_eq!(result.total_steps, 3);
+    assert_eq!(result.passed_steps, 2);
+    assert_eq!(result.failed_steps, 1);
 }
 
 #[test]
@@ -588,30 +606,34 @@ fn test_multi_step_all_fail() {
 
     test_case.test_sequences.push(sequence);
 
-    let execution_log = TestExecutionLog {
-        test_case_id: "TC001".to_string(),
-        sequence_id: 1,
-        timestamp: "2024-01-01T00:00:00Z".to_string(),
-        actual_output: "wrong".to_string(),
-        actual_success: false,
-        duration_ms: 1000,
-        error_message: None,
-    };
+    let logs = vec![
+        create_execution_log("TC001", 1, 1, "wrong", "wrong", Some(false)),
+        create_execution_log("TC001", 1, 2, "wrong", "wrong", Some(false)),
+        create_execution_log("TC001", 1, 3, "wrong", "wrong", Some(false)),
+    ];
 
-    let result = verifier.verify_execution_log(&test_case, &execution_log);
+    let result = verifier.verify_test_case(&test_case, &logs);
 
-    assert!(!result.overall_passed);
-    assert_eq!(result.step_results.len(), 3);
-    assert!(result.step_results.iter().all(|r| !r.passed));
+    assert!(!result.overall_pass);
+    assert_eq!(result.total_steps, 3);
+    assert_eq!(result.passed_steps, 0);
+    assert_eq!(result.failed_steps, 3);
 }
 
 #[test]
 fn test_multi_step_with_different_strategies() {
     let verifier_result_exact = TestVerifier::new(MatchStrategy::Exact, MatchStrategy::Contains);
     let step = create_step(1, "exact_result", "partial", Some(true));
-    let actual = create_actual("exact_result", "partial output string", true);
+    let log = create_execution_log(
+        "TC001",
+        1,
+        1,
+        "exact_result",
+        "partial output string",
+        Some(true),
+    );
 
-    let result = verifier_result_exact.verify_step(&step, &actual);
+    let result = verifier_result_exact.verify_step_from_log(&step, &log);
 
     assert!(result.passed);
     assert!(result.result_match);
@@ -633,20 +655,12 @@ fn test_multi_step_empty_sequence() {
     let sequence = TestSequence::new(1, "Sequence 1".to_string(), "Description".to_string());
     test_case.test_sequences.push(sequence);
 
-    let execution_log = TestExecutionLog {
-        test_case_id: "TC001".to_string(),
-        sequence_id: 1,
-        timestamp: "2024-01-01T00:00:00Z".to_string(),
-        actual_output: "output".to_string(),
-        actual_success: true,
-        duration_ms: 1000,
-        error_message: None,
-    };
+    let logs = vec![];
 
-    let result = verifier.verify_execution_log(&test_case, &execution_log);
+    let result = verifier.verify_test_case(&test_case, &logs);
 
-    assert!(result.overall_passed);
-    assert_eq!(result.step_results.len(), 0);
+    assert!(result.overall_pass);
+    assert_eq!(result.total_steps, 0);
 }
 
 // ============================================================================
@@ -657,9 +671,9 @@ fn test_multi_step_empty_sequence() {
 fn test_edge_case_empty_result_and_output() {
     let verifier = TestVerifier::with_exact_matching();
     let step = create_step(1, "", "", Some(true));
-    let actual = create_actual("", "", true);
+    let log = create_execution_log("TC001", 1, 1, "", "", Some(true));
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(result.passed);
     assert!(result.result_match);
@@ -672,9 +686,9 @@ fn test_edge_case_very_long_strings() {
     let verifier = TestVerifier::with_exact_matching();
     let long_string = "A".repeat(10000);
     let step = create_step(1, &long_string, &long_string, None);
-    let actual = create_actual(&long_string, &long_string, true);
+    let log = create_execution_log("TC001", 1, 1, &long_string, &long_string, Some(true));
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(result.passed);
     assert!(result.result_match);
@@ -685,9 +699,16 @@ fn test_edge_case_very_long_strings() {
 fn test_edge_case_unicode_characters() {
     let verifier = TestVerifier::with_exact_matching();
     let step = create_step(1, "测试 你好 世界 🚀 🎉", "Привет мир 日本語", Some(true));
-    let actual = create_actual("测试 你好 世界 🚀 🎉", "Привет мир 日本語", true);
+    let log = create_execution_log(
+        "TC001",
+        1,
+        1,
+        "测试 你好 世界 🚀 🎉",
+        "Привет мир 日本語",
+        Some(true),
+    );
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(result.passed);
     assert!(result.result_match);
@@ -698,9 +719,9 @@ fn test_edge_case_unicode_characters() {
 fn test_edge_case_unicode_mismatch() {
     let verifier = TestVerifier::with_exact_matching();
     let step = create_step(1, "你好", "🚀", None);
-    let actual = create_actual("你好世界", "🎉", true);
+    let log = create_execution_log("TC001", 1, 1, "你好世界", "🎉", Some(true));
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(!result.passed);
     assert!(!result.result_match);
@@ -712,9 +733,9 @@ fn test_edge_case_multiline_output() {
     let verifier = TestVerifier::with_exact_matching();
     let multiline = "Line1\nLine2\nLine3\nLine4";
     let step = create_step(1, multiline, multiline, None);
-    let actual = create_actual(multiline, multiline, true);
+    let log = create_execution_log("TC001", 1, 1, multiline, multiline, Some(true));
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(result.passed);
     assert!(result.result_match);
@@ -725,9 +746,9 @@ fn test_edge_case_multiline_output() {
 fn test_edge_case_multiline_mismatch() {
     let verifier = TestVerifier::with_exact_matching();
     let step = create_step(1, "Line1\nLine2", "Out1\nOut2", None);
-    let actual = create_actual("Line1\nLine3", "Out1\nOut3", true);
+    let log = create_execution_log("TC001", 1, 1, "Line1\nLine3", "Out1\nOut3", Some(true));
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(!result.passed);
     assert!(!result.result_match);
@@ -739,9 +760,9 @@ fn test_edge_case_special_regex_characters_in_exact_match() {
     let verifier = TestVerifier::with_exact_matching();
     let special_chars = r".*+?^${}[]()|\";
     let step = create_step(1, special_chars, special_chars, None);
-    let actual = create_actual(special_chars, special_chars, true);
+    let log = create_execution_log("TC001", 1, 1, special_chars, special_chars, Some(true));
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(result.passed);
     assert!(result.result_match);
@@ -752,9 +773,9 @@ fn test_edge_case_special_regex_characters_in_exact_match() {
 fn test_edge_case_whitespace_variations() {
     let verifier = TestVerifier::with_exact_matching();
     let step = create_step(1, "  spaces  ", "\ttabs\t", None);
-    let actual = create_actual(" spaces ", "\ttabs\t\n", true);
+    let log = create_execution_log("TC001", 1, 1, " spaces ", "\ttabs\t\n", Some(true));
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(!result.passed);
     assert!(!result.result_match);
@@ -765,9 +786,9 @@ fn test_edge_case_whitespace_variations() {
 fn test_edge_case_newline_types() {
     let verifier = TestVerifier::with_exact_matching();
     let step = create_step(1, "Line1\nLine2", "Out1\nOut2", None);
-    let actual = create_actual("Line1\r\nLine2", "Out1\r\nOut2", true);
+    let log = create_execution_log("TC001", 1, 1, "Line1\r\nLine2", "Out1\r\nOut2", Some(true));
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(!result.passed);
     assert!(!result.result_match);
@@ -779,9 +800,9 @@ fn test_edge_case_null_bytes() {
     let verifier = TestVerifier::with_exact_matching();
     let with_null = "Before\x00After";
     let step = create_step(1, with_null, with_null, None);
-    let actual = create_actual(with_null, with_null, true);
+    let log = create_execution_log("TC001", 1, 1, with_null, with_null, Some(true));
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(result.passed);
     assert!(result.result_match);
@@ -789,9 +810,9 @@ fn test_edge_case_null_bytes() {
 }
 
 #[test]
-fn test_edge_case_missing_sequence() {
+fn test_edge_case_missing_step_in_logs() {
     let verifier = TestVerifier::with_exact_matching();
-    let test_case = TestCase::new(
+    let mut test_case = TestCase::new(
         "REQ001".to_string(),
         1,
         1,
@@ -799,31 +820,48 @@ fn test_edge_case_missing_sequence() {
         "Test case".to_string(),
     );
 
-    let execution_log = TestExecutionLog {
-        test_case_id: "TC001".to_string(),
-        sequence_id: 999,
-        timestamp: "2024-01-01T00:00:00Z".to_string(),
-        actual_output: "output".to_string(),
-        actual_success: true,
-        duration_ms: 1000,
-        error_message: None,
-    };
+    let mut sequence = TestSequence::new(1, "Sequence 1".to_string(), "Description".to_string());
+    sequence
+        .steps
+        .push(create_step(1, "result", "output", Some(true)));
+    sequence
+        .steps
+        .push(create_step(2, "result", "output", Some(true)));
 
-    let result = verifier.verify_execution_log(&test_case, &execution_log);
+    test_case.test_sequences.push(sequence);
 
-    assert!(!result.overall_passed);
-    assert!(result.step_results.is_empty());
-    assert_eq!(result.test_case_id, "TC001");
-    assert_eq!(result.sequence_id, 999);
+    // Only provide log for step 1, not step 2
+    let logs = vec![create_execution_log(
+        "TC001",
+        1,
+        1,
+        "result",
+        "output",
+        Some(true),
+    )];
+
+    let result = verifier.verify_test_case(&test_case, &logs);
+
+    assert!(!result.overall_pass);
+    assert_eq!(result.total_steps, 2);
+    assert_eq!(result.passed_steps, 1);
+    assert_eq!(result.not_executed_steps, 1);
 }
 
 #[test]
 fn test_edge_case_contains_with_regex_special_chars() {
     let verifier = TestVerifier::new(MatchStrategy::Contains, MatchStrategy::Contains);
     let step = create_step(1, "[test]", "(output)", None);
-    let actual = create_actual("Result: [test] done", "Status: (output) ok", true);
+    let log = create_execution_log(
+        "TC001",
+        1,
+        1,
+        "Result: [test] done",
+        "Status: (output) ok",
+        Some(true),
+    );
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(result.passed);
     assert!(result.result_match);
@@ -834,9 +872,16 @@ fn test_edge_case_contains_with_regex_special_chars() {
 fn test_edge_case_regex_dot_matches_newline_when_specified() {
     let verifier = TestVerifier::new(MatchStrategy::Regex, MatchStrategy::Regex);
     let step = create_step(1, r"(?s)Line1.*Line3", r"(?s)Out1.*Out3", None);
-    let actual = create_actual("Line1\nLine2\nLine3", "Out1\nOut2\nOut3", true);
+    let log = create_execution_log(
+        "TC001",
+        1,
+        1,
+        "Line1\nLine2\nLine3",
+        "Out1\nOut2\nOut3",
+        Some(true),
+    );
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(result.passed);
     assert!(result.result_match);
@@ -851,9 +896,9 @@ fn test_edge_case_regex_dot_matches_newline_when_specified() {
 fn test_diff_detail_all_fields() {
     let verifier = TestVerifier::with_exact_matching();
     let step = create_step(1, "expected_result", "expected_output", Some(true));
-    let actual = create_actual("actual_result", "actual_output", false);
+    let log = create_execution_log("TC001", 1, 1, "actual_result", "actual_output", Some(false));
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(!result.passed);
 
@@ -879,9 +924,9 @@ fn test_diff_detail_all_fields() {
 fn test_diff_detail_only_result() {
     let verifier = TestVerifier::with_exact_matching();
     let step = create_step(1, "expected", "output", Some(true));
-    let actual = create_actual("actual", "output", true);
+    let log = create_execution_log("TC001", 1, 1, "actual", "output", Some(true));
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(!result.passed);
     assert!(result.diff.result_diff.is_some());
@@ -893,9 +938,9 @@ fn test_diff_detail_only_result() {
 fn test_diff_detail_only_output() {
     let verifier = TestVerifier::with_exact_matching();
     let step = create_step(1, "result", "expected", Some(true));
-    let actual = create_actual("result", "actual", true);
+    let log = create_execution_log("TC001", 1, 1, "result", "actual", Some(true));
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(!result.passed);
     assert!(result.diff.result_diff.is_none());
@@ -907,9 +952,9 @@ fn test_diff_detail_only_output() {
 fn test_diff_detail_only_success() {
     let verifier = TestVerifier::with_exact_matching();
     let step = create_step(1, "result", "output", Some(true));
-    let actual = create_actual("result", "output", false);
+    let log = create_execution_log("TC001", 1, 1, "result", "output", Some(false));
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(!result.passed);
     assert!(result.diff.result_diff.is_none());
@@ -921,9 +966,9 @@ fn test_diff_detail_only_success() {
 fn test_diff_detail_none_success_in_message() {
     let verifier = TestVerifier::with_exact_matching();
     let step = create_step(1, "result", "output", None);
-    let actual = create_actual("wrong", "output", true);
+    let log = create_execution_log("TC001", 1, 1, "wrong", "output", Some(true));
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(!result.passed);
     assert!(result.diff.result_diff.is_some());
@@ -934,9 +979,9 @@ fn test_diff_detail_none_success_in_message() {
 fn test_diff_detail_contains_strategy_message() {
     let verifier = TestVerifier::new(MatchStrategy::Contains, MatchStrategy::Contains);
     let step = create_step(1, "expected", "output", None);
-    let actual = create_actual("actual", "wrong", true);
+    let log = create_execution_log("TC001", 1, 1, "actual", "wrong", Some(true));
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(!result.passed);
 
@@ -951,9 +996,9 @@ fn test_diff_detail_contains_strategy_message() {
 fn test_diff_detail_regex_strategy_message() {
     let verifier = TestVerifier::new(MatchStrategy::Regex, MatchStrategy::Regex);
     let step = create_step(1, r"^\d+$", r"^[A-Z]+$", None);
-    let actual = create_actual("abc", "123", true);
+    let log = create_execution_log("TC001", 1, 1, "abc", "123", Some(true));
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(!result.passed);
 
@@ -972,11 +1017,18 @@ fn test_diff_detail_regex_strategy_message() {
 fn test_default_verifier_uses_exact_matching() {
     let verifier = TestVerifier::default();
     let step = create_step(1, "result", "output", None);
-    let actual_exact = create_actual("result", "output", true);
-    let actual_contains = create_actual("result and more", "output and more", true);
+    let exact_log = create_execution_log("TC001", 1, 1, "result", "output", Some(true));
+    let contains_log = create_execution_log(
+        "TC001",
+        1,
+        1,
+        "result and more",
+        "output and more",
+        Some(true),
+    );
 
-    let result_exact = verifier.verify_step(&step, &actual_exact);
-    let result_contains = verifier.verify_step(&step, &actual_contains);
+    let result_exact = verifier.verify_step_from_log(&step, &exact_log);
+    let result_contains = verifier.verify_step_from_log(&step, &contains_log);
 
     assert!(result_exact.passed);
     assert!(!result_contains.passed);
@@ -986,9 +1038,9 @@ fn test_default_verifier_uses_exact_matching() {
 fn test_verifier_with_mixed_strategies() {
     let verifier = TestVerifier::new(MatchStrategy::Exact, MatchStrategy::Contains);
     let step = create_step(1, "exact_result", "partial", None);
-    let actual = create_actual("exact_result", "partial output", true);
+    let log = create_execution_log("TC001", 1, 1, "exact_result", "partial output", Some(true));
 
-    let result = verifier.verify_step(&step, &actual);
+    let result = verifier.verify_step_from_log(&step, &log);
 
     assert!(result.passed);
     assert!(result.result_match);
@@ -1001,75 +1053,18 @@ fn test_multiple_verifiers_independent() {
     let verifier2 = TestVerifier::new(MatchStrategy::Contains, MatchStrategy::Contains);
 
     let step = create_step(1, "result", "output", None);
-    let actual = create_actual("result string", "output string", true);
+    let log = create_execution_log("TC001", 1, 1, "result string", "output string", Some(true));
 
-    let result1 = verifier1.verify_step(&step, &actual);
-    let result2 = verifier2.verify_step(&step, &actual);
+    let result1 = verifier1.verify_step_from_log(&step, &log);
+    let result2 = verifier2.verify_step_from_log(&step, &log);
 
     assert!(!result1.passed);
     assert!(result2.passed);
 }
 
 // ============================================================================
-// ExecutionVerificationResult Tests
+// Serialization Tests
 // ============================================================================
-
-#[test]
-fn test_execution_verification_result_fields() {
-    let verifier = TestVerifier::with_exact_matching();
-
-    let mut test_case = TestCase::new(
-        "REQ001".to_string(),
-        1,
-        1,
-        "TC001".to_string(),
-        "Test case".to_string(),
-    );
-
-    let mut sequence = TestSequence::new(1, "Sequence".to_string(), "Desc".to_string());
-    sequence
-        .steps
-        .push(create_step(1, "res", "res", Some(true)));
-    test_case.test_sequences.push(sequence);
-
-    let execution_log = TestExecutionLog {
-        test_case_id: "TC001".to_string(),
-        sequence_id: 1,
-        timestamp: "2024-01-01T00:00:00Z".to_string(),
-        actual_output: "res".to_string(),
-        actual_success: true,
-        duration_ms: 1000,
-        error_message: None,
-    };
-
-    let result = verifier.verify_execution_log(&test_case, &execution_log);
-
-    assert_eq!(result.test_case_id, "TC001");
-    assert_eq!(result.sequence_id, 1);
-    assert!(result.overall_passed);
-    assert_eq!(result.step_results.len(), 1);
-    assert!(result.missing_steps.is_empty());
-    assert!(result.unexpected_steps.is_empty());
-}
-
-#[test]
-fn test_execution_verification_result_serialization() {
-    use serde_json;
-
-    let result = ExecutionVerificationResult {
-        test_case_id: "TC001".to_string(),
-        sequence_id: 1,
-        overall_passed: true,
-        step_results: vec![],
-        missing_steps: vec![],
-        unexpected_steps: vec![],
-    };
-
-    let json = serde_json::to_string(&result).unwrap();
-    let deserialized: ExecutionVerificationResult = serde_json::from_str(&json).unwrap();
-
-    assert_eq!(result, deserialized);
-}
 
 #[test]
 fn test_step_verification_result_serialization() {

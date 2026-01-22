@@ -546,6 +546,132 @@ impl fmt::Display for FieldDiff {
     }
 }
 
+/// Test step execution entry following the test execution log schema
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct TestStepExecutionEntry {
+    /// Sequence number of the test
+    pub test_sequence: i64,
+
+    /// Step number within the test sequence
+    pub step: i64,
+
+    /// The command that was executed
+    pub command: String,
+
+    /// Exit code of the command execution
+    pub exit_code: i32,
+
+    /// Output from the command execution
+    pub output: String,
+
+    /// Timestamp of the execution (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub timestamp: Option<String>,
+}
+
+impl TestStepExecutionEntry {
+    /// Create a new test step execution entry
+    pub fn new(
+        test_sequence: i64,
+        step: i64,
+        command: String,
+        exit_code: i32,
+        output: String,
+    ) -> Self {
+        Self {
+            test_sequence,
+            step,
+            command,
+            exit_code,
+            output,
+            timestamp: None,
+        }
+    }
+
+    /// Create a new test step execution entry with timestamp
+    pub fn with_timestamp(
+        test_sequence: i64,
+        step: i64,
+        command: String,
+        exit_code: i32,
+        output: String,
+        timestamp: String,
+    ) -> Self {
+        Self {
+            test_sequence,
+            step,
+            command,
+            exit_code,
+            output,
+            timestamp: Some(timestamp),
+        }
+    }
+
+    /// Check if the execution was successful (exit code 0)
+    pub fn is_success(&self) -> bool {
+        self.exit_code == 0
+    }
+
+    /// Check if the execution failed (non-zero exit code)
+    pub fn is_failure(&self) -> bool {
+        !self.is_success()
+    }
+
+    /// Validate that the entry has all required fields with non-empty values
+    pub fn validate(&self) -> Result<(), String> {
+        if self.test_sequence < 0 {
+            return Err("test_sequence must be non-negative".to_string());
+        }
+
+        if self.step < 0 {
+            return Err("step must be non-negative".to_string());
+        }
+
+        if self.command.is_empty() {
+            return Err("command must not be empty".to_string());
+        }
+
+        Ok(())
+    }
+
+    /// Check if this entry matches a given test sequence and step
+    pub fn matches(&self, test_sequence: i64, step: i64) -> bool {
+        self.test_sequence == test_sequence && self.step == step
+    }
+
+    /// Get a formatted string representation of the execution result
+    pub fn result_summary(&self) -> String {
+        let status = if self.is_success() {
+            "SUCCESS"
+        } else {
+            "FAILURE"
+        };
+        format!(
+            "Sequence {}, Step {}: {} (exit code: {})",
+            self.test_sequence, self.step, status, self.exit_code
+        )
+    }
+
+    /// Parse timestamp if present and valid ISO 8601 format
+    pub fn parse_timestamp(&self) -> Option<DateTime<Utc>> {
+        self.timestamp.as_ref().and_then(|ts| {
+            DateTime::parse_from_rfc3339(ts)
+                .ok()
+                .map(|dt| dt.with_timezone(&Utc))
+        })
+    }
+}
+
+impl fmt::Display for TestStepExecutionEntry {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Sequence {}, Step {}: {} (exit code: {})",
+            self.test_sequence, self.step, self.command, self.exit_code
+        )
+    }
+}
+
 /// Overall status of verification
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum VerificationStatus {
@@ -1059,5 +1185,224 @@ mod tests {
         assert_eq!(format!("{}", TestRunStatus::Pass), "Pass");
         assert_eq!(format!("{}", TestRunStatus::Fail), "Fail");
         assert_eq!(format!("{}", TestRunStatus::Skip), "Skip");
+    }
+
+    #[test]
+    fn test_test_step_execution_entry_creation() {
+        let entry = TestStepExecutionEntry::new(
+            1,
+            2,
+            "echo test".to_string(),
+            0,
+            "test output".to_string(),
+        );
+
+        assert_eq!(entry.test_sequence, 1);
+        assert_eq!(entry.step, 2);
+        assert_eq!(entry.command, "echo test");
+        assert_eq!(entry.exit_code, 0);
+        assert_eq!(entry.output, "test output");
+        assert_eq!(entry.timestamp, None);
+    }
+
+    #[test]
+    fn test_test_step_execution_entry_with_timestamp() {
+        let entry = TestStepExecutionEntry::with_timestamp(
+            1,
+            2,
+            "echo test".to_string(),
+            0,
+            "test output".to_string(),
+            "2024-01-15T10:30:00Z".to_string(),
+        );
+
+        assert_eq!(entry.test_sequence, 1);
+        assert_eq!(entry.step, 2);
+        assert_eq!(entry.command, "echo test");
+        assert_eq!(entry.exit_code, 0);
+        assert_eq!(entry.output, "test output");
+        assert_eq!(entry.timestamp, Some("2024-01-15T10:30:00Z".to_string()));
+    }
+
+    #[test]
+    fn test_test_step_execution_entry_is_success() {
+        let success_entry =
+            TestStepExecutionEntry::new(1, 1, "cmd".to_string(), 0, "output".to_string());
+        assert!(success_entry.is_success());
+        assert!(!success_entry.is_failure());
+
+        let failure_entry =
+            TestStepExecutionEntry::new(1, 1, "cmd".to_string(), 1, "error".to_string());
+        assert!(!failure_entry.is_success());
+        assert!(failure_entry.is_failure());
+    }
+
+    #[test]
+    fn test_test_step_execution_entry_validate_success() {
+        let entry =
+            TestStepExecutionEntry::new(1, 2, "echo test".to_string(), 0, "output".to_string());
+        assert!(entry.validate().is_ok());
+    }
+
+    #[test]
+    fn test_test_step_execution_entry_validate_negative_sequence() {
+        let entry =
+            TestStepExecutionEntry::new(-1, 2, "echo test".to_string(), 0, "output".to_string());
+        let result = entry.validate();
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "test_sequence must be non-negative");
+    }
+
+    #[test]
+    fn test_test_step_execution_entry_validate_negative_step() {
+        let entry =
+            TestStepExecutionEntry::new(1, -1, "echo test".to_string(), 0, "output".to_string());
+        let result = entry.validate();
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "step must be non-negative");
+    }
+
+    #[test]
+    fn test_test_step_execution_entry_validate_empty_command() {
+        let entry = TestStepExecutionEntry::new(1, 2, "".to_string(), 0, "output".to_string());
+        let result = entry.validate();
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "command must not be empty");
+    }
+
+    #[test]
+    fn test_test_step_execution_entry_matches() {
+        let entry = TestStepExecutionEntry::new(3, 5, "cmd".to_string(), 0, "output".to_string());
+
+        assert!(entry.matches(3, 5));
+        assert!(!entry.matches(3, 6));
+        assert!(!entry.matches(4, 5));
+        assert!(!entry.matches(1, 1));
+    }
+
+    #[test]
+    fn test_test_step_execution_entry_result_summary() {
+        let success_entry =
+            TestStepExecutionEntry::new(1, 2, "cmd".to_string(), 0, "output".to_string());
+        assert_eq!(
+            success_entry.result_summary(),
+            "Sequence 1, Step 2: SUCCESS (exit code: 0)"
+        );
+
+        let failure_entry =
+            TestStepExecutionEntry::new(3, 4, "cmd".to_string(), 127, "error".to_string());
+        assert_eq!(
+            failure_entry.result_summary(),
+            "Sequence 3, Step 4: FAILURE (exit code: 127)"
+        );
+    }
+
+    #[test]
+    fn test_test_step_execution_entry_parse_timestamp() {
+        let entry_with_timestamp = TestStepExecutionEntry::with_timestamp(
+            1,
+            1,
+            "cmd".to_string(),
+            0,
+            "output".to_string(),
+            "2024-01-15T10:30:00Z".to_string(),
+        );
+        let parsed = entry_with_timestamp.parse_timestamp();
+        assert!(parsed.is_some());
+        let timestamp = parsed.unwrap();
+        assert_eq!(timestamp.to_rfc3339(), "2024-01-15T10:30:00+00:00");
+
+        let entry_without_timestamp =
+            TestStepExecutionEntry::new(1, 1, "cmd".to_string(), 0, "output".to_string());
+        assert!(entry_without_timestamp.parse_timestamp().is_none());
+
+        let entry_with_invalid_timestamp = TestStepExecutionEntry::with_timestamp(
+            1,
+            1,
+            "cmd".to_string(),
+            0,
+            "output".to_string(),
+            "invalid timestamp".to_string(),
+        );
+        assert!(entry_with_invalid_timestamp.parse_timestamp().is_none());
+    }
+
+    #[test]
+    fn test_test_step_execution_entry_display() {
+        let entry = TestStepExecutionEntry::new(
+            1,
+            2,
+            "echo test".to_string(),
+            0,
+            "test output".to_string(),
+        );
+        assert_eq!(
+            format!("{}", entry),
+            "Sequence 1, Step 2: echo test (exit code: 0)"
+        );
+    }
+
+    #[test]
+    fn test_test_step_execution_entry_serialization() {
+        let entry = TestStepExecutionEntry::new(
+            1,
+            2,
+            "echo test".to_string(),
+            0,
+            "test output".to_string(),
+        );
+
+        let json = serde_json::to_string(&entry).unwrap();
+        let deserialized: TestStepExecutionEntry = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(entry, deserialized);
+    }
+
+    #[test]
+    fn test_test_step_execution_entry_serialization_with_timestamp() {
+        let entry = TestStepExecutionEntry::with_timestamp(
+            1,
+            2,
+            "echo test".to_string(),
+            0,
+            "test output".to_string(),
+            "2024-01-15T10:30:00Z".to_string(),
+        );
+
+        let json = serde_json::to_string(&entry).unwrap();
+        assert!(json.contains("\"timestamp\":\"2024-01-15T10:30:00Z\""));
+
+        let deserialized: TestStepExecutionEntry = serde_json::from_str(&json).unwrap();
+        assert_eq!(entry, deserialized);
+    }
+
+    #[test]
+    fn test_test_step_execution_entry_skip_none_timestamp() {
+        let entry = TestStepExecutionEntry::new(
+            1,
+            2,
+            "echo test".to_string(),
+            0,
+            "test output".to_string(),
+        );
+
+        let json = serde_json::to_string(&entry).unwrap();
+        assert!(!json.contains("timestamp"));
+    }
+
+    #[test]
+    fn test_test_step_execution_entry_yaml_serialization() {
+        let entry = TestStepExecutionEntry::new(
+            1,
+            2,
+            "echo test".to_string(),
+            0,
+            "test output".to_string(),
+        );
+
+        let yaml = serde_yaml::to_string(&entry).unwrap();
+        let deserialized: TestStepExecutionEntry = serde_yaml::from_str(&yaml).unwrap();
+
+        assert_eq!(entry, deserialized);
     }
 }
