@@ -348,10 +348,10 @@ fn main() -> Result<()> {
                     for sequence in &verification_results.sequences {
                         println!("\n  Sequence {}: {}", sequence.sequence_id, sequence.name);
                         println!("  {}", "-".repeat(60));
-                        
+
                         for step_result in &sequence.step_results {
                             use testcase_manager::verification::StepVerificationResultEnum;
-                            
+
                             match step_result {
                                 StepVerificationResultEnum::Pass { step, description } => {
                                     if verbose {
@@ -448,10 +448,10 @@ fn main() -> Result<()> {
                         for sequence in &result.sequences {
                             println!("\n  Sequence {}: {}", sequence.sequence_id, sequence.name);
                             println!("  {}", "-".repeat(60));
-                            
+
                             for step_result in &sequence.step_results {
                                 use testcase_manager::verification::StepVerificationResultEnum;
-                                
+
                                 match step_result {
                                     StepVerificationResultEnum::Pass { step, description } => {
                                         if verbose {
@@ -482,8 +482,14 @@ fn main() -> Result<()> {
                                             println!("    {}", reason);
                                         }
                                     }
-                                    StepVerificationResultEnum::NotExecuted { step, description } => {
-                                        println!("  ⚠ Step {}: {} (NOT EXECUTED)", step, description);
+                                    StepVerificationResultEnum::NotExecuted {
+                                        step,
+                                        description,
+                                    } => {
+                                        println!(
+                                            "  ⚠ Step {}: {} (NOT EXECUTED)",
+                                            step, description
+                                        );
                                     }
                                 }
                             }
