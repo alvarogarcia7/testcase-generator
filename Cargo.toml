@@ -50,8 +50,8 @@ name = "test-executor"
 path = "src/bin/test-executor.rs"
 
 [[bin]]
-name = "tcm"
-path = "src/main.rs"
+name = "editor"
+path = "src/main_editor.rs"
 
 [[bin]]
 name = "test-orchestrator"

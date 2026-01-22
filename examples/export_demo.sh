@@ -14,15 +14,15 @@ if ! command -v cargo &> /dev/null; then
 fi
 
 echo "1. Exporting test runs to stdout:"
-echo "   cargo run --bin tcm -- export-junit-xml data/sample_test_runs.json"
+echo "   cargo run --bin editor -- export-junit-xml data/sample_test_runs.json"
 echo
-cargo run --bin tcm -- export-junit-xml data/sample_test_runs.json
+cargo run --bin editor -- export-junit-xml data/sample_test_runs.json
 echo
 
 echo "2. Exporting test runs to a file:"
-echo "   cargo run --bin tcm -- export-junit-xml data/sample_test_runs.json -o /tmp/junit-results.xml"
+echo "   cargo run --bin editor -- export-junit-xml data/sample_test_runs.json -o /tmp/junit-results.xml"
 echo
-cargo run --bin tcm -- export-junit-xml data/sample_test_runs.json -o /tmp/junit-results.xml
+cargo run --bin editor -- export-junit-xml data/sample_test_runs.json -o /tmp/junit-results.xml
 
 
 

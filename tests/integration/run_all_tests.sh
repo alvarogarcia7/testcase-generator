@@ -58,10 +58,10 @@ echo "Test 1: Basic Workflow"
 echo "=========================================="
 if "$SCRIPT_DIR/e2e_basic_workflow.exp" "$BINARY"; then
     echo "✓ Basic workflow test PASSED"
-    ((TESTS_PASSED++))
+    TESTS_PASSED=$((TESTS_PASSED+1))
 else
     echo "✗ Basic workflow test FAILED"
-    ((TESTS_FAILED++))
+    TESTS_FAILED=$((TESTS_FAILED+1))
 fi
 echo ""
 
@@ -71,10 +71,10 @@ echo "Test 2: Complete Workflow"
 echo "=========================================="
 if "$SCRIPT_DIR/e2e_complete_workflow.exp" "$BINARY"; then
     echo "✓ Complete workflow test PASSED"
-    ((TESTS_PASSED++))
+    TESTS_PASSED=$((TESTS_PASSED+1))
 else
     echo "✗ Complete workflow test FAILED"
-    ((TESTS_FAILED++))
+    TESTS_FAILED=$((TESTS_FAILED+1))
 fi
 echo ""
 
@@ -84,10 +84,10 @@ echo "Test 3: validate-files.sh Integration"
 echo "=========================================="
 if "$SCRIPT_DIR/validate_files_integration.exp"; then
     echo "✓ validate-files.sh test PASSED"
-    ((TESTS_PASSED++))
+    TESTS_PASSED=$((TESTS_PASSED+1))
 else
     echo "✗ validate-files.sh test FAILED"
-    ((TESTS_FAILED++))
+    TESTS_FAILED=$((TESTS_FAILED+1))
 fi
 echo ""
 

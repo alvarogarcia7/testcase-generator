@@ -58,13 +58,13 @@ assert_equals() {
     
     if [[ "$expected" == "$actual" ]]; then
         log_info "✓ $message"
-        ((TESTS_PASSED++))
+        TESTS_PASSED=$((TESTS_PASSED+1))
         return 0
     else
         log_error "✗ $message"
         log_error "  Expected: $expected"
         log_error "  Actual: $actual"
-        ((TESTS_FAILED++))
+        TESTS_FAILED=$((TESTS_FAILED+1))
         return 1
     fi
 }
@@ -75,11 +75,11 @@ assert_true() {
     
     if [[ "$condition" == "true" ]]; then
         log_info "✓ $message"
-        ((TESTS_PASSED++))
+        TESTS_PASSED=$((TESTS_PASSED+1))
         return 0
     else
         log_error "✗ $message"
-        ((TESTS_FAILED++))
+        TESTS_FAILED=$((TESTS_FAILED+1))
         return 1
     fi
 }
@@ -90,11 +90,11 @@ assert_file_exists() {
     
     if [[ -f "$file" ]]; then
         log_info "✓ $message"
-        ((TESTS_PASSED++))
+        TESTS_PASSED=$((TESTS_PASSED+1))
         return 0
     else
         log_error "✗ $message: File not found: $file"
-        ((TESTS_FAILED++))
+        TESTS_FAILED=$((TESTS_FAILED+1))
         return 1
     fi
 }
@@ -105,11 +105,11 @@ assert_dir_exists() {
     
     if [[ -d "$dir" ]]; then
         log_info "✓ $message"
-        ((TESTS_PASSED++))
+        TESTS_PASSED=$((TESTS_PASSED+1))
         return 0
     else
         log_error "✗ $message: Directory not found: $dir"
-        ((TESTS_FAILED++))
+        TESTS_FAILED=$((TESTS_FAILED+1))
         return 1
     fi
 }
@@ -121,13 +121,13 @@ assert_contains() {
     
     if [[ "$haystack" == *"$needle"* ]]; then
         log_info "✓ $message"
-        ((TESTS_PASSED++))
+        TESTS_PASSED=$((TESTS_PASSED+1))
         return 0
     else
         log_error "✗ $message"
         log_error "  Expected to contain: $needle"
         log_error "  In: $haystack"
-        ((TESTS_FAILED++))
+        TESTS_FAILED=$((TESTS_FAILED+1))
         return 1
     fi
 }
@@ -321,10 +321,10 @@ test_timestamped_filenames() {
         # RFC3339 format: YYYY-MM-DDTHH:MM:SS+00:00.yaml or similar
         if [[ "$filename" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2} ]]; then
             log_info "✓ Filename follows RFC3339 timestamp format: $filename"
-            ((TESTS_PASSED++))
+            TESTS_PASSED=$((TESTS_PASSED+1))
         else
             log_error "✗ Filename does not follow RFC3339 timestamp format: $filename"
-            ((TESTS_FAILED++))
+            TESTS_FAILED=$((TESTS_FAILED+1))
         fi
     fi
     
@@ -368,26 +368,26 @@ test_list_output_format() {
     # Verify run counts are "1" for each test case
     if echo "$list_output" | grep -q "TC001.*1.*P:1 F:0 S:0"; then
         log_info "✓ TC001 shows correct run count (1) and status (P:1 F:0 S:0)"
-        ((TESTS_PASSED++))
+        TESTS_PASSED=$((TESTS_PASSED+1))
     else
         log_error "✗ TC001 does not show correct run count or status"
-        ((TESTS_FAILED++))
+        TESTS_FAILED=$((TESTS_FAILED+1))
     fi
     
     if echo "$list_output" | grep -q "TC002.*1.*P:0 F:1 S:0"; then
         log_info "✓ TC002 shows correct run count (1) and status (P:0 F:1 S:0)"
-        ((TESTS_PASSED++))
+        TESTS_PASSED=$((TESTS_PASSED+1))
     else
         log_error "✗ TC002 does not show correct run count or status"
-        ((TESTS_FAILED++))
+        TESTS_FAILED=$((TESTS_FAILED+1))
     fi
     
     if echo "$list_output" | grep -q "TC003.*1.*P:0 F:0 S:1"; then
         log_info "✓ TC003 shows correct run count (1) and status (P:0 F:0 S:1)"
-        ((TESTS_PASSED++))
+        TESTS_PASSED=$((TESTS_PASSED+1))
     else
         log_error "✗ TC003 does not show correct run count or status"
-        ((TESTS_FAILED++))
+        TESTS_FAILED=$((TESTS_FAILED+1))
     fi
 }
 
@@ -421,19 +421,19 @@ test_no_overwrites() {
     
     if echo "$list_output" | grep -q "TC001.*3"; then
         log_info "✓ TC001 shows correct updated run count (3)"
-        ((TESTS_PASSED++))
+        TESTS_PASSED=$((TESTS_PASSED+1))
     else
         log_error "✗ TC001 does not show correct updated run count"
-        ((TESTS_FAILED++))
+        TESTS_FAILED=$((TESTS_FAILED+1))
     fi
     
     # Verify status summary reflects all 3 runs (2 Pass, 1 Fail, 0 Skip)
     if echo "$list_output" | grep -q "TC001.*3.*P:2 F:1 S:0"; then
         log_info "✓ TC001 shows correct status summary (P:2 F:1 S:0)"
-        ((TESTS_PASSED++))
+        TESTS_PASSED=$((TESTS_PASSED+1))
     else
         log_error "✗ TC001 does not show correct status summary"
-        ((TESTS_FAILED++))
+        TESTS_FAILED=$((TESTS_FAILED+1))
     fi
     
     # Add second run for TC002
@@ -451,10 +451,10 @@ test_no_overwrites() {
     
     if echo "$list_output" | grep -q "TC002.*2.*P:1 F:1 S:0"; then
         log_info "✓ TC002 shows correct final status (2 runs: P:1 F:1 S:0)"
-        ((TESTS_PASSED++))
+        TESTS_PASSED=$((TESTS_PASSED+1))
     else
         log_error "✗ TC002 does not show correct final status"
-        ((TESTS_FAILED++))
+        TESTS_FAILED=$((TESTS_FAILED+1))
     fi
 }
 
