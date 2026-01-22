@@ -12,7 +12,10 @@ build:
 	cargo build --all
 .PHONY: build
 
-test: test-unit test-e2e
+test: 
+	${MAKE} test-unit
+	${MAKE} test-e2e
+	${MAKE} verify-testcases
 .PHONY: test
 
 test-unit: build
@@ -74,6 +77,26 @@ test-verify-sample: build
 validate-all-testcases: build
 	SCHEMA_FILE=data/schema.json ./scripts/validate-files.sh --pattern '\.ya?ml$$' --validator ./scripts/validate-yaml-wrapper.sh
 .PHONY: validate-all-testcases
+
+verify-testcases: build
+	@echo "Verifying test case files against schema..."
+	@FAILED=0; \
+	for file in $$(find testcases tests/sample data -type f \( -name "*.yml" -o -name "*.yaml" \) -not \( -name "*te.y*" -o -iname "sample_test_runs.yaml" -o -name "*wrong*" \) 2>/dev/null); do \
+		echo "Validating: $$file"; \
+		if cargo run --bin validate-yaml "$$file" data/schema.json >/dev/null 2>&1; then \
+			echo "  ✓ PASSED"; \
+		else \
+			echo "  ✗ FAILED"; \
+			FAILED=1; \
+		fi; \
+	done; \
+	if [ $$FAILED -eq 1 ]; then \
+		echo "Some validations failed"; \
+		exit 1; \
+	else \
+		echo "All test case files validated successfully"; \
+	fi
+.PHONY: verify-testcases
 
 watch: build
 	./scripts/watch-yaml-files.sh

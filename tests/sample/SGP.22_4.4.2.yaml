@@ -3,33 +3,39 @@ item: 4
 tc: 42
 id: SGP.22_4.4.2
 description: Sample test case for demonstration
+
+general_initial_conditions:
+  eUICC:
+    - "The profile The PROFILE_OPERATIONAL1 with #METADATA_WITH_PPRS_AND_ICON is loaded on the eUICC."
+
 initial_conditions:
   LPA:
-  - test
+    - test
 test_sequences:
-- id: 1
-  name: seq
-  initial_conditions:
-  - LPA:
-    - LPA ON
-  steps:
-  - step: 1
-    description: 'Sample step 1: Perform test action'
-    command: AT+COMMAND
-    expected:
-      success: true
-      result: '0'
-      output: none
-    verification:
-      result: "exit_code == 0"
-      output: ""
-  - step: 2
-    description: 'Sample step 2: Perform test action'
-    command: AT+COMMAND
-    expected:
-      success: true
-      result: '0'
-      output: none
-    verification:
-      result: "exit_code == 0"
-      output: ""
+  - id: 1
+    name: seq
+    description: ""
+    initial_conditions:
+      LPA:
+        - LPA ON
+    steps:
+      - step: 1
+        description: 'Sample step 1: Perform test action'
+        command: AT+COMMAND
+        expected:
+          success: true
+          result: 0
+          output: none
+        verification:
+          result: "exit_code == 0"
+          output: ""
+      - step: 2
+        description: 'Sample step 2: Perform test action'
+        command: AT+COMMAND
+        expected:
+          success: true
+          result: 0
+          output: none
+        verification:
+          result: "exit_code == 0"
+          output: ""

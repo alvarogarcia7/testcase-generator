@@ -41,7 +41,7 @@ test_sequences:
           output: ""
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: true
+          output: "true"
       - step: 3
         description: "Failed command with false"
         command: false
@@ -51,7 +51,7 @@ test_sequences:
           output: ""
         verification:
           result: "[[ $EXIT_CODE -ne 0 ]]"
-          output: true
+          output: "true"
   - id: 2
     name: "Echo with Different Outputs"
     description: |
@@ -105,7 +105,7 @@ test_sequences:
           output: ""
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: true
+          output: "true"
       - step: 2
         description: "Exit with code 1"
         command: /bin/sh -c "exit 1"
@@ -115,7 +115,7 @@ test_sequences:
           output: ""
         verification:
           result: "[[ $EXIT_CODE -eq 1 ]]"
-          output: true
+          output: "true"
       - step: 3
         description: "Exit with code 2"
         command: /bin/sh -c "exit 2"
@@ -125,4 +125,4 @@ test_sequences:
           output: ""
         verification:
           result: "[[ $EXIT_CODE -eq 2 ]]"
-          output: true
+          output: "true"
