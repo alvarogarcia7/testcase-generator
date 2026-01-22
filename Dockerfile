@@ -46,8 +46,7 @@ RUN apt-get update && \
 WORKDIR /app
 
 # Copy binaries from builder
-COPY --from=builder /app/target/release/tcm /usr/local/bin/tcm
-COPY --from=builder /app/target/release/validate-yaml /usr/local/bin/validate-yaml
+COPY --from=builder /app/target/release/* /usr/local/bin
 
 # Copy data directory
 COPY data ./data
