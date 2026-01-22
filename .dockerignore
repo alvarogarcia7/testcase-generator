@@ -1,0 +1,42 @@
+# Build artifacts
+target/
+
+# Test directories and files
+testcases/
+test_e2e_*
+test_basic_*
+
+# Version control
+.git/
+.gitignore
+.gitattributes
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary and backup files
+*.tmp
+*.bak
+.recovery.json
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Documentation
+README.md
+docs/
+*.md
+AGENTS.md
+LICENSE
+CONTRIBUTING.md
+CHANGELOG.md
+
+# OS files
+.DS_Store
+Thumbs.db
