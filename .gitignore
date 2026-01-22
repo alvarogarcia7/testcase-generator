@@ -51,3 +51,5 @@ logs/
 .crates2.json
 bin/cargo-watch
 
+/test-output/
+

@@ -113,6 +113,7 @@ fn main() -> Result<()> {
     }
 }
 
+#[allow(dead_code)]
 fn verify_command(log_file: PathBuf, test_case_file: PathBuf) -> Result<()> {
     let log_content = fs::read_to_string(&log_file)
         .context(format!("Failed to read log file: {}", log_file.display()))?;

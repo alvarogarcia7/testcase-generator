@@ -49,7 +49,7 @@ test-e2e-failing-all: build
 
 test-e2e:
 	${MAKE} test-e2e-validate-yaml
-	#${MAKE} test-e2e-orchestrator
+	${MAKE} test-e2e-orchestrator
 	#${MAKE} test-e2e-executor
 	#${MAKE} test-verify-sample
 	${MAKE} example_export-demo
@@ -108,5 +108,6 @@ test-e2e-executor: build
 
 test-e2e-orchestrator: build
 	./tests/integration/test_orchestrator_e2e.sh
+	cargo run --bin test-orchestrator run testcases/self_validated_example.yml --verbose
 .PHONY: test-e2e-orchestrator
 

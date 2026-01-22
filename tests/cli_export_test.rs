@@ -191,6 +191,6 @@ fn test_multiple_test_runs_aggregation() {
     assert!(xml_content.contains("failures=\"1\""));
     assert!(xml_content.contains("skipped=\"1\""));
 
-    let total_time = 1000 + 2000 + 3000 + 0;
+    let total_time = 1000 + 2000 + 3000;
     assert!(xml_content.contains(&format!("time=\"{:0.3}\"", total_time as f64 / 1000f64)));
 }

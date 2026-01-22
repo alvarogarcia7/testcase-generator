@@ -20,7 +20,11 @@ impl TestExecutor {
         }
     }
 
-    pub fn generate_test_script(&self, test_case: &TestCase) -> String {
+    pub fn generate_test_script_with_json_output(
+        &self,
+        test_case: &TestCase,
+        json_output_path: &Path,
+    ) -> String {
         let mut script = String::new();
 
         script.push_str("#!/bin/bash\n");
@@ -32,6 +36,33 @@ impl TestExecutor {
         script.push_str("# Description: ");
         script.push_str(&test_case.description);
         script.push_str("\n\n");
+
+        script.push_str(&format!("JSON_LOG=\"{}\"\n", json_output_path.display()));
+        script.push_str("TIMESTAMP=$(date  +\"%Y-%m-%dT%H:%M:%S\")\n\n");
+
+        // Add trap to ensure JSON file is properly closed on any exit
+        script.push_str("# Trap to ensure JSON file is closed properly on exit\n");
+        script.push_str("cleanup() {\n");
+        script.push_str("    if [ -f \"$JSON_LOG\" ]; then\n");
+        script.push_str("        # Check if JSON_LOG ends with '[' or ','\n");
+        script.push_str("        LAST_CHAR=$(tail -c 2 \"$JSON_LOG\" | head -c 1)\n");
+        script.push_str("        if [ \"$LAST_CHAR\" != \"]\" ]; then\n");
+        script.push_str("            echo '' >> \"$JSON_LOG\"\n");
+        script.push_str("            echo ']' >> \"$JSON_LOG\"\n");
+        script.push_str("        fi\n");
+        script.push_str("        # Validate JSON\n");
+        script.push_str("        if command -v jq >/dev/null 2>&1; then\n");
+        script.push_str("            if ! jq empty \"$JSON_LOG\" >/dev/null 2>&1; then\n");
+        script.push_str("                echo \"500 - Internal Script Error: Generated JSON is not valid\" >&2\n");
+        script.push_str("                exit 1\n");
+        script.push_str("            fi\n");
+        script.push_str("        fi\n");
+        script.push_str("    fi\n");
+        script.push_str("}\n");
+        script.push_str("trap cleanup EXIT\n\n");
+
+        script.push_str("echo '[' > \"$JSON_LOG\"\n");
+        script.push_str("FIRST_ENTRY=true\n\n");
 
         if !test_case.general_initial_conditions.is_empty() {
             script.push_str("# General Initial Conditions\n");
@@ -82,6 +113,26 @@ impl TestExecutor {
                 script.push_str("EXIT_CODE=$?\n");
                 script.push_str("set -e\n\n");
 
+                let escaped_command = step.command.replace("\\", "\\\\").replace("\"", "\\\"");
+                script.push_str("# Escape output for JSON\n");
+                script.push_str("OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | sed 's/\\\\/\\\\\\\\/g' | sed 's/\"/\\\\\"/g' | sed -e ':a' -e '$!N;s/\\n/\\\\n/;ta')\n\n");
+
+                script.push_str("if [ \"$FIRST_ENTRY\" = false ]; then\n");
+                script.push_str("    echo ',' >> \"$JSON_LOG\"\n");
+                script.push_str("fi\n");
+                script.push_str("FIRST_ENTRY=false\n\n");
+
+                script.push_str("cat >> \"$JSON_LOG\" << EOF\n");
+                script.push_str("  {\n");
+                script.push_str(&format!("    \"test_sequence\": {},\n", sequence.id));
+                script.push_str(&format!("    \"step\": {},\n", step.step));
+                script.push_str(&format!("    \"command\": \"{}\",\n", escaped_command));
+                script.push_str("    \"exit_code\": $EXIT_CODE,\n");
+                script.push_str("    \"output\": \"$OUTPUT_ESCAPED\",\n");
+                script.push_str("    \"timestamp\": \"$TIMESTAMP\"\n");
+                script.push_str("  }\n");
+                script.push_str("EOF\n\n");
+
                 script.push_str(&format!(
                     "# Verification result expression: {}\n",
                     step.verification.result
@@ -124,10 +175,29 @@ impl TestExecutor {
             }
         }
 
+        script.push_str("echo ']' >> \"$JSON_LOG\"\n\n");
+
+        // Add JSON schema validation
+        script.push_str("# Validate JSON against schema\n");
+        script.push_str("if command -v jq >/dev/null 2>&1; then\n");
+        script.push_str("    if ! jq empty \"$JSON_LOG\" >/dev/null 2>&1; then\n");
+        script.push_str(
+            "        echo \"500 - Internal Script Error: Generated JSON is not valid\"\n",
+        );
+        script.push_str("        exit 1\n");
+        script.push_str("    fi\n");
+        script.push_str("fi\n\n");
+
         script.push_str("echo \"All test sequences completed successfully\"\n");
         script.push_str("exit 0\n");
 
         script
+    }
+
+    pub fn generate_test_script(&self, test_case: &TestCase) -> String {
+        let json_path_str = format!("{}_execution_log.json", test_case.id);
+        let json_path = Path::new(&json_path_str);
+        self.generate_test_script_with_json_output(test_case, json_path)
     }
 
     pub fn execute_test_case(&self, test_case: &TestCase) -> Result<()> {

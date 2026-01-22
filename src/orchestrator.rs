@@ -414,7 +414,7 @@ impl TestOrchestrator {
             }
 
             let start = Instant::now();
-            let result = executor.execute_test_case(test_case);
+            let result = Self::execute_test_case_with_script(executor, test_case, output_dir);
             let duration = start.elapsed();
             let duration_s = duration.as_secs_f64();
 
@@ -474,6 +474,95 @@ impl TestOrchestrator {
         }
 
         last_result.unwrap()
+    }
+
+    fn execute_test_case_with_script(
+        executor: &TestExecutor,
+        test_case: &TestCase,
+        output_dir: &Path,
+    ) -> Result<()> {
+        use std::process::Command;
+
+        let json_log_path = output_dir.join(format!(
+            "{}_execution_log.json",
+            test_case.id.replace('/', "_")
+        ));
+        let script_content =
+            executor.generate_test_script_with_json_output(test_case, &json_log_path);
+
+        let script_path = output_dir.join(format!("{}_test.sh", test_case.id.replace('/', "_")));
+        fs::write(&script_path, &script_content).context(format!(
+            "Failed to write test script: {}",
+            script_path.display()
+        ))?;
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = fs::metadata(&script_path)?.permissions();
+            perms.set_mode(0o755);
+            fs::set_permissions(&script_path, perms)?;
+        }
+
+        let output = Command::new("bash")
+            .arg(&script_path)
+            .output()
+            .context(format!(
+                "Failed to execute test script: {}",
+                script_path.display()
+            ))?;
+
+        Self::verify_json_log(test_case, &json_log_path, output_dir)?;
+
+        if !output.status.success() {
+            anyhow::bail!(
+                "Test script execution failed with exit code: {:?}",
+                output.status.code()
+            );
+        }
+
+        Ok(())
+    }
+
+    fn verify_json_log(
+        test_case: &TestCase,
+        json_log_path: &Path,
+        output_dir: &Path,
+    ) -> Result<()> {
+        let verifier = TestVerifier::new(Exact, Exact);
+
+        let logs = verifier
+            .parse_log_file_with_test_case_id(json_log_path, &test_case.id)
+            .context(format!(
+                "Failed to parse JSON log: {}",
+                json_log_path.display()
+            ))?;
+
+        let verification_result = verifier.verify_test_case(test_case, &logs);
+
+        let verification_report_path = output_dir.join(format!(
+            "{}_verification.json",
+            test_case.id.replace('/', "_")
+        ));
+
+        let report_json = serde_json::to_string_pretty(&verification_result)
+            .context("Failed to serialize verification result")?;
+
+        fs::write(&verification_report_path, report_json).context(format!(
+            "Failed to write verification report: {}",
+            verification_report_path.display()
+        ))?;
+
+        if !verification_result.overall_pass {
+            anyhow::bail!(
+                "Test case {} failed verification: {}/{} steps passed",
+                test_case.id,
+                verification_result.passed_steps,
+                verification_result.total_steps
+            );
+        }
+
+        Ok(())
     }
 
     pub fn save_results(&self, results: &[TestExecutionResult]) -> Result<()> {
