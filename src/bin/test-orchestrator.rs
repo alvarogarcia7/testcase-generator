@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory, Parser, Subcommand};
 use std::path::PathBuf;
 use testcase_manager::fuzzy::TestCaseFuzzyFinder;
 use testcase_manager::orchestrator::{RetryPolicy, TestOrchestrator, WorkerConfig};
@@ -39,7 +39,7 @@ struct Cli {
 enum Commands {
     /// Execute specific test cases by ID
     Run {
-        /// Test case IDs to execute
+        /// Test case IDs to execute (required unless --fuzzy is used)
         #[arg(required = false)]
         test_case_ids: Vec<String>,
 
@@ -142,6 +142,24 @@ fn main() -> Result<()> {
 
     let cli = Cli::parse();
 
+    // Validate run subcommand parameters before proceeding
+    if let Commands::Run {
+        ref test_case_ids,
+        fuzzy,
+        ..
+    } = cli.command
+    {
+        if test_case_ids.is_empty() && !fuzzy {
+            // Print usage help and exit with non-zero status
+            let mut cmd = Cli::command();
+            cmd.error(
+                clap::error::ErrorKind::MissingRequiredArgument,
+                "No test case IDs provided. Either provide test case IDs as arguments or use --fuzzy for interactive selection.\n\nUsage: test-orchestrator run [TEST_CASE_IDS]... [OPTIONS]\n       test-orchestrator run --fuzzy [OPTIONS]",
+            )
+            .exit();
+        }
+    }
+
     let test_case_storage =
         TestCaseStorage::new(&cli.path).context("Failed to initialize test case storage")?;
     let test_run_storage = TestRunStorage::new(cli.path.join("test-runs"))
@@ -162,46 +180,41 @@ fn main() -> Result<()> {
             verbose,
             save,
             report,
-            fuzzy,
+            fuzzy: _,
         } => {
             if test_case_ids.is_empty() {
-                if fuzzy {
-                    let all_test_cases = orchestrator
-                        .select_all_test_cases()
-                        .context("Failed to load test cases")?;
+                // This branch is only reached when fuzzy is true (due to validation above)
+                let all_test_cases = orchestrator
+                    .select_all_test_cases()
+                    .context("Failed to load test cases")?;
 
-                    if all_test_cases.is_empty() {
-                        anyhow::bail!("No test cases found in storage");
+                if all_test_cases.is_empty() {
+                    anyhow::bail!("No test cases found in storage");
+                }
+
+                let test_case_options: Vec<String> = all_test_cases
+                    .iter()
+                    .map(|tc| format!("{} - {}", tc.id, tc.description))
+                    .collect();
+
+                match TestCaseFuzzyFinder::search_strings(
+                    &test_case_options,
+                    "Select test cases to execute (Tab to select multiple, Enter to confirm): ",
+                )? {
+                    Some(selected) => {
+                        test_case_ids = selected
+                            .split(" - ")
+                            .next()
+                            .unwrap()
+                            .to_string()
+                            .split_whitespace()
+                            .map(String::from)
+                            .collect();
                     }
-
-                    let test_case_options: Vec<String> = all_test_cases
-                        .iter()
-                        .map(|tc| format!("{} - {}", tc.id, tc.description))
-                        .collect();
-
-                    match TestCaseFuzzyFinder::search_strings(
-                        &test_case_options,
-                        "Select test cases to execute (Tab to select multiple, Enter to confirm): ",
-                    )? {
-                        Some(selected) => {
-                            test_case_ids = selected
-                                .split(" - ")
-                                .next()
-                                .unwrap()
-                                .to_string()
-                                .split_whitespace()
-                                .map(String::from)
-                                .collect();
-                        }
-                        None => {
-                            println!("No test cases selected. Exiting.");
-                            return Ok(());
-                        }
+                    None => {
+                        println!("No test cases selected. Exiting.");
+                        return Ok(());
                     }
-                } else {
-                    anyhow::bail!(
-                        "No test case IDs provided. Use --fuzzy for interactive selection or provide IDs as arguments."
-                    );
                 }
             }
 
