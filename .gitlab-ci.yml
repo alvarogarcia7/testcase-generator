@@ -1,0 +1,261 @@
+image: rust:1.92-bookworm
+
+variables:
+  CARGO_HOME: $CI_PROJECT_DIR/.cargo
+  RUSTFLAGS: "-Dwarnings"
+  RUSTDOCFLAGS: "-Dwarnings"
+  CARGO_INCREMENTAL: "0"
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: "/certs"
+
+stages:
+  - rust
+  - coverage
+  - docker
+  - performance
+  - report
+
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - .cargo/
+    - target/
+
+before_script:
+  - rustc --version
+  - cargo --version
+  - apt-get update -qq
+
+rust:build-test-lint:
+  stage: rust
+  script:
+    # Add required components
+    - rustup component add clippy rustfmt
+    
+    # Build
+    - echo "===== Building Release Binaries ====="
+    - cargo build --all --all-features --release
+    - mkdir -p artifacts/binaries
+    - cp target/release/validate-yaml artifacts/binaries/ || true
+    - cp target/release/validate-json artifacts/binaries/ || true
+    - cp target/release/trm artifacts/binaries/ || true
+    - cp target/release/test-verify artifacts/binaries/ || true
+    - cp target/release/test-executor artifacts/binaries/ || true
+    - cp target/release/test-orchestrator artifacts/binaries/ || true
+    
+    # Lint - rustfmt
+    - echo "===== Running rustfmt ====="
+    - cargo fmt --all -- --check
+    
+    # Lint - clippy
+    - echo "===== Running Clippy ====="
+    - cargo clippy --all --all-features --tests -- -D warnings 2>&1 | tee clippy_output.txt
+    
+    # Test - unit tests
+    - echo "===== Running Unit Tests ====="
+    - cargo test --all --all-features --tests --no-fail-fast -- --test-threads=1 2>&1 | tee test_output.txt
+    - python3 scripts/ci_parse_test_results.py test_output.txt > test_results.json
+    
+    # Test - e2e tests
+    - echo "===== Running E2E Tests ====="
+    - make test-e2e 2>&1 | tee e2e_output.txt || true
+    
+    # Test - doc tests
+    - echo "===== Running Doc Tests ====="
+    - cargo test --doc 2>&1 | tee doc_test_output.txt || true
+  after_script:
+    - |
+      if [ -f test_results.json ]; then
+        python3 scripts/ci_post_mr_comment.py test_results.json || true
+      fi
+    - |
+      if [ -f clippy_output.txt ] && grep -q "warning:" clippy_output.txt; then
+        python3 scripts/ci_post_clippy_comment.py clippy_output.txt || true
+      fi
+  artifacts:
+    name: "rust-artifacts-$CI_COMMIT_REF_SLUG"
+    paths:
+      - target/release/
+      - artifacts/
+      - test_output.txt
+      - test_results.json
+      - e2e_output.txt
+      - doc_test_output.txt
+      - clippy_output.txt
+    reports:
+      junit: test_results.xml
+    expire_in: 1 week
+    when: always
+  tags:
+    - rust
+
+coverage:
+  stage: coverage
+  dependencies:
+    - rust:build-test-lint
+  before_script:
+    - rustc --version
+    - cargo --version
+    - apt-get update -qq
+    - apt-get install -y -qq curl
+    - curl -L https://github.com/mozilla/grcov/releases/latest/download/grcov-x86_64-unknown-linux-gnu.tar.bz2 | tar jxf -
+    - chmod +x grcov
+    - rustup component add llvm-tools-preview
+  script:
+    - export CARGO_INCREMENTAL=0
+    - export RUSTFLAGS="-Cinstrument-coverage"
+    - export LLVM_PROFILE_FILE="coverage-%p-%m.profraw"
+    - cargo test --all --all-features --tests
+    - ./grcov . --binary-path ./target/debug/ -s . -t lcov --branch --ignore-not-existing --ignore "/*" -o lcov.info
+    - ./grcov . --binary-path ./target/debug/ -s . -t html --branch --ignore-not-existing --ignore "/*" -o coverage/html
+    - |
+      if [ -n "$CI_MERGE_REQUEST_IID" ]; then
+        python3 scripts/ci_compare_coverage.py lcov.info > coverage_report.json
+        python3 scripts/ci_post_coverage_comment.py coverage_report.json
+      fi
+  coverage: '/lines\.*: \d+\.\d+%/'
+  artifacts:
+    name: "coverage-$CI_COMMIT_REF_SLUG"
+    paths:
+      - lcov.info
+      - coverage/
+      - coverage_report.json
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: cobertura.xml
+    expire_in: 1 month
+  tags:
+    - rust
+
+docker:build:
+  stage: docker
+  image: docker:24-git
+  services:
+    - docker:24-dind
+  before_script:
+    - docker info
+  script:
+    - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA .
+    - docker build -t $CI_REGISTRY_IMAGE:latest .
+    - echo "Built image $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"
+  only:
+    - merge_requests
+    - master
+  tags:
+    - docker
+
+docker:verify:
+  stage: docker
+  image: docker:24-git
+  services:
+    - docker:24-dind
+  dependencies:
+    - docker:build
+  before_script:
+    - docker info
+  script:
+    - docker build -t testcase-manager:test .
+    - docker images | grep testcase-manager
+    - docker run --rm testcase-manager:test validate-yaml --help
+    - docker run --rm testcase-manager:test validate-json --help
+    - echo "Image verification successful"
+    - docker inspect testcase-manager:test | tee docker_inspect.json
+    - python3 scripts/ci_docker_security_scan.py docker_inspect.json > docker_scan_results.json
+  artifacts:
+    name: "docker-verify-$CI_COMMIT_REF_SLUG"
+    paths:
+      - docker_inspect.json
+      - docker_scan_results.json
+    expire_in: 1 week
+  only:
+    - merge_requests
+    - master
+  tags:
+    - docker
+
+docker:push:
+  stage: docker
+  image: docker:24-git
+  services:
+    - docker:24-dind
+  dependencies:
+    - docker:verify
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA .
+    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
+    - |
+      if [ "$CI_COMMIT_BRANCH" == "$CI_DEFAULT_BRANCH" ]; then
+        docker tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA $CI_REGISTRY_IMAGE:latest
+        docker push $CI_REGISTRY_IMAGE:latest
+      fi
+  only:
+    - master
+  tags:
+    - docker
+
+performance:baseline:
+  stage: performance
+  dependencies:
+    - rust:build-test-lint
+  script:
+    - apt-get install -y -qq python3 python3-pip
+    - pip3 install --break-system-packages psutil
+    - python3 scripts/ci_benchmark.py --output baseline_perf.json
+  artifacts:
+    name: "performance-baseline-$CI_COMMIT_REF_SLUG"
+    paths:
+      - baseline_perf.json
+    expire_in: 1 month
+  only:
+    - master
+  tags:
+    - rust
+
+performance:compare:
+  stage: performance
+  dependencies:
+    - rust:build-test-lint
+  script:
+    - apt-get install -y -qq python3 python3-pip git
+    - pip3 install --break-system-packages psutil
+    - python3 scripts/ci_benchmark.py --output current_perf.json
+    - |
+      if [ -n "$CI_MERGE_REQUEST_IID" ]; then
+        python3 scripts/ci_compare_performance.py baseline_perf.json current_perf.json > perf_comparison.json
+        python3 scripts/ci_post_performance_comment.py perf_comparison.json
+      fi
+  artifacts:
+    name: "performance-comparison-$CI_COMMIT_REF_SLUG"
+    paths:
+      - current_perf.json
+      - perf_comparison.json
+    expire_in: 1 week
+  only:
+    - merge_requests
+  allow_failure: true
+  tags:
+    - rust
+
+report:summary:
+  stage: report
+  dependencies:
+    - rust:build-test-lint
+    - coverage
+    - docker:verify
+    - performance:compare
+  script:
+    - python3 scripts/ci_generate_summary_report.py > pipeline_summary.md
+    - python3 scripts/ci_post_summary_comment.py pipeline_summary.md
+  artifacts:
+    name: "pipeline-summary-$CI_COMMIT_REF_SLUG"
+    paths:
+      - pipeline_summary.md
+    expire_in: 1 month
+  when: always
+  only:
+    - merge_requests
+  tags:
+    - rust
