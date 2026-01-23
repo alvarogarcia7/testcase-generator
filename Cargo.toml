@@ -27,6 +27,7 @@ colored = "2.1"
 similar = "2.3"
 quick-xml = "0.39.0"
 roxmltree = "0.20"
+strip-ansi-escapes = "0.2"
 
 [dev-dependencies]
 tempfile = "3.8"

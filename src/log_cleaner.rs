@@ -84,6 +84,38 @@ impl LogCleaner {
         trimmed_lines.join("\n").trim().to_string()
     }
 
+    pub fn process_backspaces(&self, text: &str) -> String {
+        let mut result = String::new();
+
+        for ch in text.chars() {
+            if ch == '\x08' || ch == '\x7f' {
+                result.pop();
+            } else {
+                result.push(ch);
+            }
+        }
+
+        result
+    }
+
+    pub fn remove_control_characters(&self, text: &str) -> String {
+        text.chars()
+            .filter(|&ch| {
+                let code = ch as u32;
+                !((code < 32 && ch != '\n' && ch != '\r' && ch != '\t') || code == 127)
+            })
+            .collect()
+    }
+
+    pub fn clean_script_capture(&self, text: &str) -> String {
+        let bytes = text.as_bytes();
+        let stripped = strip_ansi_escapes::strip(bytes);
+        let text = String::from_utf8_lossy(&stripped).to_string();
+
+        let text = self.process_backspaces(&text);
+        self.remove_control_characters(&text)
+    }
+
     pub fn clean_execution_log(&self, log: &TestExecutionLog) -> TestExecutionLog {
         let mut cleaned_log = log.clone();
 
