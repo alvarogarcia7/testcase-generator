@@ -67,6 +67,10 @@ path = "src/main_editor.rs"
 name = "test-orchestrator"
 path = "src/bin/test-orchestrator.rs"
 
+[[bin]]
+name = "script-cleanup"
+path = "src/bin/script-cleanup.rs"
+
 [[example]]
 name = "tty_fallback_demo"
 path = "examples/tty_fallback_demo.rs"
