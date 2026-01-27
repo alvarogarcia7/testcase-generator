@@ -53,6 +53,7 @@ test-e2e-failing-all: build
 test-e2e:
 	${MAKE} test-e2e-validate-yaml
 	${MAKE} test-e2e-orchestrator
+	${MAKE} test-e2e-orchestrator-examples
 	${MAKE} test-e2e-executor
 	#${MAKE} test-verify-sample
 	${MAKE} example_export-demo
@@ -142,4 +143,8 @@ test-e2e-orchestrator: build
 	cargo run --bin test-orchestrator run testcases/self_validated_example.yml --verbose
 	! cargo run --bin test-orchestrator run testcases/self_validated_example_wrong.yml
 .PHONY: test-e2e-orchestrator
+
+test-e2e-orchestrator-examples: build
+	./tests/integration/test_orchestrator_examples.sh
+.PHONY: test-e2e-orchestrator-examples
 

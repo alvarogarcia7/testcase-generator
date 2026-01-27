@@ -1,0 +1,43 @@
+requirement: "EXAMPLE_RUN_TEST_002"
+item: 1
+tc: 2
+id: 'EXAMPLE_RUN_002'
+description: 'Second example test case for the run subcommand'
+
+general_initial_conditions:
+  system:
+    - "Shell environment is available"
+
+initial_conditions:
+  system:
+    - "All commands can be executed"
+
+test_sequences:
+  - id: 1
+    name: "Simple Echo Commands"
+    description: |
+                   Demonstrates simple echo command execution
+    initial_conditions:
+      system:
+        - "Shell is ready"
+    steps:
+      - step: 1
+        description: "Echo year check message"
+        command: echo "Year check passed"
+        expected:
+          success: true
+          result: 0
+          output: "Year check passed"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Year check passed' <<< \"$COMMAND_OUTPUT\""
+      - step: 2
+        description: "Echo timestamp"
+        command: echo "Timestamp captured"
+        expected:
+          success: true
+          result: 0
+          output: "Timestamp captured"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Timestamp captured' <<< \"$COMMAND_OUTPUT\""
