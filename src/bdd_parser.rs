@@ -107,28 +107,25 @@ impl BddStepRegistry {
         param_names: &[String],
     ) -> Result<String, Box<dyn std::error::Error>> {
         let mut result = pattern.to_string();
-        let capture_groups = vec![r"\([^)]+\)"];
+        let capture_pattern = r"\([^)]+\)";
+        let re = Regex::new(capture_pattern)?;
 
-        let mut param_index = 0;
-        for capture_pattern in capture_groups {
-            let re = Regex::new(capture_pattern)?;
-            while let Some(mat) = re.find(&result) {
-                if param_index >= param_names.len() {
-                    break;
-                }
-                let param_name = &param_names[param_index];
-                let start = mat.start();
-                let end = mat.end();
-                let captured = &result[start..end];
+        // Find all capture groups first
+        let mut captures: Vec<(usize, usize, String)> = Vec::new();
+        for mat in re.find_iter(pattern) {
+            let captured = mat.as_str();
+            if !captured.starts_with("(?P<") {
+                let inner = captured[1..captured.len() - 1].to_string();
+                captures.push((mat.start(), mat.end(), inner));
+            }
+        }
 
-                if !captured.starts_with("(?P<") {
-                    let inner = &captured[1..captured.len() - 1];
-                    let named = format!("(?P<{}>{})", param_name, inner);
-                    result.replace_range(start..end, &named);
-                    param_index += 1;
-                } else {
-                    break;
-                }
+        // Replace from end to start to maintain positions
+        for (i, (start, end, inner)) in captures.iter().enumerate().rev() {
+            if i < param_names.len() {
+                let param_name = &param_names[i];
+                let named = format!("(?P<{}>{})", param_name, inner);
+                result.replace_range(*start..*end, &named);
             }
         }
 

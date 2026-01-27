@@ -374,7 +374,8 @@ fn test_initial_conditions_in_script() {
     let script = executor.generate_test_script(&test_case);
 
     assert!(script.contains("# General Initial Conditions"));
-    assert!(script.contains("# Device: Powered on, Connected"));
+    assert!(script.contains("# Device: Powered on"));
+    assert!(script.contains("# Device: Connected"));
     assert!(script.contains("# Initial Conditions"));
     assert!(script.contains("# Network: Online"));
     assert!(script.contains("# Sequence Initial Conditions"));
