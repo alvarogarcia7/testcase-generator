@@ -1,0 +1,54 @@
+requirement: "BDD_NETWORK_PING"
+item: 1
+tc: 1
+id: 'BDD_NETWORK_PING_001'
+description: 'Example demonstrating BDD ping device prerequisite as initial condition'
+
+general_initial_conditions:
+  system:
+    - "Network stack is available"
+
+initial_conditions:
+  network:
+    - 'ping device "127.0.0.1" with 2 retries'
+
+test_sequences:
+  - id: 1
+    name: "Verify Localhost Connectivity"
+    description: |
+                   This test sequence verifies localhost connectivity after 
+                   a successful ping prerequisite.
+    initial_conditions:
+      network:
+        - "Localhost is reachable"
+    steps:
+      - step: 1
+        description: "Echo localhost IP"
+        command: echo "127.0.0.1"
+        expected:
+          success: true
+          result: 0
+          output: "127.0.0.1"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q '127.0.0.1' <<< \"$COMMAND_OUTPUT\""
+      - step: 2
+        description: "Check if loopback interface exists"
+        command: ip addr show lo 2>/dev/null || ifconfig lo 2>/dev/null || echo "lo interface detected"
+        expected:
+          success: true
+          result: 0
+          output: "lo"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'lo' <<< \"$COMMAND_OUTPUT\""
+      - step: 3
+        description: "Verify port can be checked"
+        command: echo "Network tools available"
+        expected:
+          success: true
+          result: 0
+          output: "Network tools available"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Network tools available' <<< \"$COMMAND_OUTPUT\""

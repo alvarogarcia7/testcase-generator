@@ -1,0 +1,210 @@
+requirement: "BDD_COMPREHENSIVE"
+item: 1
+tc: 1
+id: 'BDD_COMPREHENSIVE_001'
+description: 'Comprehensive example using 8-10 different BDD step types from definitions'
+
+general_initial_conditions:
+  system:
+    - "Shell environment is available"
+    - 'create directory "/tmp/bdd_test"'
+    - 'set environment variable "TEST_ENV" to "production"'
+
+initial_conditions:
+  filesystem:
+    - 'create file "/tmp/bdd_test/data.txt" with content:'
+    - 'change permissions of "/tmp/bdd_test/data.txt" to 644'
+  environment:
+    - 'set environment variable "APP_MODE" to "test"'
+
+test_sequences:
+  - id: 1
+    name: "File Operations and Verification"
+    description: |
+                   This test sequence demonstrates various BDD steps including
+                   file creation, directory listing, file checking, and text manipulation.
+    initial_conditions:
+      filesystem:
+        - 'create directory "/tmp/bdd_test/subdir"'
+      content:
+        - 'append "First line of data" to file "/tmp/bdd_test/data.txt"'
+    steps:
+      - step: 1
+        description: "Verify file exists using BDD-style check"
+        command: test -f /tmp/bdd_test/data.txt
+        expected:
+          success: true
+          result: 0
+          output: ""
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"
+      - step: 2
+        description: "List directory contents"
+        command: ls -la /tmp/bdd_test/
+        expected:
+          success: true
+          result: 0
+          output: "data.txt"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'data.txt' <<< \"$COMMAND_OUTPUT\""
+      - step: 3
+        description: "Verify file contains expected text"
+        command: grep -q "First line of data" /tmp/bdd_test/data.txt
+        expected:
+          success: true
+          result: 0
+          output: ""
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"
+      - step: 4
+        description: "Append additional data"
+        command: echo "Second line of data" >> /tmp/bdd_test/data.txt
+        expected:
+          success: true
+          result: 0
+          output: ""
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"
+      - step: 5
+        description: "Verify both lines exist"
+        command: cat /tmp/bdd_test/data.txt
+        expected:
+          success: true
+          result: 0
+          output: "First line of data"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ $(grep -c 'line of data' <<< \"$COMMAND_OUTPUT\") -eq 2 ]]"
+  - id: 2
+    name: "Environment and Timing Operations"
+    description: |
+                   This test sequence demonstrates environment variable operations
+                   and timing-based BDD steps.
+    initial_conditions:
+      environment:
+        - 'set environment variable "SEQUENCE_VAR" to "active"'
+    steps:
+      - step: 1
+        description: "Check environment variable"
+        command: echo "$TEST_ENV"
+        expected:
+          success: true
+          result: 0
+          output: "production"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'production' <<< \"$COMMAND_OUTPUT\""
+      - step: 2
+        description: "Check APP_MODE variable"
+        command: echo "$APP_MODE"
+        expected:
+          success: true
+          result: 0
+          output: "test"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'test' <<< \"$COMMAND_OUTPUT\""
+      - step: 3
+        description: "Wait for a short period"
+        command: sleep 1
+        expected:
+          success: true
+          result: 0
+          output: ""
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"
+      - step: 4
+        description: "Create a timestamp file"
+        command: date > /tmp/bdd_test/timestamp.txt
+        expected:
+          success: true
+          result: 0
+          output: ""
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"
+      - step: 5
+        description: "Verify timestamp file exists"
+        command: test -f /tmp/bdd_test/timestamp.txt
+        expected:
+          success: true
+          result: 0
+          output: ""
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"
+  - id: 3
+    name: "Text Manipulation and Cleanup"
+    description: |
+                   This test sequence demonstrates text replacement operations
+                   and cleanup using BDD-style directory removal.
+    initial_conditions:
+      content:
+        - 'create file "/tmp/bdd_test/replace.txt" with content:'
+        - 'append "Hello World" to file "/tmp/bdd_test/replace.txt"'
+    steps:
+      - step: 1
+        description: "Read original content"
+        command: cat /tmp/bdd_test/replace.txt
+        expected:
+          success: true
+          result: 0
+          output: "Hello World"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Hello World' <<< \"$COMMAND_OUTPUT\""
+      - step: 2
+        description: "Replace text in file"
+        command: sed -i 's/World/Universe/g' /tmp/bdd_test/replace.txt
+        expected:
+          success: true
+          result: 0
+          output: ""
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"
+      - step: 3
+        description: "Verify replacement occurred"
+        command: cat /tmp/bdd_test/replace.txt
+        expected:
+          success: true
+          result: 0
+          output: "Hello Universe"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Hello Universe' <<< \"$COMMAND_OUTPUT\""
+      - step: 4
+        description: "List all files before cleanup"
+        command: ls /tmp/bdd_test/
+        expected:
+          success: true
+          result: 0
+          output: "data.txt"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ $(echo \"$COMMAND_OUTPUT\" | wc -w) -ge 3 ]]"
+      - step: 5
+        description: "Remove test directory"
+        command: rm -rf /tmp/bdd_test
+        expected:
+          success: true
+          result: 0
+          output: ""
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"
+      - step: 6
+        description: "Verify directory was removed"
+        command: test ! -d /tmp/bdd_test
+        expected:
+          success: true
+          result: 0
+          output: ""
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"

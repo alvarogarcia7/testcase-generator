@@ -1,0 +1,55 @@
+requirement: "BDD_FILE_CREATION"
+item: 1
+tc: 1
+id: 'BDD_FILE_CREATION_001'
+description: 'Example demonstrating BDD file creation step as initial condition'
+
+general_initial_conditions:
+  system:
+    - "Shell environment is available"
+
+initial_conditions:
+  filesystem:
+    - 'create directory "/tmp/test_dir"'
+    - 'create file "/tmp/test_dir/config.txt" with content:'
+
+test_sequences:
+  - id: 1
+    name: "Verify File Creation"
+    description: |
+                   This test sequence verifies that the file was created successfully
+                   through BDD initial conditions and can be read.
+    initial_conditions:
+      system:
+        - "File system is ready"
+    steps:
+      - step: 1
+        description: "Check if the file exists"
+        command: test -f /tmp/test_dir/config.txt
+        expected:
+          success: true
+          result: 0
+          output: ""
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"
+      - step: 2
+        description: "List directory contents"
+        command: ls -la /tmp/test_dir/
+        expected:
+          success: true
+          result: 0
+          output: "config.txt"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'config.txt' <<< \"$COMMAND_OUTPUT\""
+      - step: 3
+        description: "Clean up test directory"
+        command: rm -rf /tmp/test_dir
+        expected:
+          success: true
+          result: 0
+          output: ""
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"
