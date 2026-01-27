@@ -48,18 +48,182 @@ make test
 make lint
 ```
 
-## Binaries
+## Executables
 
-This project includes multiple binaries:
+This project provides seven executable binaries for comprehensive test case management:
 
-- **tcm** (Test Case Manager): Interactive test case creation and management
-- **test-executor**: Automated test execution with JSON logging
-- **test-verify**: Test verification tool for validating test execution logs against test cases
-- **test-orchestrator**: Coordinate complex test workflows
-- **validate-yaml**: YAML validation tool
-- **validate-json**: JSON validation tool
-- **trm**: Test Run Manager
-- **editor**: Interactive test case editor
+### 1. editor (Test Case Manager / TCM)
+
+**Purpose**: Primary interactive tool for creating and managing test cases in YAML format.
+
+**Input**: Command-line arguments and interactive prompts  
+**Output**: YAML test case files, git commits, validation reports
+
+**Key Subcommands**:
+- `create` - Create a new test case with optional ID
+- `create-interactive` - Interactive test case creation with metadata prompts
+- `build-sequences` - Build test sequences interactively with git commits
+- `build-sequences-with-steps` - Build sequences with step collection loops
+- `add-steps` - Add steps to existing sequences
+- `complete` - Full workflow: metadata, conditions, sequences, and steps
+- `edit` - Edit existing test cases (supports fuzzy finder)
+- `list` - List test cases with filtering (tag, status, priority)
+- `view` - View test case details
+- `delete` - Delete test cases
+- `validate` - Validate test case files against schema
+- `search` - Fuzzy search through test cases
+- `export` - Export test cases to suite files
+- `import` - Import test cases from suite files
+- `parse-general-conditions` - Parse conditions from database with fuzzy search
+- `parse-initial-conditions` - Parse initial conditions from database
+- `git` - Git operations (add, commit, status, log)
+- `init` - Initialize new test case repository
+
+**Example Usage**:
+```bash
+# Interactive workflow
+editor complete --output testcases/my_test.yml
+
+# Create with specific metadata
+editor create-interactive --path ./testcases
+
+# Fuzzy search and edit
+editor edit --fuzzy
+
+# Validate all test cases
+editor validate --all
+```
+
+### 2. test-executor
+
+**Purpose**: Generate bash scripts from YAML test cases and execute tests with automated verification.
+
+**Input**: YAML test case files  
+**Output**: Bash scripts, JSON execution logs, test results (pass/fail)
+
+**Subcommands**:
+- `generate` - Generate bash script from YAML test case
+- `execute` - Execute test case and generate JSON execution log
+
+**Example Usage**:
+```bash
+# Generate bash script
+test-executor generate testcase.yml --output test.sh
+
+# Generate script with JSON log template
+test-executor generate testcase.yml --output test.sh --json-log
+
+# Execute test directly
+test-executor execute testcase.yml
+```
+
+### 3. test-verify
+
+**Purpose**: Verify test execution logs against expected test case definitions.
+
+**Input**: Test execution log files (JSON), test case YAML files  
+**Output**: Verification reports (text, JSON, JUnit XML)
+
+**Subcommands**:
+- `single` - Verify single execution log against test case
+- `batch` - Batch verify multiple logs with aggregated reports
+- `parse-log` - Parse and display log contents
+- `clean` - Clean and display execution log
+
+**Example Usage**:
+```bash
+# Verify single test
+test-verify single --log exec.log --test-case-id TC001
+
+# Batch verify with JUnit output
+test-verify batch --logs logs/*.log --format junit --output report.xml
+
+# Parse log file
+test-verify parse-log --log exec.log --format json
+```
+
+### 4. test-orchestrator
+
+**Purpose**: Orchestrate parallel test execution with retry policies and progress reporting.
+
+**Input**: Test case IDs or fuzzy selection  
+**Output**: Execution logs, progress reports, result summaries
+
+**Subcommands**:
+- `run` - Execute specific test cases (supports fuzzy selection)
+- `run-all` - Execute all available test cases
+- `status` - Show orchestrator status
+- `workers` - Manage worker threads
+
+**Key Features**:
+- Parallel execution with configurable worker pool
+- Automatic retry with exponential backoff
+- Real-time progress reporting
+- Result tracking and report generation
+
+**Example Usage**:
+```bash
+# Run specific tests with 8 workers
+test-orchestrator run TC001 TC002 --workers 8
+
+# Run with retry and fuzzy selection
+test-orchestrator run --fuzzy --retry --max-retries 3
+
+# Run all tests with progress tracking
+test-orchestrator run-all --workers 4 --report --save
+```
+
+### 5. trm (Test Run Manager)
+
+**Purpose**: Manage and track test run execution records.
+
+**Input**: Test case storage directory  
+**Output**: Test run listings, execution history
+
+**Subcommands**:
+- `list` - List all test runs with statistics
+- `add` - Add new test run record
+
+**Example Usage**:
+```bash
+# List all test runs
+trm list
+
+# Add test run interactively
+trm add
+```
+
+### 6. validate-yaml
+
+**Purpose**: Validate YAML files against JSON schema definitions.
+
+**Input**: YAML file, JSON schema file  
+**Output**: Validation results with detailed error messages
+
+**Example Usage**:
+```bash
+# Validate YAML against schema
+validate-yaml testcase.yml schema.json
+
+# Verbose validation
+validate-yaml testcase.yml schema.json --verbose
+```
+
+### 7. validate-json
+
+**Purpose**: Validate JSON files against JSON schema definitions.
+
+**Input**: JSON file, JSON schema file  
+**Output**: Validation results with detailed error messages
+
+**Example Usage**:
+```bash
+# Validate JSON against schema
+validate-json data.json schema.json
+
+# Verbose validation
+validate-json data.json schema.json --verbose
+```
 
 ## Test Case Manager (tcm) Commands
 
