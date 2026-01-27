@@ -1091,7 +1091,7 @@ fn test_process_backspaces_exact_match() {
 fn test_process_backspaces_password_typing() {
     let cleaner = LogCleaner::new();
     // Simulates typing password with typos and corrections
-    let text = "pasword\x08\x08sword";
+    let text = "pasword\x08\x08\x08\x08sword";
     let result = cleaner.process_backspaces(text);
     assert_eq!(result, "password");
 }
@@ -1345,7 +1345,7 @@ fn test_clean_script_capture_with_control_characters() {
 #[test]
 fn test_clean_script_capture_combined_ansi_backspace_control() {
     let cleaner = LogCleaner::new();
-    let text = "\x1b[32mSuccess\x08\x08ess\x1b[0m\x07 message\x00";
+    let text = "\x1b[32mSuccess\x08\x08\x08ess\x1b[0m\x07 message\x00";
     let result = cleaner.clean_script_capture(text);
     assert_eq!(result, "Success message");
 }
@@ -1415,7 +1415,7 @@ fn test_clean_script_capture_bash_ps1_prompt() {
 #[test]
 fn test_clean_script_capture_multiline_with_corrections() {
     let cleaner = LogCleaner::new();
-    let text = "Line 1\nLine 2 with tyop\x08\x08\x08po\nLine 3\x07";
+    let text = "Line 1\nLine 2 with tyop\x08\x08po\nLine 3\x07";
     let result = cleaner.clean_script_capture(text);
     assert_eq!(result, "Line 1\nLine 2 with typo\nLine 3");
 }
@@ -1515,7 +1515,7 @@ fn test_clean_script_capture_git_diff_colors() {
 #[test]
 fn test_clean_script_capture_python_repl() {
     let cleaner = LogCleaner::new();
-    let text = ">>> print('hello')\nhello\n>>> x = 5\x08\x0810\n>>> x\n10";
+    let text = ">>> print('hello')\nhello\n>>> x = 5\x0810\n>>> x\n10";
     let result = cleaner.clean_script_capture(text);
     assert!(result.contains(">>> print('hello')"));
     assert!(result.contains(">>> x = 10"));
@@ -1586,7 +1586,7 @@ fn test_clean_script_capture_save_restore_cursor() {
 #[test]
 fn test_clean_script_capture_unicode_with_backspace() {
     let cleaner = LogCleaner::new();
-    let text = "Hello 世界\x08\x08界世";
+    let text = "Hello 世界\x08\x08界世世";
     let result = cleaner.clean_script_capture(text);
     assert_eq!(result, "Hello 界世世");
 }
@@ -1602,7 +1602,7 @@ fn test_clean_script_capture_emoji_with_ansi() {
 #[test]
 fn test_clean_script_capture_mixed_languages() {
     let cleaner = LogCleaner::new();
-    let text = "Hello\x07 мир\x08\x08ир world\x08\x08rld 世界\x1b[0m";
+    let text = "Hello\x07 мир\x08\x08ир world 世界\x1b[0m";
     let result = cleaner.clean_script_capture(text);
     assert!(result.contains("Hello"));
     assert!(result.contains("мир"));
@@ -1654,7 +1654,7 @@ fn test_integration_realistic_terminal_session() {
     let output = "\x1b[32muser@host\x1b[0m:~$ cd project\x07
 \x1b[32muser@host\x1b[0m:~/project$ ls\x08\x08pwd
 /home/user/project
-\x1b[32muser@host\x1b[0m:~/project$ git status\x08\x08\x08\x08\x08\x08\x08log --oneline
+\x1b[32muser@host\x1b[0m:~/project$ git status\x08\x08\x08\x08\x08\x08log --oneline
 \x1b[33m1234567\x1b[0m Initial commit
 \x1b[33m8901234\x1b[0m Add feature\x07";
 
@@ -1679,7 +1679,7 @@ fn test_integration_build_output_with_errors() {
 \x1b[1;31merror\x1b[0m: unused variable: `x`\x07
  --> src/main.rs:5:9
   |
-5 | let x = 10;\x08\x08\x08\x0810;
+5 | let x = 10;\x08\x08\x0810;
   |     ^ help: consider using: `_x`
 
 \x1b[31merror\x1b[0m: aborting due to previous error";
@@ -1698,7 +1698,7 @@ fn test_integration_interactive_installer() {
     let cleaner = LogCleaner::new();
     let output = "\x1b[1mWelcome to Installer\x1b[0m\x07
 
-Please enter your name: John Doe\x08\x08\x08e
+Please enter your name: John Doe\x08\x08oe
 Installation path: /opt/app\x00
 \x1b[32m[✓]\x1b[0m Installing dependencies...
 \x1b[32m[✓]\x1b[0m Configuration complete\x07

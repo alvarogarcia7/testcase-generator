@@ -108,11 +108,16 @@ impl LogCleaner {
     }
 
     pub fn clean_script_capture(&self, text: &str) -> String {
+        // First process backspaces before stripping ANSI codes
+        // because strip_ansi_escapes might remove backspace characters
+        let text = self.process_backspaces(text);
+
+        // Then strip ANSI codes
         let bytes = text.as_bytes();
         let stripped = strip_ansi_escapes::strip(bytes);
         let text = String::from_utf8_lossy(&stripped).to_string();
 
-        let text = self.process_backspaces(&text);
+        // Finally remove remaining control characters
         self.remove_control_characters(&text)
     }
 
