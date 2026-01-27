@@ -5,6 +5,7 @@ target/
 testcases/
 test_e2e_*
 test_basic_*
+*.json
 
 # Version control
 .git/
@@ -27,8 +28,9 @@ test_basic_*
 .env
 .env.local
 .env.*.local
+.env.sh
 
-# Documentation
+# Documentation (will be generated in container)
 README.md
 docs/
 *.md
@@ -36,7 +38,24 @@ AGENTS.md
 LICENSE
 CONTRIBUTING.md
 CHANGELOG.md
+IMPLEMENTATION_*.md
+VALIDATION_*.md
+INTEGRATION_*.md
+WATCH_MODE_*.md
+DETAILED_*.md
+QUICK_*.md
+CLAUDE.md
 
 # OS files
 .DS_Store
 Thumbs.db
+
+# GitHub workflows
+.github/
+
+# Scripts (not needed in runtime)
+scripts/
+
+# Docker files
+Dockerfile
+.dockerignore

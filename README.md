@@ -16,13 +16,50 @@ A comprehensive CLI tool for managing test cases in YAML format with interactive
 - **Test Verification**: Batch verification mode that processes test execution logs and generates reports with JUnit XML output for CI/CD integration
 - **Watch Mode**: Continuously monitor directories for file changes with automatic validation and instant feedback
 
+## Installation
+
+### Docker (Recommended)
+
+The easiest way to get started is with Docker:
+
+```bash
+# Build the image
+./scripts/build-docker.sh
+
+# Verify the build
+./scripts/verify-docker.sh
+
+# Run interactively
+docker run -it --rm testcase-manager:latest
+```
+
+See [docs/DOCKER.md](docs/DOCKER.md) for complete Docker documentation.
+
+### From Source
+
+```bash
+# Build all binaries
+make build
+
+# Run tests
+make test
+
+# Run linter
+make lint
+```
+
 ## Binaries
 
 This project includes multiple binaries:
 
 - **tcm** (Test Case Manager): Interactive test case creation and management
+- **test-executor**: Automated test execution with JSON logging
 - **test-verify**: Test verification tool for validating test execution logs against test cases
+- **test-orchestrator**: Coordinate complex test workflows
 - **validate-yaml**: YAML validation tool
+- **validate-json**: JSON validation tool
+- **trm**: Test Run Manager
+- **editor**: Interactive test case editor
 
 ## Test Case Manager (tcm) Commands
 
