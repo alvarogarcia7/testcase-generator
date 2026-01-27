@@ -53,7 +53,7 @@ test-e2e-failing-all: build
 test-e2e:
 	${MAKE} test-e2e-validate-yaml
 	${MAKE} test-e2e-orchestrator
-	#${MAKE} test-e2e-executor
+	${MAKE} test-e2e-executor
 	#${MAKE} test-verify-sample
 	${MAKE} example_export-demo
 .PHONY: test-e2e
