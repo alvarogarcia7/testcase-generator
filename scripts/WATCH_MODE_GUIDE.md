@@ -4,9 +4,29 @@
 
 Watch mode enables continuous monitoring of a directory for file changes, with automatic validation triggered on modified files. This is ideal for development workflows where you want instant feedback on file changes.
 
+## Docker Support
+
+The Docker image includes full watch mode support with inotify-tools pre-installed. No additional setup required!
+
+### Running Watch Mode in Docker
+
+```bash
+# Start the container in interactive mode with watch
+docker run -it --rm -v $(pwd)/testcases:/app/testcases testcase-manager:latest make watch
+
+# Or directly use the script
+docker run -it --rm -v $(pwd)/testcases:/app/testcases testcase-manager:latest ./scripts/watch-yaml-files.sh
+
+# Watch a custom directory
+docker run -it --rm -v $(pwd)/custom:/app/custom testcase-manager:latest \
+    bash -c "SCHEMA_FILE=data/schema.json ./scripts/validate-files.sh --pattern '\.ya?ml$' --validator ./scripts/validate-yaml-wrapper.sh --watch custom/"
+```
+
+**Note:** Use `-v` to mount the directory you want to watch into the container.
+
 ## Quick Start
 
-### 1. Install Platform-Specific Tools
+### 1. Install Platform-Specific Tools (Host System Only)
 
 **Linux:**
 ```bash
@@ -17,6 +37,8 @@ sudo apt-get install inotify-tools
 ```bash
 brew install fswatch
 ```
+
+**Docker:** Pre-installed, no action needed!
 
 ### 2. Run Watch Mode
 

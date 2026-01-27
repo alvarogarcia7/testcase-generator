@@ -1,178 +1,180 @@
-# JSON Schema Validation Module Implementation
+# Implementation Summary: Docker Watch Mode Setup
 
-## Summary
+## Objective
+Create a watch setup in Docker using inotify to monitor YAML files and execute validation commands automatically after file changes.
 
-Implemented a comprehensive JSON schema validation module that loads `testcases/schema.json` and provides the `validate_chunk()` function to validate partial or complete YAML structures before appending, with clear error messages for schema violations.
+## Implementation Complete
 
-## Files Created/Modified
+### Files Modified
 
-### 1. `src/validation.rs`
-**Main implementation file** containing:
+#### 1. Dockerfile
+**Location:** `./Dockerfile`
 
-- **`SchemaValidator` struct**: New validator that loads schema from `testcases/schema.json`
-  - `new()`: Creates validator by loading and compiling the JSON schema
-  - `validate_chunk(yaml_content: &str)`: Validates complete or partial YAML structures
-  - `validate_partial_chunk(yaml_content: &str)`: Validates partial structures, allowing empty objects
-  
-- **Error formatting functions**: 
-  - `format_validation_error()`: Converts jsonschema errors to human-readable messages
-  - `format_type()`: Formats type information for error messages
+**Changes:**
+- Added `inotify-tools` and `make` to runtime dependencies
+- Copied `scripts/` directory into container at `/app/scripts`
+- Copied `Makefile` into container at `/app/Makefile`
+- Made all shell scripts executable
+- Created `/usr/local/bin/watch-yaml` helper script for easy access
+- Created `/app/DOCKER_WATCH_GUIDE.md` quick reference documentation
+- Updated container README to document watch mode features
 
-- **`TestCaseValidator` struct**: Preserved existing validator for backward compatibility
-  - Uses internal embedded schema for test case validation
-  - Maintains all existing API methods
+**Key additions:**
+```dockerfile
+# Install inotify-tools for watch mode
+RUN apt-get install -y git inotify-tools make
 
-### 2. `examples/validate_gsma_schema.rs`
-**Example demonstrating SchemaValidator usage**:
-- Shows how to validate complete YAML structures
-- Demonstrates error handling for partial/incomplete structures
-- Shows validation of structures with type errors
-- Can be run with: `cargo run --example validate_gsma_schema`
+# Copy scripts and Makefile
+COPY scripts ./scripts
+COPY Makefile ./Makefile
 
-### 3. `docs/validation.md`
-**Comprehensive documentation** including:
-- Overview of both validators
-- API reference for all methods
-- Usage examples with code samples
-- Error message format examples
-- Schema structure documentation
-
-### 4. `src/lib.rs`
-**Updated exports**:
-- Exports both `SchemaValidator` and `TestCaseValidator`
-- Maintains backward compatibility with existing code
-
-## Key Features
-
-### 1. Schema Loading
-- Dynamically loads schema from `testcases/schema.json` at runtime
-- Compiles schema for efficient validation
-- Returns clear errors if schema file is missing or invalid
-
-### 2. Validation with Clear Error Messages
-The validator provides human-readable error messages for:
-- **Missing required properties**: "Missing required property 'test_sequences'"
-- **Type mismatches**: "Invalid type, expected integer"
-- **Invalid enum values**: "Value must be one of: [option1, option2]"
-- **Array constraints**: "Array must have at least 2 items"
-- **String constraints**: "String must have at least 1 characters"
-- **Pattern failures**: "String must match pattern: ^[a-zA-Z0-9_-]+$"
-- **Additional properties**: "Additional properties not allowed: 'field1', 'field2'"
-
-### 3. Error Message Format
-```
-Schema validation failed:
-  - Path '/item': Invalid type, expected integer
-  - Path 'root': Missing required property 'tc'
+# Create watch-yaml helper
+RUN cat > /usr/local/bin/watch-yaml << 'WATCHEOF'
+#!/bin/bash
+cd /app
+exec ./scripts/watch-yaml-files.sh "$@"
+WATCHEOF
 ```
 
-### 4. Partial Validation Support
-- `validate_chunk()`: Validates complete structures
-- `validate_partial_chunk()`: Allows empty objects for incremental editing
+#### 2. scripts/verify-docker.sh
+**Location:** `./scripts/verify-docker.sh`
 
-### 5. Backward Compatibility
-- Preserves existing `TestCaseValidator` functionality
-- All existing code continues to work without changes
-- Maintains all existing tests
+**Changes:**
+- Added checks for `watch-yaml` binary
+- Added verification of inotify-tools installation
+- Added verification of make installation
+- Added checks for scripts directory and executability
+- Added Makefile verification
+- Updated expected binaries list to include watch-yaml
 
-## Usage Example
+#### 3. scripts/WATCH_MODE_GUIDE.md
+**Location:** `./scripts/WATCH_MODE_GUIDE.md`
 
-```rust
-use testcase_manager::validation::SchemaValidator;
+**Changes:**
+- Added Docker Support section at the beginning
+- Added Docker-specific usage examples
+- Documented that inotify-tools is pre-installed in Docker
 
-fn main() -> anyhow::Result<()> {
-    let validator = SchemaValidator::new()?;
-    
-    let yaml = r#"
-requirement: XXX100
-item: 1
-tc: 4
-id: '4.2.2.2.1'
-description: 'Test case'
-general_initial_conditions:
-  - eUICC: ["Condition"]
-initial_conditions:
-  eUICC: ["Cond1", "Cond2"]
-test_sequences:
-  - id: 1
-    name: "Sequence 1"
-    description: "Test"
-    initial_conditions:
-      - eUICC: ["Condition"]
-    steps:
-      - step: 1
-        description: "Step 1"
-        command: "ssh"
-        expected:
-          success: true
-          result: "0x9000"
-          output: "Success"
-      - step: 2
-        description: "Step 2"
-        command: "ssh"
-        expected:
-          result: "0x9000"
-          output: "Success"
-  - id: 2
-    name: "Sequence 2"
-    description: "Test 2"
-    initial_conditions:
-      - eUICC: ["Condition"]
-    steps:
-      - step: 1
-        description: "Step 1"
-        command: "ssh"
-        expected:
-          success: false
-          result: "0x9000"
-          output: "Success"
-      - step: 2
-        description: "Step 2"
-        command: "ssh"
-        expected:
-          result: "0x9000"
-          output: "Success"
-"#;
-    
-    match validator.validate_chunk(yaml) {
-        Ok(_) => println!("✓ Valid YAML structure"),
-        Err(e) => eprintln!("✗ Validation failed:\n{}", e),
-    }
-    
-    Ok(())
-}
+### Files Created
+
+#### 1. DOCKER_WATCH_SETUP.md
+**Location:** `./DOCKER_WATCH_SETUP.md`
+
+**Content:**
+- Complete documentation of the watch mode implementation
+- Usage examples with Docker commands
+- Architecture and how it works
+- Testing instructions
+- File structure in container
+- Summary of Dockerfile changes
+- Benefits of the implementation
+
+#### 2. /app/DOCKER_WATCH_GUIDE.md (in container)
+**Location:** Created inside Docker container at `/app/DOCKER_WATCH_GUIDE.md`
+
+**Content:**
+- Quick reference for Docker watch mode
+- Step-by-step usage instructions
+- Alternative command methods
+- Tips and workflow guidance
+- References to more detailed documentation
+
+## How to Use
+
+### Build the Docker Image
+```bash
+docker build -t testcase-manager:latest .
 ```
+
+### Run Watch Mode (Easiest Method)
+```bash
+docker run -it --rm -v $(pwd)/testcases:/app/testcases testcase-manager:latest watch-yaml
+```
+
+### Alternative Methods
+```bash
+# Using make
+docker run -it --rm -v $(pwd)/testcases:/app/testcases testcase-manager:latest make watch
+
+# Using script directly
+docker run -it --rm -v $(pwd)/testcases:/app/testcases testcase-manager:latest ./scripts/watch-yaml-files.sh
+
+# Custom directory
+docker run -it --rm -v $(pwd)/custom:/app/custom testcase-manager:latest bash -c \
+    "SCHEMA_FILE=data/schema.json ./scripts/validate-files.sh --pattern '\.ya?ml$' --validator ./scripts/validate-yaml-wrapper.sh --watch custom/"
+```
+
+### Verify Installation
+```bash
+./scripts/verify-docker.sh
+```
+
+## Technical Details
+
+### Watch Mode Architecture
+1. **inotify-tools** monitors filesystem for changes
+2. **scripts/validate-files.sh** provides generic validation framework
+3. **scripts/watch-yaml-files.sh** wraps validation for YAML files
+4. **validate-yaml** binary validates files against JSON schema
+5. Two-layer caching (mtime + hash) optimizes performance
+
+### Container Structure
+```
+/app/
+├── data/                    # Schema files
+├── scripts/                 # All validation and watch scripts
+├── Makefile                 # Build automation
+├── DOCKER_WATCH_GUIDE.md    # Quick reference
+└── testcases/               # Mounted from host
+
+/usr/local/bin/
+├── tcm                      # Main tool
+├── validate-yaml            # Validation binary
+├── watch-yaml               # Watch mode helper (NEW)
+└── ... (other binaries)
+```
+
+### Dependencies Installed
+- **inotify-tools**: Provides `inotifywait` for file monitoring
+- **make**: Enables `make watch` command
+- **git**: Pre-existing, for version control
+
+## Features
+
+✅ **Instant Validation**: Files validated immediately upon changes
+✅ **Smart Caching**: Two-layer cache avoids redundant validations
+✅ **Real-time Feedback**: Color-coded output (✓ green, ✗ red)
+✅ **Persistent Cache**: Cache survives container restarts
+✅ **Pattern Matching**: Only monitors `*.yaml` and `*.yml` files
+✅ **Easy to Use**: Simple `watch-yaml` command
+✅ **Multiple Methods**: Works with make, scripts, or helper command
+✅ **Well Documented**: Three levels of documentation included
 
 ## Testing
 
-The module includes comprehensive unit tests:
-- `test_schema_validator_creation`: Tests validator initialization
-- `test_validate_complete_valid_yaml`: Tests valid complete YAML
-- `test_validate_invalid_yaml_missing_required`: Tests missing required fields
-- `test_validate_invalid_yaml_wrong_type`: Tests type validation
-- `test_validate_partial_chunk_empty`: Tests partial validation with empty objects
-- `test_testcase_validator_creation`: Tests backward compatibility
-- `test_testcase_validator_invalid_no_sequences`: Tests existing validator functionality
+The implementation can be tested by:
+1. Building the Docker image
+2. Running `./scripts/verify-docker.sh` to check installation
+3. Starting watch mode with a mounted testcases directory
+4. Modifying a YAML file and observing instant validation feedback
 
-Run tests with:
-```bash
-make test
-```
+## Benefits
 
-## Dependencies
+- **Development Efficiency**: Get instant feedback on file changes
+- **CI/CD Integration**: Same scripts work in dev and CI
+- **Zero Setup**: All dependencies pre-installed
+- **Cross-Platform**: Works consistently regardless of host OS
+- **Low Overhead**: Efficient inotify-based monitoring
 
-The implementation uses:
-- `jsonschema = "0.17"`: For JSON schema validation (already in Cargo.toml)
-- `serde_json = "1.0"`: For JSON handling (already in Cargo.toml)
-- `serde_yaml = "0.9"`: For YAML parsing (already in Cargo.toml)
-- `anyhow = "1.0"`: For error handling (already in Cargo.toml)
+## Status: ✅ COMPLETE
 
-No new dependencies were added.
+All requested functionality has been fully implemented:
+- ✅ Watch setup created in Docker
+- ✅ Uses inotify to monitor YAML files
+- ✅ Executes validation command after changes
+- ✅ Dockerfile modified with all necessary changes
+- ✅ Documentation created and updated
+- ✅ Helper scripts and commands provided
+- ✅ Verification script updated
 
-## Integration
-
-The module integrates seamlessly with the existing codebase:
-- Exported via `src/lib.rs` for public API
-- Can be used alongside existing `TestCaseValidator`
-- No breaking changes to existing functionality
-- Follows existing code conventions and patterns
+The Docker image is ready to be built and tested.

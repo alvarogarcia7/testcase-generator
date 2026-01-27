@@ -29,6 +29,7 @@ BINARIES=(
     "test-executor"
     "editor"
     "test-orchestrator"
+    "watch-yaml"
 )
 
 for binary in "${BINARIES[@]}"; do
@@ -75,9 +76,63 @@ fi
 
 echo ""
 
+# Verify watch dependencies
+echo "Checking watch mode dependencies..."
+if docker run --rm "$IMAGE_NAME" which inotifywait >/dev/null 2>&1; then
+    echo "  ✓ inotifywait (inotify-tools) installed"
+else
+    echo "  ✗ inotifywait - MISSING"
+    exit 1
+fi
+
+if docker run --rm "$IMAGE_NAME" which make >/dev/null 2>&1; then
+    echo "  ✓ make installed"
+else
+    echo "  ✗ make - MISSING"
+    exit 1
+fi
+
+echo ""
+
+# Verify scripts directory
+echo "Checking scripts directory..."
+if docker run --rm "$IMAGE_NAME" test -d "/app/scripts"; then
+    echo "  ✓ /app/scripts exists"
+else
+    echo "  ✗ /app/scripts - MISSING"
+    exit 1
+fi
+
+if docker run --rm "$IMAGE_NAME" test -f "/app/scripts/watch-yaml-files.sh"; then
+    echo "  ✓ watch-yaml-files.sh exists"
+else
+    echo "  ✗ watch-yaml-files.sh - MISSING"
+    exit 1
+fi
+
+if docker run --rm "$IMAGE_NAME" test -x "/app/scripts/watch-yaml-files.sh"; then
+    echo "  ✓ watch-yaml-files.sh is executable"
+else
+    echo "  ✗ watch-yaml-files.sh - NOT EXECUTABLE"
+    exit 1
+fi
+
+echo ""
+
+# Verify Makefile
+echo "Checking Makefile..."
+if docker run --rm "$IMAGE_NAME" test -f "/app/Makefile"; then
+    echo "  ✓ /app/Makefile exists"
+else
+    echo "  ✗ /app/Makefile - MISSING"
+    exit 1
+fi
+
+echo ""
+
 # Check for unwanted files in /usr/local/bin
 echo "Checking for extra files in /usr/local/bin..."
-EXTRA_FILES=$(docker run --rm "$IMAGE_NAME" sh -c 'ls -A /usr/local/bin | grep -v "^tcm$\|^validate-yaml$\|^validate-json$\|^trm$\|^test-verify$\|^test-executor$\|^editor$\|^test-orchestrator$" || true')
+EXTRA_FILES=$(docker run --rm "$IMAGE_NAME" sh -c 'ls -A /usr/local/bin | grep -v "^tcm$\|^validate-yaml$\|^validate-json$\|^trm$\|^test-verify$\|^test-executor$\|^editor$\|^test-orchestrator$\|^watch-yaml$" || true')
 
 if [ -z "$EXTRA_FILES" ]; then
     echo "  ✓ No extra files found"
