@@ -4,6 +4,8 @@
 - **Build**: make build
 - **Lint**: make lint
 - **Test**: make test
+- **Test Tag Filtering**: make test-filter-all (tests all tag filtering capabilities)
+- **Test Specific Tag Filter**: make test-filter-smoke, make test-filter-fast, etc.
 - **Watch Mode**: make watch (monitors testcases/ for changes and auto-validates)
 - **Dev Server**: N/A
 

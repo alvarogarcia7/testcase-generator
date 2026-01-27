@@ -18,6 +18,7 @@ pub mod prompts;
 pub mod recovery;
 pub mod sample;
 pub mod storage;
+pub mod tags;
 pub mod test_run_storage;
 pub mod ui;
 pub mod validation;
@@ -58,6 +59,10 @@ pub use prompts::{Prompts, TestCaseMetadata};
 pub use recovery::{RecoveryManager, RecoveryState};
 pub use sample::SampleData;
 pub use storage::TestCaseStorage;
+pub use tags::{
+    filter_sequences_in_test_case, filter_test_cases, DynamicTagEvaluator, TagExpression,
+    TagFilter, TagInheritance,
+};
 pub use test_run_storage::TestRunStorage;
 pub use ui::{print_title, TitleStyle};
 pub use validation::SchemaValidator;

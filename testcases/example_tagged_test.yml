@@ -1,0 +1,56 @@
+requirement: "REQ_TAG_001"
+item: 1
+tc: 1
+id: "TC_TAGGED_EXAMPLE"
+description: "Example test case demonstrating the tagging system"
+tags:
+  - smoke
+  - example
+  - priority-high
+  - authentication
+
+general_initial_conditions:
+  system:
+    - "System is running"
+    - "User database is initialized"
+
+initial_conditions:
+  user:
+    - "Test user exists in database"
+
+test_sequences:
+  - id: 1
+    name: "Quick Login Test"
+    description: "Tests successful user login with valid credentials"
+    tags:
+      - fast
+      - positive
+    steps:
+      - step: 1
+        description: "Navigate to login page"
+        command: echo "Opening login page"
+        expected:
+          result: "0"
+          output: "Opening login page"
+      - step: 2
+        description: "Enter valid credentials and submit"
+        command: echo "Login successful"
+        expected:
+          result: "0"
+          output: "Login successful"
+
+  - id: 2
+    name: "Error Handling Test"
+    description: "Tests login error scenarios"
+    tags:
+      - integration
+      - negative
+      - edge-case
+    steps:
+      - step: 1
+        description: "Attempt login with invalid password"
+        command: echo "Login failed"
+        expected:
+          success: false
+          result: "1"
+          output: "Login failed"

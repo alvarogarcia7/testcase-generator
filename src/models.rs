@@ -105,6 +105,10 @@ pub struct TestSequence {
 
     /// List of steps in the sequence
     pub steps: Vec<Step>,
+
+    /// Tags associated with this sequence
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tags: Vec<String>,
 }
 
 impl fmt::Display for TestSequence {
@@ -139,6 +143,10 @@ pub struct TestCase {
 
     /// Test sequences
     pub test_sequences: Vec<TestSequence>,
+
+    /// Tags associated with this test case
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tags: Vec<String>,
 }
 
 /// Collection of test cases
@@ -172,6 +180,7 @@ impl TestCase {
             general_initial_conditions,
             initial_conditions: HashMap::new(),
             test_sequences: Vec::new(),
+            tags: Vec::new(),
         }
     }
 }
@@ -186,6 +195,7 @@ impl TestSequence {
             description,
             initial_conditions,
             steps: Vec::new(),
+            tags: Vec::new(),
         }
     }
 }

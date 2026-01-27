@@ -3,6 +3,10 @@ item: 1
 tc: 4
 id: '4.2.2.2.1 TC_eUICC_ES6.UpdateMetadata'
 description: 'Throughout all the ES6.UpdateMetadata test cases, SMS is used as the secure OTA channel.'
+tags:
+  - smoke
+  - regression
+  - euicc
 
 general_initial_conditions:
   eUICC:
@@ -19,6 +23,9 @@ test_sequences:
     description: |
                    This test case verifies that the eUICC correctly processes an ES6.UpdateMetadata command to unset PPR1
                    when the profile is in the operational state and PPR1 is currently set.
+    tags:
+      - fast
+      - priority-high
     initial_conditions:
       eUICC:
         - "The PROFILE_OPERATIONAL3 is Enabled."
@@ -42,6 +49,9 @@ test_sequences:
     description: |
                    The purpose of this test is to verify that the MNO can unset PPR2 and update the icon and
                    icon type values from a Profile.
+    tags:
+      - integration
+      - priority-medium
     initial_conditions:
       eUICC:
         - "The PROFILE_OPERATIONAL3 is Enabled."

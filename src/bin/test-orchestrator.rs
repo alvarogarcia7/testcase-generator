@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use testcase_manager::fuzzy::TestCaseFuzzyFinder;
 use testcase_manager::orchestrator::{RetryPolicy, TestOrchestrator, WorkerConfig};
 use testcase_manager::storage::TestCaseStorage;
+use testcase_manager::tags::{TagExpression, TagFilter};
 use testcase_manager::test_run_storage::TestRunStorage;
 
 #[derive(Parser)]
@@ -20,6 +21,7 @@ Features:
   • Real-time progress reporting with live statistics
   • Execution result tracking and report generation
   • Integration with test case storage and verification
+  • Tag-based test case filtering and selection
 "
 )]
 struct Cli {
@@ -78,6 +80,22 @@ enum Commands {
         /// Use fuzzy search to select test cases interactively
         #[arg(short = 'f', long)]
         fuzzy: bool,
+
+        /// Filter by tags (comma-separated list of tags to include)
+        #[arg(long, value_delimiter = ',')]
+        include_tags: Vec<String>,
+
+        /// Exclude tags (comma-separated list of tags to exclude)
+        #[arg(long, value_delimiter = ',')]
+        exclude_tags: Vec<String>,
+
+        /// Tag expression for complex filtering (e.g., "smoke && !slow" or "(smoke || regression) && fast")
+        #[arg(long)]
+        tag_expr: Option<String>,
+
+        /// Enable dynamic tag evaluation (e.g., multi-sequence, has-manual-steps)
+        #[arg(long)]
+        dynamic_tags: bool,
     },
 
     /// Execute all available test cases
@@ -113,6 +131,22 @@ enum Commands {
         /// Generate execution report
         #[arg(short = 'g', long)]
         report: bool,
+
+        /// Filter by tags (comma-separated list of tags to include)
+        #[arg(long, value_delimiter = ',')]
+        include_tags: Vec<String>,
+
+        /// Exclude tags (comma-separated list of tags to exclude)
+        #[arg(long, value_delimiter = ',')]
+        exclude_tags: Vec<String>,
+
+        /// Tag expression for complex filtering (e.g., "smoke && !slow")
+        #[arg(long)]
+        tag_expr: Option<String>,
+
+        /// Enable dynamic tag evaluation (e.g., multi-sequence, has-manual-steps)
+        #[arg(long)]
+        dynamic_tags: bool,
     },
 
     /// Verify test execution results from log files
@@ -135,6 +169,45 @@ enum Commands {
 
     /// Show orchestrator configuration and status
     Info,
+
+    /// List all available tags across all test cases
+    ListTags,
+
+    /// Show tags for a specific test case
+    ShowTags {
+        /// Test case ID
+        test_case_id: String,
+    },
+
+    /// Find test cases by tag
+    FindByTag {
+        /// Tag name to search for
+        tag: String,
+    },
+}
+
+fn build_tag_filter(
+    include_tags: Vec<String>,
+    exclude_tags: Vec<String>,
+    tag_expr: Option<String>,
+) -> Result<TagFilter> {
+    let mut filter = TagFilter::new();
+
+    if !include_tags.is_empty() {
+        filter = filter.with_include_tags(include_tags);
+    }
+
+    if !exclude_tags.is_empty() {
+        filter = filter.with_exclude_tags(exclude_tags);
+    }
+
+    if let Some(expr_str) = tag_expr {
+        let expr = TagExpression::parse(&expr_str)
+            .map_err(|e| anyhow::anyhow!("Invalid tag expression: {}", e))?;
+        filter = filter.with_expression(expr);
+    }
+
+    Ok(filter)
 }
 
 fn main() -> Result<()> {
@@ -220,6 +293,10 @@ fn main() -> Result<()> {
             save,
             report,
             fuzzy: _,
+            include_tags,
+            exclude_tags,
+            tag_expr,
+            dynamic_tags,
         } => {
             if test_case_ids.is_empty() {
                 // This branch is only reached when fuzzy is true (due to validation above)
@@ -269,9 +346,17 @@ fn main() -> Result<()> {
 
             let config = WorkerConfig::new(workers).with_retry_policy(retry_policy);
 
-            let test_cases = orchestrator
-                .select_test_cases(test_case_ids)
-                .context("Failed to load test cases")?;
+            let tag_filter = build_tag_filter(include_tags, exclude_tags, tag_expr)?;
+
+            let test_cases = if tag_filter.is_empty() {
+                orchestrator
+                    .select_test_cases(test_case_ids)
+                    .context("Failed to load test cases")?
+            } else {
+                orchestrator
+                    .select_test_cases_with_tags(test_case_ids, &tag_filter, dynamic_tags)
+                    .context("Failed to load and filter test cases")?
+            };
 
             let results = orchestrator
                 .execute_tests(test_cases, config, verbose)
@@ -307,6 +392,10 @@ fn main() -> Result<()> {
             verbose,
             save,
             report,
+            include_tags,
+            exclude_tags,
+            tag_expr,
+            dynamic_tags,
         } => {
             let retry_policy = if retry {
                 if exponential_backoff {
@@ -320,9 +409,17 @@ fn main() -> Result<()> {
 
             let config = WorkerConfig::new(workers).with_retry_policy(retry_policy);
 
-            let test_cases = orchestrator
-                .select_all_test_cases()
-                .context("Failed to load all test cases")?;
+            let tag_filter = build_tag_filter(include_tags, exclude_tags, tag_expr)?;
+
+            let test_cases = if tag_filter.is_empty() {
+                orchestrator
+                    .select_all_test_cases()
+                    .context("Failed to load all test cases")?
+            } else {
+                orchestrator
+                    .select_all_test_cases_with_tags(&tag_filter, dynamic_tags)
+                    .context("Failed to load and filter test cases")?
+            };
 
             if test_cases.is_empty() {
                 println!("No test cases found in storage.");
@@ -595,6 +692,72 @@ fn main() -> Result<()> {
             println!();
             println!("  # Run and save results with report generation");
             println!("  test-orchestrator run-all --save --report");
+            println!();
+            println!("  # Run tests with specific tags");
+            println!("  test-orchestrator run-all --include-tags smoke,fast");
+            println!();
+            println!("  # Run tests excluding certain tags");
+            println!("  test-orchestrator run-all --exclude-tags slow,manual");
+            println!();
+            println!("  # Run tests with complex tag expressions");
+            println!("  test-orchestrator run-all --tag-expr \"(smoke || regression) && !slow\"");
+            println!();
+            println!("  # Run tests with dynamic tag evaluation");
+            println!("  test-orchestrator run-all --dynamic-tags --include-tags automated-only");
+        }
+
+        Commands::ListTags => {
+            println!("\n=== Available Tags ===\n");
+
+            let tags = orchestrator
+                .list_all_tags()
+                .context("Failed to list tags")?;
+
+            if tags.is_empty() {
+                println!("No tags found.");
+            } else {
+                println!("Total tags: {}\n", tags.len());
+                for tag in &tags {
+                    let test_cases = orchestrator
+                        .find_test_cases_by_tag(tag)
+                        .context("Failed to find test cases by tag")?;
+                    println!("  {} ({} test case(s))", tag, test_cases.len());
+                }
+            }
+        }
+
+        Commands::ShowTags { test_case_id } => {
+            println!("\n=== Tags for Test Case: {} ===\n", test_case_id);
+
+            let tags = orchestrator
+                .list_tags_for_test_case(&test_case_id)
+                .context(format!("Failed to get tags for test case {}", test_case_id))?;
+
+            if tags.is_empty() {
+                println!("No tags found for this test case.");
+            } else {
+                println!("Tags:");
+                for tag in &tags {
+                    println!("  - {}", tag);
+                }
+            }
+        }
+
+        Commands::FindByTag { tag } => {
+            println!("\n=== Test Cases with Tag: {} ===\n", tag);
+
+            let test_cases = orchestrator
+                .find_test_cases_by_tag(&tag)
+                .context(format!("Failed to find test cases with tag {}", tag))?;
+
+            if test_cases.is_empty() {
+                println!("No test cases found with tag '{}'.", tag);
+            } else {
+                println!("Found {} test case(s):\n", test_cases.len());
+                for tc in &test_cases {
+                    println!("  {} - {}", tc.id, tc.description);
+                }
+            }
         }
     }
 

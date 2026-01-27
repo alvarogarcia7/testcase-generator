@@ -15,6 +15,7 @@ build:
 test:
 	${MAKE} test-unit
 	${MAKE} test-e2e
+	${MAKE} test-tagged-example
 	#${MAKE} verify-testcases
 .PHONY: test
 
@@ -142,4 +143,59 @@ test-e2e-orchestrator: build
 	cargo run --bin test-orchestrator run testcases/self_validated_example.yml --verbose
 	! cargo run --bin test-orchestrator run testcases/self_validated_example_wrong.yml
 .PHONY: test-e2e-orchestrator
+
+test-tagged-example: build
+	@echo "Testing tagged test case example..."
+	@echo "Validating example_tagged_test.yml against schema..."
+	cargo run --bin validate-yaml testcases/example_tagged_test.yml data/schema.json >/dev/null 2>&1
+	@echo "✓ Schema validation passed"
+	@echo "Testing tag listing functionality..."
+	cargo run --bin test-orchestrator show-tags TC_TAGGED_EXAMPLE >/dev/null 2>&1
+	@echo "✓ Tag listing passed"
+	@echo "Testing tag filtering with include tags..."
+	cargo run --bin test-orchestrator find-by-tag smoke >/dev/null 2>&1
+	@echo "✓ Tag filtering passed"
+	@echo "All tagged test case example verifications passed!"
+.PHONY: test-tagged-example
+
+test-filter-smoke: build
+	@echo "Running smoke tests..."
+	cargo run --bin test-orchestrator run-all --include-tags smoke
+.PHONY: test-filter-smoke
+
+test-filter-fast: build
+	@echo "Running fast tests..."
+	cargo run --bin test-orchestrator run-all --include-tags fast
+.PHONY: test-filter-fast
+
+test-filter-priority-high: build
+	@echo "Running priority-high tests..."
+	cargo run --bin test-orchestrator run-all --include-tags priority-high
+.PHONY: test-filter-priority-high
+
+test-filter-automated: build
+	@echo "Running automated-only tests..."
+	cargo run --bin test-orchestrator run-all --dynamic-tags --include-tags automated-only
+.PHONY: test-filter-automated
+
+test-filter-no-slow: build
+	@echo "Running tests excluding slow tests..."
+	cargo run --bin test-orchestrator run-all --exclude-tags slow
+.PHONY: test-filter-no-slow
+
+test-filter-expression: build
+	@echo "Running tests with complex expression..."
+	cargo run --bin test-orchestrator run-all --tag-expr "(smoke || regression) && !slow"
+.PHONY: test-filter-expression
+
+test-filter-all: build
+	@echo "Testing all tag filter capabilities..."
+	${MAKE} test-filter-smoke
+	${MAKE} test-filter-fast
+	${MAKE} test-filter-priority-high
+	${MAKE} test-filter-automated
+	${MAKE} test-filter-no-slow
+	${MAKE} test-filter-expression
+	@echo "All tag filter tests passed!"
+.PHONY: test-filter-all
 

@@ -1,6 +1,7 @@
 use crate::executor::TestExecutor;
 use crate::models::{TestCase, TestRun, TestRunStatus};
 use crate::storage::TestCaseStorage;
+use crate::tags::{filter_test_cases, DynamicTagEvaluator, TagFilter};
 use crate::test_run_storage::TestRunStorage;
 use crate::verification::{TestCaseVerificationResult, TestExecutionLog, TestVerifier};
 use crate::MatchStrategy::Exact;
@@ -914,6 +915,105 @@ impl TestOrchestrator {
         ))?;
 
         Ok(())
+    }
+
+    pub fn select_test_cases_with_tags(
+        &self,
+        test_case_ids: Vec<String>,
+        tag_filter: &TagFilter,
+        use_dynamic_tags: bool,
+    ) -> Result<Vec<TestCase>> {
+        let mut test_cases = self.select_test_cases(test_case_ids)?;
+
+        if tag_filter.is_empty() {
+            return Ok(test_cases);
+        }
+
+        let evaluator = if use_dynamic_tags {
+            Some(DynamicTagEvaluator::with_default_rules())
+        } else {
+            None
+        };
+
+        test_cases = filter_test_cases(test_cases, tag_filter, evaluator.as_ref());
+
+        Ok(test_cases)
+    }
+
+    pub fn select_all_test_cases_with_tags(
+        &self,
+        tag_filter: &TagFilter,
+        use_dynamic_tags: bool,
+    ) -> Result<Vec<TestCase>> {
+        let mut test_cases = self.select_all_test_cases()?;
+
+        if tag_filter.is_empty() {
+            return Ok(test_cases);
+        }
+
+        let evaluator = if use_dynamic_tags {
+            Some(DynamicTagEvaluator::with_default_rules())
+        } else {
+            None
+        };
+
+        test_cases = filter_test_cases(test_cases, tag_filter, evaluator.as_ref());
+
+        Ok(test_cases)
+    }
+
+    pub fn list_all_tags(&self) -> Result<Vec<String>> {
+        use std::collections::HashSet;
+
+        let test_cases = self.select_all_test_cases()?;
+        let mut all_tags = HashSet::new();
+
+        for test_case in &test_cases {
+            all_tags.extend(test_case.tags.iter().cloned());
+            for sequence in &test_case.test_sequences {
+                all_tags.extend(sequence.tags.iter().cloned());
+            }
+        }
+
+        let evaluator = DynamicTagEvaluator::with_default_rules();
+        for test_case in &test_cases {
+            all_tags.extend(evaluator.evaluate(test_case));
+        }
+
+        let mut tags: Vec<String> = all_tags.into_iter().collect();
+        tags.sort();
+
+        Ok(tags)
+    }
+
+    pub fn list_tags_for_test_case(&self, test_case_id: &str) -> Result<Vec<String>> {
+        let test_case = self.test_case_storage.load_test_case_by_id(test_case_id)?;
+
+        let evaluator = DynamicTagEvaluator::with_default_rules();
+        let all_tags = evaluator.get_all_tags(&test_case);
+
+        let mut tags: Vec<String> = all_tags.into_iter().collect();
+        tags.sort();
+
+        Ok(tags)
+    }
+
+    pub fn find_test_cases_by_tag(&self, tag: &str) -> Result<Vec<TestCase>> {
+        use crate::tags::TagInheritance;
+
+        let test_cases = self.select_all_test_cases()?;
+        let evaluator = DynamicTagEvaluator::with_default_rules();
+
+        let filtered: Vec<TestCase> = test_cases
+            .into_iter()
+            .filter(|tc| {
+                let mut tags = TagInheritance::get_all_tags_in_test_case(tc);
+                tags.extend(evaluator.evaluate(tc));
+                tags.contains(tag)
+            })
+            .collect();
+
+        Ok(filtered)
     }
 }
 

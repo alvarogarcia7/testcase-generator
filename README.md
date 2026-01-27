@@ -15,6 +15,7 @@ A comprehensive CLI tool for managing test cases in YAML format with interactive
 - **Recovery Mechanism**: Automatically saves progress after each operation and can resume from saved state if interrupted
 - **Test Verification**: Batch verification mode that processes test execution logs and generates reports with JUnit XML output for CI/CD integration
 - **Watch Mode**: Continuously monitor directories for file changes with automatic validation and instant feedback
+- **Tag-Based Filtering**: Organize and filter test cases using tags with support for complex boolean expressions, tag inheritance, and dynamic tag evaluation. See [Tag System Documentation](docs/TAG_SYSTEM.md) for details.
 
 ## Binaries
 
@@ -23,6 +24,31 @@ This project includes multiple binaries:
 - **tcm** (Test Case Manager): Interactive test case creation and management
 - **test-verify**: Test verification tool for validating test execution logs against test cases
 - **validate-yaml**: YAML validation tool
+- **test-orchestrator**: Test execution orchestrator with tag-based filtering
+
+## Quick Start with Make Goals
+
+```bash
+# Build the project
+make build
+
+# Run all tests (includes tag system tests)
+make test
+
+# Run smoke tests
+make test-filter-smoke
+
+# Run fast tests  
+make test-filter-fast
+
+# Run all tag filter tests
+make test-filter-all
+
+# Lint the code
+make lint
+```
+
+For more details on tag filtering, see the [Makefile Tag Goals Documentation](docs/MAKEFILE_TAG_GOALS.md).
 
 ## Test Case Manager (tcm) Commands
 
