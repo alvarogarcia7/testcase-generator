@@ -1,3 +1,4 @@
+use crate::bdd_parser::BddStepRegistry;
 use crate::models::{TestCase, TestStepExecutionEntry};
 use anyhow::{Context, Result};
 use chrono::Local;
@@ -64,10 +65,21 @@ impl TestExecutor {
         script.push_str("echo '[' > \"$JSON_LOG\"\n");
         script.push_str("FIRST_ENTRY=true\n\n");
 
+        // Instantiate BDD step registry
+        let bdd_registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml")
+            .unwrap_or_else(|_| BddStepRegistry::new());
+
         if !test_case.general_initial_conditions.is_empty() {
             script.push_str("# General Initial Conditions\n");
             for (key, values) in &test_case.general_initial_conditions {
-                script.push_str(&format!("# {}: {}\n", key, values.join(", ")));
+                for value in values {
+                    if let Some(command) = bdd_registry.try_parse_as_bdd(value) {
+                        script.push_str(&format!("# {}: {}\n", key, value));
+                        script.push_str(&format!("{}\n", command));
+                    } else {
+                        script.push_str(&format!("# {}: {}\n", key, value));
+                    }
+                }
             }
             script.push('\n');
         }
@@ -75,7 +87,14 @@ impl TestExecutor {
         if !test_case.initial_conditions.is_empty() {
             script.push_str("# Initial Conditions\n");
             for (key, values) in &test_case.initial_conditions {
-                script.push_str(&format!("# {}: {}\n", key, values.join(", ")));
+                for value in values {
+                    if let Some(command) = bdd_registry.try_parse_as_bdd(value) {
+                        script.push_str(&format!("# {}: {}\n", key, value));
+                        script.push_str(&format!("{}\n", command));
+                    } else {
+                        script.push_str(&format!("# {}: {}\n", key, value));
+                    }
+                }
             }
             script.push('\n');
         }
@@ -91,7 +110,14 @@ impl TestExecutor {
             if !sequence.initial_conditions.is_empty() {
                 script.push_str("# Sequence Initial Conditions\n");
                 for (key, values) in &sequence.initial_conditions {
-                    script.push_str(&format!("# {}: {}\n", key, values.join(", ")));
+                    for value in values {
+                        if let Some(command) = bdd_registry.try_parse_as_bdd(value) {
+                            script.push_str(&format!("# {}: {}\n", key, value));
+                            script.push_str(&format!("{}\n", command));
+                        } else {
+                            script.push_str(&format!("# {}: {}\n", key, value));
+                        }
+                    }
                 }
             }
             script.push('\n');
