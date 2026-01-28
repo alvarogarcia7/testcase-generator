@@ -325,4 +325,294 @@ mod tests {
         let result = registry.try_parse_as_bdd("file \"/etc/hosts\" should exist");
         assert_eq!(result, Some("test -f /etc/hosts".to_string()));
     }
+
+    #[test]
+    fn test_pattern_matching_exact_match() {
+        let step_def =
+            BddStepDefinition::new(r"^I click the button$", "click_button".to_string()).unwrap();
+
+        assert!(step_def.matches("I click the button"));
+        assert!(!step_def.matches("I click the button now"));
+        assert!(!step_def.matches("First I click the button"));
+    }
+
+    #[test]
+    fn test_pattern_matching_case_sensitive() {
+        let step_def =
+            BddStepDefinition::new(r"^I login as (?P<user>\w+)$", "login {user}".to_string())
+                .unwrap();
+
+        assert!(step_def.matches("I login as admin"));
+        assert!(!step_def.matches("i login as admin"));
+        assert!(!step_def.matches("I LOGIN as admin"));
+    }
+
+    #[test]
+    fn test_pattern_matching_with_optional_groups() {
+        let step_def = BddStepDefinition::new(
+            r"^wait for (?P<seconds>\d+) seconds?$",
+            "sleep {seconds}".to_string(),
+        )
+        .unwrap();
+
+        assert!(step_def.matches("wait for 1 second"));
+        assert!(step_def.matches("wait for 5 seconds"));
+        assert!(!step_def.matches("wait for 0 seconds"));
+    }
+
+    #[test]
+    fn test_parameter_extraction_single_param() {
+        let step_def = BddStepDefinition::new(
+            r"^I wait (?P<duration>\d+) milliseconds$",
+            "sleep {duration}".to_string(),
+        )
+        .unwrap();
+
+        let params = step_def.extract_parameters("I wait 500 milliseconds");
+        assert!(params.is_some());
+        let params = params.unwrap();
+        assert_eq!(params.len(), 1);
+        assert_eq!(params.get("duration"), Some(&"500".to_string()));
+    }
+
+    #[test]
+    fn test_parameter_extraction_multiple_params() {
+        let step_def = BddStepDefinition::new(
+            r#"^I copy "(?P<src>[^"]+)" to "(?P<dest>[^"]+)"$"#,
+            "cp {src} {dest}".to_string(),
+        )
+        .unwrap();
+
+        let params = step_def.extract_parameters(r#"I copy "/tmp/source.txt" to "/tmp/dest.txt""#);
+        assert!(params.is_some());
+        let params = params.unwrap();
+        assert_eq!(params.len(), 2);
+        assert_eq!(params.get("src"), Some(&"/tmp/source.txt".to_string()));
+        assert_eq!(params.get("dest"), Some(&"/tmp/dest.txt".to_string()));
+    }
+
+    #[test]
+    fn test_parameter_extraction_no_match() {
+        let step_def =
+            BddStepDefinition::new(r"^I login as (?P<user>\w+)$", "login {user}".to_string())
+                .unwrap();
+
+        let params = step_def.extract_parameters("I logout");
+        assert!(params.is_none());
+    }
+
+    #[test]
+    fn test_parameter_extraction_special_chars() {
+        let step_def = BddStepDefinition::new(
+            r#"^file "(?P<path>[^"]+)" should contain "(?P<text>[^"]+)"$"#,
+            "grep -q \"{text}\" {path}".to_string(),
+        )
+        .unwrap();
+
+        let params = step_def.extract_parameters(
+            r#"file "/var/log/app.log" should contain "ERROR: Failed to connect""#,
+        );
+        assert!(params.is_some());
+        let params = params.unwrap();
+        assert_eq!(params.get("path"), Some(&"/var/log/app.log".to_string()));
+        assert_eq!(
+            params.get("text"),
+            Some(&"ERROR: Failed to connect".to_string())
+        );
+    }
+
+    #[test]
+    fn test_file_creation_step_basic() {
+        let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+        let result = registry.try_parse_as_bdd(r#"create file "/tmp/test.txt" with content:"#);
+        assert!(result.is_some());
+        let cmd = result.unwrap();
+        assert!(cmd.contains("echo"));
+        assert!(cmd.contains("/tmp/test.txt"));
+    }
+
+    #[test]
+    fn test_file_creation_step_with_path() {
+        let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+        let result =
+            registry.try_parse_as_bdd(r#"create file "/var/www/html/index.html" with content:"#);
+        assert!(result.is_some());
+        let cmd = result.unwrap();
+        assert!(cmd.contains("/var/www/html/index.html"));
+    }
+
+    #[test]
+    fn test_ping_step_with_retries_basic() {
+        let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+        let result = registry.try_parse_as_bdd(r#"ping device "192.168.1.1" with 3 retries"#);
+        assert_eq!(result, Some("ping -c 3 192.168.1.1".to_string()));
+    }
+
+    #[test]
+    fn test_ping_step_with_retries_single() {
+        let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+        let result = registry.try_parse_as_bdd(r#"ping device "10.0.0.1" with 1 retries"#);
+        assert_eq!(result, Some("ping -c 1 10.0.0.1".to_string()));
+    }
+
+    #[test]
+    fn test_ping_step_with_retries_large_number() {
+        let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+        let result = registry.try_parse_as_bdd(r#"ping device "8.8.8.8" with 100 retries"#);
+        assert_eq!(result, Some("ping -c 100 8.8.8.8".to_string()));
+    }
+
+    #[test]
+    fn test_ping_step_with_retries_hostname() {
+        let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+        let result = registry.try_parse_as_bdd(r#"ping device "localhost" with 5 retries"#);
+        assert_eq!(result, Some("ping -c 5 localhost".to_string()));
+    }
+
+    #[test]
+    fn test_template_substitution_single_placeholder() {
+        let step_def = BddStepDefinition::new(
+            r"^delete file (?P<filename>\S+)$",
+            "rm {filename}".to_string(),
+        )
+        .unwrap();
+
+        let result = parse_bdd_statement(&step_def, "delete file /tmp/test.txt");
+        assert_eq!(result, Some("rm /tmp/test.txt".to_string()));
+    }
+
+    #[test]
+    fn test_template_substitution_multiple_placeholders() {
+        let step_def = BddStepDefinition::new(
+            r"^move (?P<src>\S+) to (?P<dest>\S+)$",
+            "mv {src} {dest}".to_string(),
+        )
+        .unwrap();
+
+        let result = parse_bdd_statement(&step_def, "move /tmp/old.txt /tmp/new.txt");
+        assert_eq!(result, Some("mv /tmp/old.txt /tmp/new.txt".to_string()));
+    }
+
+    #[test]
+    fn test_template_substitution_repeated_placeholder() {
+        let step_def = BddStepDefinition::new(
+            r"^backup (?P<file>\S+)$",
+            "cp {file} {file}.bak".to_string(),
+        )
+        .unwrap();
+
+        let result = parse_bdd_statement(&step_def, "backup /etc/config");
+        assert_eq!(result, Some("cp /etc/config /etc/config.bak".to_string()));
+    }
+
+    #[test]
+    fn test_template_substitution_no_placeholders() {
+        let step_def =
+            BddStepDefinition::new(r"^reboot system$", "sudo reboot".to_string()).unwrap();
+
+        let result = parse_bdd_statement(&step_def, "reboot system");
+        assert_eq!(result, Some("sudo reboot".to_string()));
+    }
+
+    #[test]
+    fn test_template_substitution_empty_value() {
+        let step_def = BddStepDefinition::new(
+            r"^set variable (?P<name>\w+) to (?P<value>.*)$",
+            "export {name}={value}".to_string(),
+        )
+        .unwrap();
+
+        let result = parse_bdd_statement(&step_def, "set variable DEBUG to ");
+        assert_eq!(result, Some("export DEBUG=".to_string()));
+    }
+
+    #[test]
+    fn test_template_substitution_special_characters() {
+        let step_def = BddStepDefinition::new(
+            r#"^echo message "(?P<msg>[^"]+)"$"#,
+            "echo \"{msg}\"".to_string(),
+        )
+        .unwrap();
+
+        let result = parse_bdd_statement(&step_def, r#"echo message "Hello, World! @#$%""#);
+        assert_eq!(result, Some(r#"echo "Hello, World! @#$%""#.to_string()));
+    }
+
+    #[test]
+    fn test_template_substitution_missing_placeholder() {
+        let step_def = BddStepDefinition::new(
+            r"^run command (?P<cmd>\w+)$",
+            "{cmd} --verbose --output {outfile}".to_string(),
+        )
+        .unwrap();
+
+        let result = parse_bdd_statement(&step_def, "run command test");
+        assert_eq!(
+            result,
+            Some("test --verbose --output {outfile}".to_string())
+        );
+    }
+
+    #[test]
+    fn test_template_substitution_numeric_values() {
+        let step_def = BddStepDefinition::new(
+            r"^retry (?P<count>\d+) times with (?P<delay>\d+) seconds delay$",
+            "for i in $(seq 1 {count}); do sleep {delay}; done".to_string(),
+        )
+        .unwrap();
+
+        let result = parse_bdd_statement(&step_def, "retry 3 times with 5 seconds delay");
+        assert_eq!(
+            result,
+            Some("for i in $(seq 1 3); do sleep 5; done".to_string())
+        );
+    }
+
+    #[test]
+    fn test_template_substitution_path_with_spaces() {
+        let step_def = BddStepDefinition::new(
+            r#"^remove directory "(?P<path>[^"]+)"$"#,
+            "rm -rf {path}".to_string(),
+        )
+        .unwrap();
+
+        let result = parse_bdd_statement(&step_def, r#"remove directory "/tmp/my folder""#);
+        assert_eq!(result, Some("rm -rf /tmp/my folder".to_string()));
+    }
+
+    #[test]
+    fn test_edge_case_empty_string_parameter() {
+        let step_def = BddStepDefinition::new(
+            r#"^append "(?P<text>.*)" to log$"#,
+            "echo \"{text}\" >> /var/log/app.log".to_string(),
+        )
+        .unwrap();
+
+        let result = parse_bdd_statement(&step_def, r#"append "" to log"#);
+        assert_eq!(result, Some(r#"echo "" >> /var/log/app.log"#.to_string()));
+    }
+
+    #[test]
+    fn test_edge_case_placeholder_in_quotes() {
+        let step_def = BddStepDefinition::new(
+            r"^greet (?P<name>\w+)$",
+            "echo 'Hello, {name}!'".to_string(),
+        )
+        .unwrap();
+
+        let result = parse_bdd_statement(&step_def, "greet Alice");
+        assert_eq!(result, Some("echo 'Hello, Alice!'".to_string()));
+    }
+
+    #[test]
+    fn test_edge_case_multiple_same_placeholders() {
+        let step_def = BddStepDefinition::new(
+            r"^mirror (?P<value>\w+)$",
+            "{value} equals {value}".to_string(),
+        )
+        .unwrap();
+
+        let result = parse_bdd_statement(&step_def, "mirror test");
+        assert_eq!(result, Some("test equals test".to_string()));
+    }
 }
