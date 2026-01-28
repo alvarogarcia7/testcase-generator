@@ -39,7 +39,7 @@ impl TestExecutor {
         script.push_str("\n\n");
 
         script.push_str(&format!("JSON_LOG=\"{}\"\n", json_output_path.display()));
-        script.push_str("TIMESTAMP=$(date  +\"%Y-%m-%dT%H:%M:%S\")\n\n");
+        script.push_str("TIMESTAMP=$(date +\"%Y-%m-%dT%H:%M:%S\")\n\n");
 
         // Add trap to ensure JSON file is properly closed on any exit
         script.push_str("# Trap to ensure JSON file is closed properly on exit\n");
@@ -67,7 +67,14 @@ impl TestExecutor {
 
         // Instantiate BDD step registry
         let bdd_registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml")
-            .unwrap_or_else(|_| BddStepRegistry::new());
+            .unwrap_or_else(|e| {
+                eprintln!(
+                    "Warning: Failed to load BDD step definitions from data/bdd_step_definitions.toml: {}",
+                    e
+                );
+                eprintln!("BDD patterns will not be available. Initial conditions will be treated as comments.");
+                BddStepRegistry::new()
+            });
 
         if !test_case.general_initial_conditions.is_empty() {
             script.push_str("# General Initial Conditions\n");
@@ -104,8 +111,9 @@ impl TestExecutor {
                 "# Test Sequence {}: {}\n",
                 sequence.id, sequence.name
             ));
-            let lines = sequence.description.split("\n");
-            lines.for_each(|line| script.push_str(&format!("# {}\n", line)));
+            for line in sequence.description.split('\n') {
+                script.push_str(&format!("# {}\n", line));
+            }
 
             if !sequence.initial_conditions.is_empty() {
                 script.push_str("# Sequence Initial Conditions\n");
@@ -424,7 +432,7 @@ fi"#,
 
         // Base timestamp for template (arbitrary starting point in local timezone)
         let base_time = chrono::DateTime::parse_from_rfc3339("2026-01-22T10:30:00Z")
-            .unwrap()
+            .expect("Failed to parse hardcoded RFC3339 timestamp")
             .with_timezone(&Local);
         let mut step_index = 0;
 

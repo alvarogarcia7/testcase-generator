@@ -27,7 +27,7 @@ initial_conditions:
 
 During test execution, this is automatically converted to:
 ```bash
-mkdir -p /tmp/test
+mkdir -p "/tmp/test"
 ```
 
 ## Built-in Step Patterns
@@ -41,20 +41,19 @@ The system includes 23 built-in BDD step patterns covering common test setup ope
 
 **Parameters:**
 - `path`: File path (quoted string)
-- `contents`: Multi-line content (provided on subsequent lines)
 
-**Generated Command:** `echo '{contents}' > {path}`
+**Generated Command:** `touch "{path}"`
 
 **Example:**
 ```yaml
 initial_conditions:
   eUICC:
     - "create file \"/tmp/config.txt\" with content:"
-    - "server=localhost"
-    - "port=8080"
+    - "append \"server=localhost\" to file \"/tmp/config.txt\""
+    - "append \"port=8080\" to file \"/tmp/config.txt\""
 ```
 
-**Note:** Multi-line content is concatenated in the actual implementation.
+**Note:** This creates an empty file. Use the "append to file" pattern to add content.
 
 #### 2. Check File Exists
 **Pattern:** `file "<path>" should exist`
@@ -62,7 +61,7 @@ initial_conditions:
 **Parameters:**
 - `path`: File path to check (quoted string)
 
-**Generated Command:** `test -f {path}`
+**Generated Command:** `test -f "{path}"`
 
 **Example:**
 ```yaml
@@ -78,7 +77,7 @@ initial_conditions:
 - `path`: File path (quoted string)
 - `text`: Text to search for (quoted string)
 
-**Generated Command:** `grep -q "{text}" {path}`
+**Generated Command:** `grep -q "{text}" "{path}"`
 
 **Example:**
 ```yaml
@@ -94,7 +93,7 @@ initial_conditions:
 - `text`: Text to append (quoted string)
 - `path`: File path (quoted string)
 
-**Generated Command:** `echo "{text}" >> {path}`
+**Generated Command:** `echo "{text}" >> "{path}"`
 
 **Example:**
 ```yaml
@@ -111,7 +110,7 @@ initial_conditions:
 - `replacement`: Replacement text (quoted string)
 - `path`: File path (quoted string)
 
-**Generated Command:** `sed -i 's/{pattern}/{replacement}/g' {path}`
+**Generated Command:** `sed -i 's/{pattern}/{replacement}/g' "{path}"`
 
 **Example:**
 ```yaml
@@ -127,7 +126,7 @@ initial_conditions:
 - `path`: File path (quoted string)
 - `mode`: Octal permission mode (3-4 digits, unquoted)
 
-**Generated Command:** `chmod {mode} {path}`
+**Generated Command:** `chmod {mode} "{path}"`
 
 **Example:**
 ```yaml
@@ -144,7 +143,7 @@ initial_conditions:
 **Parameters:**
 - `path`: Directory path (quoted string)
 
-**Generated Command:** `mkdir -p {path}`
+**Generated Command:** `mkdir -p "{path}"`
 
 **Example:**
 ```yaml
@@ -159,7 +158,7 @@ initial_conditions:
 **Parameters:**
 - `path`: Directory path (quoted string)
 
-**Generated Command:** `rm -rf {path}`
+**Generated Command:** `rm -rf "{path}"`
 
 **Example:**
 ```yaml
@@ -174,7 +173,7 @@ initial_conditions:
 **Parameters:**
 - `path`: Directory path (quoted string)
 
-**Generated Command:** `ls -la {path}`
+**Generated Command:** `ls -la "{path}"`
 
 **Example:**
 ```yaml
@@ -224,7 +223,7 @@ initial_conditions:
 **Parameters:**
 - `process_name`: Process name to check (quoted string)
 
-**Generated Command:** `pgrep -f {process_name}`
+**Generated Command:** `pgrep -f "{process_name}"`
 
 **Example:**
 ```yaml
@@ -239,7 +238,7 @@ initial_conditions:
 **Parameters:**
 - `process_name`: Process name to terminate (quoted string)
 
-**Generated Command:** `pkill -f {process_name}`
+**Generated Command:** `pkill -f "{process_name}"`
 
 **Example:**
 ```yaml
@@ -257,7 +256,7 @@ initial_conditions:
 - `ip`: IP address or hostname (quoted string)
 - `retries`: Number of ping attempts (numeric, unquoted)
 
-**Generated Command:** `ping -c {retries} {ip}`
+**Generated Command:** `ping -c {retries} "{ip}"`
 
 **Example:**
 ```yaml
@@ -273,7 +272,7 @@ initial_conditions:
 - `port`: Port number (numeric, unquoted)
 - `host`: Host address (quoted string)
 
-**Generated Command:** `nc -z {host} {port}`
+**Generated Command:** `nc -z "{host}" {port}`
 
 **Example:**
 ```yaml
@@ -289,7 +288,7 @@ initial_conditions:
 - `method`: HTTP method - GET, POST, PUT, or DELETE (unquoted)
 - `url`: Target URL (quoted string)
 
-**Generated Command:** `curl -X {method} {url}`
+**Generated Command:** `curl -X {method} "{url}"`
 
 **Example:**
 ```yaml
@@ -325,7 +324,7 @@ initial_conditions:
 - `path`: File path to wait for (quoted string)
 - `timeout`: Maximum wait time in seconds (numeric, unquoted)
 
-**Generated Command:** `timeout {timeout} bash -c 'while [ ! -f {path} ]; do sleep 1; done'`
+**Generated Command:** `timeout {timeout} bash -c 'while [ ! -f "{path}" ]; do sleep 1; done'`
 
 **Example:**
 ```yaml
@@ -343,7 +342,7 @@ initial_conditions:
 - `username`: Username (quoted string)
 - `uid`: User ID number (numeric, unquoted)
 
-**Generated Command:** `useradd -u {uid} {username}`
+**Generated Command:** `useradd -u {uid} "{username}"`
 
 **Example:**
 ```yaml
@@ -358,7 +357,7 @@ initial_conditions:
 **Parameters:**
 - `username`: Username to delete (quoted string)
 
-**Generated Command:** `userdel {username}`
+**Generated Command:** `userdel "{username}"`
 
 **Example:**
 ```yaml
@@ -375,7 +374,7 @@ initial_conditions:
 **Parameters:**
 - `service_name`: Service name (quoted string)
 
-**Generated Command:** `systemctl restart {service_name}`
+**Generated Command:** `systemctl restart "{service_name}"`
 
 **Example:**
 ```yaml
@@ -393,7 +392,7 @@ initial_conditions:
 - `archive_path`: Path to archive file (quoted string)
 - `destination`: Destination directory (quoted string)
 
-**Generated Command:** `tar -xzf {archive_path} -C {destination}`
+**Generated Command:** `tar -xzf "{archive_path}" -C "{destination}"`
 
 **Example:**
 ```yaml
@@ -409,7 +408,7 @@ initial_conditions:
 - `archive_path`: Output archive file path (quoted string)
 - `source_directory`: Source directory to archive (quoted string)
 
-**Generated Command:** `tar -czf {archive_path} -C {source_directory} .`
+**Generated Command:** `tar -czf "{archive_path}" -C "{source_directory}" .`
 
 **Example:**
 ```yaml
@@ -842,3 +841,37 @@ test_sequences:
 ```
 
 This generates a script with all BDD patterns converted to executable bash commands while preserving plain-text conditions as comments.
+
+## Security Considerations
+
+### Shell Command Injection
+
+BDD patterns generate shell commands by substituting parameters extracted from the natural language statements directly into command templates. While the predefined patterns in `data/bdd_step_definitions.toml` are designed to be safe, you should be aware of the following when creating custom patterns or using BDD conditions:
+
+1. **Parameter Validation**: Parameters extracted from BDD statements are inserted directly into command templates without additional escaping. The regex patterns in the TOML file control what characters are allowed in each parameter.
+
+2. **Safe Pattern Design**: When creating custom patterns, use restrictive regex capture groups:
+   - For paths: `([^"]+)` - Allows any character except quotes
+   - For numbers: `(\d+)` - Only digits
+   - For specific values: `(GET|POST|PUT|DELETE)` - Enumerated options only
+
+3. **Avoid User Input**: BDD conditions should be authored by trusted test developers, not sourced from untrusted user input. The test YAML files should be version-controlled and reviewed.
+
+4. **Command Template Safety**: Built-in command templates use parameter substitution without shell evaluation. For example, `mkdir -p {path}` will create a directory with the exact path provided, including any special characters.
+
+**Example of Safe Pattern:**
+```toml
+[[step]]
+name = "create_directory"
+pattern = "^create directory \"([^\"]+)\"$"  # Only allows non-quote characters
+command_template = "mkdir -p {path}"
+parameters = ["path"]
+```
+
+**Avoid patterns that could enable injection:**
+```toml
+# BAD - Don't do this!
+[[step]]
+pattern = "^run command (.+)$"  # Too permissive
+command_template = "{command}"  # Direct execution
+```

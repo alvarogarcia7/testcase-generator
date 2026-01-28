@@ -4,8 +4,12 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
+/// Trait for matching and extracting parameters from BDD-style statements
 pub trait BddStepMatcher {
+    /// Checks if a statement matches this step definition
     fn matches(&self, statement: &str) -> bool;
+    
+    /// Extracts named parameters from a matching statement
     fn extract_parameters(&self, statement: &str) -> Option<HashMap<String, String>>;
 }
 
@@ -25,6 +29,7 @@ struct TomlStepDefinitions {
     step: Vec<TomlStepDefinition>,
 }
 
+/// A BDD step definition that matches natural language patterns to shell commands
 #[derive(Debug, Clone)]
 pub struct BddStepDefinition {
     pub pattern: Regex,
@@ -32,6 +37,14 @@ pub struct BddStepDefinition {
 }
 
 impl BddStepDefinition {
+    /// Creates a new BDD step definition with the given regex pattern and command template
+    ///
+    /// # Arguments
+    /// * `pattern` - A regex pattern string with named capture groups
+    /// * `command_template` - A template string with {parameter} placeholders
+    ///
+    /// # Returns
+    /// A Result containing the BddStepDefinition or a regex error
     pub fn new(pattern: &str, command_template: String) -> Result<Self, regex::Error> {
         let pattern = Regex::new(pattern)?;
         Ok(Self {
@@ -59,6 +72,19 @@ impl BddStepMatcher for BddStepDefinition {
     }
 }
 
+/// Parses a BDD statement and generates a shell command
+///
+/// # Arguments
+/// * `step_def` - The BDD step definition to match against
+/// * `statement` - The natural language statement to parse
+///
+/// # Returns
+/// Some(String) containing the generated command if the statement matches, None otherwise
+///
+/// # Security
+/// Parameters extracted from the statement are inserted directly into the command template.
+/// The caller is responsible for ensuring the generated command is properly escaped when
+/// used in a shell context.
 pub fn parse_bdd_statement(step_def: &BddStepDefinition, statement: &str) -> Option<String> {
     if !step_def.matches(statement) {
         return None;
@@ -75,18 +101,27 @@ pub fn parse_bdd_statement(step_def: &BddStepDefinition, statement: &str) -> Opt
     Some(result)
 }
 
+/// Registry of BDD step definitions loaded from a TOML configuration file
 #[derive(Debug)]
 pub struct BddStepRegistry {
     step_definitions: Vec<BddStepDefinition>,
 }
 
 impl BddStepRegistry {
+    /// Creates a new empty BDD step registry
     pub fn new() -> Self {
         Self {
             step_definitions: Vec::new(),
         }
     }
 
+    /// Loads BDD step definitions from a TOML file
+    ///
+    /// # Arguments
+    /// * `path` - Path to the TOML file containing step definitions
+    ///
+    /// # Returns
+    /// A Result containing the registry or an error if loading fails
     pub fn load_from_toml<P: AsRef<Path>>(path: P) -> Result<Self, Box<dyn std::error::Error>> {
         let content = fs::read_to_string(path)?;
         let toml_defs: TomlStepDefinitions = toml::from_str(&content)?;
@@ -132,6 +167,13 @@ impl BddStepRegistry {
         Ok(result)
     }
 
+    /// Attempts to parse a statement as a BDD pattern
+    ///
+    /// # Arguments
+    /// * `statement` - The natural language statement to parse
+    ///
+    /// # Returns
+    /// Some(String) containing the generated command if any pattern matches, None otherwise
     pub fn try_parse_as_bdd(&self, statement: &str) -> Option<String> {
         for step_def in &self.step_definitions {
             if let Some(command) = parse_bdd_statement(step_def, statement) {
@@ -287,7 +329,7 @@ mod tests {
     fn test_bdd_step_registry_try_parse_create_directory() {
         let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
         let result = registry.try_parse_as_bdd("create directory \"/tmp/test\"");
-        assert_eq!(result, Some("mkdir -p /tmp/test".to_string()));
+        assert_eq!(result, Some("mkdir -p \"/tmp/test\"".to_string()));
     }
 
     #[test]
@@ -316,14 +358,14 @@ mod tests {
     fn test_bdd_step_registry_try_parse_ping_device() {
         let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
         let result = registry.try_parse_as_bdd("ping device \"192.168.1.1\" with 3 retries");
-        assert_eq!(result, Some("ping -c 3 192.168.1.1".to_string()));
+        assert_eq!(result, Some("ping -c 3 \"192.168.1.1\"".to_string()));
     }
 
     #[test]
     fn test_bdd_step_registry_try_parse_check_file_exists() {
         let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
         let result = registry.try_parse_as_bdd("file \"/etc/hosts\" should exist");
-        assert_eq!(result, Some("test -f /etc/hosts".to_string()));
+        assert_eq!(result, Some("test -f \"/etc/hosts\"".to_string()));
     }
 
     #[test]
@@ -445,28 +487,28 @@ mod tests {
     fn test_ping_step_with_retries_basic() {
         let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
         let result = registry.try_parse_as_bdd(r#"ping device "192.168.1.1" with 3 retries"#);
-        assert_eq!(result, Some("ping -c 3 192.168.1.1".to_string()));
+        assert_eq!(result, Some("ping -c 3 \"192.168.1.1\"".to_string()));
     }
 
     #[test]
     fn test_ping_step_with_retries_single() {
         let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
         let result = registry.try_parse_as_bdd(r#"ping device "10.0.0.1" with 1 retries"#);
-        assert_eq!(result, Some("ping -c 1 10.0.0.1".to_string()));
+        assert_eq!(result, Some("ping -c 1 \"10.0.0.1\"".to_string()));
     }
 
     #[test]
     fn test_ping_step_with_retries_large_number() {
         let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
         let result = registry.try_parse_as_bdd(r#"ping device "8.8.8.8" with 100 retries"#);
-        assert_eq!(result, Some("ping -c 100 8.8.8.8".to_string()));
+        assert_eq!(result, Some("ping -c 100 \"8.8.8.8\"".to_string()));
     }
 
     #[test]
     fn test_ping_step_with_retries_hostname() {
         let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
         let result = registry.try_parse_as_bdd(r#"ping device "localhost" with 5 retries"#);
-        assert_eq!(result, Some("ping -c 5 localhost".to_string()));
+        assert_eq!(result, Some("ping -c 5 \"localhost\"".to_string()));
     }
 
     #[test]
@@ -572,12 +614,12 @@ mod tests {
     fn test_template_substitution_path_with_spaces() {
         let step_def = BddStepDefinition::new(
             r#"^remove directory "(?P<path>[^"]+)"$"#,
-            "rm -rf {path}".to_string(),
+            "rm -rf \"{path}\"".to_string(),
         )
         .unwrap();
 
         let result = parse_bdd_statement(&step_def, r#"remove directory "/tmp/my folder""#);
-        assert_eq!(result, Some("rm -rf /tmp/my folder".to_string()));
+        assert_eq!(result, Some("rm -rf \"/tmp/my folder\"".to_string()));
     }
 
     #[test]

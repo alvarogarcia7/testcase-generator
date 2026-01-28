@@ -331,7 +331,7 @@ initial_conditions:
 
 These BDD patterns are automatically converted to bash commands:
 ```bash
-mkdir -p /tmp/test
+mkdir -p "/tmp/test"
 export TEST_MODE=enabled
 sleep 5
 ```
