@@ -1,0 +1,24 @@
+stages:
+  - validate
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+cache:
+  paths:
+    - .cache/pip
+
+validate_schemas:
+  stage: validate
+  image: python:3.10
+  before_script:
+    - pip install -r requirements.txt
+  script:
+    - echo "Validating YAML files against schemas..."
+    - python validator.py samples/test-plan/data.yml schemas/test-plan/test-plan.schema.json
+    - python validator.py samples/test-case/gsma_4.4.2.2_TC.yml schemas/test-case/test-case.schema.json
+    - python validator.py samples/test-case/gsma_4.4.2.3_TC.yml schemas/test-case/test-case.schema.json
+    - echo "All validations passed!"
+  only:
+    - branches
+    - merge_requests

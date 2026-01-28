@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tcms-schemas"
+version = "0.1.0"
+description = "YAML Schema Validator for TCMS"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "PyYAML>=6.0.1",
+    "jsonschema>=4.20.0",
+]
+
+[project.scripts]
+tcms-validate = "validator:main"
+
+[tool.setuptools]
+packages = []
