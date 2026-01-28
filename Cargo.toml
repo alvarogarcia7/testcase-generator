@@ -53,6 +53,11 @@ path = "src/bin/test-verify.rs"
 name = "test-executor"
 path = "src/bin/test-executor.rs"
 
+## TODO AGB: Remove duplicate binary names - Backward compatibility for now
+[[bin]]
+name = "testcase-manager"
+path = "src/main_editor.rs"
+
 [[bin]]
 name = "editor"
 path = "src/main_editor.rs"
