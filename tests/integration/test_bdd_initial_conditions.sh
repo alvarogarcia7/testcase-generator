@@ -95,21 +95,21 @@ id: TEST_BDD_PREREQUISITES
 description: Test case with BDD-style initial conditions
 general_initial_conditions:
   System:
-    - create directory "/tmp/bdd_test"
-    - set environment variable "TEST_MODE" to "integration"
-    - wait for 1 second
+    - "create directory \"/tmp/bdd_test\""
+    - "set environment variable \"TEST_MODE\" to \"integration\""
+    - "wait for 1 second"
 initial_conditions:
   Device:
-    - create file "/tmp/bdd_test/config.txt" with content:
-    - file "/tmp/bdd_test/config.txt" should exist
+    - "create file \"/tmp/bdd_test/config.txt\" with content:"
+    - "file \"/tmp/bdd_test/config.txt\" should exist"
 test_sequences:
   - id: 1
     name: BDD Prerequisites Test
     description: Verify BDD prerequisites are executed correctly
     initial_conditions:
       LPA:
-        - create directory "/tmp/bdd_test/logs"
-        - ping device "127.0.0.1" with 2 retries
+        - "create directory \"/tmp/bdd_test/logs\""
+        - "ping device \"127.0.0.1\" with 2 retries"
     steps:
       - step: 1
         description: Verify test directory exists
@@ -117,7 +117,7 @@ test_sequences:
         expected:
           success: true
           result: "0"
-          output: none
+          output: ""
         verification:
           result: "[ $EXIT_CODE -eq 0 ]"
           output: "true"
@@ -127,7 +127,7 @@ test_sequences:
         expected:
           success: true
           result: "0"
-          output: none
+          output: ""
         verification:
           result: "[ $EXIT_CODE -eq 0 ]"
           output: "true"
@@ -137,7 +137,7 @@ test_sequences:
         expected:
           success: true
           result: "0"
-          output: none
+          output: ""
         verification:
           result: "[ $EXIT_CODE -eq 0 ]"
           output: "true"
@@ -157,7 +157,7 @@ test_sequences:
         expected:
           success: true
           result: "0"
-          output: none
+          output: ""
         verification:
           result: "[ $EXIT_CODE -eq 0 ]"
           output: "true"
@@ -194,7 +194,7 @@ fi
 # Test 3: Verify script contains BDD prerequisite commands
 section "Test 3: Verify Script Contains BDD Commands"
 
-if grep -q "mkdir -p /tmp/bdd_test" "$GENERATED_SCRIPT"; then
+if grep -q 'mkdir -p "/tmp/bdd_test"' "$GENERATED_SCRIPT"; then
     pass "Script contains 'create directory' BDD command"
 else
     fail "Script missing 'create directory' BDD command"
@@ -218,13 +218,13 @@ else
     fail "Script missing 'create file' BDD command"
 fi
 
-if grep -q "test -f /tmp/bdd_test/config.txt" "$GENERATED_SCRIPT"; then
+if grep -q 'test -f "/tmp/bdd_test/config.txt"' "$GENERATED_SCRIPT"; then
     pass "Script contains 'file should exist' BDD command"
 else
     fail "Script missing 'file should exist' BDD command"
 fi
 
-if grep -q "ping -c 2 127.0.0.1" "$GENERATED_SCRIPT"; then
+if grep -q 'ping -c 2 "127.0.0.1"' "$GENERATED_SCRIPT"; then
     pass "Script contains 'ping device with retries' BDD command"
 else
     fail "Script missing 'ping device with retries' BDD command"
@@ -289,22 +289,22 @@ id: TEST_COMPLEX_BDD
 description: Test case with complex BDD prerequisites
 general_initial_conditions:
   System:
-    - create directory "/tmp/bdd_complex"
-    - create directory "/tmp/bdd_complex/data"
-    - create directory "/tmp/bdd_complex/backup"
+    - "create directory \"/tmp/bdd_complex\""
+    - "create directory \"/tmp/bdd_complex/data\""
+    - "create directory \"/tmp/bdd_complex/backup\""
 initial_conditions:
   Device:
-    - create file "/tmp/bdd_complex/data/input.txt" with content:
-    - append "Test data line 1" to file "/tmp/bdd_complex/data/input.txt"
-    - append "Test data line 2" to file "/tmp/bdd_complex/data/input.txt"
+    - "create file \"/tmp/bdd_complex/data/input.txt\" with content:"
+    - "append \"Test data line 1\" to file \"/tmp/bdd_complex/data/input.txt\""
+    - "append \"Test data line 2\" to file \"/tmp/bdd_complex/data/input.txt\""
 test_sequences:
   - id: 1
     name: Complex Prerequisites Test
     description: Test multiple BDD prerequisites
     initial_conditions:
       LPA:
-        - set environment variable "DATA_DIR" to "/tmp/bdd_complex/data"
-        - set environment variable "BACKUP_DIR" to "/tmp/bdd_complex/backup"
+        - "set environment variable \"DATA_DIR\" to \"/tmp/bdd_complex/data\""
+        - "set environment variable \"BACKUP_DIR\" to \"/tmp/bdd_complex/backup\""
     steps:
       - step: 1
         description: List directory contents
@@ -332,7 +332,7 @@ test_sequences:
         expected:
           success: true
           result: "0"
-          output: none
+          output: ""
         verification:
           result: "[ $EXIT_CODE -eq 0 ]"
           output: "true"
@@ -376,7 +376,7 @@ fi
 # Test 8: Verify BDD step definitions are used correctly
 section "Test 8: Verify BDD Step Definitions Usage"
 
-if grep -q "mkdir -p /tmp/bdd_complex" "$COMPLEX_SCRIPT"; then
+if grep -q 'mkdir -p "/tmp/bdd_complex' "$COMPLEX_SCRIPT"; then
     pass "Multiple directory creation commands present"
 else
     fail "Missing directory creation commands"
@@ -406,13 +406,13 @@ id: TEST_PARAM_EXTRACTION
 description: Test parameter extraction from BDD statements
 general_initial_conditions:
   System:
-    - ping device "8.8.8.8" with 5 retries
-    - create directory "/tmp/param_test"
-    - wait for 2 seconds
+    - "ping device \"8.8.8.8\" with 5 retries"
+    - "create directory \"/tmp/param_test\""
+    - "wait for 2 seconds"
 initial_conditions:
   Device:
-    - set environment variable "HOST" to "localhost"
-    - set environment variable "PORT" to "8080"
+    - "set environment variable \"HOST\" to \"localhost\""
+    - "set environment variable \"PORT\" to \"8080\""
 test_sequences:
   - id: 1
     name: Parameter Test
@@ -434,7 +434,7 @@ test_sequences:
         expected:
           success: true
           result: "0"
-          output: none
+          output: ""
         verification:
           result: "[ $EXIT_CODE -eq 0 ]"
           output: "true"
@@ -447,13 +447,13 @@ else
     fail "Failed to generate script with parameters"
 fi
 
-if grep -q "ping -c 5 8.8.8.8" "$PARAMS_SCRIPT"; then
+if grep -q 'ping -c 5 "8.8.8.8"' "$PARAMS_SCRIPT"; then
     pass "Numeric and IP parameters extracted correctly"
 else
     fail "Incorrect parameter extraction for ping command"
 fi
 
-if grep -q "mkdir -p /tmp/param_test" "$PARAMS_SCRIPT"; then
+if grep -q 'mkdir -p "/tmp/param_test"' "$PARAMS_SCRIPT"; then
     pass "Path parameter extracted correctly"
 else
     fail "Incorrect parameter extraction for directory command"

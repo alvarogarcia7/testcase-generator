@@ -380,6 +380,10 @@ fn test_initial_conditions_in_script() {
     assert!(script.contains("# Network: Online"));
     assert!(script.contains("# Sequence Initial Conditions"));
     assert!(script.contains("# Session: Active"));
+    
+    // Verify each condition appears on its own line with proper formatting
+    assert!(script.contains("# Device: Powered on\n"));
+    assert!(script.contains("# Device: Connected\n"));
 }
 
 #[test]
