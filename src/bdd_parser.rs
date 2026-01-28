@@ -659,6 +659,328 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_bdd_statement_missing_placeholder() {
+        let step_def = BddStepDefinition::new(
+            r"^process (?P<input>\w+)$",
+            "process {input} > {output}".to_string(),
+        )
+        .unwrap();
+
+        let result = parse_bdd_statement(&step_def, "process data");
+        assert_eq!(result, Some("process data > {output}".to_string()));
+    }
+
+    #[test]
+    fn test_parse_bdd_statement_extra_placeholders_not_in_parameters() {
+        let step_def = BddStepDefinition::new(
+            r"^run (?P<cmd>\w+)$",
+            "{cmd} --flag {unknown_param} --option {another_missing}".to_string(),
+        )
+        .unwrap();
+
+        let result = parse_bdd_statement(&step_def, "run test");
+        assert_eq!(
+            result,
+            Some("test --flag {unknown_param} --option {another_missing}".to_string())
+        );
+    }
+
+    #[test]
+    fn test_parse_bdd_statement_quotes_in_parameter_value() {
+        let step_def = BddStepDefinition::new(
+            r#"^echo text "(?P<text>.*?)"$"#,
+            "echo '{text}'".to_string(),
+        )
+        .unwrap();
+
+        let result = parse_bdd_statement(&step_def, r#"echo text "He said \"hello\"""#);
+        assert_eq!(result, Some(r#"echo 'He said \"hello\"'"#.to_string()));
+    }
+
+    #[test]
+    fn test_parse_bdd_statement_single_quotes_in_parameter_value() {
+        let step_def = BddStepDefinition::new(
+            r#"^message "(?P<msg>[^"]+)"$"#,
+            "echo \"{msg}\"".to_string(),
+        )
+        .unwrap();
+
+        let result = parse_bdd_statement(&step_def, r#"message "It's a test""#);
+        assert_eq!(result, Some(r#"echo "It's a test""#.to_string()));
+    }
+
+    #[test]
+    fn test_parse_bdd_statement_newlines_in_parameter_value() {
+        let step_def =
+            BddStepDefinition::new(r"^content (?P<text>(?s).+)$", "echo \"{text}\"".to_string())
+                .unwrap();
+
+        let result = parse_bdd_statement(&step_def, "content line1\nline2\nline3");
+        assert_eq!(result, Some("echo \"line1\nline2\nline3\"".to_string()));
+    }
+
+    #[test]
+    fn test_parse_bdd_statement_shell_metacharacters_in_parameter() {
+        let step_def = BddStepDefinition::new(
+            r#"^inject "(?P<payload>[^"]+)"$"#,
+            "process \"{payload}\"".to_string(),
+        )
+        .unwrap();
+
+        let result = parse_bdd_statement(&step_def, r#"inject "test; rm -rf /""#);
+        assert_eq!(result, Some(r#"process "test; rm -rf /""#.to_string()));
+    }
+
+    #[test]
+    fn test_parse_bdd_statement_shell_pipes_and_redirects_in_parameter() {
+        let step_def = BddStepDefinition::new(
+            r#"^data "(?P<content>[^"]+)"$"#,
+            "echo \"{content}\"".to_string(),
+        )
+        .unwrap();
+
+        let result = parse_bdd_statement(&step_def, r#"data "test | cat > /tmp/file""#);
+        assert_eq!(result, Some(r#"echo "test | cat > /tmp/file""#.to_string()));
+    }
+
+    #[test]
+    fn test_parse_bdd_statement_backticks_in_parameter() {
+        let step_def =
+            BddStepDefinition::new(r#"^command "(?P<cmd>[^"]+)"$"#, "run \"{cmd}\"".to_string())
+                .unwrap();
+
+        let result = parse_bdd_statement(&step_def, r#"command "test `whoami`""#);
+        assert_eq!(result, Some(r#"run "test `whoami`""#.to_string()));
+    }
+
+    #[test]
+    fn test_parse_bdd_statement_dollar_signs_in_parameter() {
+        let step_def = BddStepDefinition::new(
+            r#"^variable "(?P<var>[^"]+)"$"#,
+            "set \"{var}\"".to_string(),
+        )
+        .unwrap();
+
+        let result = parse_bdd_statement(&step_def, r#"variable "$HOME and $(pwd)""#);
+        assert_eq!(result, Some(r#"set "$HOME and $(pwd)""#.to_string()));
+    }
+
+    #[test]
+    fn test_parse_bdd_statement_empty_parameter_value() {
+        let step_def = BddStepDefinition::new(
+            r#"^set "(?P<value>.*)"$"#,
+            "export VAR=\"{value}\"".to_string(),
+        )
+        .unwrap();
+
+        let result = parse_bdd_statement(&step_def, r#"set """#);
+        assert_eq!(result, Some(r#"export VAR="""#.to_string()));
+    }
+
+    #[test]
+    fn test_parse_bdd_statement_whitespace_only_parameter() {
+        let step_def = BddStepDefinition::new(
+            r#"^text "(?P<content>[^"]*)"$"#,
+            "echo \"{content}\"".to_string(),
+        )
+        .unwrap();
+
+        let result = parse_bdd_statement(&step_def, r#"text "   ""#);
+        assert_eq!(result, Some(r#"echo "   ""#.to_string()));
+    }
+
+    #[test]
+    fn test_parse_bdd_statement_very_long_parameter_value() {
+        let step_def =
+            BddStepDefinition::new(r"^data (?P<content>\S+)$", "echo {content}".to_string())
+                .unwrap();
+
+        let long_value = "A".repeat(10000);
+        let statement = format!("data {}", long_value);
+        let result = parse_bdd_statement(&step_def, &statement);
+        assert_eq!(result, Some(format!("echo {}", long_value)));
+    }
+
+    #[test]
+    fn test_parse_bdd_statement_very_long_unicode_parameter() {
+        let step_def = BddStepDefinition::new(
+            r#"^message "(?P<text>[^"]+)"$"#,
+            "echo \"{text}\"".to_string(),
+        )
+        .unwrap();
+
+        let long_unicode = "🎉".repeat(1000);
+        let statement = format!(r#"message "{}""#, long_unicode);
+        let result = parse_bdd_statement(&step_def, &statement);
+        assert_eq!(result, Some(format!(r#"echo "{}""#, long_unicode)));
+    }
+
+    #[test]
+    fn test_parse_bdd_statement_special_chars_combination() {
+        let step_def = BddStepDefinition::new(
+            r#"^payload "(?P<data>[^"]+)"$"#,
+            "curl -d \"{data}\"".to_string(),
+        )
+        .unwrap();
+
+        let result = parse_bdd_statement(
+            &step_def,
+            r#"payload "name=test&value=$((1+1))|cat;echo`id`""#,
+        );
+        assert_eq!(
+            result,
+            Some(r#"curl -d "name=test&value=$((1+1))|cat;echo`id`""#.to_string())
+        );
+    }
+
+    #[test]
+    fn test_parse_bdd_statement_null_byte_in_parameter() {
+        let step_def =
+            BddStepDefinition::new(r"^data (?P<content>.+)$", "process {content}".to_string())
+                .unwrap();
+
+        let result = parse_bdd_statement(&step_def, "data test\0null");
+        assert_eq!(result, Some("process test\0null".to_string()));
+    }
+
+    #[test]
+    fn test_parse_bdd_statement_tab_and_special_whitespace() {
+        let step_def = BddStepDefinition::new(
+            r"^text (?P<content>(?s).+)$",
+            "echo '{content}'".to_string(),
+        )
+        .unwrap();
+
+        let result = parse_bdd_statement(&step_def, "text tab\there\tand\nnewline");
+        assert_eq!(result, Some("echo 'tab\there\tand\nnewline'".to_string()));
+    }
+
+    #[test]
+    fn test_parse_bdd_statement_unicode_special_characters() {
+        let step_def = BddStepDefinition::new(
+            r#"^message "(?P<text>[^"]+)"$"#,
+            "echo \"{text}\"".to_string(),
+        )
+        .unwrap();
+
+        let result = parse_bdd_statement(&step_def, r#"message "Hello 世界 🌍 café""#);
+        assert_eq!(result, Some(r#"echo "Hello 世界 🌍 café""#.to_string()));
+    }
+
+    #[test]
+    fn test_parse_bdd_statement_escaped_braces_in_template() {
+        let step_def = BddStepDefinition::new(
+            r"^format (?P<value>\w+)$",
+            "echo '{{literal}} {value} {{braces}}'".to_string(),
+        )
+        .unwrap();
+
+        let result = parse_bdd_statement(&step_def, "format test");
+        assert_eq!(
+            result,
+            Some("echo '{{literal}} test {{braces}}'".to_string())
+        );
+    }
+
+    #[test]
+    fn test_parse_bdd_statement_parameter_name_substring_of_another() {
+        let step_def = BddStepDefinition::new(
+            r"^copy (?P<file>\w+) to (?P<file_backup>\w+)$",
+            "cp {file} {file_backup}".to_string(),
+        )
+        .unwrap();
+
+        let result = parse_bdd_statement(&step_def, "copy test to test_bak");
+        assert_eq!(result, Some("cp test test_bak".to_string()));
+    }
+
+    #[test]
+    fn test_parse_bdd_statement_no_parameters_template_with_braces() {
+        let step_def =
+            BddStepDefinition::new(r"^status$", "echo '{status: ok}'".to_string()).unwrap();
+
+        let result = parse_bdd_statement(&step_def, "status");
+        assert_eq!(result, Some("echo '{status: ok}'".to_string()));
+    }
+
+    #[test]
+    fn test_parse_bdd_statement_multiple_empty_parameters() {
+        let step_def = BddStepDefinition::new(
+            r#"^combine "(?P<first>.*)" and "(?P<second>.*)"$"#,
+            "result: '{first}' + '{second}'".to_string(),
+        )
+        .unwrap();
+
+        let result = parse_bdd_statement(&step_def, r#"combine "" and """#);
+        assert_eq!(result, Some("result: '' + ''".to_string()));
+    }
+
+    #[test]
+    fn test_parse_bdd_statement_backslashes_in_parameter() {
+        let step_def =
+            BddStepDefinition::new(r#"^path "(?P<path>[^"]+)"$"#, "open \"{path}\"".to_string())
+                .unwrap();
+
+        let result = parse_bdd_statement(&step_def, r#"path "C:\Users\test\file.txt""#);
+        assert_eq!(result, Some(r#"open "C:\Users\test\file.txt""#.to_string()));
+    }
+
+    #[test]
+    fn test_parse_bdd_statement_regex_special_chars_in_parameter() {
+        let step_def = BddStepDefinition::new(
+            r#"^pattern "(?P<regex>[^"]+)"$"#,
+            "grep \"{regex}\"".to_string(),
+        )
+        .unwrap();
+
+        let result = parse_bdd_statement(&step_def, r#"pattern ".*[a-z]+\d{2,5}$""#);
+        assert_eq!(result, Some(r#"grep ".*[a-z]+\d{2,5}$""#.to_string()));
+    }
+
+    #[test]
+    fn test_parse_bdd_statement_html_in_parameter() {
+        let step_def = BddStepDefinition::new(
+            r#"^html "(?P<content>[^"]+)"$"#,
+            "echo \"{content}\"".to_string(),
+        )
+        .unwrap();
+
+        let result = parse_bdd_statement(&step_def, r#"html "<script>alert('xss')</script>""#);
+        assert_eq!(
+            result,
+            Some(r#"echo "<script>alert('xss')</script>""#.to_string())
+        );
+    }
+
+    #[test]
+    fn test_parse_bdd_statement_json_in_parameter() {
+        let step_def = BddStepDefinition::new(
+            r#"^json "(?P<data>.*?)"$"#,
+            "process \"{data}\"".to_string(),
+        )
+        .unwrap();
+
+        let result = parse_bdd_statement(&step_def, r#"json "{\"key\": \"value\"}""#);
+        assert_eq!(
+            result,
+            Some(r#"process "{\"key\": \"value\"}""#.to_string())
+        );
+    }
+
+    #[test]
+    fn test_parse_bdd_statement_percent_encoding_in_parameter() {
+        let step_def =
+            BddStepDefinition::new(r#"^url "(?P<link>[^"]+)"$"#, "curl \"{link}\"".to_string())
+                .unwrap();
+
+        let result = parse_bdd_statement(&step_def, r#"url "http://example.com?q=%20%22test%22""#);
+        assert_eq!(
+            result,
+            Some(r#"curl "http://example.com?q=%20%22test%22""#.to_string())
+        );
+    }
+
+    #[test]
     fn test_convert_to_named_groups_no_capture_groups() {
         // Pattern with no capture groups at all
         let pattern = r"^simple pattern with no captures$";
