@@ -75,8 +75,6 @@ rust:build-test-lint:
   artifacts:
     name: "rust-artifacts-$CI_COMMIT_REF_SLUG"
     paths:
-      - target/release/
-      - artifacts/
       - test_output.txt
       - test_results.json
       - e2e_output.txt
