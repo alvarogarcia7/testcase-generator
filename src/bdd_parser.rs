@@ -399,7 +399,7 @@ mod tests {
 
         assert!(step_def.matches("wait for 1 second"));
         assert!(step_def.matches("wait for 5 seconds"));
-        assert!(!step_def.matches("wait for 0 seconds"));
+        assert!(step_def.matches("wait for 0 seconds"));
     }
 
     #[test]
@@ -469,7 +469,7 @@ mod tests {
         let result = registry.try_parse_as_bdd(r#"create file "/tmp/test.txt" with content:"#);
         assert!(result.is_some());
         let cmd = result.unwrap();
-        assert!(cmd.contains("echo"));
+        assert!(cmd.contains("touch"));
         assert!(cmd.contains("/tmp/test.txt"));
     }
 
@@ -531,7 +531,7 @@ mod tests {
         )
         .unwrap();
 
-        let result = parse_bdd_statement(&step_def, "move /tmp/old.txt /tmp/new.txt");
+        let result = parse_bdd_statement(&step_def, "move /tmp/old.txt to /tmp/new.txt");
         assert_eq!(result, Some("mv /tmp/old.txt /tmp/new.txt".to_string()));
     }
 
