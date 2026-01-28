@@ -1,3 +1,4 @@
+pub mod bdd_parser;
 pub mod builder;
 pub mod cli;
 pub mod complex_structure_editor;
@@ -25,6 +26,7 @@ pub mod verification;
 pub mod verification_templates;
 pub mod yaml_utils;
 
+pub use bdd_parser::{parse_bdd_statement, BddStepDefinition, BddStepMatcher, BddStepRegistry};
 pub use builder::TestCaseBuilder;
 pub use cli::Cli;
 pub use complex_structure_editor::ComplexStructureEditor;
