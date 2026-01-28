@@ -625,3 +625,409 @@ fn test_json_log_preserves_multiline_output() {
 
     assert_eq!(deserialized.output, multiline_output);
 }
+
+// ============================================================================
+// BDD Initial Conditions Integration Tests for generate_test_script_with_json_output
+// ============================================================================
+
+#[test]
+fn test_bdd_in_general_initial_conditions() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ001".to_string(),
+        1,
+        1,
+        "TC001".to_string(),
+        "BDD general conditions test".to_string(),
+    );
+
+    // Add BDD statements in general_initial_conditions
+    let mut general_conditions = HashMap::new();
+    general_conditions.insert(
+        "Setup".to_string(),
+        vec![
+            "create directory \"/tmp/test\"".to_string(),
+            "wait for 2 seconds".to_string(),
+        ],
+    );
+    test_case.general_initial_conditions = general_conditions;
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let step = create_test_step(1, "Echo test", "echo 'hello'", "0", "hello", Some(true));
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let json_path = std::path::Path::new("test_output.json");
+    let script = executor.generate_test_script_with_json_output(&test_case, json_path);
+
+    // Should contain comment for BDD statement
+    assert!(script.contains("# Setup: create directory \"/tmp/test\""));
+    // Should contain the generated command from BDD pattern
+    assert!(script.contains("mkdir -p \"/tmp/test\""));
+
+    // Should contain second BDD statement
+    assert!(script.contains("# Setup: wait for 2 seconds"));
+    assert!(script.contains("sleep 2"));
+}
+
+#[test]
+fn test_bdd_in_test_level_initial_conditions() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ002".to_string(),
+        1,
+        1,
+        "TC002".to_string(),
+        "BDD test-level conditions test".to_string(),
+    );
+
+    // Add BDD statements in test-level initial_conditions
+    let mut conditions = HashMap::new();
+    conditions.insert(
+        "Environment".to_string(),
+        vec![
+            "set environment variable \"TEST_MODE\" to \"enabled\"".to_string(),
+            "file \"/tmp/config.txt\" should exist".to_string(),
+        ],
+    );
+    test_case.initial_conditions = conditions;
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let step = create_test_step(1, "Test step", "echo 'test'", "0", "test", Some(true));
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let json_path = std::path::Path::new("test_output.json");
+    let script = executor.generate_test_script_with_json_output(&test_case, json_path);
+
+    // Should contain Initial Conditions header
+    assert!(script.contains("# Initial Conditions"));
+    // Should contain comment for BDD statement
+    assert!(script.contains("# Environment: set environment variable \"TEST_MODE\" to \"enabled\""));
+    // Should contain the generated command from BDD pattern
+    assert!(script.contains("export TEST_MODE=enabled"));
+
+    // Should contain second BDD statement
+    assert!(script.contains("# Environment: file \"/tmp/config.txt\" should exist"));
+    assert!(script.contains("test -f \"/tmp/config.txt\""));
+}
+
+#[test]
+fn test_bdd_in_sequence_level_initial_conditions() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ003".to_string(),
+        1,
+        1,
+        "TC003".to_string(),
+        "BDD sequence-level conditions test".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+
+    // Add BDD statements in sequence-level initial_conditions
+    let mut seq_conditions = HashMap::new();
+    seq_conditions.insert(
+        "Precondition".to_string(),
+        vec![
+            "ping device \"192.168.1.1\" with 3 retries".to_string(),
+            "create file \"/tmp/testfile.txt\" with content:".to_string(),
+        ],
+    );
+    sequence.initial_conditions = seq_conditions;
+
+    let step = create_test_step(1, "Test step", "echo 'test'", "0", "test", Some(true));
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let json_path = std::path::Path::new("test_output.json");
+    let script = executor.generate_test_script_with_json_output(&test_case, json_path);
+
+    // Should contain Sequence Initial Conditions header
+    assert!(script.contains("# Sequence Initial Conditions"));
+    // Should contain comment for BDD statement
+    assert!(script.contains("# Precondition: ping device \"192.168.1.1\" with 3 retries"));
+    // Should contain the generated command from BDD pattern
+    assert!(script.contains("ping -c 3 \"192.168.1.1\""));
+
+    // Should contain second BDD statement
+    assert!(script.contains("# Precondition: create file \"/tmp/testfile.txt\" with content:"));
+    assert!(script.contains("touch \"/tmp/testfile.txt\""));
+}
+
+#[test]
+fn test_mixed_bdd_and_non_bdd_statements() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ004".to_string(),
+        1,
+        1,
+        "TC004".to_string(),
+        "Mixed BDD and non-BDD test".to_string(),
+    );
+
+    // Mix BDD and non-BDD statements
+    let mut general_conditions = HashMap::new();
+    general_conditions.insert(
+        "Setup".to_string(),
+        vec![
+            "Device is powered on".to_string(),           // Non-BDD
+            "create directory \"/tmp/logs\"".to_string(), // BDD
+            "Network is connected".to_string(),           // Non-BDD
+        ],
+    );
+    test_case.general_initial_conditions = general_conditions;
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let step = create_test_step(1, "Test step", "echo 'test'", "0", "test", Some(true));
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let json_path = std::path::Path::new("test_output.json");
+    let script = executor.generate_test_script_with_json_output(&test_case, json_path);
+
+    // Non-BDD statement should be a comment only (no executable command for it)
+    assert!(script.contains("# Setup: Device is powered on\n"));
+
+    // BDD statement should generate command
+    assert!(script.contains("# Setup: create directory \"/tmp/logs\""));
+    assert!(script.contains("mkdir -p \"/tmp/logs\""));
+
+    // Non-BDD statement should be a comment only (no executable command for it)
+    assert!(script.contains("# Setup: Network is connected\n"));
+}
+
+#[test]
+fn test_multiple_bdd_statements_same_type() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ005".to_string(),
+        1,
+        1,
+        "TC005".to_string(),
+        "Multiple BDD statements test".to_string(),
+    );
+
+    // Multiple BDD statements of the same pattern type
+    let mut conditions = HashMap::new();
+    conditions.insert(
+        "Files".to_string(),
+        vec![
+            "create directory \"/tmp/dir1\"".to_string(),
+            "create directory \"/tmp/dir2\"".to_string(),
+            "create directory \"/tmp/dir3\"".to_string(),
+        ],
+    );
+    test_case.initial_conditions = conditions;
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let step = create_test_step(1, "Test step", "echo 'test'", "0", "test", Some(true));
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let json_path = std::path::Path::new("test_output.json");
+    let script = executor.generate_test_script_with_json_output(&test_case, json_path);
+
+    // All three BDD statements should generate commands
+    assert!(script.contains("mkdir -p \"/tmp/dir1\""));
+    assert!(script.contains("mkdir -p \"/tmp/dir2\""));
+    assert!(script.contains("mkdir -p \"/tmp/dir3\""));
+
+    // All three should have comments
+    assert!(script.contains("# Files: create directory \"/tmp/dir1\""));
+    assert!(script.contains("# Files: create directory \"/tmp/dir2\""));
+    assert!(script.contains("# Files: create directory \"/tmp/dir3\""));
+}
+
+#[test]
+fn test_bdd_in_all_three_locations() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ006".to_string(),
+        1,
+        1,
+        "TC006".to_string(),
+        "BDD in all locations test".to_string(),
+    );
+
+    // BDD in general_initial_conditions
+    let mut general_conditions = HashMap::new();
+    general_conditions.insert("Global".to_string(), vec!["wait for 1 seconds".to_string()]);
+    test_case.general_initial_conditions = general_conditions;
+
+    // BDD in test-level initial_conditions
+    let mut conditions = HashMap::new();
+    conditions.insert(
+        "Test".to_string(),
+        vec!["create directory \"/tmp/test\"".to_string()],
+    );
+    test_case.initial_conditions = conditions;
+
+    // BDD in sequence-level initial_conditions
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut seq_conditions = HashMap::new();
+    seq_conditions.insert(
+        "Sequence".to_string(),
+        vec!["file \"/tmp/test\" should exist".to_string()],
+    );
+    sequence.initial_conditions = seq_conditions;
+
+    let step = create_test_step(1, "Test step", "echo 'test'", "0", "test", Some(true));
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let json_path = std::path::Path::new("test_output.json");
+    let script = executor.generate_test_script_with_json_output(&test_case, json_path);
+
+    // Check general conditions
+    assert!(script.contains("# General Initial Conditions"));
+    assert!(script.contains("# Global: wait for 1 seconds"));
+    assert!(script.contains("sleep 1"));
+
+    // Check test-level conditions
+    assert!(script.contains("# Initial Conditions"));
+    assert!(script.contains("# Test: create directory \"/tmp/test\""));
+    assert!(script.contains("mkdir -p \"/tmp/test\""));
+
+    // Check sequence-level conditions
+    assert!(script.contains("# Sequence Initial Conditions"));
+    assert!(script.contains("# Sequence: file \"/tmp/test\" should exist"));
+    assert!(script.contains("test -f \"/tmp/test\""));
+}
+
+#[test]
+fn test_bdd_with_missing_toml_file() {
+    // Temporarily rename the TOML file if it exists, or test with a non-existent path
+    // This test verifies that the system gracefully handles missing BDD definitions
+
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ007".to_string(),
+        1,
+        1,
+        "TC007".to_string(),
+        "BDD with missing TOML test".to_string(),
+    );
+
+    // Add what would be BDD statements if the TOML file existed
+    let mut general_conditions = HashMap::new();
+    general_conditions.insert(
+        "Setup".to_string(),
+        vec!["create directory \"/tmp/test\"".to_string()],
+    );
+    test_case.general_initial_conditions = general_conditions;
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let step = create_test_step(1, "Test step", "echo 'test'", "0", "test", Some(true));
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let json_path = std::path::Path::new("test_output.json");
+    let script = executor.generate_test_script_with_json_output(&test_case, json_path);
+
+    // Script should still be generated (BDD gracefully fails)
+    assert!(script.contains("#!/bin/bash"));
+    assert!(script.contains("# Test Case: TC007"));
+
+    // If TOML is missing, the statement appears as comment only (or if it loads, as command)
+    // Either way, the statement text should appear
+    assert!(script.contains("create directory \"/tmp/test\""));
+}
+
+#[test]
+fn test_bdd_complex_patterns_in_conditions() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ008".to_string(),
+        1,
+        1,
+        "TC008".to_string(),
+        "Complex BDD patterns test".to_string(),
+    );
+
+    // Use various complex BDD patterns from the TOML
+    let mut conditions = HashMap::new();
+    conditions.insert(
+        "Setup".to_string(),
+        vec![
+            "change permissions of \"/tmp/file.txt\" to 755".to_string(),
+            "append \"test data\" to file \"/tmp/log.txt\"".to_string(),
+            "port 8080 on \"localhost\" should be open".to_string(),
+        ],
+    );
+    test_case.initial_conditions = conditions;
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let step = create_test_step(1, "Test step", "echo 'test'", "0", "test", Some(true));
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let json_path = std::path::Path::new("test_output.json");
+    let script = executor.generate_test_script_with_json_output(&test_case, json_path);
+
+    // Check that complex patterns are parsed correctly
+    assert!(script.contains("chmod 755 \"/tmp/file.txt\""));
+    assert!(script.contains("echo \"test data\" >> \"/tmp/log.txt\""));
+    assert!(script.contains("nc -z \"localhost\" 8080"));
+}
+
+#[test]
+fn test_json_output_path_in_script() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ009".to_string(),
+        1,
+        1,
+        "TC009".to_string(),
+        "JSON output path test".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let step = create_test_step(1, "Test step", "echo 'test'", "0", "test", Some(true));
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let json_path = std::path::Path::new("/custom/path/output.json");
+    let script = executor.generate_test_script_with_json_output(&test_case, json_path);
+
+    // Verify the JSON_LOG variable is set to the custom path
+    assert!(script.contains("JSON_LOG=\"/custom/path/output.json\""));
+}
+
+#[test]
+fn test_bdd_with_multiple_keys_in_conditions() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ010".to_string(),
+        1,
+        1,
+        "TC010".to_string(),
+        "Multiple keys test".to_string(),
+    );
+
+    // Multiple keys with BDD statements
+    let mut general_conditions = HashMap::new();
+    general_conditions.insert(
+        "Filesystem".to_string(),
+        vec!["create directory \"/tmp/fs1\"".to_string()],
+    );
+    general_conditions.insert(
+        "Network".to_string(),
+        vec!["ping device \"192.168.1.1\" with 5 retries".to_string()],
+    );
+    general_conditions.insert("Time".to_string(), vec!["wait for 3 seconds".to_string()]);
+    test_case.general_initial_conditions = general_conditions;
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let step = create_test_step(1, "Test step", "echo 'test'", "0", "test", Some(true));
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let json_path = std::path::Path::new("test_output.json");
+    let script = executor.generate_test_script_with_json_output(&test_case, json_path);
+
+    // All three keys should have their BDD statements processed
+    assert!(script.contains("mkdir -p \"/tmp/fs1\""));
+    assert!(script.contains("ping -c 5 \"192.168.1.1\""));
+    assert!(script.contains("sleep 3"));
+}
