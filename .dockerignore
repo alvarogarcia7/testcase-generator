@@ -33,18 +33,10 @@ test_basic_*
 # Documentation (will be generated in container)
 README.md
 docs/
-*.md
-!README_INSTALL.md
 AGENTS.md
 LICENSE
 CONTRIBUTING.md
 CHANGELOG.md
-IMPLEMENTATION_*.md
-VALIDATION_*.md
-INTEGRATION_*.md
-WATCH_MODE_*.md
-DETAILED_*.md
-QUICK_*.md
 CLAUDE.md
 
 # OS files
