@@ -315,6 +315,70 @@ Build test sequences without steps:
 testcase-manager build-sequences
 ```
 
+## BDD Initial Conditions
+
+The Test Case Manager supports Behavior-Driven Development (BDD) style initial conditions that are automatically converted to executable commands during test execution. This allows you to write human-readable conditions that are simultaneously executable.
+
+### Quick Example
+
+```yaml
+initial_conditions:
+  eUICC:
+    - "create directory \"/tmp/test\""
+    - "set environment variable \"TEST_MODE\" to \"enabled\""
+    - "wait for 5 seconds"
+```
+
+These BDD patterns are automatically converted to bash commands:
+```bash
+mkdir -p /tmp/test
+export TEST_MODE=enabled
+sleep 5
+```
+
+### Features
+
+- **23 built-in BDD step patterns** covering file operations, directory management, environment variables, process management, network operations, timing, user management, system services, and archive operations
+- **Automatic command generation** from natural language patterns
+- **Custom pattern support** via `data/bdd_step_definitions.toml`
+- **Mix BDD and plain text** - Non-matching patterns become comments
+- **Works in all initial condition locations**: general_initial_conditions, initial_conditions, and sequence-level initial_conditions
+
+### Common Patterns
+
+```yaml
+# File Operations
+- "create file \"/tmp/config.txt\" with content:"
+- "file \"/etc/passwd\" should exist"
+- "append \"text\" to file \"/tmp/log.txt\""
+
+# Directory Operations
+- "create directory \"/tmp/test\""
+- "remove directory \"/tmp/old_data\""
+
+# Environment Variables
+- "set environment variable \"VAR\" to \"value\""
+- "unset environment variable \"OLD_VAR\""
+
+# Process Management
+- "process \"nginx\" should be running"
+- "kill process \"old_daemon\""
+
+# Network Operations
+- "ping device \"192.168.1.1\" with 3 retries"
+- "port 80 on \"localhost\" should be open"
+- "send GET request to \"http://api.example.com/status\""
+
+# Timing
+- "wait for 5 seconds"
+- "wait until file \"/tmp/ready\" exists with timeout 30 seconds"
+
+# System Services
+- "restart service \"nginx\""
+```
+
+For complete documentation of all 23 patterns, parameter syntax, custom pattern creation, and best practices, see [BDD Initial Conditions Documentation](docs/BDD_INITIAL_CONDITIONS.md).
+
 ## File Validation and Watch Mode
 
 The project includes a powerful file validation system with watch mode for continuous monitoring:
