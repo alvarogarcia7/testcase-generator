@@ -27,6 +27,7 @@ colored = "2.1"
 similar = "2.3"
 quick-xml = "0.39.0"
 roxmltree = "0.20"
+strip-ansi-escapes = "0.2"
 
 [dev-dependencies]
 tempfile = "3.8"
@@ -65,6 +66,10 @@ path = "src/main_editor.rs"
 [[bin]]
 name = "test-orchestrator"
 path = "src/bin/test-orchestrator.rs"
+
+[[bin]]
+name = "script-cleanup"
+path = "src/bin/script-cleanup.rs"
 
 [[example]]
 name = "tty_fallback_demo"

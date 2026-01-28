@@ -34,6 +34,7 @@ test_basic_*
 README.md
 docs/
 *.md
+!README_INSTALL.md
 AGENTS.md
 LICENSE
 CONTRIBUTING.md

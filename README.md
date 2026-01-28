@@ -50,7 +50,21 @@ make lint
 
 ## Executables
 
-This project provides seven executable binaries for comprehensive test case management:
+This project provides multiple executable binaries for comprehensive test case management
+
+- editor: TCM/TestCase Manager: Interactive test case creation and management
+- **tcm** (Test Case Manager): Alias to the editor
+- **testcase-manager**: Alias to the editor
+- **test-executor**: Automated test execution with JSON logging
+- **test-verify**: Test verification tool for validating test execution logs against test cases
+- **test-orchestrator**: Coordinate complex test workflows
+- **validate-yaml**: YAML validation tool
+- **script-cleanup**: Terminal script capture cleanup tool for removing ANSI codes and control characters
+- **validate-json**: JSON validation tool
+- **trm**: Test Run Manager
+- **editor**: Interactive test case editor
+
+
 
 ### 1. editor (Test Case Manager / TCM)
 
@@ -96,8 +110,8 @@ editor validate --all
 
 ### 2. test-executor
 
+## Test Case Manager (tcm) Commands
 **Purpose**: Generate bash scripts from YAML test cases and execute tests with automated verification.
-
 **Input**: YAML test case files  
 **Output**: Bash scripts, JSON execution logs, test results (pass/fail)
 
@@ -224,8 +238,6 @@ validate-json data.json schema.json
 # Verbose validation
 validate-json data.json schema.json --verbose
 ```
-
-## Test Case Manager (tcm) Commands
 
 ### Parse Conditions from Database
 
@@ -798,6 +810,152 @@ test_sequences:
         verification:
           result: "[ $EXIT_CODE -eq 0 ] && [ -f /tmp/testfile ]"
           output: "[ \"$COMMAND_OUTPUT\" = \"created\" ]"
+```
+
+## Script Capture Cleanup (script-cleanup)
+
+The `script-cleanup` binary cleans terminal script capture output by removing ANSI escape codes, backspaces, and control characters to produce clean, readable text.
+
+### Features
+
+- **ANSI Code Removal**: Strips color codes, cursor movement, and terminal control sequences
+- **Backspace Processing**: Processes backspace characters (`\x08`) and DEL characters (`\x7f`) to simulate actual text deletion
+- **Control Character Filtering**: Removes non-printable control characters (except newlines, tabs, and carriage returns)
+- **Clean Output**: Produces human-readable text from raw terminal captures
+
+### Usage
+
+```bash
+# Build the binary
+cargo build --release --bin script-cleanup
+# Or use Makefile
+make build-script-cleanup
+
+# Clean a script capture file and write to output file
+script-cleanup -i raw_terminal.log -o clean_output.txt
+
+# Clean and output to stdout
+script-cleanup -i raw_terminal.log
+
+# Enable verbose logging
+script-cleanup -i raw_terminal.log -o clean_output.txt --verbose
+```
+
+### Command-Line Options
+
+- `-i, --input <INPUT_FILE>`: Path to the input file to clean (required)
+- `-o, --output <OUTPUT_FILE>`: Path to the output file (optional, defaults to stdout)
+- `-v, --verbose`: Enable verbose logging
+
+### Before/After Examples
+
+#### Example 1: Colored Terminal Output
+
+**Before (raw capture):**
+```
+^[[32mSUCCESS^[[0m: Test passed
+^[[31mERROR^[[0m: Connection failed
+^[[1;33mWARNING^[[0m: Deprecated API
+```
+
+**After (cleaned):**
+```
+SUCCESS: Test passed
+ERROR: Connection failed
+WARNING: Deprecated API
+```
+
+#### Example 2: Backspace Corrections
+
+**Before (raw capture with backspaces):**
+```
+Password: secrt^H^Hret
+git statsu^H^Hus
+```
+
+**After (cleaned):**
+```
+Password: secret
+git status
+```
+
+#### Example 3: Progress Indicators
+
+**Before (raw capture):**
+```
+^[[32m[=====>    ]^[[0m 50%^M^[[32m[==========>]^[[0m 100%
+```
+
+**After (cleaned):**
+```
+[=====>    ] 50%
+[==========>] 100%
+```
+
+#### Example 4: Mixed Terminal Output
+
+**Before (raw capture):**
+```
+^[[2J^[[H^[[32muser@host^[[0m:~$ ls^H^Hpwd
+/home/user/project
+^[[32muser@host^[[0m:~$ echo ^Ghello^H
+hello
+```
+
+**After (cleaned):**
+```
+user@host:~$ pwd
+/home/user/project
+user@host:~$ echo hello
+```
+
+### What Gets Cleaned
+
+The tool processes the following:
+
+1. **ANSI Escape Sequences**: All `\x1b[...` sequences including:
+   - Color codes (foreground/background)
+   - Text formatting (bold, italic, underline)
+   - Cursor positioning and movement
+   - Screen clearing and line erasing
+
+2. **Backspace Processing**:
+   - Backspace character (`\x08` or `^H`)
+   - Delete character (`\x7f` or `DEL`)
+   - Simulates actual character deletion
+
+3. **Control Characters**: Removes control characters in range 0x00-0x1F (except `\n`, `\r`, `\t`) and 0x7F
+   - Bell (`\x07` or `^G`)
+   - Null (`\x00`)
+   - Escape (`\x1b`)
+   - Form feed, vertical tab, etc.
+
+4. **Preserved Characters**:
+   - Newlines (`\n`)
+   - Carriage returns (`\r`)
+   - Tabs (`\t`)
+   - All printable ASCII and Unicode characters
+
+### Use Cases
+
+- **Test Logs**: Clean raw test execution logs captured with `script` command
+- **Terminal Sessions**: Process interactive terminal session recordings
+- **CI/CD Logs**: Clean build and deployment logs before archiving
+- **Documentation**: Generate clean examples from terminal sessions
+- **Debugging**: Make raw terminal output human-readable
+
+### Integration Example
+
+```bash
+# Capture terminal session
+script -q raw_session.log
+
+# ... perform some operations ...
+
+# Clean the captured output
+script-cleanup -i raw_session.log -o clean_session.txt
+
+# Now clean_session.txt contains readable output without ANSI codes
 ```
 
 ## Test Verification (test-verify)

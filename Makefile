@@ -42,6 +42,14 @@ run-test-verify: build
 	./target/debug/test-verify
 .PHONY: run-test-verify
 
+build-script-cleanup:
+	cargo build --bin script-cleanup
+.PHONY: build-script-cleanup
+
+run-script-cleanup: build-script-cleanup
+	./target/debug/script-cleanup
+.PHONY: run-script-cleanup
+
 test-e2e-failing: build
 	./tests/integration/run_e2e_test.sh
 .PHONY: test-e2e-failing
