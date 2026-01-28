@@ -1,3 +1,4 @@
+use std::io::Write;
 use testcase_manager::BddStepRegistry;
 
 #[test]
@@ -924,4 +925,588 @@ fn test_unicode_in_parameters() {
         result,
         Some("echo \"Hello 世界\" >> \"/tmp/test.txt\"".to_string())
     );
+}
+
+// ===== TOML CONFIGURATION TESTS =====
+
+#[test]
+fn test_toml_config_add_custom_step_definition() {
+    // Create a temporary TOML file with a custom step definition
+    let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+
+    writeln!(temp_file, "[[step]]").unwrap();
+    writeln!(temp_file, "name = \"custom_deploy_app\"").unwrap();
+    writeln!(
+        temp_file,
+        "pattern = \"^deploy application \\\"([^\\\"]+)\\\" to environment \\\"([^\\\"]+)\\\"$\""
+    )
+    .unwrap();
+    writeln!(
+        temp_file,
+        "command_template = \"kubectl apply -f {{app_name}}.yaml --namespace={{environment}}\""
+    )
+    .unwrap();
+    writeln!(
+        temp_file,
+        "description = \"Deploys an application to a specific environment\""
+    )
+    .unwrap();
+    writeln!(temp_file, "parameters = [\"app_name\", \"environment\"]").unwrap();
+    temp_file.flush().unwrap();
+
+    // Load the registry with the custom step definition
+    let registry = BddStepRegistry::load_from_toml(temp_file.path())
+        .expect("Failed to load custom step definition");
+
+    // Verify the custom step definition works
+    let result =
+        registry.try_parse_as_bdd(r#"deploy application "myapp" to environment "production""#);
+    assert_eq!(
+        result,
+        Some("kubectl apply -f myapp.yaml --namespace=production".to_string())
+    );
+}
+
+#[test]
+fn test_toml_config_registry_loads_new_definition() {
+    // Create a TOML file with multiple step definitions including new ones
+    let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+
+    // Add first step definition
+    writeln!(temp_file, "[[step]]").unwrap();
+    writeln!(temp_file, "name = \"check_database_connection\"").unwrap();
+    writeln!(
+        temp_file,
+        "pattern = \"^database \\\"([^\\\"]+)\\\" should be accessible$\""
+    )
+    .unwrap();
+    writeln!(temp_file, "command_template = \"pg_isready -h {{host}}\"").unwrap();
+    writeln!(
+        temp_file,
+        "description = \"Checks if database is accessible\""
+    )
+    .unwrap();
+    writeln!(temp_file, "parameters = [\"host\"]").unwrap();
+
+    // Add second step definition
+    writeln!(temp_file, "[[step]]").unwrap();
+    writeln!(temp_file, "name = \"run_migration\"").unwrap();
+    writeln!(
+        temp_file,
+        "pattern = \"^run migration \\\"([^\\\"]+)\\\"$\""
+    )
+    .unwrap();
+    writeln!(
+        temp_file,
+        "command_template = \"migrate up {{migration_file}}\""
+    )
+    .unwrap();
+    writeln!(temp_file, "description = \"Runs a database migration\"").unwrap();
+    writeln!(temp_file, "parameters = [\"migration_file\"]").unwrap();
+
+    // Add third step definition
+    writeln!(temp_file, "[[step]]").unwrap();
+    writeln!(temp_file, "name = \"verify_api_response\"").unwrap();
+    writeln!(
+        temp_file,
+        "pattern = \"^API endpoint \\\"([^\\\"]+)\\\" should return status (\\\\d+)$\""
+    )
+    .unwrap();
+    writeln!(temp_file, "command_template = \"curl -s -o /dev/null -w '%{{http_code}}' {{endpoint}} | grep -q {{status}}\"").unwrap();
+    writeln!(
+        temp_file,
+        "description = \"Verifies API endpoint returns expected status code\""
+    )
+    .unwrap();
+    writeln!(temp_file, "parameters = [\"endpoint\", \"status\"]").unwrap();
+    temp_file.flush().unwrap();
+
+    // Load the registry
+    let registry = BddStepRegistry::load_from_toml(temp_file.path())
+        .expect("Failed to load registry with new definitions");
+
+    // Test first definition
+    let result = registry.try_parse_as_bdd(r#"database "localhost" should be accessible"#);
+    assert_eq!(result, Some("pg_isready -h localhost".to_string()));
+
+    // Test second definition
+    let result = registry.try_parse_as_bdd(r#"run migration "001_create_users.sql""#);
+    assert_eq!(result, Some("migrate up 001_create_users.sql".to_string()));
+
+    // Test third definition
+    let result = registry.try_parse_as_bdd(
+        r#"API endpoint "https://api.example.com/health" should return status 200"#,
+    );
+    assert_eq!(
+        result,
+        Some(
+            "curl -s -o /dev/null -w '%{http_code}' https://api.example.com/health | grep -q 200"
+                .to_string()
+        )
+    );
+}
+
+#[test]
+fn test_toml_config_duplicate_step_names() {
+    // Create a TOML file with duplicate step names
+    let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+
+    // First step definition
+    writeln!(temp_file, "[[step]]").unwrap();
+    writeln!(temp_file, "name = \"duplicate_step\"").unwrap();
+    writeln!(temp_file, "pattern = \"^first pattern$\"").unwrap();
+    writeln!(temp_file, "command_template = \"first_command\"").unwrap();
+    writeln!(temp_file, "description = \"First duplicate\"").unwrap();
+    writeln!(temp_file, "parameters = []").unwrap();
+
+    // Second step definition with same name
+    writeln!(temp_file, "[[step]]").unwrap();
+    writeln!(temp_file, "name = \"duplicate_step\"").unwrap();
+    writeln!(temp_file, "pattern = \"^second pattern$\"").unwrap();
+    writeln!(temp_file, "command_template = \"second_command\"").unwrap();
+    writeln!(temp_file, "description = \"Second duplicate\"").unwrap();
+    writeln!(temp_file, "parameters = []").unwrap();
+    temp_file.flush().unwrap();
+
+    // Load the registry - duplicates are allowed, both patterns should work
+    let registry = BddStepRegistry::load_from_toml(temp_file.path())
+        .expect("Registry should load even with duplicate step names");
+
+    // Both patterns should be registered and work
+    let result1 = registry.try_parse_as_bdd("first pattern");
+    assert_eq!(result1, Some("first_command".to_string()));
+
+    let result2 = registry.try_parse_as_bdd("second pattern");
+    assert_eq!(result2, Some("second_command".to_string()));
+}
+
+#[test]
+fn test_toml_config_invalid_command_template_missing_placeholder() {
+    // Command template with placeholder that doesn't exist in parameters
+    let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+
+    writeln!(temp_file, "[[step]]").unwrap();
+    writeln!(temp_file, "name = \"invalid_template\"").unwrap();
+    writeln!(temp_file, "pattern = \"^test command \\\"([^\\\"]+)\\\"$\"").unwrap();
+    writeln!(
+        temp_file,
+        "command_template = \"execute {{param1}} with {{missing_param}}\""
+    )
+    .unwrap();
+    writeln!(
+        temp_file,
+        "description = \"Template with missing placeholder\""
+    )
+    .unwrap();
+    writeln!(temp_file, "parameters = [\"param1\"]").unwrap();
+    temp_file.flush().unwrap();
+
+    // Registry should load successfully (missing placeholders are allowed)
+    let registry = BddStepRegistry::load_from_toml(temp_file.path())
+        .expect("Registry should load even with missing placeholders");
+
+    // The command should be generated with available parameters substituted
+    // and missing placeholders left as-is
+    let result = registry.try_parse_as_bdd(r#"test command "value1""#);
+    assert_eq!(
+        result,
+        Some("execute value1 with {missing_param}".to_string())
+    );
+}
+
+#[test]
+fn test_toml_config_invalid_command_template_malformed_placeholder() {
+    // Command template with malformed placeholders
+    let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+
+    writeln!(temp_file, "[[step]]").unwrap();
+    writeln!(temp_file, "name = \"malformed_template\"").unwrap();
+    writeln!(temp_file, "pattern = \"^process \\\"([^\\\"]+)\\\"$\"").unwrap();
+    writeln!(
+        temp_file,
+        r#"command_template = "run {{{{param1}} and {{param1}}}} and {{{{param1""#
+    )
+    .unwrap();
+    writeln!(
+        temp_file,
+        "description = \"Template with malformed placeholders\""
+    )
+    .unwrap();
+    writeln!(temp_file, "parameters = [\"param1\"]").unwrap();
+    temp_file.flush().unwrap();
+
+    let registry = BddStepRegistry::load_from_toml(temp_file.path())
+        .expect("Registry should load with malformed placeholders");
+
+    // Only properly formatted placeholders {{param1}} will be replaced
+    let result = registry.try_parse_as_bdd(r#"process "testvalue""#);
+    assert_eq!(
+        result,
+        Some("run {testvalue and testvalue} and {{param1".to_string())
+    );
+}
+
+#[test]
+fn test_toml_config_parameter_count_mismatch_more_params_than_groups() {
+    // More parameters than capture groups in pattern
+    let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+
+    writeln!(temp_file, "[[step]]").unwrap();
+    writeln!(temp_file, "name = \"param_mismatch\"").unwrap();
+    writeln!(temp_file, "pattern = \"^execute (\\\\w+)$\"").unwrap(); // Only one capture group
+    writeln!(
+        temp_file,
+        "command_template = \"run {{param1}} {{param2}} {{param3}}\""
+    )
+    .unwrap();
+    writeln!(
+        temp_file,
+        "description = \"More parameters than capture groups\""
+    )
+    .unwrap();
+    writeln!(
+        temp_file,
+        "parameters = [\"param1\", \"param2\", \"param3\"]"
+    )
+    .unwrap(); // Three parameters
+    temp_file.flush().unwrap();
+
+    let registry = BddStepRegistry::load_from_toml(temp_file.path()).expect("Registry should load");
+
+    // Only the first parameter should be captured and substituted
+    let result = registry.try_parse_as_bdd("execute command");
+    assert_eq!(result, Some("run command {param2} {param3}".to_string()));
+}
+
+#[test]
+fn test_toml_config_parameter_count_mismatch_fewer_params_than_groups() {
+    // Fewer parameters than capture groups in pattern
+    let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+
+    writeln!(temp_file, "[[step]]").unwrap();
+    writeln!(temp_file, "name = \"param_mismatch\"").unwrap();
+    writeln!(
+        temp_file,
+        "pattern = \"^process \\\"([^\\\"]+)\\\" with \\\"([^\\\"]+)\\\" and \\\"([^\\\"]+)\\\"$\""
+    )
+    .unwrap(); // Three capture groups
+    writeln!(temp_file, "command_template = \"run {{arg1}}\"").unwrap();
+    writeln!(
+        temp_file,
+        "description = \"Fewer parameters than capture groups\""
+    )
+    .unwrap();
+    writeln!(temp_file, "parameters = [\"arg1\"]").unwrap(); // Only one parameter
+    temp_file.flush().unwrap();
+
+    let registry = BddStepRegistry::load_from_toml(temp_file.path()).expect("Registry should load");
+
+    // Only the first capture group gets a name, others remain unnamed
+    // Only named groups are available for substitution
+    let result = registry.try_parse_as_bdd(r#"process "value1" with "value2" and "value3""#);
+    assert_eq!(result, Some("run value1".to_string()));
+}
+
+#[test]
+fn test_toml_config_parameter_name_mismatch() {
+    // Parameter names in template don't match parameter list
+    let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+
+    writeln!(temp_file, "[[step]]").unwrap();
+    writeln!(temp_file, "name = \"param_name_mismatch\"").unwrap();
+    writeln!(
+        temp_file,
+        "pattern = \"^copy \\\"([^\\\"]+)\\\" to \\\"([^\\\"]+)\\\"$\""
+    )
+    .unwrap();
+    writeln!(
+        temp_file,
+        "command_template = \"cp {{source}} {{destination}}\""
+    )
+    .unwrap();
+    writeln!(temp_file, "description = \"Parameter names don't match\"").unwrap();
+    writeln!(temp_file, "parameters = [\"file1\", \"file2\"]").unwrap(); // Different names
+    temp_file.flush().unwrap();
+
+    let registry = BddStepRegistry::load_from_toml(temp_file.path()).expect("Registry should load");
+
+    // Template uses source/destination but parameters are file1/file2
+    // file1 and file2 will be captured but source/destination won't be substituted
+    let result = registry.try_parse_as_bdd(r#"copy "input.txt" to "output.txt""#);
+    assert_eq!(result, Some("cp {source} {destination}".to_string()));
+}
+
+#[test]
+fn test_toml_config_empty_parameters_with_template_placeholders() {
+    // Empty parameters list but template has placeholders
+    let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+
+    writeln!(temp_file, "[[step]]").unwrap();
+    writeln!(temp_file, "name = \"empty_params\"").unwrap();
+    writeln!(temp_file, "pattern = \"^simple command$\"").unwrap();
+    writeln!(
+        temp_file,
+        "command_template = \"execute {{param1}} {{param2}}\""
+    )
+    .unwrap();
+    writeln!(
+        temp_file,
+        "description = \"Empty parameters with template placeholders\""
+    )
+    .unwrap();
+    writeln!(temp_file, "parameters = []").unwrap();
+    temp_file.flush().unwrap();
+
+    let registry = BddStepRegistry::load_from_toml(temp_file.path()).expect("Registry should load");
+
+    // No parameters captured, placeholders remain
+    let result = registry.try_parse_as_bdd("simple command");
+    assert_eq!(result, Some("execute {param1} {param2}".to_string()));
+}
+
+#[test]
+fn test_toml_config_invalid_regex_in_pattern() {
+    // Pattern with invalid regex syntax
+    let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+
+    writeln!(temp_file, "[[step]]").unwrap();
+    writeln!(temp_file, "name = \"invalid_regex\"").unwrap();
+    writeln!(temp_file, "pattern = \"^test (?P<param>[a-z+)$\"").unwrap(); // Invalid regex: unclosed bracket
+    writeln!(temp_file, "command_template = \"test {{param}}\"").unwrap();
+    writeln!(temp_file, "description = \"Invalid regex pattern\"").unwrap();
+    writeln!(temp_file, "parameters = [\"param\"]").unwrap();
+    temp_file.flush().unwrap();
+
+    // Registry should fail to load due to invalid regex
+    let result = BddStepRegistry::load_from_toml(temp_file.path());
+    assert!(
+        result.is_err(),
+        "Should fail to load registry with invalid regex"
+    );
+}
+
+#[test]
+fn test_toml_config_complex_pattern_with_multiple_parameters() {
+    // Complex real-world scenario with multiple parameters
+    let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+
+    writeln!(temp_file, "[[step]]").unwrap();
+    writeln!(temp_file, "name = \"complex_deployment\"").unwrap();
+    writeln!(temp_file, "pattern = \"^deploy version \\\"([^\\\"]+)\\\" of service \\\"([^\\\"]+)\\\" to cluster \\\"([^\\\"]+)\\\" with (\\\\d+) replicas$\"").unwrap();
+    writeln!(temp_file, "command_template = \"helm upgrade --install {{service}} ./charts/{{service}} --set image.tag={{version}} --set replicaCount={{replicas}} --namespace={{cluster}}\"").unwrap();
+    writeln!(
+        temp_file,
+        "description = \"Complex deployment with multiple parameters\""
+    )
+    .unwrap();
+    writeln!(
+        temp_file,
+        "parameters = [\"version\", \"service\", \"cluster\", \"replicas\"]"
+    )
+    .unwrap();
+    temp_file.flush().unwrap();
+
+    let registry = BddStepRegistry::load_from_toml(temp_file.path())
+        .expect("Registry should load complex pattern");
+
+    let result = registry.try_parse_as_bdd(r#"deploy version "v1.2.3" of service "auth-service" to cluster "production" with 5 replicas"#);
+    assert_eq!(
+        result,
+        Some("helm upgrade --install auth-service ./charts/auth-service --set image.tag=v1.2.3 --set replicaCount=5 --namespace=production".to_string())
+    );
+}
+
+#[test]
+fn test_toml_config_special_characters_in_command_template() {
+    // Command template with special shell characters
+    let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+
+    writeln!(temp_file, "[[step]]").unwrap();
+    writeln!(temp_file, "name = \"special_chars\"").unwrap();
+    writeln!(
+        temp_file,
+        "pattern = \"^check log \\\"([^\\\"]+)\\\" for errors$\""
+    )
+    .unwrap();
+    writeln!(
+        temp_file,
+        "command_template = \"grep -E 'ERROR|FATAL' {{logfile}} | wc -l | grep -q '^0$'\""
+    )
+    .unwrap();
+    writeln!(
+        temp_file,
+        "description = \"Command with pipes and special characters\""
+    )
+    .unwrap();
+    writeln!(temp_file, "parameters = [\"logfile\"]").unwrap();
+    temp_file.flush().unwrap();
+
+    let registry = BddStepRegistry::load_from_toml(temp_file.path())
+        .expect("Registry should load template with special chars");
+
+    let result = registry.try_parse_as_bdd(r#"check log "/var/log/app.log" for errors"#);
+    assert_eq!(
+        result,
+        Some("grep -E 'ERROR|FATAL' /var/log/app.log | wc -l | grep -q '^0$'".to_string())
+    );
+}
+
+#[test]
+fn test_toml_config_unicode_in_patterns_and_templates() {
+    // Unicode characters in patterns and templates
+    let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+
+    writeln!(temp_file, "[[step]]").unwrap();
+    writeln!(temp_file, "name = \"unicode_test\"").unwrap();
+    writeln!(temp_file, "pattern = \"^创建文件 \\\"([^\\\"]+)\\\"$\"").unwrap();
+    writeln!(temp_file, "command_template = \"touch {{文件名}}\"").unwrap();
+    writeln!(temp_file, "description = \"Unicode pattern and template\"").unwrap();
+    writeln!(temp_file, "parameters = [\"文件名\"]").unwrap();
+    temp_file.flush().unwrap();
+
+    let registry = BddStepRegistry::load_from_toml(temp_file.path())
+        .expect("Registry should load unicode patterns");
+
+    let result = registry.try_parse_as_bdd(r#"创建文件 "/tmp/测试.txt""#);
+    assert_eq!(result, Some("touch /tmp/测试.txt".to_string()));
+}
+
+#[test]
+fn test_toml_config_pattern_with_optional_groups() {
+    // Pattern with optional regex groups
+    let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+
+    writeln!(temp_file, "[[step]]").unwrap();
+    writeln!(temp_file, "name = \"optional_params\"").unwrap();
+    writeln!(
+        temp_file,
+        "pattern = \"^run command \\\"([^\\\"]+)\\\"(?: with timeout (\\\\d+))?$\""
+    )
+    .unwrap();
+    writeln!(
+        temp_file,
+        "command_template = \"timeout {{timeout}} {{command}}\""
+    )
+    .unwrap();
+    writeln!(
+        temp_file,
+        "description = \"Pattern with optional parameter\""
+    )
+    .unwrap();
+    writeln!(temp_file, "parameters = [\"command\", \"timeout\"]").unwrap();
+    temp_file.flush().unwrap();
+
+    // This should fail to load because the pattern will be converted to named groups
+    // and the optional group syntax is incompatible with the conversion logic
+    let registry_result = BddStepRegistry::load_from_toml(temp_file.path());
+    assert!(
+        registry_result.is_err(),
+        "Should fail to load pattern with optional groups and multiple parameters"
+    );
+}
+
+#[test]
+fn test_toml_config_escaped_quotes_in_pattern() {
+    // Pattern that needs to match escaped quotes
+    let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+
+    writeln!(temp_file, "[[step]]").unwrap();
+    writeln!(temp_file, "name = \"escaped_quotes\"").unwrap();
+    writeln!(temp_file, "pattern = \"^echo text \\\"([^\\\"]+)\\\"$\"").unwrap();
+    writeln!(temp_file, "command_template = \"echo '{{text}}'\"").unwrap();
+    writeln!(temp_file, "description = \"Pattern with escaped quotes\"").unwrap();
+    writeln!(temp_file, "parameters = [\"text\"]").unwrap();
+    temp_file.flush().unwrap();
+
+    let registry = BddStepRegistry::load_from_toml(temp_file.path())
+        .expect("Registry should load pattern with escaped quotes");
+
+    let result = registry.try_parse_as_bdd(r#"echo text "Hello World""#);
+    assert_eq!(result, Some("echo 'Hello World'".to_string()));
+}
+
+#[test]
+fn test_toml_config_case_sensitive_patterns() {
+    // Verify patterns are case-sensitive
+    let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+
+    writeln!(temp_file, "[[step]]").unwrap();
+    writeln!(temp_file, "name = \"case_sensitive\"").unwrap();
+    writeln!(temp_file, "pattern = \"^Deploy Application$\"").unwrap();
+    writeln!(temp_file, "command_template = \"./deploy.sh\"").unwrap();
+    writeln!(temp_file, "description = \"Case sensitive pattern\"").unwrap();
+    writeln!(temp_file, "parameters = []").unwrap();
+    temp_file.flush().unwrap();
+
+    let registry = BddStepRegistry::load_from_toml(temp_file.path()).expect("Registry should load");
+
+    // Exact case should match
+    let result = registry.try_parse_as_bdd("Deploy Application");
+    assert_eq!(result, Some("./deploy.sh".to_string()));
+
+    // Different case should not match
+    let result = registry.try_parse_as_bdd("deploy application");
+    assert_eq!(result, None);
+
+    let result = registry.try_parse_as_bdd("DEPLOY APPLICATION");
+    assert_eq!(result, None);
+}
+
+#[test]
+fn test_toml_config_boundary_anchors() {
+    // Test that patterns respect ^ and $ anchors
+    let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+
+    writeln!(temp_file, "[[step]]").unwrap();
+    writeln!(temp_file, "name = \"with_anchors\"").unwrap();
+    writeln!(temp_file, "pattern = \"^execute task$\"").unwrap();
+    writeln!(temp_file, "command_template = \"./task.sh\"").unwrap();
+    writeln!(temp_file, "description = \"Pattern with anchors\"").unwrap();
+    writeln!(temp_file, "parameters = []").unwrap();
+    temp_file.flush().unwrap();
+
+    let registry = BddStepRegistry::load_from_toml(temp_file.path()).expect("Registry should load");
+
+    // Exact match should work
+    let result = registry.try_parse_as_bdd("execute task");
+    assert_eq!(result, Some("./task.sh".to_string()));
+
+    // Extra text before should not match
+    let result = registry.try_parse_as_bdd("first execute task");
+    assert_eq!(result, None);
+
+    // Extra text after should not match
+    let result = registry.try_parse_as_bdd("execute task now");
+    assert_eq!(result, None);
+}
+
+#[test]
+fn test_toml_config_multiple_definitions_different_patterns_same_template() {
+    // Multiple step definitions with different patterns but same command template
+    let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+
+    writeln!(temp_file, "[[step]]").unwrap();
+    writeln!(temp_file, "name = \"restart_app_v1\"").unwrap();
+    writeln!(temp_file, "pattern = \"^restart the application$\"").unwrap();
+    writeln!(temp_file, "command_template = \"systemctl restart myapp\"").unwrap();
+    writeln!(temp_file, "description = \"Restart app - version 1\"").unwrap();
+    writeln!(temp_file, "parameters = []").unwrap();
+
+    writeln!(temp_file, "[[step]]").unwrap();
+    writeln!(temp_file, "name = \"restart_app_v2\"").unwrap();
+    writeln!(temp_file, "pattern = \"^reboot the app$\"").unwrap();
+    writeln!(temp_file, "command_template = \"systemctl restart myapp\"").unwrap();
+    writeln!(temp_file, "description = \"Restart app - version 2\"").unwrap();
+    writeln!(temp_file, "parameters = []").unwrap();
+    temp_file.flush().unwrap();
+
+    let registry = BddStepRegistry::load_from_toml(temp_file.path())
+        .expect("Registry should load multiple definitions");
+
+    // Both patterns should work and produce the same command
+    let result1 = registry.try_parse_as_bdd("restart the application");
+    assert_eq!(result1, Some("systemctl restart myapp".to_string()));
+
+    let result2 = registry.try_parse_as_bdd("reboot the app");
+    assert_eq!(result2, Some("systemctl restart myapp".to_string()));
 }
