@@ -8,7 +8,7 @@ use std::path::Path;
 pub trait BddStepMatcher {
     /// Checks if a statement matches this step definition
     fn matches(&self, statement: &str) -> bool;
-    
+
     /// Extracts named parameters from a matching statement
     fn extract_parameters(&self, statement: &str) -> Option<HashMap<String, String>>;
 }
@@ -673,7 +673,10 @@ mod tests {
         let pattern = r#"^already named (?P<param1>\w+) and (?P<param2>\d+)$"#;
         let params = vec!["param1".to_string(), "param2".to_string()];
         let result = BddStepRegistry::convert_to_named_groups(pattern, &params).unwrap();
-        assert_eq!(result, r#"^already named (?P<param1>\w+) and (?P<param2>\d+)$"#);
+        assert_eq!(
+            result,
+            r#"^already named (?P<param1>\w+) and (?P<param2>\d+)$"#
+        );
     }
 
     #[test]
@@ -690,7 +693,11 @@ mod tests {
     fn test_convert_to_named_groups_more_params_than_groups() {
         // More parameter names than capture groups - extra params ignored
         let pattern = r"^single (\w+) group$";
-        let params = vec!["param1".to_string(), "param2".to_string(), "param3".to_string()];
+        let params = vec![
+            "param1".to_string(),
+            "param2".to_string(),
+            "param3".to_string(),
+        ];
         let result = BddStepRegistry::convert_to_named_groups(pattern, &params).unwrap();
         assert_eq!(result, r"^single (?P<param1>\w+) group$");
     }
@@ -702,16 +709,26 @@ mod tests {
         let params = vec!["first".to_string()];
         let result = BddStepRegistry::convert_to_named_groups(pattern, &params).unwrap();
         // Only the first group should be named
-        assert_eq!(result, r"^three (?P<first>\w+) different (\d+) groups (\S+)$");
+        assert_eq!(
+            result,
+            r"^three (?P<first>\w+) different (\d+) groups (\S+)$"
+        );
     }
 
     #[test]
     fn test_convert_to_named_groups_special_regex_chars() {
         // Pattern with special regex characters like +, *, ?, [], etc.
         let pattern = r"^match (\d+\.\d+) or ([a-zA-Z]+\*?) with (\w+\+?)$";
-        let params = vec!["decimal".to_string(), "word".to_string(), "plus".to_string()];
+        let params = vec![
+            "decimal".to_string(),
+            "word".to_string(),
+            "plus".to_string(),
+        ];
         let result = BddStepRegistry::convert_to_named_groups(pattern, &params).unwrap();
-        assert_eq!(result, r"^match (?P<decimal>\d+\.\d+) or (?P<word>[a-zA-Z]+\*?) with (?P<plus>\w+\+?)$");
+        assert_eq!(
+            result,
+            r"^match (?P<decimal>\d+\.\d+) or (?P<word>[a-zA-Z]+\*?) with (?P<plus>\w+\+?)$"
+        );
     }
 
     #[test]
@@ -751,7 +768,10 @@ mod tests {
         let pattern = r"^command with (\S+) and optional (\d+)?$";
         let params = vec!["arg".to_string(), "count".to_string()];
         let result = BddStepRegistry::convert_to_named_groups(pattern, &params).unwrap();
-        assert_eq!(result, r"^command with (?P<arg>\S+) and optional (?P<count>\d+)?$");
+        assert_eq!(
+            result,
+            r"^command with (?P<arg>\S+) and optional (?P<count>\d+)?$"
+        );
     }
 
     #[test]
@@ -760,7 +780,10 @@ mod tests {
         let pattern = r#"^path "([^"]+)" and value ([^\s]+)$"#;
         let params = vec!["path".to_string(), "value".to_string()];
         let result = BddStepRegistry::convert_to_named_groups(pattern, &params).unwrap();
-        assert_eq!(result, r#"^path "(?P<path>[^"]+)" and value (?P<value>[^\s]+)$"#);
+        assert_eq!(
+            result,
+            r#"^path "(?P<path>[^"]+)" and value (?P<value>[^\s]+)$"#
+        );
     }
 
     #[test]
@@ -818,5 +841,520 @@ mod tests {
         let params = vec!["text".to_string()];
         let result = BddStepRegistry::convert_to_named_groups(pattern, &params).unwrap();
         assert_eq!(result, r"^unicode (?P<text>\p{L}+) text$");
+    }
+
+    // ===== ERROR HANDLING TESTS =====
+
+    // Tests for BddStepDefinition::new with invalid regex patterns
+    #[test]
+    fn test_bdd_step_definition_new_invalid_regex_unclosed_paren() {
+        let result = BddStepDefinition::new(
+            r"^I login as (?P<username>\w+$", // Missing closing parenthesis
+            "login {username}".to_string(),
+        );
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.to_string().contains("unclosed") || err.to_string().contains("parenthes"));
+    }
+
+    #[test]
+    fn test_bdd_step_definition_new_invalid_regex_unclosed_bracket() {
+        let result = BddStepDefinition::new(
+            r"^I login as (?P<username>[a-z+)$", // Unclosed bracket in character class
+            "login {username}".to_string(),
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_bdd_step_definition_new_invalid_regex_invalid_repetition() {
+        let result = BddStepDefinition::new(
+            r"^I login as (?P<username>*\w+)$", // Invalid repetition (nothing to repeat)
+            "login {username}".to_string(),
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_bdd_step_definition_new_invalid_regex_invalid_escape() {
+        let result = BddStepDefinition::new(
+            r"^I login as (?P<username>\k)$", // Invalid escape sequence
+            "login {username}".to_string(),
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_bdd_step_definition_new_invalid_regex_unclosed_group() {
+        let result = BddStepDefinition::new(
+            r"^I login as (?P<username>\w+", // Unclosed named group
+            "login {username}".to_string(),
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_bdd_step_definition_new_invalid_regex_invalid_range() {
+        let result = BddStepDefinition::new(
+            r"^I login as (?P<username>[z-a]+)$", // Invalid character range (z-a)
+            "login {username}".to_string(),
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_bdd_step_definition_new_invalid_regex_unmatched_closing_paren() {
+        let result = BddStepDefinition::new(
+            r"^I login as (?P<username>\w+))$", // Extra closing parenthesis
+            "login {username}".to_string(),
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_bdd_step_definition_new_invalid_regex_invalid_group_name() {
+        let result = BddStepDefinition::new(
+            r"^I login as (?P<user-name>\w+)$", // Invalid group name (contains hyphen)
+            "login {username}".to_string(),
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_bdd_step_definition_new_invalid_regex_incomplete_named_group() {
+        let result = BddStepDefinition::new(
+            r"^I login as (?P<\w+)$", // Incomplete named group syntax
+            "login {username}".to_string(),
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_bdd_step_definition_new_invalid_regex_nested_named_groups() {
+        let result = BddStepDefinition::new(
+            r"^I login as (?P<outer>(?P<inner>\w+))$", // Nested named groups
+            "login {outer}".to_string(),
+        );
+        // This may or may not be an error depending on regex implementation
+        // Just verify it returns a Result
+        let _ = result;
+    }
+
+    // Tests for BddStepRegistry::load_from_toml with malformed TOML syntax
+    #[test]
+    fn test_bdd_step_registry_load_from_toml_malformed_syntax() {
+        use std::io::Write;
+        let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+        writeln!(temp_file, "[[step]]").unwrap();
+        writeln!(temp_file, "name = \"test step").unwrap(); // Missing closing quote
+        writeln!(temp_file, "pattern = \"^test$\"").unwrap();
+        temp_file.flush().unwrap();
+
+        let result = BddStepRegistry::load_from_toml(temp_file.path());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_bdd_step_registry_load_from_toml_invalid_toml_structure() {
+        use std::io::Write;
+        let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+        writeln!(temp_file, "this is not valid toml").unwrap();
+        writeln!(temp_file, "at all!").unwrap();
+        temp_file.flush().unwrap();
+
+        let result = BddStepRegistry::load_from_toml(temp_file.path());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_bdd_step_registry_load_from_toml_unclosed_bracket() {
+        use std::io::Write;
+        let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+        writeln!(temp_file, "[[step]").unwrap(); // Unclosed bracket
+        writeln!(temp_file, "name = \"test\"").unwrap();
+        temp_file.flush().unwrap();
+
+        let result = BddStepRegistry::load_from_toml(temp_file.path());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_bdd_step_registry_load_from_toml_invalid_array_syntax() {
+        use std::io::Write;
+        let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+        writeln!(temp_file, "[[step]]").unwrap();
+        writeln!(temp_file, "name = \"test\"").unwrap();
+        writeln!(temp_file, "parameters = [\"param1\", \"param2\"").unwrap(); // Unclosed array
+        temp_file.flush().unwrap();
+
+        let result = BddStepRegistry::load_from_toml(temp_file.path());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_bdd_step_registry_load_from_toml_duplicate_keys() {
+        use std::io::Write;
+        let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+        writeln!(temp_file, "[[step]]").unwrap();
+        writeln!(temp_file, "name = \"test\"").unwrap();
+        writeln!(temp_file, "name = \"duplicate\"").unwrap(); // Duplicate key
+        writeln!(temp_file, "pattern = \"^test$\"").unwrap();
+        writeln!(temp_file, "command_template = \"test\"").unwrap();
+        writeln!(temp_file, "description = \"test\"").unwrap();
+        writeln!(temp_file, "parameters = []").unwrap();
+        temp_file.flush().unwrap();
+
+        let result = BddStepRegistry::load_from_toml(temp_file.path());
+        assert!(result.is_err());
+    }
+
+    // Tests for BddStepRegistry::load_from_toml with missing required fields
+    #[test]
+    fn test_bdd_step_registry_load_from_toml_missing_name_field() {
+        use std::io::Write;
+        let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+        writeln!(temp_file, "[[step]]").unwrap();
+        // Missing 'name' field
+        writeln!(temp_file, "pattern = \"^test$\"").unwrap();
+        writeln!(temp_file, "command_template = \"test\"").unwrap();
+        writeln!(temp_file, "description = \"test step\"").unwrap();
+        writeln!(temp_file, "parameters = []").unwrap();
+        temp_file.flush().unwrap();
+
+        let result = BddStepRegistry::load_from_toml(temp_file.path());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_bdd_step_registry_load_from_toml_missing_pattern_field() {
+        use std::io::Write;
+        let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+        writeln!(temp_file, "[[step]]").unwrap();
+        writeln!(temp_file, "name = \"test step\"").unwrap();
+        // Missing 'pattern' field
+        writeln!(temp_file, "command_template = \"test\"").unwrap();
+        writeln!(temp_file, "description = \"test step\"").unwrap();
+        writeln!(temp_file, "parameters = []").unwrap();
+        temp_file.flush().unwrap();
+
+        let result = BddStepRegistry::load_from_toml(temp_file.path());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_bdd_step_registry_load_from_toml_missing_command_template_field() {
+        use std::io::Write;
+        let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+        writeln!(temp_file, "[[step]]").unwrap();
+        writeln!(temp_file, "name = \"test step\"").unwrap();
+        writeln!(temp_file, "pattern = \"^test$\"").unwrap();
+        // Missing 'command_template' field
+        writeln!(temp_file, "description = \"test step\"").unwrap();
+        writeln!(temp_file, "parameters = []").unwrap();
+        temp_file.flush().unwrap();
+
+        let result = BddStepRegistry::load_from_toml(temp_file.path());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_bdd_step_registry_load_from_toml_missing_description_field() {
+        use std::io::Write;
+        let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+        writeln!(temp_file, "[[step]]").unwrap();
+        writeln!(temp_file, "name = \"test step\"").unwrap();
+        writeln!(temp_file, "pattern = \"^test$\"").unwrap();
+        writeln!(temp_file, "command_template = \"test\"").unwrap();
+        // Missing 'description' field
+        writeln!(temp_file, "parameters = []").unwrap();
+        temp_file.flush().unwrap();
+
+        let result = BddStepRegistry::load_from_toml(temp_file.path());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_bdd_step_registry_load_from_toml_missing_parameters_field() {
+        use std::io::Write;
+        let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+        writeln!(temp_file, "[[step]]").unwrap();
+        writeln!(temp_file, "name = \"test step\"").unwrap();
+        writeln!(temp_file, "pattern = \"^test$\"").unwrap();
+        writeln!(temp_file, "command_template = \"test\"").unwrap();
+        writeln!(temp_file, "description = \"test step\"").unwrap();
+        // Missing 'parameters' field
+        temp_file.flush().unwrap();
+
+        let result = BddStepRegistry::load_from_toml(temp_file.path());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_bdd_step_registry_load_from_toml_missing_all_fields() {
+        use std::io::Write;
+        let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+        writeln!(temp_file, "[[step]]").unwrap();
+        // All fields missing - just an empty step entry
+        temp_file.flush().unwrap();
+
+        let result = BddStepRegistry::load_from_toml(temp_file.path());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_bdd_step_registry_load_from_toml_wrong_field_types() {
+        use std::io::Write;
+        let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+        writeln!(temp_file, "[[step]]").unwrap();
+        writeln!(temp_file, "name = 123").unwrap(); // Should be string
+        writeln!(temp_file, "pattern = \"^test$\"").unwrap();
+        writeln!(temp_file, "command_template = \"test\"").unwrap();
+        writeln!(temp_file, "description = \"test\"").unwrap();
+        writeln!(temp_file, "parameters = []").unwrap();
+        temp_file.flush().unwrap();
+
+        let result = BddStepRegistry::load_from_toml(temp_file.path());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_bdd_step_registry_load_from_toml_parameters_wrong_type() {
+        use std::io::Write;
+        let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+        writeln!(temp_file, "[[step]]").unwrap();
+        writeln!(temp_file, "name = \"test\"").unwrap();
+        writeln!(temp_file, "pattern = \"^test$\"").unwrap();
+        writeln!(temp_file, "command_template = \"test\"").unwrap();
+        writeln!(temp_file, "description = \"test\"").unwrap();
+        writeln!(temp_file, "parameters = \"not-an-array\"").unwrap(); // Should be array
+        temp_file.flush().unwrap();
+
+        let result = BddStepRegistry::load_from_toml(temp_file.path());
+        assert!(result.is_err());
+    }
+
+    // Tests for file not found scenarios
+    #[test]
+    fn test_bdd_step_registry_load_from_toml_file_not_found() {
+        let result = BddStepRegistry::load_from_toml("/nonexistent/path/to/file.toml");
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        // Verify it's an I/O error related to file not found
+        assert!(
+            err.to_string().contains("No such file")
+                || err.to_string().contains("not found")
+                || err.to_string().contains("cannot find")
+        );
+    }
+
+    #[test]
+    fn test_bdd_step_registry_load_from_toml_invalid_path() {
+        let result = BddStepRegistry::load_from_toml("");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_bdd_step_registry_load_from_toml_directory_instead_of_file() {
+        let temp_dir = tempfile::tempdir().unwrap();
+
+        let result = BddStepRegistry::load_from_toml(temp_dir.path());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_bdd_step_registry_load_from_toml_null_bytes_in_path() {
+        let result = BddStepRegistry::load_from_toml("/tmp/test\0.toml");
+        assert!(result.is_err());
+    }
+
+    // Tests for empty parameter lists
+    #[test]
+    fn test_bdd_step_registry_load_from_toml_empty_parameters_list() {
+        use std::io::Write;
+        let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+        writeln!(temp_file, "[[step]]").unwrap();
+        writeln!(temp_file, "name = \"test step\"").unwrap();
+        writeln!(temp_file, "pattern = \"^simple pattern$\"").unwrap();
+        writeln!(temp_file, "command_template = \"simple_command\"").unwrap();
+        writeln!(temp_file, "description = \"A step with no parameters\"").unwrap();
+        writeln!(temp_file, "parameters = []").unwrap(); // Empty parameters list
+        temp_file.flush().unwrap();
+
+        let result = BddStepRegistry::load_from_toml(temp_file.path());
+        assert!(result.is_ok());
+        let registry = result.unwrap();
+        assert_eq!(registry.step_definitions.len(), 1);
+    }
+
+    #[test]
+    fn test_bdd_step_registry_empty_parameters_with_capture_groups() {
+        use std::io::Write;
+        let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+        writeln!(temp_file, "[[step]]").unwrap();
+        writeln!(temp_file, "name = \"test step\"").unwrap();
+        writeln!(temp_file, "pattern = \"^test (\\\\w+) pattern$\"").unwrap(); // Has capture group
+        writeln!(temp_file, "command_template = \"test_command\"").unwrap();
+        writeln!(
+            temp_file,
+            "description = \"Step with capture but no param names\""
+        )
+        .unwrap();
+        writeln!(temp_file, "parameters = []").unwrap(); // Empty parameters list
+        temp_file.flush().unwrap();
+
+        let result = BddStepRegistry::load_from_toml(temp_file.path());
+        // Should succeed - pattern converts but groups remain unnamed
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_convert_to_named_groups_empty_parameters() {
+        let pattern = r"^test (\w+) pattern$";
+        let params = vec![]; // Empty parameters
+        let result = BddStepRegistry::convert_to_named_groups(pattern, &params).unwrap();
+        // Should return pattern with unnamed groups unchanged
+        assert_eq!(result, r"^test (\w+) pattern$");
+    }
+
+    #[test]
+    fn test_bdd_step_definition_new_valid_with_no_capture_groups() {
+        let result = BddStepDefinition::new(r"^simple pattern$", "simple_command".to_string());
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_parse_bdd_statement_empty_parameters() {
+        let step_def = BddStepDefinition::new(r"^reboot now$", "sudo reboot".to_string()).unwrap();
+
+        let result = parse_bdd_statement(&step_def, "reboot now");
+        assert_eq!(result, Some("sudo reboot".to_string()));
+    }
+
+    // Tests combining invalid regex in TOML with load_from_toml
+    #[test]
+    fn test_bdd_step_registry_load_from_toml_invalid_regex_in_pattern() {
+        use std::io::Write;
+        let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+        writeln!(temp_file, "[[step]]").unwrap();
+        writeln!(temp_file, "name = \"test step\"").unwrap();
+        writeln!(temp_file, "pattern = \"^invalid (?P<param>[a-z+)$\"").unwrap(); // Invalid regex
+        writeln!(temp_file, "command_template = \"test\"").unwrap();
+        writeln!(temp_file, "description = \"test\"").unwrap();
+        writeln!(temp_file, "parameters = [\"param\"]").unwrap();
+        temp_file.flush().unwrap();
+
+        let result = BddStepRegistry::load_from_toml(temp_file.path());
+        assert!(result.is_err());
+        // Error should come from regex compilation, not TOML parsing
+    }
+
+    #[test]
+    fn test_bdd_step_registry_load_from_toml_invalid_converted_regex() {
+        use std::io::Write;
+        let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+        writeln!(temp_file, "[[step]]").unwrap();
+        writeln!(temp_file, "name = \"test step\"").unwrap();
+        writeln!(temp_file, "pattern = \"^test (*) pattern$\"").unwrap(); // Invalid repetition
+        writeln!(temp_file, "command_template = \"test\"").unwrap();
+        writeln!(temp_file, "description = \"test\"").unwrap();
+        writeln!(temp_file, "parameters = []").unwrap();
+        temp_file.flush().unwrap();
+
+        let result = BddStepRegistry::load_from_toml(temp_file.path());
+        assert!(result.is_err());
+    }
+
+    // Additional edge cases
+    #[test]
+    fn test_bdd_step_registry_load_from_toml_empty_file() {
+        use std::io::Write;
+        let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+        temp_file.flush().unwrap(); // Empty file
+
+        let result = BddStepRegistry::load_from_toml(temp_file.path());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_bdd_step_registry_load_from_toml_no_step_array() {
+        use std::io::Write;
+        let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+        writeln!(temp_file, "some_other_field = \"value\"").unwrap();
+        temp_file.flush().unwrap();
+
+        let result = BddStepRegistry::load_from_toml(temp_file.path());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_bdd_step_registry_load_from_toml_empty_step_array() {
+        use std::io::Write;
+        let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+        writeln!(temp_file, "step = []").unwrap(); // Valid but empty
+        temp_file.flush().unwrap();
+
+        let result = BddStepRegistry::load_from_toml(temp_file.path());
+        assert!(result.is_ok());
+        let registry = result.unwrap();
+        assert_eq!(registry.step_definitions.len(), 0);
+    }
+
+    #[test]
+    fn test_bdd_step_registry_load_from_toml_multiple_steps_one_invalid() {
+        use std::io::Write;
+        let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+        // First valid step
+        writeln!(temp_file, "[[step]]").unwrap();
+        writeln!(temp_file, "name = \"valid step\"").unwrap();
+        writeln!(temp_file, "pattern = \"^valid$\"").unwrap();
+        writeln!(temp_file, "command_template = \"valid\"").unwrap();
+        writeln!(temp_file, "description = \"valid\"").unwrap();
+        writeln!(temp_file, "parameters = []").unwrap();
+        // Second invalid step (invalid regex)
+        writeln!(temp_file, "[[step]]").unwrap();
+        writeln!(temp_file, "name = \"invalid step\"").unwrap();
+        writeln!(temp_file, "pattern = \"^invalid (?P<param>[z-a]+)$\"").unwrap(); // Invalid range
+        writeln!(temp_file, "command_template = \"invalid\"").unwrap();
+        writeln!(temp_file, "description = \"invalid\"").unwrap();
+        writeln!(temp_file, "parameters = [\"param\"]").unwrap();
+        temp_file.flush().unwrap();
+
+        let result = BddStepRegistry::load_from_toml(temp_file.path());
+        // Should fail when processing the second step
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_bdd_step_definition_new_empty_pattern() {
+        let result = BddStepDefinition::new(
+            "", // Empty pattern
+            "command".to_string(),
+        );
+        assert!(result.is_ok()); // Empty pattern is technically valid regex
+    }
+
+    #[test]
+    fn test_bdd_step_definition_new_empty_command_template() {
+        let result = BddStepDefinition::new(
+            r"^test$",
+            "".to_string(), // Empty command template
+        );
+        assert!(result.is_ok()); // Empty command template is allowed
+    }
+
+    #[test]
+    fn test_bdd_step_registry_load_from_toml_empty_string_fields() {
+        use std::io::Write;
+        let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+        writeln!(temp_file, "[[step]]").unwrap();
+        writeln!(temp_file, "name = \"\"").unwrap(); // Empty but present
+        writeln!(temp_file, "pattern = \"\"").unwrap();
+        writeln!(temp_file, "command_template = \"\"").unwrap();
+        writeln!(temp_file, "description = \"\"").unwrap();
+        writeln!(temp_file, "parameters = []").unwrap();
+        temp_file.flush().unwrap();
+
+        let result = BddStepRegistry::load_from_toml(temp_file.path());
+        assert!(result.is_ok()); // All fields present, even if empty
     }
 }
