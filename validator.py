@@ -3,13 +3,19 @@
 YAML Schema Validator for TCMS Schemas
 
 Validates YAML files against JSON schemas.
-Dependencies: PyYAML, jsonschema
+Dependencies: PyYAML, jsonschema, click
 """
 
 import json
 import sys
 from pathlib import Path
 from typing import Any
+
+try:
+    import click
+except ImportError:
+    print("Error: click library is required. Install with: pip install click")
+    sys.exit(1)
 
 try:
     import yaml
@@ -120,34 +126,35 @@ def infer_schema_path(yaml_file: Path) -> Path:
     return None
 
 
-def main():
-    """Main entry point for validation."""
-    if len(sys.argv) < 2:
-        print("Usage: python validator.py <yaml_file> [schema_file]")
-        print("\nExamples:")
-        print("  python validator.py samples/test-case/gsma_4.4.2.2_TC.yml")
-        print("  python validator.py samples/test-plan/data.yml schemas/test-plan/test-plan.schema.json")
-        sys.exit(1)
+@click.command()
+@click.argument('yaml_file', type=click.Path(exists=True))
+@click.argument('schema_file', type=click.Path(exists=True), required=False)
+def main(yaml_file: str, schema_file: str | None):
+    """Validate YAML files against JSON schemas.
 
-    yaml_file = Path(sys.argv[1])
+    Args:
+        yaml_file: Path to the YAML file to validate
+        schema_file: Optional path to the JSON schema file
+    """
+    yaml_path = Path(yaml_file)
 
     # Infer schema path if not provided
-    if len(sys.argv) >= 3:
-        schema_file = Path(sys.argv[2])
-    else:
-        schema_file = infer_schema_path(yaml_file)
-        if not schema_file:
-            print(f"Error: Could not infer schema path for '{yaml_file}'")
-            print("Please provide schema file as second argument")
+    if schema_file is None:
+        schema_path = infer_schema_path(yaml_path)
+        if not schema_path:
+            click.echo(f"Error: Could not infer schema path for '{yaml_path}'", err=True)
+            click.echo("Please provide schema file as second argument", err=True)
             sys.exit(1)
+    else:
+        schema_path = Path(schema_file)
 
     # Load schema
-    success, schema = YamlSchemaValidator.load_json_schema(schema_file)
+    success, schema = YamlSchemaValidator.load_json_schema(schema_path)
     if not success:
         sys.exit(1)
 
     # Validate YAML
-    validator = YamlSchemaValidator(yaml_file, schema)
+    validator = YamlSchemaValidator(yaml_path, schema)
     if validator.validate_and_report():
         sys.exit(0)
     else:
