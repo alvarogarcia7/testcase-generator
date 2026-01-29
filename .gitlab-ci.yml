@@ -115,8 +115,6 @@ rust:build-test-lint:
       junit: test_results.xml
     expire_in: 1 week
     when: always
-  tags:
-    - rust
 
 coverage:
   image: rust:1.92-bookworm
@@ -155,8 +153,6 @@ coverage:
         coverage_format: cobertura
         path: cobertura.xml
     expire_in: 1 month
-  tags:
-    - rust
 
 docker:build:
   stage: docker
@@ -246,8 +242,6 @@ performance:baseline:
     expire_in: 1 month
   only:
     - master
-  tags:
-    - rust
 
 performance:compare:
   image: rust:1.92-bookworm
@@ -276,8 +270,6 @@ performance:compare:
   only:
     - merge_requests
   allow_failure: true
-  tags:
-    - rust
 
 report:summary:
   image: rust:1.92-bookworm
@@ -302,5 +294,3 @@ report:summary:
   when: always
   only:
     - merge_requests
-  tags:
-    - rust
