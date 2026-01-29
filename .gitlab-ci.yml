@@ -10,14 +10,21 @@ cache:
 
 validate_schemas:
   stage: validate
-  image: python:3.10
+  image: python:3.14
   before_script:
-    - pip install -r requirements.txt
+    - pip install uv
+    - uv sync
+    - source .venv/bin/activate
   script:
     - echo "Validating YAML files against schemas..."
-    - python validator.py samples/test-plan/data.yml schemas/test-plan/test-plan.schema.json
-    - python validator.py samples/test-case/gsma_4.4.2.2_TC.yml schemas/test-case/test-case.schema.json
-    - python validator.py samples/test-case/gsma_4.4.2.3_TC.yml schemas/test-case/test-case.schema.json
+    - |
+      for yaml_file in samples/test-plan/*.yml; do
+        python validator.py "$yaml_file" schemas/test-plan/test-plan.schema.json
+      done
+    - |
+      for yaml_file in samples/test-case/*.yml; do
+        python validator.py "$yaml_file" schemas/test-case/test-case.schema.json
+      done
     - echo "All validations passed!"
   only:
     - branches
