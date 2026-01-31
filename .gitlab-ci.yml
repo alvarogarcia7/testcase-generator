@@ -57,8 +57,13 @@ push-image:
     - dind-amd
 
 
-default:
-  # Use the commit reference slug (branch/tag name) as the cache key
+
+rust:build-test-lint:
+  before_script:
+    - rustc --version
+    - cargo --version
+    - apt-get update -qq
+  image: rust:latest
   cache:
     key: "${CI_COMMIT_REF_SLUG}"
     paths:
@@ -68,13 +73,6 @@ default:
       - target
     # This ensures the cache is available to all jobs in the pipeline
     policy: pull-push
-
-rust:build-test-lint:
-  before_script:
-    - rustc --version
-    - cargo --version
-    - apt-get update -qq
-  image: rust:latest
   stage: rust
   script:
     # Add required components
@@ -136,6 +134,15 @@ rust:build-test-lint:
 coverage:
   image: rust:1.92-bookworm
   stage: coverage
+  cache:
+    key: "${CI_COMMIT_REF_SLUG}"
+    paths:
+      # Cache the cargo home directory which contains registries and bins
+      - .cargo
+      # Cache the build artifacts directory
+      - target
+    # This ensures the cache is available to all jobs in the pipeline
+    policy: pull-push
   dependencies:
     - rust:build-test-lint
   before_script:
