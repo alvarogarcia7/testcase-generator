@@ -209,19 +209,50 @@ trm add
 
 ### 6. validate-yaml
 
-**Purpose**: Validate YAML files against JSON schema definitions.
+**Purpose**: Validate YAML files against JSON schema definitions with optional watch mode for continuous monitoring.
 
-**Input**: YAML file, JSON schema file  
-**Output**: Validation results with detailed error messages
+**Input**: One or more YAML files, JSON schema file  
+**Output**: Validation results with detailed error messages, live updates in watch mode
+
+**Key Features**:
+- Single or multi-file validation
+- Watch mode for continuous monitoring (Linux/macOS only)
+- Detailed error messages with JSON paths
+- Color-coded output (green for pass, red for fail)
+- Automatic re-validation on file changes
+- Full validation when all changed files pass
 
 **Example Usage**:
 ```bash
-# Validate YAML against schema
-validate-yaml testcase.yml schema.json
+# Validate single YAML against schema
+validate-yaml testcase.yml --schema schema.json
 
-# Verbose validation
-validate-yaml testcase.yml schema.json --verbose
+# Validate multiple YAML files
+validate-yaml testcase1.yml testcase2.yml testcase3.yml --schema schema.json
+
+# Watch mode - monitor files for changes and auto-validate (Linux/macOS only)
+validate-yaml testcase.yml --schema schema.json --watch
+
+# Watch multiple files
+validate-yaml testcases/*.yml --schema schema.json --watch
+
+# Verbose validation with detailed logging
+validate-yaml testcase.yml --schema schema.json --verbose
 ```
+
+**Watch Mode Behavior**:
+- Performs initial validation on all specified files
+- Monitors files for changes (modifications only)
+- Re-validates changed files immediately with instant feedback
+- When all changed files pass, automatically runs full validation on all files
+- Uses debounced event handling to avoid duplicate validations
+- **Note**: Watch mode is disabled on Windows due to platform limitations
+
+**Platform Support**:
+- **Linux/macOS**: Full support including watch mode
+- **Windows**: Validation works, but `--watch` flag is not available
+
+**See Also**: [docs/VALIDATE_YAML_QUICK_REF.md](docs/VALIDATE_YAML_QUICK_REF.md) for comprehensive documentation and examples.
 
 ### 7. validate-json
 
@@ -417,6 +448,8 @@ Monitor directories for file changes and automatically validate modified files:
 - macOS: `brew install fswatch`
 
 See [Watch Mode Guide](scripts/WATCH_MODE_GUIDE.md) for detailed documentation.
+
+**Watch Mode for validate-yaml Binary**: The `validate-yaml` binary includes a built-in `--watch` flag for monitoring specific YAML files. See [validate-yaml Quick Reference](docs/VALIDATE_YAML_QUICK_REF.md) for usage details and [Watch Mode Comparison](docs/WATCH_MODE_COMPARISON.md) to choose between the two watch mode implementations.
 
 ## Step Collection Loop Features
 
