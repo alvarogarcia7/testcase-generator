@@ -199,6 +199,25 @@ docker:verify:
     - docker run --rm testcase-manager:test validate-json --help
     - echo "Image verification successful"
     - docker inspect testcase-manager:test | tee docker_inspect.json
+  artifacts:
+    name: "docker-verify-$CI_COMMIT_REF_SLUG"
+    paths:
+      - docker_inspect.json
+    expire_in: 1 week
+  only:
+    - merge_requests
+    - master
+  tags:
+    - dind-amd
+
+docker:verify-stage-2:
+  stage: docker
+  image: python:3.14-slim
+  dependencies:
+    - docker:verify
+  before_script:
+    - apt-get update -qq
+  script:
     - python3 scripts/ci_docker_security_scan.py docker_inspect.json > docker_scan_results.json
   artifacts:
     name: "docker-verify-$CI_COMMIT_REF_SLUG"
@@ -211,14 +230,14 @@ docker:verify:
     - master
   tags:
     - dind-amd
-#
+
 docker:push:
   stage: docker
   image: docker:27-cli
   services:
     - docker:27-dind
   dependencies:
-    - docker:verify
+    - docker:verify-stage-2
   before_script:
     - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
   script:
