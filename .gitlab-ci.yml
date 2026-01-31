@@ -1,37 +1,68 @@
-image: rust:1.92-bookworm
-
 variables:
-  CARGO_HOME: $CI_PROJECT_DIR/.cargo
+  CARGO_HOME: ${CI_PROJECT_DIR}/.cargo
   RUSTFLAGS: "-Dwarnings"
   RUSTDOCFLAGS: "-Dwarnings"
+  RUST_BACKTRACE: "1"
   CARGO_INCREMENTAL: "0"
   DOCKER_DRIVER: overlay2
   DOCKER_TLS_CERTDIR: "/certs"
 
 stages:
+  - build
+  - test
   - rust
   - coverage
   - docker
   - performance
   - report
 
-cache:
-  key: ${CI_COMMIT_REF_SLUG}
-  paths:
-    - .cargo/
-    - target/
+build-image:
+  stage: build
+  image: docker:27-cli
+  script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
+    - echo "Building Python + Docker client image"
+    - docker build -t $CI_REGISTRY_IMAGE:latest .
+    - docker push $CI_REGISTRY_IMAGE:latest
+    - docker run $CI_REGISTRY_IMAGE:latest test-plan-doc-gen --help
+  tags:
+    - dind-amd
 
-before_script:
-  - rustc --version
-  - cargo --version
-  - apt-get update -qq
+test-image:
+  stage: test
+  image: $CI_REGISTRY_IMAGE:latest
+  needs:
+    - build-image
+  script:
+    - uname -a 
+    - test-plan-doc-gen --help
+  tags:
+    - dind-amd
+
+
+default:
+  # Use the commit reference slug (branch/tag name) as the cache key
+  cache:
+    key: "${CI_COMMIT_REF_SLUG}"
+    paths:
+      # Cache the cargo home directory which contains registries and bins
+      - .cargo
+      # Cache the build artifacts directory
+      - target
+    # This ensures the cache is available to all jobs in the pipeline
+    policy: pull-push
 
 rust:build-test-lint:
+  image: rust:1.92-bookworm
   stage: rust
+  before_script:
+    - rustc --version
+    - cargo --version
+    - apt-get update -qq
   script:
     # Add required components
     - rustup component add clippy rustfmt
-    
+
     # Build
     - echo "===== Building Release Binaries ====="
     - cargo build --all --all-features --release
@@ -42,24 +73,24 @@ rust:build-test-lint:
     - cp target/release/test-verify artifacts/binaries/ || true
     - cp target/release/test-executor artifacts/binaries/ || true
     - cp target/release/test-orchestrator artifacts/binaries/ || true
-    
+
     # Lint - rustfmt
     - echo "===== Running rustfmt ====="
     - cargo fmt --all -- --check
-    
+
     # Lint - clippy
     - echo "===== Running Clippy ====="
     - cargo clippy --all --all-features --tests -- -D warnings 2>&1 | tee clippy_output.txt
-    
+
     # Test - unit tests
     - echo "===== Running Unit Tests ====="
     - cargo test --all --all-features --tests --no-fail-fast -- --test-threads=1 2>&1 | tee test_output.txt
     - python3 scripts/ci_parse_test_results.py test_output.txt > test_results.json
-    
+
     # Test - e2e tests
     - echo "===== Running E2E Tests ====="
     - make test-e2e 2>&1 | tee e2e_output.txt || true
-    
+
     # Test - doc tests
     - echo "===== Running Doc Tests ====="
     - cargo test --doc 2>&1 | tee doc_test_output.txt || true
@@ -88,6 +119,7 @@ rust:build-test-lint:
     - rust
 
 coverage:
+  image: rust:1.92-bookworm
   stage: coverage
   dependencies:
     - rust:build-test-lint
@@ -195,9 +227,14 @@ docker:push:
     - docker
 
 performance:baseline:
+  image: rust:1.92-bookworm
   stage: performance
   dependencies:
     - rust:build-test-lint
+  before_script:
+    - rustc --version
+    - cargo --version
+    - apt-get update -qq
   script:
     - apt-get install -y -qq python3 python3-pip
     - pip3 install --break-system-packages psutil
@@ -213,9 +250,14 @@ performance:baseline:
     - rust
 
 performance:compare:
+  image: rust:1.92-bookworm
   stage: performance
   dependencies:
     - rust:build-test-lint
+  before_script:
+    - rustc --version
+    - cargo --version
+    - apt-get update -qq
   script:
     - apt-get install -y -qq python3 python3-pip git
     - pip3 install --break-system-packages psutil
@@ -238,12 +280,17 @@ performance:compare:
     - rust
 
 report:summary:
+  image: rust:1.92-bookworm
   stage: report
   dependencies:
     - rust:build-test-lint
     - coverage
     - docker:verify
     - performance:compare
+  before_script:
+    - rustc --version
+    - cargo --version
+    - apt-get update -qq
   script:
     - python3 scripts/ci_generate_summary_report.py > pipeline_summary.md
     - python3 scripts/ci_post_summary_comment.py pipeline_summary.md
