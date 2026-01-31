@@ -9,6 +9,8 @@ stages:
   - report
 
 variables:
+  DOCKER_HOST: "tcp://server-custom-dind.custom-dind:2375"
+  # Move cargo data into the project directory so it can be cached by the runner
   CARGO_HOME: ${CI_PROJECT_DIR}/.cargo
   RUSTFLAGS: "-Dwarnings"
   RUSTDOCFLAGS: "-Dwarnings"
