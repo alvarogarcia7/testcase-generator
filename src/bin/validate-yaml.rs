@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use clap::Parser;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process;
 use testcase_manager::yaml_utils::log_yaml_parse_error;
 
@@ -37,6 +37,58 @@ const COLOR_GREEN: &str = "\x1b[32m";
 const COLOR_RED: &str = "\x1b[31m";
 const COLOR_RESET: &str = "\x1b[0m";
 const COLOR_BOLD: &str = "\x1b[1m";
+
+pub fn validate_single_file<P: AsRef<Path>, S: AsRef<Path>>(
+    yaml_path: P,
+    schema_path: S,
+) -> Result<()> {
+    let yaml_path = yaml_path.as_ref();
+    let schema_path = schema_path.as_ref();
+
+    let schema_content = fs::read_to_string(schema_path).context(format!(
+        "Failed to read schema file: {}",
+        schema_path.display()
+    ))?;
+
+    let schema_value: serde_json::Value =
+        serde_json::from_str(&schema_content).context("Failed to parse JSON schema")?;
+
+    let compiled_schema = jsonschema::JSONSchema::compile(&schema_value)
+        .map_err(|e| anyhow::anyhow!("Failed to compile JSON schema: {}", e))?;
+
+    let yaml_content = fs::read_to_string(yaml_path)
+        .context(format!("Failed to read YAML file: {}", yaml_path.display()))?;
+
+    let yaml_value: serde_yaml::Value = serde_yaml::from_str(&yaml_content).map_err(|e| {
+        log_yaml_parse_error(&e, &yaml_content, &yaml_path.to_string_lossy());
+        anyhow::anyhow!("Failed to parse YAML: {}", e)
+    })?;
+
+    let json_value: serde_json::Value =
+        serde_json::to_value(&yaml_value).context("Failed to convert YAML to JSON")?;
+
+    if let Err(errors) = compiled_schema.validate(&json_value) {
+        let mut error_messages = vec!["Schema constraint violations:".to_string()];
+
+        for (idx, error) in errors.enumerate() {
+            let path = if error.instance_path.to_string().is_empty() {
+                "root".to_string()
+            } else {
+                error.instance_path.to_string()
+            };
+
+            error_messages.push(format!("  Error #{}: Path '{}'", idx + 1, path));
+            error_messages.push(format!("    Constraint: {}", error));
+
+            let instance = error.instance.as_ref();
+            error_messages.push(format!("    Found value: {}", instance));
+        }
+
+        return Err(anyhow::anyhow!(error_messages.join("\n")));
+    }
+
+    Ok(())
+}
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
