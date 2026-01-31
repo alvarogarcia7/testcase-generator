@@ -1,11 +1,3 @@
-variables:
-  CARGO_HOME: ${CI_PROJECT_DIR}/.cargo
-  RUSTFLAGS: "-Dwarnings"
-  RUSTDOCFLAGS: "-Dwarnings"
-  RUST_BACKTRACE: "1"
-  CARGO_INCREMENTAL: "1"
-  DOCKER_DRIVER: overlay2
-  DOCKER_TLS_CERTDIR: "/certs"
 
 stages:
   - build
@@ -16,6 +8,15 @@ stages:
   - performance
   - report
 
+variables:
+  CARGO_HOME: ${CI_PROJECT_DIR}/.cargo
+  RUSTFLAGS: "-Dwarnings"
+  RUSTDOCFLAGS: "-Dwarnings"
+  RUST_BACKTRACE: "1"
+  CARGO_INCREMENTAL: "1"
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: "/certs"
+
 build-image:
   stage: build
   image: docker:27-cli
@@ -23,8 +24,9 @@ build-image:
     - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
     - echo "Building Python + Docker client image"
     - docker build -t $CI_REGISTRY_IMAGE:latest .
+    - docker run $CI_REGISTRY_IMAGE:latest ls
+    - docker run $CI_REGISTRY_IMAGE:latest /usr/local/bin/editor --help
     - docker push $CI_REGISTRY_IMAGE:latest
-    - docker run $CI_REGISTRY_IMAGE:latest test-plan-doc-gen --help
   tags:
     - dind-amd
 
@@ -35,7 +37,7 @@ test-image:
     - build-image
   script:
     - uname -a 
-    - test-plan-doc-gen --help
+    - /usr/local/bin/editor --help
   tags:
     - dind-amd
 
@@ -53,12 +55,12 @@ default:
     policy: pull-push
 
 rust:build-test-lint:
-  image: rust:1.92-bookworm
-  stage: rust
   before_script:
     - rustc --version
     - cargo --version
     - apt-get update -qq
+  image: rust:latest
+  stage: rust
   script:
     # Add required components
     - rustup component add clippy rustfmt
