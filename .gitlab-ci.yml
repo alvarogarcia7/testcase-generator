@@ -180,6 +180,8 @@ docker:verify:
   image: python:3.14-slim
   dependencies:
     - docker:build
+  needs:
+    - docker:build
   script:
     - find . || true
     - ls -la docker_inspect.json || true
