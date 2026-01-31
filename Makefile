@@ -75,8 +75,9 @@ test-all: test test-e2e
 .PHONY: test-all
 
 test-e2e-validate-yaml: build
-	cargo run --bin validate-yaml tests/sample/gsma_4.4.2.2_TC.yml data/schema.json >/dev/null 2>&1
-	! cargo run --bin validate-yaml tests/sample/data.yml data/schema.json >/dev/null 2>&1
+	cargo run --bin validate-yaml -- --schema data/schema.json tests/sample/gsma_4.4.2.2_TC.yml >/dev/null 2>&1
+	! cargo run --bin validate-yaml -- --schema data/schema.json tests/sample/data.yml >/dev/null 2>&1
+	./tests/integration/test_validate_yaml_multi_e2e.sh
 .PHONY: test-e2e-validate-yaml
 
 docker-build:
@@ -100,7 +101,7 @@ verify-testcases: build
 	@FAILED=0; \
 	for file in $$(find testcases tests/sample data -type f \( -name "*.yml" -o -name "*.yaml" \) -not \( -name "*te.y*" -o -iname "sample_test_runs.yaml" -o -name "*wrong*" \) 2>/dev/null); do \
 		echo "Validating: $$file"; \
-		if cargo run --bin validate-yaml "$$file" data/schema.json >/dev/null 2>&1; then \
+		if cargo run --bin validate-yaml -- --schema data/schema.json "$$file" >/dev/null 2>&1; then \
 			echo "  ✓ PASSED"; \
 		else \
 			echo "  ✗ FAILED"; \

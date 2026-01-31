@@ -177,13 +177,13 @@ pass "Created failing test YAML"
 # Test 1: Validate YAML files against schema
 section "Test 1: YAML Schema Validation"
 
-if "$VALIDATE_YAML_BIN" "$PASSING_YAML" "$SCHEMA_FILE" > /dev/null 2>&1; then
+if "$VALIDATE_YAML_BIN" --schema "$SCHEMA_FILE" "$PASSING_YAML"  > /dev/null 2>&1; then
     pass "Passing YAML validates against schema"
 else
     fail "Passing YAML failed schema validation"
 fi
 
-if "$VALIDATE_YAML_BIN" "$FAILING_YAML" "$SCHEMA_FILE" > /dev/null 2>&1; then
+if "$VALIDATE_YAML_BIN" --schema "$SCHEMA_FILE" "$FAILING_YAML" > /dev/null 2>&1; then
     pass "Failing YAML validates against schema"
 else
     fail "Failing YAML failed schema validation"

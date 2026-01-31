@@ -5,12 +5,13 @@
 # DESCRIPTION:
 #   This script demonstrates how to integrate the validate-yaml binary with the
 #   validate-files.sh framework. It validates YAML files against a JSON schema.
+#   Supports both single and multiple file validation.
 #
 # USAGE:
-#   validate-yaml-wrapper.sh <yaml-file>
+#   validate-yaml-wrapper.sh <yaml-file>...
 #
 # ARGUMENTS:
-#   yaml-file    Path to the YAML file to validate
+#   yaml-file    Path(s) to the YAML file(s) to validate
 #
 # CONFIGURATION:
 #   SCHEMA_FILE  Environment variable to specify the schema file (default: data/schema.json)
@@ -33,6 +34,10 @@
 #   export SCHEMA_FILE=data/schema.json
 #   ./scripts/validate-yaml-wrapper.sh data/gsma_4.4.2.2_TC.yml
 #
+#   # Validate multiple YAML files
+#   export SCHEMA_FILE=data/schema.json
+#   ./scripts/validate-yaml-wrapper.sh data/file1.yml data/file2.yml data/file3.yml
+#
 #   # Use a different schema
 #   SCHEMA_FILE=my-schema.json ./scripts/validate-yaml-wrapper.sh my-file.yml
 #
@@ -51,18 +56,21 @@ VALIDATE_YAML=$(find_binary_or_exit "validate-yaml" "VALIDATE_YAML_BIN")
 
 # Validate arguments
 if [[ $# -eq 0 ]]; then
-    echo "[ERROR] Missing required argument: YAML file path" >&2
-    echo "Usage: $(basename "$0") <yaml-file>" >&2
+    echo "[ERROR] Missing required argument: YAML file path(s)" >&2
+    echo "Usage: $(basename "$0") <yaml-file>..." >&2
     exit 1
 fi
 
-YAML_FILE="$1"
+# Store all YAML files to validate
+YAML_FILES=("$@")
 
-# Validate that YAML file exists
-if [[ ! -f "$YAML_FILE" ]]; then
-    echo "[ERROR] YAML file not found: $YAML_FILE" >&2
-    exit 1
-fi
+# Validate that all YAML files exist
+for YAML_FILE in "${YAML_FILES[@]}"; do
+    if [[ ! -f "$YAML_FILE" ]]; then
+        echo "[ERROR] YAML file not found: $YAML_FILE" >&2
+        exit 1
+    fi
+done
 
 # Validate that schema file exists
 if [[ ! -f "$SCHEMA_FILE" ]]; then
@@ -72,8 +80,8 @@ if [[ ! -f "$SCHEMA_FILE" ]]; then
 fi
 
 # Run validation
-# The validate-yaml binary expects: validate-yaml <yaml-file> <schema-file>
-"$VALIDATE_YAML" "$YAML_FILE" "$SCHEMA_FILE"
+# The validate-yaml binary expects: validate-yaml --schema <schema-file> <yaml-file>...
+"$VALIDATE_YAML" --schema "$SCHEMA_FILE" "${YAML_FILES[@]}"
 exit_code=$?
 
 # Exit with the same code as validate-yaml

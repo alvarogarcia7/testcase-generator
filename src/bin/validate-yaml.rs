@@ -2,24 +2,36 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use std::fs;
 use std::path::PathBuf;
+use std::process;
 use testcase_manager::yaml_utils::log_yaml_parse_error;
 
 #[derive(Parser)]
 #[command(name = "validate-yaml")]
-#[command(about = "Validate a YAML payload against a JSON schema", version)]
+#[command(about = "Validate YAML payloads against a JSON schema", version)]
 struct Cli {
-    /// Path to the YAML payload file
-    #[arg(value_name = "YAML_FILE")]
-    yaml_file: PathBuf,
-
     /// Path to the JSON schema file
-    #[arg(value_name = "SCHEMA_FILE")]
-    schema_file: PathBuf,
+    #[arg(short, long, value_name = "SCHEMA_FILE")]
+    schema: PathBuf,
+
+    /// Path(s) to the YAML payload file(s)
+    #[arg(value_name = "YAML_FILES", required = true)]
+    yaml_files: Vec<PathBuf>,
 
     /// Enable verbose logging
     #[arg(short, long)]
     verbose: bool,
 }
+
+struct ValidationResult {
+    file_path: PathBuf,
+    success: bool,
+    error_messages: Vec<String>,
+}
+
+const COLOR_GREEN: &str = "\x1b[32m";
+const COLOR_RED: &str = "\x1b[31m";
+const COLOR_RESET: &str = "\x1b[0m";
+const COLOR_BOLD: &str = "\x1b[1m";
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
@@ -27,43 +39,116 @@ fn main() -> Result<()> {
     let log_level = if cli.verbose { "info" } else { "warn" };
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(log_level)).init();
 
-    // Read the YAML file
-    let yaml_content = fs::read_to_string(&cli.yaml_file).context(format!(
-        "Failed to read YAML file: {}",
-        cli.yaml_file.display()
-    ))?;
-
     // Read the JSON schema file
-    let schema_content = fs::read_to_string(&cli.schema_file).context(format!(
+    let schema_content = fs::read_to_string(&cli.schema).context(format!(
         "Failed to read schema file: {}",
-        cli.schema_file.display()
+        cli.schema.display()
     ))?;
 
     // Parse the schema
     let schema_value: serde_json::Value =
         serde_json::from_str(&schema_content).context("Failed to parse JSON schema")?;
 
-    // Parse the YAML content
-    let yaml_value: serde_yaml::Value = match serde_yaml::from_str(&yaml_content) {
-        Ok(value) => value,
-        Err(e) => {
-            log_yaml_parse_error(&e, &yaml_content, &cli.yaml_file.to_string_lossy());
-            return Err(anyhow::anyhow!("Failed to parse YAML content: {}", e));
-        }
-    };
-
-    // Convert YAML to JSON Value for validation
-    let json_value: serde_json::Value =
-        serde_json::to_value(&yaml_value).context("Failed to convert YAML to JSON")?;
-
     // Compile the schema
     let compiled_schema = jsonschema::JSONSchema::compile(&schema_value)
         .map_err(|e| anyhow::anyhow!("Failed to compile JSON schema: {}", e))?;
 
+    // Validate each YAML file
+    let mut results = Vec::new();
+
+    for yaml_file in &cli.yaml_files {
+        let result = validate_yaml_file(yaml_file, &compiled_schema);
+        results.push(result);
+    }
+
+    // Display per-file validation status
+    for result in &results {
+        if result.success {
+            println!(
+                "{}{COLOR_GREEN}✓{COLOR_RESET} {}",
+                COLOR_BOLD,
+                result.file_path.display()
+            );
+        } else {
+            println!(
+                "{}{COLOR_RED}✗{COLOR_RESET} {}",
+                COLOR_BOLD,
+                result.file_path.display()
+            );
+            for error_msg in &result.error_messages {
+                println!("  {}", error_msg);
+            }
+        }
+    }
+
+    // Print summary
+    let total = results.len();
+    let passed = results.iter().filter(|r| r.success).count();
+    let failed = total - passed;
+
+    println!();
+    println!("{}Summary:{}", COLOR_BOLD, COLOR_RESET);
+    println!("  Total files validated: {}", total);
+    println!("  {}Passed: {}{}", COLOR_GREEN, passed, COLOR_RESET);
+    println!("  {}Failed: {}{}", COLOR_RED, failed, COLOR_RESET);
+
+    // Exit with appropriate code
+    if failed > 0 {
+        process::exit(1);
+    }
+
+    Ok(())
+}
+
+fn validate_yaml_file(
+    yaml_file: &PathBuf,
+    compiled_schema: &jsonschema::JSONSchema,
+) -> ValidationResult {
+    let mut result = ValidationResult {
+        file_path: yaml_file.clone(),
+        success: false,
+        error_messages: Vec::new(),
+    };
+
+    // Read the YAML file
+    let yaml_content = match fs::read_to_string(yaml_file) {
+        Ok(content) => content,
+        Err(e) => {
+            result
+                .error_messages
+                .push(format!("Failed to read file: {}", e));
+            return result;
+        }
+    };
+
+    // Parse the YAML content
+    let yaml_value: serde_yaml::Value = match serde_yaml::from_str(&yaml_content) {
+        Ok(value) => value,
+        Err(e) => {
+            log_yaml_parse_error(&e, &yaml_content, &yaml_file.to_string_lossy());
+            result
+                .error_messages
+                .push(format!("Failed to parse YAML: {}", e));
+            return result;
+        }
+    };
+
+    // Convert YAML to JSON Value for validation
+    let json_value: serde_json::Value = match serde_json::to_value(&yaml_value) {
+        Ok(value) => value,
+        Err(e) => {
+            result
+                .error_messages
+                .push(format!("Failed to convert YAML to JSON: {}", e));
+            return result;
+        }
+    };
+
     // Validate
     if let Err(errors) = compiled_schema.validate(&json_value) {
-        log::error!("✗ Validation failed!");
-        log::error!("The following schema constraint violations were found:");
+        result
+            .error_messages
+            .push("Schema constraint violations:".to_string());
 
         for (idx, error) in errors.enumerate() {
             let path = if error.instance_path.to_string().is_empty() {
@@ -72,17 +157,22 @@ fn main() -> Result<()> {
                 error.instance_path.to_string()
             };
 
-            log::error!("Error #{}: Path '{}'", idx + 1, path);
-            log::error!("  Constraint: {}", error);
+            result
+                .error_messages
+                .push(format!("  Error #{}: Path '{}'", idx + 1, path));
+            result
+                .error_messages
+                .push(format!("    Constraint: {}", error));
 
             let instance = error.instance.as_ref();
-            log::error!("  Found value: {}", instance);
+            result
+                .error_messages
+                .push(format!("    Found value: {}", instance));
         }
 
-        anyhow::bail!("Validation failed with schema constraint violations");
+        return result;
     }
 
-    log::info!("✓ Validation successful!");
-    log::info!("The YAML payload is valid according to the provided schema.");
-    Ok(())
+    result.success = true;
+    result
 }
