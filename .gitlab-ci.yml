@@ -199,7 +199,6 @@ docker:verify-stage-2:
   artifacts:
     name: "docker-verify-$CI_COMMIT_REF_SLUG"
     paths:
-      - docker_inspect.json
       - docker_scan_results.json
     expire_in: 1 week
 
