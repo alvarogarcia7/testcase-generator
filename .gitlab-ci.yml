@@ -195,6 +195,8 @@ docker:verify-stage-2:
   dependencies:
     - docker:verify
   script:
+    - find . || true
+    - ls -la docker_inspect.json || true
     - python3 scripts/ci_docker_security_scan.py docker_inspect.json > docker_scan_results.json
   artifacts:
     name: "docker-verify-$CI_COMMIT_REF_SLUG"
