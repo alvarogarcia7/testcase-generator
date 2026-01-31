@@ -53,3 +53,23 @@ bin/cargo-watch
 /testcases/*.json
 /testcases/*.sh
 
+# CI/CD artifacts
+test_output.txt
+test_results.json
+test_results.xml
+e2e_output.txt
+clippy_output.txt
+lcov.info
+coverage/
+coverage_report.json
+cobertura.xml
+docker_inspect.json
+docker_scan_results.json
+baseline_perf.json
+current_perf.json
+perf_comparison.json
+pipeline_summary.md
+*.profraw
+artifacts/
+grcov
+
