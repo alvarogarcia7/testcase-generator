@@ -946,6 +946,7 @@ mod tests {
             verification: Verification {
                 result: "[ $EXIT_CODE -eq 0 ]".to_string(),
                 output: "echo \"$COMMAND_OUTPUT\" | grep -q 'hello'".to_string(),
+                output_file: None,
             },
         };
         sequence.steps.push(step);

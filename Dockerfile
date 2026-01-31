@@ -61,7 +61,7 @@ RUN apt-get update && \
 WORKDIR /app
 
 # Copy only the compiled binaries (not auxiliary build files)
-COPY --from=builder /app/target/release/testcase-manager /usr/local/bin/tcm
+COPY --from=builder /app/target/release/testcase-manager /usr/local/bin/
 COPY --from=builder /app/target/release/validate-yaml /usr/local/bin/
 COPY --from=builder /app/target/release/validate-json /usr/local/bin/
 COPY --from=builder /app/target/release/trm /usr/local/bin/

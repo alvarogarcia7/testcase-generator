@@ -26,6 +26,7 @@ fn create_test_step(
         verification: Verification {
             result: "[ $? -eq 0 ]".to_string(),
             output: "[ \"$COMMAND_OUTPUT\" = \"success\" ]".to_string(),
+            output_file: None,
         },
     }
 }
@@ -35,6 +36,7 @@ fn test_verification_serialization() {
     let verification = Verification {
         result: "[ $? -eq 0 ]".to_string(),
         output: "[ \"$COMMAND_OUTPUT\" = \"success\" ]".to_string(),
+        output_file: None,
     };
 
     let yaml = serde_yaml::to_string(&verification).unwrap();
@@ -61,6 +63,7 @@ fn test_verification_round_trip() {
     let original = Verification {
         result: "[ $EXIT_CODE -eq 0 ]".to_string(),
         output: "[[ \"$COMMAND_OUTPUT\" =~ \"OK\" ]]".to_string(),
+        output_file: None,
     };
 
     let yaml = serde_yaml::to_string(&original).unwrap();
@@ -404,7 +407,7 @@ fn test_empty_command() {
 
     let script = executor.generate_test_script(&test_case);
 
-    assert!(script.contains("COMMAND_OUTPUT=$()"));
+    assert!(script.contains("COMMAND_OUTPUT=$("));
 }
 
 #[test]
@@ -460,7 +463,7 @@ fn test_command_with_pipes() {
 
     let script = executor.generate_test_script(&test_case);
 
-    assert!(script.contains("COMMAND_OUTPUT=$(echo 'hello world' | grep world)"));
+    assert!(script.contains("COMMAND_OUTPUT=$(echo 'hello world' | grep world | tee"));
 }
 
 #[test]
@@ -488,7 +491,7 @@ fn test_command_with_redirects() {
 
     let script = executor.generate_test_script(&test_case);
 
-    assert!(script.contains("COMMAND_OUTPUT=$(cat /dev/null 2>&1)"));
+    assert!(script.contains("COMMAND_OUTPUT=$(cat /dev/null 2>&1 | tee"));
 }
 
 #[test]
@@ -516,7 +519,7 @@ fn test_command_with_environment_variables() {
 
     let script = executor.generate_test_script(&test_case);
 
-    assert!(script.contains("COMMAND_OUTPUT=$(MY_VAR=test echo $MY_VAR)"));
+    assert!(script.contains("COMMAND_OUTPUT=$(MY_VAR=test echo $MY_VAR | tee"));
 }
 
 #[test]
@@ -524,11 +527,13 @@ fn test_verification_equals_operator() {
     let verification = Verification {
         result: "[ $? -eq 0 ]".to_string(),
         output: "[ \"$COMMAND_OUTPUT\" = \"test\" ]".to_string(),
+        output_file: None,
     };
 
     let verification2 = Verification {
         result: "[ $? -eq 0 ]".to_string(),
         output: "[ \"$COMMAND_OUTPUT\" = \"test\" ]".to_string(),
+        output_file: None,
     };
 
     assert_eq!(verification, verification2);
@@ -539,11 +544,13 @@ fn test_verification_not_equals_operator() {
     let verification1 = Verification {
         result: "[ $? -eq 0 ]".to_string(),
         output: "[ \"$COMMAND_OUTPUT\" = \"test\" ]".to_string(),
+        output_file: None,
     };
 
     let verification2 = Verification {
         result: "[ $? -eq 1 ]".to_string(),
         output: "[ \"$COMMAND_OUTPUT\" = \"test\" ]".to_string(),
+        output_file: None,
     };
 
     assert_ne!(verification1, verification2);
@@ -554,6 +561,7 @@ fn test_verification_display_trait() {
     let verification = Verification {
         result: "[ $? -eq 0 ]".to_string(),
         output: "[ \"$COMMAND_OUTPUT\" = \"test\" ]".to_string(),
+        output_file: None,
     };
 
     let display_string = format!("{}", verification);
@@ -566,6 +574,7 @@ fn test_verification_clone() {
     let verification = Verification {
         result: "[ $? -eq 0 ]".to_string(),
         output: "[ \"$COMMAND_OUTPUT\" = \"test\" ]".to_string(),
+        output_file: None,
     };
 
     let cloned = verification.clone();

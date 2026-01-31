@@ -2,7 +2,7 @@ requirement: "SELF_VALIDATED_EXAMPLE"
 item: 1
 tc: 1
 id: 'SELF_VALIDATED_EXAMPLE_001'
-description: 'Simple self-validated test case demonstrating shell commands with expected results'
+description: 'Simple self-validated test case demonstrating shell commands with expected results and file-based output verification'
 
 general_initial_conditions:
   system:
@@ -32,6 +32,7 @@ test_sequences:
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
           output: "grep -q 'Hello World' <<< \"$COMMAND_OUTPUT\""
+          output_file: "grep -q 'Hello World' \"$LOG_FILE\""
       - step: 2
         description: "Successful command with true"
         command: true
@@ -70,6 +71,7 @@ test_sequences:
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
           output: "grep -q 'SUCCESS' <<< \"$COMMAND_OUTPUT\""
+          output_file: "grep -q 'SUCCESS' \"$LOG_FILE\""
       - step: 2
         description: "Echo with exit code verification"
         command: echo "Operation completed"
@@ -79,6 +81,7 @@ test_sequences:
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
           output: "grep -q 'Operation completed' <<< \"$COMMAND_OUTPUT\""
+          output_file: "grep -q 'Operation completed' \"$LOG_FILE\""
       - step: 3
         description: "Echo multiple lines"
         command: echo -e "Line 1\nLine 2\nLine 3"
@@ -88,6 +91,7 @@ test_sequences:
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
           output: "[[ $(grep -c 'Line' <<< \"$COMMAND_OUTPUT\") -eq 3 ]]"
+          output_file: "[[ $(grep -c 'Line' \"$LOG_FILE\") -eq 3 ]]"
   - id: 3
     name: "Exit Code Tests"
     description: |

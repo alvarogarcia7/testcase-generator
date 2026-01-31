@@ -141,9 +141,16 @@ impl TestExecutor {
                     continue;
                 }
 
+                script.push_str(&format!(
+                    "LOG_FILE=\"{}_sequence-{}_step-{}.actual.log\"\n",
+                    test_case.id, sequence.id, step.step
+                ));
                 script.push_str("COMMAND_OUTPUT=\"\"\n");
                 script.push_str("set +e\n");
-                script.push_str(&format!("COMMAND_OUTPUT=$({})\n", step.command));
+                script.push_str(&format!(
+                    "COMMAND_OUTPUT=$({} | tee \"$LOG_FILE\")\n",
+                    step.command
+                ));
                 script.push_str("EXIT_CODE=$?\n");
                 script.push_str("set -e\n\n");
 
@@ -171,10 +178,22 @@ impl TestExecutor {
                     "# Verification result expression: {}\n",
                     step.verification.result
                 ));
-                script.push_str(&format!(
-                    "# Verification output expression: {}\n",
-                    step.verification.output
-                ));
+
+                // Determine which output verification to use
+                let output_verification =
+                    if let Some(ref output_file_verification) = step.verification.output_file {
+                        script.push_str(&format!(
+                            "# Verification output expression (from file): {}\n",
+                            output_file_verification
+                        ));
+                        output_file_verification.as_str()
+                    } else {
+                        script.push_str(&format!(
+                            "# Verification output expression (from variable): {}\n",
+                            step.verification.output
+                        ));
+                        step.verification.output.as_str()
+                    };
 
                 script.push_str("VERIFICATION_RESULT_PASS=false\n");
                 script.push_str("VERIFICATION_OUTPUT_PASS=false\n\n");
@@ -183,7 +202,7 @@ impl TestExecutor {
                 script.push_str("    VERIFICATION_RESULT_PASS=true\n");
                 script.push_str("fi\n\n");
 
-                script.push_str(&format!("if {}; then\n", step.verification.output));
+                script.push_str(&format!("if {}; then\n", output_verification));
                 script.push_str("    VERIFICATION_OUTPUT_PASS=true\n");
                 script.push_str("fi\n\n");
 
@@ -528,6 +547,7 @@ mod tests {
             verification: Verification {
                 result: "[ $EXIT_CODE -eq 0 ]".to_string(),
                 output: "[ \"$COMMAND_OUTPUT\" = \"hello\" ]".to_string(),
+                output_file: None,
             },
         };
         sequence.steps.push(step);
@@ -571,6 +591,7 @@ mod tests {
             verification: Verification {
                 result: "true".to_string(),
                 output: "true".to_string(),
+                output_file: None,
             },
         };
         sequence.steps.push(step);
@@ -611,5 +632,341 @@ mod tests {
         assert!(script.contains("Device: Powered on"));
         assert!(script.contains("Initial Conditions"));
         assert!(script.contains("Connection: Established"));
+    }
+
+    #[test]
+    fn test_log_file_variable_in_generated_script() {
+        let executor = TestExecutor::new();
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test for LOG_FILE".to_string(),
+        );
+
+        let mut sequence = TestSequence::new(1, "Seq1".to_string(), "First sequence".to_string());
+        let step = Step {
+            step: 1,
+            manual: None,
+            description: "Test step".to_string(),
+            command: "echo 'test'".to_string(),
+            expected: Expected {
+                success: Some(true),
+                result: "0".to_string(),
+                output: "test".to_string(),
+            },
+            verification: Verification {
+                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
+                output: "true".to_string(),
+                output_file: None,
+            },
+        };
+        sequence.steps.push(step);
+        test_case.test_sequences.push(sequence);
+
+        let script = executor.generate_test_script(&test_case);
+
+        assert!(
+            script.contains("LOG_FILE=\"TC001_sequence-1_step-1.actual.log\""),
+            "Script should contain LOG_FILE variable declaration with .actual.log extension"
+        );
+    }
+
+    #[test]
+    fn test_tee_command_in_generated_script() {
+        let executor = TestExecutor::new();
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test for tee command".to_string(),
+        );
+
+        let mut sequence = TestSequence::new(1, "Seq1".to_string(), "First sequence".to_string());
+        let step = Step {
+            step: 1,
+            manual: None,
+            description: "Test step".to_string(),
+            command: "echo 'test'".to_string(),
+            expected: Expected {
+                success: Some(true),
+                result: "0".to_string(),
+                output: "test".to_string(),
+            },
+            verification: Verification {
+                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
+                output: "true".to_string(),
+                output_file: None,
+            },
+        };
+        sequence.steps.push(step);
+        test_case.test_sequences.push(sequence);
+
+        let script = executor.generate_test_script(&test_case);
+
+        assert!(
+            script.contains("| tee \"$LOG_FILE\""),
+            "Script should contain tee command piping to $LOG_FILE"
+        );
+    }
+
+    #[test]
+    fn test_log_file_and_tee_for_multiple_steps() {
+        let executor = TestExecutor::new();
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC002".to_string(),
+            "Test with multiple steps".to_string(),
+        );
+
+        let mut sequence = TestSequence::new(1, "Seq1".to_string(), "First sequence".to_string());
+
+        let step1 = Step {
+            step: 1,
+            manual: None,
+            description: "First step".to_string(),
+            command: "echo 'step1'".to_string(),
+            expected: Expected {
+                success: Some(true),
+                result: "0".to_string(),
+                output: "step1".to_string(),
+            },
+            verification: Verification {
+                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
+                output: "true".to_string(),
+                output_file: None,
+            },
+        };
+
+        let step2 = Step {
+            step: 2,
+            manual: None,
+            description: "Second step".to_string(),
+            command: "echo 'step2'".to_string(),
+            expected: Expected {
+                success: Some(true),
+                result: "0".to_string(),
+                output: "step2".to_string(),
+            },
+            verification: Verification {
+                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
+                output: "true".to_string(),
+                output_file: None,
+            },
+        };
+
+        sequence.steps.push(step1);
+        sequence.steps.push(step2);
+        test_case.test_sequences.push(sequence);
+
+        let script = executor.generate_test_script(&test_case);
+
+        assert!(
+            script.contains("LOG_FILE=\"TC002_sequence-1_step-1.actual.log\""),
+            "Script should contain LOG_FILE for step 1"
+        );
+        assert!(
+            script.contains("LOG_FILE=\"TC002_sequence-1_step-2.actual.log\""),
+            "Script should contain LOG_FILE for step 2"
+        );
+
+        let tee_count = script.matches("| tee \"$LOG_FILE\"").count();
+        assert_eq!(
+            tee_count, 2,
+            "Script should contain tee command twice for two non-manual steps"
+        );
+    }
+
+    #[test]
+    fn test_log_file_and_tee_for_multiple_sequences() {
+        let executor = TestExecutor::new();
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC003".to_string(),
+            "Test with multiple sequences".to_string(),
+        );
+
+        let mut sequence1 = TestSequence::new(1, "Seq1".to_string(), "First sequence".to_string());
+        let step1 = Step {
+            step: 1,
+            manual: None,
+            description: "Step in sequence 1".to_string(),
+            command: "echo 'seq1'".to_string(),
+            expected: Expected {
+                success: Some(true),
+                result: "0".to_string(),
+                output: "seq1".to_string(),
+            },
+            verification: Verification {
+                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
+                output: "true".to_string(),
+                output_file: None,
+            },
+        };
+        sequence1.steps.push(step1);
+
+        let mut sequence2 = TestSequence::new(2, "Seq2".to_string(), "Second sequence".to_string());
+        let step2 = Step {
+            step: 1,
+            manual: None,
+            description: "Step in sequence 2".to_string(),
+            command: "echo 'seq2'".to_string(),
+            expected: Expected {
+                success: Some(true),
+                result: "0".to_string(),
+                output: "seq2".to_string(),
+            },
+            verification: Verification {
+                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
+                output: "true".to_string(),
+                output_file: None,
+            },
+        };
+        sequence2.steps.push(step2);
+
+        test_case.test_sequences.push(sequence1);
+        test_case.test_sequences.push(sequence2);
+
+        let script = executor.generate_test_script(&test_case);
+
+        assert!(
+            script.contains("LOG_FILE=\"TC003_sequence-1_step-1.actual.log\""),
+            "Script should contain LOG_FILE for sequence 1"
+        );
+        assert!(
+            script.contains("LOG_FILE=\"TC003_sequence-2_step-1.actual.log\""),
+            "Script should contain LOG_FILE for sequence 2"
+        );
+
+        let tee_count = script.matches("| tee \"$LOG_FILE\"").count();
+        assert_eq!(
+            tee_count, 2,
+            "Script should contain tee command twice for two sequences"
+        );
+    }
+
+    #[test]
+    fn test_manual_steps_skip_log_file_and_tee() {
+        let executor = TestExecutor::new();
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC004".to_string(),
+            "Test with manual step".to_string(),
+        );
+
+        let mut sequence =
+            TestSequence::new(1, "Seq1".to_string(), "Sequence with manual".to_string());
+
+        let manual_step = Step {
+            step: 1,
+            manual: Some(true),
+            description: "Manual step".to_string(),
+            command: "manual command".to_string(),
+            expected: Expected {
+                success: Some(true),
+                result: "0".to_string(),
+                output: "output".to_string(),
+            },
+            verification: Verification {
+                result: "true".to_string(),
+                output: "true".to_string(),
+                output_file: None,
+            },
+        };
+
+        let auto_step = Step {
+            step: 2,
+            manual: None,
+            description: "Automated step".to_string(),
+            command: "echo 'auto'".to_string(),
+            expected: Expected {
+                success: Some(true),
+                result: "0".to_string(),
+                output: "auto".to_string(),
+            },
+            verification: Verification {
+                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
+                output: "true".to_string(),
+                output_file: None,
+            },
+        };
+
+        sequence.steps.push(manual_step);
+        sequence.steps.push(auto_step);
+        test_case.test_sequences.push(sequence);
+
+        let script = executor.generate_test_script(&test_case);
+
+        let log_file_count = script.matches("LOG_FILE=").count();
+        assert_eq!(
+            log_file_count, 1,
+            "Script should contain only one LOG_FILE declaration (manual step skipped)"
+        );
+
+        assert!(
+            script.contains("LOG_FILE=\"TC004_sequence-1_step-2.actual.log\""),
+            "Script should contain LOG_FILE only for non-manual step"
+        );
+
+        let tee_count = script.matches("| tee \"$LOG_FILE\"").count();
+        assert_eq!(
+            tee_count, 1,
+            "Script should contain only one tee command (manual step skipped)"
+        );
+    }
+
+    #[test]
+    fn test_log_file_pattern_with_regex() {
+        let executor = TestExecutor::new();
+        let mut test_case = TestCase::new(
+            "REQ999".to_string(),
+            1,
+            1,
+            "TC999".to_string(),
+            "Test LOG_FILE pattern".to_string(),
+        );
+
+        let mut sequence = TestSequence::new(5, "Seq5".to_string(), "Test sequence".to_string());
+        let step = Step {
+            step: 10,
+            manual: None,
+            description: "Test step".to_string(),
+            command: "ls -la".to_string(),
+            expected: Expected {
+                success: Some(true),
+                result: "0".to_string(),
+                output: "files".to_string(),
+            },
+            verification: Verification {
+                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
+                output: "true".to_string(),
+                output_file: None,
+            },
+        };
+        sequence.steps.push(step);
+        test_case.test_sequences.push(sequence);
+
+        let script = executor.generate_test_script(&test_case);
+
+        use regex::Regex;
+        let log_file_pattern = Regex::new(r#"LOG_FILE="[^"]*\.actual\.log""#).unwrap();
+        assert!(
+            log_file_pattern.is_match(&script),
+            "Script should match LOG_FILE pattern with .actual.log extension"
+        );
+
+        let tee_pattern = Regex::new(r#"\| tee "\$LOG_FILE""#).unwrap();
+        assert!(
+            tee_pattern.is_match(&script),
+            "Script should match tee command pattern with $LOG_FILE variable"
+        );
     }
 }

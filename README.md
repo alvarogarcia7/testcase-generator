@@ -476,11 +476,13 @@ steps:
 The `verification` field (optional) contains bash expressions used by the `test-executor` binary for automated test execution:
 
 - **result**: Bash expression to verify the exit code of the command
-- **output**: Bash expression to verify the command output
+- **output**: Bash expression to verify the command output from the variable
+- **output_file** (optional): Bash expression to verify the command output from the log file (takes precedence over `output` if present)
 
 Available variables in verification expressions:
 - `$EXIT_CODE`: The exit code of the executed command
-- `$COMMAND_OUTPUT`: The stdout output from the executed command
+- `$COMMAND_OUTPUT`: The stdout output from the executed command (used in `output` verification)
+- `$LOG_FILE`: Path to the log file containing command output (used in `output_file` verification)
 - `$?`: Alternative to `$EXIT_CODE` (shell exit status variable)
 
 ## TTY Fallback
@@ -666,6 +668,15 @@ See the [Test Verification](#test-verification-test-verify) section for more det
 
 Verification expressions are bash conditional expressions that evaluate to true or false. They are used to validate test step results.
 
+The `verification` field supports two types of output verification:
+- **`output`**: Verifies output from the `$COMMAND_OUTPUT` variable (default)
+- **`output_file`**: Verifies output from the `$LOG_FILE` file (optional, takes precedence if present)
+
+When `output_file` is specified, the verification will read from the log file instead of the output variable. This is useful for:
+- Large outputs that may not fit in shell variables
+- Commands that write directly to files
+- More reliable file-based verification
+
 #### Basic Examples
 
 **Exit Code Verification:**
@@ -673,6 +684,14 @@ Verification expressions are bash conditional expressions that evaluate to true 
 verification:
   result: "[ $EXIT_CODE -eq 0 ]"  # Command succeeded
   output: "true"  # Always pass output check
+```
+
+**File-Based Output Verification:**
+```yaml
+verification:
+  result: "[ $EXIT_CODE -eq 0 ]"
+  output: "grep -q 'Hello World' <<< \"$COMMAND_OUTPUT\""  # Variable-based (default)
+  output_file: "grep -q 'Hello World' \"$LOG_FILE\""      # File-based (takes precedence)
 ```
 
 **String Comparison:**

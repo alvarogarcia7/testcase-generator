@@ -430,6 +430,7 @@ fn create_simple_test_case() -> TestCase {
         verification: Verification {
             result: "[ $EXIT_CODE -eq 0 ]".to_string(),
             output: "true".to_string(),
+            output_file: None,
         },
     };
     sequence.steps.push(step);
@@ -468,6 +469,7 @@ fn create_multi_sequence_test_case() -> TestCase {
         verification: Verification {
             result: "[ $EXIT_CODE -eq 0 ]".to_string(),
             output: "true".to_string(),
+            output_file: None,
         },
     };
     sequence1.steps.push(step1);
@@ -485,6 +487,7 @@ fn create_multi_sequence_test_case() -> TestCase {
         verification: Verification {
             result: "[ $EXIT_CODE -eq 0 ]".to_string(),
             output: "true".to_string(),
+            output_file: None,
         },
     };
     sequence1.steps.push(step2);
@@ -508,6 +511,7 @@ fn create_multi_sequence_test_case() -> TestCase {
         verification: Verification {
             result: "[ $EXIT_CODE -eq 0 ]".to_string(),
             output: "true".to_string(),
+            output_file: None,
         },
     };
     sequence2.steps.push(step3);
@@ -525,6 +529,7 @@ fn create_multi_sequence_test_case() -> TestCase {
         verification: Verification {
             result: "[ $EXIT_CODE -eq 0 ]".to_string(),
             output: "true".to_string(),
+            output_file: None,
         },
     };
     sequence2.steps.push(step4);
@@ -564,6 +569,7 @@ fn create_test_case_with_manual_steps() -> TestCase {
         verification: Verification {
             result: "[ $EXIT_CODE -eq 0 ]".to_string(),
             output: "true".to_string(),
+            output_file: None,
         },
     };
     sequence.steps.push(step1);
@@ -581,6 +587,7 @@ fn create_test_case_with_manual_steps() -> TestCase {
         verification: Verification {
             result: "true".to_string(),
             output: "true".to_string(),
+            output_file: None,
         },
     };
     sequence.steps.push(step2);
@@ -598,6 +605,7 @@ fn create_test_case_with_manual_steps() -> TestCase {
         verification: Verification {
             result: "[ $EXIT_CODE -eq 0 ]".to_string(),
             output: "true".to_string(),
+            output_file: None,
         },
     };
     sequence.steps.push(step3);
@@ -636,6 +644,7 @@ fn create_test_case_with_special_characters() -> TestCase {
         verification: Verification {
             result: "[ $EXIT_CODE -eq 0 ]".to_string(),
             output: "true".to_string(),
+            output_file: None,
         },
     };
     sequence.steps.push(step);

@@ -99,7 +99,11 @@ impl VerificationTemplate {
             output = output.replace(&placeholder, value);
         }
 
-        Verification { result, output }
+        Verification {
+            result,
+            output,
+            output_file: None,
+        }
     }
 
     /// Expand the template without substitutions (use as-is)
@@ -107,6 +111,7 @@ impl VerificationTemplate {
         Verification {
             result: self.result_expression.clone(),
             output: self.output_expression.clone(),
+            output_file: None,
         }
     }
 }

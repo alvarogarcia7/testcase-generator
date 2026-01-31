@@ -360,6 +360,175 @@ else
     fail "Script missing success exit code"
 fi
 
+# Test 6: Verify individual .actual.log files are created
+section "Test 6: Verify Individual .actual.log Files"
+
+# Create a test YAML with multiple steps and sequences for comprehensive testing
+LOG_TEST_YAML="$TEMP_DIR/test_log_files.yaml"
+cat > "$LOG_TEST_YAML" << 'EOF'
+requirement: TEST003
+item: 1
+tc: 3
+id: TEST_LOGS
+description: Test case for verifying log file creation
+general_initial_conditions:
+  System:
+    - Ready
+initial_conditions:
+  Device:
+    - Connected
+test_sequences:
+  - id: 1
+    name: First Sequence
+    description: First sequence with two steps
+    initial_conditions:
+      LPA:
+        - Active
+    steps:
+      - step: 1
+        description: Echo hello
+        command: echo 'hello world'
+        expected:
+          success: true
+          result: "0"
+          output: hello world
+        verification:
+          result: "[ $EXIT_CODE -eq 0 ]"
+          output: "[ \"$COMMAND_OUTPUT\" = \"hello world\" ]"
+      - step: 2
+        description: Print date
+        command: date '+%Y-%m-%d'
+        expected:
+          success: true
+          result: "0"
+          output: ""
+        verification:
+          result: "[ $EXIT_CODE -eq 0 ]"
+          output: "true"
+  - id: 2
+    name: Second Sequence
+    description: Second sequence with one step
+    initial_conditions:
+      LPA:
+        - Active
+    steps:
+      - step: 1
+        description: Echo goodbye
+        command: echo 'goodbye'
+        expected:
+          success: true
+          result: "0"
+          output: goodbye
+        verification:
+          result: "[ $EXIT_CODE -eq 0 ]"
+          output: "[ \"$COMMAND_OUTPUT\" = \"goodbye\" ]"
+      - step: 2
+        manual: true
+        description: Manual step that should not have a log
+        command: echo 'manual'
+        expected:
+          success: true
+          result: "0"
+          output: manual
+        verification:
+          result: "true"
+          output: "true"
+      - step: 3
+        description: Echo after manual
+        command: echo 'after manual'
+        expected:
+          success: true
+          result: "0"
+          output: after manual
+        verification:
+          result: "[ $EXIT_CODE -eq 0 ]"
+          output: "[ \"$COMMAND_OUTPUT\" = \"after manual\" ]"
+EOF
+
+pass "Created log test YAML"
+
+# Generate and execute the test script
+LOG_TEST_SCRIPT="$TEMP_DIR/test_log_files.sh"
+if "$TEST_EXECUTOR_BIN" generate "$LOG_TEST_YAML" -o "$LOG_TEST_SCRIPT" > /dev/null 2>&1; then
+    pass "Generated script from log test YAML"
+else
+    fail "Failed to generate script from log test YAML"
+fi
+
+# Execute the script in the temp directory to create log files there
+LOG_TEST_OUTPUT="$TEMP_DIR/log_test_output.txt"
+cd "$TEMP_DIR"
+if bash "$LOG_TEST_SCRIPT" > "$LOG_TEST_OUTPUT" 2>&1; then
+    pass "Log test script executed successfully"
+else
+    fail "Log test script execution failed"
+    info "Output: $(cat "$LOG_TEST_OUTPUT")"
+fi
+cd "$PROJECT_ROOT"
+
+# Verify expected log files exist with correct naming pattern
+EXPECTED_LOG_FILES=(
+    "TEST_LOGS_sequence-1_step-1.actual.log"
+    "TEST_LOGS_sequence-1_step-2.actual.log"
+    "TEST_LOGS_sequence-2_step-1.actual.log"
+    "TEST_LOGS_sequence-2_step-3.actual.log"
+)
+
+for log_file in "${EXPECTED_LOG_FILES[@]}"; do
+    if [[ -f "$TEMP_DIR/$log_file" ]]; then
+        pass "Log file created: $log_file"
+    else
+        fail "Log file not found: $log_file"
+    fi
+done
+
+# Verify manual step does NOT have a log file
+MANUAL_LOG_FILE="TEST_LOGS_sequence-2_step-2.actual.log"
+if [[ ! -f "$TEMP_DIR/$MANUAL_LOG_FILE" ]]; then
+    pass "Manual step correctly has no log file: $MANUAL_LOG_FILE"
+else
+    fail "Manual step incorrectly created log file: $MANUAL_LOG_FILE"
+fi
+
+# Verify log file contents contain expected command output
+if [[ -f "$TEMP_DIR/TEST_LOGS_sequence-1_step-1.actual.log" ]]; then
+    LOG_CONTENT=$(cat "$TEMP_DIR/TEST_LOGS_sequence-1_step-1.actual.log")
+    if [[ "$LOG_CONTENT" == "hello world" ]]; then
+        pass "Log file TEST_LOGS_sequence-1_step-1.actual.log contains expected output"
+    else
+        fail "Log file TEST_LOGS_sequence-1_step-1.actual.log has incorrect content: '$LOG_CONTENT'"
+    fi
+fi
+
+if [[ -f "$TEMP_DIR/TEST_LOGS_sequence-2_step-1.actual.log" ]]; then
+    LOG_CONTENT=$(cat "$TEMP_DIR/TEST_LOGS_sequence-2_step-1.actual.log")
+    if [[ "$LOG_CONTENT" == "goodbye" ]]; then
+        pass "Log file TEST_LOGS_sequence-2_step-1.actual.log contains expected output"
+    else
+        fail "Log file TEST_LOGS_sequence-2_step-1.actual.log has incorrect content: '$LOG_CONTENT'"
+    fi
+fi
+
+if [[ -f "$TEMP_DIR/TEST_LOGS_sequence-2_step-3.actual.log" ]]; then
+    LOG_CONTENT=$(cat "$TEMP_DIR/TEST_LOGS_sequence-2_step-3.actual.log")
+    if [[ "$LOG_CONTENT" == "after manual" ]]; then
+        pass "Log file TEST_LOGS_sequence-2_step-3.actual.log contains expected output"
+    else
+        fail "Log file TEST_LOGS_sequence-2_step-3.actual.log has incorrect content: '$LOG_CONTENT'"
+    fi
+fi
+
+# Verify log file naming pattern is correct
+if [[ -f "$TEMP_DIR/TEST_LOGS_sequence-1_step-2.actual.log" ]]; then
+    # This log should contain a date in format YYYY-MM-DD
+    LOG_CONTENT=$(cat "$TEMP_DIR/TEST_LOGS_sequence-1_step-2.actual.log")
+    if [[ "$LOG_CONTENT" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+        pass "Log file TEST_LOGS_sequence-1_step-2.actual.log contains valid date output"
+    else
+        fail "Log file TEST_LOGS_sequence-1_step-2.actual.log does not contain expected date format: '$LOG_CONTENT'"
+    fi
+fi
+
 # Summary
 section "Test Summary"
 echo ""

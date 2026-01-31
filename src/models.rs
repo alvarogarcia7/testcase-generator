@@ -11,13 +11,27 @@ pub struct Verification {
     /// Verification result value
     pub result: String,
 
-    /// Verification output
+    /// Verification output (from output variable)
     pub output: String,
+
+    /// Verification output from file (optional - reads from LOG_FILE instead of COMMAND_OUTPUT)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub output_file: Option<String>,
 }
 
 impl fmt::Display for Verification {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "result: {} | output: {}", self.result, self.output)
+        write!(
+            f,
+            "result: {} | output: {}{}",
+            self.result,
+            self.output,
+            if self.output_file.is_some() {
+                " | output_file: enabled"
+            } else {
+                ""
+            }
+        )
     }
 }
 
@@ -79,6 +93,7 @@ fn default_verification_from_expected() -> Verification {
     Verification {
         result: "[[ $? -eq 0 ]]".to_string(),
         output: "cat $COMMAND_OUTPUT | grep -q \"${OUTPUT}\"".to_string(),
+        output_file: None,
     }
 }
 

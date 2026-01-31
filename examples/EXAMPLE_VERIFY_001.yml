@@ -2,7 +2,7 @@ requirement: "EXAMPLE_VERIFY_TEST"
 item: 1
 tc: 1
 id: 'EXAMPLE_VERIFY_001'
-description: 'Example test case for the verify subcommand'
+description: 'Example test case for the verify subcommand, demonstrating output_file verification'
 
 general_initial_conditions:
   system:
@@ -31,6 +31,7 @@ test_sequences:
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
           output: "grep -q 'Verify this output' <<< \"$COMMAND_OUTPUT\""
+          output_file: "grep -q 'Verify this output' \"$LOG_FILE\""
       - step: 2
         description: "Echo success status"
         command: echo "SUCCESS"
@@ -41,6 +42,7 @@ test_sequences:
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
           output: "grep -q 'SUCCESS' <<< \"$COMMAND_OUTPUT\""
+          output_file: "grep -q 'SUCCESS' \"$LOG_FILE\""
   - id: 2
     name: "Verify Exit Codes"
     description: |

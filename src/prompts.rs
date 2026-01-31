@@ -1069,7 +1069,11 @@ eUICC:
                                 &template.output_expression,
                                 oracle,
                             )?;
-                            return Ok(crate::models::Verification { result, output });
+                            return Ok(crate::models::Verification {
+                                result,
+                                output,
+                                output_file: None,
+                            });
                         }
                     }
                 }
@@ -1083,7 +1087,11 @@ eUICC:
         let result = Self::prompt_verification_result(oracle)?;
         let output = Self::prompt_verification_output(oracle)?;
 
-        Ok(crate::models::Verification { result, output })
+        Ok(crate::models::Verification {
+            result,
+            output,
+            output_file: None,
+        })
     }
 
     /// Prompt for verification expressions with template suggestions and category selection
@@ -1169,7 +1177,11 @@ eUICC:
         let result = Self::prompt_verification_result(oracle)?;
         let output = Self::prompt_verification_output(oracle)?;
 
-        Ok(crate::models::Verification { result, output })
+        Ok(crate::models::Verification {
+            result,
+            output,
+            output_file: None,
+        })
     }
 
     /// Helper to apply a selected template with optional editing
@@ -1217,7 +1229,11 @@ eUICC:
                 &template.output_expression,
                 oracle,
             )?;
-            Ok(crate::models::Verification { result, output })
+            Ok(crate::models::Verification {
+                result,
+                output,
+                output_file: None,
+            })
         }
     }
 }
