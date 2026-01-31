@@ -215,8 +215,6 @@ docker:verify-stage-2:
   image: python:3.14-slim
   dependencies:
     - docker:verify
-  before_script:
-    - apt-get update -qq
   script:
     - python3 scripts/ci_docker_security_scan.py docker_inspect.json > docker_scan_results.json
   artifacts:
