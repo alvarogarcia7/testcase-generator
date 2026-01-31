@@ -28,7 +28,7 @@ RUN mkdir src && \
     echo "fn main() {}" > "examples/junit_export_example.rs"
 
 # Build dependencies (this will be cached)
-RUN cargo build --release
+RUN --mount=type=cache,target=/app/target cargo build --release
 
 # Stage 2: builder - Build the actual application
 FROM rust:1.92-bookworm as builder
