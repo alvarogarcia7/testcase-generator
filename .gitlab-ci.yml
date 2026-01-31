@@ -120,43 +120,43 @@ rust:build-test-lint:
     expire_in: 1 week
     when: always
 
-#coverage:
-#  image: rust:1.92-bookworm
-#  stage: coverage
-#  dependencies:
-#    - rust:build-test-lint
-#  before_script:
-#    - rustc --version
-#    - cargo --version
-#    - apt-get update -qq
-#    - apt-get install -y -qq curl
-#    - curl -L https://github.com/mozilla/grcov/releases/latest/download/grcov-x86_64-unknown-linux-gnu.tar.bz2 | tar jxf -
-#    - chmod +x grcov
-#    - rustup component add llvm-tools-preview
-#  script:
-#    - export CARGO_INCREMENTAL=0
-#    - export RUSTFLAGS="-Cinstrument-coverage"
-#    - export LLVM_PROFILE_FILE="coverage-%p-%m.profraw"
-#    - cargo test --all --all-features --tests
-#    - ./grcov . --binary-path ./target/debug/ -s . -t lcov --branch --ignore-not-existing --ignore "/*" -o lcov.info
-#    - ./grcov . --binary-path ./target/debug/ -s . -t html --branch --ignore-not-existing --ignore "/*" -o coverage/html
-#    - |
-#      if [ -n "$CI_MERGE_REQUEST_IID" ]; then
-#        python3 scripts/ci_compare_coverage.py lcov.info > coverage_report.json
-#        python3 scripts/ci_post_coverage_comment.py coverage_report.json
-#      fi
-#  coverage: '/lines\.*: \d+\.\d+%/'
-#  artifacts:
-#    name: "coverage-$CI_COMMIT_REF_SLUG"
-#    paths:
-#      - lcov.info
-#      - coverage/
-#      - coverage_report.json
-#    reports:
-#      coverage_report:
-#        coverage_format: cobertura
-#        path: cobertura.xml
-#    expire_in: 1 month
+coverage:
+  image: rust:1.92-bookworm
+  stage: coverage
+  dependencies:
+    - rust:build-test-lint
+  before_script:
+    - rustc --version
+    - cargo --version
+    - apt-get update -qq
+    - apt-get install -y -qq curl
+    - curl -L https://github.com/mozilla/grcov/releases/latest/download/grcov-x86_64-unknown-linux-gnu.tar.bz2 | tar jxf -
+    - chmod +x grcov
+    - rustup component add llvm-tools-preview
+  script:
+    - export CARGO_INCREMENTAL=0
+    - export RUSTFLAGS="-Cinstrument-coverage"
+    - export LLVM_PROFILE_FILE="coverage-%p-%m.profraw"
+    - cargo test --all --all-features --tests
+    - ./grcov . --binary-path ./target/debug/ -s . -t lcov --branch --ignore-not-existing --ignore "/*" -o lcov.info
+    - ./grcov . --binary-path ./target/debug/ -s . -t html --branch --ignore-not-existing --ignore "/*" -o coverage/html
+    - |
+      if [ -n "$CI_MERGE_REQUEST_IID" ]; then
+        python3 scripts/ci_compare_coverage.py lcov.info > coverage_report.json
+        python3 scripts/ci_post_coverage_comment.py coverage_report.json
+      fi
+  coverage: '/lines\.*: \d+\.\d+%/'
+  artifacts:
+    name: "coverage-$CI_COMMIT_REF_SLUG"
+    paths:
+      - lcov.info
+      - coverage/
+      - coverage_report.json
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: cobertura.xml
+    expire_in: 1 month
 #
 #docker:build:
 #  stage: docker
