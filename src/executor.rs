@@ -134,10 +134,20 @@ impl TestExecutor {
                 script.push_str(&format!("# Step {}: {}\n", step.step, step.description));
 
                 if step.manual == Some(true) {
-                    script.push_str("# MANUAL STEP - Skipping automated execution\n");
-                    script.push_str(&format!("# Command: {}\n", step.command));
-                    script.push_str(&format!("# Expected result: {}\n", step.expected.result));
-                    script.push_str(&format!("# Expected output: {}\n\n", step.expected.output));
+                    script.push_str(&format!(
+                        "echo \"Step {}: {}\"\n",
+                        step.step, step.description
+                    ));
+                    script.push_str(&format!(
+                        "echo \"Command: {}\"\n",
+                        step.command.replace("\"", "\\\"")
+                    ));
+                    script.push_str("echo \"INFO: This is a manual step. You must perform this action manually.\"\n");
+                    script.push_str("if [[ \"${DEBIAN_FRONTEND}\" != 'noninteractive' && -t 0 ]]; then\n");
+                    script.push_str("    read -p \"Press ENTER to continue...\"\n");
+                    script.push_str("else\n");
+                    script.push_str("    echo \"Non-interactive mode detected, skipping manual step confirmation.\"\n");
+                    script.push_str("fi\n\n");
                     continue;
                 }
 
@@ -147,32 +157,16 @@ impl TestExecutor {
                 ));
                 script.push_str("COMMAND_OUTPUT=\"\"\n");
                 script.push_str("set +e\n");
+
+                // Wrap command in subshell and redirect stderr to stdout before piping to tee
+                // This ensures both stdout and stderr are captured in the log file
                 script.push_str(&format!(
-                    "COMMAND_OUTPUT=$({} | tee \"$LOG_FILE\")\n",
+                    "COMMAND_OUTPUT=$({{ {}; }} 2>&1 | tee \"$LOG_FILE\")\n",
                     step.command
                 ));
+
                 script.push_str("EXIT_CODE=$?\n");
                 script.push_str("set -e\n\n");
-
-                let escaped_command = step.command.replace("\\", "\\\\").replace("\"", "\\\"");
-                script.push_str("# Escape output for JSON\n");
-                script.push_str("OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | sed 's/\\\\/\\\\\\\\/g' | sed 's/\"/\\\\\"/g' | sed -e ':a' -e '$!N;s/\\n/\\\\n/;ta')\n\n");
-
-                script.push_str("if [ \"$FIRST_ENTRY\" = false ]; then\n");
-                script.push_str("    echo ',' >> \"$JSON_LOG\"\n");
-                script.push_str("fi\n");
-                script.push_str("FIRST_ENTRY=false\n\n");
-
-                script.push_str("cat >> \"$JSON_LOG\" << EOF\n");
-                script.push_str("  {\n");
-                script.push_str(&format!("    \"test_sequence\": {},\n", sequence.id));
-                script.push_str(&format!("    \"step\": {},\n", step.step));
-                script.push_str(&format!("    \"command\": \"{}\",\n", escaped_command));
-                script.push_str("    \"exit_code\": $EXIT_CODE,\n");
-                script.push_str("    \"output\": \"$OUTPUT_ESCAPED\",\n");
-                script.push_str("    \"timestamp\": \"$TIMESTAMP\"\n");
-                script.push_str("  }\n");
-                script.push_str("EOF\n\n");
 
                 script.push_str(&format!(
                     "# Verification result expression: {}\n",
@@ -225,6 +219,26 @@ impl TestExecutor {
                 script.push_str("    echo \"  Output verification: $VERIFICATION_OUTPUT_PASS\"\n");
                 script.push_str("    exit 1\n");
                 script.push_str("fi\n\n");
+
+                let escaped_command = step.command.replace("\\", "\\\\").replace("\"", "\\\"");
+                script.push_str("# Escape output for JSON\n");
+                script.push_str("OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | sed 's/\\\\/\\\\\\\\/g' | sed 's/\"/\\\\\"/g' | sed -e ':a' -e '$!N;s/\\n/\\\\n/;ta')\n\n");
+
+                script.push_str("if [ \"$FIRST_ENTRY\" = false ]; then\n");
+                script.push_str("    echo ',' >> \"$JSON_LOG\"\n");
+                script.push_str("fi\n");
+                script.push_str("FIRST_ENTRY=false\n\n");
+
+                script.push_str("cat >> \"$JSON_LOG\" << EOF\n");
+                script.push_str("  {\n");
+                script.push_str(&format!("    \"test_sequence\": {},\n", sequence.id));
+                script.push_str(&format!("    \"step\": {},\n", step.step));
+                script.push_str(&format!("    \"command\": \"{}\",\n", escaped_command));
+                script.push_str("    \"exit_code\": $EXIT_CODE,\n");
+                script.push_str("    \"output\": \"$OUTPUT_ESCAPED\",\n");
+                script.push_str("    \"timestamp\": \"$TIMESTAMP\"\n");
+                script.push_str("  }\n");
+                script.push_str("EOF\n\n");
             }
         }
 
@@ -599,9 +613,19 @@ mod tests {
 
         let script = executor.generate_test_script(&test_case);
 
-        assert!(script.contains("MANUAL STEP"));
         assert!(script.contains("Manual verification"));
         assert!(script.contains("ssh device"));
+        assert!(script.contains("echo \"Step 1: Manual verification\""));
+        assert!(script.contains("echo \"Command: ssh device\""));
+        assert!(script.contains(
+            "echo \"INFO: This is a manual step. You must perform this action manually.\""
+        ));
+        assert!(script.contains("read -p \"Press ENTER to continue...\""));
+        assert!(script.contains("if [[ \"${DEBIAN_FRONTEND}\" != 'noninteractive' && -t 0 ]]; then\n"));
+        assert!(
+            script.contains("Non-interactive mode detected, skipping manual step confirmation.")
+        );
+        assert!(!script.contains("MANUAL STEP - Skipping"));
     }
 
     #[test]
@@ -967,6 +991,45 @@ mod tests {
         assert!(
             tee_pattern.is_match(&script),
             "Script should match tee command pattern with $LOG_FILE variable"
+        );
+    }
+
+    #[test]
+    fn test_stderr_capture_in_generated_script() {
+        let executor = TestExecutor::new();
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test stderr capture".to_string(),
+        );
+
+        let mut sequence = TestSequence::new(1, "Seq1".to_string(), "First sequence".to_string());
+        let step = Step {
+            step: 1,
+            manual: None,
+            description: "Test step".to_string(),
+            command: "echo 'test'".to_string(),
+            expected: Expected {
+                success: Some(true),
+                result: "0".to_string(),
+                output: "test".to_string(),
+            },
+            verification: Verification {
+                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
+                output: "true".to_string(),
+                output_file: None,
+            },
+        };
+        sequence.steps.push(step);
+        test_case.test_sequences.push(sequence);
+
+        let script = executor.generate_test_script(&test_case);
+
+        assert!(
+            script.contains("2>&1 | tee"),
+            "Script should contain '2>&1 | tee' pattern to capture stderr before tee command"
         );
     }
 }

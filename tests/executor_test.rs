@@ -336,10 +336,12 @@ fn test_manual_step_skipped() {
 
     let script = executor.generate_test_script(&test_case);
 
-    assert!(script.contains("# MANUAL STEP - Skipping automated execution"));
-    assert!(script.contains("# Command: ssh device"));
-    assert!(script.contains("# Expected result: connected"));
-    assert!(script.contains("# Expected output: success"));
+    assert!(script.contains("echo \"Step 1: Manual verification\""));
+    assert!(script.contains("echo \"Command: ssh device\""));
+    assert!(script
+        .contains("echo \"INFO: This is a manual step. You must perform this action manually.\""));
+    assert!(script.contains("read -p \"Press ENTER to continue...\""));
+    assert!(!script.contains("MANUAL STEP - Skipping"));
     assert!(!script.contains("COMMAND_OUTPUT=$(ssh device)"));
 }
 
@@ -463,7 +465,7 @@ fn test_command_with_pipes() {
 
     let script = executor.generate_test_script(&test_case);
 
-    assert!(script.contains("COMMAND_OUTPUT=$(echo 'hello world' | grep world | tee"));
+    assert!(script.contains("COMMAND_OUTPUT=$({ echo 'hello world' | grep world; } 2>&1 | tee"));
 }
 
 #[test]
@@ -491,7 +493,7 @@ fn test_command_with_redirects() {
 
     let script = executor.generate_test_script(&test_case);
 
-    assert!(script.contains("COMMAND_OUTPUT=$(cat /dev/null 2>&1 | tee"));
+    assert!(script.contains("COMMAND_OUTPUT=$({ cat /dev/null 2>&1; } 2>&1 | tee"));
 }
 
 #[test]
@@ -519,7 +521,7 @@ fn test_command_with_environment_variables() {
 
     let script = executor.generate_test_script(&test_case);
 
-    assert!(script.contains("COMMAND_OUTPUT=$(MY_VAR=test echo $MY_VAR | tee"));
+    assert!(script.contains("COMMAND_OUTPUT=$({ MY_VAR=test echo $MY_VAR; } 2>&1 | tee"));
 }
 
 #[test]
