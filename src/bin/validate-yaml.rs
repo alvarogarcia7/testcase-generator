@@ -9,13 +9,18 @@ use testcase_manager::yaml_utils::log_yaml_parse_error;
 #[command(name = "validate-yaml")]
 #[command(about = "Validate YAML payloads against a JSON schema", version)]
 struct Cli {
+    /// Path(s) to the YAML payload file(s)
+    #[arg(value_name = "YAML_FILES", required = true, num_args = 1..)]
+    yaml_files: Vec<PathBuf>,
+
     /// Path to the JSON schema file
     #[arg(short, long, value_name = "SCHEMA_FILE")]
     schema: PathBuf,
 
-    /// Path(s) to the YAML payload file(s)
-    #[arg(value_name = "YAML_FILES", required = true)]
-    yaml_files: Vec<PathBuf>,
+    /// Watch mode - monitor YAML files for changes and re-validate
+    #[cfg(not(target_os = "windows"))]
+    #[arg(short, long)]
+    watch: bool,
 
     /// Enable verbose logging
     #[arg(short, long)]
