@@ -63,6 +63,10 @@ rust:build-test-lint:
     - rustc --version
     - cargo --version
     - apt-get update -qq
+    - apt-get install -y -qq curl
+    - curl -L https://github.com/mozilla/grcov/releases/latest/download/grcov-x86_64-unknown-linux-gnu.tar.bz2 | tar jxf -
+    - chmod +x grcov
+    - rustup component add llvm-tools-preview
   image: rust:latest
   cache:
     key: "${CI_COMMIT_REF_SLUG}"
@@ -109,51 +113,6 @@ rust:build-test-lint:
     # Test - doc tests
     - echo "===== Running Doc Tests ====="
     - cargo test --doc 2>&1 | tee doc_test_output.txt || true
-  after_script:
-    - |
-      if [ -f test_results.json ]; then
-        python3 scripts/ci_post_mr_comment.py test_results.json || true
-      fi
-    - |
-      if [ -f clippy_output.txt ] && grep -q "warning:" clippy_output.txt; then
-        python3 scripts/ci_post_clippy_comment.py clippy_output.txt || true
-      fi
-  artifacts:
-    name: "rust-artifacts-$CI_COMMIT_REF_SLUG"
-    paths:
-      - test_output.txt
-      - test_results.json
-      - e2e_output.txt
-      - doc_test_output.txt
-      - clippy_output.txt
-    reports:
-      junit: test_results.xml
-    expire_in: 1 week
-    when: always
-
-coverage:
-  image: rust:1.92-bookworm
-  stage: coverage
-  cache:
-    key: "${CI_COMMIT_REF_SLUG}"
-    paths:
-      # Cache the cargo home directory which contains registries and bins
-      - .cargo
-      # Cache the build artifacts directory
-      - target
-    # This ensures the cache is available to all jobs in the pipeline
-    policy: pull-push
-  dependencies:
-    - rust:build-test-lint
-  before_script:
-    - rustc --version
-    - cargo --version
-    - apt-get update -qq
-    - apt-get install -y -qq curl
-    - curl -L https://github.com/mozilla/grcov/releases/latest/download/grcov-x86_64-unknown-linux-gnu.tar.bz2 | tar jxf -
-    - chmod +x grcov
-    - rustup component add llvm-tools-preview
-  script:
     - export CARGO_INCREMENTAL=0
     - export RUSTFLAGS="-Cinstrument-coverage"
     - export LLVM_PROFILE_FILE="coverage-%p-%m.profraw"
@@ -165,18 +124,34 @@ coverage:
         python3 scripts/ci_compare_coverage.py lcov.info > coverage_report.json
         python3 scripts/ci_post_coverage_comment.py coverage_report.json
       fi
+  after_script:
+    - |
+      if [ -f test_results.json ]; then
+        python3 scripts/ci_post_mr_comment.py test_results.json || true
+      fi
+    - |
+      if [ -f clippy_output.txt ] && grep -q "warning:" clippy_output.txt; then
+        python3 scripts/ci_post_clippy_comment.py clippy_output.txt || true
+      fi
   coverage: '/lines\.*: \d+\.\d+%/'
   artifacts:
-    name: "coverage-$CI_COMMIT_REF_SLUG"
+    name: "rust-artifacts-$CI_COMMIT_REF_SLUG"
     paths:
       - lcov.info
       - coverage/
       - coverage_report.json
+      - test_output.txt
+      - test_results.json
+      - e2e_output.txt
+      - doc_test_output.txt
+      - clippy_output.txt
     reports:
+      junit: test_results.xml
       coverage_report:
         coverage_format: cobertura
         path: cobertura.xml
-    expire_in: 1 month
+    expire_in: 1 week
+    when: always
 
 docker:build:
   stage: docker
