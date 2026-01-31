@@ -96,29 +96,27 @@ fn main() -> Result<()> {
     let log_level = if cli.verbose { "info" } else { "warn" };
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(log_level)).init();
 
-    // Read the JSON schema file
-    let schema_content = fs::read_to_string(&cli.schema).context(format!(
-        "Failed to read schema file: {}",
-        cli.schema.display()
-    ))?;
-
-    // Parse the schema
-    let schema_value: serde_json::Value =
-        serde_json::from_str(&schema_content).context("Failed to parse JSON schema")?;
-
-    // Compile the schema
-    let compiled_schema = jsonschema::JSONSchema::compile(&schema_value)
-        .map_err(|e| anyhow::anyhow!("Failed to compile JSON schema: {}", e))?;
-
-    // Validate each YAML file
     let mut results = Vec::new();
 
     for yaml_file in &cli.yaml_files {
-        let result = validate_yaml_file(yaml_file, &compiled_schema);
+        let validation_result = validate_single_file(yaml_file, &cli.schema);
+
+        let result = match validation_result {
+            Ok(_) => ValidationResult {
+                file_path: yaml_file.clone(),
+                success: true,
+                error_messages: Vec::new(),
+            },
+            Err(e) => ValidationResult {
+                file_path: yaml_file.clone(),
+                success: false,
+                error_messages: e.to_string().lines().map(String::from).collect(),
+            },
+        };
+
         results.push(result);
     }
 
-    // Display per-file validation status
     for result in &results {
         if result.success {
             println!(
@@ -138,7 +136,6 @@ fn main() -> Result<()> {
         }
     }
 
-    // Print summary
     let total = results.len();
     let passed = results.iter().filter(|r| r.success).count();
     let failed = total - passed;
@@ -149,87 +146,9 @@ fn main() -> Result<()> {
     println!("  {}Passed: {}{}", COLOR_GREEN, passed, COLOR_RESET);
     println!("  {}Failed: {}{}", COLOR_RED, failed, COLOR_RESET);
 
-    // Exit with appropriate code
     if failed > 0 {
         process::exit(1);
     }
 
     Ok(())
-}
-
-fn validate_yaml_file(
-    yaml_file: &PathBuf,
-    compiled_schema: &jsonschema::JSONSchema,
-) -> ValidationResult {
-    let mut result = ValidationResult {
-        file_path: yaml_file.clone(),
-        success: false,
-        error_messages: Vec::new(),
-    };
-
-    // Read the YAML file
-    let yaml_content = match fs::read_to_string(yaml_file) {
-        Ok(content) => content,
-        Err(e) => {
-            result
-                .error_messages
-                .push(format!("Failed to read file: {}", e));
-            return result;
-        }
-    };
-
-    // Parse the YAML content
-    let yaml_value: serde_yaml::Value = match serde_yaml::from_str(&yaml_content) {
-        Ok(value) => value,
-        Err(e) => {
-            log_yaml_parse_error(&e, &yaml_content, &yaml_file.to_string_lossy());
-            result
-                .error_messages
-                .push(format!("Failed to parse YAML: {}", e));
-            return result;
-        }
-    };
-
-    // Convert YAML to JSON Value for validation
-    let json_value: serde_json::Value = match serde_json::to_value(&yaml_value) {
-        Ok(value) => value,
-        Err(e) => {
-            result
-                .error_messages
-                .push(format!("Failed to convert YAML to JSON: {}", e));
-            return result;
-        }
-    };
-
-    // Validate
-    if let Err(errors) = compiled_schema.validate(&json_value) {
-        result
-            .error_messages
-            .push("Schema constraint violations:".to_string());
-
-        for (idx, error) in errors.enumerate() {
-            let path = if error.instance_path.to_string().is_empty() {
-                "root".to_string()
-            } else {
-                error.instance_path.to_string()
-            };
-
-            result
-                .error_messages
-                .push(format!("  Error #{}: Path '{}'", idx + 1, path));
-            result
-                .error_messages
-                .push(format!("    Constraint: {}", error));
-
-            let instance = error.instance.as_ref();
-            result
-                .error_messages
-                .push(format!("    Found value: {}", instance));
-        }
-
-        return result;
-    }
-
-    result.success = true;
-    result
 }
