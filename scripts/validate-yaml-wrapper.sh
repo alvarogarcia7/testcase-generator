@@ -61,11 +61,8 @@ if [[ $# -eq 0 ]]; then
     exit 1
 fi
 
-# Store all YAML files to validate
-YAML_FILES=("$@")
-
 # Validate that all YAML files exist
-for YAML_FILE in "${YAML_FILES[@]}"; do
+for YAML_FILE in "$@"; do
     if [[ ! -f "$YAML_FILE" ]]; then
         echo "[ERROR] YAML file not found: $YAML_FILE" >&2
         exit 1
@@ -81,8 +78,5 @@ fi
 
 # Run validation
 # The validate-yaml binary expects: validate-yaml --schema <schema-file> <yaml-file>...
-"$VALIDATE_YAML" --schema "$SCHEMA_FILE" "${YAML_FILES[@]}"
-exit_code=$?
-
-# Exit with the same code as validate-yaml
-exit $exit_code
+# Pass all arguments directly to the binary
+"$VALIDATE_YAML" --schema "$SCHEMA_FILE" "$@"

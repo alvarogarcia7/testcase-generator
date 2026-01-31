@@ -9,11 +9,228 @@ The validation module provides JSON schema validation for YAML structures with d
 3. **File Loading with Validation**: Scans directories and provides validation status for each file
 4. **Watch Mode**: Continuously monitors directories for file changes and automatically validates modified files
 
+## validate-yaml Binary
+
+The `validate-yaml` binary is a command-line tool for validating YAML files against JSON schema definitions. It supports both single-file and multi-file validation, with optional watch mode for continuous monitoring.
+
+> **Quick Reference**: See [VALIDATE_YAML_QUICK_REF.md](VALIDATE_YAML_QUICK_REF.md) for a comprehensive quick reference guide with examples, troubleshooting, and integration tips.
+
+### Command-Line Interface
+
+```
+validate-yaml [OPTIONS] <YAML_FILES>... --schema <SCHEMA_FILE>
+
+Arguments:
+  <YAML_FILES>...         Path(s) to the YAML payload file(s) to validate
+
+Options:
+  -s, --schema <SCHEMA_FILE>   Path to the JSON schema file
+  -w, --watch                  Watch mode - monitor YAML files for changes and re-validate (Linux/macOS only)
+  -v, --verbose                Enable verbose logging
+  -h, --help                   Print help
+  -V, --version                Print version
+```
+
+### Basic Validation (Without Watch Mode)
+
+**Single File:**
+```bash
+validate-yaml testcase.yml --schema schema.json
+```
+
+**Multiple Files:**
+```bash
+validate-yaml test1.yml test2.yml test3.yml --schema schema.json
+```
+
+**Using Shell Globs:**
+```bash
+validate-yaml testcases/*.yml --schema schema.json
+```
+
+**With Verbose Output:**
+```bash
+validate-yaml testcase.yml --schema schema.json --verbose
+```
+
+### Output Format
+
+**Success:**
+```
+✓ testcases/test1.yml
+✓ testcases/test2.yml
+
+Summary:
+  Total files validated: 2
+  Passed: 2
+  Failed: 0
+```
+
+**Validation Errors:**
+```
+✗ testcases/test_bad.yml
+  Schema constraint violations:
+    Error #1: Path '/item'
+      Constraint: "not a integer"
+      Found value: "not_an_integer"
+
+Summary:
+  Total files validated: 1
+  Passed: 0
+  Failed: 1
+```
+
+### Exit Codes
+
+- `0`: All validations passed
+- `1`: One or more validations failed
+
 ## Watch Mode for File Validation
 
-The `validate-files.sh` script now supports watch mode, which continuously monitors a directory for file changes and automatically triggers validation on modified files.
+> **Note**: There are two watch mode implementations available. See [WATCH_MODE_COMPARISON.md](WATCH_MODE_COMPARISON.md) for a detailed comparison to help you choose the right one for your needs.
 
-### Installation Requirements
+### validate-yaml Binary with --watch Flag
+
+The `validate-yaml` binary includes built-in watch mode support for monitoring YAML files and automatically re-validating them when changes are detected.
+
+#### Platform Support
+
+- **Linux**: Full support (uses `notify` crate with inotify backend)
+- **macOS**: Full support (uses `notify` crate with FSEvents backend)
+- **Windows**: Watch mode is **disabled** (the `--watch` flag is not available on Windows)
+
+#### Basic Usage
+
+**Single File Validation with Watch Mode:**
+```bash
+validate-yaml testcase.yml --schema schema.json --watch
+```
+
+**Multiple File Validation with Watch Mode:**
+```bash
+validate-yaml testcase1.yml testcase2.yml testcase3.yml --schema schema.json --watch
+```
+
+**Using Glob Patterns:**
+```bash
+validate-yaml testcases/*.yml --schema schema.json --watch
+```
+
+**With Verbose Logging:**
+```bash
+validate-yaml testcases/*.yml --schema schema.json --watch --verbose
+```
+
+#### Watch Mode Features
+
+1. **Initial Validation**: Runs complete validation on all specified files at startup
+2. **Real-time Monitoring**: Detects file modifications immediately using native OS file watching
+3. **Debounced Event Handling**: Groups rapid file changes (300ms debounce window) to avoid duplicate validations
+4. **Smart Re-validation**: 
+   - Validates only changed files first
+   - Shows immediate results for changed files
+   - When all changed files pass, automatically runs full validation on all watched files
+5. **Color-coded Output**:
+   - Green checkmark (✓) for passing files
+   - Red X (✗) for failing files
+   - Bold text for emphasis
+   - Yellow highlights for change notifications
+6. **Detailed Error Messages**: Shows JSON path, constraint violations, and found values
+
+#### How Watch Mode Works
+
+1. **Startup Phase**:
+   - Parses command-line arguments
+   - Loads and compiles JSON schema
+   - Performs initial validation on all specified YAML files
+   - Displays results and summary
+
+2. **Monitoring Phase**:
+   - Creates file system watchers for each specified file
+   - Canonicalizes file paths for reliable change detection
+   - Listens for file modification events
+
+3. **Change Detection**:
+   - Receives file system events from OS
+   - Filters for modification events only
+   - Adds changed files to debounce buffer
+   - Waits 300ms after last event before processing
+
+4. **Re-validation Phase**:
+   - Displays list of changed files
+   - Validates only the changed files
+   - Shows results for changed files
+   - If all changed files pass:
+     - Displays "All changed files passed!" message
+     - Runs full validation on all watched files
+     - Shows complete results and summary
+   - If any changed file fails:
+     - Shows summary for changed files only
+     - Waits for next change
+
+#### Exit Watch Mode
+
+Press `Ctrl+C` to stop watching and exit.
+
+#### Example Output
+
+```
+Watch mode enabled
+Monitoring 3 files for changes...
+
+Initial validation:
+✓ testcases/test1.yml
+✓ testcases/test2.yml
+✓ testcases/test3.yml
+
+Summary:
+  Total files validated: 3
+  Passed: 3
+  Failed: 0
+
+Watching for changes...
+
+File changes detected:
+  → /path/to/testcases/test2.yml
+
+Validating changed files:
+✓ testcases/test2.yml
+
+All changed files passed! Running full validation...
+
+✓ testcases/test1.yml
+✓ testcases/test2.yml
+✓ testcases/test3.yml
+
+Summary:
+  Total files validated: 3
+  Passed: 3
+  Failed: 0
+
+Watching for changes...
+```
+
+#### Windows Limitations
+
+On Windows, the `--watch` flag is not compiled into the binary due to platform-specific limitations. Attempting to use watch mode on Windows will result in a command-line parsing error indicating the flag is not recognized.
+
+**Windows users** should use the standard validation mode without `--watch`:
+```bash
+validate-yaml testcase.yml --schema schema.json
+```
+
+For continuous validation workflows on Windows, consider:
+- Setting up a file watcher using external tools (e.g., PowerShell FileSystemWatcher)
+- Using WSL (Windows Subsystem for Linux) to run the Linux version with watch mode
+- Implementing a scheduled task to periodically run validation
+
+---
+
+### validate-files.sh Script Watch Mode
+
+The `validate-files.sh` script provides an alternative watch mode implementation with different features, useful for directory-wide monitoring with pattern matching.
+
+#### Installation Requirements
 
 **Linux:**
 ```bash
@@ -25,7 +242,7 @@ sudo apt-get install inotify-tools
 brew install fswatch
 ```
 
-### Usage
+#### Usage
 
 Basic watch mode (monitors `testcases/` directory by default):
 ```bash
@@ -42,7 +259,7 @@ With verbose output:
 ./scripts/validate-files.sh --pattern '\.ya?ml$' --validator ./scripts/validate-yaml-wrapper.sh --watch --verbose
 ```
 
-### Features
+#### Features
 
 - **Initial Validation**: Runs a complete validation of all matching files on startup
 - **Live Monitoring**: Detects file modifications, creations, deletions, and moves in real-time
@@ -51,7 +268,7 @@ With verbose output:
 - **Cache Cleanup**: Automatically removes cache entries for deleted files
 - **Pattern Matching**: Only validates files matching the specified regex pattern
 
-### How It Works
+#### How It Works
 
 1. On startup, the script performs an initial validation of all files matching the pattern
 2. It then starts monitoring the specified directory recursively
@@ -62,7 +279,7 @@ With verbose output:
    - The cache is updated with the new validation result
 4. For deleted files, the corresponding cache entries are automatically removed
 
-### Exit
+#### Exit
 
 Press `Ctrl+C` to stop watch mode and exit the script.
 

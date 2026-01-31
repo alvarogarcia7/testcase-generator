@@ -78,6 +78,7 @@ test-e2e-validate-yaml: build
 	cargo run --bin validate-yaml -- --schema data/schema.json tests/sample/gsma_4.4.2.2_TC.yml >/dev/null 2>&1
 	! cargo run --bin validate-yaml -- --schema data/schema.json tests/sample/data.yml >/dev/null 2>&1
 	./tests/integration/test_validate_yaml_multi_e2e.sh
+	./tests/integration/test_validate_yaml_watch_e2e.sh
 .PHONY: test-e2e-validate-yaml
 
 docker-build:
