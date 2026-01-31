@@ -5,6 +5,15 @@ use std::path::{Path, PathBuf};
 use std::process;
 use testcase_manager::yaml_utils::log_yaml_parse_error;
 
+#[cfg(not(target_os = "windows"))]
+use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+#[cfg(not(target_os = "windows"))]
+use std::collections::HashSet;
+#[cfg(not(target_os = "windows"))]
+use std::sync::mpsc::channel;
+#[cfg(not(target_os = "windows"))]
+use std::time::Duration;
+
 #[derive(Parser)]
 #[command(name = "validate-yaml")]
 #[command(about = "Validate YAML payloads against a JSON schema", version)]
@@ -90,16 +99,11 @@ pub fn validate_single_file<P: AsRef<Path>, S: AsRef<Path>>(
     Ok(())
 }
 
-fn main() -> Result<()> {
-    let cli = Cli::parse();
-
-    let log_level = if cli.verbose { "info" } else { "warn" };
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(log_level)).init();
-
+fn validate_files(yaml_files: &[PathBuf], schema_path: &Path) -> Vec<ValidationResult> {
     let mut results = Vec::new();
 
-    for yaml_file in &cli.yaml_files {
-        let validation_result = validate_single_file(yaml_file, &cli.schema);
+    for yaml_file in yaml_files {
+        let validation_result = validate_single_file(yaml_file, schema_path);
 
         let result = match validation_result {
             Ok(_) => ValidationResult {
@@ -117,7 +121,11 @@ fn main() -> Result<()> {
         results.push(result);
     }
 
-    for result in &results {
+    results
+}
+
+fn print_results(results: &[ValidationResult]) {
+    for result in results {
         if result.success {
             println!(
                 "{}{COLOR_GREEN}✓{COLOR_RESET} {}",
@@ -135,7 +143,9 @@ fn main() -> Result<()> {
             }
         }
     }
+}
 
+fn print_summary(results: &[ValidationResult]) {
     let total = results.len();
     let passed = results.iter().filter(|r| r.success).count();
     let failed = total - passed;
@@ -145,7 +155,150 @@ fn main() -> Result<()> {
     println!("  Total files validated: {}", total);
     println!("  {}Passed: {}{}", COLOR_GREEN, passed, COLOR_RESET);
     println!("  {}Failed: {}{}", COLOR_RED, failed, COLOR_RESET);
+}
 
+#[cfg(not(target_os = "windows"))]
+fn run_watch_mode(yaml_files: Vec<PathBuf>, schema_path: PathBuf) -> Result<()> {
+    const COLOR_BLUE: &str = "\x1b[34m";
+    const COLOR_YELLOW: &str = "\x1b[33m";
+
+    println!(
+        "{}{}Watch mode enabled{}",
+        COLOR_BOLD, COLOR_BLUE, COLOR_RESET
+    );
+    println!("Monitoring {} files for changes...\n", yaml_files.len());
+
+    println!("{}Initial validation:{}", COLOR_BOLD, COLOR_RESET);
+    let results = validate_files(&yaml_files, &schema_path);
+    print_results(&results);
+    print_summary(&results);
+    println!();
+
+    let (tx, rx) = channel();
+
+    let mut watcher = RecommendedWatcher::new(
+        move |res: Result<Event, notify::Error>| {
+            if let Ok(event) = res {
+                let _ = tx.send(event);
+            }
+        },
+        Config::default(),
+    )
+    .context("Failed to create file watcher")?;
+
+    for yaml_file in &yaml_files {
+        let canonical_path = yaml_file.canonicalize().context(format!(
+            "Failed to canonicalize path: {}",
+            yaml_file.display()
+        ))?;
+        watcher
+            .watch(&canonical_path, RecursiveMode::NonRecursive)
+            .context(format!(
+                "Failed to watch file: {}",
+                canonical_path.display()
+            ))?;
+    }
+
+    let mut changed_files = HashSet::new();
+    let mut last_event_time = std::time::Instant::now();
+    let debounce_duration = Duration::from_millis(300);
+
+    loop {
+        match rx.recv_timeout(Duration::from_millis(100)) {
+            Ok(event) => {
+                if matches!(event.kind, EventKind::Modify(_)) {
+                    for path in event.paths {
+                        if yaml_files.iter().any(|f| {
+                            f.canonicalize()
+                                .ok()
+                                .as_ref()
+                                .map(|p| p == &path)
+                                .unwrap_or(false)
+                        }) {
+                            changed_files.insert(path.clone());
+                            last_event_time = std::time::Instant::now();
+                        }
+                    }
+                }
+            }
+            Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+                if !changed_files.is_empty() && last_event_time.elapsed() >= debounce_duration {
+                    println!(
+                        "\n{}{}File changes detected:{}",
+                        COLOR_BOLD, COLOR_YELLOW, COLOR_RESET
+                    );
+                    for changed_file in &changed_files {
+                        println!("  → {}", changed_file.display());
+                    }
+                    println!();
+
+                    let changed_yaml_files: Vec<PathBuf> = yaml_files
+                        .iter()
+                        .filter(|f| {
+                            f.canonicalize()
+                                .ok()
+                                .as_ref()
+                                .map(|p| changed_files.contains(p))
+                                .unwrap_or(false)
+                        })
+                        .cloned()
+                        .collect();
+
+                    println!("{}Validating changed files:{}", COLOR_BOLD, COLOR_RESET);
+                    let changed_results = validate_files(&changed_yaml_files, &schema_path);
+                    print_results(&changed_results);
+
+                    let all_changed_passed = changed_results.iter().all(|r| r.success);
+
+                    if all_changed_passed {
+                        println!();
+                        println!(
+                            "{}All changed files passed! Running full validation...{}",
+                            COLOR_BOLD, COLOR_RESET
+                        );
+                        println!();
+
+                        let full_results = validate_files(&yaml_files, &schema_path);
+                        print_results(&full_results);
+                        print_summary(&full_results);
+                    } else {
+                        let passed = changed_results.iter().filter(|r| r.success).count();
+                        let failed = changed_results.len() - passed;
+                        println!();
+                        println!("{}Changed files summary:{}", COLOR_BOLD, COLOR_RESET);
+                        println!("  {}Passed: {}{}", COLOR_GREEN, passed, COLOR_RESET);
+                        println!("  {}Failed: {}{}", COLOR_RED, failed, COLOR_RESET);
+                    }
+
+                    println!();
+                    println!("{}Watching for changes...{}", COLOR_BOLD, COLOR_RESET);
+
+                    changed_files.clear();
+                }
+            }
+            Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
+                return Err(anyhow::anyhow!("Watch channel disconnected"));
+            }
+        }
+    }
+}
+
+fn main() -> Result<()> {
+    let cli = Cli::parse();
+
+    let log_level = if cli.verbose { "info" } else { "warn" };
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(log_level)).init();
+
+    #[cfg(not(target_os = "windows"))]
+    if cli.watch {
+        return run_watch_mode(cli.yaml_files, cli.schema);
+    }
+
+    let results = validate_files(&cli.yaml_files, &cli.schema);
+    print_results(&results);
+    print_summary(&results);
+
+    let failed = results.iter().filter(|r| !r.success).count();
     if failed > 0 {
         process::exit(1);
     }
