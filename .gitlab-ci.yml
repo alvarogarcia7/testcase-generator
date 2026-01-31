@@ -23,9 +23,9 @@ build-image:
   stage: build
   image: docker:27-cli
   script:
-    - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
     - echo "Building Python + Docker client image"
     - docker build -t $CI_REGISTRY_IMAGE:latest .
+    - docker build -t $CI_REGISTRY_IMAGE:${CI_COMMIT_SHORT_SHA} .
     - docker run $CI_REGISTRY_IMAGE:latest ls
     - docker run $CI_REGISTRY_IMAGE:latest /usr/local/bin/editor --help
   tags:
@@ -51,6 +51,8 @@ push-image:
     - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
     - docker push $CI_REGISTRY_IMAGE:latest
     - docker push $CI_REGISTRY_IMAGE:${CI_COMMIT_SHORT_SHA}
+  only:
+    - master
   tags:
     - dind-amd
 
