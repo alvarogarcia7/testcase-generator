@@ -29,6 +29,9 @@ build-image:
     - docker run $CI_REGISTRY_IMAGE:latest ls
     - docker run $CI_REGISTRY_IMAGE:latest /usr/local/bin/editor --help
     - docker push $CI_REGISTRY_IMAGE:latest
+  only:
+    - merge_requests
+    - master
   tags:
     - dind-amd
 
@@ -157,70 +160,70 @@ coverage:
         coverage_format: cobertura
         path: cobertura.xml
     expire_in: 1 month
+
+docker:build:
+  stage: docker
+  image: docker:27-cli
+  before_script:
+    - docker info
+  script:
+    - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA .
+    - echo "Built image $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"
+  only:
+    - merge_requests
+    - master
+  tags:
+    - dind-amd
+
+docker:verify:
+  stage: docker
+  image: docker:27-cli
+  dependencies:
+    - docker:build
+  before_script:
+    - docker info
+  script:
+    - docker build -t testcase-manager:test .
+    - docker images | grep testcase-manager
+    - docker run --rm testcase-manager:test validate-yaml --help
+    - docker run --rm testcase-manager:test validate-json --help
+    - echo "Image verification successful"
+    - docker inspect testcase-manager:test | tee docker_inspect.json
+    - python3 scripts/ci_docker_security_scan.py docker_inspect.json > docker_scan_results.json
+  artifacts:
+    name: "docker-verify-$CI_COMMIT_REF_SLUG"
+    paths:
+      - docker_inspect.json
+      - docker_scan_results.json
+    expire_in: 1 week
+  only:
+    - merge_requests
+    - master
+  tags:
+    - dind-amd
 #
-#docker:build:
-#  stage: docker
-#  image: docker:27-cli
-#  before_script:
-#    - docker info
-#  script:
-#    - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA .
-#    - docker build -t $CI_REGISTRY_IMAGE:latest .
-#    - echo "Built image $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"
-#  only:
-#    - merge_requests
-#    - master
-#  tags:
-#    - dind-amd
-#
-#docker:verify:
-#  stage: docker
-#  image: docker:27-cli
-#  dependencies:
-#    - docker:build
-#  before_script:
-#    - docker info
-#  script:
-#    - docker build -t testcase-manager:test .
-#    - docker images | grep testcase-manager
-#    - docker run --rm testcase-manager:test validate-yaml --help
-#    - docker run --rm testcase-manager:test validate-json --help
-#    - echo "Image verification successful"
-#    - docker inspect testcase-manager:test | tee docker_inspect.json
-#    - python3 scripts/ci_docker_security_scan.py docker_inspect.json > docker_scan_results.json
-#  artifacts:
-#    name: "docker-verify-$CI_COMMIT_REF_SLUG"
-#    paths:
-#      - docker_inspect.json
-#      - docker_scan_results.json
-#    expire_in: 1 week
-#  only:
-#    - merge_requests
-#    - master
-#  tags:
-#    - dind-amd
-#
-#docker:push:
-#  stage: docker
-#  image: docker:27-cli
-#  services:
-#    - docker:27-dind
-#  dependencies:
-#    - docker:verify
-#  before_script:
-#    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
-#  script:
-#    - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA .
-#    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
-#    - |
-#      if [ "$CI_COMMIT_BRANCH" == "$CI_DEFAULT_BRANCH" ]; then
-#        docker tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA $CI_REGISTRY_IMAGE:latest
-#        docker push $CI_REGISTRY_IMAGE:latest
-#      fi
-#  only:
-#    - master
-#  tags:
-#    - dind-amd
+docker:push:
+  stage: docker
+  image: docker:27-cli
+  services:
+    - docker:27-dind
+  dependencies:
+    - docker:verify
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
+  script:
+    - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA .
+    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
+    - |
+      if [ "$CI_COMMIT_BRANCH" == "$CI_DEFAULT_BRANCH" ]; then
+        docker tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA $CI_REGISTRY_IMAGE:latest
+        docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
+        docker push $CI_REGISTRY_IMAGE:latest
+      fi
+  only:
+    - master
+  tags:
+    - dind-amd
 #
 #performance:baseline:
 #  image: rust:1.92-bookworm
