@@ -46,9 +46,6 @@ Thumbs.db
 # GitHub workflows
 .github/
 
-# Scripts (not needed in runtime)
-scripts/
-
 # Docker files
 Dockerfile
 .dockerignore

@@ -1,5 +1,5 @@
-# Stage 1: deps - Build dependencies only
-FROM rust:1.92-bookworm as deps
+# Stage 1: builder - Build the actual application
+FROM rust:1.92-bookworm AS builder
 
 WORKDIR /app
 
@@ -28,30 +28,31 @@ RUN mkdir src && \
     echo "fn main() {}" > "examples/junit_export_example.rs"
 
 # Build dependencies (this will be cached)
-RUN --mount=type=cache,target=/app/target cargo build --release
-
-# Stage 2: builder - Build the actual application
-FROM rust:1.92-bookworm as builder
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/app/target \
+    cargo build --all --locked --release --target-dir ./target
 
 WORKDIR /app
 
-# Copy dependencies from deps stage
-COPY --from=deps /app/target target
-COPY --from=deps /usr/local/cargo /usr/local/cargo
-
-# Copy manifests
-COPY Cargo.toml Cargo.lock ./
-
-# Copy full source
+# Copy source code and perform the final build
 COPY src ./src
 COPY examples ./examples
 COPY tests ./tests
 
 # Build the application against cached dependencies
-RUN cargo build --release
+# The previous RUN command will be reused if only Cargo.toml/Cargo.lock are unchanged
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/app/target \
+    cargo build --all --locked --release --target-dir ./target && \
+mkdir -p /deliverable && \
+for bin in $(ls -F /app/target/release | grep -E ".*\*" | cut -d"*" -f1); do \
+      if [ -n "$bin" ]; then \
+        cp "/app/target/release/$bin" /deliverable/ && chmod +x "/deliverable/$bin"; \
+      fi; \
+    done
 
-# Stage 3: runtime - Final lightweight image
-FROM debian:bookworm-slim as runtime
+# Stage 2: runtime - Final lightweight image
+FROM debian:bookworm-slim AS runtime
 
 # Install runtime dependencies: git, inotify-tools for watch mode, and make
 RUN apt-get update && \
@@ -61,14 +62,19 @@ RUN apt-get update && \
 WORKDIR /app
 
 # Copy only the compiled binaries (not auxiliary build files)
-COPY --from=builder /app/target/release/testcase-manager /usr/local/bin/
-COPY --from=builder /app/target/release/validate-yaml /usr/local/bin/
-COPY --from=builder /app/target/release/validate-json /usr/local/bin/
-COPY --from=builder /app/target/release/trm /usr/local/bin/
-COPY --from=builder /app/target/release/test-verify /usr/local/bin/
-COPY --from=builder /app/target/release/test-executor /usr/local/bin/
-COPY --from=builder /app/target/release/editor /usr/local/bin/
-COPY --from=builder /app/target/release/test-orchestrator /usr/local/bin/
+COPY --from=builder /deliverable/* /usr/local/bin/
+
+RUN \
+ls -lah /usr/local/bin/testcase-manager > /dev/null && \
+ls -lah /usr/local/bin/validate-yaml > /dev/null && \
+ls -lah /usr/local/bin/validate-json > /dev/null && \
+ls -lah /usr/local/bin/trm > /dev/null && \
+ls -lah /usr/local/bin/test-verify > /dev/null && \
+ls -lah /usr/local/bin/test-executor > /dev/null && \
+ls -lah /usr/local/bin/editor > /dev/null && \
+ls -lah /usr/local/bin/test-orchestrator > /dev/null
+
+
 
 # Copy data directory
 COPY data ./data
