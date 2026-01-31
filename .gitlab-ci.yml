@@ -211,9 +211,6 @@ docker:verify:
     paths:
       - docker_inspect.json
     expire_in: 1 week
-  only:
-    - merge_requests
-    - master
   tags:
     - dind-amd
 
@@ -230,9 +227,6 @@ docker:verify-stage-2:
       - docker_inspect.json
       - docker_scan_results.json
     expire_in: 1 week
-  only:
-    - merge_requests
-    - master
   tags:
     - dind-amd
 
