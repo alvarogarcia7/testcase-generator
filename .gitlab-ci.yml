@@ -156,7 +156,7 @@ coverage:
 
 docker:build:
   stage: docker
-  image: docker:27-git
+  image: docker:27-cli
   before_script:
     - docker info
   script:
@@ -171,7 +171,7 @@ docker:build:
 
 docker:verify:
   stage: docker
-  image: docker:27-git
+  image: docker:27-cli
   dependencies:
     - docker:build
   before_script:
@@ -198,7 +198,7 @@ docker:verify:
 
 docker:push:
   stage: docker
-  image: docker:27-git
+  image: docker:27-cli
   services:
     - docker:27-dind
   dependencies:
