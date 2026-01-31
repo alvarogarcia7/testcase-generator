@@ -44,10 +44,11 @@ test-image:
 
 push-image:
   stage: test
-  image: $CI_REGISTRY_IMAGE:latest
+  image: docker:27-cli
   needs:
     - test-image
   script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
     - docker push $CI_REGISTRY_IMAGE:latest
     - docker push $CI_REGISTRY_IMAGE:${CI_COMMIT_SHORT_SHA}
   tags:
