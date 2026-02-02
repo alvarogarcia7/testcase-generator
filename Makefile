@@ -112,6 +112,7 @@ test-e2e-validate-yaml: build
 .PHONY: test-e2e-validate-yaml
 
 docker-build:
+	${MAKE} README_INSTALL_AUTOMATED.md
 	docker build -t testcase-manager:latest .
 .PHONY: docker-build
 
