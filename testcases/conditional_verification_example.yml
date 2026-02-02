@@ -1,0 +1,313 @@
+requirement: "CONDITIONAL_VERIFICATION"
+item: 1
+tc: 1
+id: 'CONDITIONAL_VERIFICATION_001'
+description: 'Comprehensive test case demonstrating conditional verification syntax with various use cases'
+
+general_initial_conditions:
+  system:
+    - "Shell environment is available"
+
+initial_conditions:
+  system:
+    - "All commands can be executed"
+
+test_sequences:
+  - id: 1
+    name: "Result Verification with Debug Echoes"
+    description: |
+                   This test sequence demonstrates conditional result verification.
+                   Uses if_true/if_false branches to echo debug messages based on exit codes.
+    initial_conditions:
+      system:
+        - "Shell is ready"
+    steps:
+      - step: 1
+        description: "Successful command with conditional debug output"
+        command: echo "Command succeeded"
+        expected:
+          success: true
+          result: 0
+          output: "Command succeeded"
+        verification:
+          result:
+            condition: "[[ $EXIT_CODE -eq 0 ]]"
+            if_true:
+              - "echo 'DEBUG: Exit code is 0 as expected'"
+              - "echo 'DEBUG: Command passed successfully'"
+            if_false:
+              - "echo 'ERROR: Expected exit code 0 but got $EXIT_CODE'"
+              - "exit 1"
+          output: "grep -q 'Command succeeded' <<< \"$COMMAND_OUTPUT\""
+      - step: 2
+        description: "Failed command with conditional handling"
+        command: /bin/sh -c "exit 42"
+        expected:
+          success: false
+          result: 42
+          output: ""
+        verification:
+          result:
+            condition: "[[ $EXIT_CODE -eq 42 ]]"
+            if_true:
+              - "echo 'DEBUG: Got expected error code 42'"
+              - "echo 'DEBUG: Negative test case passed'"
+            if_false:
+              - "echo 'ERROR: Expected exit code 42 but got $EXIT_CODE'"
+              - "exit 1"
+          output: "true"
+      - step: 3
+        description: "Command with range-based exit code checking"
+        command: /bin/sh -c "exit 5"
+        expected:
+          success: false
+          result: 5
+          output: ""
+        verification:
+          result:
+            condition: "[[ $EXIT_CODE -ge 1 && $EXIT_CODE -le 10 ]]"
+            if_true:
+              - "echo 'DEBUG: Exit code $EXIT_CODE is in expected range [1-10]'"
+            if_false:
+              - "echo 'ERROR: Exit code $EXIT_CODE is outside expected range'"
+              - "exit 1"
+            always:
+              - "echo 'DEBUG: Verification step completed for exit code $EXIT_CODE'"
+          output: "true"
+  - id: 2
+    name: "Output Verification with Logging Commands"
+    description: |
+                   This test sequence demonstrates conditional output verification.
+                   Uses logging commands to record verification outcomes.
+    initial_conditions:
+      system:
+        - "Shell is ready"
+    steps:
+      - step: 1
+        description: "Echo with pattern matching verification"
+        command: 'echo "Status: SUCCESS - Operation completed"'
+        expected:
+          result: 0
+          output: "Status: SUCCESS - Operation completed"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output:
+            condition: "grep -q 'SUCCESS' <<< \"$COMMAND_OUTPUT\""
+            if_true:
+              - "echo 'INFO: Output contains SUCCESS keyword'"
+              - "echo 'INFO: Pattern match successful'"
+            if_false:
+              - "echo 'ERROR: Output does not contain SUCCESS keyword'"
+              - "echo 'ERROR: Expected pattern not found in: $COMMAND_OUTPUT'"
+              - "exit 1"
+      - step: 2
+        description: "Multi-line output with conditional counting"
+        command: echo -e "Line 1\nLine 2\nLine 3\nLine 4"
+        expected:
+          result: 0
+          output: "Line 1\nLine 2\nLine 3\nLine 4"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output:
+            condition: "[[ $(grep -c 'Line' <<< \"$COMMAND_OUTPUT\") -eq 4 ]]"
+            if_true:
+              - "echo 'INFO: Found exactly 4 lines as expected'"
+              - "LINE_COUNT=$(grep -c 'Line' <<< \"$COMMAND_OUTPUT\")"
+              - "echo 'INFO: Line count verified: $LINE_COUNT'"
+            if_false:
+              - "ACTUAL_COUNT=$(grep -c 'Line' <<< \"$COMMAND_OUTPUT\")"
+              - "echo 'ERROR: Expected 4 lines but found $ACTUAL_COUNT'"
+              - "exit 1"
+            always:
+              - "echo 'INFO: Output verification completed'"
+      - step: 3
+        description: "JSON-like output with multiple checks"
+        command: 'echo "{\"status\": \"ok\", \"code\": 200}"'
+        expected:
+          result: 0
+          output: '{"status": "ok", "code": 200}'
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output:
+            condition: "grep -q '\"status\": \"ok\"' <<< \"$COMMAND_OUTPUT\" && grep -q '\"code\": 200' <<< \"$COMMAND_OUTPUT\""
+            if_true:
+              - "echo 'INFO: JSON output contains expected status and code'"
+              - "echo 'INFO: All required fields present'"
+            if_false:
+              - "echo 'ERROR: JSON output missing expected fields'"
+              - "echo 'ERROR: Actual output: $COMMAND_OUTPUT'"
+              - "exit 1"
+  - id: 3
+    name: "Output File Verification with Cleanup Actions"
+    description: |
+                   This test sequence demonstrates conditional output_file verification.
+                   Uses cleanup actions based on verification results.
+    initial_conditions:
+      system:
+        - "Shell is ready"
+    steps:
+      - step: 1
+        description: "File-based verification with conditional cleanup"
+        command: echo "Test data written to log"
+        expected:
+          result: 0
+          output: "Test data written to log"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Test data' <<< \"$COMMAND_OUTPUT\""
+          output_file:
+            condition: "grep -q 'Test data written to log' \"$LOG_FILE\""
+            if_true:
+              - "echo 'INFO: Log file contains expected entry'"
+              - "echo 'INFO: Log verification passed'"
+            if_false:
+              - "echo 'ERROR: Log file missing expected entry'"
+              - "echo 'ERROR: Log file contents:'"
+              - "cat \"$LOG_FILE\""
+              - "exit 1"
+      - step: 2
+        description: "Multiple log entries verification"
+        command: 'echo "Entry 1"; echo "Entry 2"; echo "Entry 3"'
+        expected:
+          result: 0
+          output: "Entry 1\nEntry 2\nEntry 3"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ $(grep -c 'Entry' <<< \"$COMMAND_OUTPUT\") -eq 3 ]]"
+          output_file:
+            condition: "[[ $(grep -c 'Entry' \"$LOG_FILE\") -ge 3 ]]"
+            if_true:
+              - "echo 'INFO: All entries logged successfully'"
+              - "ENTRY_COUNT=$(grep -c 'Entry' \"$LOG_FILE\")"
+              - "echo 'INFO: Found $ENTRY_COUNT entries in log file'"
+            if_false:
+              - "echo 'ERROR: Not all entries found in log file'"
+              - "exit 1"
+            always:
+              - "echo 'INFO: File verification completed'"
+      - step: 3
+        description: "Log file cleanup based on verification"
+        command: echo "Temporary test output"
+        expected:
+          result: 0
+          output: "Temporary test output"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Temporary' <<< \"$COMMAND_OUTPUT\""
+          output_file:
+            condition: "test -f \"$LOG_FILE\" && grep -q 'Temporary' \"$LOG_FILE\""
+            if_true:
+              - "echo 'INFO: Log file exists and contains expected output'"
+              - "echo 'INFO: Preparing for cleanup'"
+            if_false:
+              - "echo 'WARN: Log file verification failed'"
+              - "exit 1"
+            always:
+              - "echo 'INFO: Verification sequence complete'"
+  - id: 4
+    name: "Mixed Simple and Conditional Verifications"
+    description: |
+                   This test sequence demonstrates backward compatibility.
+                   Mixes simple verification expressions with conditional ones.
+    initial_conditions:
+      system:
+        - "Shell is ready"
+    steps:
+      - step: 1
+        description: "Simple result verification (backward compatible)"
+        command: echo "Simple test"
+        expected:
+          success: true
+          result: 0
+          output: "Simple test"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Simple test' <<< \"$COMMAND_OUTPUT\""
+          output_file: "grep -q 'Simple test' \"$LOG_FILE\""
+      - step: 2
+        description: "Conditional result with simple output"
+        command: true
+        expected:
+          success: true
+          result: 0
+          output: ""
+        verification:
+          result:
+            condition: "[[ $EXIT_CODE -eq 0 ]]"
+            if_true:
+              - "echo 'DEBUG: Simple true command succeeded'"
+            if_false:
+              - "echo 'ERROR: Simple true command failed unexpectedly'"
+              - "exit 1"
+          output: "true"
+      - step: 3
+        description: "Simple result with conditional output"
+        command: 'echo "Pattern: ABC123"'
+        expected:
+          result: 0
+          output: "Pattern: ABC123"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output:
+            condition: "echo \"$COMMAND_OUTPUT\" | grep -qE 'Pattern: [A-Z]+[0-9]+'"
+            if_true:
+              - "echo 'INFO: Pattern matches expected format'"
+            if_false:
+              - "echo 'ERROR: Pattern does not match expected format'"
+              - "exit 1"
+      - step: 4
+        description: "All conditional verifications"
+        command: /bin/sh -c "echo 'All systems operational' && exit 0"
+        expected:
+          success: true
+          result: 0
+          output: "All systems operational"
+        verification:
+          result:
+            condition: "[[ $EXIT_CODE -eq 0 ]]"
+            if_true:
+              - "echo 'DEBUG: Command completed successfully'"
+            if_false:
+              - "echo 'ERROR: Command failed with exit code $EXIT_CODE'"
+              - "exit 1"
+          output:
+            condition: "grep -q 'operational' <<< \"$COMMAND_OUTPUT\""
+            if_true:
+              - "echo 'INFO: Output contains operational status'"
+            if_false:
+              - "echo 'ERROR: Output missing operational status'"
+              - "exit 1"
+          output_file:
+            condition: "test -f \"$LOG_FILE\" && grep -q 'operational' \"$LOG_FILE\""
+            if_true:
+              - "echo 'INFO: Log file updated correctly'"
+            if_false:
+              - "echo 'WARN: Log file verification failed'"
+            always:
+              - "echo 'INFO: All verifications completed'"
+      - step: 5
+        description: "Complex conditional with environment checks"
+        command: echo "Environment check: $SHELL"
+        expected:
+          result: 0
+          output: "Environment check"
+        verification:
+          result:
+            condition: "[[ $EXIT_CODE -eq 0 ]]"
+            if_true:
+              - "echo 'DEBUG: Exit code check passed'"
+              - "echo 'DEBUG: Environment variables accessible'"
+            if_false:
+              - "echo 'ERROR: Command execution failed'"
+              - "exit 1"
+            always:
+              - "echo 'DEBUG: Executed in shell: $SHELL'"
+          output:
+            condition: "grep -q 'Environment check' <<< \"$COMMAND_OUTPUT\""
+            if_true:
+              - "echo 'INFO: Output format correct'"
+              - "OUTPUT_LEN=${#COMMAND_OUTPUT}"
+              - "echo 'INFO: Output length: $OUTPUT_LEN characters'"
+            if_false:
+              - "echo 'ERROR: Unexpected output format'"
+              - "exit 1"
