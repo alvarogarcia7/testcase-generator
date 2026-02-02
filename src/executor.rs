@@ -289,6 +289,9 @@ impl TestExecutor {
                 script.push_str(&format!("if {}; then\n", condition));
                 script.push_str(&format!("    {}=true\n", var_name));
 
+                // Set the variable to true when condition is met
+                script.push_str(&format!("    {}=true\n", var_name));
+
                 // Execute if_true commands
                 if let Some(commands) = if_true {
                     for cmd in commands {
