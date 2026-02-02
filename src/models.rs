@@ -1481,4 +1481,108 @@ mod tests {
 
         assert_eq!(entry, deserialized);
     }
+
+    #[test]
+    fn test_verification_simple_string() {
+        let yaml = r#""[[ $? -eq 0 ]]""#;
+        let result: VerificationExpression = serde_yaml::from_str(yaml).unwrap();
+
+        match result {
+            VerificationExpression::Simple(s) => {
+                assert_eq!(s, "[[ $? -eq 0 ]]");
+            }
+            _ => panic!("Expected Simple variant"),
+        }
+    }
+
+    #[test]
+    fn test_verification_conditional_full() {
+        let yaml = r#"
+condition: "test -f /tmp/file"
+if_true:
+  - "echo true"
+  - "echo success"
+if_false:
+  - "echo false"
+  - "echo failure"
+always:
+  - "echo always"
+  - "echo cleanup"
+"#;
+        let result: VerificationExpression = serde_yaml::from_str(yaml).unwrap();
+
+        match result {
+            VerificationExpression::Conditional {
+                condition,
+                if_true,
+                if_false,
+                always,
+            } => {
+                assert_eq!(condition, "test -f /tmp/file");
+                assert_eq!(
+                    if_true,
+                    Some(vec!["echo true".to_string(), "echo success".to_string()])
+                );
+                assert_eq!(
+                    if_false,
+                    Some(vec!["echo false".to_string(), "echo failure".to_string()])
+                );
+                assert_eq!(
+                    always,
+                    Some(vec!["echo always".to_string(), "echo cleanup".to_string()])
+                );
+            }
+            _ => panic!("Expected Conditional variant"),
+        }
+    }
+
+    #[test]
+    fn test_verification_conditional_minimal() {
+        let yaml = r#"
+condition: "test -d /var/log"
+"#;
+        let result: VerificationExpression = serde_yaml::from_str(yaml).unwrap();
+
+        match result {
+            VerificationExpression::Conditional {
+                condition,
+                if_true,
+                if_false,
+                always,
+            } => {
+                assert_eq!(condition, "test -d /var/log");
+                assert_eq!(if_true, None);
+                assert_eq!(if_false, None);
+                assert_eq!(always, None);
+            }
+            _ => panic!("Expected Conditional variant"),
+        }
+    }
+
+    #[test]
+    fn test_verification_conditional_missing_optional() {
+        let yaml = r#"
+condition: "[[ -n $OUTPUT ]]"
+if_true:
+  - "echo output is not empty"
+always:
+  - "echo done"
+"#;
+        let result: VerificationExpression = serde_yaml::from_str(yaml).unwrap();
+
+        match result {
+            VerificationExpression::Conditional {
+                condition,
+                if_true,
+                if_false,
+                always,
+            } => {
+                assert_eq!(condition, "[[ -n $OUTPUT ]]");
+                assert_eq!(if_true, Some(vec!["echo output is not empty".to_string()]));
+                assert_eq!(if_false, None);
+                assert_eq!(always, Some(vec!["echo done".to_string()]));
+            }
+            _ => panic!("Expected Conditional variant"),
+        }
+    }
 }
