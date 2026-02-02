@@ -43,6 +43,10 @@ impl TestExecutor {
         script.push_str(&format!("JSON_LOG=\"{}\"\n", json_output_path.display()));
         script.push_str("TIMESTAMP=$(date +\"%Y-%m-%dT%H:%M:%S\")\n\n");
 
+        // Initialize STEP_VARS associative array
+        script.push_str("# Initialize STEP_VARS associative array\n");
+        script.push_str("declare -A STEP_VARS\n\n");
+
         // Add trap to ensure JSON file is properly closed on any exit
         script.push_str("# Trap to ensure JSON file is closed properly on exit\n");
         script.push_str("cleanup() {\n");
@@ -131,6 +135,21 @@ impl TestExecutor {
                 }
             }
             script.push('\n');
+
+            // Initialize sequence-level variables
+            if let Some(ref variables) = sequence.variables {
+                if !variables.is_empty() {
+                    script.push_str("# Initialize sequence variables\n");
+                    for (var_name, var_value) in variables {
+                        script.push_str(&format!(
+                            "STEP_VARS[{}]={}\n",
+                            var_name,
+                            bash_escape(var_value)
+                        ));
+                    }
+                    script.push('\n');
+                }
+            }
 
             for step in &sequence.steps {
                 script.push_str(&format!("# Step {}: {}\n", step.step, step.description));
