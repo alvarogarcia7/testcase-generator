@@ -24,16 +24,33 @@ build-image:
   image: docker:27-cli
   script:
     - echo "Building Python + Docker client image"
-    - docker build -t $CI_REGISTRY_IMAGE:latest .
-    - docker build -t $CI_REGISTRY_IMAGE:${CI_COMMIT_SHORT_SHA} .
-    - docker run $CI_REGISTRY_IMAGE:latest ls
-    - docker run $CI_REGISTRY_IMAGE:latest /usr/local/bin/editor --help
+    # Builder stage
+    - docker build --stage builder -t $CI_REGISTRY_IMAGE:builder_latest .
+    - docker build -stage builder -t $CI_REGISTRY_IMAGE:builder_${CI_COMMIT_SHORT_SHA} .
+    - docker run $CI_REGISTRY_IMAGE:builder_latest ls
+    - docker run $CI_REGISTRY_IMAGE:builder_latest /usr/local/bin/editor --help
+    # Final stage
+    - docker build -t $CI_REGISTRY_IMAGE:app_latest .
+    - docker build -t $CI_REGISTRY_IMAGE:app_${CI_COMMIT_SHORT_SHA} .
+    - docker run $CI_REGISTRY_IMAGE:app_latest ls
+    - docker run $CI_REGISTRY_IMAGE:app_latest /usr/local/bin/editor --help
   tags:
     - dind-amd
 
-test-image:
+test-image-app:
   stage: test
-  image: $CI_REGISTRY_IMAGE:latest
+  image: $CI_REGISTRY_IMAGE:app_latest
+  needs:
+    - build-image
+  script:
+    - uname -a
+    - /usr/local/bin/editor --help
+  tags:
+    - dind-amd
+
+test-image-builder:
+  stage: test
+  image: $CI_REGISTRY_IMAGE:builder_latest
   needs:
     - build-image
   script:
@@ -46,11 +63,14 @@ push-image:
   stage: test
   image: docker:27-cli
   needs:
-    - test-image
+    - test-image-app
+    - test-image-builder
   script:
     - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
-    - docker push $CI_REGISTRY_IMAGE:latest
-    - docker push $CI_REGISTRY_IMAGE:${CI_COMMIT_SHORT_SHA}
+    - docker push $CI_REGISTRY_IMAGE:app_latest
+    - docker push $CI_REGISTRY_IMAGE:app_${CI_COMMIT_SHORT_SHA}
+    - docker push $CI_REGISTRY_IMAGE:builder_latest
+    - docker push $CI_REGISTRY_IMAGE:builder_${CI_COMMIT_SHORT_SHA}
   only:
     - master
   tags:
@@ -159,18 +179,24 @@ docker:build:
   before_script:
     - docker info
   script:
-    - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA .
-    - echo "Built image $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"
-    - docker build -t $CI_REGISTRY_IMAGE:test .
+    - docker build --stage runtime -t $CI_REGISTRY_IMAGE:app_$CI_COMMIT_SHORT_SHA .
+    - docker build --stage builder -t $CI_REGISTRY_IMAGE:builder_$CI_COMMIT_SHORT_SHA .
+    - echo "Built image $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA (app/builder)"
+    - docker build --stage builder -t $CI_REGISTRY_IMAGE:builder_test .
+    - docker build --stage runtime -t $CI_REGISTRY_IMAGE:app_test .
     - docker images | grep $CI_REGISTRY_IMAGE
-    - docker run --rm $CI_REGISTRY_IMAGE:test validate-yaml --help
-    - docker run --rm $CI_REGISTRY_IMAGE:test validate-json --help
+    - docker run --rm $CI_REGISTRY_IMAGE:app_test validate-yaml --help
+    - docker run --rm $CI_REGISTRY_IMAGE:app_test validate-json --help
+    - docker run --rm $CI_REGISTRY_IMAGE:builder_test validate-yaml --help
+    - docker run --rm $CI_REGISTRY_IMAGE:builder_test validate-json --help
     - echo "Image verification successful"
-    - docker inspect $CI_REGISTRY_IMAGE:test | tee docker_inspect.json
+    - docker inspect $CI_REGISTRY_IMAGE:app_test | tee docker_inspect_app.json
+    - docker inspect $CI_REGISTRY_IMAGE:builder_test | tee docker_inspect_builder.json
   artifacts:
     name: "docker-verify-$CI_COMMIT_REF_SLUG"
     paths:
-      - docker_inspect.json
+      - docker_inspect_app.json
+      - docker_inspect_builder.json
     expire_in: 1 week
   tags:
     - dind-amd
@@ -184,12 +210,14 @@ docker:verify:
     - docker:build
   script:
     - find . || true
-    - ls -la docker_inspect.json || true
-    - python3 scripts/ci_docker_security_scan.py docker_inspect.json > docker_scan_results.json
+    - ls -la docker_inspect_app.json || true
+    - python3 scripts/ci_docker_security_scan.py docker_inspect_app.json > docker_scan_results_app.json
+    - python3 scripts/ci_docker_security_scan.py docker_inspect_builder.json > docker_scan_results_builder.json
   artifacts:
     name: "docker-verify-$CI_COMMIT_REF_SLUG"
     paths:
-      - docker_scan_results.json
+      - docker_scan_results_app.json
+      - docker_scan_results_builder.json
     expire_in: 1 week
 
 docker:push:
@@ -202,13 +230,18 @@ docker:push:
   before_script:
     - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
   script:
-    - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA .
-    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
+    - docker build --stage builder -t $CI_REGISTRY_IMAGE:builder_$CI_COMMIT_SHORT_SHA .
+    - docker build --stage runtime -t $CI_REGISTRY_IMAGE:app_$CI_COMMIT_SHORT_SHA .
+    - docker push $CI_REGISTRY_IMAGE:app_$CI_COMMIT_SHORT_SHA
+    - docker push $CI_REGISTRY_IMAGE:builder_$CI_COMMIT_SHORT_SHA
     - |
       if [ "$CI_COMMIT_BRANCH" == "$CI_DEFAULT_BRANCH" ]; then
-        docker tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA $CI_REGISTRY_IMAGE:latest
-        docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
-        docker push $CI_REGISTRY_IMAGE:latest
+        docker tag $CI_REGISTRY_IMAGE:app_$CI_COMMIT_SHORT_SHA $CI_REGISTRY_IMAGE:app_latest
+        docker tag $CI_REGISTRY_IMAGE:builder_$CI_COMMIT_SHORT_SHA $CI_REGISTRY_IMAGE:builder_latest
+        docker push $CI_REGISTRY_IMAGE:builder_$CI_COMMIT_SHORT_SHA
+        docker push $CI_REGISTRY_IMAGE:builder_latest
+        docker push $CI_REGISTRY_IMAGE:app_$CI_COMMIT_SHORT_SHA
+        docker push $CI_REGISTRY_IMAGE:app_latest
       fi
   only:
     - master
