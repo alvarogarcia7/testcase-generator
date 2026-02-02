@@ -1,4 +1,4 @@
-use crate::models::Verification;
+use crate::models::{Verification, VerificationExpression};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -100,8 +100,8 @@ impl VerificationTemplate {
         }
 
         Verification {
-            result,
-            output,
+            result: VerificationExpression::Simple(result),
+            output: VerificationExpression::Simple(output),
             output_file: None,
         }
     }
@@ -109,8 +109,8 @@ impl VerificationTemplate {
     /// Expand the template without substitutions (use as-is)
     pub fn expand_default(&self) -> Verification {
         Verification {
-            result: self.result_expression.clone(),
-            output: self.output_expression.clone(),
+            result: VerificationExpression::Simple(self.result_expression.clone()),
+            output: VerificationExpression::Simple(self.output_expression.clone()),
             output_file: None,
         }
     }
@@ -558,10 +558,15 @@ mod tests {
         substitutions.insert("OUTPUT".to_string(), "completed".to_string());
 
         let verification = template.expand(&substitutions);
-        assert_eq!(verification.result, "[[ \"$RESULT\" == \"success\" ]]");
+        assert_eq!(
+            verification.result,
+            VerificationExpression::Simple("[[ \"$RESULT\" == \"success\" ]]".to_string())
+        );
         assert_eq!(
             verification.output,
-            "cat $COMMAND_OUTPUT | grep -q \"completed\""
+            VerificationExpression::Simple(
+                "cat $COMMAND_OUTPUT | grep -q \"completed\"".to_string()
+            )
         );
     }
 
@@ -577,8 +582,14 @@ mod tests {
         );
 
         let verification = template.expand_default();
-        assert_eq!(verification.result, "[[ $? -eq 0 ]]");
-        assert_eq!(verification.output, "cat $COMMAND_OUTPUT");
+        assert_eq!(
+            verification.result,
+            VerificationExpression::Simple("[[ $? -eq 0 ]]".to_string())
+        );
+        assert_eq!(
+            verification.output,
+            VerificationExpression::Simple("cat $COMMAND_OUTPUT".to_string())
+        );
     }
 
     #[test]

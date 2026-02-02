@@ -1070,8 +1070,8 @@ eUICC:
                                 oracle,
                             )?;
                             return Ok(crate::models::Verification {
-                                result,
-                                output,
+                                result: crate::models::VerificationExpression::Simple(result),
+                                output: crate::models::VerificationExpression::Simple(output),
                                 output_file: None,
                             });
                         }
@@ -1088,8 +1088,8 @@ eUICC:
         let output = Self::prompt_verification_output(oracle)?;
 
         Ok(crate::models::Verification {
-            result,
-            output,
+            result: crate::models::VerificationExpression::Simple(result),
+            output: crate::models::VerificationExpression::Simple(output),
             output_file: None,
         })
     }
@@ -1178,8 +1178,8 @@ eUICC:
         let output = Self::prompt_verification_output(oracle)?;
 
         Ok(crate::models::Verification {
-            result,
-            output,
+            result: crate::models::VerificationExpression::Simple(result),
+            output: crate::models::VerificationExpression::Simple(output),
             output_file: None,
         })
     }
@@ -1230,8 +1230,8 @@ eUICC:
                 oracle,
             )?;
             Ok(crate::models::Verification {
-                result,
-                output,
+                result: crate::models::VerificationExpression::Simple(result),
+                output: crate::models::VerificationExpression::Simple(output),
                 output_file: None,
             })
         }

@@ -54,6 +54,7 @@ pub use models::TestStepExecutionEntry;
 pub use models::TestSuite;
 pub use models::ValidationErrorDetail;
 pub use models::Verification;
+pub use models::VerificationExpression;
 pub use oracle::{AnswerVariant, HardcodedOracle, MenuCliOracle, Oracle, TtyCliOracle};
 pub use parser::{SearchableCollections, TestCaseParser};
 pub use prompts::{Prompts, TestCaseMetadata};

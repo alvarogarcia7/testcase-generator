@@ -1,5 +1,5 @@
 use crate::bdd_parser::BddStepRegistry;
-use crate::models::{TestCase, TestStepExecutionEntry};
+use crate::models::{TestCase, TestStepExecutionEntry, VerificationExpression};
 use anyhow::{Context, Result};
 use chrono::Local;
 use std::fs;
@@ -11,6 +11,15 @@ pub struct TestExecutor {
 }
 
 impl TestExecutor {
+    /// Extract the simple string from a VerificationExpression for execution
+    /// For conditional expressions, this currently returns the condition itself as a placeholder
+    fn extract_simple_expression(expr: &VerificationExpression) -> &str {
+        match expr {
+            VerificationExpression::Simple(s) => s.as_str(),
+            VerificationExpression::Conditional { condition, .. } => condition.as_str(),
+        }
+    }
+
     pub fn new() -> Self {
         Self { output_dir: None }
     }
@@ -170,31 +179,36 @@ impl TestExecutor {
                 script.push_str("EXIT_CODE=$?\n");
                 script.push_str("set -e\n\n");
 
+                let result_expr = Self::extract_simple_expression(&step.verification.result);
                 script.push_str(&format!(
                     "# Verification result expression: {}\n",
-                    step.verification.result
+                    result_expr
                 ));
 
                 // Determine which output verification to use
-                let output_verification =
-                    if let Some(ref output_file_verification) = step.verification.output_file {
-                        script.push_str(&format!(
-                            "# Verification output expression (from file): {}\n",
-                            output_file_verification
-                        ));
-                        output_file_verification.as_str()
-                    } else {
-                        script.push_str(&format!(
-                            "# Verification output expression (from variable): {}\n",
-                            step.verification.output
-                        ));
-                        step.verification.output.as_str()
-                    };
+                let output_verification = if let Some(ref output_file_verification) =
+                    step.verification.output_file
+                {
+                    let output_file_expr =
+                        Self::extract_simple_expression(output_file_verification);
+                    script.push_str(&format!(
+                        "# Verification output expression (from file): {}\n",
+                        output_file_expr
+                    ));
+                    output_file_expr
+                } else {
+                    let output_expr = Self::extract_simple_expression(&step.verification.output);
+                    script.push_str(&format!(
+                        "# Verification output expression (from variable): {}\n",
+                        output_expr
+                    ));
+                    output_expr
+                };
 
                 script.push_str("VERIFICATION_RESULT_PASS=false\n");
                 script.push_str("VERIFICATION_OUTPUT_PASS=false\n\n");
 
-                script.push_str(&format!("if {}; then\n", step.verification.result));
+                script.push_str(&format!("if {}; then\n", result_expr));
                 script.push_str("    VERIFICATION_RESULT_PASS=true\n");
                 script.push_str("fi\n\n");
 
@@ -309,16 +323,14 @@ impl TestExecutor {
                         execution_entries.push(entry);
 
                         // Perform verification
-                        let result_verification_passed = self.evaluate_verification(
-                            &step.verification.result,
-                            exit_code,
-                            &command_output,
-                        )?;
-                        let output_verification_passed = self.evaluate_verification(
-                            &step.verification.output,
-                            exit_code,
-                            &command_output,
-                        )?;
+                        let result_expr =
+                            Self::extract_simple_expression(&step.verification.result);
+                        let result_verification_passed =
+                            self.evaluate_verification(result_expr, exit_code, &command_output)?;
+                        let output_expr =
+                            Self::extract_simple_expression(&step.verification.output);
+                        let output_verification_passed =
+                            self.evaluate_verification(output_expr, exit_code, &command_output)?;
 
                         if result_verification_passed && output_verification_passed {
                             println!(
@@ -561,8 +573,10 @@ mod tests {
                 output: "[ \"$COMMAND_OUTPUT\" = \"hello\" ]".to_string(),
             },
             verification: Verification {
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "[ \"$COMMAND_OUTPUT\" = \"hello\" ]".to_string(),
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple(
+                    "[ \"$COMMAND_OUTPUT\" = \"hello\" ]".to_string(),
+                ),
                 output_file: None,
             },
         };
@@ -605,8 +619,8 @@ mod tests {
                 output: "success".to_string(),
             },
             verification: Verification {
-                result: "true".to_string(),
-                output: "true".to_string(),
+                result: VerificationExpression::Simple("true".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
             },
         };
@@ -685,8 +699,8 @@ mod tests {
                 output: "test".to_string(),
             },
             verification: Verification {
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "true".to_string(),
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
             },
         };
@@ -724,8 +738,8 @@ mod tests {
                 output: "test".to_string(),
             },
             verification: Verification {
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "true".to_string(),
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
             },
         };
@@ -764,8 +778,8 @@ mod tests {
                 output: "step1".to_string(),
             },
             verification: Verification {
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "true".to_string(),
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
             },
         };
@@ -781,8 +795,8 @@ mod tests {
                 output: "step2".to_string(),
             },
             verification: Verification {
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "true".to_string(),
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
             },
         };
@@ -832,8 +846,8 @@ mod tests {
                 output: "seq1".to_string(),
             },
             verification: Verification {
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "true".to_string(),
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
             },
         };
@@ -851,8 +865,8 @@ mod tests {
                 output: "seq2".to_string(),
             },
             verification: Verification {
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "true".to_string(),
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
             },
         };
@@ -904,8 +918,8 @@ mod tests {
                 output: "output".to_string(),
             },
             verification: Verification {
-                result: "true".to_string(),
-                output: "true".to_string(),
+                result: VerificationExpression::Simple("true".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
             },
         };
@@ -921,8 +935,8 @@ mod tests {
                 output: "auto".to_string(),
             },
             verification: Verification {
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "true".to_string(),
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
             },
         };
@@ -974,8 +988,8 @@ mod tests {
                 output: "files".to_string(),
             },
             verification: Verification {
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "true".to_string(),
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
             },
         };
@@ -1021,8 +1035,8 @@ mod tests {
                 output: "test".to_string(),
             },
             verification: Verification {
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "true".to_string(),
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
             },
         };
