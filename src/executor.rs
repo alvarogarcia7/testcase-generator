@@ -32,6 +32,9 @@ impl TestExecutor {
                 // Evaluate the condition and execute appropriate branch
                 script.push_str(&format!("if {}; then\n", condition));
 
+                // Set the variable to true when condition is met
+                script.push_str(&format!("    {}=true\n", var_name));
+
                 // Execute if_true commands
                 if let Some(commands) = if_true {
                     for cmd in commands {
