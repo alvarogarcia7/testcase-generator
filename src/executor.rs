@@ -248,11 +248,46 @@ impl TestExecutor {
                 script.push_str("VERIFICATION_RESULT_PASS=false\n");
                 script.push_str("VERIFICATION_OUTPUT_PASS=false\n\n");
 
-                script.push_str(&format!("if {}; then\n", step.verification.result));
+                // Perform variable substitution on verification expressions
+                let escaped_result_expr = step
+                    .verification
+                    .result
+                    .replace("\\", "\\\\")
+                    .replace("\"", "\\\"");
+                script.push_str(&format!("RESULT_EXPR=\"{}\"\n", escaped_result_expr));
+                script.push_str("for var_name in \"${!STEP_VARS[@]}\"; do\n");
+                script.push_str("    var_value=\"${STEP_VARS[$var_name]}\"\n");
+                script.push_str("    # Escape special characters for sed\n");
+                script.push_str(
+                    "    escaped_value=$(printf '%s' \"$var_value\" | sed 's/[&/\\]/\\\\&/g')\n",
+                );
+                script.push_str("    # Replace ${var_name} pattern\n");
+                script.push_str("    RESULT_EXPR=$(echo \"$RESULT_EXPR\" | sed \"s/\\${$var_name}/$escaped_value/g\")\n");
+                script.push_str("    # Replace ${STEP_VARS[var_name]} pattern\n");
+                script.push_str("    RESULT_EXPR=$(echo \"$RESULT_EXPR\" | sed \"s/\\${STEP_VARS\\[$var_name\\]}/$escaped_value/g\")\n");
+                script.push_str("done\n\n");
+
+                let escaped_output_expr = output_verification
+                    .replace("\\", "\\\\")
+                    .replace("\"", "\\\"");
+                script.push_str(&format!("OUTPUT_EXPR=\"{}\"\n", escaped_output_expr));
+                script.push_str("for var_name in \"${!STEP_VARS[@]}\"; do\n");
+                script.push_str("    var_value=\"${STEP_VARS[$var_name]}\"\n");
+                script.push_str("    # Escape special characters for sed\n");
+                script.push_str(
+                    "    escaped_value=$(printf '%s' \"$var_value\" | sed 's/[&/\\]/\\\\&/g')\n",
+                );
+                script.push_str("    # Replace ${var_name} pattern\n");
+                script.push_str("    OUTPUT_EXPR=$(echo \"$OUTPUT_EXPR\" | sed \"s/\\${$var_name}/$escaped_value/g\")\n");
+                script.push_str("    # Replace ${STEP_VARS[var_name]} pattern\n");
+                script.push_str("    OUTPUT_EXPR=$(echo \"$OUTPUT_EXPR\" | sed \"s/\\${STEP_VARS\\[$var_name\\]}/$escaped_value/g\")\n");
+                script.push_str("done\n\n");
+
+                script.push_str("if eval \"$RESULT_EXPR\"; then\n");
                 script.push_str("    VERIFICATION_RESULT_PASS=true\n");
                 script.push_str("fi\n\n");
 
-                script.push_str(&format!("if {}; then\n", output_verification));
+                script.push_str("if eval \"$OUTPUT_EXPR\"; then\n");
                 script.push_str("    VERIFICATION_OUTPUT_PASS=true\n");
                 script.push_str("fi\n\n");
 
