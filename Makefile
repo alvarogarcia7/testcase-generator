@@ -1,5 +1,16 @@
-pre-commit: test clippy
+pre-commit: test clippy README_INSTALL_AUTOMATED.md
 .PHONY: pre-commit
+
+README_INSTALL_AUTOMATED.md:
+	echo "" > README_INSTALL_AUTOMATED.md
+	@for bin in $(shell cargo run --bin 2>&1| grep "^    "|awk '{print $1}'); do \
+		echo "## $$bin " >> README_INSTALL_AUTOMATED.md ; \
+		$$bin -- --help >> README_INSTALL_AUTOMATED.md; \
+		echo "\`\`\`" >> README_INSTALL_AUTOMATED.md ; \
+  		cargo run --bin $$bin -- --help >> README_INSTALL_AUTOMATED.md; \
+		echo "\`\`\`" >> README_INSTALL_AUTOMATED.md ; \
+  	done
+.PHONY: README_INSTALL_AUTOMATED.md
 
 lint: fmt clippy
 .PHONY: lint
