@@ -716,7 +716,7 @@ impl Default for TestExecutor {
 ///
 /// ```
 /// use std::collections::HashMap;
-/// use gsma_sgp_22_test_runner::executor::substitute_variables;
+/// use testcase_manager::executor::substitute_variables;
 ///
 /// let mut vars = HashMap::new();
 /// vars.insert("username".to_string(), "john.doe".to_string());
@@ -782,7 +782,7 @@ pub fn substitute_variables(command: &str, step_vars: &HashMap<String, String>) 
 /// # Examples
 ///
 /// ```
-/// use gsma_sgp_22_test_runner::executor::bash_escape;
+/// use testcase_manager::executor::bash_escape;
 ///
 /// assert_eq!(bash_escape("hello"), "'hello'");
 /// assert_eq!(bash_escape("it's"), "'it'\\''s'");

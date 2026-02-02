@@ -541,11 +541,11 @@ fi
 section "Test 11: Verify Variable Capture Patterns"
 
 if [[ $EXECUTION_EXIT_CODE -eq 0 ]]; then
-    # Test that grep -oP with the patterns work as expected
+    # Test that the capture patterns work as expected (using sed for BSD compatibility)
     # This validates the capture patterns used in the test
     
     # Test session_id pattern
-    SESSION_CAPTURE=$(echo "SESSION_ID=12345" | grep -oP 'SESSION_ID=\K\d+' | head -n 1)
+    SESSION_CAPTURE=$(echo "SESSION_ID=12345" | sed -n 's/.*SESSION_ID=\([0-9][0-9]*\).*/\1/p' | head -n 1)
     if [[ "$SESSION_CAPTURE" == "12345" ]]; then
         pass "session_id regex pattern works correctly"
     else
@@ -553,7 +553,7 @@ if [[ $EXECUTION_EXIT_CODE -eq 0 ]]; then
     fi
     
     # Test username pattern
-    USERNAME_CAPTURE=$(echo "USER=testuser TOKEN=abc123xyz" | grep -oP 'USER=\K\w+' | head -n 1)
+    USERNAME_CAPTURE=$(echo "USER=testuser TOKEN=abc123xyz" | sed -n 's/.*USER=\([a-zA-Z0-9_][a-zA-Z0-9_]*\).*/\1/p' | head -n 1)
     if [[ "$USERNAME_CAPTURE" == "testuser" ]]; then
         pass "username regex pattern works correctly"
     else
@@ -561,7 +561,7 @@ if [[ $EXECUTION_EXIT_CODE -eq 0 ]]; then
     fi
     
     # Test token pattern
-    TOKEN_CAPTURE=$(echo "USER=testuser TOKEN=abc123xyz" | grep -oP 'TOKEN=\K\w+' | head -n 1)
+    TOKEN_CAPTURE=$(echo "USER=testuser TOKEN=abc123xyz" | sed -n 's/.*TOKEN=\([a-zA-Z0-9_][a-zA-Z0-9_]*\).*/\1/p' | head -n 1)
     if [[ "$TOKEN_CAPTURE" == "abc123xyz" ]]; then
         pass "token regex pattern works correctly"
     else
@@ -569,7 +569,7 @@ if [[ $EXECUTION_EXIT_CODE -eq 0 ]]; then
     fi
     
     # Test server_ip pattern
-    IP_CAPTURE=$(echo "Server running at 192.168.1.100:8080" | grep -oP '\d+\.\d+\.\d+\.\d+' | head -n 1)
+    IP_CAPTURE=$(echo "Server running at 192.168.1.100:8080" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
     if [[ "$IP_CAPTURE" == "192.168.1.100" ]]; then
         pass "server_ip regex pattern works correctly"
     else
