@@ -19,12 +19,22 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 TEST_EXECUTOR_BIN="$PROJECT_ROOT/target/debug/test-executor"
 BDD_EXAMPLES_DIR="$PROJECT_ROOT/testcases/bdd_examples"
 
-# Color codes for output
-GREEN='\033[0;32m'
-RED='\033[0;31m'
-BLUE='\033[0;34m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+# Source logger library
+source "$SCRIPT_DIR/../../scripts/lib/logger.sh" || exit 1
+
+# Handle --no-remove flag
+REMOVE_TEMP=1
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --no-remove)
+            REMOVE_TEMP=0
+            shift
+            ;;
+        *)
+            shift
+            ;;
+    esac
+done
 
 # Test counter
 TESTS_PASSED=0
@@ -34,26 +44,6 @@ echo "======================================"
 echo "BDD End-to-End Integration Test"
 echo "======================================"
 echo ""
-
-# Function to print test status
-pass() {
-    echo -e "${GREEN}✓${NC} $1"
-    TESTS_PASSED=$((TESTS_PASSED+1))
-}
-
-fail() {
-    echo -e "${RED}✗${NC} $1"
-    TESTS_FAILED=$((TESTS_FAILED+1))
-}
-
-info() {
-    echo -e "${BLUE}ℹ${NC} $1"
-}
-
-section() {
-    echo ""
-    echo -e "${YELLOW}=== $1 ===${NC}"
-}
 
 # Check prerequisites
 section "Checking Prerequisites"
@@ -88,8 +78,11 @@ fi
 
 # Create temporary directory for test files
 TEMP_DIR=$(mktemp -d)
-trap 'rm -rf "$TEMP_DIR"' EXIT
-
+setup_cleanup "$TEMP_DIR"
+if [[ $REMOVE_TEMP -eq 0 ]]; then
+    disable_cleanup
+    info "Temporary files will not be removed: $TEMP_DIR"
+fi
 info "Using temporary directory: $TEMP_DIR"
 
 # Find all YAML files in bdd_examples directory

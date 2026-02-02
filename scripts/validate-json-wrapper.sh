@@ -39,6 +39,10 @@
 
 set -euo pipefail
 
+# Source logger library
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/logger.sh" || exit 1
+
 # Configuration: Schema file to validate against
 SCHEMA_FILE="${SCHEMA_FILE:-data/schema.json}"
 
@@ -52,14 +56,14 @@ elif [[ -x "target/debug/validate-json" ]]; then
 elif command -v validate-json >/dev/null 2>&1; then
     VALIDATE_JSON="validate-json"
 else
-    echo "[ERROR] validate-json binary not found" >&2
-    echo "[ERROR] Please build it with: cargo build --bin validate-json" >&2
+    log_error validate-json binary not found" >&2
+    log_error Please build it with: cargo build --bin validate-json" >&2
     exit 1
 fi
 
 # Validate arguments
 if [[ $# -eq 0 ]]; then
-    echo "[ERROR] Missing required argument: JSON file path" >&2
+    log_error Missing required argument: JSON file path" >&2
     echo "Usage: $(basename "$0") <json-file>" >&2
     exit 1
 fi
@@ -68,14 +72,14 @@ JSON_FILE="$1"
 
 # Validate that JSON file exists
 if [[ ! -f "$JSON_FILE" ]]; then
-    echo "[ERROR] JSON file not found: $JSON_FILE" >&2
+    log_error JSON file not found: $JSON_FILE" >&2
     exit 1
 fi
 
 # Validate that schema file exists
 if [[ ! -f "$SCHEMA_FILE" ]]; then
-    echo "[ERROR] Schema file not found: $SCHEMA_FILE" >&2
-    echo "[ERROR] Set SCHEMA_FILE environment variable to specify the schema" >&2
+    log_error Schema file not found: $SCHEMA_FILE" >&2
+    log_error Set SCHEMA_FILE environment variable to specify the schema" >&2
     exit 1
 fi
 

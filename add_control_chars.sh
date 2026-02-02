@@ -3,7 +3,11 @@
 
 set -e
 
-echo "Creating cleanup.txt with binary control characters..."
+# Source logger library
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/scripts/lib/logger.sh" || exit 1
+
+log_info "Creating cleanup.txt with binary control characters..."
 
 # Use printf to write the file with actual binary control characters
 printf 'Script started on 2024-01-22 14:30:45-0800
@@ -50,9 +54,9 @@ $ exit
 Script done on 2024-01-22 14:32:18-0800
 ' > cleanup.txt
 
-echo "Created cleanup.txt"
+log_info "Created cleanup.txt"
 
-echo "Creating errors.txt with binary control characters..."
+log_info "Creating errors.txt with binary control characters..."
 
 printf 'Script started on 2024-01-22 15:45:22-0800
 $ # Running test suite
@@ -136,9 +140,9 @@ $ exit
 Script done on 2024-01-22 15:52:03-0800
 ' > errors.txt
 
-echo "Created errors.txt"
-echo ""
-echo "Files created successfully!"
+log_info "Created errors.txt"
+log_info ""
+log_info "Files created successfully!"
 echo ""
 echo "Control characters included:"
 echo "  - Backspace (0x08) for typo corrections"

@@ -18,38 +18,27 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 TRM_BINARY="$PROJECT_ROOT/target/debug/trm"
 TCM_BINARY="$PROJECT_ROOT/target/debug/tcm"
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+# Source logger library
+source "$SCRIPT_DIR/../../scripts/lib/logger.sh" || exit 1
+
+# Handle --no-remove flag
+REMOVE_TEMP=1
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --no-remove)
+            REMOVE_TEMP=0
+            shift
+            ;;
+        *)
+            shift
+            ;;
+    esac
+done
 
 # Test state
 TESTS_PASSED=0
 TESTS_FAILED=0
 TEST_DIR=""
-
-# Cleanup function
-cleanup() {
-    if [[ -n "$TEST_DIR" ]] && [[ -d "$TEST_DIR" ]]; then
-        rm -rf "$TEST_DIR"
-    fi
-}
-
-trap cleanup EXIT
-
-# Helper functions
-log_info() {
-    echo -e "${GREEN}[INFO]${NC} $1"
-}
-
-log_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
-
-log_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
-}
 
 assert_equals() {
     local expected="$1"
@@ -154,6 +143,11 @@ main() {
     
     # Create temporary test directory
     TEST_DIR=$(mktemp -d)
+    setup_cleanup "$TEST_DIR"
+    if [[ $REMOVE_TEMP -eq 0 ]]; then
+        disable_cleanup
+        log_info "Temporary files will not be removed: $TEST_DIR"
+    fi
     log_info "Created test directory: $TEST_DIR"
     
     # Setup test data
