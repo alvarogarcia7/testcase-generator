@@ -191,6 +191,21 @@ impl TestExecutor {
                 script.push_str("EXIT_CODE=$?\n");
                 script.push_str("set -e\n\n");
 
+                // Variable capture: extract values from COMMAND_OUTPUT using regex patterns
+                if let Some(ref capture_vars) = step.capture_vars {
+                    if !capture_vars.is_empty() {
+                        script.push_str("# Capture variables from output\n");
+                        for (var_name, pattern) in capture_vars {
+                            script.push_str(&format!(
+                                "STEP_VARS[{}]=$(echo \"$COMMAND_OUTPUT\" | grep -oP {} | head -n 1 || echo \"\")\n",
+                                var_name,
+                                bash_escape(pattern)
+                            ));
+                        }
+                        script.push('\n');
+                    }
+                }
+
                 script.push_str(&format!(
                     "# Verification result expression: {}\n",
                     step.verification.result
@@ -1333,5 +1348,53 @@ mod tests {
         let cmd = "echo The price is $price";
         let result = substitute_variables(cmd, &vars);
         assert_eq!(result, "echo The price is '100'");
+    }
+
+    #[test]
+    fn test_generate_test_script_with_capture_vars() {
+        let executor = TestExecutor::new();
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test with variable capture".to_string(),
+        );
+
+        let mut sequence = TestSequence::new(1, "Seq1".to_string(), "First sequence".to_string());
+
+        let mut capture_vars = std::collections::BTreeMap::new();
+        capture_vars.insert("user_id".to_string(), r#"(?<=user_id=)\d+"#.to_string());
+        capture_vars.insert(
+            "token".to_string(),
+            r#"(?<=token=)[a-zA-Z0-9]+"#.to_string(),
+        );
+
+        let step = Step {
+            step: 1,
+            manual: None,
+            description: "Extract variables".to_string(),
+            command: "echo 'user_id=12345 token=abc123'".to_string(),
+            capture_vars: Some(capture_vars),
+            expected: Expected {
+                success: Some(true),
+                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
+                output: "true".to_string(),
+            },
+            verification: Verification {
+                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
+                output: "true".to_string(),
+                output_file: None,
+            },
+        };
+        sequence.steps.push(step);
+        test_case.test_sequences.push(sequence);
+
+        let script = executor.generate_test_script(&test_case);
+
+        assert!(script.contains("# Capture variables from output"));
+        assert!(script.contains("STEP_VARS[user_id]=$(echo \"$COMMAND_OUTPUT\" | grep -oP"));
+        assert!(script.contains("STEP_VARS[token]=$(echo \"$COMMAND_OUTPUT\" | grep -oP"));
+        assert!(script.contains("| head -n 1 || echo \"\")"));
     }
 }
