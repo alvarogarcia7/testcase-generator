@@ -88,7 +88,7 @@ pass "bash available"
 
 # Create temporary directory for test files
 TEMP_DIR=$(mktemp -d)
-trap 'rm -rf "$TEMP_DIR"' EXIT
+#trap 'rm -rf "$TEMP_DIR"' EXIT
 
 info "Using temporary directory: $TEMP_DIR"
 
@@ -153,11 +153,11 @@ test_sequences:
           output: "true"
       - step: 4
         description: Use multiple captured variables
-        command: echo 'Auth: ${username} with token ${token}'
+        command: "echo 'Auth: ${username} with token ${token}'"
         expected:
           success: true
           result: "0"
-          output: Auth: testuser with token abc123xyz
+          output: "Auth: testuser with token abc123xyz"
         verification:
           result: "[ $EXIT_CODE -eq 0 ]"
           output: "[ \"$COMMAND_OUTPUT\" = \"Auth: testuser with token abc123xyz\" ]"
