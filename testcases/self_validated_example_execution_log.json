@@ -5,23 +5,23 @@
     "command": "echo \"Hello World\"",
     "exit_code": 0,
     "output": "Hello World",
-    "timestamp": "2024-01-15T10:30:00Z"
+    "timestamp": "2026-02-02T13:24:59.550547+04:00"
   },
   {
     "test_sequence": 1,
     "step": 2,
-    "command": "/bin/true",
+    "command": "true",
     "exit_code": 0,
     "output": "",
-    "timestamp": "2024-01-15T10:30:01Z"
+    "timestamp": "2026-02-02T13:24:59.567435+04:00"
   },
   {
     "test_sequence": 1,
     "step": 3,
-    "command": "/bin/false",
+    "command": "false",
     "exit_code": 1,
     "output": "",
-    "timestamp": "2024-01-15T10:30:02Z"
+    "timestamp": "2026-02-02T13:24:59.574455+04:00"
   },
   {
     "test_sequence": 2,
@@ -29,7 +29,7 @@
     "command": "echo \"Status: SUCCESS\"",
     "exit_code": 0,
     "output": "Status: SUCCESS",
-    "timestamp": "2024-01-15T10:30:03Z"
+    "timestamp": "2026-02-02T13:24:59.579597+04:00"
   },
   {
     "test_sequence": 2,
@@ -37,7 +37,7 @@
     "command": "echo \"Operation completed\"",
     "exit_code": 0,
     "output": "Operation completed",
-    "timestamp": "2024-01-15T10:30:04Z"
+    "timestamp": "2026-02-02T13:24:59.587251+04:00"
   },
   {
     "test_sequence": 2,
@@ -45,7 +45,7 @@
     "command": "echo -e \"Line 1\\nLine 2\\nLine 3\"",
     "exit_code": 0,
     "output": "Line 1\nLine 2\nLine 3",
-    "timestamp": "2024-01-15T10:30:05Z"
+    "timestamp": "2026-02-02T13:24:59.595312+04:00"
   },
   {
     "test_sequence": 3,
@@ -53,7 +53,7 @@
     "command": "/bin/sh -c \"exit 0\"",
     "exit_code": 0,
     "output": "",
-    "timestamp": "2024-01-15T10:30:06Z"
+    "timestamp": "2026-02-02T13:24:59.607075+04:00"
   },
   {
     "test_sequence": 3,
@@ -61,7 +61,7 @@
     "command": "/bin/sh -c \"exit 1\"",
     "exit_code": 1,
     "output": "",
-    "timestamp": "2024-01-15T10:30:07Z"
+    "timestamp": "2026-02-02T13:24:59.613462+04:00"
   },
   {
     "test_sequence": 3,
@@ -69,6 +69,46 @@
     "command": "/bin/sh -c \"exit 2\"",
     "exit_code": 2,
     "output": "",
-    "timestamp": "2024-01-15T10:30:08Z"
+    "timestamp": "2026-02-02T13:24:59.619776+04:00"
+  },
+  {
+    "test_sequence": 4,
+    "step": 1,
+    "command": "echo \"Basic test\"",
+    "exit_code": 0,
+    "output": "Basic test",
+    "timestamp": "2026-02-02T13:24:59.624314+04:00"
+  },
+  {
+    "test_sequence": 4,
+    "step": 2,
+    "command": "echo \"Status: SUCCESS\"",
+    "exit_code": 0,
+    "output": "Status: SUCCESS",
+    "timestamp": "2026-02-02T13:24:59.631640+04:00"
+  },
+  {
+    "test_sequence": 4,
+    "step": 3,
+    "command": "/bin/sh -c \"exit 10\"",
+    "exit_code": 10,
+    "output": "",
+    "timestamp": "2026-02-02T13:24:59.642298+04:00"
+  },
+  {
+    "test_sequence": 4,
+    "step": 4,
+    "command": "echo \"Count: 42\"",
+    "exit_code": 0,
+    "output": "Count: 42",
+    "timestamp": "2026-02-02T13:24:59.645647+04:00"
+  },
+  {
+    "test_sequence": 4,
+    "step": 5,
+    "command": "echo \"Complete\"",
+    "exit_code": 0,
+    "output": "Complete",
+    "timestamp": "2026-02-02T13:24:59.652739+04:00"
   }
 ]

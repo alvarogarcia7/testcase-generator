@@ -130,3 +130,100 @@ test_sequences:
         verification:
           result: "[[ $EXIT_CODE -eq 2 ]]"
           output: "true"
+  - id: 4
+    name: "Mixed Verification Types"
+    description: |
+                   This test sequence demonstrates backward compatibility by mixing
+                   simple verification expressions with conditional ones in practical scenarios.
+    initial_conditions:
+      system:
+        - "Shell is ready"
+    steps:
+      - step: 1
+        description: "Simple verification for basic echo"
+        command: echo "Basic test"
+        expected:
+          success: true
+          result: 0
+          output: "Basic test"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Basic test' <<< \"$COMMAND_OUTPUT\""
+          output_file: "grep -q 'Basic test' \"$LOG_FILE\""
+      - step: 2
+        description: "Conditional verification for success case"
+        command: 'echo "Status: SUCCESS"'
+        expected:
+          success: true
+          result: 0
+          output: "Status: SUCCESS"
+        verification:
+          result:
+            condition: "[[ $EXIT_CODE -eq 0 ]]"
+            if_true:
+              - "echo 'DEBUG: Exit code verification passed'"
+            if_false:
+              - "echo 'ERROR: Unexpected exit code $EXIT_CODE'"
+              - "exit 1"
+          output: "grep -q 'SUCCESS' <<< \"$COMMAND_OUTPUT\""
+      - step: 3
+        description: "Conditional verification for failure case"
+        command: /bin/sh -c "exit 10"
+        expected:
+          success: false
+          result: 10
+          output: ""
+        verification:
+          result:
+            condition: "[[ $EXIT_CODE -eq 10 ]]"
+            if_true:
+              - "echo 'DEBUG: Got expected exit code 10'"
+            if_false:
+              - "echo 'ERROR: Expected exit code 10, got $EXIT_CODE'"
+              - "exit 1"
+          output: "true"
+      - step: 4
+        description: "Conditional output verification with pattern matching"
+        command: 'echo "Count: 42"'
+        expected:
+          result: 0
+          output: "Count: 42"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output:
+            condition: "echo \"$COMMAND_OUTPUT\" | grep -qE 'Count: [0-9]+'"
+            if_true:
+              - "echo 'INFO: Output matches expected pattern'"
+            if_false:
+              - "echo 'ERROR: Output does not match pattern'"
+              - "exit 1"
+      - step: 5
+        description: "All conditional verifications with always clause"
+        command: echo "Complete"
+        expected:
+          success: true
+          result: 0
+          output: "Complete"
+        verification:
+          result:
+            condition: "[[ $EXIT_CODE -eq 0 ]]"
+            if_true:
+              - "echo 'DEBUG: Command succeeded'"
+            if_false:
+              - "echo 'ERROR: Command failed'"
+              - "exit 1"
+            always:
+              - "echo 'DEBUG: Verification step completed'"
+          output:
+            condition: "grep -q 'Complete' <<< \"$COMMAND_OUTPUT\""
+            if_true:
+              - "echo 'INFO: Output verified'"
+            if_false:
+              - "echo 'ERROR: Output verification failed'"
+              - "exit 1"
+          output_file:
+            condition: "grep -q 'Complete' \"$LOG_FILE\""
+            if_true:
+              - "echo 'INFO: Log file updated'"
+            if_false:
+              - "echo 'WARN: Log file check failed'"
