@@ -181,12 +181,30 @@ impl TestExecutor {
                 script.push_str("COMMAND_OUTPUT=\"\"\n");
                 script.push_str("set +e\n");
 
+                // Generate bash code to perform variable substitution on the command
+                // Store the original command in a variable
+                let escaped_command = step.command.replace("\\", "\\\\").replace("\"", "\\\"");
+                script.push_str(&format!("ORIGINAL_COMMAND=\"{}\"\n", escaped_command));
+
+                // Perform variable substitution: replace ${var_name} or $STEP_VARS[var_name] patterns
+                script.push_str("SUBSTITUTED_COMMAND=\"$ORIGINAL_COMMAND\"\n");
+                script.push_str("for var_name in \"${!STEP_VARS[@]}\"; do\n");
+                script.push_str("    var_value=\"${STEP_VARS[$var_name]}\"\n");
+                script.push_str("    # Escape special characters for sed\n");
+                script.push_str(
+                    "    escaped_value=$(printf '%s' \"$var_value\" | sed 's/[&/\\]/\\\\&/g')\n",
+                );
+                script.push_str("    # Replace ${var_name} pattern\n");
+                script.push_str("    SUBSTITUTED_COMMAND=$(echo \"$SUBSTITUTED_COMMAND\" | sed \"s/\\${$var_name}/$escaped_value/g\")\n");
+                script.push_str("    # Replace ${STEP_VARS[var_name]} pattern\n");
+                script.push_str("    SUBSTITUTED_COMMAND=$(echo \"$SUBSTITUTED_COMMAND\" | sed \"s/\\${STEP_VARS\\[$var_name\\]}/$escaped_value/g\")\n");
+                script.push_str("done\n");
+
                 // Wrap command in subshell and redirect stderr to stdout before piping to tee
                 // This ensures both stdout and stderr are captured in the log file
-                script.push_str(&format!(
-                    "COMMAND_OUTPUT=$({{ {}; }} 2>&1 | tee \"$LOG_FILE\")\n",
-                    step.command
-                ));
+                script.push_str(
+                    "COMMAND_OUTPUT=$(eval \"$SUBSTITUTED_COMMAND\" 2>&1 | tee \"$LOG_FILE\")\n",
+                );
 
                 script.push_str("EXIT_CODE=$?\n");
                 script.push_str("set -e\n\n");
