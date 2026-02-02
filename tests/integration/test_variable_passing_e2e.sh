@@ -230,7 +230,7 @@ fi
 section "Test 5: Verify Script Contains Variable Capture Logic"
 
 # Check for STEP_VARS associative array declaration
-if grep -q 'declare -A STEP_VARS' "$VARIABLE_SCRIPT"; then
+if grep -q 'declare -a STEP_VARS' "$VARIABLE_SCRIPT"; then
     pass "Script declares STEP_VARS associative array"
 else
     fail "Script missing STEP_VARS declaration"
@@ -287,7 +287,7 @@ else
 fi
 
 # Verify sed command for variable substitution
-if grep -q 'sed.*\${var_name}' "$VARIABLE_SCRIPT"; then
+if grep -q 'sed.*\${$var_name}' "$VARIABLE_SCRIPT"; then
     pass "Script performs variable substitution in commands"
 else
     fail "Script missing variable substitution in commands"

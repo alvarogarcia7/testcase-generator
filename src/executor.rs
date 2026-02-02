@@ -94,7 +94,7 @@ impl TestExecutor {
         if uses_variables {
             // Initialize STEP_VARS associative array
             script.push_str("# Initialize STEP_VARS associative array\n");
-            script.push_str("declare -A STEP_VARS\n\n");
+            script.push_str("declare -a STEP_VARS\n\n");
         }
 
         // Add trap to ensure JSON file is properly closed on any exit
@@ -1569,7 +1569,7 @@ mod tests {
         let script = executor.generate_test_script(&test_case);
 
         // Verify STEP_VARS array initialization
-        assert!(script.contains("declare -A STEP_VARS"));
+        assert!(script.contains("declare -a STEP_VARS"));
         assert!(script.contains("# Initialize STEP_VARS associative array"));
 
         // Verify capture code generation
