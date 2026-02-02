@@ -241,20 +241,26 @@ impl TestExecutor {
                 if needs_substitution {
                     // Generate bash code to perform variable substitution on the command
                     // Store the original command in a variable
-                    let escaped_command = step.command.replace("\\", "\\\\").replace("\"", "\\\"");
+                    // Escape backslashes, quotes, and dollar signs to prevent premature expansion
+                    let escaped_command = step.command
+                        .replace("\\", "\\\\")
+                        .replace("\"", "\\\"")
+                        .replace("$", "\\$");
                     script.push_str(&format!("ORIGINAL_COMMAND=\"{}\"\n", escaped_command));
 
                     // Perform variable substitution: replace ${var_name} patterns using eval
                     script.push_str("SUBSTITUTED_COMMAND=\"$ORIGINAL_COMMAND\"\n");
-                    script.push_str("for var_name in \"${STEP_VAR_NAMES[@]}\"; do\n");
-                    script.push_str("    eval \"var_value=\\$STEP_VAR_$var_name\"\n");
-                    script.push_str("    # Escape special characters for sed\n");
+                    script.push_str("if [ ${#STEP_VAR_NAMES[@]:-0} -gt 0 ]; then\n");
+                    script.push_str("    for var_name in \"${STEP_VAR_NAMES[@]}\"; do\n");
+                    script.push_str("        eval \"var_value=\\$STEP_VAR_$var_name\"\n");
+                    script.push_str("        # Escape special characters for sed\n");
                     script.push_str(
-                        "    escaped_value=$(printf '%s' \"$var_value\" | sed 's/[&/\\]/\\\\&/g')\n",
+                        "        escaped_value=$(printf '%s' \"$var_value\" | sed 's/[&/\\]/\\\\&/g')\n",
                     );
-                    script.push_str("    # Replace ${var_name} pattern\n");
-                    script.push_str("    SUBSTITUTED_COMMAND=$(echo \"$SUBSTITUTED_COMMAND\" | sed \"s/\\${$var_name}/$escaped_value/g\")\n");
-                    script.push_str("done\n");
+                    script.push_str("        # Replace ${var_name} pattern\n");
+                    script.push_str("        SUBSTITUTED_COMMAND=$(echo \"$SUBSTITUTED_COMMAND\" | sed \"s/\\${$var_name}/$escaped_value/g\")\n");
+                    script.push_str("    done\n");
+                    script.push_str("fi\n");
 
                     // Wrap command in subshell with braces and redirect stderr to stdout before piping to tee
                     // This ensures both stdout and stderr are captured in the log file
@@ -284,7 +290,13 @@ impl TestExecutor {
                                 var_name,
                                 bash_escape(&sed_pattern)
                             ));
-                            script.push_str(&format!("STEP_VAR_NAMES+=(\"{}\")\n", var_name));
+                            // Add to array only if not already present (avoid duplicates)
+                            script.push_str(&format!(
+                                "if ! printf '%s\\n' \"${{STEP_VAR_NAMES[@]}}\" | grep -qx \"{}\"; then\n",
+                                var_name
+                            ));
+                            script.push_str(&format!("    STEP_VAR_NAMES+=(\"{}\")\n", var_name));
+                            script.push_str("fi\n");
                         }
                         script.push('\n');
                     }
@@ -326,15 +338,17 @@ impl TestExecutor {
                 script.push_str(&format!("RESULT_EXPR=\"{}\"\n", escaped_result_expr));
 
                 if result_needs_subst && uses_variables {
-                    script.push_str("for var_name in \"${STEP_VAR_NAMES[@]}\"; do\n");
-                    script.push_str("    eval \"var_value=\\$STEP_VAR_$var_name\"\n");
-                    script.push_str("    # Escape special characters for sed\n");
+                    script.push_str("if [ ${#STEP_VAR_NAMES[@]:-0} -gt 0 ]; then\n");
+                    script.push_str("    for var_name in \"${STEP_VAR_NAMES[@]}\"; do\n");
+                    script.push_str("        eval \"var_value=\\$STEP_VAR_$var_name\"\n");
+                    script.push_str("        # Escape special characters for sed\n");
                     script.push_str(
-                        "    escaped_value=$(printf '%s' \"$var_value\" | sed 's/[&/\\]/\\\\&/g')\n",
+                        "        escaped_value=$(printf '%s' \"$var_value\" | sed 's/[&/\\]/\\\\&/g')\n",
                     );
-                    script.push_str("    # Replace ${var_name} pattern\n");
-                    script.push_str("    RESULT_EXPR=$(echo \"$RESULT_EXPR\" | sed \"s/\\${$var_name}/$escaped_value/g\")\n");
-                    script.push_str("done\n");
+                    script.push_str("        # Replace ${var_name} pattern\n");
+                    script.push_str("        RESULT_EXPR=$(echo \"$RESULT_EXPR\" | sed \"s/\\${$var_name}/$escaped_value/g\")\n");
+                    script.push_str("    done\n");
+                    script.push_str("fi\n");
                 }
                 script.push('\n');
 
@@ -347,15 +361,17 @@ impl TestExecutor {
                 script.push_str(&format!("OUTPUT_EXPR=\"{}\"\n", escaped_output_expr));
 
                 if output_needs_subst && uses_variables {
-                    script.push_str("for var_name in \"${STEP_VAR_NAMES[@]}\"; do\n");
-                    script.push_str("    eval \"var_value=\\$STEP_VAR_$var_name\"\n");
-                    script.push_str("    # Escape special characters for sed\n");
+                    script.push_str("if [ ${#STEP_VAR_NAMES[@]:-0} -gt 0 ]; then\n");
+                    script.push_str("    for var_name in \"${STEP_VAR_NAMES[@]}\"; do\n");
+                    script.push_str("        eval \"var_value=\\$STEP_VAR_$var_name\"\n");
+                    script.push_str("        # Escape special characters for sed\n");
                     script.push_str(
-                        "    escaped_value=$(printf '%s' \"$var_value\" | sed 's/[&/\\]/\\\\&/g')\n",
+                        "        escaped_value=$(printf '%s' \"$var_value\" | sed 's/[&/\\]/\\\\&/g')\n",
                     );
-                    script.push_str("    # Replace ${var_name} pattern\n");
-                    script.push_str("    OUTPUT_EXPR=$(echo \"$OUTPUT_EXPR\" | sed \"s/\\${$var_name}/$escaped_value/g\")\n");
-                    script.push_str("done\n");
+                    script.push_str("        # Replace ${var_name} pattern\n");
+                    script.push_str("        OUTPUT_EXPR=$(echo \"$OUTPUT_EXPR\" | sed \"s/\\${$var_name}/$escaped_value/g\")\n");
+                    script.push_str("    done\n");
+                    script.push_str("fi\n");
                 }
                 script.push('\n');
 
@@ -387,10 +403,11 @@ impl TestExecutor {
                 script.push_str("    exit 1\n");
                 script.push_str("fi\n\n");
 
-                let escaped_command = step.command.replace("\\", "\\\\")
+                let escaped_command = step
+                    .command
+                    .replace("\\", "\\\\")
                     .replace("'", "\"")
-                    .replace("\"", "\\\"")
-                    ;
+                    .replace("\"", "\\\"");
                 script.push_str("# Escape output for JSON (BSD/GNU compatible)\n");
                 script.push_str(
                     "# Use Python for reliable JSON escaping if available, otherwise use sed/perl/awk\n",
@@ -403,7 +420,7 @@ impl TestExecutor {
                 script.push_str("    OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | perl -pe 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g; s/\\n/\\\\n/g; s/\\r/\\\\r/g; s/\\t/\\\\t/g' | tr -d '\\n')\n");
                 script.push_str("else\n");
                 script.push_str("    # Fallback: escape backslashes, quotes, tabs, and convert newlines to \\n\n");
-                script.push_str("    OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g; s/\\t/\\\\t/g' | awk '{printf \"%s%s\", (NR>1?\"\\\\n\":\"\"), $0} END {print \"\"}')\n");
+                script.push_str("    OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g; s/\\t/\\\\t/g' | awk '{printf \"%s%s\", (NR>1?\"\\\\n\":\"\"), $0}')\n");
                 script.push_str("fi\n\n");
 
                 script.push_str("if [ \"$FIRST_ENTRY\" = false ]; then\n");
