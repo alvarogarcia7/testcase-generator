@@ -63,6 +63,8 @@ run-script-cleanup: build-script-cleanup
 
 test-e2e-failing: build
 	./tests/integration/run_e2e_test.sh
+	./tests/integration/test_variable_passing_e2e.sh
+
 .PHONY: test-e2e-failing
 
 test-e2e-failing-all: build
@@ -70,12 +72,29 @@ test-e2e-failing-all: build
 .PHONY: test-e2e-failing-all
 
 test-e2e:
-	${MAKE} test-e2e-validate-yaml
-	${MAKE} test-e2e-orchestrator
-	${MAKE} test-e2e-orchestrator-examples
-	${MAKE} test-e2e-executor
-	#${MAKE} test-verify-sample
-	${MAKE} example_export-demo
+#	${MAKE} test-e2e-validate-yaml
+#	${MAKE} test-e2e-orchestrator
+#	${MAKE} test-e2e-orchestrator-examples
+#	${MAKE} test-e2e-executor
+#	#${MAKE} test-verify-sample
+#	${MAKE} example_export-demo
+	./tests/integration/check_environment.sh
+	#./tests/integration/ci_test.sh
+	#./tests/integration/run_all_tests.sh
+	#./tests/integration/run_e2e_test.sh
+	#./tests/integration/run_validate_files_test.sh
+	./tests/integration/smoke_test.sh
+	./tests/integration/test_bdd_e2e.sh
+	#./tests/integration/test_bdd_initial_conditions.sh
+	./tests/integration/test_executor_e2e.sh
+	#./tests/integration/test_manual_steps_e2e.sh
+	./tests/integration/test_orchestrator_e2e.sh
+	./tests/integration/test_orchestrator_examples.sh
+	#./tests/integration/test_run_manager_e2e.sh
+	./tests/integration/test_validate_yaml_multi_e2e.sh
+	./tests/integration/test_validate_yaml_watch_e2e.sh
+	#./tests/integration/test_variable_passing_e2e.sh
+	#./tests/integration/test_verify_e2e.sh
 .PHONY: test-e2e
 
 example_export-demo:
