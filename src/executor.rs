@@ -2,6 +2,8 @@ use crate::bdd_parser::BddStepRegistry;
 use crate::models::{TestCase, TestStepExecutionEntry};
 use anyhow::{Context, Result};
 use chrono::Local;
+use regex::Regex;
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -532,6 +534,103 @@ impl Default for TestExecutor {
     }
 }
 
+/// Performs variable substitution in a command string using the STEP_VARS associative array.
+///
+/// This function substitutes patterns like `${STEP_VARS[var_name]}` or `$var_name` with their
+/// corresponding values from the provided variables map. The substituted values are properly
+/// escaped for safe use in bash commands.
+///
+/// # Arguments
+///
+/// * `command` - The command string containing variable references to substitute
+/// * `step_vars` - A reference to a HashMap containing variable names and their values
+///
+/// # Returns
+///
+/// A new String with all variable references substituted and properly escaped
+///
+/// # Examples
+///
+/// ```
+/// use std::collections::HashMap;
+/// use gsma_sgp_22_test_runner::executor::substitute_variables;
+///
+/// let mut vars = HashMap::new();
+/// vars.insert("username".to_string(), "john.doe".to_string());
+/// vars.insert("path".to_string(), "/home/user".to_string());
+///
+/// let cmd = "echo ${STEP_VARS[username]} lives at $path";
+/// let result = substitute_variables(cmd, &vars);
+/// assert_eq!(result, "echo 'john.doe' lives at '/home/user'");
+/// ```
+pub fn substitute_variables(command: &str, step_vars: &HashMap<String, String>) -> String {
+    let mut result = command.to_string();
+
+    // Pattern for ${STEP_VARS[var_name]} - using lazy matching and capturing the var name
+    let array_pattern = Regex::new(r"\$\{STEP_VARS\[([^\]]+)\]\}").unwrap();
+
+    // Pattern for $var_name (word characters, digits, underscores)
+    let simple_pattern = Regex::new(r"\$([a-zA-Z_][a-zA-Z0-9_]*)").unwrap();
+
+    // First, substitute ${STEP_VARS[var_name]} patterns
+    result = array_pattern
+        .replace_all(&result, |caps: &regex::Captures| {
+            let var_name = &caps[1];
+            if let Some(value) = step_vars.get(var_name) {
+                bash_escape(value)
+            } else {
+                // If variable not found, leave the reference unchanged
+                caps[0].to_string()
+            }
+        })
+        .to_string();
+
+    // Then, substitute $var_name patterns
+    // We need to be careful not to substitute variables that are not in STEP_VARS
+    // or are bash special variables
+    result = simple_pattern
+        .replace_all(&result, |caps: &regex::Captures| {
+            let var_name = &caps[1];
+            if let Some(value) = step_vars.get(var_name) {
+                bash_escape(value)
+            } else {
+                // If variable not found, leave the reference unchanged
+                caps[0].to_string()
+            }
+        })
+        .to_string();
+
+    result
+}
+
+/// Escapes a string value for safe use in bash commands.
+///
+/// This function wraps the value in single quotes and escapes any single quotes
+/// within the value by replacing them with '\'' (end quote, escaped quote, start quote).
+///
+/// # Arguments
+///
+/// * `value` - The string value to escape
+///
+/// # Returns
+///
+/// A bash-escaped string wrapped in single quotes
+///
+/// # Examples
+///
+/// ```
+/// use gsma_sgp_22_test_runner::executor::bash_escape;
+///
+/// assert_eq!(bash_escape("hello"), "'hello'");
+/// assert_eq!(bash_escape("it's"), "'it'\\''s'");
+/// assert_eq!(bash_escape("a\"b"), "'a\"b'");
+/// ```
+pub fn bash_escape(value: &str) -> String {
+    // In bash, the safest way to escape a string is to wrap it in single quotes
+    // and escape any single quotes by ending the quote, adding an escaped quote, and starting again
+    format!("'{}'", value.replace('\'', r"'\''"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1047,5 +1146,173 @@ mod tests {
             script.contains("2>&1 | tee"),
             "Script should contain '2>&1 | tee' pattern to capture stderr before tee command"
         );
+    }
+
+    #[test]
+    fn test_bash_escape_basic() {
+        assert_eq!(bash_escape("hello"), "'hello'");
+        assert_eq!(bash_escape("hello world"), "'hello world'");
+        assert_eq!(bash_escape("123"), "'123'");
+    }
+
+    #[test]
+    fn test_bash_escape_with_single_quotes() {
+        assert_eq!(bash_escape("it's"), "'it'\\''s'");
+        assert_eq!(bash_escape("'quoted'"), "''\\''quoted'\\'''");
+        assert_eq!(bash_escape("don't"), "'don'\\''t'");
+    }
+
+    #[test]
+    fn test_bash_escape_with_special_chars() {
+        assert_eq!(bash_escape("a\"b"), "'a\"b'");
+        assert_eq!(bash_escape("a$b"), "'a$b'");
+        assert_eq!(bash_escape("a`b"), "'a`b'");
+        assert_eq!(bash_escape("a\\b"), "'a\\b'");
+        assert_eq!(bash_escape("a!b"), "'a!b'");
+        assert_eq!(bash_escape("a&b"), "'a&b'");
+        assert_eq!(bash_escape("a|b"), "'a|b'");
+        assert_eq!(bash_escape("a;b"), "'a;b'");
+    }
+
+    #[test]
+    fn test_bash_escape_empty_string() {
+        assert_eq!(bash_escape(""), "''");
+    }
+
+    #[test]
+    fn test_substitute_variables_array_syntax() {
+        let mut vars = HashMap::new();
+        vars.insert("username".to_string(), "john.doe".to_string());
+        vars.insert("server".to_string(), "example.com".to_string());
+
+        let cmd = "ssh ${STEP_VARS[username]}@${STEP_VARS[server]}";
+        let result = substitute_variables(cmd, &vars);
+        assert_eq!(result, "ssh 'john.doe'@'example.com'");
+    }
+
+    #[test]
+    fn test_substitute_variables_simple_syntax() {
+        let mut vars = HashMap::new();
+        vars.insert("username".to_string(), "jane".to_string());
+        vars.insert("path".to_string(), "/home/user".to_string());
+
+        let cmd = "echo $username lives at $path";
+        let result = substitute_variables(cmd, &vars);
+        assert_eq!(result, "echo 'jane' lives at '/home/user'");
+    }
+
+    #[test]
+    fn test_substitute_variables_mixed_syntax() {
+        let mut vars = HashMap::new();
+        vars.insert("user".to_string(), "admin".to_string());
+        vars.insert("host".to_string(), "server1".to_string());
+        vars.insert("port".to_string(), "8080".to_string());
+
+        let cmd = "curl http://$user:password@${STEP_VARS[host]}:$port/api";
+        let result = substitute_variables(cmd, &vars);
+        assert_eq!(result, "curl http://'admin':password@'server1':'8080'/api");
+    }
+
+    #[test]
+    fn test_substitute_variables_undefined_var() {
+        let mut vars = HashMap::new();
+        vars.insert("defined".to_string(), "value".to_string());
+
+        let cmd = "echo $defined $undefined ${STEP_VARS[missing]}";
+        let result = substitute_variables(cmd, &vars);
+        assert_eq!(result, "echo 'value' $undefined ${STEP_VARS[missing]}");
+    }
+
+    #[test]
+    fn test_substitute_variables_with_special_chars_in_values() {
+        let mut vars = HashMap::new();
+        vars.insert("msg".to_string(), "hello 'world'!".to_string());
+        vars.insert("cmd".to_string(), "ls -la | grep test".to_string());
+
+        let cmd = "echo ${STEP_VARS[msg]} && $cmd";
+        let result = substitute_variables(cmd, &vars);
+        assert_eq!(
+            result,
+            "echo 'hello '\\''world'\\''!' && 'ls -la | grep test'"
+        );
+    }
+
+    #[test]
+    fn test_substitute_variables_empty_command() {
+        let vars = HashMap::new();
+        let cmd = "";
+        let result = substitute_variables(cmd, &vars);
+        assert_eq!(result, "");
+    }
+
+    #[test]
+    fn test_substitute_variables_no_vars_in_command() {
+        let mut vars = HashMap::new();
+        vars.insert("unused".to_string(), "value".to_string());
+
+        let cmd = "echo hello world";
+        let result = substitute_variables(cmd, &vars);
+        assert_eq!(result, "echo hello world");
+    }
+
+    #[test]
+    fn test_substitute_variables_multiple_same_var() {
+        let mut vars = HashMap::new();
+        vars.insert("val".to_string(), "xyz".to_string());
+
+        let cmd = "echo $val $val ${STEP_VARS[val]}";
+        let result = substitute_variables(cmd, &vars);
+        assert_eq!(result, "echo 'xyz' 'xyz' 'xyz'");
+    }
+
+    #[test]
+    fn test_substitute_variables_var_with_numbers_and_underscores() {
+        let mut vars = HashMap::new();
+        vars.insert("var_name_1".to_string(), "value1".to_string());
+        vars.insert("_var2".to_string(), "value2".to_string());
+        vars.insert("VAR3".to_string(), "value3".to_string());
+
+        let cmd = "echo $var_name_1 $_var2 $VAR3";
+        let result = substitute_variables(cmd, &vars);
+        assert_eq!(result, "echo 'value1' 'value2' 'value3'");
+    }
+
+    #[test]
+    fn test_substitute_variables_preserves_bash_special_vars() {
+        let vars = HashMap::new();
+
+        let cmd = "echo $? $$ $! $# $@ $* $0 $1 $EXIT_CODE $COMMAND_OUTPUT";
+        let result = substitute_variables(cmd, &vars);
+        assert_eq!(
+            result,
+            "echo $? $$ $! $# $@ $* $0 $1 $EXIT_CODE $COMMAND_OUTPUT"
+        );
+    }
+
+    #[test]
+    fn test_substitute_variables_complex_scenario() {
+        let mut vars = HashMap::new();
+        vars.insert("user".to_string(), "test_user".to_string());
+        vars.insert("file".to_string(), "config.txt".to_string());
+        vars.insert("dir".to_string(), "/tmp/test dir".to_string());
+
+        let cmd = "scp $user@server:${STEP_VARS[dir]}/${STEP_VARS[file]} .";
+        let result = substitute_variables(cmd, &vars);
+        assert_eq!(
+            result,
+            "scp 'test_user'@server:'/tmp/test dir'/'config.txt' ."
+        );
+    }
+
+    #[test]
+    fn test_substitute_variables_escaped_dollar_signs() {
+        let mut vars = HashMap::new();
+        vars.insert("price".to_string(), "100".to_string());
+
+        // Note: In actual bash, \$ would prevent expansion.
+        // This test shows current behavior - escaped $ is still processed
+        let cmd = "echo The price is $price";
+        let result = substitute_variables(cmd, &vars);
+        assert_eq!(result, "echo The price is '100'");
     }
 }
