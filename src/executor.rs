@@ -1,9 +1,7 @@
 use crate::bdd_parser::BddStepRegistry;
-use crate::models::{TestCase, TestStepExecutionEntry};
+use crate::models::{TestCase, TestStepExecutionEntry, VerificationExpression};
 use anyhow::{Context, Result};
 use chrono::Local;
-use regex::Regex;
-use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -12,52 +10,67 @@ pub struct TestExecutor {
     output_dir: Option<PathBuf>,
 }
 
-/// Check if a test case uses variables that require bash 4.0+ associative arrays
-fn test_case_uses_variables(test_case: &TestCase) -> bool {
-    // Check if any sequence has variables
-    for sequence in &test_case.test_sequences {
-        if let Some(ref vars) = sequence.variables {
-            if !vars.is_empty() {
-                return true;
+impl TestExecutor {
+    /// Generate bash script code for a VerificationExpression
+    /// For Simple expressions, returns the expression as-is
+    /// For Conditional expressions, generates bash code to evaluate the condition
+    /// and execute the appropriate commands based on the result
+    fn generate_verification_script(expr: &VerificationExpression, var_name: &str) -> String {
+        match expr {
+            VerificationExpression::Simple(s) => {
+                // For simple expressions, only set to true; variable is pre-initialized to false
+                format!("if {}; then\n    {}=true\nfi\n", s, var_name)
             }
-        }
+            VerificationExpression::Conditional {
+                condition,
+                if_true,
+                if_false,
+                always,
+            } => {
+                let mut script = String::new();
 
-        // Check if any step has capture_vars or uses variable substitution
-        for step in &sequence.steps {
-            if let Some(ref capture_vars) = step.capture_vars {
-                if !capture_vars.is_empty() {
-                    return true;
+                // Evaluate the condition and execute appropriate branch
+                script.push_str(&format!("if {}; then\n", condition));
+
+                // Execute if_true commands
+                if let Some(commands) = if_true {
+                    for cmd in commands {
+                        script.push_str(&format!("    {}\n", cmd));
+                    }
                 }
-            }
 
-            // Check if command uses variable substitution
-            if step.command.contains("${") || step.command.contains("$STEP_VARS") {
-                return true;
-            }
+                script.push_str("else\n");
 
-            // Check if verification expressions use variables
-            if step.verification.result.contains("${")
-                || step.verification.result.contains("$STEP_VARS")
-            {
-                return true;
-            }
-            if step.verification.output.contains("${")
-                || step.verification.output.contains("$STEP_VARS")
-            {
-                return true;
-            }
-            if let Some(ref output_file) = step.verification.output_file {
-                if output_file.contains("${") || output_file.contains("$STEP_VARS") {
-                    return true;
+                // Execute if_false commands (variable stays false, which is the initialization)
+                if let Some(commands) = if_false {
+                    for cmd in commands {
+                        script.push_str(&format!("    {}\n", cmd));
+                    }
                 }
+
+                script.push_str("fi\n");
+
+                // Always execute commands in always array
+                if let Some(commands) = always {
+                    for cmd in commands {
+                        script.push_str(&format!("{}\n", cmd));
+                    }
+                }
+
+                script
             }
         }
     }
 
-    false
-}
+    /// Extract the simple string from a VerificationExpression for execution
+    /// For conditional expressions, this currently returns the condition itself as a placeholder
+    fn extract_simple_expression(expr: &VerificationExpression) -> &str {
+        match expr {
+            VerificationExpression::Simple(s) => s.as_str(),
+            VerificationExpression::Conditional { condition, .. } => condition.as_str(),
+        }
+    }
 
-impl TestExecutor {
     pub fn new() -> Self {
         Self { output_dir: None }
     }
@@ -87,17 +100,6 @@ impl TestExecutor {
 
         script.push_str(&format!("JSON_LOG=\"{}\"\n", json_output_path.display()));
         script.push_str("TIMESTAMP=$(date +\"%Y-%m-%dT%H:%M:%S\")\n\n");
-
-        // Check if test case uses variables
-        let uses_variables = test_case_uses_variables(test_case);
-
-        if uses_variables {
-            // Initialize variable storage (bash 3.2+ compatible using space-separated string)
-            script.push_str(
-                "# Initialize variable storage for captured variables (bash 3.2+ compatible)\n",
-            );
-            script.push_str("STEP_VAR_NAMES=\"\"\n\n");
-        }
 
         // Add trap to ensure JSON file is properly closed on any exit
         script.push_str("# Trap to ensure JSON file is closed properly on exit\n");
@@ -188,25 +190,6 @@ impl TestExecutor {
             }
             script.push('\n');
 
-            // Initialize sequence-level variables
-            if let Some(ref variables) = sequence.variables {
-                if !variables.is_empty() {
-                    script.push_str("# Initialize sequence variables\n");
-                    for (var_name, var_value) in variables {
-                        script.push_str(&format!(
-                            "STEP_VAR_{}={}\n",
-                            var_name,
-                            bash_escape(var_value)
-                        ));
-                        script.push_str(&format!(
-                            "if ! echo \" $STEP_VAR_NAMES \" | grep -q \" {} \"; then STEP_VAR_NAMES=\"$STEP_VAR_NAMES {}\"; fi\n",
-                            var_name, var_name
-                        ));
-                    }
-                    script.push('\n');
-                }
-            }
-
             for step in &sequence.steps {
                 script.push_str(&format!("# Step {}: {}\n", step.step, step.description));
 
@@ -237,154 +220,39 @@ impl TestExecutor {
                 script.push_str("COMMAND_OUTPUT=\"\"\n");
                 script.push_str("set +e\n");
 
-                // Check if the command needs variable substitution
-                let needs_substitution =
-                    step.command.contains("${") || step.command.contains("$STEP_VARS");
-
-                if needs_substitution {
-                    // Generate bash code to perform variable substitution on the command
-                    // Store the original command in a variable
-                    // Escape backslashes, quotes, and dollar signs to prevent premature expansion
-                    let escaped_command = step.command
-                        .replace("\\", "\\\\")
-                        .replace("\"", "\\\"")
-                        .replace("$", "\\$");
-                    script.push_str(&format!("ORIGINAL_COMMAND=\"{}\"\n", escaped_command));
-
-                    // Perform variable substitution: replace ${var_name} patterns using eval
-                    script.push_str("SUBSTITUTED_COMMAND=\"$ORIGINAL_COMMAND\"\n");
-                    script.push_str("if [ -n \"$STEP_VAR_NAMES\" ]; then\n");
-                    script.push_str("    for var_name in $STEP_VAR_NAMES; do\n");
-                    script.push_str("        eval \"var_value=\\$STEP_VAR_$var_name\"\n");
-                    script.push_str("        # Escape special characters for sed\n");
-                    script.push_str(
-                        "        escaped_value=$(printf '%s' \"$var_value\" | sed 's/[&/\\]/\\\\&/g')\n",
-                    );
-                    script.push_str("        # Replace ${var_name} pattern\n");
-                    script.push_str("        SUBSTITUTED_COMMAND=$(echo \"$SUBSTITUTED_COMMAND\" | sed \"s/\\${$var_name}/$escaped_value/g\")\n");
-                    script.push_str("    done\n");
-                    script.push_str("fi\n");
-
-                    // Wrap command in subshell with braces and redirect stderr to stdout before piping to tee
-                    // This ensures both stdout and stderr are captured in the log file
-                    script.push_str(
-                        "COMMAND_OUTPUT=$({ eval \"$SUBSTITUTED_COMMAND\"; } 2>&1 | tee \"$LOG_FILE\")\n",
-                    );
-                } else {
-                    // No substitution needed - inline the command directly
-                    script.push_str(&format!(
-                        "COMMAND_OUTPUT=$({{ {}; }} 2>&1 | tee \"$LOG_FILE\")\n",
-                        step.command
-                    ));
-                }
+                // Wrap command in subshell and redirect stderr to stdout before piping to tee
+                // This ensures both stdout and stderr are captured in the log file
+                script.push_str(&format!(
+                    "COMMAND_OUTPUT=$({{ {}; }} 2>&1 | tee \"$LOG_FILE\")\n",
+                    step.command
+                ));
 
                 script.push_str("EXIT_CODE=$?\n");
                 script.push_str("set -e\n\n");
 
-                // Variable capture: extract values from COMMAND_OUTPUT using regex patterns
-                if let Some(ref capture_vars) = step.capture_vars {
-                    if !capture_vars.is_empty() {
-                        script.push_str("# Capture variables from output\n");
-                        for (var_name, pattern) in capture_vars {
-                            // Convert PCRE pattern to BSD-compatible sed pattern
-                            let sed_pattern = convert_pcre_to_sed_pattern(pattern);
-                            script.push_str(&format!(
-                                "STEP_VAR_{}=$(echo \"$COMMAND_OUTPUT\" | sed -n {} | head -n 1 || echo \"\")\n",
-                                var_name,
-                                bash_escape(&sed_pattern)
-                            ));
-                            // Add to string-based list only if not already present (avoid duplicates)
-                            script.push_str(&format!(
-                                "if ! echo \" $STEP_VAR_NAMES \" | grep -q \" {} \"; then\n",
-                                var_name
-                            ));
-                            script.push_str(&format!("    STEP_VAR_NAMES=\"$STEP_VAR_NAMES {}\"\n", var_name));
-                            script.push_str("fi\n");
-                        }
-                        script.push('\n');
-                    }
-                }
-
-                script.push_str(&format!(
-                    "# Verification result expression: {}\n",
-                    step.verification.result
+                script.push_str("# Verification result\n");
+                script.push_str("VERIFICATION_RESULT_PASS=false\n");
+                script.push_str(&Self::generate_verification_script(
+                    &step.verification.result,
+                    "VERIFICATION_RESULT_PASS",
                 ));
+                script.push('\n');
 
                 // Determine which output verification to use
-                let output_verification =
-                    if let Some(ref output_file_verification) = step.verification.output_file {
-                        script.push_str(&format!(
-                            "# Verification output expression (from file): {}\n",
-                            output_file_verification
-                        ));
-                        output_file_verification.as_str()
-                    } else {
-                        script.push_str(&format!(
-                            "# Verification output expression (from variable): {}\n",
-                            step.verification.output
-                        ));
-                        step.verification.output.as_str()
-                    };
-
-                script.push_str("VERIFICATION_RESULT_PASS=false\n");
-                script.push_str("VERIFICATION_OUTPUT_PASS=false\n\n");
-
-                // Perform variable substitution on verification expressions
-                let result_needs_subst = step.verification.result.contains("${")
-                    || step.verification.result.contains("$STEP_VARS");
-                let escaped_result_expr = step
-                    .verification
-                    .result
-                    .replace("\\", "\\\\")
-                    .replace("$", "\\$")
-                    .replace("\"", "\\\"");
-                script.push_str(&format!("RESULT_EXPR=\"{}\"\n", escaped_result_expr));
-
-                if result_needs_subst && uses_variables {
-                    script.push_str("if [ -n \"$STEP_VAR_NAMES\" ]; then\n");
-                    script.push_str("    for var_name in $STEP_VAR_NAMES; do\n");
-                    script.push_str("        eval \"var_value=\\$STEP_VAR_$var_name\"\n");
-                    script.push_str("        # Escape special characters for sed\n");
-                    script.push_str(
-                        "        escaped_value=$(printf '%s' \"$var_value\" | sed 's/[&/\\]/\\\\&/g')\n",
-                    );
-                    script.push_str("        # Replace ${var_name} pattern\n");
-                    script.push_str("        RESULT_EXPR=$(echo \"$RESULT_EXPR\" | sed \"s/\\${$var_name}/$escaped_value/g\")\n");
-                    script.push_str("    done\n");
-                    script.push_str("fi\n");
+                script.push_str("# Verification output\n");
+                script.push_str("VERIFICATION_OUTPUT_PASS=false\n");
+                if let Some(ref output_file_verification) = step.verification.output_file {
+                    script.push_str(&Self::generate_verification_script(
+                        output_file_verification,
+                        "VERIFICATION_OUTPUT_PASS",
+                    ));
+                } else {
+                    script.push_str(&Self::generate_verification_script(
+                        &step.verification.output,
+                        "VERIFICATION_OUTPUT_PASS",
+                    ));
                 }
                 script.push('\n');
-
-                let output_needs_subst = output_verification.contains("${")
-                    || output_verification.contains("$STEP_VARS");
-                let escaped_output_expr = output_verification
-                    .replace("\\", "\\\\")
-                    .replace("$", "\\$")
-                    .replace("\"", "\\\"");
-                script.push_str(&format!("OUTPUT_EXPR=\"{}\"\n", escaped_output_expr));
-
-                if output_needs_subst && uses_variables {
-                    script.push_str("if [ -n \"$STEP_VAR_NAMES\" ]; then\n");
-                    script.push_str("    for var_name in $STEP_VAR_NAMES; do\n");
-                    script.push_str("        eval \"var_value=\\$STEP_VAR_$var_name\"\n");
-                    script.push_str("        # Escape special characters for sed\n");
-                    script.push_str(
-                        "        escaped_value=$(printf '%s' \"$var_value\" | sed 's/[&/\\]/\\\\&/g')\n",
-                    );
-                    script.push_str("        # Replace ${var_name} pattern\n");
-                    script.push_str("        OUTPUT_EXPR=$(echo \"$OUTPUT_EXPR\" | sed \"s/\\${$var_name}/$escaped_value/g\")\n");
-                    script.push_str("    done\n");
-                    script.push_str("fi\n");
-                }
-                script.push('\n');
-
-                script.push_str("if eval \"$RESULT_EXPR\"; then\n");
-                script.push_str("    VERIFICATION_RESULT_PASS=true\n");
-                script.push_str("fi\n\n");
-
-                script.push_str("if eval \"$OUTPUT_EXPR\"; then\n");
-                script.push_str("    VERIFICATION_OUTPUT_PASS=true\n");
-                script.push_str("fi\n\n");
 
                 script.push_str("if [ \"$VERIFICATION_RESULT_PASS\" = true ] && [ \"$VERIFICATION_OUTPUT_PASS\" = true ]; then\n");
                 script.push_str(&format!(
@@ -406,48 +274,25 @@ impl TestExecutor {
                 script.push_str("    exit 1\n");
                 script.push_str("fi\n\n");
 
-                let escaped_command = step
-                    .command
-                    .replace("\\", "\\\\")
-                    .replace("'", "\"")
-                    .replace("\"", "\\\"");
-                script.push_str("# Escape output for JSON (BSD/GNU compatible)\n");
-                script.push_str(
-                    "# Use Python for reliable JSON escaping if available, otherwise use sed/perl/awk\n",
-                );
-                script.push_str("if command -v python3 >/dev/null 2>&1; then\n");
-                script.push_str("    OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | python3 -c 'import sys, json; s=sys.stdin.read(); print(json.dumps(s)[1:-1], end=\"\")')\n");
-                script.push_str("elif command -v python >/dev/null 2>&1; then\n");
-                script.push_str("    OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | python -c 'import sys, json; s=sys.stdin.read(); print json.dumps(s)[1:-1]')\n");
-                script.push_str("elif command -v perl >/dev/null 2>&1; then\n");
-                script.push_str("    OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | perl -pe 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g; s/\\n/\\\\n/g; s/\\r/\\\\r/g; s/\\t/\\\\t/g' | tr -d '\\n')\n");
-                script.push_str("else\n");
-                script.push_str("    # Fallback: escape backslashes, quotes, tabs, and convert newlines to \\n\n");
-                script.push_str("    OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g; s/\\t/\\\\t/g' | awk '{printf \"%s%s\", (NR>1?\"\\\\n\":\"\"), $0}')\n");
-                script.push_str("fi\n\n");
+                let escaped_command = step.command.replace("\\", "\\\\").replace("\"", "\\\"");
+                script.push_str("# Escape output for JSON\n");
+                script.push_str("OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | sed 's/\\\\/\\\\\\\\/g' | sed 's/\"/\\\\\"/g' | sed -e ':a' -e '$!N;s/\\n/\\\\n/;ta')\n\n");
 
                 script.push_str("if [ \"$FIRST_ENTRY\" = false ]; then\n");
                 script.push_str("    echo ',' >> \"$JSON_LOG\"\n");
                 script.push_str("fi\n");
                 script.push_str("FIRST_ENTRY=false\n\n");
 
-                script.push_str("# Write JSON entry\n");
-                script.push_str("{\n");
-                script.push_str("    echo '  {'\n");
-                script.push_str(&format!(
-                    "    echo '    \"test_sequence\": {},'\n",
-                    sequence.id
-                ));
-                script.push_str(&format!("    echo '    \"step\": {},'\n", step.step));
-                script.push_str(&format!(
-                    "    echo '    \"command\": \"{}\",'\n",
-                    escaped_command
-                ));
-                script.push_str("    echo \"    \\\"exit_code\\\": $EXIT_CODE,\"\n");
-                script.push_str("    echo \"    \\\"output\\\": \\\"$OUTPUT_ESCAPED\\\",\"\n");
-                script.push_str("    echo \"    \\\"timestamp\\\": \\\"$TIMESTAMP\\\"\"\n");
-                script.push_str("    echo '  }'\n");
-                script.push_str("} >> \"$JSON_LOG\"\n\n");
+                script.push_str("cat >> \"$JSON_LOG\" << EOF\n");
+                script.push_str("  {\n");
+                script.push_str(&format!("    \"test_sequence\": {},\n", sequence.id));
+                script.push_str(&format!("    \"step\": {},\n", step.step));
+                script.push_str(&format!("    \"command\": \"{}\",\n", escaped_command));
+                script.push_str("    \"exit_code\": $EXIT_CODE,\n");
+                script.push_str("    \"output\": \"$OUTPUT_ESCAPED\",\n");
+                script.push_str("    \"timestamp\": \"$TIMESTAMP\"\n");
+                script.push_str("  }\n");
+                script.push_str("EOF\n\n");
             }
         }
 
@@ -516,16 +361,14 @@ impl TestExecutor {
                         execution_entries.push(entry);
 
                         // Perform verification
-                        let result_verification_passed = self.evaluate_verification(
-                            &step.verification.result,
-                            exit_code,
-                            &command_output,
-                        )?;
-                        let output_verification_passed = self.evaluate_verification(
-                            &step.verification.output,
-                            exit_code,
-                            &command_output,
-                        )?;
+                        let result_expr =
+                            Self::extract_simple_expression(&step.verification.result);
+                        let result_verification_passed =
+                            self.evaluate_verification(result_expr, exit_code, &command_output)?;
+                        let output_expr =
+                            Self::extract_simple_expression(&step.verification.output);
+                        let output_verification_passed =
+                            self.evaluate_verification(output_expr, exit_code, &command_output)?;
 
                         if result_verification_passed && output_verification_passed {
                             println!(
@@ -739,216 +582,6 @@ impl Default for TestExecutor {
     }
 }
 
-/// Converts a PCRE (Perl-compatible) regex pattern to a BSD-compatible sed pattern.
-///
-/// This function handles common PCRE constructs and converts them to sed patterns that work
-/// on both BSD (macOS) and GNU (Linux) systems. The primary use case is converting patterns
-/// used with `grep -oP` to patterns usable with `sed -n`.
-///
-/// # Conversions:
-///
-/// - `\K` (keep text before) is converted to a capturing group
-/// - Lookbehind `(?<=...)` is converted to a match-and-capture pattern
-/// - Lookahead patterns are simplified where possible
-/// - PCRE character classes like `\d`, `\w` are converted to POSIX equivalents
-///
-/// # Arguments
-///
-/// * `pattern` - The PCRE regex pattern to convert
-///
-/// # Returns
-///
-/// A sed substitution pattern string (e.g., "s/regex/\\1/p")
-///
-/// # Examples
-///
-/// ```
-/// use testcase_manager::executor::convert_pcre_to_sed_pattern;
-///
-/// // Convert \K pattern
-/// let result = convert_pcre_to_sed_pattern("SESSION_ID=\\K\\d+");
-/// assert_eq!(result, "s/.*SESSION_ID=\\([0-9][0-9]*\\).*/\\1/p");
-///
-/// // Convert lookbehind
-/// let result = convert_pcre_to_sed_pattern("(?<=token=)[A-Z0-9]+");
-/// assert_eq!(result, "s/.*token=\\([A-Z0-9][A-Z0-9]*\\).*/\\1/p");
-/// ```
-pub fn convert_pcre_to_sed_pattern(pattern: &str) -> String {
-    // Handle \K pattern (keep everything before, match after)
-    if let Some(idx) = pattern.find(r"\K") {
-        let prefix = &pattern[..idx];
-        let suffix = &pattern[idx + 2..];
-
-        // Convert PCRE character classes to POSIX for sed
-        let converted_suffix = suffix
-            .replace(r"\d+", r"\([0-9][0-9]*\)")
-            .replace(r"\d", r"\([0-9]\)")
-            .replace(r"\w+", r"\([a-zA-Z0-9_][a-zA-Z0-9_]*\)")
-            .replace(r"\w", r"\([a-zA-Z0-9_]\)")
-            .replace(r"\s+", r"\([[:space:]][[:space:]]*\)")
-            .replace(r"\s", r"\([[:space:]]\)");
-
-        // If suffix doesn't already have capture group, wrap it
-        let capture_suffix = if converted_suffix.starts_with(r"\(") {
-            converted_suffix
-        } else {
-            format!(
-                r"\({}\)",
-                converted_suffix.replace("+", r"[^[:space:]][^[:space:]]*")
-            )
-        };
-
-        return format!("s/.*{}{}.*/\\1/p", prefix, capture_suffix);
-    }
-
-    // Handle positive lookbehind (?<=...)
-    if pattern.starts_with("(?<=") {
-        if let Some(end_idx) = pattern.find(')') {
-            let lookbehind = &pattern[4..end_idx];
-            let rest = &pattern[end_idx + 1..];
-
-            // Convert character classes
-            let converted_rest = rest
-                .replace(r"\d+", r"\([0-9][0-9]*\)")
-                .replace(r"\d", r"\([0-9]\)")
-                .replace(r"\w+", r"\([a-zA-Z0-9_][a-zA-Z0-9_]*\)")
-                .replace(r"\w", r"\([a-zA-Z0-9_]\)")
-                .replace("[a-f0-9]+", r"\([a-f0-9][a-f0-9]*\)")
-                .replace("[A-Z0-9]+", r"\([A-Z0-9][A-Z0-9]*\)")
-                .replace("[0-9]+", r"\([0-9][0-9]*\)");
-
-            // Wrap in capture group if not already
-            let capture_rest = if converted_rest.starts_with(r"\(") {
-                converted_rest
-            } else {
-                format!(r"\({}\)", converted_rest)
-            };
-
-            return format!("s/.*{}{}.*/\\1/p", lookbehind, capture_rest);
-        }
-    }
-
-    // Handle IP address pattern: \d+\.\d+\.\d+\.\d+
-    if pattern.contains(r"\d+\.\d+\.\d+\.\d+") {
-        return "s/[^0-9]*\\([0-9][0-9]*\\.[0-9][0-9]*\\.[0-9][0-9]*\\.[0-9][0-9]*\\).*/\\1/p"
-            .to_string();
-    }
-
-    // Handle port pattern: :(\d+)
-    if pattern == r":(\d+)" || pattern == r":\(\d+\)" {
-        return "s/.*:\\([0-9][0-9]*\\).*/\\1/p".to_string();
-    }
-
-    // General case: convert PCRE classes and wrap in capture group
-    let converted = pattern
-        .replace(r"\d+", r"[0-9][0-9]*")
-        .replace(r"\d", r"[0-9]")
-        .replace(r"\w+", r"[a-zA-Z0-9_][a-zA-Z0-9_]*")
-        .replace(r"\w", r"[a-zA-Z0-9_]")
-        .replace(r"\s+", r"[[:space:]][[:space:]]*")
-        .replace(r"\s", r"[[:space:]]");
-
-    // Wrap in sed substitution with capture group
-    format!("s/.*\\({}\\).*/\\1/p", converted)
-}
-
-/// Performs variable substitution in a command string using the STEP_VARS associative array.
-///
-/// This function substitutes patterns like `${STEP_VARS[var_name]}` or `$var_name` with their
-/// corresponding values from the provided variables map. The substituted values are properly
-/// escaped for safe use in bash commands.
-///
-/// # Arguments
-///
-/// * `command` - The command string containing variable references to substitute
-/// * `step_vars` - A reference to a HashMap containing variable names and their values
-///
-/// # Returns
-///
-/// A new String with all variable references substituted and properly escaped
-///
-/// # Examples
-///
-/// ```
-/// use std::collections::HashMap;
-/// use testcase_manager::executor::substitute_variables;
-///
-/// let mut vars = HashMap::new();
-/// vars.insert("username".to_string(), "john.doe".to_string());
-/// vars.insert("path".to_string(), "/home/user".to_string());
-///
-/// let cmd = "echo ${STEP_VARS[username]} lives at $path";
-/// let result = substitute_variables(cmd, &vars);
-/// assert_eq!(result, "echo 'john.doe' lives at '/home/user'");
-/// ```
-pub fn substitute_variables(command: &str, step_vars: &HashMap<String, String>) -> String {
-    let mut result = command.to_string();
-
-    // Pattern for ${STEP_VARS[var_name]} - using lazy matching and capturing the var name
-    let array_pattern = Regex::new(r"\$\{STEP_VARS\[([^\]]+)\]\}").unwrap();
-
-    // Pattern for $var_name (word characters, digits, underscores)
-    let simple_pattern = Regex::new(r"\$([a-zA-Z_][a-zA-Z0-9_]*)").unwrap();
-
-    // First, substitute ${STEP_VARS[var_name]} patterns
-    result = array_pattern
-        .replace_all(&result, |caps: &regex::Captures| {
-            let var_name = &caps[1];
-            if let Some(value) = step_vars.get(var_name) {
-                bash_escape(value)
-            } else {
-                // If variable not found, leave the reference unchanged
-                caps[0].to_string()
-            }
-        })
-        .to_string();
-
-    // Then, substitute $var_name patterns
-    // We need to be careful not to substitute variables that are not in STEP_VARS
-    // or are bash special variables
-    result = simple_pattern
-        .replace_all(&result, |caps: &regex::Captures| {
-            let var_name = &caps[1];
-            if let Some(value) = step_vars.get(var_name) {
-                bash_escape(value)
-            } else {
-                // If variable not found, leave the reference unchanged
-                caps[0].to_string()
-            }
-        })
-        .to_string();
-
-    result
-}
-
-/// Escapes a string value for safe use in bash commands.
-///
-/// This function wraps the value in single quotes and escapes any single quotes
-/// within the value by replacing them with '\'' (end quote, escaped quote, start quote).
-///
-/// # Arguments
-///
-/// * `value` - The string value to escape
-///
-/// # Returns
-///
-/// A bash-escaped string wrapped in single quotes
-///
-/// # Examples
-///
-/// ```
-/// use testcase_manager::executor::bash_escape;
-///
-/// assert_eq!(bash_escape("hello"), "'hello'");
-/// assert_eq!(bash_escape("it's"), "'it'\\''s'");
-/// assert_eq!(bash_escape("a\"b"), "'a\"b'");
-/// ```
-pub fn bash_escape(value: &str) -> String {
-    // In bash, the safest way to escape a string is to wrap it in single quotes
-    // and escape any single quotes by ending the quote, adding an escaped quote, and starting again
-    format!("'{}'", value.replace('\'', r"'\''"))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -971,16 +604,18 @@ mod tests {
             step: 1,
             manual: None,
             description: "Echo test".to_string(),
-            command: "echo 'hello'".to_string(),
             capture_vars: None,
+            command: "echo 'hello'".to_string(),
             expected: Expected {
                 success: Some(true),
                 result: "[ $EXIT_CODE -eq 0 ]".to_string(),
                 output: "[ \"$COMMAND_OUTPUT\" = \"hello\" ]".to_string(),
             },
             verification: Verification {
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "[ \"$COMMAND_OUTPUT\" = \"hello\" ]".to_string(),
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple(
+                    "[ \"$COMMAND_OUTPUT\" = \"hello\" ]".to_string(),
+                ),
                 output_file: None,
             },
         };
@@ -1016,16 +651,16 @@ mod tests {
             step: 1,
             manual: Some(true),
             description: "Manual verification".to_string(),
-            command: "ssh device".to_string(),
             capture_vars: None,
+            command: "ssh device".to_string(),
             expected: Expected {
                 success: Some(true),
                 result: "connected".to_string(),
                 output: "success".to_string(),
             },
             verification: Verification {
-                result: "true".to_string(),
-                output: "true".to_string(),
+                result: VerificationExpression::Simple("true".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
             },
         };
@@ -1097,16 +732,16 @@ mod tests {
             step: 1,
             manual: None,
             description: "Test step".to_string(),
-            command: "echo 'test'".to_string(),
             capture_vars: None,
+            command: "echo 'test'".to_string(),
             expected: Expected {
                 success: Some(true),
                 result: "0".to_string(),
                 output: "test".to_string(),
             },
             verification: Verification {
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "true".to_string(),
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
             },
         };
@@ -1137,16 +772,16 @@ mod tests {
             step: 1,
             manual: None,
             description: "Test step".to_string(),
-            command: "echo 'test'".to_string(),
             capture_vars: None,
+            command: "echo 'test'".to_string(),
             expected: Expected {
                 success: Some(true),
                 result: "0".to_string(),
                 output: "test".to_string(),
             },
             verification: Verification {
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "true".to_string(),
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
             },
         };
@@ -1186,8 +821,8 @@ mod tests {
                 output: "step1".to_string(),
             },
             verification: Verification {
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "true".to_string(),
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
             },
         };
@@ -1204,8 +839,8 @@ mod tests {
                 output: "step2".to_string(),
             },
             verification: Verification {
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "true".to_string(),
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
             },
         };
@@ -1256,8 +891,8 @@ mod tests {
                 output: "seq1".to_string(),
             },
             verification: Verification {
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "true".to_string(),
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
             },
         };
@@ -1276,8 +911,8 @@ mod tests {
                 output: "seq2".to_string(),
             },
             verification: Verification {
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "true".to_string(),
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
             },
         };
@@ -1322,16 +957,16 @@ mod tests {
             step: 1,
             manual: Some(true),
             description: "Manual step".to_string(),
-            command: "manual command".to_string(),
             capture_vars: None,
+            command: "manual command".to_string(),
             expected: Expected {
                 success: Some(true),
                 result: "0".to_string(),
                 output: "output".to_string(),
             },
             verification: Verification {
-                result: "true".to_string(),
-                output: "true".to_string(),
+                result: VerificationExpression::Simple("true".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
             },
         };
@@ -1340,16 +975,16 @@ mod tests {
             step: 2,
             manual: None,
             description: "Automated step".to_string(),
-            command: "echo 'auto'".to_string(),
             capture_vars: None,
+            command: "echo 'auto'".to_string(),
             expected: Expected {
                 success: Some(true),
                 result: "0".to_string(),
                 output: "auto".to_string(),
             },
             verification: Verification {
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "true".to_string(),
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
             },
         };
@@ -1394,16 +1029,16 @@ mod tests {
             step: 10,
             manual: None,
             description: "Test step".to_string(),
-            command: "ls -la".to_string(),
             capture_vars: None,
+            command: "ls -la".to_string(),
             expected: Expected {
                 success: Some(true),
                 result: "0".to_string(),
                 output: "files".to_string(),
             },
             verification: Verification {
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "true".to_string(),
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
             },
         };
@@ -1442,16 +1077,16 @@ mod tests {
             step: 1,
             manual: None,
             description: "Test step".to_string(),
-            command: "echo 'test'".to_string(),
             capture_vars: None,
+            command: "echo 'test'".to_string(),
             expected: Expected {
                 success: Some(true),
                 result: "0".to_string(),
                 output: "test".to_string(),
             },
             verification: Verification {
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "true".to_string(),
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
             },
         };
@@ -1467,299 +1102,42 @@ mod tests {
     }
 
     #[test]
-    fn test_bash_escape_basic() {
-        assert_eq!(bash_escape("hello"), "'hello'");
-        assert_eq!(bash_escape("hello world"), "'hello world'");
-        assert_eq!(bash_escape("123"), "'123'");
-    }
-
-    #[test]
-    fn test_bash_escape_with_single_quotes() {
-        assert_eq!(bash_escape("it's"), "'it'\\''s'");
-        assert_eq!(bash_escape("'quoted'"), "''\\''quoted'\\'''");
-        assert_eq!(bash_escape("don't"), "'don'\\''t'");
-    }
-
-    #[test]
-    fn test_bash_escape_with_special_chars() {
-        assert_eq!(bash_escape("a\"b"), "'a\"b'");
-        assert_eq!(bash_escape("a$b"), "'a$b'");
-        assert_eq!(bash_escape("a`b"), "'a`b'");
-        assert_eq!(bash_escape("a\\b"), "'a\\b'");
-        assert_eq!(bash_escape("a!b"), "'a!b'");
-        assert_eq!(bash_escape("a&b"), "'a&b'");
-        assert_eq!(bash_escape("a|b"), "'a|b'");
-        assert_eq!(bash_escape("a;b"), "'a;b'");
-    }
-
-    #[test]
-    fn test_bash_escape_empty_string() {
-        assert_eq!(bash_escape(""), "''");
-    }
-
-    #[test]
-    fn test_substitute_variables_array_syntax() {
-        let mut vars = HashMap::new();
-        vars.insert("username".to_string(), "john.doe".to_string());
-        vars.insert("server".to_string(), "example.com".to_string());
-
-        let cmd = "ssh ${STEP_VARS[username]}@${STEP_VARS[server]}";
-        let result = substitute_variables(cmd, &vars);
-        assert_eq!(result, "ssh 'john.doe'@'example.com'");
-    }
-
-    #[test]
-    fn test_substitute_variables_simple_syntax() {
-        let mut vars = HashMap::new();
-        vars.insert("username".to_string(), "jane".to_string());
-        vars.insert("path".to_string(), "/home/user".to_string());
-
-        let cmd = "echo $username lives at $path";
-        let result = substitute_variables(cmd, &vars);
-        assert_eq!(result, "echo 'jane' lives at '/home/user'");
-    }
-
-    #[test]
-    fn test_substitute_variables_mixed_syntax() {
-        let mut vars = HashMap::new();
-        vars.insert("user".to_string(), "admin".to_string());
-        vars.insert("host".to_string(), "server1".to_string());
-        vars.insert("port".to_string(), "8080".to_string());
-
-        let cmd = "curl http://$user:password@${STEP_VARS[host]}:$port/api";
-        let result = substitute_variables(cmd, &vars);
-        assert_eq!(result, "curl http://'admin':password@'server1':'8080'/api");
-    }
-
-    #[test]
-    fn test_substitute_variables_undefined_var() {
-        let mut vars = HashMap::new();
-        vars.insert("defined".to_string(), "value".to_string());
-
-        let cmd = "echo $defined $undefined ${STEP_VARS[missing]}";
-        let result = substitute_variables(cmd, &vars);
-        assert_eq!(result, "echo 'value' $undefined ${STEP_VARS[missing]}");
-    }
-
-    #[test]
-    fn test_substitute_variables_with_special_chars_in_values() {
-        let mut vars = HashMap::new();
-        vars.insert("msg".to_string(), "hello 'world'!".to_string());
-        vars.insert("cmd".to_string(), "ls -la | grep test".to_string());
-
-        let cmd = "echo ${STEP_VARS[msg]} && $cmd";
-        let result = substitute_variables(cmd, &vars);
-        assert_eq!(
-            result,
-            "echo 'hello '\\''world'\\''!' && 'ls -la | grep test'"
-        );
-    }
-
-    #[test]
-    fn test_substitute_variables_empty_command() {
-        let vars = HashMap::new();
-        let cmd = "";
-        let result = substitute_variables(cmd, &vars);
-        assert_eq!(result, "");
-    }
-
-    #[test]
-    fn test_substitute_variables_no_vars_in_command() {
-        let mut vars = HashMap::new();
-        vars.insert("unused".to_string(), "value".to_string());
-
-        let cmd = "echo hello world";
-        let result = substitute_variables(cmd, &vars);
-        assert_eq!(result, "echo hello world");
-    }
-
-    #[test]
-    fn test_substitute_variables_multiple_same_var() {
-        let mut vars = HashMap::new();
-        vars.insert("val".to_string(), "xyz".to_string());
-
-        let cmd = "echo $val $val ${STEP_VARS[val]}";
-        let result = substitute_variables(cmd, &vars);
-        assert_eq!(result, "echo 'xyz' 'xyz' 'xyz'");
-    }
-
-    #[test]
-    fn test_substitute_variables_var_with_numbers_and_underscores() {
-        let mut vars = HashMap::new();
-        vars.insert("var_name_1".to_string(), "value1".to_string());
-        vars.insert("_var2".to_string(), "value2".to_string());
-        vars.insert("VAR3".to_string(), "value3".to_string());
-
-        let cmd = "echo $var_name_1 $_var2 $VAR3";
-        let result = substitute_variables(cmd, &vars);
-        assert_eq!(result, "echo 'value1' 'value2' 'value3'");
-    }
-
-    #[test]
-    fn test_substitute_variables_preserves_bash_special_vars() {
-        let vars = HashMap::new();
-
-        let cmd = "echo $? $$ $! $# $@ $* $0 $1 $EXIT_CODE $COMMAND_OUTPUT";
-        let result = substitute_variables(cmd, &vars);
-        assert_eq!(
-            result,
-            "echo $? $$ $! $# $@ $* $0 $1 $EXIT_CODE $COMMAND_OUTPUT"
-        );
-    }
-
-    #[test]
-    fn test_substitute_variables_complex_scenario() {
-        let mut vars = HashMap::new();
-        vars.insert("user".to_string(), "test_user".to_string());
-        vars.insert("file".to_string(), "config.txt".to_string());
-        vars.insert("dir".to_string(), "/tmp/test dir".to_string());
-
-        let cmd = "scp $user@server:${STEP_VARS[dir]}/${STEP_VARS[file]} .";
-        let result = substitute_variables(cmd, &vars);
-        assert_eq!(
-            result,
-            "scp 'test_user'@server:'/tmp/test dir'/'config.txt' ."
-        );
-    }
-
-    #[test]
-    fn test_substitute_variables_escaped_dollar_signs() {
-        let mut vars = HashMap::new();
-        vars.insert("price".to_string(), "100".to_string());
-
-        // Note: In actual bash, \$ would prevent expansion.
-        // This test shows current behavior - escaped $ is still processed
-        let cmd = "echo The price is $price";
-        let result = substitute_variables(cmd, &vars);
-        assert_eq!(result, "echo The price is '100'");
-    }
-
-    #[test]
-    fn test_generate_test_script_with_capture_vars() {
+    fn test_generate_script_with_conditional_verification_result() {
         let executor = TestExecutor::new();
         let mut test_case = TestCase::new(
             "REQ001".to_string(),
             1,
             1,
             "TC001".to_string(),
-            "Test with variable capture".to_string(),
+            "Test conditional verification".to_string(),
         );
 
         let mut sequence = TestSequence::new(1, "Seq1".to_string(), "First sequence".to_string());
-
-        let mut capture_vars = std::collections::BTreeMap::new();
-        capture_vars.insert("user_id".to_string(), r#"(?<=user_id=)\d+"#.to_string());
-        capture_vars.insert(
-            "token".to_string(),
-            r#"(?<=token=)[a-zA-Z0-9]+"#.to_string(),
-        );
-
         let step = Step {
             step: 1,
             manual: None,
-            description: "Extract variables".to_string(),
-            command: "echo 'user_id=12345 token=abc123'".to_string(),
-            capture_vars: Some(capture_vars),
-            expected: Expected {
-                success: Some(true),
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "true".to_string(),
-            },
-            verification: Verification {
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "true".to_string(),
-                output_file: None,
-            },
-        };
-        sequence.steps.push(step);
-        test_case.test_sequences.push(sequence);
-
-        let script = executor.generate_test_script(&test_case);
-
-        assert!(script.contains("# Capture variables from output"));
-        assert!(script.contains("STEP_VAR_user_id=$(echo \"$COMMAND_OUTPUT\" | sed -n"));
-        assert!(script.contains("STEP_VAR_token=$(echo \"$COMMAND_OUTPUT\" | sed -n"));
-        assert!(script.contains("| head -n 1 || echo \"\")"));
-    }
-
-    #[test]
-    fn test_variable_capture_in_generated_script() {
-        let executor = TestExecutor::new();
-        let mut test_case = TestCase::new(
-            "REQ001".to_string(),
-            1,
-            1,
-            "TC001".to_string(),
-            "Test variable capture initialization".to_string(),
-        );
-
-        let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
-
-        let mut capture_vars = std::collections::BTreeMap::new();
-        capture_vars.insert(
-            "session_id".to_string(),
-            r#"(?<=session=)[a-f0-9]+"#.to_string(),
-        );
-
-        let step = Step {
-            step: 1,
-            manual: None,
-            description: "Capture session ID".to_string(),
-            command: "echo 'session=abc123def'".to_string(),
-            capture_vars: Some(capture_vars),
-            expected: Expected {
-                success: Some(true),
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "true".to_string(),
-            },
-            verification: Verification {
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "true".to_string(),
-                output_file: None,
-            },
-        };
-        sequence.steps.push(step);
-        test_case.test_sequences.push(sequence);
-
-        let script = executor.generate_test_script(&test_case);
-
-        // Verify variable storage initialization (bash 3.2+ compatible - uses string instead of array)
-        assert!(script.contains("STEP_VAR_NAMES=\"\""));
-        assert!(script.contains("# Initialize variable storage for captured variables"));
-
-        // Verify capture code generation
-        assert!(script.contains("# Capture variables from output"));
-        assert!(script.contains("STEP_VAR_session_id=$(echo \"$COMMAND_OUTPUT\" | sed -n"));
-        assert!(script.contains("| head -n 1 || echo \"\")"));
-    }
-
-    #[test]
-    fn test_variable_substitution_in_commands() {
-        let executor = TestExecutor::new();
-        let mut test_case = TestCase::new(
-            "REQ001".to_string(),
-            1,
-            1,
-            "TC001".to_string(),
-            "Test variable substitution in commands".to_string(),
-        );
-
-        let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
-
-        let step = Step {
-            step: 1,
-            manual: None,
-            description: "Use variable in command".to_string(),
-            command: "echo ${user_name} works at ${STEP_VARS[company]}".to_string(),
+            description: "Test step with conditional".to_string(),
             capture_vars: None,
+            command: "echo 'test'".to_string(),
             expected: Expected {
                 success: Some(true),
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "true".to_string(),
+                result: "0".to_string(),
+                output: "test".to_string(),
             },
             verification: Verification {
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "true".to_string(),
+                result: VerificationExpression::Conditional {
+                    condition: "[ $EXIT_CODE -eq 0 ]".to_string(),
+                    if_true: Some(vec![
+                        "echo 'Success branch'".to_string(),
+                        "VERIFICATION_RESULT_PASS=true".to_string(),
+                    ]),
+                    if_false: Some(vec![
+                        "echo 'Failure branch'".to_string(),
+                        "VERIFICATION_RESULT_PASS=false".to_string(),
+                    ]),
+                    always: Some(vec!["echo 'Always executed'".to_string()]),
+                },
+                output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
             },
         };
@@ -1768,45 +1146,85 @@ mod tests {
 
         let script = executor.generate_test_script(&test_case);
 
-        // Verify substitution logic is present
-        assert!(script.contains("ORIGINAL_COMMAND="));
-        assert!(script.contains("SUBSTITUTED_COMMAND=\"$ORIGINAL_COMMAND\""));
-        assert!(script.contains("for var_name in $STEP_VAR_NAMES; do"));
-        assert!(script.contains("eval \"var_value=\\$STEP_VAR_$var_name\""));
-        assert!(script.contains("# Replace ${var_name} pattern"));
-        assert!(script.contains("SUBSTITUTED_COMMAND=$(echo \"$SUBSTITUTED_COMMAND\" | sed \"s/\\${$var_name}/$escaped_value/g\")"));
-        assert!(script.contains(
-            "COMMAND_OUTPUT=$({ eval \"$SUBSTITUTED_COMMAND\"; } 2>&1 | tee \"$LOG_FILE\")"
-        ));
+        // Check that the script includes condition evaluation
+        assert!(
+            script.contains("if [ $EXIT_CODE -eq 0 ]; then"),
+            "Script should contain condition evaluation in if statement"
+        );
+
+        // Check that if_true commands are present
+        assert!(
+            script.contains("echo 'Success branch'"),
+            "Script should contain if_true commands"
+        );
+        assert!(
+            script.contains("VERIFICATION_RESULT_PASS=true"),
+            "Script should set VERIFICATION_RESULT_PASS=true in if_true branch"
+        );
+
+        // Check that if_false commands are present
+        assert!(script.contains("else"), "Script should contain else clause");
+        assert!(
+            script.contains("echo 'Failure branch'"),
+            "Script should contain if_false commands"
+        );
+        assert!(
+            script.contains("VERIFICATION_RESULT_PASS=false"),
+            "Script should set VERIFICATION_RESULT_PASS=false in if_false branch"
+        );
+
+        // Check that always commands are executed after the conditional
+        assert!(
+            script.contains("echo 'Always executed'"),
+            "Script should contain always commands"
+        );
+
+        // Verify structure: if_true/if_false should come before always
+        let if_pos = script.find("if [ $EXIT_CODE -eq 0 ]; then").unwrap();
+        let always_pos = script.find("echo 'Always executed'").unwrap();
+        assert!(
+            if_pos < always_pos,
+            "Conditional block should come before always commands"
+        );
     }
 
     #[test]
-    fn test_variable_substitution_in_verification() {
+    fn test_generate_script_with_conditional_verification_output() {
         let executor = TestExecutor::new();
         let mut test_case = TestCase::new(
-            "REQ001".to_string(),
+            "REQ002".to_string(),
             1,
             1,
-            "TC001".to_string(),
-            "Test variable substitution in verification".to_string(),
+            "TC002".to_string(),
+            "Test conditional output verification".to_string(),
         );
 
-        let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
-
+        let mut sequence = TestSequence::new(1, "Seq1".to_string(), "First sequence".to_string());
         let step = Step {
             step: 1,
             manual: None,
-            description: "Verify with variables".to_string(),
-            command: "echo 'status: OK'".to_string(),
+            description: "Test step with conditional output".to_string(),
             capture_vars: None,
+            command: "echo 'hello'".to_string(),
             expected: Expected {
                 success: Some(true),
-                result: "[ $EXIT_CODE -eq ${expected_code} ]".to_string(),
-                output: "[[ \"$COMMAND_OUTPUT\" == *\"${STEP_VARS[status]}\"* ]]".to_string(),
+                result: "0".to_string(),
+                output: "hello".to_string(),
             },
             verification: Verification {
-                result: "[ $EXIT_CODE -eq ${expected_code} ]".to_string(),
-                output: "[[ \"$COMMAND_OUTPUT\" == *\"${STEP_VARS[status]}\"* ]]".to_string(),
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Conditional {
+                    condition: "[[ \"$COMMAND_OUTPUT\" == *\"hello\"* ]]".to_string(),
+                    if_true: Some(vec![
+                        "echo 'Output contains hello'".to_string(),
+                        "VERIFICATION_OUTPUT_PASS=true".to_string(),
+                    ]),
+                    if_false: Some(vec![
+                        "echo 'Output does not contain hello'".to_string(),
+                        "VERIFICATION_OUTPUT_PASS=false".to_string(),
+                    ]),
+                    always: Some(vec!["echo 'Output verification complete'".to_string()]),
+                },
                 output_file: None,
             },
         };
@@ -1815,60 +1233,67 @@ mod tests {
 
         let script = executor.generate_test_script(&test_case);
 
-        // Verify substitution in result expression
-        assert!(script.contains("RESULT_EXPR="));
-        assert!(script.contains("for var_name in $STEP_VAR_NAMES; do"));
-        assert!(script.contains("eval \"var_value=\\$STEP_VAR_$var_name\""));
-        assert!(script.contains(
-            "RESULT_EXPR=$(echo \"$RESULT_EXPR\" | sed \"s/\\${$var_name}/$escaped_value/g\")"
-        ));
+        // Check that the script includes output condition evaluation
+        assert!(
+            script.contains("if [[ \"$COMMAND_OUTPUT\" == *\"hello\"* ]]; then"),
+            "Script should contain output condition evaluation"
+        );
 
-        // Verify substitution in output expression
-        assert!(script.contains("OUTPUT_EXPR="));
-        assert!(script.contains(
-            "OUTPUT_EXPR=$(echo \"$OUTPUT_EXPR\" | sed \"s/\\${$var_name}/$escaped_value/g\")"
-        ));
+        // Check that if_true commands are present for output verification
+        assert!(
+            script.contains("echo 'Output contains hello'"),
+            "Script should contain output if_true commands"
+        );
+        assert!(
+            script.contains("VERIFICATION_OUTPUT_PASS=true"),
+            "Script should set VERIFICATION_OUTPUT_PASS=true in if_true branch"
+        );
 
-        // Verify evaluation of substituted expressions
-        assert!(script.contains("if eval \"$RESULT_EXPR\"; then"));
-        assert!(script.contains("if eval \"$OUTPUT_EXPR\"; then"));
+        // Check that if_false commands are present for output verification
+        assert!(
+            script.contains("echo 'Output does not contain hello'"),
+            "Script should contain output if_false commands"
+        );
+        assert!(
+            script.contains("VERIFICATION_OUTPUT_PASS=false"),
+            "Script should set VERIFICATION_OUTPUT_PASS=false in if_false branch"
+        );
+
+        // Check that always commands are executed
+        assert!(
+            script.contains("echo 'Output verification complete'"),
+            "Script should contain output always commands"
+        );
     }
 
     #[test]
-    fn test_multiple_variables_from_single_step() {
+    fn test_generate_script_with_simple_verification_backward_compat() {
         let executor = TestExecutor::new();
         let mut test_case = TestCase::new(
-            "REQ001".to_string(),
+            "REQ003".to_string(),
             1,
             1,
-            "TC001".to_string(),
-            "Test multiple variable captures from single step".to_string(),
+            "TC003".to_string(),
+            "Test simple verification backward compat".to_string(),
         );
 
-        let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
-
-        let mut capture_vars = std::collections::BTreeMap::new();
-        capture_vars.insert("user_id".to_string(), r#"(?<=user_id=)\d+"#.to_string());
-        capture_vars.insert(
-            "session_token".to_string(),
-            r#"(?<=token=)[A-Z0-9]+"#.to_string(),
-        );
-        capture_vars.insert("timestamp".to_string(), r#"(?<=ts=)\d{10}"#.to_string());
-
+        let mut sequence = TestSequence::new(1, "Seq1".to_string(), "First sequence".to_string());
         let step = Step {
             step: 1,
             manual: None,
-            description: "Capture multiple variables".to_string(),
-            command: "echo 'user_id=12345 token=ABC123XYZ ts=1234567890'".to_string(),
-            capture_vars: Some(capture_vars),
+            description: "Test step with simple string".to_string(),
+            capture_vars: None,
+            command: "echo 'test'".to_string(),
             expected: Expected {
                 success: Some(true),
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "true".to_string(),
+                result: "0".to_string(),
+                output: "test".to_string(),
             },
             verification: Verification {
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "true".to_string(),
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple(
+                    "[ \"$COMMAND_OUTPUT\" = \"test\" ]".to_string(),
+                ),
                 output_file: None,
             },
         };
@@ -1877,62 +1302,138 @@ mod tests {
 
         let script = executor.generate_test_script(&test_case);
 
-        // Verify all three variables are captured
-        assert!(script.contains("# Capture variables from output"));
-        assert!(script.contains("STEP_VAR_user_id=$(echo \"$COMMAND_OUTPUT\" | sed -n"));
-        assert!(script.contains("STEP_VAR_session_token=$(echo \"$COMMAND_OUTPUT\" | sed -n"));
-        assert!(script.contains("STEP_VAR_timestamp=$(echo \"$COMMAND_OUTPUT\" | sed -n"));
+        // Check that simple verification still works with the if statement wrapper
+        assert!(
+            script.contains("if [ $EXIT_CODE -eq 0 ]; then"),
+            "Script should contain result verification condition"
+        );
+        assert!(
+            script.contains("VERIFICATION_RESULT_PASS=true"),
+            "Script should set VERIFICATION_RESULT_PASS=true on success"
+        );
 
-        // Verify the capture block appears exactly once for this step
-        let capture_count = script.matches("# Capture variables from output").count();
+        assert!(
+            script.contains("if [ \"$COMMAND_OUTPUT\" = \"test\" ]; then"),
+            "Script should contain output verification condition"
+        );
+        assert!(
+            script.contains("VERIFICATION_OUTPUT_PASS=true"),
+            "Script should set VERIFICATION_OUTPUT_PASS=true on success"
+        );
+
+        // Ensure no conditional-specific keywords that shouldn't be there for Simple
+        let result_verification_section = script
+            .split("# Verification result")
+            .nth(1)
+            .and_then(|s| s.split("# Verification output").next())
+            .unwrap();
+
+        // Simple verification should have one if/fi pair for the result check
         assert_eq!(
-            capture_count, 1,
-            "Should have exactly one capture block for the single step"
+            result_verification_section
+                .matches("if [ $EXIT_CODE -eq 0 ]; then")
+                .count(),
+            1,
+            "Simple result verification should have one if statement"
+        );
+        assert_eq!(
+            result_verification_section.matches("fi").count(),
+            1,
+            "Simple result verification should have one fi statement"
         );
     }
 
     #[test]
-    fn test_convert_pcre_to_sed_pattern_with_k() {
-        // Test \K pattern conversion
-        let result = convert_pcre_to_sed_pattern(r"SESSION_ID=\K\d+");
-        assert_eq!(result, r"s/.*SESSION_ID=\([0-9][0-9]*\).*/\1/p");
-    }
-
-    #[test]
-    fn test_convert_pcre_to_sed_pattern_with_lookbehind() {
-        // Test positive lookbehind conversion
-        let result = convert_pcre_to_sed_pattern(r"(?<=token=)[A-Z0-9]+");
-        assert_eq!(result, r"s/.*token=\([A-Z0-9][A-Z0-9]*\).*/\1/p");
-    }
-
-    #[test]
-    fn test_convert_pcre_to_sed_pattern_with_word_class() {
-        // Test \w+ pattern conversion
-        let result = convert_pcre_to_sed_pattern(r"USER=\K\w+");
-        assert_eq!(result, r"s/.*USER=\([a-zA-Z0-9_][a-zA-Z0-9_]*\).*/\1/p");
-    }
-
-    #[test]
-    fn test_convert_pcre_to_sed_pattern_ip_address() {
-        // Test IP address pattern (uses [^0-9]* instead of .* to avoid greedy matching issues)
-        let result = convert_pcre_to_sed_pattern(r"\d+\.\d+\.\d+\.\d+");
-        assert_eq!(
-            result,
-            r"s/[^0-9]*\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\).*/\1/p"
+    fn test_conditional_verification_command_execution_order() {
+        let executor = TestExecutor::new();
+        let mut test_case = TestCase::new(
+            "REQ004".to_string(),
+            1,
+            1,
+            "TC004".to_string(),
+            "Test command execution order".to_string(),
         );
-    }
 
-    #[test]
-    fn test_convert_pcre_to_sed_pattern_port() {
-        // Test port pattern
-        let result = convert_pcre_to_sed_pattern(r":(\d+)");
-        assert_eq!(result, r"s/.*:\([0-9][0-9]*\).*/\1/p");
-    }
+        let mut sequence = TestSequence::new(1, "Seq1".to_string(), "First sequence".to_string());
+        let step = Step {
+            step: 1,
+            manual: None,
+            description: "Test step with execution order".to_string(),
+            capture_vars: None,
+            command: "echo 'test'".to_string(),
+            expected: Expected {
+                success: Some(true),
+                result: "0".to_string(),
+                output: "test".to_string(),
+            },
+            verification: Verification {
+                result: VerificationExpression::Conditional {
+                    condition: "[ $EXIT_CODE -eq 0 ]".to_string(),
+                    if_true: Some(vec![
+                        "echo 'Step 1: if_true'".to_string(),
+                        "VERIFICATION_RESULT_PASS=true".to_string(),
+                    ]),
+                    if_false: Some(vec![
+                        "echo 'Step 1: if_false'".to_string(),
+                        "VERIFICATION_RESULT_PASS=false".to_string(),
+                    ]),
+                    always: Some(vec![
+                        "echo 'Step 2: always first'".to_string(),
+                        "echo 'Step 3: always second'".to_string(),
+                    ]),
+                },
+                output: VerificationExpression::Simple("true".to_string()),
+                output_file: None,
+            },
+        };
+        sequence.steps.push(step);
+        test_case.test_sequences.push(sequence);
 
-    #[test]
-    fn test_convert_pcre_to_sed_pattern_hex_pattern() {
-        // Test hex pattern with lookbehind
-        let result = convert_pcre_to_sed_pattern(r"(?<=session=)[a-f0-9]+");
-        assert_eq!(result, r"s/.*session=\([a-f0-9][a-f0-9]*\).*/\1/p");
+        let script = executor.generate_test_script(&test_case);
+
+        // Verify structure: the always commands should not be inside the if/else/fi block
+        // We need to extract just the result verification section
+        let verification_section = script
+            .split("# Verification result")
+            .nth(1)
+            .and_then(|s| s.split("# Verification output").next())
+            .unwrap();
+
+        // Find positions of key elements in the verification section
+        let if_true_pos = verification_section.find("echo 'Step 1: if_true'").unwrap();
+        let if_false_pos = verification_section
+            .find("echo 'Step 1: if_false'")
+            .unwrap();
+        let always_first_pos = verification_section
+            .find("echo 'Step 2: always first'")
+            .unwrap();
+        let always_second_pos = verification_section
+            .find("echo 'Step 3: always second'")
+            .unwrap();
+        let fi_pos = verification_section.find("fi\n").unwrap();
+
+        // Verify that if_true comes before if_false
+        assert!(
+            if_true_pos < if_false_pos,
+            "if_true commands should come before if_false commands"
+        );
+
+        // Verify that if_false comes before fi
+        assert!(
+            if_false_pos < fi_pos,
+            "if_false commands should come before fi"
+        );
+
+        // Verify that always commands come after fi (after the conditional block)
+        assert!(
+            fi_pos < always_first_pos,
+            "always commands should execute after conditional (fi)"
+        );
+
+        // Verify that always commands execute in order
+        assert!(
+            always_first_pos < always_second_pos,
+            "always commands should execute in the order they are defined"
+        );
     }
 }

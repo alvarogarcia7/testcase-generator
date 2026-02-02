@@ -9,29 +9,88 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Verification {
     /// Verification result value
-    pub result: String,
+    pub result: VerificationExpression,
 
     /// Verification output (from output variable)
-    pub output: String,
+    pub output: VerificationExpression,
 
     /// Verification output from file (optional - reads from LOG_FILE instead of COMMAND_OUTPUT)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub output_file: Option<String>,
+    pub output_file: Option<VerificationExpression>,
 }
 
 impl fmt::Display for Verification {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let result_str = match &self.result {
+            VerificationExpression::Simple(s) => s.clone(),
+            VerificationExpression::Conditional { condition, .. } => {
+                format!("conditional({})", condition)
+            }
+        };
+        let output_str = match &self.output {
+            VerificationExpression::Simple(s) => s.clone(),
+            VerificationExpression::Conditional { condition, .. } => {
+                format!("conditional({})", condition)
+            }
+        };
         write!(
             f,
             "result: {} | output: {}{}",
-            self.result,
-            self.output,
+            result_str,
+            output_str,
             if self.output_file.is_some() {
                 " | output_file: enabled"
             } else {
                 ""
             }
         )
+    }
+}
+
+/// Verification expression that can be either a simple string or a conditional expression
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[serde(untagged)]
+pub enum VerificationExpression {
+    /// Simple string expression for backward compatibility
+    Simple(String),
+
+    /// Conditional expression with condition and branches
+    Conditional {
+        /// The condition to evaluate
+        condition: String,
+
+        /// Expressions to run if condition is true
+        #[serde(skip_serializing_if = "Option::is_none")]
+        if_true: Option<Vec<String>>,
+
+        /// Expressions to run if condition is false
+        #[serde(skip_serializing_if = "Option::is_none")]
+        if_false: Option<Vec<String>>,
+
+        /// Expressions to always run regardless of condition
+        #[serde(skip_serializing_if = "Option::is_none")]
+        always: Option<Vec<String>>,
+    },
+}
+
+impl fmt::Display for VerificationExpression {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            VerificationExpression::Simple(s) => write!(f, "{}", s),
+            VerificationExpression::Conditional { condition, .. } => {
+                write!(f, "conditional({})", condition)
+            }
+        }
+    }
+}
+
+impl VerificationExpression {
+    /// Check if the expression is empty (for Simple variant)
+    pub fn is_empty(&self) -> bool {
+        match self {
+            VerificationExpression::Simple(s) => s.is_empty(),
+            VerificationExpression::Conditional { .. } => false,
+        }
     }
 }
 
@@ -95,8 +154,10 @@ pub struct Step {
 /// Default verification based on expected values (for backward compatibility)
 fn default_verification_from_expected() -> Verification {
     Verification {
-        result: "[[ $? -eq 0 ]]".to_string(),
-        output: "cat $COMMAND_OUTPUT | grep -q \"${OUTPUT}\"".to_string(),
+        result: VerificationExpression::Simple("[[ $? -eq 0 ]]".to_string()),
+        output: VerificationExpression::Simple(
+            "cat $COMMAND_OUTPUT | grep -q \"${OUTPUT}\"".to_string(),
+        ),
         output_file: None,
     }
 }
@@ -1429,5 +1490,109 @@ mod tests {
         let deserialized: TestStepExecutionEntry = serde_yaml::from_str(&yaml).unwrap();
 
         assert_eq!(entry, deserialized);
+    }
+
+    #[test]
+    fn test_verification_simple_string() {
+        let yaml = r#""[[ $? -eq 0 ]]""#;
+        let result: VerificationExpression = serde_yaml::from_str(yaml).unwrap();
+
+        match result {
+            VerificationExpression::Simple(s) => {
+                assert_eq!(s, "[[ $? -eq 0 ]]");
+            }
+            _ => panic!("Expected Simple variant"),
+        }
+    }
+
+    #[test]
+    fn test_verification_conditional_full() {
+        let yaml = r#"
+condition: "test -f /tmp/file"
+if_true:
+  - "echo true"
+  - "echo success"
+if_false:
+  - "echo false"
+  - "echo failure"
+always:
+  - "echo always"
+  - "echo cleanup"
+"#;
+        let result: VerificationExpression = serde_yaml::from_str(yaml).unwrap();
+
+        match result {
+            VerificationExpression::Conditional {
+                condition,
+                if_true,
+                if_false,
+                always,
+            } => {
+                assert_eq!(condition, "test -f /tmp/file");
+                assert_eq!(
+                    if_true,
+                    Some(vec!["echo true".to_string(), "echo success".to_string()])
+                );
+                assert_eq!(
+                    if_false,
+                    Some(vec!["echo false".to_string(), "echo failure".to_string()])
+                );
+                assert_eq!(
+                    always,
+                    Some(vec!["echo always".to_string(), "echo cleanup".to_string()])
+                );
+            }
+            _ => panic!("Expected Conditional variant"),
+        }
+    }
+
+    #[test]
+    fn test_verification_conditional_minimal() {
+        let yaml = r#"
+condition: "test -d /var/log"
+"#;
+        let result: VerificationExpression = serde_yaml::from_str(yaml).unwrap();
+
+        match result {
+            VerificationExpression::Conditional {
+                condition,
+                if_true,
+                if_false,
+                always,
+            } => {
+                assert_eq!(condition, "test -d /var/log");
+                assert_eq!(if_true, None);
+                assert_eq!(if_false, None);
+                assert_eq!(always, None);
+            }
+            _ => panic!("Expected Conditional variant"),
+        }
+    }
+
+    #[test]
+    fn test_verification_conditional_missing_optional() {
+        let yaml = r#"
+condition: "[[ -n $OUTPUT ]]"
+if_true:
+  - "echo output is not empty"
+always:
+  - "echo done"
+"#;
+        let result: VerificationExpression = serde_yaml::from_str(yaml).unwrap();
+
+        match result {
+            VerificationExpression::Conditional {
+                condition,
+                if_true,
+                if_false,
+                always,
+            } => {
+                assert_eq!(condition, "[[ -n $OUTPUT ]]");
+                assert_eq!(if_true, Some(vec!["echo output is not empty".to_string()]));
+                assert_eq!(if_false, None);
+                assert_eq!(always, Some(vec!["echo done".to_string()]));
+            }
+            _ => panic!("Expected Conditional variant"),
+        }
     }
 }

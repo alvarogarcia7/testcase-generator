@@ -405,7 +405,7 @@ fn test_json_log_format_compliance() -> Result<()> {
 }
 
 fn create_simple_test_case() -> TestCase {
-    use testcase_manager::{Expected, Step, TestSequence, Verification};
+    use testcase_manager::{Expected, Step, TestSequence, Verification, VerificationExpression};
 
     let mut test_case = TestCase::new(
         "REQ001".to_string(),
@@ -429,8 +429,8 @@ fn create_simple_test_case() -> TestCase {
             output: "true".to_string(),
         },
         verification: Verification {
-            result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-            output: "true".to_string(),
+            result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+            output: VerificationExpression::Simple("true".to_string()),
             output_file: None,
         },
     };
@@ -441,7 +441,7 @@ fn create_simple_test_case() -> TestCase {
 }
 
 fn create_multi_sequence_test_case() -> TestCase {
-    use testcase_manager::{Expected, Step, TestSequence, Verification};
+    use testcase_manager::{Expected, Step, TestSequence, Verification, VerificationExpression};
 
     let mut test_case = TestCase::new(
         "REQ001".to_string(),
@@ -469,8 +469,8 @@ fn create_multi_sequence_test_case() -> TestCase {
             output: "true".to_string(),
         },
         verification: Verification {
-            result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-            output: "true".to_string(),
+            result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+            output: VerificationExpression::Simple("true".to_string()),
             output_file: None,
         },
     };
@@ -488,8 +488,8 @@ fn create_multi_sequence_test_case() -> TestCase {
             output: "true".to_string(),
         },
         verification: Verification {
-            result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-            output: "true".to_string(),
+            result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+            output: VerificationExpression::Simple("true".to_string()),
             output_file: None,
         },
     };
@@ -513,8 +513,8 @@ fn create_multi_sequence_test_case() -> TestCase {
             output: "true".to_string(),
         },
         verification: Verification {
-            result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-            output: "true".to_string(),
+            result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+            output: VerificationExpression::Simple("true".to_string()),
             output_file: None,
         },
     };
@@ -532,8 +532,8 @@ fn create_multi_sequence_test_case() -> TestCase {
             output: "true".to_string(),
         },
         verification: Verification {
-            result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-            output: "true".to_string(),
+            result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+            output: VerificationExpression::Simple("true".to_string()),
             output_file: None,
         },
     };
@@ -545,7 +545,7 @@ fn create_multi_sequence_test_case() -> TestCase {
 }
 
 fn create_test_case_with_manual_steps() -> TestCase {
-    use testcase_manager::{Expected, Step, TestSequence, Verification};
+    use testcase_manager::{Expected, Step, TestSequence, Verification, VerificationExpression};
 
     let mut test_case = TestCase::new(
         "REQ001".to_string(),
@@ -573,8 +573,8 @@ fn create_test_case_with_manual_steps() -> TestCase {
             output: "true".to_string(),
         },
         verification: Verification {
-            result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-            output: "true".to_string(),
+            result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+            output: VerificationExpression::Simple("true".to_string()),
             output_file: None,
         },
     };
@@ -592,8 +592,8 @@ fn create_test_case_with_manual_steps() -> TestCase {
             output: "success".to_string(),
         },
         verification: Verification {
-            result: "true".to_string(),
-            output: "true".to_string(),
+            result: VerificationExpression::Simple("true".to_string()),
+            output: VerificationExpression::Simple("true".to_string()),
             output_file: None,
         },
     };
@@ -611,8 +611,8 @@ fn create_test_case_with_manual_steps() -> TestCase {
             output: "true".to_string(),
         },
         verification: Verification {
-            result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-            output: "true".to_string(),
+            result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+            output: VerificationExpression::Simple("true".to_string()),
             output_file: None,
         },
     };
@@ -623,7 +623,7 @@ fn create_test_case_with_manual_steps() -> TestCase {
 }
 
 fn create_test_case_with_special_characters() -> TestCase {
-    use testcase_manager::{Expected, Step, TestSequence, Verification};
+    use testcase_manager::{Expected, Step, TestSequence, Verification, VerificationExpression};
 
     let mut test_case = TestCase::new(
         "REQ001".to_string(),
@@ -651,8 +651,8 @@ fn create_test_case_with_special_characters() -> TestCase {
             output: "true".to_string(),
         },
         verification: Verification {
-            result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-            output: "true".to_string(),
+            result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+            output: VerificationExpression::Simple("true".to_string()),
             output_file: None,
         },
     };
