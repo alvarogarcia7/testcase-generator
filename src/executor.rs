@@ -12,6 +12,51 @@ pub struct TestExecutor {
     output_dir: Option<PathBuf>,
 }
 
+/// Check if a test case uses variables that require bash 4.0+ associative arrays
+fn test_case_uses_variables(test_case: &TestCase) -> bool {
+    // Check if any sequence has variables
+    for sequence in &test_case.test_sequences {
+        if let Some(ref vars) = sequence.variables {
+            if !vars.is_empty() {
+                return true;
+            }
+        }
+
+        // Check if any step has capture_vars or uses variable substitution
+        for step in &sequence.steps {
+            if let Some(ref capture_vars) = step.capture_vars {
+                if !capture_vars.is_empty() {
+                    return true;
+                }
+            }
+
+            // Check if command uses variable substitution
+            if step.command.contains("${") || step.command.contains("$STEP_VARS") {
+                return true;
+            }
+
+            // Check if verification expressions use variables
+            if step.verification.result.contains("${")
+                || step.verification.result.contains("$STEP_VARS")
+            {
+                return true;
+            }
+            if step.verification.output.contains("${")
+                || step.verification.output.contains("$STEP_VARS")
+            {
+                return true;
+            }
+            if let Some(ref output_file) = step.verification.output_file {
+                if output_file.contains("${") || output_file.contains("$STEP_VARS") {
+                    return true;
+                }
+            }
+        }
+    }
+
+    false
+}
+
 impl TestExecutor {
     pub fn new() -> Self {
         Self { output_dir: None }
@@ -43,9 +88,14 @@ impl TestExecutor {
         script.push_str(&format!("JSON_LOG=\"{}\"\n", json_output_path.display()));
         script.push_str("TIMESTAMP=$(date +\"%Y-%m-%dT%H:%M:%S\")\n\n");
 
-        // Initialize STEP_VARS associative array
-        script.push_str("# Initialize STEP_VARS associative array\n");
-        script.push_str("declare -A STEP_VARS\n\n");
+        // Check if test case uses variables (requires bash 4.0+ associative arrays)
+        let uses_variables = test_case_uses_variables(test_case);
+
+        if uses_variables {
+            // Initialize STEP_VARS associative array
+            script.push_str("# Initialize STEP_VARS associative array\n");
+            script.push_str("declare -A STEP_VARS\n\n");
+        }
 
         // Add trap to ensure JSON file is properly closed on any exit
         script.push_str("# Trap to ensure JSON file is closed properly on exit\n");
@@ -181,30 +231,42 @@ impl TestExecutor {
                 script.push_str("COMMAND_OUTPUT=\"\"\n");
                 script.push_str("set +e\n");
 
-                // Generate bash code to perform variable substitution on the command
-                // Store the original command in a variable
-                let escaped_command = step.command.replace("\\", "\\\\").replace("\"", "\\\"");
-                script.push_str(&format!("ORIGINAL_COMMAND=\"{}\"\n", escaped_command));
+                // Check if the command needs variable substitution
+                let needs_substitution =
+                    step.command.contains("${") || step.command.contains("$STEP_VARS");
 
-                // Perform variable substitution: replace ${var_name} or $STEP_VARS[var_name] patterns
-                script.push_str("SUBSTITUTED_COMMAND=\"$ORIGINAL_COMMAND\"\n");
-                script.push_str("for var_name in \"${!STEP_VARS[@]}\"; do\n");
-                script.push_str("    var_value=\"${STEP_VARS[$var_name]}\"\n");
-                script.push_str("    # Escape special characters for sed\n");
-                script.push_str(
-                    "    escaped_value=$(printf '%s' \"$var_value\" | sed 's/[&/\\]/\\\\&/g')\n",
-                );
-                script.push_str("    # Replace ${var_name} pattern\n");
-                script.push_str("    SUBSTITUTED_COMMAND=$(echo \"$SUBSTITUTED_COMMAND\" | sed \"s/\\${$var_name}/$escaped_value/g\")\n");
-                script.push_str("    # Replace ${STEP_VARS[var_name]} pattern\n");
-                script.push_str("    SUBSTITUTED_COMMAND=$(echo \"$SUBSTITUTED_COMMAND\" | sed \"s/\\${STEP_VARS\\[$var_name\\]}/$escaped_value/g\")\n");
-                script.push_str("done\n");
+                if needs_substitution {
+                    // Generate bash code to perform variable substitution on the command
+                    // Store the original command in a variable
+                    let escaped_command = step.command.replace("\\", "\\\\").replace("\"", "\\\"");
+                    script.push_str(&format!("ORIGINAL_COMMAND=\"{}\"\n", escaped_command));
 
-                // Wrap command in subshell and redirect stderr to stdout before piping to tee
-                // This ensures both stdout and stderr are captured in the log file
-                script.push_str(
-                    "COMMAND_OUTPUT=$(eval \"$SUBSTITUTED_COMMAND\" 2>&1 | tee \"$LOG_FILE\")\n",
-                );
+                    // Perform variable substitution: replace ${var_name} or $STEP_VARS[var_name] patterns
+                    script.push_str("SUBSTITUTED_COMMAND=\"$ORIGINAL_COMMAND\"\n");
+                    script.push_str("for var_name in \"${!STEP_VARS[@]}\"; do\n");
+                    script.push_str("    var_value=\"${STEP_VARS[$var_name]}\"\n");
+                    script.push_str("    # Escape special characters for sed\n");
+                    script.push_str(
+                        "    escaped_value=$(printf '%s' \"$var_value\" | sed 's/[&/\\]/\\\\&/g')\n",
+                    );
+                    script.push_str("    # Replace ${var_name} pattern\n");
+                    script.push_str("    SUBSTITUTED_COMMAND=$(echo \"$SUBSTITUTED_COMMAND\" | sed \"s/\\${$var_name}/$escaped_value/g\")\n");
+                    script.push_str("    # Replace ${STEP_VARS[var_name]} pattern\n");
+                    script.push_str("    SUBSTITUTED_COMMAND=$(echo \"$SUBSTITUTED_COMMAND\" | sed \"s/\\${STEP_VARS\\[$var_name\\]}/$escaped_value/g\")\n");
+                    script.push_str("done\n");
+
+                    // Wrap command in subshell with braces and redirect stderr to stdout before piping to tee
+                    // This ensures both stdout and stderr are captured in the log file
+                    script.push_str(
+                        "COMMAND_OUTPUT=$({ eval \"$SUBSTITUTED_COMMAND\"; } 2>&1 | tee \"$LOG_FILE\")\n",
+                    );
+                } else {
+                    // No substitution needed - inline the command directly
+                    script.push_str(&format!(
+                        "COMMAND_OUTPUT=$({{ {}; }} 2>&1 | tee \"$LOG_FILE\")\n",
+                        step.command
+                    ));
+                }
 
                 script.push_str("EXIT_CODE=$?\n");
                 script.push_str("set -e\n\n");
@@ -249,39 +311,53 @@ impl TestExecutor {
                 script.push_str("VERIFICATION_OUTPUT_PASS=false\n\n");
 
                 // Perform variable substitution on verification expressions
+                let result_needs_subst = step.verification.result.contains("${")
+                    || step.verification.result.contains("$STEP_VARS");
                 let escaped_result_expr = step
                     .verification
                     .result
                     .replace("\\", "\\\\")
+                    .replace("$", "\\$")
                     .replace("\"", "\\\"");
                 script.push_str(&format!("RESULT_EXPR=\"{}\"\n", escaped_result_expr));
-                script.push_str("for var_name in \"${!STEP_VARS[@]}\"; do\n");
-                script.push_str("    var_value=\"${STEP_VARS[$var_name]}\"\n");
-                script.push_str("    # Escape special characters for sed\n");
-                script.push_str(
-                    "    escaped_value=$(printf '%s' \"$var_value\" | sed 's/[&/\\]/\\\\&/g')\n",
-                );
-                script.push_str("    # Replace ${var_name} pattern\n");
-                script.push_str("    RESULT_EXPR=$(echo \"$RESULT_EXPR\" | sed \"s/\\${$var_name}/$escaped_value/g\")\n");
-                script.push_str("    # Replace ${STEP_VARS[var_name]} pattern\n");
-                script.push_str("    RESULT_EXPR=$(echo \"$RESULT_EXPR\" | sed \"s/\\${STEP_VARS\\[$var_name\\]}/$escaped_value/g\")\n");
-                script.push_str("done\n\n");
 
+                if result_needs_subst && uses_variables {
+                    script.push_str("for var_name in \"${!STEP_VARS[@]}\"; do\n");
+                    script.push_str("    var_value=\"${STEP_VARS[$var_name]}\"\n");
+                    script.push_str("    # Escape special characters for sed\n");
+                    script.push_str(
+                        "    escaped_value=$(printf '%s' \"$var_value\" | sed 's/[&/\\]/\\\\&/g')\n",
+                    );
+                    script.push_str("    # Replace ${var_name} pattern\n");
+                    script.push_str("    RESULT_EXPR=$(echo \"$RESULT_EXPR\" | sed \"s/\\${$var_name}/$escaped_value/g\")\n");
+                    script.push_str("    # Replace ${STEP_VARS[var_name]} pattern\n");
+                    script.push_str("    RESULT_EXPR=$(echo \"$RESULT_EXPR\" | sed \"s/\\${STEP_VARS\\[$var_name\\]}/$escaped_value/g\")\n");
+                    script.push_str("done\n");
+                }
+                script.push('\n');
+
+                let output_needs_subst = output_verification.contains("${")
+                    || output_verification.contains("$STEP_VARS");
                 let escaped_output_expr = output_verification
                     .replace("\\", "\\\\")
+                    .replace("$", "\\$")
                     .replace("\"", "\\\"");
                 script.push_str(&format!("OUTPUT_EXPR=\"{}\"\n", escaped_output_expr));
-                script.push_str("for var_name in \"${!STEP_VARS[@]}\"; do\n");
-                script.push_str("    var_value=\"${STEP_VARS[$var_name]}\"\n");
-                script.push_str("    # Escape special characters for sed\n");
-                script.push_str(
-                    "    escaped_value=$(printf '%s' \"$var_value\" | sed 's/[&/\\]/\\\\&/g')\n",
-                );
-                script.push_str("    # Replace ${var_name} pattern\n");
-                script.push_str("    OUTPUT_EXPR=$(echo \"$OUTPUT_EXPR\" | sed \"s/\\${$var_name}/$escaped_value/g\")\n");
-                script.push_str("    # Replace ${STEP_VARS[var_name]} pattern\n");
-                script.push_str("    OUTPUT_EXPR=$(echo \"$OUTPUT_EXPR\" | sed \"s/\\${STEP_VARS\\[$var_name\\]}/$escaped_value/g\")\n");
-                script.push_str("done\n\n");
+
+                if output_needs_subst && uses_variables {
+                    script.push_str("for var_name in \"${!STEP_VARS[@]}\"; do\n");
+                    script.push_str("    var_value=\"${STEP_VARS[$var_name]}\"\n");
+                    script.push_str("    # Escape special characters for sed\n");
+                    script.push_str(
+                        "    escaped_value=$(printf '%s' \"$var_value\" | sed 's/[&/\\]/\\\\&/g')\n",
+                    );
+                    script.push_str("    # Replace ${var_name} pattern\n");
+                    script.push_str("    OUTPUT_EXPR=$(echo \"$OUTPUT_EXPR\" | sed \"s/\\${$var_name}/$escaped_value/g\")\n");
+                    script.push_str("    # Replace ${STEP_VARS[var_name]} pattern\n");
+                    script.push_str("    OUTPUT_EXPR=$(echo \"$OUTPUT_EXPR\" | sed \"s/\\${STEP_VARS\\[$var_name\\]}/$escaped_value/g\")\n");
+                    script.push_str("done\n");
+                }
+                script.push('\n');
 
                 script.push_str("if eval \"$RESULT_EXPR\"; then\n");
                 script.push_str("    VERIFICATION_RESULT_PASS=true\n");
@@ -1545,8 +1621,9 @@ mod tests {
         assert!(script.contains("SUBSTITUTED_COMMAND=$(echo \"$SUBSTITUTED_COMMAND\" | sed \"s/\\${$var_name}/$escaped_value/g\")"));
         assert!(script.contains("# Replace ${STEP_VARS[var_name]} pattern"));
         assert!(script.contains("SUBSTITUTED_COMMAND=$(echo \"$SUBSTITUTED_COMMAND\" | sed \"s/\\${STEP_VARS\\[$var_name\\]}/$escaped_value/g\")"));
-        assert!(script
-            .contains("COMMAND_OUTPUT=$(eval \"$SUBSTITUTED_COMMAND\" 2>&1 | tee \"$LOG_FILE\")"));
+        assert!(script.contains(
+            "COMMAND_OUTPUT=$({ eval \"$SUBSTITUTED_COMMAND\"; } 2>&1 | tee \"$LOG_FILE\")"
+        ));
     }
 
     #[test]
