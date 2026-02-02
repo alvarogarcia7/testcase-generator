@@ -1450,4 +1450,214 @@ mod tests {
         assert!(script.contains("STEP_VARS[token]=$(echo \"$COMMAND_OUTPUT\" | grep -oP"));
         assert!(script.contains("| head -n 1 || echo \"\")"));
     }
+
+    #[test]
+    fn test_variable_capture_in_generated_script() {
+        let executor = TestExecutor::new();
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test variable capture initialization".to_string(),
+        );
+
+        let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+
+        let mut capture_vars = std::collections::BTreeMap::new();
+        capture_vars.insert(
+            "session_id".to_string(),
+            r#"(?<=session=)[a-f0-9]+"#.to_string(),
+        );
+
+        let step = Step {
+            step: 1,
+            manual: None,
+            description: "Capture session ID".to_string(),
+            command: "echo 'session=abc123def'".to_string(),
+            capture_vars: Some(capture_vars),
+            expected: Expected {
+                success: Some(true),
+                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
+                output: "true".to_string(),
+            },
+            verification: Verification {
+                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
+                output: "true".to_string(),
+                output_file: None,
+            },
+        };
+        sequence.steps.push(step);
+        test_case.test_sequences.push(sequence);
+
+        let script = executor.generate_test_script(&test_case);
+
+        // Verify STEP_VARS array initialization
+        assert!(script.contains("declare -A STEP_VARS"));
+        assert!(script.contains("# Initialize STEP_VARS associative array"));
+
+        // Verify capture code generation
+        assert!(script.contains("# Capture variables from output"));
+        assert!(script.contains("STEP_VARS[session_id]=$(echo \"$COMMAND_OUTPUT\" | grep -oP '(?<=session=)[a-f0-9]+' | head -n 1 || echo \"\")"));
+    }
+
+    #[test]
+    fn test_variable_substitution_in_commands() {
+        let executor = TestExecutor::new();
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test variable substitution in commands".to_string(),
+        );
+
+        let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+
+        let step = Step {
+            step: 1,
+            manual: None,
+            description: "Use variable in command".to_string(),
+            command: "echo ${user_name} works at ${STEP_VARS[company]}".to_string(),
+            capture_vars: None,
+            expected: Expected {
+                success: Some(true),
+                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
+                output: "true".to_string(),
+            },
+            verification: Verification {
+                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
+                output: "true".to_string(),
+                output_file: None,
+            },
+        };
+        sequence.steps.push(step);
+        test_case.test_sequences.push(sequence);
+
+        let script = executor.generate_test_script(&test_case);
+
+        // Verify substitution logic is present
+        assert!(script.contains("ORIGINAL_COMMAND="));
+        assert!(script.contains("SUBSTITUTED_COMMAND=\"$ORIGINAL_COMMAND\""));
+        assert!(script.contains("for var_name in \"${!STEP_VARS[@]}\"; do"));
+        assert!(script.contains("var_value=\"${STEP_VARS[$var_name]}\""));
+        assert!(script.contains("# Replace ${var_name} pattern"));
+        assert!(script.contains("SUBSTITUTED_COMMAND=$(echo \"$SUBSTITUTED_COMMAND\" | sed \"s/\\${$var_name}/$escaped_value/g\")"));
+        assert!(script.contains("# Replace ${STEP_VARS[var_name]} pattern"));
+        assert!(script.contains("SUBSTITUTED_COMMAND=$(echo \"$SUBSTITUTED_COMMAND\" | sed \"s/\\${STEP_VARS\\[$var_name\\]}/$escaped_value/g\")"));
+        assert!(script
+            .contains("COMMAND_OUTPUT=$(eval \"$SUBSTITUTED_COMMAND\" 2>&1 | tee \"$LOG_FILE\")"));
+    }
+
+    #[test]
+    fn test_variable_substitution_in_verification() {
+        let executor = TestExecutor::new();
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test variable substitution in verification".to_string(),
+        );
+
+        let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+
+        let step = Step {
+            step: 1,
+            manual: None,
+            description: "Verify with variables".to_string(),
+            command: "echo 'status: OK'".to_string(),
+            capture_vars: None,
+            expected: Expected {
+                success: Some(true),
+                result: "[ $EXIT_CODE -eq ${expected_code} ]".to_string(),
+                output: "[[ \"$COMMAND_OUTPUT\" == *\"${STEP_VARS[status]}\"* ]]".to_string(),
+            },
+            verification: Verification {
+                result: "[ $EXIT_CODE -eq ${expected_code} ]".to_string(),
+                output: "[[ \"$COMMAND_OUTPUT\" == *\"${STEP_VARS[status]}\"* ]]".to_string(),
+                output_file: None,
+            },
+        };
+        sequence.steps.push(step);
+        test_case.test_sequences.push(sequence);
+
+        let script = executor.generate_test_script(&test_case);
+
+        // Verify substitution in result expression
+        assert!(script.contains("RESULT_EXPR="));
+        assert!(script.contains("for var_name in \"${!STEP_VARS[@]}\"; do"));
+        assert!(script.contains(
+            "RESULT_EXPR=$(echo \"$RESULT_EXPR\" | sed \"s/\\${$var_name}/$escaped_value/g\")"
+        ));
+        assert!(script.contains("RESULT_EXPR=$(echo \"$RESULT_EXPR\" | sed \"s/\\${STEP_VARS\\[$var_name\\]}/$escaped_value/g\")"));
+
+        // Verify substitution in output expression
+        assert!(script.contains("OUTPUT_EXPR="));
+        assert!(script.contains(
+            "OUTPUT_EXPR=$(echo \"$OUTPUT_EXPR\" | sed \"s/\\${$var_name}/$escaped_value/g\")"
+        ));
+        assert!(script.contains("OUTPUT_EXPR=$(echo \"$OUTPUT_EXPR\" | sed \"s/\\${STEP_VARS\\[$var_name\\]}/$escaped_value/g\")"));
+
+        // Verify evaluation of substituted expressions
+        assert!(script.contains("if eval \"$RESULT_EXPR\"; then"));
+        assert!(script.contains("if eval \"$OUTPUT_EXPR\"; then"));
+    }
+
+    #[test]
+    fn test_multiple_variables_from_single_step() {
+        let executor = TestExecutor::new();
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test multiple variable captures from single step".to_string(),
+        );
+
+        let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+
+        let mut capture_vars = std::collections::BTreeMap::new();
+        capture_vars.insert("user_id".to_string(), r#"(?<=user_id=)\d+"#.to_string());
+        capture_vars.insert(
+            "session_token".to_string(),
+            r#"(?<=token=)[A-Z0-9]+"#.to_string(),
+        );
+        capture_vars.insert("timestamp".to_string(), r#"(?<=ts=)\d{10}"#.to_string());
+
+        let step = Step {
+            step: 1,
+            manual: None,
+            description: "Capture multiple variables".to_string(),
+            command: "echo 'user_id=12345 token=ABC123XYZ ts=1234567890'".to_string(),
+            capture_vars: Some(capture_vars),
+            expected: Expected {
+                success: Some(true),
+                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
+                output: "true".to_string(),
+            },
+            verification: Verification {
+                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
+                output: "true".to_string(),
+                output_file: None,
+            },
+        };
+        sequence.steps.push(step);
+        test_case.test_sequences.push(sequence);
+
+        let script = executor.generate_test_script(&test_case);
+
+        // Verify all three variables are captured
+        assert!(script.contains("# Capture variables from output"));
+        assert!(script.contains("STEP_VARS[user_id]=$(echo \"$COMMAND_OUTPUT\" | grep -oP '(?<=user_id=)\\d+' | head -n 1 || echo \"\")"));
+        assert!(script.contains("STEP_VARS[session_token]=$(echo \"$COMMAND_OUTPUT\" | grep -oP '(?<=token=)[A-Z0-9]+' | head -n 1 || echo \"\")"));
+        assert!(script.contains("STEP_VARS[timestamp]=$(echo \"$COMMAND_OUTPUT\" | grep -oP '(?<=ts=)\\d{10}' | head -n 1 || echo \"\")"));
+
+        // Verify the capture block appears exactly once for this step
+        let capture_count = script.matches("# Capture variables from output").count();
+        assert_eq!(
+            capture_count, 1,
+            "Should have exactly one capture block for the single step"
+        );
+    }
 }
