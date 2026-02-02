@@ -9,6 +9,31 @@
 
 You must build, test, and lint before committing
 
+## Shell Script Compatibility
+
+**MANDATORY**: All shell scripts and generated bash scripts must be compatible with both BSD and GNU variants of command-line tools, and must work with bash 3.2+ (the default on macOS).
+
+### Key Requirements:
+- Scripts must work on macOS (BSD) and Linux (GNU) without modification
+- Scripts must be compatible with bash 3.2+ (macOS ships with bash 3.2 by default)
+- Avoid GNU-specific flags or options that don't exist in BSD variants
+- Avoid bash 4.0+ features like associative arrays (`declare -A`)
+- Test commands like `sed`, `grep`, `awk`, `find`, etc. must use portable syntax
+- When using regex, ensure patterns are compatible with both POSIX and GNU extended regex
+- Use POSIX-compliant shell constructs where possible
+
+### Common Pitfalls:
+- `grep -P` (Perl regex) is GNU-only - use `sed -n` with capture groups instead
+- `sed -r` is GNU-only - use `sed -E` for BSD/macOS compatibility
+- `date` formatting differs between BSD and GNU
+- `readlink -f` is GNU-only - use alternative methods for BSD
+- `declare -A` (associative arrays) requires bash 4.0+ - use eval with dynamic variable names for bash 3.2+
+
+### Testing:
+- Test generated scripts on both macOS and Linux when possible
+- Use portable regex patterns that work with both implementations
+- Verify scripts work with bash 3.2 (default on macOS)
+
 ## Testing Requirements
 
 **MANDATORY**: All agents must run the full test suite before considering any task complete. Testing is a critical step that cannot be skipped.

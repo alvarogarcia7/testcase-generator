@@ -88,13 +88,15 @@ impl TestExecutor {
         script.push_str(&format!("JSON_LOG=\"{}\"\n", json_output_path.display()));
         script.push_str("TIMESTAMP=$(date +\"%Y-%m-%dT%H:%M:%S\")\n\n");
 
-        // Check if test case uses variables (requires bash 4.0+ associative arrays)
+        // Check if test case uses variables
         let uses_variables = test_case_uses_variables(test_case);
 
         if uses_variables {
-            // Initialize STEP_VARS associative array
-            script.push_str("# Initialize STEP_VARS associative array\n");
-            script.push_str("declare -a STEP_VARS\n\n");
+            // Initialize variable storage (bash 3.2+ compatible using eval)
+            script.push_str(
+                "# Initialize variable storage for captured variables (bash 3.2+ compatible)\n",
+            );
+            script.push_str("STEP_VAR_NAMES=()\n\n");
         }
 
         // Add trap to ensure JSON file is properly closed on any exit
@@ -192,10 +194,11 @@ impl TestExecutor {
                     script.push_str("# Initialize sequence variables\n");
                     for (var_name, var_value) in variables {
                         script.push_str(&format!(
-                            "STEP_VARS[{}]={}\n",
+                            "STEP_VAR_{}={}\n",
                             var_name,
                             bash_escape(var_value)
                         ));
+                        script.push_str(&format!("STEP_VAR_NAMES+=(\"{}\")\n", var_name));
                     }
                     script.push('\n');
                 }
@@ -241,18 +244,16 @@ impl TestExecutor {
                     let escaped_command = step.command.replace("\\", "\\\\").replace("\"", "\\\"");
                     script.push_str(&format!("ORIGINAL_COMMAND=\"{}\"\n", escaped_command));
 
-                    // Perform variable substitution: replace ${var_name} or $STEP_VARS[var_name] patterns
+                    // Perform variable substitution: replace ${var_name} patterns using eval
                     script.push_str("SUBSTITUTED_COMMAND=\"$ORIGINAL_COMMAND\"\n");
-                    script.push_str("for var_name in \"${!STEP_VARS[@]}\"; do\n");
-                    script.push_str("    var_value=\"${STEP_VARS[$var_name]}\"\n");
+                    script.push_str("for var_name in \"${STEP_VAR_NAMES[@]}\"; do\n");
+                    script.push_str("    eval \"var_value=\\$STEP_VAR_$var_name\"\n");
                     script.push_str("    # Escape special characters for sed\n");
                     script.push_str(
                         "    escaped_value=$(printf '%s' \"$var_value\" | sed 's/[&/\\]/\\\\&/g')\n",
                     );
                     script.push_str("    # Replace ${var_name} pattern\n");
                     script.push_str("    SUBSTITUTED_COMMAND=$(echo \"$SUBSTITUTED_COMMAND\" | sed \"s/\\${$var_name}/$escaped_value/g\")\n");
-                    script.push_str("    # Replace ${STEP_VARS[var_name]} pattern\n");
-                    script.push_str("    SUBSTITUTED_COMMAND=$(echo \"$SUBSTITUTED_COMMAND\" | sed \"s/\\${STEP_VARS\\[$var_name\\]}/$escaped_value/g\")\n");
                     script.push_str("done\n");
 
                     // Wrap command in subshell with braces and redirect stderr to stdout before piping to tee
@@ -276,11 +277,14 @@ impl TestExecutor {
                     if !capture_vars.is_empty() {
                         script.push_str("# Capture variables from output\n");
                         for (var_name, pattern) in capture_vars {
+                            // Convert PCRE pattern to BSD-compatible sed pattern
+                            let sed_pattern = convert_pcre_to_sed_pattern(pattern);
                             script.push_str(&format!(
-                                "STEP_VARS[{}]=$(echo \"$COMMAND_OUTPUT\" | grep -oP {} | head -n 1 || echo \"\")\n",
+                                "STEP_VAR_{}=$(echo \"$COMMAND_OUTPUT\" | sed -n {} | head -n 1 || echo \"\")\n",
                                 var_name,
-                                bash_escape(pattern)
+                                bash_escape(&sed_pattern)
                             ));
+                            script.push_str(&format!("STEP_VAR_NAMES+=(\"{}\")\n", var_name));
                         }
                         script.push('\n');
                     }
@@ -322,16 +326,14 @@ impl TestExecutor {
                 script.push_str(&format!("RESULT_EXPR=\"{}\"\n", escaped_result_expr));
 
                 if result_needs_subst && uses_variables {
-                    script.push_str("for var_name in \"${!STEP_VARS[@]}\"; do\n");
-                    script.push_str("    var_value=\"${STEP_VARS[$var_name]}\"\n");
+                    script.push_str("for var_name in \"${STEP_VAR_NAMES[@]}\"; do\n");
+                    script.push_str("    eval \"var_value=\\$STEP_VAR_$var_name\"\n");
                     script.push_str("    # Escape special characters for sed\n");
                     script.push_str(
                         "    escaped_value=$(printf '%s' \"$var_value\" | sed 's/[&/\\]/\\\\&/g')\n",
                     );
                     script.push_str("    # Replace ${var_name} pattern\n");
                     script.push_str("    RESULT_EXPR=$(echo \"$RESULT_EXPR\" | sed \"s/\\${$var_name}/$escaped_value/g\")\n");
-                    script.push_str("    # Replace ${STEP_VARS[var_name]} pattern\n");
-                    script.push_str("    RESULT_EXPR=$(echo \"$RESULT_EXPR\" | sed \"s/\\${STEP_VARS\\[$var_name\\]}/$escaped_value/g\")\n");
                     script.push_str("done\n");
                 }
                 script.push('\n');
@@ -345,16 +347,14 @@ impl TestExecutor {
                 script.push_str(&format!("OUTPUT_EXPR=\"{}\"\n", escaped_output_expr));
 
                 if output_needs_subst && uses_variables {
-                    script.push_str("for var_name in \"${!STEP_VARS[@]}\"; do\n");
-                    script.push_str("    var_value=\"${STEP_VARS[$var_name]}\"\n");
+                    script.push_str("for var_name in \"${STEP_VAR_NAMES[@]}\"; do\n");
+                    script.push_str("    eval \"var_value=\\$STEP_VAR_$var_name\"\n");
                     script.push_str("    # Escape special characters for sed\n");
                     script.push_str(
                         "    escaped_value=$(printf '%s' \"$var_value\" | sed 's/[&/\\]/\\\\&/g')\n",
                     );
                     script.push_str("    # Replace ${var_name} pattern\n");
                     script.push_str("    OUTPUT_EXPR=$(echo \"$OUTPUT_EXPR\" | sed \"s/\\${$var_name}/$escaped_value/g\")\n");
-                    script.push_str("    # Replace ${STEP_VARS[var_name]} pattern\n");
-                    script.push_str("    OUTPUT_EXPR=$(echo \"$OUTPUT_EXPR\" | sed \"s/\\${STEP_VARS\\[$var_name\\]}/$escaped_value/g\")\n");
                     script.push_str("done\n");
                 }
                 script.push('\n');
@@ -387,25 +387,47 @@ impl TestExecutor {
                 script.push_str("    exit 1\n");
                 script.push_str("fi\n\n");
 
-                let escaped_command = step.command.replace("\\", "\\\\").replace("\"", "\\\"");
-                script.push_str("# Escape output for JSON\n");
-                script.push_str("OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | sed 's/\\\\/\\\\\\\\/g' | sed 's/\"/\\\\\"/g' | sed -e ':a' -e '$!N;s/\\n/\\\\n/;ta')\n\n");
+                let escaped_command = step.command.replace("\\", "\\\\")
+                    .replace("'", "\"")
+                    .replace("\"", "\\\"")
+                    ;
+                script.push_str("# Escape output for JSON (BSD/GNU compatible)\n");
+                script.push_str(
+                    "# Use Python for reliable JSON escaping if available, otherwise use sed/perl/awk\n",
+                );
+                script.push_str("if command -v python3 >/dev/null 2>&1; then\n");
+                script.push_str("    OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | python3 -c 'import sys, json; s=sys.stdin.read(); print(json.dumps(s)[1:-1], end=\"\")')\n");
+                script.push_str("elif command -v python >/dev/null 2>&1; then\n");
+                script.push_str("    OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | python -c 'import sys, json; s=sys.stdin.read(); print json.dumps(s)[1:-1]')\n");
+                script.push_str("elif command -v perl >/dev/null 2>&1; then\n");
+                script.push_str("    OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | perl -pe 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g; s/\\n/\\\\n/g; s/\\r/\\\\r/g; s/\\t/\\\\t/g' | tr -d '\\n')\n");
+                script.push_str("else\n");
+                script.push_str("    # Fallback: escape backslashes, quotes, tabs, and convert newlines to \\n\n");
+                script.push_str("    OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g; s/\\t/\\\\t/g' | awk '{printf \"%s%s\", (NR>1?\"\\\\n\":\"\"), $0} END {print \"\"}')\n");
+                script.push_str("fi\n\n");
 
                 script.push_str("if [ \"$FIRST_ENTRY\" = false ]; then\n");
                 script.push_str("    echo ',' >> \"$JSON_LOG\"\n");
                 script.push_str("fi\n");
                 script.push_str("FIRST_ENTRY=false\n\n");
 
-                script.push_str("cat >> \"$JSON_LOG\" << EOF\n");
-                script.push_str("  {\n");
-                script.push_str(&format!("    \"test_sequence\": {},\n", sequence.id));
-                script.push_str(&format!("    \"step\": {},\n", step.step));
-                script.push_str(&format!("    \"command\": \"{}\",\n", escaped_command));
-                script.push_str("    \"exit_code\": $EXIT_CODE,\n");
-                script.push_str("    \"output\": \"$OUTPUT_ESCAPED\",\n");
-                script.push_str("    \"timestamp\": \"$TIMESTAMP\"\n");
-                script.push_str("  }\n");
-                script.push_str("EOF\n\n");
+                script.push_str("# Write JSON entry\n");
+                script.push_str("{\n");
+                script.push_str("    echo '  {'\n");
+                script.push_str(&format!(
+                    "    echo '    \"test_sequence\": {},'\n",
+                    sequence.id
+                ));
+                script.push_str(&format!("    echo '    \"step\": {},'\n", step.step));
+                script.push_str(&format!(
+                    "    echo '    \"command\": \"{}\",'\n",
+                    escaped_command
+                ));
+                script.push_str("    echo \"    \\\"exit_code\\\": $EXIT_CODE,\"\n");
+                script.push_str("    echo \"    \\\"output\\\": \\\"$OUTPUT_ESCAPED\\\",\"\n");
+                script.push_str("    echo \"    \\\"timestamp\\\": \\\"$TIMESTAMP\\\"\"\n");
+                script.push_str("    echo '  }'\n");
+                script.push_str("} >> \"$JSON_LOG\"\n\n");
             }
         }
 
@@ -695,6 +717,119 @@ impl Default for TestExecutor {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// Converts a PCRE (Perl-compatible) regex pattern to a BSD-compatible sed pattern.
+///
+/// This function handles common PCRE constructs and converts them to sed patterns that work
+/// on both BSD (macOS) and GNU (Linux) systems. The primary use case is converting patterns
+/// used with `grep -oP` to patterns usable with `sed -n`.
+///
+/// # Conversions:
+///
+/// - `\K` (keep text before) is converted to a capturing group
+/// - Lookbehind `(?<=...)` is converted to a match-and-capture pattern
+/// - Lookahead patterns are simplified where possible
+/// - PCRE character classes like `\d`, `\w` are converted to POSIX equivalents
+///
+/// # Arguments
+///
+/// * `pattern` - The PCRE regex pattern to convert
+///
+/// # Returns
+///
+/// A sed substitution pattern string (e.g., "s/regex/\\1/p")
+///
+/// # Examples
+///
+/// ```
+/// use testcase_manager::executor::convert_pcre_to_sed_pattern;
+///
+/// // Convert \K pattern
+/// let result = convert_pcre_to_sed_pattern("SESSION_ID=\\K\\d+");
+/// assert_eq!(result, "s/.*SESSION_ID=\\([0-9][0-9]*\\).*/\\1/p");
+///
+/// // Convert lookbehind
+/// let result = convert_pcre_to_sed_pattern("(?<=token=)[A-Z0-9]+");
+/// assert_eq!(result, "s/.*token=\\([A-Z0-9][A-Z0-9]*\\).*/\\1/p");
+/// ```
+pub fn convert_pcre_to_sed_pattern(pattern: &str) -> String {
+    // Handle \K pattern (keep everything before, match after)
+    if let Some(idx) = pattern.find(r"\K") {
+        let prefix = &pattern[..idx];
+        let suffix = &pattern[idx + 2..];
+
+        // Convert PCRE character classes to POSIX for sed
+        let converted_suffix = suffix
+            .replace(r"\d+", r"\([0-9][0-9]*\)")
+            .replace(r"\d", r"\([0-9]\)")
+            .replace(r"\w+", r"\([a-zA-Z0-9_][a-zA-Z0-9_]*\)")
+            .replace(r"\w", r"\([a-zA-Z0-9_]\)")
+            .replace(r"\s+", r"\([[:space:]][[:space:]]*\)")
+            .replace(r"\s", r"\([[:space:]]\)");
+
+        // If suffix doesn't already have capture group, wrap it
+        let capture_suffix = if converted_suffix.starts_with(r"\(") {
+            converted_suffix
+        } else {
+            format!(
+                r"\({}\)",
+                converted_suffix.replace("+", r"[^[:space:]][^[:space:]]*")
+            )
+        };
+
+        return format!("s/.*{}{}.*/\\1/p", prefix, capture_suffix);
+    }
+
+    // Handle positive lookbehind (?<=...)
+    if pattern.starts_with("(?<=") {
+        if let Some(end_idx) = pattern.find(')') {
+            let lookbehind = &pattern[4..end_idx];
+            let rest = &pattern[end_idx + 1..];
+
+            // Convert character classes
+            let converted_rest = rest
+                .replace(r"\d+", r"\([0-9][0-9]*\)")
+                .replace(r"\d", r"\([0-9]\)")
+                .replace(r"\w+", r"\([a-zA-Z0-9_][a-zA-Z0-9_]*\)")
+                .replace(r"\w", r"\([a-zA-Z0-9_]\)")
+                .replace("[a-f0-9]+", r"\([a-f0-9][a-f0-9]*\)")
+                .replace("[A-Z0-9]+", r"\([A-Z0-9][A-Z0-9]*\)")
+                .replace("[0-9]+", r"\([0-9][0-9]*\)");
+
+            // Wrap in capture group if not already
+            let capture_rest = if converted_rest.starts_with(r"\(") {
+                converted_rest
+            } else {
+                format!(r"\({}\)", converted_rest)
+            };
+
+            return format!("s/.*{}{}.*/\\1/p", lookbehind, capture_rest);
+        }
+    }
+
+    // Handle IP address pattern: \d+\.\d+\.\d+\.\d+
+    if pattern.contains(r"\d+\.\d+\.\d+\.\d+") {
+        return "s/.*\\([0-9][0-9]*\\.[0-9][0-9]*\\.[0-9][0-9]*\\.[0-9][0-9]*\\).*/\\1/p"
+            .to_string();
+    }
+
+    // Handle port pattern: :(\d+)
+    if pattern == r":(\d+)" || pattern == r":\(\d+\)" {
+        return "s/.*:\\([0-9][0-9]*\\).*/\\1/p".to_string();
+    }
+
+    // General case: convert PCRE classes and wrap in capture group
+    let converted = pattern
+        .replace(r"\d+", r"[0-9][0-9]*")
+        .replace(r"\d", r"[0-9]")
+        .replace(r"\w+", r"[a-zA-Z0-9_][a-zA-Z0-9_]*")
+        .replace(r"\w", r"[a-zA-Z0-9_]")
+        .replace(r"\s+", r"[[:space:]][[:space:]]*")
+        .replace(r"\s", r"[[:space:]]");
+
+    // Wrap in sed substitution with capture group
+    format!("s/.*\\({}\\).*/\\1/p", converted)
 }
 
 /// Performs variable substitution in a command string using the STEP_VARS associative array.
@@ -1522,8 +1657,8 @@ mod tests {
         let script = executor.generate_test_script(&test_case);
 
         assert!(script.contains("# Capture variables from output"));
-        assert!(script.contains("STEP_VARS[user_id]=$(echo \"$COMMAND_OUTPUT\" | grep -oP"));
-        assert!(script.contains("STEP_VARS[token]=$(echo \"$COMMAND_OUTPUT\" | grep -oP"));
+        assert!(script.contains("STEP_VAR_user_id=$(echo \"$COMMAND_OUTPUT\" | sed -n"));
+        assert!(script.contains("STEP_VAR_token=$(echo \"$COMMAND_OUTPUT\" | sed -n"));
         assert!(script.contains("| head -n 1 || echo \"\")"));
     }
 
@@ -1568,13 +1703,14 @@ mod tests {
 
         let script = executor.generate_test_script(&test_case);
 
-        // Verify STEP_VARS array initialization
-        assert!(script.contains("declare -a STEP_VARS"));
-        assert!(script.contains("# Initialize STEP_VARS associative array"));
+        // Verify variable storage initialization
+        assert!(script.contains("STEP_VAR_NAMES=()"));
+        assert!(script.contains("# Initialize variable storage for captured variables"));
 
         // Verify capture code generation
         assert!(script.contains("# Capture variables from output"));
-        assert!(script.contains("STEP_VARS[session_id]=$(echo \"$COMMAND_OUTPUT\" | grep -oP '(?<=session=)[a-f0-9]+' | head -n 1 || echo \"\")"));
+        assert!(script.contains("STEP_VAR_session_id=$(echo \"$COMMAND_OUTPUT\" | sed -n"));
+        assert!(script.contains("| head -n 1 || echo \"\")"));
     }
 
     #[test]
@@ -1615,12 +1751,10 @@ mod tests {
         // Verify substitution logic is present
         assert!(script.contains("ORIGINAL_COMMAND="));
         assert!(script.contains("SUBSTITUTED_COMMAND=\"$ORIGINAL_COMMAND\""));
-        assert!(script.contains("for var_name in \"${!STEP_VARS[@]}\"; do"));
-        assert!(script.contains("var_value=\"${STEP_VARS[$var_name]}\""));
+        assert!(script.contains("for var_name in \"${STEP_VAR_NAMES[@]}\"; do"));
+        assert!(script.contains("eval \"var_value=\\$STEP_VAR_$var_name\""));
         assert!(script.contains("# Replace ${var_name} pattern"));
         assert!(script.contains("SUBSTITUTED_COMMAND=$(echo \"$SUBSTITUTED_COMMAND\" | sed \"s/\\${$var_name}/$escaped_value/g\")"));
-        assert!(script.contains("# Replace ${STEP_VARS[var_name]} pattern"));
-        assert!(script.contains("SUBSTITUTED_COMMAND=$(echo \"$SUBSTITUTED_COMMAND\" | sed \"s/\\${STEP_VARS\\[$var_name\\]}/$escaped_value/g\")"));
         assert!(script.contains(
             "COMMAND_OUTPUT=$({ eval \"$SUBSTITUTED_COMMAND\"; } 2>&1 | tee \"$LOG_FILE\")"
         ));
@@ -1663,18 +1797,17 @@ mod tests {
 
         // Verify substitution in result expression
         assert!(script.contains("RESULT_EXPR="));
-        assert!(script.contains("for var_name in \"${!STEP_VARS[@]}\"; do"));
+        assert!(script.contains("for var_name in \"${STEP_VAR_NAMES[@]}\"; do"));
+        assert!(script.contains("eval \"var_value=\\$STEP_VAR_$var_name\""));
         assert!(script.contains(
             "RESULT_EXPR=$(echo \"$RESULT_EXPR\" | sed \"s/\\${$var_name}/$escaped_value/g\")"
         ));
-        assert!(script.contains("RESULT_EXPR=$(echo \"$RESULT_EXPR\" | sed \"s/\\${STEP_VARS\\[$var_name\\]}/$escaped_value/g\")"));
 
         // Verify substitution in output expression
         assert!(script.contains("OUTPUT_EXPR="));
         assert!(script.contains(
             "OUTPUT_EXPR=$(echo \"$OUTPUT_EXPR\" | sed \"s/\\${$var_name}/$escaped_value/g\")"
         ));
-        assert!(script.contains("OUTPUT_EXPR=$(echo \"$OUTPUT_EXPR\" | sed \"s/\\${STEP_VARS\\[$var_name\\]}/$escaped_value/g\")"));
 
         // Verify evaluation of substituted expressions
         assert!(script.contains("if eval \"$RESULT_EXPR\"; then"));
@@ -1726,9 +1859,9 @@ mod tests {
 
         // Verify all three variables are captured
         assert!(script.contains("# Capture variables from output"));
-        assert!(script.contains("STEP_VARS[user_id]=$(echo \"$COMMAND_OUTPUT\" | grep -oP '(?<=user_id=)\\d+' | head -n 1 || echo \"\")"));
-        assert!(script.contains("STEP_VARS[session_token]=$(echo \"$COMMAND_OUTPUT\" | grep -oP '(?<=token=)[A-Z0-9]+' | head -n 1 || echo \"\")"));
-        assert!(script.contains("STEP_VARS[timestamp]=$(echo \"$COMMAND_OUTPUT\" | grep -oP '(?<=ts=)\\d{10}' | head -n 1 || echo \"\")"));
+        assert!(script.contains("STEP_VAR_user_id=$(echo \"$COMMAND_OUTPUT\" | sed -n"));
+        assert!(script.contains("STEP_VAR_session_token=$(echo \"$COMMAND_OUTPUT\" | sed -n"));
+        assert!(script.contains("STEP_VAR_timestamp=$(echo \"$COMMAND_OUTPUT\" | sed -n"));
 
         // Verify the capture block appears exactly once for this step
         let capture_count = script.matches("# Capture variables from output").count();
@@ -1736,5 +1869,50 @@ mod tests {
             capture_count, 1,
             "Should have exactly one capture block for the single step"
         );
+    }
+
+    #[test]
+    fn test_convert_pcre_to_sed_pattern_with_k() {
+        // Test \K pattern conversion
+        let result = convert_pcre_to_sed_pattern(r"SESSION_ID=\K\d+");
+        assert_eq!(result, r"s/.*SESSION_ID=\([0-9][0-9]*\).*/\1/p");
+    }
+
+    #[test]
+    fn test_convert_pcre_to_sed_pattern_with_lookbehind() {
+        // Test positive lookbehind conversion
+        let result = convert_pcre_to_sed_pattern(r"(?<=token=)[A-Z0-9]+");
+        assert_eq!(result, r"s/.*token=\([A-Z0-9][A-Z0-9]*\).*/\1/p");
+    }
+
+    #[test]
+    fn test_convert_pcre_to_sed_pattern_with_word_class() {
+        // Test \w+ pattern conversion
+        let result = convert_pcre_to_sed_pattern(r"USER=\K\w+");
+        assert_eq!(result, r"s/.*USER=\([a-zA-Z0-9_][a-zA-Z0-9_]*\).*/\1/p");
+    }
+
+    #[test]
+    fn test_convert_pcre_to_sed_pattern_ip_address() {
+        // Test IP address pattern
+        let result = convert_pcre_to_sed_pattern(r"\d+\.\d+\.\d+\.\d+");
+        assert_eq!(
+            result,
+            r"s/.*\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\).*/\1/p"
+        );
+    }
+
+    #[test]
+    fn test_convert_pcre_to_sed_pattern_port() {
+        // Test port pattern
+        let result = convert_pcre_to_sed_pattern(r":(\d+)");
+        assert_eq!(result, r"s/.*:\([0-9][0-9]*\).*/\1/p");
+    }
+
+    #[test]
+    fn test_convert_pcre_to_sed_pattern_hex_pattern() {
+        // Test hex pattern with lookbehind
+        let result = convert_pcre_to_sed_pattern(r"(?<=session=)[a-f0-9]+");
+        assert_eq!(result, r"s/.*session=\([a-f0-9][a-f0-9]*\).*/\1/p");
     }
 }

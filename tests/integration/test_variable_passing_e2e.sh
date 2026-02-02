@@ -130,7 +130,7 @@ test_sequences:
           output: "[ \"$COMMAND_OUTPUT\" = \"SESSION_ID=12345\" ]"
       - step: 2
         description: Use captured session ID in command
-        command: echo 'Using session ${session_id}'
+        command: echo 'Using session ${SESSION_ID}'
         expected:
           success: true
           result: "0"
@@ -229,41 +229,41 @@ fi
 # Test 5: Verify script contains STEP_VARS array and variable capture logic
 section "Test 5: Verify Script Contains Variable Capture Logic"
 
-# Check for STEP_VARS associative array declaration
-if grep -q 'declare -a STEP_VARS' "$VARIABLE_SCRIPT"; then
-    pass "Script declares STEP_VARS associative array"
+# Check for variable storage initialization (bash 3.2+ compatible)
+if grep -q 'STEP_VAR_NAMES=()' "$VARIABLE_SCRIPT"; then
+    pass "Script declares STEP_VAR_NAMES array"
 else
-    fail "Script missing STEP_VARS declaration"
+    fail "Script missing STEP_VAR_NAMES declaration"
 fi
 
 # Check for variable capture from step 1 (session_id)
-if grep -q 'STEP_VARS\[session_id\]=' "$VARIABLE_SCRIPT"; then
+if grep -q 'STEP_VAR_session_id=' "$VARIABLE_SCRIPT"; then
     pass "Script captures session_id variable"
 else
     fail "Script doesn't capture session_id variable"
 fi
 
 # Check for variable capture from step 3 (username and token)
-if grep -q 'STEP_VARS\[username\]=' "$VARIABLE_SCRIPT"; then
+if grep -q 'STEP_VAR_username=' "$VARIABLE_SCRIPT"; then
     pass "Script captures username variable"
 else
     fail "Script doesn't capture username variable"
 fi
 
-if grep -q 'STEP_VARS\[token\]=' "$VARIABLE_SCRIPT"; then
+if grep -q 'STEP_VAR_token=' "$VARIABLE_SCRIPT"; then
     pass "Script captures token variable"
 else
     fail "Script doesn't capture token variable"
 fi
 
 # Check for variable capture from step 5 (server_ip and server_port)
-if grep -q 'STEP_VARS\[server_ip\]=' "$VARIABLE_SCRIPT"; then
+if grep -q 'STEP_VAR_server_ip=' "$VARIABLE_SCRIPT"; then
     pass "Script captures server_ip variable"
 else
     fail "Script doesn't capture server_ip variable"
 fi
 
-if grep -q 'STEP_VARS\[server_port\]=' "$VARIABLE_SCRIPT"; then
+if grep -q 'STEP_VAR_server_port=' "$VARIABLE_SCRIPT"; then
     pass "Script captures server_port variable"
 else
     fail "Script doesn't capture server_port variable"
@@ -273,7 +273,7 @@ fi
 section "Test 6: Verify Variable Substitution Logic"
 
 # Check for variable substitution loop
-if grep -q 'for var_name in "\${!STEP_VARS\[@\]}"' "$VARIABLE_SCRIPT"; then
+if grep -q 'for var_name in "\${STEP_VAR_NAMES\[@\]}"' "$VARIABLE_SCRIPT"; then
     pass "Script contains variable substitution loop"
 else
     fail "Script missing variable substitution loop"
@@ -436,6 +436,8 @@ if [[ $EXECUTION_EXIT_CODE -eq 0 ]]; then
 else
     info "Skipping log file verification due to execution failure"
 fi
+
+set -x
 
 # Test 10: Verify JSON execution log contains expected outputs
 section "Test 10: Verify JSON Execution Log"

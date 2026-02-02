@@ -86,7 +86,7 @@ pass "bash available"
 
 # Create temporary directory for test files
 TEMP_DIR=$(mktemp -d)
-trap 'rm -rf "$TEMP_DIR"' EXIT
+#trap 'rm -rf "$TEMP_DIR"' EXIT
 
 info "Using temporary directory: $TEMP_DIR"
 
@@ -759,6 +759,7 @@ else
     fail "Steps are not in correct order in generated script"
 fi
 
+set -x
 # Test 8: Verify stderr output is captured in .actual.log files
 section "Test 8: Verify Stderr Output Capture in Log Files"
 
