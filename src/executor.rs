@@ -143,7 +143,9 @@ impl TestExecutor {
                         step.command.replace("\"", "\\\"")
                     ));
                     script.push_str("echo \"INFO: This is a manual step. You must perform this action manually.\"\n");
-                    script.push_str("if [[ \"${DEBIAN_FRONTEND}\" != 'noninteractive' && -t 0 ]]; then\n");
+                    script.push_str(
+                        "if [[ \"${DEBIAN_FRONTEND}\" != 'noninteractive' && -t 0 ]]; then\n",
+                    );
                     script.push_str("    read -p \"Press ENTER to continue...\"\n");
                     script.push_str("else\n");
                     script.push_str("    echo \"Non-interactive mode detected, skipping manual step confirmation.\"\n");
@@ -621,7 +623,9 @@ mod tests {
             "echo \"INFO: This is a manual step. You must perform this action manually.\""
         ));
         assert!(script.contains("read -p \"Press ENTER to continue...\""));
-        assert!(script.contains("if [[ \"${DEBIAN_FRONTEND}\" != 'noninteractive' && -t 0 ]]; then\n"));
+        assert!(
+            script.contains("if [[ \"${DEBIAN_FRONTEND}\" != 'noninteractive' && -t 0 ]]; then\n")
+        );
         assert!(
             script.contains("Non-interactive mode detected, skipping manual step confirmation.")
         );

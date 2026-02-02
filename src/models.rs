@@ -35,6 +35,32 @@ impl fmt::Display for Verification {
     }
 }
 
+/// Verification expression that can be either a simple string or a conditional expression
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[serde(untagged)]
+pub enum VerificationExpression {
+    /// Simple string expression for backward compatibility
+    Simple(String),
+
+    /// Conditional expression with condition and branches
+    Conditional {
+        /// The condition to evaluate
+        condition: String,
+
+        /// Expressions to run if condition is true
+        #[serde(skip_serializing_if = "Option::is_none")]
+        if_true: Option<Vec<String>>,
+
+        /// Expressions to run if condition is false
+        #[serde(skip_serializing_if = "Option::is_none")]
+        if_false: Option<Vec<String>>,
+
+        /// Expressions to always run regardless of condition
+        #[serde(skip_serializing_if = "Option::is_none")]
+        always: Option<Vec<String>>,
+    },
+}
+
 /// Expected outcome for a test step
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Expected {
