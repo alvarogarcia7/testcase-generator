@@ -53,6 +53,13 @@
           "description": {
             "type": "string"
           },
+          "variables": {
+            "type": "object",
+            "description": "Sequence-scoped variables that can be declared and used throughout the test sequence.",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
           "initial_conditions": {
             "type": "object",
             "description": "Sequence-level initial conditions. Values can use BDD patterns (e.g., 'wait until file \"/tmp/ready\" exists with timeout 30 seconds') that are automatically converted to executable commands, or plain text that becomes comments. See docs/BDD_INITIAL_CONDITIONS.md for pattern reference.",
@@ -80,6 +87,13 @@
                 },
                 "command": {
                   "type": ["string", "boolean"]
+                },
+                "capture_vars": {
+                  "type": "object",
+                  "description": "Variable names as keys with regex patterns as values for extracting values from COMMAND_OUTPUT.",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
                 },
                 "expected": {
                   "type": "object",
