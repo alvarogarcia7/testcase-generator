@@ -21,12 +21,22 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 VALIDATE_YAML_BIN="$PROJECT_ROOT/target/debug/validate-yaml"
 SCHEMA_FILE="$PROJECT_ROOT/data/schema.json"
 
-# Color codes for output
-GREEN='\033[0;32m'
-RED='\033[0;31m'
-BLUE='\033[0;34m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+# Source logger library
+source "$SCRIPT_DIR/../../scripts/lib/logger.sh" || exit 1
+
+# Handle --no-remove flag
+REMOVE_TEMP=1
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --no-remove)
+            REMOVE_TEMP=0
+            shift
+            ;;
+        *)
+            shift
+            ;;
+    esac
+done
 
 # Test counter
 TESTS_PASSED=0
@@ -39,40 +49,6 @@ echo "======================================"
 echo "validate-yaml Watch Mode E2E Integration Test"
 echo "======================================"
 echo ""
-
-# Function to print test status
-pass() {
-    echo -e "${GREEN}✓${NC} $1"
-    TESTS_PASSED=$((TESTS_PASSED+1))
-}
-
-fail() {
-    echo -e "${RED}✗${NC} $1"
-    TESTS_FAILED=$((TESTS_FAILED+1))
-}
-
-info() {
-    echo -e "${BLUE}ℹ${NC} $1"
-}
-
-section() {
-    echo ""
-    echo -e "${YELLOW}=== $1 ===${NC}"
-}
-
-# Function to clean up background process
-cleanup() {
-    if [[ -n "$WATCH_PID" ]] && kill -0 "$WATCH_PID" 2>/dev/null; then
-        info "Stopping watch mode process (PID: $WATCH_PID)"
-        kill "$WATCH_PID" 2>/dev/null || true
-        wait "$WATCH_PID" 2>/dev/null || true
-    fi
-    if [[ -n "$TEMP_DIR" ]] && [[ -d "$TEMP_DIR" ]]; then
-        rm -rf "$TEMP_DIR"
-    fi
-}
-
-trap cleanup EXIT
 
 # Check if running on Windows
 section "Checking Platform"
@@ -104,6 +80,11 @@ pass "Schema file found"
 
 # Create temporary directory for test files
 TEMP_DIR=$(mktemp -d)
+setup_cleanup "$TEMP_DIR"
+if [[ $REMOVE_TEMP -eq 0 ]]; then
+    disable_cleanup
+    info "Temporary files will not be removed: $TEMP_DIR"
+fi
 info "Using temporary directory: $TEMP_DIR"
 
 # Create test YAML files
@@ -223,6 +204,7 @@ section "Starting Watch Mode"
 WATCH_LOG="$TEMP_DIR/watch_output.log"
 "$VALIDATE_YAML_BIN" --schema "$SCHEMA_FILE" --watch "$VALID_YAML_1" "$VALID_YAML_2" "$VALID_YAML_3" > "$WATCH_LOG" 2>&1 &
 WATCH_PID=$!
+register_background_pid "$WATCH_PID"
 
 info "Started watch mode with PID: $WATCH_PID"
 
