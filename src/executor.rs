@@ -92,11 +92,11 @@ impl TestExecutor {
         let uses_variables = test_case_uses_variables(test_case);
 
         if uses_variables {
-            // Initialize variable storage (bash 3.2+ compatible using eval)
+            // Initialize variable storage (bash 3.2+ compatible using space-separated string)
             script.push_str(
                 "# Initialize variable storage for captured variables (bash 3.2+ compatible)\n",
             );
-            script.push_str("STEP_VAR_NAMES=()\n\n");
+            script.push_str("STEP_VAR_NAMES=\"\"\n\n");
         }
 
         // Add trap to ensure JSON file is properly closed on any exit
@@ -198,7 +198,10 @@ impl TestExecutor {
                             var_name,
                             bash_escape(var_value)
                         ));
-                        script.push_str(&format!("STEP_VAR_NAMES+=(\"{}\")\n", var_name));
+                        script.push_str(&format!(
+                            "if ! echo \" $STEP_VAR_NAMES \" | grep -q \" {} \"; then STEP_VAR_NAMES=\"$STEP_VAR_NAMES {}\"; fi\n",
+                            var_name, var_name
+                        ));
                     }
                     script.push('\n');
                 }
@@ -250,8 +253,8 @@ impl TestExecutor {
 
                     // Perform variable substitution: replace ${var_name} patterns using eval
                     script.push_str("SUBSTITUTED_COMMAND=\"$ORIGINAL_COMMAND\"\n");
-                    script.push_str("if [ ${#STEP_VAR_NAMES[@]:-0} -gt 0 ]; then\n");
-                    script.push_str("    for var_name in \"${STEP_VAR_NAMES[@]}\"; do\n");
+                    script.push_str("if [ -n \"$STEP_VAR_NAMES\" ]; then\n");
+                    script.push_str("    for var_name in $STEP_VAR_NAMES; do\n");
                     script.push_str("        eval \"var_value=\\$STEP_VAR_$var_name\"\n");
                     script.push_str("        # Escape special characters for sed\n");
                     script.push_str(
@@ -290,12 +293,12 @@ impl TestExecutor {
                                 var_name,
                                 bash_escape(&sed_pattern)
                             ));
-                            // Add to array only if not already present (avoid duplicates)
+                            // Add to string-based list only if not already present (avoid duplicates)
                             script.push_str(&format!(
-                                "if ! printf '%s\\n' \"${{STEP_VAR_NAMES[@]}}\" | grep -qx \"{}\"; then\n",
+                                "if ! echo \" $STEP_VAR_NAMES \" | grep -q \" {} \"; then\n",
                                 var_name
                             ));
-                            script.push_str(&format!("    STEP_VAR_NAMES+=(\"{}\")\n", var_name));
+                            script.push_str(&format!("    STEP_VAR_NAMES=\"$STEP_VAR_NAMES {}\"\n", var_name));
                             script.push_str("fi\n");
                         }
                         script.push('\n');
@@ -338,8 +341,8 @@ impl TestExecutor {
                 script.push_str(&format!("RESULT_EXPR=\"{}\"\n", escaped_result_expr));
 
                 if result_needs_subst && uses_variables {
-                    script.push_str("if [ ${#STEP_VAR_NAMES[@]:-0} -gt 0 ]; then\n");
-                    script.push_str("    for var_name in \"${STEP_VAR_NAMES[@]}\"; do\n");
+                    script.push_str("if [ -n \"$STEP_VAR_NAMES\" ]; then\n");
+                    script.push_str("    for var_name in $STEP_VAR_NAMES; do\n");
                     script.push_str("        eval \"var_value=\\$STEP_VAR_$var_name\"\n");
                     script.push_str("        # Escape special characters for sed\n");
                     script.push_str(
@@ -361,8 +364,8 @@ impl TestExecutor {
                 script.push_str(&format!("OUTPUT_EXPR=\"{}\"\n", escaped_output_expr));
 
                 if output_needs_subst && uses_variables {
-                    script.push_str("if [ ${#STEP_VAR_NAMES[@]:-0} -gt 0 ]; then\n");
-                    script.push_str("    for var_name in \"${STEP_VAR_NAMES[@]}\"; do\n");
+                    script.push_str("if [ -n \"$STEP_VAR_NAMES\" ]; then\n");
+                    script.push_str("    for var_name in $STEP_VAR_NAMES; do\n");
                     script.push_str("        eval \"var_value=\\$STEP_VAR_$var_name\"\n");
                     script.push_str("        # Escape special characters for sed\n");
                     script.push_str(
@@ -827,7 +830,7 @@ pub fn convert_pcre_to_sed_pattern(pattern: &str) -> String {
 
     // Handle IP address pattern: \d+\.\d+\.\d+\.\d+
     if pattern.contains(r"\d+\.\d+\.\d+\.\d+") {
-        return "s/.*\\([0-9][0-9]*\\.[0-9][0-9]*\\.[0-9][0-9]*\\.[0-9][0-9]*\\).*/\\1/p"
+        return "s/[^0-9]*\\([0-9][0-9]*\\.[0-9][0-9]*\\.[0-9][0-9]*\\.[0-9][0-9]*\\).*/\\1/p"
             .to_string();
     }
 
@@ -1720,8 +1723,8 @@ mod tests {
 
         let script = executor.generate_test_script(&test_case);
 
-        // Verify variable storage initialization
-        assert!(script.contains("STEP_VAR_NAMES=()"));
+        // Verify variable storage initialization (bash 3.2+ compatible - uses string instead of array)
+        assert!(script.contains("STEP_VAR_NAMES=\"\""));
         assert!(script.contains("# Initialize variable storage for captured variables"));
 
         // Verify capture code generation
@@ -1768,7 +1771,7 @@ mod tests {
         // Verify substitution logic is present
         assert!(script.contains("ORIGINAL_COMMAND="));
         assert!(script.contains("SUBSTITUTED_COMMAND=\"$ORIGINAL_COMMAND\""));
-        assert!(script.contains("for var_name in \"${STEP_VAR_NAMES[@]}\"; do"));
+        assert!(script.contains("for var_name in $STEP_VAR_NAMES; do"));
         assert!(script.contains("eval \"var_value=\\$STEP_VAR_$var_name\""));
         assert!(script.contains("# Replace ${var_name} pattern"));
         assert!(script.contains("SUBSTITUTED_COMMAND=$(echo \"$SUBSTITUTED_COMMAND\" | sed \"s/\\${$var_name}/$escaped_value/g\")"));
@@ -1814,7 +1817,7 @@ mod tests {
 
         // Verify substitution in result expression
         assert!(script.contains("RESULT_EXPR="));
-        assert!(script.contains("for var_name in \"${STEP_VAR_NAMES[@]}\"; do"));
+        assert!(script.contains("for var_name in $STEP_VAR_NAMES; do"));
         assert!(script.contains("eval \"var_value=\\$STEP_VAR_$var_name\""));
         assert!(script.contains(
             "RESULT_EXPR=$(echo \"$RESULT_EXPR\" | sed \"s/\\${$var_name}/$escaped_value/g\")"
@@ -1911,11 +1914,11 @@ mod tests {
 
     #[test]
     fn test_convert_pcre_to_sed_pattern_ip_address() {
-        // Test IP address pattern
+        // Test IP address pattern (uses [^0-9]* instead of .* to avoid greedy matching issues)
         let result = convert_pcre_to_sed_pattern(r"\d+\.\d+\.\d+\.\d+");
         assert_eq!(
             result,
-            r"s/.*\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\).*/\1/p"
+            r"s/[^0-9]*\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\).*/\1/p"
         );
     }
 
