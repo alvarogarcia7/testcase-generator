@@ -18,6 +18,7 @@ fn create_test_step(
         manual: None,
         description: description.to_string(),
         command: command.to_string(),
+        capture_vars: None,
         expected: Expected {
             success,
             result: expected_result.to_string(),

@@ -1,0 +1,80 @@
+requirement: "VARIABLE_EXAMPLE_002"
+item: 1
+tc: 2
+id: 'API_TOKEN_EXAMPLE'
+description: 'Demonstrates token extraction and subsequent API calls with captured authentication token'
+
+general_initial_conditions:
+  system:
+    - "Shell environment is available"
+
+initial_conditions:
+  system:
+    - "All commands can be executed"
+
+test_sequences:
+  - id: 1
+    name: "API Authentication Flow with Token Capture"
+    description: |
+                   Simulates an API authentication flow where a token is
+                   obtained and then used in subsequent API requests
+    variables:
+      api_endpoint: "https://api.example.com"
+      username: "testuser"
+    initial_conditions:
+      system:
+        - "Shell is ready"
+    steps:
+      - step: 1
+        description: "Simulate login and capture authentication token"
+        command: echo '{"token":"abc123xyz789","expires_in":3600,"user_id":42}'
+        capture_vars:
+          auth_token: '"token":"([^"]+)"'
+          user_id: '"user_id":(\d+)'
+        expected:
+          success: true
+          result: 0
+          output: '{"token":"abc123xyz789"'
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'token' <<< \"$COMMAND_OUTPUT\""
+      - step: 2
+        description: "Verify token was captured"
+        command: 'echo "Captured token: ${STEP_VARS[auth_token]}"'
+        expected:
+          success: true
+          result: 0
+          output: "Captured token: abc123xyz789"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'abc123xyz789' <<< \"$COMMAND_OUTPUT\""
+      - step: 3
+        description: "Simulate authenticated API request using captured token"
+        command: 'echo "GET ${STEP_VARS[api_endpoint]}/user/${STEP_VARS[user_id]} Authorization: Bearer ${STEP_VARS[auth_token]}"'
+        expected:
+          success: true
+          result: 0
+          output: "Authorization: Bearer abc123xyz789"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Bearer abc123xyz789' <<< \"$COMMAND_OUTPUT\""
+      - step: 4
+        description: "Simulate another API call with the same token"
+        command: 'echo "POST ${STEP_VARS[api_endpoint]}/data Authorization: Bearer ${STEP_VARS[auth_token]}"'
+        expected:
+          success: true
+          result: 0
+          output: "POST https://api.example.com/data"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'POST https://api.example.com/data' <<< \"$COMMAND_OUTPUT\""
+      - step: 5
+        description: "Verify user_id was also captured correctly"
+        command: 'echo "User ID from token: ${STEP_VARS[user_id]}"'
+        expected:
+          success: true
+          result: 0
+          output: "User ID from token: 42"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q '42' <<< \"$COMMAND_OUTPUT\""

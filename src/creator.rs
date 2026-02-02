@@ -689,6 +689,7 @@ steps: []
             manual,
             description,
             command,
+            capture_vars: None,
             expected,
             verification,
         })

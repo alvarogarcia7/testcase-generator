@@ -12,6 +12,7 @@ fn create_step(step_num: i64, result: &str, output: &str, success: Option<bool>)
         manual: None,
         description: "Test step".to_string(),
         command: "test command".to_string(),
+        capture_vars: None,
         expected: Expected {
             success,
             result: result.to_string(),

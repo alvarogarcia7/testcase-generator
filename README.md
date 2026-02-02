@@ -15,6 +15,7 @@ A comprehensive CLI tool for managing test cases in YAML format with interactive
 - **Recovery Mechanism**: Automatically saves progress after each operation and can resume from saved state if interrupted
 - **Test Verification**: Batch verification mode that processes test execution logs and generates reports with JUnit XML output for CI/CD integration
 - **Watch Mode**: Continuously monitor directories for file changes with automatic validation and instant feedback
+- **Variables and Data Passing**: Capture dynamic values from command output and pass data between test steps using regex patterns and variable substitution. See [Variables and Data Passing Documentation](docs/VARIABLE_PASSING.md) for details
 
 ## Installation
 
@@ -118,6 +119,9 @@ editor validate --all
 **Subcommands**:
 - `generate` - Generate bash script from YAML test case
 - `execute` - Execute test case and generate JSON execution log
+
+**Key Features**:
+- **Variables and Data Passing**: Capture values from command output and pass data between test steps. See [Variables and Data Passing Documentation](docs/VARIABLE_PASSING.md) for complete details on variable capture, substitution, and scope rules
 
 **Example Usage**:
 ```bash

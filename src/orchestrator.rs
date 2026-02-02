@@ -938,6 +938,7 @@ mod tests {
             manual: None,
             description: "Echo test".to_string(),
             command: "echo 'hello'".to_string(),
+            capture_vars: None,
             expected: Expected {
                 success: Some(true),
                 result: "0".to_string(),

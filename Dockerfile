@@ -102,7 +102,9 @@ RUN chmod +x /usr/local/bin/watch-yaml
 
 # Create README guide at ~/README.md
 RUN mkdir -p /root
+COPY README_INSTALL_AUTOMATED.md /root
 COPY README_INSTALL.md /root
+RUN cat README_INSTALL.md README_INSTALL_AUTOMATED.md >> README_INSTALL_2.md && mv README_INSTALL_2.md README_INSTALL.md
 
 # Set default command
 CMD ["tcm"]

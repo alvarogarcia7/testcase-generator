@@ -73,3 +73,4 @@ pipeline_summary.md
 artifacts/
 grcov
 
+/test_validate_files*/
