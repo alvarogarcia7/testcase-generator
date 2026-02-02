@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fmt;
 use std::path::PathBuf;
 
@@ -80,6 +80,10 @@ pub struct Step {
     /// Command to execute
     pub command: String,
 
+    /// Variable names as keys with regex patterns as values for extracting values from COMMAND_OUTPUT
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub capture_vars: Option<BTreeMap<String, String>>,
+
     /// Expected outcome
     pub expected: Expected,
 
@@ -114,6 +118,10 @@ pub struct TestSequence {
 
     /// Description of the test sequence
     pub description: String,
+
+    /// Sequence-scoped variables that can be declared and used throughout the test sequence
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub variables: Option<BTreeMap<String, String>>,
 
     /// Initial conditions specific to this sequence
     pub initial_conditions: HashMap<String, Vec<String>>,
@@ -199,6 +207,7 @@ impl TestSequence {
             id,
             name,
             description,
+            variables: None,
             initial_conditions,
             steps: Vec::new(),
         }
@@ -219,6 +228,7 @@ impl Step {
             manual: None,
             description,
             command,
+            capture_vars: None,
             expected: Expected {
                 success: None,
                 result,

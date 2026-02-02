@@ -555,6 +555,7 @@ mod tests {
             manual: None,
             description: "Echo test".to_string(),
             command: "echo 'hello'".to_string(),
+            capture_vars: None,
             expected: Expected {
                 success: Some(true),
                 result: "[ $EXIT_CODE -eq 0 ]".to_string(),
@@ -599,6 +600,7 @@ mod tests {
             manual: Some(true),
             description: "Manual verification".to_string(),
             command: "ssh device".to_string(),
+            capture_vars: None,
             expected: Expected {
                 success: Some(true),
                 result: "connected".to_string(),
@@ -679,6 +681,7 @@ mod tests {
             manual: None,
             description: "Test step".to_string(),
             command: "echo 'test'".to_string(),
+            capture_vars: None,
             expected: Expected {
                 success: Some(true),
                 result: "0".to_string(),
@@ -718,6 +721,7 @@ mod tests {
             manual: None,
             description: "Test step".to_string(),
             command: "echo 'test'".to_string(),
+            capture_vars: None,
             expected: Expected {
                 success: Some(true),
                 result: "0".to_string(),
@@ -758,6 +762,7 @@ mod tests {
             manual: None,
             description: "First step".to_string(),
             command: "echo 'step1'".to_string(),
+            capture_vars: None,
             expected: Expected {
                 success: Some(true),
                 result: "0".to_string(),
@@ -775,6 +780,7 @@ mod tests {
             manual: None,
             description: "Second step".to_string(),
             command: "echo 'step2'".to_string(),
+            capture_vars: None,
             expected: Expected {
                 success: Some(true),
                 result: "0".to_string(),
@@ -826,6 +832,7 @@ mod tests {
             manual: None,
             description: "Step in sequence 1".to_string(),
             command: "echo 'seq1'".to_string(),
+            capture_vars: None,
             expected: Expected {
                 success: Some(true),
                 result: "0".to_string(),
@@ -845,6 +852,7 @@ mod tests {
             manual: None,
             description: "Step in sequence 2".to_string(),
             command: "echo 'seq2'".to_string(),
+            capture_vars: None,
             expected: Expected {
                 success: Some(true),
                 result: "0".to_string(),
@@ -898,6 +906,7 @@ mod tests {
             manual: Some(true),
             description: "Manual step".to_string(),
             command: "manual command".to_string(),
+            capture_vars: None,
             expected: Expected {
                 success: Some(true),
                 result: "0".to_string(),
@@ -915,6 +924,7 @@ mod tests {
             manual: None,
             description: "Automated step".to_string(),
             command: "echo 'auto'".to_string(),
+            capture_vars: None,
             expected: Expected {
                 success: Some(true),
                 result: "0".to_string(),
@@ -968,6 +978,7 @@ mod tests {
             manual: None,
             description: "Test step".to_string(),
             command: "ls -la".to_string(),
+            capture_vars: None,
             expected: Expected {
                 success: Some(true),
                 result: "0".to_string(),
@@ -1015,6 +1026,7 @@ mod tests {
             manual: None,
             description: "Test step".to_string(),
             command: "echo 'test'".to_string(),
+            capture_vars: None,
             expected: Expected {
                 success: Some(true),
                 result: "0".to_string(),

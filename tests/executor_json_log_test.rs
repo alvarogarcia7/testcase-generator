@@ -422,6 +422,7 @@ fn create_simple_test_case() -> TestCase {
         manual: None,
         description: "Echo test".to_string(),
         command: "echo 'test'".to_string(),
+        capture_vars: None,
         expected: Expected {
             success: Some(true),
             result: "[ $EXIT_CODE -eq 0 ]".to_string(),
@@ -461,6 +462,7 @@ fn create_multi_sequence_test_case() -> TestCase {
         manual: None,
         description: "Echo Hello".to_string(),
         command: "echo 'Hello'".to_string(),
+        capture_vars: None,
         expected: Expected {
             success: Some(true),
             result: "[ $EXIT_CODE -eq 0 ]".to_string(),
@@ -479,6 +481,7 @@ fn create_multi_sequence_test_case() -> TestCase {
         manual: None,
         description: "Run true".to_string(),
         command: "true".to_string(),
+        capture_vars: None,
         expected: Expected {
             success: Some(true),
             result: "[ $EXIT_CODE -eq 0 ]".to_string(),
@@ -503,6 +506,7 @@ fn create_multi_sequence_test_case() -> TestCase {
         manual: None,
         description: "Echo World".to_string(),
         command: "echo 'World'".to_string(),
+        capture_vars: None,
         expected: Expected {
             success: Some(true),
             result: "[ $EXIT_CODE -eq 0 ]".to_string(),
@@ -521,6 +525,7 @@ fn create_multi_sequence_test_case() -> TestCase {
         manual: None,
         description: "Echo Complete".to_string(),
         command: "echo 'Test Complete'".to_string(),
+        capture_vars: None,
         expected: Expected {
             success: Some(true),
             result: "[ $EXIT_CODE -eq 0 ]".to_string(),
@@ -561,6 +566,7 @@ fn create_test_case_with_manual_steps() -> TestCase {
         manual: None,
         description: "Before manual step".to_string(),
         command: "echo 'Before Manual'".to_string(),
+        capture_vars: None,
         expected: Expected {
             success: Some(true),
             result: "[ $EXIT_CODE -eq 0 ]".to_string(),
@@ -579,6 +585,7 @@ fn create_test_case_with_manual_steps() -> TestCase {
         manual: Some(true),
         description: "Manual verification step".to_string(),
         command: "ssh device".to_string(),
+        capture_vars: None,
         expected: Expected {
             success: Some(true),
             result: "connected".to_string(),
@@ -597,6 +604,7 @@ fn create_test_case_with_manual_steps() -> TestCase {
         manual: None,
         description: "After manual step".to_string(),
         command: "echo 'After Manual'".to_string(),
+        capture_vars: None,
         expected: Expected {
             success: Some(true),
             result: "[ $EXIT_CODE -eq 0 ]".to_string(),
@@ -636,6 +644,7 @@ fn create_test_case_with_special_characters() -> TestCase {
         manual: None,
         description: "Echo with quotes".to_string(),
         command: r#"echo 'Test "quotes" and $variables'"#.to_string(),
+        capture_vars: None,
         expected: Expected {
             success: Some(true),
             result: "[ $EXIT_CODE -eq 0 ]".to_string(),
