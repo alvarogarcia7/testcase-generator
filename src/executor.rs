@@ -18,7 +18,7 @@ impl TestExecutor {
     fn generate_verification_script(expr: &VerificationExpression, var_name: &str) -> String {
         match expr {
             VerificationExpression::Simple(s) => {
-                // For simple expressions, just evaluate and set the variable
+                // For simple expressions, only set to true; variable is pre-initialized to false
                 format!("if {}; then\n    {}=true\nfi\n", s, var_name)
             }
             VerificationExpression::Conditional {
@@ -41,7 +41,7 @@ impl TestExecutor {
 
                 script.push_str("else\n");
 
-                // Execute if_false commands
+                // Execute if_false commands (variable stays false, which is the initialization)
                 if let Some(commands) = if_false {
                     for cmd in commands {
                         script.push_str(&format!("    {}\n", cmd));
