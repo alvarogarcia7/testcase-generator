@@ -1088,4 +1088,336 @@ mod tests {
             "Script should contain '2>&1 | tee' pattern to capture stderr before tee command"
         );
     }
+
+    #[test]
+    fn test_generate_script_with_conditional_verification_result() {
+        let executor = TestExecutor::new();
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test conditional verification".to_string(),
+        );
+
+        let mut sequence = TestSequence::new(1, "Seq1".to_string(), "First sequence".to_string());
+        let step = Step {
+            step: 1,
+            manual: None,
+            description: "Test step with conditional".to_string(),
+            command: "echo 'test'".to_string(),
+            expected: Expected {
+                success: Some(true),
+                result: "0".to_string(),
+                output: "test".to_string(),
+            },
+            verification: Verification {
+                result: VerificationExpression::Conditional {
+                    condition: "[ $EXIT_CODE -eq 0 ]".to_string(),
+                    if_true: Some(vec![
+                        "echo 'Success branch'".to_string(),
+                        "VERIFICATION_RESULT_PASS=true".to_string(),
+                    ]),
+                    if_false: Some(vec![
+                        "echo 'Failure branch'".to_string(),
+                        "VERIFICATION_RESULT_PASS=false".to_string(),
+                    ]),
+                    always: Some(vec!["echo 'Always executed'".to_string()]),
+                },
+                output: VerificationExpression::Simple("true".to_string()),
+                output_file: None,
+            },
+        };
+        sequence.steps.push(step);
+        test_case.test_sequences.push(sequence);
+
+        let script = executor.generate_test_script(&test_case);
+
+        // Check that the script includes condition evaluation
+        assert!(
+            script.contains("if [ $EXIT_CODE -eq 0 ]; then"),
+            "Script should contain condition evaluation in if statement"
+        );
+
+        // Check that if_true commands are present
+        assert!(
+            script.contains("echo 'Success branch'"),
+            "Script should contain if_true commands"
+        );
+        assert!(
+            script.contains("VERIFICATION_RESULT_PASS=true"),
+            "Script should set VERIFICATION_RESULT_PASS=true in if_true branch"
+        );
+
+        // Check that if_false commands are present
+        assert!(script.contains("else"), "Script should contain else clause");
+        assert!(
+            script.contains("echo 'Failure branch'"),
+            "Script should contain if_false commands"
+        );
+        assert!(
+            script.contains("VERIFICATION_RESULT_PASS=false"),
+            "Script should set VERIFICATION_RESULT_PASS=false in if_false branch"
+        );
+
+        // Check that always commands are executed after the conditional
+        assert!(
+            script.contains("echo 'Always executed'"),
+            "Script should contain always commands"
+        );
+
+        // Verify structure: if_true/if_false should come before always
+        let if_pos = script.find("if [ $EXIT_CODE -eq 0 ]; then").unwrap();
+        let always_pos = script.find("echo 'Always executed'").unwrap();
+        assert!(
+            if_pos < always_pos,
+            "Conditional block should come before always commands"
+        );
+    }
+
+    #[test]
+    fn test_generate_script_with_conditional_verification_output() {
+        let executor = TestExecutor::new();
+        let mut test_case = TestCase::new(
+            "REQ002".to_string(),
+            1,
+            1,
+            "TC002".to_string(),
+            "Test conditional output verification".to_string(),
+        );
+
+        let mut sequence = TestSequence::new(1, "Seq1".to_string(), "First sequence".to_string());
+        let step = Step {
+            step: 1,
+            manual: None,
+            description: "Test step with conditional output".to_string(),
+            command: "echo 'hello'".to_string(),
+            expected: Expected {
+                success: Some(true),
+                result: "0".to_string(),
+                output: "hello".to_string(),
+            },
+            verification: Verification {
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Conditional {
+                    condition: "[[ \"$COMMAND_OUTPUT\" == *\"hello\"* ]]".to_string(),
+                    if_true: Some(vec![
+                        "echo 'Output contains hello'".to_string(),
+                        "VERIFICATION_OUTPUT_PASS=true".to_string(),
+                    ]),
+                    if_false: Some(vec![
+                        "echo 'Output does not contain hello'".to_string(),
+                        "VERIFICATION_OUTPUT_PASS=false".to_string(),
+                    ]),
+                    always: Some(vec!["echo 'Output verification complete'".to_string()]),
+                },
+                output_file: None,
+            },
+        };
+        sequence.steps.push(step);
+        test_case.test_sequences.push(sequence);
+
+        let script = executor.generate_test_script(&test_case);
+
+        // Check that the script includes output condition evaluation
+        assert!(
+            script.contains("if [[ \"$COMMAND_OUTPUT\" == *\"hello\"* ]]; then"),
+            "Script should contain output condition evaluation"
+        );
+
+        // Check that if_true commands are present for output verification
+        assert!(
+            script.contains("echo 'Output contains hello'"),
+            "Script should contain output if_true commands"
+        );
+        assert!(
+            script.contains("VERIFICATION_OUTPUT_PASS=true"),
+            "Script should set VERIFICATION_OUTPUT_PASS=true in if_true branch"
+        );
+
+        // Check that if_false commands are present for output verification
+        assert!(
+            script.contains("echo 'Output does not contain hello'"),
+            "Script should contain output if_false commands"
+        );
+        assert!(
+            script.contains("VERIFICATION_OUTPUT_PASS=false"),
+            "Script should set VERIFICATION_OUTPUT_PASS=false in if_false branch"
+        );
+
+        // Check that always commands are executed
+        assert!(
+            script.contains("echo 'Output verification complete'"),
+            "Script should contain output always commands"
+        );
+    }
+
+    #[test]
+    fn test_generate_script_with_simple_verification_backward_compat() {
+        let executor = TestExecutor::new();
+        let mut test_case = TestCase::new(
+            "REQ003".to_string(),
+            1,
+            1,
+            "TC003".to_string(),
+            "Test simple verification backward compat".to_string(),
+        );
+
+        let mut sequence = TestSequence::new(1, "Seq1".to_string(), "First sequence".to_string());
+        let step = Step {
+            step: 1,
+            manual: None,
+            description: "Test step with simple string".to_string(),
+            command: "echo 'test'".to_string(),
+            expected: Expected {
+                success: Some(true),
+                result: "0".to_string(),
+                output: "test".to_string(),
+            },
+            verification: Verification {
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple(
+                    "[ \"$COMMAND_OUTPUT\" = \"test\" ]".to_string(),
+                ),
+                output_file: None,
+            },
+        };
+        sequence.steps.push(step);
+        test_case.test_sequences.push(sequence);
+
+        let script = executor.generate_test_script(&test_case);
+
+        // Check that simple verification still works with the if statement wrapper
+        assert!(
+            script.contains("if [ $EXIT_CODE -eq 0 ]; then"),
+            "Script should contain result verification condition"
+        );
+        assert!(
+            script.contains("VERIFICATION_RESULT_PASS=true"),
+            "Script should set VERIFICATION_RESULT_PASS=true on success"
+        );
+
+        assert!(
+            script.contains("if [ \"$COMMAND_OUTPUT\" = \"test\" ]; then"),
+            "Script should contain output verification condition"
+        );
+        assert!(
+            script.contains("VERIFICATION_OUTPUT_PASS=true"),
+            "Script should set VERIFICATION_OUTPUT_PASS=true on success"
+        );
+
+        // Ensure no conditional-specific keywords that shouldn't be there for Simple
+        let result_verification_section = script
+            .split("# Verification result")
+            .nth(1)
+            .and_then(|s| s.split("# Verification output").next())
+            .unwrap();
+
+        // Simple verification should have one if/fi pair for the result check
+        assert_eq!(
+            result_verification_section
+                .matches("if [ $EXIT_CODE -eq 0 ]; then")
+                .count(),
+            1,
+            "Simple result verification should have one if statement"
+        );
+        assert_eq!(
+            result_verification_section.matches("fi").count(),
+            1,
+            "Simple result verification should have one fi statement"
+        );
+    }
+
+    #[test]
+    fn test_conditional_verification_command_execution_order() {
+        let executor = TestExecutor::new();
+        let mut test_case = TestCase::new(
+            "REQ004".to_string(),
+            1,
+            1,
+            "TC004".to_string(),
+            "Test command execution order".to_string(),
+        );
+
+        let mut sequence = TestSequence::new(1, "Seq1".to_string(), "First sequence".to_string());
+        let step = Step {
+            step: 1,
+            manual: None,
+            description: "Test step with execution order".to_string(),
+            command: "echo 'test'".to_string(),
+            expected: Expected {
+                success: Some(true),
+                result: "0".to_string(),
+                output: "test".to_string(),
+            },
+            verification: Verification {
+                result: VerificationExpression::Conditional {
+                    condition: "[ $EXIT_CODE -eq 0 ]".to_string(),
+                    if_true: Some(vec![
+                        "echo 'Step 1: if_true'".to_string(),
+                        "VERIFICATION_RESULT_PASS=true".to_string(),
+                    ]),
+                    if_false: Some(vec![
+                        "echo 'Step 1: if_false'".to_string(),
+                        "VERIFICATION_RESULT_PASS=false".to_string(),
+                    ]),
+                    always: Some(vec![
+                        "echo 'Step 2: always first'".to_string(),
+                        "echo 'Step 3: always second'".to_string(),
+                    ]),
+                },
+                output: VerificationExpression::Simple("true".to_string()),
+                output_file: None,
+            },
+        };
+        sequence.steps.push(step);
+        test_case.test_sequences.push(sequence);
+
+        let script = executor.generate_test_script(&test_case);
+
+        // Verify structure: the always commands should not be inside the if/else/fi block
+        // We need to extract just the result verification section
+        let verification_section = script
+            .split("# Verification result")
+            .nth(1)
+            .and_then(|s| s.split("# Verification output").next())
+            .unwrap();
+
+        // Find positions of key elements in the verification section
+        let if_true_pos = verification_section.find("echo 'Step 1: if_true'").unwrap();
+        let if_false_pos = verification_section
+            .find("echo 'Step 1: if_false'")
+            .unwrap();
+        let always_first_pos = verification_section
+            .find("echo 'Step 2: always first'")
+            .unwrap();
+        let always_second_pos = verification_section
+            .find("echo 'Step 3: always second'")
+            .unwrap();
+        let fi_pos = verification_section.find("fi\n").unwrap();
+
+        // Verify that if_true comes before if_false
+        assert!(
+            if_true_pos < if_false_pos,
+            "if_true commands should come before if_false commands"
+        );
+
+        // Verify that if_false comes before fi
+        assert!(
+            if_false_pos < fi_pos,
+            "if_false commands should come before fi"
+        );
+
+        // Verify that always commands come after fi (after the conditional block)
+        assert!(
+            fi_pos < always_first_pos,
+            "always commands should execute after conditional (fi)"
+        );
+
+        // Verify that always commands execute in order
+        assert!(
+            always_first_pos < always_second_pos,
+            "always commands should execute in the order they are defined"
+        );
+    }
 }
