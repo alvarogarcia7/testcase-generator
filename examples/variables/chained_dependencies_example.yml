@@ -1,0 +1,128 @@
+requirement: "VARIABLE_EXAMPLE_003"
+item: 1
+tc: 3
+id: 'CHAINED_DEPENDENCIES_EXAMPLE'
+description: 'Demonstrates multiple steps passing values through a dependency chain'
+
+general_initial_conditions:
+  system:
+    - "Shell environment is available"
+
+initial_conditions:
+  system:
+    - "All commands can be executed"
+    - "Temp directory is available"
+
+test_sequences:
+  - id: 1
+    name: "Chained Variable Dependencies"
+    description: |
+                   Demonstrates a complex workflow where each step captures
+                   values that are used by subsequent steps in a chain
+    variables:
+      base_path: "/tmp/chain_test"
+    initial_conditions:
+      system:
+        - "Shell is ready"
+    steps:
+      - step: 1
+        description: "Create base directory and capture its path"
+        command: mkdir -p ${STEP_VARS[base_path]} && echo "${STEP_VARS[base_path]}"
+        capture_vars:
+          working_dir: '/tmp/chain_test'
+        expected:
+          success: true
+          result: 0
+          output: "/tmp/chain_test"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q '/tmp/chain_test' <<< \"$COMMAND_OUTPUT\""
+      - step: 2
+        description: "Generate a unique session ID"
+        command: echo "session_$(date +%Y%m%d_%H%M%S)_$$"
+        capture_vars:
+          session_id: 'session_[0-9_]+'
+        expected:
+          success: true
+          result: 0
+          output: "session_"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'session_' <<< \"$COMMAND_OUTPUT\""
+      - step: 3
+        description: "Create session directory using captured session ID"
+        command: mkdir -p ${STEP_VARS[working_dir]}/${STEP_VARS[session_id]} && echo "${STEP_VARS[working_dir]}/${STEP_VARS[session_id]}"
+        capture_vars:
+          session_path: '/tmp/chain_test/session_[0-9_]+'
+        expected:
+          success: true
+          result: 0
+          output: "/tmp/chain_test/session_"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q '/tmp/chain_test/session_' <<< \"$COMMAND_OUTPUT\""
+      - step: 4
+        description: "Create a data file in session directory"
+        command: echo "test_data_$(date +%s)" > ${STEP_VARS[session_path]}/data.txt && cat ${STEP_VARS[session_path]}/data.txt
+        capture_vars:
+          data_content: 'test_data_\d+'
+        expected:
+          success: true
+          result: 0
+          output: "test_data_"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'test_data_' <<< \"$COMMAND_OUTPUT\""
+      - step: 5
+        description: "Generate a checksum of the data file"
+        command: echo "${STEP_VARS[data_content]}" | md5sum | cut -d' ' -f1
+        capture_vars:
+          checksum: '^[a-f0-9]{32}$'
+        expected:
+          success: true
+          result: 0
+          output: ""
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ -n \"$COMMAND_OUTPUT\" ]]"
+      - step: 6
+        description: "Create a manifest file with all captured values"
+        command: |
+          cat > ${STEP_VARS[session_path]}/manifest.txt << EOF
+          Session ID: ${STEP_VARS[session_id]}
+          Working Directory: ${STEP_VARS[working_dir]}
+          Session Path: ${STEP_VARS[session_path]}
+          Data Content: ${STEP_VARS[data_content]}
+          Checksum: ${STEP_VARS[checksum]}
+          EOF
+          cat ${STEP_VARS[session_path]}/manifest.txt
+        expected:
+          success: true
+          result: 0
+          output: "Session ID:"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Session ID:' <<< \"$COMMAND_OUTPUT\" && grep -q 'Checksum:' <<< \"$COMMAND_OUTPUT\""
+      - step: 7
+        description: "Verify manifest contains all expected variables"
+        command: |
+          grep -q "${STEP_VARS[session_id]}" ${STEP_VARS[session_path]}/manifest.txt && \
+          grep -q "${STEP_VARS[checksum]}" ${STEP_VARS[session_path]}/manifest.txt && \
+          echo "Manifest verification passed"
+        expected:
+          success: true
+          result: 0
+          output: "Manifest verification passed"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Manifest verification passed' <<< \"$COMMAND_OUTPUT\""
+      - step: 8
+        description: "Cleanup - remove entire chain test directory"
+        command: rm -rf ${STEP_VARS[working_dir]} && echo "Cleanup completed for ${STEP_VARS[session_id]}"
+        expected:
+          success: true
+          result: 0
+          output: "Cleanup completed for session_"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Cleanup completed' <<< \"$COMMAND_OUTPUT\""
