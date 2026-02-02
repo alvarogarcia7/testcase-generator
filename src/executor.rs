@@ -11,6 +11,57 @@ pub struct TestExecutor {
 }
 
 impl TestExecutor {
+    /// Generate bash script code for a VerificationExpression
+    /// For Simple expressions, returns the expression as-is
+    /// For Conditional expressions, generates bash code to evaluate the condition
+    /// and execute the appropriate commands based on the result
+    fn generate_verification_script(expr: &VerificationExpression, var_name: &str) -> String {
+        match expr {
+            VerificationExpression::Simple(s) => {
+                // For simple expressions, just evaluate and set the variable
+                format!("if {}; then\n    {}=true\nfi\n", s, var_name)
+            }
+            VerificationExpression::Conditional {
+                condition,
+                if_true,
+                if_false,
+                always,
+            } => {
+                let mut script = String::new();
+
+                // Evaluate the condition and execute appropriate branch
+                script.push_str(&format!("if {}; then\n", condition));
+
+                // Execute if_true commands
+                if let Some(commands) = if_true {
+                    for cmd in commands {
+                        script.push_str(&format!("    {}\n", cmd));
+                    }
+                }
+
+                script.push_str("else\n");
+
+                // Execute if_false commands
+                if let Some(commands) = if_false {
+                    for cmd in commands {
+                        script.push_str(&format!("    {}\n", cmd));
+                    }
+                }
+
+                script.push_str("fi\n");
+
+                // Always execute commands in always array
+                if let Some(commands) = always {
+                    for cmd in commands {
+                        script.push_str(&format!("{}\n", cmd));
+                    }
+                }
+
+                script
+            }
+        }
+    }
+
     /// Extract the simple string from a VerificationExpression for execution
     /// For conditional expressions, this currently returns the condition itself as a placeholder
     fn extract_simple_expression(expr: &VerificationExpression) -> &str {
@@ -179,42 +230,29 @@ impl TestExecutor {
                 script.push_str("EXIT_CODE=$?\n");
                 script.push_str("set -e\n\n");
 
-                let result_expr = Self::extract_simple_expression(&step.verification.result);
-                script.push_str(&format!(
-                    "# Verification result expression: {}\n",
-                    result_expr
+                script.push_str("# Verification result\n");
+                script.push_str("VERIFICATION_RESULT_PASS=false\n");
+                script.push_str(&Self::generate_verification_script(
+                    &step.verification.result,
+                    "VERIFICATION_RESULT_PASS",
                 ));
+                script.push('\n');
 
                 // Determine which output verification to use
-                let output_verification = if let Some(ref output_file_verification) =
-                    step.verification.output_file
-                {
-                    let output_file_expr =
-                        Self::extract_simple_expression(output_file_verification);
-                    script.push_str(&format!(
-                        "# Verification output expression (from file): {}\n",
-                        output_file_expr
+                script.push_str("# Verification output\n");
+                script.push_str("VERIFICATION_OUTPUT_PASS=false\n");
+                if let Some(ref output_file_verification) = step.verification.output_file {
+                    script.push_str(&Self::generate_verification_script(
+                        output_file_verification,
+                        "VERIFICATION_OUTPUT_PASS",
                     ));
-                    output_file_expr
                 } else {
-                    let output_expr = Self::extract_simple_expression(&step.verification.output);
-                    script.push_str(&format!(
-                        "# Verification output expression (from variable): {}\n",
-                        output_expr
+                    script.push_str(&Self::generate_verification_script(
+                        &step.verification.output,
+                        "VERIFICATION_OUTPUT_PASS",
                     ));
-                    output_expr
-                };
-
-                script.push_str("VERIFICATION_RESULT_PASS=false\n");
-                script.push_str("VERIFICATION_OUTPUT_PASS=false\n\n");
-
-                script.push_str(&format!("if {}; then\n", result_expr));
-                script.push_str("    VERIFICATION_RESULT_PASS=true\n");
-                script.push_str("fi\n\n");
-
-                script.push_str(&format!("if {}; then\n", output_verification));
-                script.push_str("    VERIFICATION_OUTPUT_PASS=true\n");
-                script.push_str("fi\n\n");
+                }
+                script.push('\n');
 
                 script.push_str("if [ \"$VERIFICATION_RESULT_PASS\" = true ] && [ \"$VERIFICATION_OUTPUT_PASS\" = true ]; then\n");
                 script.push_str(&format!(
