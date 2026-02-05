@@ -170,6 +170,25 @@ impl TestCaseBuilder {
         Ok(self)
     }
 
+    /// Prompt for and add prerequisites to the structure
+    ///
+    /// Interactively prompts the user to add prerequisites to the test case.
+    /// Prerequisites can be either manual (requiring human verification) or automatic
+    /// (verified programmatically with a command).
+    ///
+    /// # Example
+    /// ```ignore
+    /// let mut builder = TestCaseBuilder::new(path, oracle)?;
+    /// builder
+    ///     .add_metadata()?
+    ///     .add_prerequisites()?
+    ///     .add_general_initial_conditions(None)?;
+    /// ```
+    pub fn add_prerequisites(&mut self) -> Result<&mut Self> {
+        self.creator.add_prerequisites(&mut self.structure)?;
+        Ok(self)
+    }
+
     /// Commit the current structure to git
     pub fn commit(&self, message: &str) -> Result<()> {
         if let Some(git) = &self.git_manager {

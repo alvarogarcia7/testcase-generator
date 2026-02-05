@@ -2,7 +2,7 @@ use crate::complex_structure_editor::ComplexStructureEditor;
 use crate::config::EditorConfig;
 use crate::database::ConditionDatabase;
 use crate::git::GitManager;
-use crate::models::{Expected, Step, TestSequence};
+use crate::models::{Expected, Prerequisite, PrerequisiteType, Step, TestSequence};
 use crate::oracle::Oracle;
 use crate::prompts::Prompts;
 use crate::sample::SampleData;
@@ -96,6 +96,97 @@ impl TestCaseCreator {
         }
 
         Ok(())
+    }
+
+    /// Prompt for and add prerequisites to the structure
+    ///
+    /// Interactively prompts the user to add prerequisites to the test case.
+    /// Prerequisites can be either manual (requiring human verification) or automatic
+    /// (verified programmatically with a command).
+    ///
+    /// # Flow
+    /// 1. Asks if prerequisites should be added
+    /// 2. For each prerequisite:
+    ///    - Prompts for type selection (manual/automatic)
+    ///    - Prompts for description
+    ///    - If automatic, prompts for verification command
+    /// 3. Asks if more prerequisites should be added
+    ///
+    /// # Example
+    /// ```ignore
+    /// let mut structure = IndexMap::new();
+    /// creator.add_prerequisites(&mut structure)?;
+    /// ```
+    pub fn add_prerequisites(&self, structure: &mut IndexMap<String, Value>) -> Result<()> {
+        log::info!("\n=== Prerequisites ===\n");
+
+        if !Prompts::confirm_with_oracle("Add prerequisites?", &self.oracle)? {
+            return Ok(());
+        }
+
+        let mut prerequisites = Vec::new();
+
+        loop {
+            log::info!("\n--- Adding Prerequisite #{} ---", prerequisites.len() + 1);
+
+            let prerequisite = self.prompt_single_prerequisite()?;
+            prerequisites.push(prerequisite);
+
+            if !Prompts::confirm_with_oracle("\nAdd another prerequisite?", &self.oracle)? {
+                break;
+            }
+        }
+
+        if !prerequisites.is_empty() {
+            let prerequisites_value = serde_yaml::to_value(&prerequisites)
+                .context("Failed to convert prerequisites to YAML value")?;
+            structure.insert("prerequisites".to_string(), prerequisites_value);
+            log::info!("\n✓ Added {} prerequisite(s)\n", prerequisites.len());
+        }
+
+        Ok(())
+    }
+
+    /// Prompt for a single prerequisite
+    ///
+    /// Interactively collects information for one prerequisite, including:
+    /// - Type (manual or automatic)
+    /// - Description
+    /// - Verification command (for automatic type only)
+    fn prompt_single_prerequisite(&self) -> Result<Prerequisite> {
+        let prerequisite_type = self.prompt_prerequisite_type()?;
+
+        let description = Prompts::input_with_oracle("Prerequisite description", &self.oracle)?;
+
+        let verification_command = match prerequisite_type {
+            PrerequisiteType::Automatic => {
+                let command = Prompts::input_with_oracle("Verification command", &self.oracle)?;
+                Some(command)
+            }
+            PrerequisiteType::Manual => None,
+        };
+
+        Ok(Prerequisite {
+            prerequisite_type,
+            description,
+            verification_command,
+        })
+    }
+
+    /// Prompt for prerequisite type selection
+    ///
+    /// Presents a menu to select between:
+    /// - `manual`: Requires human verification
+    /// - `automatic`: Can be verified programmatically with a command
+    fn prompt_prerequisite_type(&self) -> Result<PrerequisiteType> {
+        let items = vec!["manual".to_string(), "automatic".to_string()];
+        let selected = Prompts::select_with_oracle("Prerequisite type", items, &self.oracle)?;
+
+        match selected.as_str() {
+            "manual" => Ok(PrerequisiteType::Manual),
+            "automatic" => Ok(PrerequisiteType::Automatic),
+            _ => anyhow::bail!("Invalid prerequisite type: {}", selected),
+        }
     }
 
     /// Add general initial conditions with interactive prompts

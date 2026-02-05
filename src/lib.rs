@@ -44,6 +44,8 @@ pub use log_cleaner::LogCleaner;
 pub use models::ActualResult;
 pub use models::Expected;
 pub use models::FileValidationStatus;
+pub use models::Prerequisite;
+pub use models::PrerequisiteType;
 pub use models::Step;
 pub use models::StepExecutionResult;
 pub use models::TestCase;
