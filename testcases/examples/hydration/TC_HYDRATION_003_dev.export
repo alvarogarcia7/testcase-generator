@@ -1,0 +1,33 @@
+# Environment: Development
+# Test Case: TC_HYDRATION_003
+# Description: Mixed hydration and sequence variables for development environment
+
+# API Endpoints
+export API_BASE_URL=http://localhost:8080
+export PROCESSING_API_URL=http://localhost:8081
+export METRICS_API_URL=http://localhost:8082
+
+# Authentication
+export TEST_USERNAME=dev_user
+export TEST_PASSWORD=dev_pass_123
+
+# Resource Configuration
+export RESOURCE_NAME=dev-test-resource
+export RESOURCE_TYPE=document
+export ENVIRONMENT_TAG=dev
+export ENVIRONMENT_NAME=development
+
+# Pagination and Limits
+export PAGINATION_LIMIT=10
+
+# Data Processing Paths
+export INPUT_DATA_PATH=/data/dev/input/test.json
+export OUTPUT_DATA_PATH=/data/dev/output/result.json
+export BATCH_SIZE=50
+export MIN_RECORDS_THRESHOLD=1
+
+# Metrics Configuration
+export METRIC_NAME=cpu_usage
+export QUERY_FROM_TIME=2024-01-01T00:00:00Z
+export QUERY_TO_TIME=2024-01-01T01:00:00Z
+export MAX_THRESHOLD=90.0

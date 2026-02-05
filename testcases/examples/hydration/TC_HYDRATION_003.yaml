@@ -1,0 +1,342 @@
+requirement: "HYDRATION_EXAMPLE"
+item: 1
+tc: 3
+id: 'TC_HYDRATION_003'
+description: 'Mixed hydration and sequence variables - demonstrates combining environment hydration with runtime variable capture and substitution'
+
+general_initial_conditions:
+  system:
+    - "curl and jq command-line tools are installed"
+    - "Network connectivity is available"
+
+initial_conditions:
+  api:
+    - "API server is running"
+    - "Authentication service is available"
+  data:
+    - "Test data is seeded in the system"
+
+test_sequences:
+  - id: 1
+    name: "User Workflow with Mixed Variables"
+    description: "Complete user workflow combining hydration vars and captured runtime variables"
+    variables:
+      content_type: "application/json"
+      accept_header: "application/json"
+      user_agent: "TestClient/1.0"
+    initial_conditions:
+      api:
+        - "User creation endpoint is operational"
+        - "User profile endpoint is accessible"
+    steps:
+      - step: 1
+        description: "Authenticate and capture session token (using hydration vars)"
+        command: "curl -s -X POST ${#API_BASE_URL}/auth/login -H 'Content-Type: ${content_type}' -H 'User-Agent: ${user_agent}' -d '{\"username\":\"${#TEST_USERNAME}\",\"password\":\"${#TEST_PASSWORD}\"}'"
+        capture_vars:
+          session_token: "(?<=\"token\":\")[a-zA-Z0-9._-]+"
+          token_expires_in: "(?<=\"expires_in\":)\\d+"
+          user_id: "(?<=\"user_id\":)\\d+"
+        expected:
+          success: true
+          result: 0
+          output: "token"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'token' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 2
+        description: "Create new resource using captured token and hydration endpoint"
+        command: "curl -s -X POST ${#API_BASE_URL}/api/resources -H 'Authorization: Bearer ${session_token}' -H 'Content-Type: ${content_type}' -d '{\"name\":\"${#RESOURCE_NAME}\",\"type\":\"${#RESOURCE_TYPE}\",\"owner_id\":${user_id}}'"
+        capture_vars:
+          resource_id: "(?<=\"id\":)\\d+"
+          resource_created_at: "(?<=\"created_at\":\")\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}"
+        expected:
+          success: true
+          result: 0
+          output: "created"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'id' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 3
+        description: "Retrieve created resource using captured IDs"
+        command: "curl -s -H 'Authorization: Bearer ${session_token}' -H 'Accept: ${accept_header}' ${#API_BASE_URL}/api/resources/${resource_id}"
+        expected:
+          success: true
+          result: 0
+          output: "${#RESOURCE_NAME}"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q '${#RESOURCE_NAME}' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 4
+        description: "Update resource with environment-specific tags"
+        command: "curl -s -X PATCH ${#API_BASE_URL}/api/resources/${resource_id} -H 'Authorization: Bearer ${session_token}' -H 'Content-Type: ${content_type}' -d '{\"tags\":[\"${#ENVIRONMENT_TAG}\",\"test\",\"user_${user_id}\"]}'"
+        capture_vars:
+          update_status: "(?<=\"status\":\")[a-z]+"
+        expected:
+          success: true
+          result: 0
+          output: "updated"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'updated' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 5
+        description: "List user's resources with environment-specific pagination"
+        command: "curl -s -H 'Authorization: Bearer ${session_token}' '${#API_BASE_URL}/api/users/${user_id}/resources?limit=${#PAGINATION_LIMIT}&offset=0'"
+        capture_vars:
+          total_resources: "(?<=\"total\":)\\d+"
+        expected:
+          success: true
+          result: 0
+          output: "resources"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'resources' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 6
+        description: "Verify resource count meets expectations"
+        command: "echo Total resources: ${total_resources}"
+        expected:
+          success: true
+          result: 0
+          output: "${total_resources}"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ ${total_resources} -ge 1 ]]"
+
+  - id: 2
+    name: "Data Processing with Variable Composition"
+    description: "Process data using composed variables from both hydration and capture"
+    variables:
+      processing_mode: "batch"
+      output_format: "json"
+    initial_conditions:
+      processing:
+        - "Data processing service is available"
+        - "Storage service is accessible"
+    steps:
+      - step: 1
+        description: "Submit processing job with hydration and sequence vars"
+        command: "curl -s -X POST ${#PROCESSING_API_URL}/jobs -H 'Content-Type: application/json' -d '{\"mode\":\"${processing_mode}\",\"format\":\"${output_format}\",\"input_path\":\"${#INPUT_DATA_PATH}\",\"batch_size\":${#BATCH_SIZE}}'"
+        capture_vars:
+          job_id: "(?<=\"job_id\":\")[a-f0-9-]{36}"
+          estimated_duration: "(?<=\"estimated_seconds\":)\\d+"
+        expected:
+          success: true
+          result: 0
+          output: "job_id"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'job_id' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 2
+        description: "Monitor job status using captured job_id"
+        command: "curl -s ${#PROCESSING_API_URL}/jobs/${job_id}/status"
+        capture_vars:
+          job_status: "(?<=\"status\":\")[a-z_]+"
+          progress_percent: "(?<=\"progress\":)\\d+"
+        expected:
+          success: true
+          result: 0
+          output: "status"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -qE '(pending|running|completed)' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 3
+        description: "Get job result with environment-specific output path"
+        command: "curl -s ${#PROCESSING_API_URL}/jobs/${job_id}/result?output_path=${#OUTPUT_DATA_PATH}"
+        capture_vars:
+          result_url: "(?<=\"result_url\":\")https?://[^\"]+(?=\")"
+          records_processed: "(?<=\"records_processed\":)\\d+"
+        expected:
+          success: true
+          result: 0
+          output: "result_url"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'result_url' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 4
+        description: "Verify processing meets environment thresholds"
+        command: "echo Processed ${records_processed} records for job ${job_id}"
+        expected:
+          success: true
+          result: 0
+          output: "${records_processed}"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ ${records_processed} -ge ${#MIN_RECORDS_THRESHOLD} ]]"
+
+  - id: 3
+    name: "Configuration and Metrics Collection"
+    description: "Collect system metrics using mixed variable sources"
+    variables:
+      metric_interval: "1"
+      metric_unit: "seconds"
+    initial_conditions:
+      monitoring:
+        - "Metrics API is accessible"
+        - "Time-series data is available"
+    steps:
+      - step: 1
+        description: "Get system configuration with hydration endpoint"
+        command: "curl -s ${#METRICS_API_URL}/config?environment=${#ENVIRONMENT_NAME}"
+        capture_vars:
+          sample_rate: "(?<=\"sample_rate\":)\\d+"
+          retention_days: "(?<=\"retention_days\":)\\d+"
+        expected:
+          success: true
+          result: 0
+          output: "config"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'sample_rate' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 2
+        description: "Query metrics with captured and hydration params"
+        command: "curl -s '${#METRICS_API_URL}/metrics/query?metric=${#METRIC_NAME}&interval=${metric_interval}&from=${#QUERY_FROM_TIME}&to=${#QUERY_TO_TIME}'"
+        capture_vars:
+          data_points: "(?<=\"data_points\":)\\d+"
+          avg_value: "(?<=\"average\":)\\d+\\.?\\d*"
+          max_value: "(?<=\"max\":)\\d+\\.?\\d*"
+        expected:
+          success: true
+          result: 0
+          output: "data_points"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'data_points' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 3
+        description: "Validate metrics against environment thresholds"
+        command: "awk -v avg=${avg_value} -v max=${max_value} -v threshold=${#MAX_THRESHOLD} 'BEGIN {if (avg <= threshold && max <= threshold*1.5) exit 0; else exit 1}'"
+        expected:
+          success: true
+          result: 0
+          output: ""
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"
+
+      - step: 4
+        description: "Generate summary using all variable types"
+        command: "echo Environment: ${#ENVIRONMENT_NAME}, Metric: ${#METRIC_NAME}, Interval: ${metric_interval} ${metric_unit}, Data Points: ${data_points}, Avg: ${avg_value}, Max: ${max_value}, Retention: ${retention_days} days"
+        expected:
+          success: true
+          result: 0
+          output: "Environment:"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Environment:' <<< \"$COMMAND_OUTPUT\""
+
+hydration_vars:
+  API_BASE_URL:
+    name: "API_BASE_URL"
+    description: "Base URL for main API"
+    default_value: "http://localhost:8080"
+    required: true
+  
+  PROCESSING_API_URL:
+    name: "PROCESSING_API_URL"
+    description: "Base URL for processing API"
+    default_value: "http://localhost:8081"
+    required: true
+  
+  METRICS_API_URL:
+    name: "METRICS_API_URL"
+    description: "Base URL for metrics API"
+    default_value: "http://localhost:8082"
+    required: true
+  
+  TEST_USERNAME:
+    name: "TEST_USERNAME"
+    description: "Test user username for authentication"
+    default_value: "testuser"
+    required: true
+  
+  TEST_PASSWORD:
+    name: "TEST_PASSWORD"
+    description: "Test user password for authentication"
+    default_value: "testpass123"
+    required: true
+  
+  RESOURCE_NAME:
+    name: "RESOURCE_NAME"
+    description: "Name for test resource creation"
+    default_value: "test-resource"
+    required: true
+  
+  RESOURCE_TYPE:
+    name: "RESOURCE_TYPE"
+    description: "Type of resource to create"
+    default_value: "document"
+    required: true
+  
+  ENVIRONMENT_TAG:
+    name: "ENVIRONMENT_TAG"
+    description: "Tag identifying the environment"
+    default_value: "dev"
+    required: true
+  
+  ENVIRONMENT_NAME:
+    name: "ENVIRONMENT_NAME"
+    description: "Full environment name"
+    default_value: "development"
+    required: true
+  
+  PAGINATION_LIMIT:
+    name: "PAGINATION_LIMIT"
+    description: "Number of items per page"
+    default_value: "10"
+    required: false
+  
+  INPUT_DATA_PATH:
+    name: "INPUT_DATA_PATH"
+    description: "Path to input data for processing"
+    default_value: "/data/input/test.json"
+    required: true
+  
+  OUTPUT_DATA_PATH:
+    name: "OUTPUT_DATA_PATH"
+    description: "Path to output data after processing"
+    default_value: "/data/output/result.json"
+    required: true
+  
+  BATCH_SIZE:
+    name: "BATCH_SIZE"
+    description: "Number of records per batch"
+    default_value: "100"
+    required: false
+  
+  MIN_RECORDS_THRESHOLD:
+    name: "MIN_RECORDS_THRESHOLD"
+    description: "Minimum records that must be processed"
+    default_value: "1"
+    required: false
+  
+  METRIC_NAME:
+    name: "METRIC_NAME"
+    description: "Name of metric to query"
+    default_value: "cpu_usage"
+    required: true
+  
+  QUERY_FROM_TIME:
+    name: "QUERY_FROM_TIME"
+    description: "Start time for metric query"
+    default_value: "2024-01-01T00:00:00Z"
+    required: true
+  
+  QUERY_TO_TIME:
+    name: "QUERY_TO_TIME"
+    description: "End time for metric query"
+    default_value: "2024-01-01T01:00:00Z"
+    required: true
+  
+  MAX_THRESHOLD:
+    name: "MAX_THRESHOLD"
+    description: "Maximum acceptable metric value"
+    default_value: "80.0"
+    required: false

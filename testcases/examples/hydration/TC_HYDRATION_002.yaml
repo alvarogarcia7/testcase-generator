@@ -1,0 +1,258 @@
+requirement: "HYDRATION_EXAMPLE"
+item: 1
+tc: 2
+id: 'TC_HYDRATION_002'
+description: 'Database connection strings - demonstrates hydration placeholders for environment-specific database testing'
+
+general_initial_conditions:
+  system:
+    - "PostgreSQL client tools are installed"
+    - "Network connectivity to database server is available"
+
+initial_conditions:
+  database:
+    - "Database server is running and accessible"
+    - "Test database user credentials are configured"
+    - "Test tables exist in the database"
+
+test_sequences:
+  - id: 1
+    name: "Database Connection Test"
+    description: "Verify database connectivity using environment-specific connection strings"
+    initial_conditions:
+      database:
+        - "Database server accepts connections"
+        - "Firewall rules allow database access"
+    steps:
+      - step: 1
+        description: "Test basic database connection"
+        command: "psql -h ${#DB_HOST} -p ${#DB_PORT} -U ${#DB_USER} -d ${#DB_NAME} -c 'SELECT 1;'"
+        expected:
+          success: true
+          result: 0
+          output: "1"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q '1 row' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 2
+        description: "Verify database version"
+        command: "psql -h ${#DB_HOST} -p ${#DB_PORT} -U ${#DB_USER} -d ${#DB_NAME} -c 'SELECT version();'"
+        expected:
+          success: true
+          result: 0
+          output: "PostgreSQL"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'PostgreSQL ${#EXPECTED_PG_VERSION}' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 3
+        description: "Check database is using correct SSL mode"
+        command: "psql -h ${#DB_HOST} -p ${#DB_PORT} -U ${#DB_USER} -d ${#DB_NAME} -c 'SHOW ssl;'"
+        expected:
+          success: true
+          result: 0
+          output: "${#EXPECTED_SSL_MODE}"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q '${#EXPECTED_SSL_MODE}' <<< \"$COMMAND_OUTPUT\""
+
+  - id: 2
+    name: "Database Query Operations"
+    description: "Test database operations with environment-specific configuration"
+    initial_conditions:
+      database:
+        - "Test tables are accessible"
+        - "Database has sufficient resources"
+    steps:
+      - step: 1
+        description: "List all tables in the database"
+        command: "psql -h ${#DB_HOST} -p ${#DB_PORT} -U ${#DB_USER} -d ${#DB_NAME} -c '\\dt' -t"
+        expected:
+          success: true
+          result: 0
+          output: "table"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'public' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 2
+        description: "Query test table with environment-specific limit"
+        command: "psql -h ${#DB_HOST} -p ${#DB_PORT} -U ${#DB_USER} -d ${#DB_NAME} -c 'SELECT COUNT(*) FROM ${#TEST_TABLE} LIMIT ${#QUERY_LIMIT};'"
+        capture_vars:
+          record_count: "(?<=\\n)\\s*\\d+(?=\\n)"
+        expected:
+          success: true
+          result: 0
+          output: "count"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q '[0-9]\\+' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 3
+        description: "Verify record count is within expected range"
+        command: "echo ${record_count}"
+        expected:
+          success: true
+          result: 0
+          output: "${record_count}"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ ${record_count} -ge ${#MIN_EXPECTED_RECORDS} ]]"
+
+  - id: 3
+    name: "Database Connection String Format"
+    description: "Test using full connection string format"
+    initial_conditions:
+      database:
+        - "Connection string format is supported"
+    steps:
+      - step: 1
+        description: "Connect using full connection string"
+        command: "psql '${#DB_CONNECTION_STRING}' -c 'SELECT current_database();'"
+        expected:
+          success: true
+          result: 0
+          output: "${#DB_NAME}"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q '${#DB_NAME}' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 2
+        description: "Test connection pooling settings"
+        command: "psql '${#DB_CONNECTION_STRING}' -c 'SHOW max_connections;'"
+        capture_vars:
+          max_connections: "(?<=\\n)\\s*\\d+(?=\\n)"
+        expected:
+          success: true
+          result: 0
+          output: "max_connections"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q '[0-9]\\+' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 3
+        description: "Verify database connection settings meet environment requirements"
+        command: "echo ${max_connections}"
+        expected:
+          success: true
+          result: 0
+          output: "${max_connections}"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ ${max_connections} -ge ${#MIN_MAX_CONNECTIONS} ]]"
+
+  - id: 4
+    name: "Database Performance Check"
+    description: "Verify database performance meets environment SLA"
+    initial_conditions:
+      database:
+        - "Database is not under heavy load"
+    steps:
+      - step: 1
+        description: "Measure query execution time"
+        command: "time psql -h ${#DB_HOST} -p ${#DB_PORT} -U ${#DB_USER} -d ${#DB_NAME} -c 'SELECT pg_sleep(0.1);' 2>&1 | grep real"
+        expected:
+          success: true
+          result: 0
+          output: "real"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'real' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 2
+        description: "Check database cache hit ratio"
+        command: "psql -h ${#DB_HOST} -p ${#DB_PORT} -U ${#DB_USER} -d ${#DB_NAME} -t -c 'SELECT ROUND(100.0 * sum(blks_hit) / sum(blks_hit + blks_read), 2) AS cache_hit_ratio FROM pg_stat_database WHERE datname = current_database();'"
+        capture_vars:
+          cache_ratio: "\\d+\\.\\d+"
+        expected:
+          success: true
+          result: 0
+          output: "."
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -qE '[0-9]+\\.[0-9]+' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 3
+        description: "Verify cache hit ratio meets environment threshold"
+        command: "awk -v ratio=${cache_ratio} -v threshold=${#MIN_CACHE_HIT_RATIO} 'BEGIN {exit !(ratio >= threshold)}'"
+        expected:
+          success: true
+          result: 0
+          output: ""
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"
+
+hydration_vars:
+  DB_HOST:
+    name: "DB_HOST"
+    description: "Database server hostname or IP address"
+    default_value: "localhost"
+    required: true
+  
+  DB_PORT:
+    name: "DB_PORT"
+    description: "Database server port number"
+    default_value: "5432"
+    required: true
+  
+  DB_USER:
+    name: "DB_USER"
+    description: "Database username for authentication"
+    default_value: "testuser"
+    required: true
+  
+  DB_NAME:
+    name: "DB_NAME"
+    description: "Database name to connect to"
+    default_value: "testdb"
+    required: true
+  
+  DB_CONNECTION_STRING:
+    name: "DB_CONNECTION_STRING"
+    description: "Full PostgreSQL connection string"
+    default_value: "postgresql://testuser:testpass@localhost:5432/testdb"
+    required: true
+  
+  EXPECTED_PG_VERSION:
+    name: "EXPECTED_PG_VERSION"
+    description: "Expected PostgreSQL major version"
+    default_value: "14"
+    required: true
+  
+  EXPECTED_SSL_MODE:
+    name: "EXPECTED_SSL_MODE"
+    description: "Expected SSL mode (on/off)"
+    default_value: "off"
+    required: true
+  
+  TEST_TABLE:
+    name: "TEST_TABLE"
+    description: "Name of test table for queries"
+    default_value: "users"
+    required: true
+  
+  QUERY_LIMIT:
+    name: "QUERY_LIMIT"
+    description: "Maximum number of rows to query"
+    default_value: "100"
+    required: false
+  
+  MIN_EXPECTED_RECORDS:
+    name: "MIN_EXPECTED_RECORDS"
+    description: "Minimum expected number of records in test table"
+    default_value: "0"
+    required: false
+  
+  MIN_MAX_CONNECTIONS:
+    name: "MIN_MAX_CONNECTIONS"
+    description: "Minimum required max_connections setting"
+    default_value: "100"
+    required: false
+  
+  MIN_CACHE_HIT_RATIO:
+    name: "MIN_CACHE_HIT_RATIO"
+    description: "Minimum acceptable cache hit ratio percentage"
+    default_value: "80.0"
+    required: false

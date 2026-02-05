@@ -1,0 +1,25 @@
+# Environment: Production
+# Test Case: TC_HYDRATION_002
+# Description: Database connection configuration for production environment
+
+# Database Connection
+export DB_HOST=prod-db.example.com
+export DB_PORT=5432
+export DB_USER=prod_readonly
+export DB_NAME=production_db
+
+# Connection String
+export DB_CONNECTION_STRING=postgresql://prod_readonly:prod_readonly_pass@prod-db.example.com:5432/production_db?sslmode=require
+
+# Database Configuration
+export EXPECTED_PG_VERSION=15
+export EXPECTED_SSL_MODE=on
+export TEST_TABLE=users
+
+# Query Settings
+export QUERY_LIMIT=1000
+export MIN_EXPECTED_RECORDS=10000
+
+# Performance Thresholds
+export MIN_MAX_CONNECTIONS=500
+export MIN_CACHE_HIT_RATIO=95.0
