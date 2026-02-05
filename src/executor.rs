@@ -245,7 +245,8 @@ impl TestExecutor {
                     // Generate bash code to perform variable substitution on the command
                     // Store the original command in a variable
                     // Escape backslashes, quotes, and dollar signs to prevent premature expansion
-                    let escaped_command = step.command
+                    let escaped_command = step
+                        .command
                         .replace("\\", "\\\\")
                         .replace("\"", "\\\"")
                         .replace("$", "\\$");
@@ -298,7 +299,10 @@ impl TestExecutor {
                                 "if ! echo \" $STEP_VAR_NAMES \" | grep -q \" {} \"; then\n",
                                 var_name
                             ));
-                            script.push_str(&format!("    STEP_VAR_NAMES=\"$STEP_VAR_NAMES {}\"\n", var_name));
+                            script.push_str(&format!(
+                                "    STEP_VAR_NAMES=\"$STEP_VAR_NAMES {}\"\n",
+                                var_name
+                            ));
                             script.push_str("fi\n");
                         }
                         script.push('\n');

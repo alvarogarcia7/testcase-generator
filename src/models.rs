@@ -5,6 +5,28 @@ use std::path::PathBuf;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
+/// Environment variable definition for hydration
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub struct EnvVariable {
+    /// Name of the environment variable
+    pub name: String,
+
+    /// Description of the environment variable
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+
+    /// Default value for the environment variable
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub default_value: Option<String>,
+
+    /// Whether this environment variable is required
+    #[serde(default)]
+    pub required: bool,
+}
+
+/// Configuration for environment variables (alias for EnvVariable)
+pub type EnvVarConfig = EnvVariable;
+
 /// Verification information for a test step
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Verification {
@@ -162,6 +184,10 @@ pub struct TestCase {
 
     /// Test sequences
     pub test_sequences: Vec<TestSequence>,
+
+    /// Environment variables that need hydration
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hydration_vars: Option<HashMap<String, EnvVariable>>,
 }
 
 /// Collection of test cases
@@ -195,6 +221,7 @@ impl TestCase {
             general_initial_conditions,
             initial_conditions: HashMap::new(),
             test_sequences: Vec::new(),
+            hydration_vars: None,
         }
     }
 }
