@@ -5,6 +5,31 @@ use std::path::PathBuf;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
+/// Type of prerequisite
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[serde(rename_all = "lowercase")]
+pub enum PrerequisiteType {
+    /// Manual prerequisite requiring human verification
+    Manual,
+    /// Automatic prerequisite that can be verified programmatically
+    Automatic,
+}
+
+/// Prerequisite that must be satisfied before running a test case
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub struct Prerequisite {
+    /// Type of prerequisite
+    #[serde(rename = "type")]
+    pub prerequisite_type: PrerequisiteType,
+
+    /// Description of the prerequisite
+    pub description: String,
+
+    /// Command to verify the prerequisite (required for automatic type)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub verification_command: Option<String>,
+}
+
 /// Environment variable definition for hydration
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct EnvVariable {
@@ -176,6 +201,10 @@ pub struct TestCase {
     /// Description of the test case
     pub description: String,
 
+    /// Prerequisites that must be satisfied before running this test case
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prerequisites: Option<Vec<Prerequisite>>,
+
     /// General initial conditions
     pub general_initial_conditions: HashMap<String, Vec<String>>,
 
@@ -218,6 +247,7 @@ impl TestCase {
             tc,
             id,
             description,
+            prerequisites: None,
             general_initial_conditions,
             initial_conditions: HashMap::new(),
             test_sequences: Vec::new(),
