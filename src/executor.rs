@@ -564,6 +564,85 @@ impl TestExecutor {
         let mut execution_error = None;
         let mut verification_failed = false;
 
+        // Handle prerequisites
+        if let Some(ref prerequisites) = test_case.prerequisites {
+            if !prerequisites.is_empty() {
+                println!("Checking prerequisites...");
+
+                for (idx, prereq) in prerequisites.iter().enumerate() {
+                    match prereq.prerequisite_type {
+                        crate::models::PrerequisiteType::Manual => {
+                            // Manual prerequisite: output skip message
+                            println!(
+                                "[SKIP] Manual prerequisite {}: {}",
+                                idx + 1,
+                                prereq.description
+                            );
+                        }
+                        crate::models::PrerequisiteType::Automatic => {
+                            // Automatic prerequisite: execute verification_command
+                            if let Some(ref verification_cmd) = prereq.verification_command {
+                                println!(
+                                    "[CHECK] Automatic prerequisite {}: {}",
+                                    idx + 1,
+                                    prereq.description
+                                );
+
+                                match Command::new("bash")
+                                    .arg("-c")
+                                    .arg(verification_cmd)
+                                    .output()
+                                {
+                                    Ok(output) => {
+                                        let exit_code = output.status.code().unwrap_or(-1);
+                                        if exit_code != 0 {
+                                            let prereq_output =
+                                                String::from_utf8_lossy(&output.stdout)
+                                                    .trim_end()
+                                                    .to_string();
+                                            let prereq_stderr =
+                                                String::from_utf8_lossy(&output.stderr)
+                                                    .trim_end()
+                                                    .to_string();
+                                            let combined_output = if !prereq_stderr.is_empty() {
+                                                format!("{}\n{}", prereq_output, prereq_stderr)
+                                            } else {
+                                                prereq_output
+                                            };
+
+                                            return Err(anyhow::anyhow!(
+                                                "Prerequisite {} failed: {}\nVerification command: {}\nExit code: {}\nOutput: {}",
+                                                idx + 1,
+                                                prereq.description,
+                                                verification_cmd,
+                                                exit_code,
+                                                combined_output
+                                            ));
+                                        }
+                                        println!("[PASS] Prerequisite {} verified", idx + 1);
+                                    }
+                                    Err(e) => {
+                                        return Err(anyhow::anyhow!(
+                                            "Failed to execute verification command for prerequisite {}: {}",
+                                            idx + 1,
+                                            e
+                                        ));
+                                    }
+                                }
+                            } else {
+                                return Err(anyhow::anyhow!(
+                                    "Automatic prerequisite {} has no verification_command",
+                                    idx + 1
+                                ));
+                            }
+                        }
+                    }
+                }
+
+                println!("All prerequisites satisfied\n");
+            }
+        }
+
         for sequence in &test_case.test_sequences {
             for step in &sequence.steps {
                 if step.manual == Some(true) {
