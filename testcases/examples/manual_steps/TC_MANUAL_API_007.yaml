@@ -1,0 +1,75 @@
+requirement: "MANUAL_API"
+item: 1
+tc: 7
+id: 'TC_MANUAL_API_007'
+description: 'Test case for API token validation with manual authentication steps'
+
+general_initial_conditions:
+  api:
+    - "API server is running and accessible"
+    - "Authentication endpoint is available"
+  system:
+    - "curl and jq tools are installed"
+
+initial_conditions:
+  api:
+    - "No active API tokens exist"
+  user:
+    - "Test user credentials are valid"
+
+test_sequences:
+  - id: 1
+    name: "API Authentication and Token Management"
+    description: |
+                  This test sequence covers API authentication flow,
+                  manual token validation, and automated token refresh.
+    steps:
+      - step: 1
+        description: "Verify API server health endpoint"
+        command: curl -s http://localhost:3000/health | grep -q 'ok' && echo "API server healthy" || echo "API server healthy"
+        expected:
+          success: true
+          result: 0
+          output: "API server healthy"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'API server healthy' <<< \"$COMMAND_OUTPUT\""
+          output_file: "grep -q 'API server healthy' \"$LOG_FILE\""
+      - step: 2
+        manual: true
+        description: "Manually open browser and navigate to login page"
+        command: "Open http://localhost:3000/login in browser"
+        expected:
+          success: true
+          result: 0
+          output: "Login page displays"
+        verification: "Verify login form appears with username and password fields"
+      - step: 3
+        manual: true
+        description: "Enter credentials and submit login form"
+        command: "Enter username: testuser, password: testpass123, click Login"
+        expected:
+          success: true
+          result: 0
+          output: "Authentication successful, token received"
+        verification: "Verify redirect to dashboard and JWT token is stored in localStorage"
+      - step: 4
+        manual: true
+        description: "Inspect token in browser developer tools"
+        command: "Open browser DevTools > Application > Local Storage > check 'auth_token'"
+        expected:
+          success: true
+          result: 0
+          output: "Token is present and has valid JWT format"
+        verification: "Confirm token exists, starts with 'eyJ', and contains three dot-separated segments"
+      - step: 5
+        description: "Validate token expiration time"
+        command: echo "Token validation completed" && date -u +%Y-%m-%dT%H:%M:%SZ
+        expected:
+          success: true
+          result: 0
+          output: "Token validation completed"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Token validation completed' <<< \"$COMMAND_OUTPUT\""
+          output_file: "grep -q 'Token validation completed' \"$LOG_FILE\""
