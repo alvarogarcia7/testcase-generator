@@ -76,6 +76,33 @@
         }
       }
     },
+    "hydration_vars": {
+      "type": "object",
+      "description": "Environment variables that need hydration. Each key is the variable name, and the value is an object with metadata.",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the environment variable."
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the environment variable."
+          },
+          "default_value": {
+            "type": "string",
+            "description": "Default value for the environment variable."
+          },
+          "required": {
+            "type": "boolean",
+            "description": "Whether this environment variable is required.",
+            "default": false
+          }
+        },
+        "required": ["name"]
+      }
+    },
     "test_sequences": {
       "type": "array",
       "items": {
