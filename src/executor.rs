@@ -123,6 +123,85 @@ impl TestExecutor {
         script.push_str("echo '[' > \"$JSON_LOG\"\n");
         script.push_str("FIRST_ENTRY=true\n\n");
 
+        // Generate prerequisite checks
+        if let Some(ref prerequisites) = test_case.prerequisites {
+            if !prerequisites.is_empty() {
+                script.push_str("# Prerequisites\n");
+                script.push_str("echo \"Checking prerequisites...\"\n\n");
+
+                for (idx, prereq) in prerequisites.iter().enumerate() {
+                    script.push_str(&format!(
+                        "# Prerequisite {}: {}\n",
+                        idx + 1,
+                        prereq.description
+                    ));
+
+                    match prereq.prerequisite_type {
+                        crate::models::PrerequisiteType::Manual => {
+                            // Manual prerequisite: output description and prompt for confirmation
+                            script.push_str(&format!(
+                                "echo \"[MANUAL PREREQUISITE {}] {}\"\n",
+                                idx + 1,
+                                prereq.description.replace("\"", "\\\"")
+                            ));
+
+                            // Check if we're in interactive mode (TTY available and DEBIAN_FRONTEND not set to noninteractive)
+                            script.push_str("if [[ \"${DEBIAN_FRONTEND}\" != 'noninteractive' && -t 0 ]]; then\n");
+                            script.push_str("    read -p \"Press ENTER to confirm this prerequisite is satisfied...\"\n");
+                            script.push_str("else\n");
+                            script.push_str("    echo \"Non-interactive mode: assuming prerequisite is satisfied.\"\n");
+                            script.push_str("fi\n");
+                        }
+                        crate::models::PrerequisiteType::Automatic => {
+                            // Automatic prerequisite: execute verification_command
+                            if let Some(ref verification_cmd) = prereq.verification_command {
+                                script.push_str(&format!(
+                                    "echo \"[AUTOMATIC PREREQUISITE {}] Verifying: {}\"\n",
+                                    idx + 1,
+                                    prereq.description.replace("\"", "\\\"")
+                                ));
+                                script.push_str("set +e\n");
+                                script.push_str(&format!(
+                                    "PREREQ_OUTPUT=$({{ {}; }} 2>&1)\n",
+                                    verification_cmd
+                                ));
+                                script.push_str("PREREQ_EXIT_CODE=$?\n");
+                                script.push_str("set -e\n");
+                                script.push_str("if [ $PREREQ_EXIT_CODE -ne 0 ]; then\n");
+                                script.push_str(&format!(
+                                    "    echo \"ERROR: Prerequisite {} failed: {}\"\n",
+                                    idx + 1,
+                                    prereq.description.replace("\"", "\\\"")
+                                ));
+                                script.push_str("    echo \"Verification command: ");
+                                script.push_str(&verification_cmd.replace("\"", "\\\""));
+                                script.push_str("\"\n");
+                                script.push_str("    echo \"Exit code: $PREREQ_EXIT_CODE\"\n");
+                                script.push_str("    echo \"Output: $PREREQ_OUTPUT\"\n");
+                                script.push_str("    exit 1\n");
+                                script.push_str("fi\n");
+                                script.push_str(&format!(
+                                    "echo \"[PASS] Prerequisite {} verified\"\n",
+                                    idx + 1
+                                ));
+                            } else {
+                                // Automatic prerequisite without verification command - treat as error
+                                script.push_str(&format!(
+                                    "echo \"ERROR: Automatic prerequisite {} has no verification_command\"\n",
+                                    idx + 1
+                                ));
+                                script.push_str("exit 1\n");
+                            }
+                        }
+                    }
+                    script.push('\n');
+                }
+
+                script.push_str("echo \"All prerequisites satisfied\"\n");
+                script.push_str("echo \"\"\n\n");
+            }
+        }
+
         // Instantiate BDD step registry
         let bdd_registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml")
             .unwrap_or_else(|e| {
