@@ -23,6 +23,9 @@ test_sequences:
     description: |
                   This test sequence covers physical hardware connection,
                   power-up sequence, and automated system detection.
+    initial_conditions:
+      hardware:
+        - "Hardware is ready for setup"
     steps:
       - step: 1
         manual: true
@@ -32,7 +35,9 @@ test_sequences:
           success: true
           result: 0
           output: "Power cable connected securely"
-        verification: "Verify power cable is firmly connected and LED indicators are off"
+        verification:
+          result: "true"
+          output: "Verify power cable is firmly connected and LED indicators are off"
       - step: 2
         manual: true
         description: "Connect Ethernet cable to port 1"
@@ -41,7 +46,9 @@ test_sequences:
           success: true
           result: 0
           output: "Ethernet cable connected"
-        verification: "Verify Ethernet cable click-lock engages and cable is secure"
+        verification:
+          result: "true"
+          output: "Verify Ethernet cable click-lock engages and cable is secure"
       - step: 3
         manual: true
         description: "Press power button to turn on device"
@@ -50,7 +57,9 @@ test_sequences:
           success: true
           result: 0
           output: "Power LED illuminates"
-        verification: "Verify power LED turns on and device begins boot sequence"
+        verification:
+          result: "true"
+          output: "Verify power LED turns on and device begins boot sequence"
       - step: 4
         description: "Wait for device boot and check USB devices"
         command: sleep 30 && lsusb | grep -i device || echo "USB enumeration complete"

@@ -23,6 +23,9 @@ test_sequences:
     description: |
                   This test sequence covers API authentication flow,
                   manual token validation, and automated token refresh.
+    initial_conditions:
+      api:
+        - "API is ready for authentication testing"
     steps:
       - step: 1
         description: "Verify API server health endpoint"
@@ -43,7 +46,9 @@ test_sequences:
           success: true
           result: 0
           output: "Login page displays"
-        verification: "Verify login form appears with username and password fields"
+        verification:
+          result: "true"
+          output: "Verify login form appears with username and password fields"
       - step: 3
         manual: true
         description: "Enter credentials and submit login form"
@@ -52,7 +57,9 @@ test_sequences:
           success: true
           result: 0
           output: "Authentication successful, token received"
-        verification: "Verify redirect to dashboard and JWT token is stored in localStorage"
+        verification:
+          result: "true"
+          output: "Verify redirect to dashboard and JWT token is stored in localStorage"
       - step: 4
         manual: true
         description: "Inspect token in browser developer tools"
@@ -61,7 +68,9 @@ test_sequences:
           success: true
           result: 0
           output: "Token is present and has valid JWT format"
-        verification: "Confirm token exists, starts with 'eyJ', and contains three dot-separated segments"
+        verification:
+          result: "true"
+          output: "Confirm token exists, starts with 'eyJ', and contains three dot-separated segments"
       - step: 5
         description: "Validate token expiration time"
         command: echo "Token validation completed" && date -u +%Y-%m-%dT%H:%M:%SZ

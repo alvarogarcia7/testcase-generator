@@ -23,6 +23,9 @@ test_sequences:
     description: |
                   This test sequence demonstrates a complete workflow mixing
                   automated checks, manual operations, and visual verification.
+    initial_conditions:
+      system:
+        - "System is ready for end-to-end testing"
     steps:
       - step: 1
         description: "Automated system health check"
@@ -43,7 +46,9 @@ test_sequences:
           success: true
           result: 0
           output: "Service starts, status indicator turns green"
-        verification: "Verify Start button becomes disabled, Stop button enables, and status shows 'Running'"
+        verification:
+          result: "true"
+          output: "Verify Start button becomes disabled, Stop button enables, and status shows 'Running'"
       - step: 3
         description: "Automated verification of service startup"
         command: sleep 5 && ps aux | grep -i 'service' | grep -v grep || echo "Service process verified"
@@ -62,7 +67,9 @@ test_sequences:
           success: true
           result: 0
           output: "Test workflow completes successfully"
-        verification: "Verify all workflow steps execute, progress bar reaches 100%, and success message appears"
+        verification:
+          result: "true"
+          output: "Verify all workflow steps execute, progress bar reaches 100%, and success message appears"
       - step: 5
         description: "Automated log analysis"
         command: echo "Log analysis completed" && grep -c "ERROR" /dev/null 2>/dev/null || echo "No critical errors found"

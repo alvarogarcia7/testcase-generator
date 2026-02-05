@@ -23,6 +23,9 @@ test_sequences:
     description: |
                   This test sequence verifies SSH connectivity to a remote device
                   with manual authentication and automated verification steps.
+    initial_conditions:
+      device:
+        - "SSH server is accessible"
     steps:
       - step: 1
         description: "Check device network connectivity"
@@ -43,7 +46,9 @@ test_sequences:
           success: true
           result: 0
           output: "Successfully authenticated"
-        verification: "Verify that SSH login prompt appears and authentication succeeds"
+        verification:
+          result: "true"
+          output: "Verify that SSH login prompt appears and authentication succeeds"
       - step: 3
         manual: true
         description: "Execute uptime command on remote device"
@@ -52,7 +57,9 @@ test_sequences:
           success: true
           result: 0
           output: "load average"
-        verification: "Confirm uptime shows system has been running and displays load average"
+        verification:
+          result: "true"
+          output: "Confirm uptime shows system has been running and displays load average"
       - step: 4
         description: "Check SSH service status locally"
         command: systemctl status ssh | grep -i active || echo "SSH service check"
@@ -71,4 +78,6 @@ test_sequences:
           success: true
           result: 0
           output: "Connection closed"
-        verification: "Verify SSH session terminates cleanly and returns to local prompt"
+        verification:
+          result: "true"
+          output: "Verify SSH session terminates cleanly and returns to local prompt"

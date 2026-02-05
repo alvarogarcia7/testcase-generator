@@ -23,6 +23,9 @@ test_sequences:
     description: |
                   This test sequence verifies UI elements are correctly displayed
                   and functional through manual inspection and automated checks.
+    initial_conditions:
+      application:
+        - "UI is ready for testing"
     steps:
       - step: 1
         description: "Verify application server is responding"
@@ -43,7 +46,9 @@ test_sequences:
           success: true
           result: 0
           output: "Homepage loads successfully"
-        verification: "Verify homepage displays within 3 seconds with no console errors"
+        verification:
+          result: "true"
+          output: "Verify homepage displays within 3 seconds with no console errors"
       - step: 3
         manual: true
         description: "Verify navigation menu is visible and properly styled"
@@ -52,7 +57,9 @@ test_sequences:
           success: true
           result: 0
           output: "Navigation menu displays correctly"
-        verification: "Confirm menu items are aligned, text is readable, and hover effects work"
+        verification:
+          result: "true"
+          output: "Confirm menu items are aligned, text is readable, and hover effects work"
       - step: 4
         manual: true
         description: "Click on Settings button and verify modal opens"
@@ -61,7 +68,9 @@ test_sequences:
           success: true
           result: 0
           output: "Settings modal opens"
-        verification: "Verify modal appears centered, overlay dims background, close button visible"
+        verification:
+          result: "true"
+          output: "Verify modal appears centered, overlay dims background, close button visible"
       - step: 5
         description: "Check browser console logs for errors"
         command: echo "Console log check - automated via browser developer tools API"

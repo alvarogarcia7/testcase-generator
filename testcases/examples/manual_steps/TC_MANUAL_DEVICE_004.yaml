@@ -23,6 +23,9 @@ test_sequences:
     description: |
                   This test sequence verifies device power state transitions
                   including sleep, wake, and shutdown operations.
+    initial_conditions:
+      device:
+        - "Device is ready for power testing"
     steps:
       - step: 1
         description: "Record initial power state"
@@ -43,7 +46,9 @@ test_sequences:
           success: true
           result: 0
           output: "Device enters sleep mode"
-        verification: "Verify power LED changes to sleep state (blinking/amber) and display turns off"
+        verification:
+          result: "true"
+          output: "Verify power LED changes to sleep state (blinking/amber) and display turns off"
       - step: 3
         manual: true
         description: "Wait 10 seconds then press power button to wake device"
@@ -52,7 +57,9 @@ test_sequences:
           success: true
           result: 0
           output: "Device wakes from sleep"
-        verification: "Verify power LED returns to on state and display activates within 3 seconds"
+        verification:
+          result: "true"
+          output: "Verify power LED returns to on state and display activates within 3 seconds"
       - step: 4
         description: "Verify system uptime after wake"
         command: uptime | grep -oE 'up.*,' || echo "System uptime verified"
@@ -71,4 +78,6 @@ test_sequences:
           success: true
           result: 0
           output: "Device powers off"
-        verification: "Verify all LEDs turn off and device becomes completely silent"
+        verification:
+          result: "true"
+          output: "Verify all LEDs turn off and device becomes completely silent"

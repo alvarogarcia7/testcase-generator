@@ -23,6 +23,9 @@ test_sequences:
     description: |
                   This test sequence verifies SSL certificate installation,
                   manual inspection of certificate details, and trust chain validation.
+    initial_conditions:
+      security:
+        - "SSL certificate is ready for validation"
     steps:
       - step: 1
         description: "Check if HTTPS port is listening"
@@ -52,7 +55,9 @@ test_sequences:
           success: true
           result: 0
           output: "Certificate details displayed"
-        verification: "Verify certificate shows valid issuer, correct domain name, and future expiration date"
+        verification:
+          result: "true"
+          output: "Verify certificate shows valid issuer, correct domain name, and future expiration date"
       - step: 4
         manual: true
         description: "Verify certificate chain of trust"
@@ -61,7 +66,9 @@ test_sequences:
           success: true
           result: 0
           output: "Certificate chain is valid and trusted"
-        verification: "Confirm complete chain from leaf certificate to trusted root CA with no warnings"
+        verification:
+          result: "true"
+          output: "Confirm complete chain from leaf certificate to trusted root CA with no warnings"
       - step: 5
         manual: true
         description: "Check certificate expiration date"
@@ -70,4 +77,6 @@ test_sequences:
           success: true
           result: 0
           output: "Certificate valid for at least 30 days"
-        verification: "Verify expiration date is at least 30 days in the future from today"
+        verification:
+          result: "true"
+          output: "Verify expiration date is at least 30 days in the future from today"

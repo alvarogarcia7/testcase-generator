@@ -24,6 +24,9 @@ test_sequences:
     description: |
                   This test sequence covers backup file validation,
                   restoration process, and manual data integrity verification.
+    initial_conditions:
+      backup:
+        - "Backup files are ready for restoration"
     steps:
       - step: 1
         description: "List available backup files"
@@ -53,7 +56,9 @@ test_sequences:
           success: true
           result: 0
           output: "Backup extracted successfully"
-        verification: "Verify tar command completes without errors and all files are extracted"
+        verification:
+          result: "true"
+          output: "Verify tar command completes without errors and all files are extracted"
       - step: 4
         manual: true
         description: "Manually inspect restored configuration files"
@@ -62,7 +67,9 @@ test_sequences:
           success: true
           result: 0
           output: "Configuration files present and valid"
-        verification: "Verify all expected config files exist, are readable, and contain valid syntax"
+        verification:
+          result: "true"
+          output: "Verify all expected config files exist, are readable, and contain valid syntax"
       - step: 5
         manual: true
         description: "Manually compare restored data with backup manifest"
@@ -71,4 +78,6 @@ test_sequences:
           success: true
           result: 0
           output: "No differences found, restoration complete"
-        verification: "Confirm all files match manifest, no missing files, and file sizes are correct"
+        verification:
+          result: "true"
+          output: "Confirm all files match manifest, no missing files, and file sizes are correct"
