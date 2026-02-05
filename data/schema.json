@@ -17,6 +17,43 @@
     "description": {
       "type": "string"
     },
+    "prerequisites": {
+      "type": "array",
+      "description": "Optional list of prerequisites that must be satisfied before running this test case.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["manual", "automatic"],
+            "description": "Type of prerequisite: 'manual' requires human verification, 'automatic' can be verified programmatically."
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable description of the prerequisite."
+          },
+          "verification_command": {
+            "type": "string",
+            "description": "Command to verify the prerequisite (required for automatic type)."
+          }
+        },
+        "required": ["type", "description"],
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "automatic"
+                }
+              }
+            },
+            "then": {
+              "required": ["verification_command"]
+            }
+          }
+        ]
+      }
+    },
     "general_initial_conditions": {
       "type": "object",
       "description": "Top-level general initial conditions. Values can use BDD patterns (e.g., 'create directory \"/tmp/test\"') that are automatically converted to executable commands, or plain text that becomes comments. See docs/BDD_INITIAL_CONDITIONS.md for pattern reference.",
