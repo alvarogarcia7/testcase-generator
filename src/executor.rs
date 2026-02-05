@@ -1,4 +1,5 @@
 use crate::bdd_parser::BddStepRegistry;
+use crate::hydration::VarHydrator;
 use crate::models::{TestCase, TestStepExecutionEntry};
 use anyhow::{Context, Result};
 use chrono::Local;
@@ -57,6 +58,53 @@ fn test_case_uses_variables(test_case: &TestCase) -> bool {
     false
 }
 
+/// Check if a test case uses hydration variables (${#VAR_NAME} pattern)
+fn test_case_uses_hydration_vars(test_case: &TestCase) -> bool {
+    let hydrator = VarHydrator::new();
+
+    // Check all test sequences
+    for sequence in &test_case.test_sequences {
+        // Check each step's command and verification expressions
+        for step in &sequence.steps {
+            // Check command
+            if !hydrator.extract_placeholders(&step.command).is_empty() {
+                return true;
+            }
+
+            // Check verification result
+            if !hydrator
+                .extract_placeholders(&step.verification.result)
+                .is_empty()
+            {
+                return true;
+            }
+
+            // Check verification output
+            if !hydrator
+                .extract_placeholders(&step.verification.output)
+                .is_empty()
+            {
+                return true;
+            }
+
+            // Check verification output_file
+            if let Some(ref output_file) = step.verification.output_file {
+                if !hydrator.extract_placeholders(output_file).is_empty() {
+                    return true;
+                }
+            }
+        }
+    }
+
+    false
+}
+
+/// Replace ${#VAR_NAME} with ${VAR_NAME} for bash substitution
+fn convert_hydration_placeholder_to_bash(text: &str) -> String {
+    let placeholder_pattern = Regex::new(r"\$\{#([A-Z_][A-Z0-9_]*)\}").unwrap();
+    placeholder_pattern.replace_all(text, "$${$1}").to_string()
+}
+
 impl TestExecutor {
     pub fn new() -> Self {
         Self { output_dir: None }
@@ -84,6 +132,18 @@ impl TestExecutor {
         script.push_str("# Description: ");
         script.push_str(&test_case.description);
         script.push_str("\n\n");
+
+        // Check if test case uses hydration variables
+        let uses_hydration_vars = test_case_uses_hydration_vars(test_case);
+
+        // Source the export file if hydration variables are present
+        if uses_hydration_vars {
+            script.push_str("# Source environment variables for hydration\n");
+            script.push_str(&format!("EXPORT_FILE=\"{}.env\"\n", test_case.id));
+            script.push_str("if [ -f \"$EXPORT_FILE\" ]; then\n");
+            script.push_str("    source \"$EXPORT_FILE\"\n");
+            script.push_str("fi\n\n");
+        }
 
         script.push_str(&format!("JSON_LOG=\"{}\"\n", json_output_path.display()));
         script.push_str("TIMESTAMP=$(date +\"%Y-%m-%dT%H:%M:%S\")\n\n");
@@ -316,16 +376,18 @@ impl TestExecutor {
                 script.push_str("COMMAND_OUTPUT=\"\"\n");
                 script.push_str("set +e\n");
 
+                // Convert hydration placeholders (${#VAR_NAME} -> ${VAR_NAME})
+                let converted_command = convert_hydration_placeholder_to_bash(&step.command);
+
                 // Check if the command needs variable substitution
                 let needs_substitution =
-                    step.command.contains("${") || step.command.contains("$STEP_VARS");
+                    converted_command.contains("${") || converted_command.contains("$STEP_VARS");
 
                 if needs_substitution {
                     // Generate bash code to perform variable substitution on the command
                     // Store the original command in a variable
                     // Escape backslashes, quotes, and dollar signs to prevent premature expansion
-                    let escaped_command = step
-                        .command
+                    let escaped_command = converted_command
                         .replace("\\", "\\\\")
                         .replace("\"", "\\\"")
                         .replace("$", "\\$");
@@ -354,7 +416,7 @@ impl TestExecutor {
                     // No substitution needed - inline the command directly
                     script.push_str(&format!(
                         "COMMAND_OUTPUT=$({{ {}; }} 2>&1 | tee \"$LOG_FILE\")\n",
-                        step.command
+                        converted_command
                     ));
                 }
 
@@ -388,36 +450,43 @@ impl TestExecutor {
                     }
                 }
 
-                script.push_str(&format!(
-                    "# Verification result expression: {}\n",
-                    step.verification.result
-                ));
+                // Convert hydration placeholders in verification expressions
+                let converted_result =
+                    convert_hydration_placeholder_to_bash(&step.verification.result);
 
-                // Determine which output verification to use
+                // Determine which output verification to use and convert it
                 let output_verification =
                     if let Some(ref output_file_verification) = step.verification.output_file {
-                        script.push_str(&format!(
-                            "# Verification output expression (from file): {}\n",
-                            output_file_verification
-                        ));
                         output_file_verification.as_str()
                     } else {
-                        script.push_str(&format!(
-                            "# Verification output expression (from variable): {}\n",
-                            step.verification.output
-                        ));
                         step.verification.output.as_str()
                     };
+                let converted_output = convert_hydration_placeholder_to_bash(output_verification);
+
+                script.push_str(&format!(
+                    "# Verification result expression: {}\n",
+                    converted_result
+                ));
+
+                if step.verification.output_file.is_some() {
+                    script.push_str(&format!(
+                        "# Verification output expression (from file): {}\n",
+                        converted_output
+                    ));
+                } else {
+                    script.push_str(&format!(
+                        "# Verification output expression (from variable): {}\n",
+                        converted_output
+                    ));
+                }
 
                 script.push_str("VERIFICATION_RESULT_PASS=false\n");
                 script.push_str("VERIFICATION_OUTPUT_PASS=false\n\n");
 
                 // Perform variable substitution on verification expressions
-                let result_needs_subst = step.verification.result.contains("${")
-                    || step.verification.result.contains("$STEP_VARS");
-                let escaped_result_expr = step
-                    .verification
-                    .result
+                let result_needs_subst =
+                    converted_result.contains("${") || converted_result.contains("$STEP_VARS");
+                let escaped_result_expr = converted_result
                     .replace("\\", "\\\\")
                     .replace("$", "\\$")
                     .replace("\"", "\\\"");
@@ -438,9 +507,9 @@ impl TestExecutor {
                 }
                 script.push('\n');
 
-                let output_needs_subst = output_verification.contains("${")
-                    || output_verification.contains("$STEP_VARS");
-                let escaped_output_expr = output_verification
+                let output_needs_subst =
+                    converted_output.contains("${") || converted_output.contains("$STEP_VARS");
+                let escaped_output_expr = converted_output
                     .replace("\\", "\\\\")
                     .replace("$", "\\$")
                     .replace("\"", "\\\"");
@@ -480,7 +549,7 @@ impl TestExecutor {
                     step.step, step.description
                 ));
                 script.push_str("    echo \"  Command: ");
-                script.push_str(&step.command.replace("\"", "\\\""));
+                script.push_str(&converted_command.replace("\"", "\\\""));
                 script.push_str("\"\n");
                 script.push_str("    echo \"  Exit code: $EXIT_CODE\"\n");
                 script.push_str("    echo \"  Output: $COMMAND_OUTPUT\"\n");
@@ -489,8 +558,7 @@ impl TestExecutor {
                 script.push_str("    exit 1\n");
                 script.push_str("fi\n\n");
 
-                let escaped_command = step
-                    .command
+                let escaped_command = converted_command
                     .replace("\\", "\\\\")
                     .replace("'", "\"")
                     .replace("\"", "\\\"");
@@ -2096,5 +2164,193 @@ mod tests {
         // Test hex pattern with lookbehind
         let result = convert_pcre_to_sed_pattern(r"(?<=session=)[a-f0-9]+");
         assert_eq!(result, r"s/.*session=\([a-f0-9][a-f0-9]*\).*/\1/p");
+    }
+
+    #[test]
+    fn test_convert_hydration_placeholder_to_bash() {
+        // Test converting ${#VAR_NAME} to ${VAR_NAME}
+        assert_eq!(
+            convert_hydration_placeholder_to_bash("echo ${#SERVER_HOST}"),
+            "echo ${SERVER_HOST}"
+        );
+
+        assert_eq!(
+            convert_hydration_placeholder_to_bash("ssh user@${#HOST} -p ${#PORT}"),
+            "ssh user@${HOST} -p ${PORT}"
+        );
+
+        // Multiple variables
+        assert_eq!(
+            convert_hydration_placeholder_to_bash("${#VAR1} ${#VAR2} ${#VAR3}"),
+            "${VAR1} ${VAR2} ${VAR3}"
+        );
+
+        // No hydration placeholders - should remain unchanged
+        assert_eq!(
+            convert_hydration_placeholder_to_bash("echo ${STEP_VAR}"),
+            "echo ${STEP_VAR}"
+        );
+
+        // Mixed hydration and regular variables
+        assert_eq!(
+            convert_hydration_placeholder_to_bash("echo ${#SERVER} and ${STEP_VAR}"),
+            "echo ${SERVER} and ${STEP_VAR}"
+        );
+    }
+
+    #[test]
+    fn test_test_case_uses_hydration_vars() {
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test with hydration vars".to_string(),
+        );
+
+        let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+
+        // Test case without hydration vars
+        let step1 = Step {
+            step: 1,
+            manual: None,
+            description: "Normal step".to_string(),
+            command: "echo hello".to_string(),
+            capture_vars: None,
+            expected: Expected {
+                success: Some(true),
+                result: "0".to_string(),
+                output: "hello".to_string(),
+            },
+            verification: Verification {
+                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
+                output: "true".to_string(),
+                output_file: None,
+            },
+        };
+        sequence.steps.push(step1);
+        test_case.test_sequences.push(sequence.clone());
+
+        assert!(!test_case_uses_hydration_vars(&test_case));
+
+        // Add step with hydration var in command
+        let mut test_case2 = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC002".to_string(),
+            "Test with hydration vars".to_string(),
+        );
+        let mut sequence2 = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+        let step2 = Step {
+            step: 1,
+            manual: None,
+            description: "Step with hydration var".to_string(),
+            command: "echo ${#SERVER_HOST}".to_string(),
+            capture_vars: None,
+            expected: Expected {
+                success: Some(true),
+                result: "0".to_string(),
+                output: "example.com".to_string(),
+            },
+            verification: Verification {
+                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
+                output: "true".to_string(),
+                output_file: None,
+            },
+        };
+        sequence2.steps.push(step2);
+        test_case2.test_sequences.push(sequence2);
+
+        assert!(test_case_uses_hydration_vars(&test_case2));
+    }
+
+    #[test]
+    fn test_generate_script_with_hydration_vars() {
+        let executor = TestExecutor::new();
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC_HYDRATION_001".to_string(),
+            "Test with hydration vars".to_string(),
+        );
+
+        let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+        let step = Step {
+            step: 1,
+            manual: None,
+            description: "Echo server host".to_string(),
+            command: "echo ${#SERVER_HOST}".to_string(),
+            capture_vars: None,
+            expected: Expected {
+                success: Some(true),
+                result: "0".to_string(),
+                output: "example.com".to_string(),
+            },
+            verification: Verification {
+                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
+                output: "[[ \"$COMMAND_OUTPUT\" == *\"${#EXPECTED_OUTPUT}\"* ]]".to_string(),
+                output_file: None,
+            },
+        };
+        sequence.steps.push(step);
+        test_case.test_sequences.push(sequence);
+
+        let script = executor.generate_test_script(&test_case);
+
+        // Should source the export file
+        assert!(script.contains("# Source environment variables for hydration"));
+        assert!(script.contains("EXPORT_FILE=\"TC_HYDRATION_001.env\""));
+        assert!(script.contains("if [ -f \"$EXPORT_FILE\" ]; then"));
+        assert!(script.contains("    source \"$EXPORT_FILE\""));
+
+        // Should convert ${#SERVER_HOST} to ${SERVER_HOST} (appears escaped in ORIGINAL_COMMAND)
+        assert!(script.contains("ORIGINAL_COMMAND=\"echo \\${SERVER_HOST}\""));
+        assert!(!script.contains("${#SERVER_HOST}"));
+
+        // Should convert verification expression
+        assert!(script.contains("\\${EXPECTED_OUTPUT}"));
+        assert!(!script.contains("${#EXPECTED_OUTPUT}"));
+    }
+
+    #[test]
+    fn test_generate_script_without_hydration_vars() {
+        let executor = TestExecutor::new();
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC_NO_HYDRATION_001".to_string(),
+            "Test without hydration vars".to_string(),
+        );
+
+        let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+        let step = Step {
+            step: 1,
+            manual: None,
+            description: "Echo test".to_string(),
+            command: "echo hello".to_string(),
+            capture_vars: None,
+            expected: Expected {
+                success: Some(true),
+                result: "0".to_string(),
+                output: "hello".to_string(),
+            },
+            verification: Verification {
+                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
+                output: "true".to_string(),
+                output_file: None,
+            },
+        };
+        sequence.steps.push(step);
+        test_case.test_sequences.push(sequence);
+
+        let script = executor.generate_test_script(&test_case);
+
+        // Should NOT source the export file
+        assert!(!script.contains("# Source environment variables for hydration"));
+        assert!(!script.contains("EXPORT_FILE="));
+        assert!(!script.contains("source \"$EXPORT_FILE\""));
     }
 }
