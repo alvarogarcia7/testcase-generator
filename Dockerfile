@@ -51,9 +51,6 @@ for bin in $(ls -F /app/target/release | grep -E ".*\*" | cut -d"*" -f1); do \
       fi; \
     done
 
-# Stage 2: runtime - Final lightweight image
-FROM debian:bookworm-slim AS runtime
-
 # Install runtime dependencies: git, inotify-tools for watch mode, and make
 RUN apt-get update && \
     apt-get install -y git inotify-tools make && \
@@ -62,7 +59,7 @@ RUN apt-get update && \
 WORKDIR /app
 
 # Copy only the compiled binaries (not auxiliary build files)
-COPY --from=builder /deliverable/* /usr/local/bin/
+COPY /deliverable/* /usr/local/bin/
 
 RUN \
 ls -lah /usr/local/bin/testcase-manager > /dev/null && \
