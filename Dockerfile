@@ -40,6 +40,8 @@ COPY src ./src
 COPY examples ./examples
 COPY tests ./tests
 
+RUN cargo build --all
+
 # Build the application against cached dependencies
 # The previous RUN command will be reused if only Cargo.toml/Cargo.lock are unchanged
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
@@ -79,6 +81,12 @@ COPY scripts ./scripts
 
 # Copy Makefile for convenient commands
 COPY Makefile ./Makefile
+
+RUN cargo build --all
+
+COPY . .
+
+RUN cargo build --all
 
 # Make scripts executable
 RUN chmod +x scripts/*.sh && \
