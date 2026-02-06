@@ -4,7 +4,6 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 use tempfile::TempDir;
-use testcase_manager::models::VerificationExpression;
 use testcase_manager::{TestCase, TestExecutor, TestStepExecutionEntry};
 
 /// Validates that a JSON string conforms to the execution log schema
