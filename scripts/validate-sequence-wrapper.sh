@@ -41,6 +41,10 @@
 
 set -euo pipefail
 
+# Source logger library
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/logger.sh" || exit 1
+
 # Configuration: Schema file to validate against
 SEQUENCE_SCHEMA_FILE="${SEQUENCE_SCHEMA_FILE:-data/sequence-schema.json}"
 
@@ -54,14 +58,14 @@ elif [[ -x "target/debug/validate-sequence" ]]; then
 elif command -v validate-sequence >/dev/null 2>&1; then
     VALIDATE_SEQUENCE="validate-sequence"
 else
-    echo "[ERROR] validate-sequence binary not found" >&2
-    echo "[ERROR] Please build it with: cargo build --bin validate-sequence" >&2
+    log_error validate-sequence binary not found" >&2
+    log_error Please build it with: cargo build --bin validate-sequence" >&2
     exit 1
 fi
 
 # Validate arguments
 if [[ $# -eq 0 ]]; then
-    echo "[ERROR] Missing required argument: sequence file path" >&2
+    log_error Missing required argument: sequence file path" >&2
     echo "Usage: $(basename "$0") <sequence-file>" >&2
     exit 1
 fi
@@ -70,14 +74,14 @@ SEQUENCE_FILE="$1"
 
 # Validate that sequence file exists
 if [[ ! -f "$SEQUENCE_FILE" ]]; then
-    echo "[ERROR] Sequence file not found: $SEQUENCE_FILE" >&2
+    log_error Sequence file not found: $SEQUENCE_FILE" >&2
     exit 1
 fi
 
 # Validate that schema file exists
 if [[ ! -f "$SEQUENCE_SCHEMA_FILE" ]]; then
-    echo "[ERROR] Sequence schema file not found: $SEQUENCE_SCHEMA_FILE" >&2
-    echo "[ERROR] Set SEQUENCE_SCHEMA_FILE environment variable to specify the schema" >&2
+    log_error Sequence schema file not found: $SEQUENCE_SCHEMA_FILE" >&2
+    log_error Set SEQUENCE_SCHEMA_FILE environment variable to specify the schema" >&2
     exit 1
 fi
 

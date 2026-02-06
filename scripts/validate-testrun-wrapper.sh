@@ -40,6 +40,10 @@
 
 set -euo pipefail
 
+# Source logger library
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/logger.sh" || exit 1
+
 # Configuration: Schema file to validate against
 TESTRUN_SCHEMA_FILE="${TESTRUN_SCHEMA_FILE:-data/testrun-schema.json}"
 
@@ -53,14 +57,14 @@ elif [[ -x "target/debug/validate-testrun" ]]; then
 elif command -v validate-testrun >/dev/null 2>&1; then
     VALIDATE_TESTRUN="validate-testrun"
 else
-    echo "[ERROR] validate-testrun binary not found" >&2
-    echo "[ERROR] Please build it with: cargo build --bin validate-testrun" >&2
+    log_error validate-testrun binary not found" >&2
+    log_error Please build it with: cargo build --bin validate-testrun" >&2
     exit 1
 fi
 
 # Validate arguments
 if [[ $# -eq 0 ]]; then
-    echo "[ERROR] Missing required argument: test run file path" >&2
+    log_error Missing required argument: test run file path" >&2
     echo "Usage: $(basename "$0") <testrun-file>" >&2
     exit 1
 fi
@@ -69,14 +73,14 @@ TESTRUN_FILE="$1"
 
 # Validate that test run file exists
 if [[ ! -f "$TESTRUN_FILE" ]]; then
-    echo "[ERROR] Test run file not found: $TESTRUN_FILE" >&2
+    log_error Test run file not found: $TESTRUN_FILE" >&2
     exit 1
 fi
 
 # Validate that schema file exists
 if [[ ! -f "$TESTRUN_SCHEMA_FILE" ]]; then
-    echo "[ERROR] TestRun schema file not found: $TESTRUN_SCHEMA_FILE" >&2
-    echo "[ERROR] Set TESTRUN_SCHEMA_FILE environment variable to specify the schema" >&2
+    log_error TestRun schema file not found: $TESTRUN_SCHEMA_FILE" >&2
+    log_error Set TESTRUN_SCHEMA_FILE environment variable to specify the schema" >&2
     exit 1
 fi
 

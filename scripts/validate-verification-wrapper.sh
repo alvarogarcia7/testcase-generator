@@ -43,6 +43,10 @@
 
 set -euo pipefail
 
+# Source logger library
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/logger.sh" || exit 1
+
 # Configuration: Schema file to validate against
 VERIFICATION_SCHEMA_FILE="${VERIFICATION_SCHEMA_FILE:-data/verification-schema.json}"
 
@@ -56,14 +60,14 @@ elif [[ -x "target/debug/validate-json" ]]; then
 elif command -v validate-json >/dev/null 2>&1; then
     VALIDATE_JSON="validate-json"
 else
-    echo "[ERROR] validate-json binary not found" >&2
-    echo "[ERROR] Please build it with: cargo build --bin validate-json" >&2
+    log_error validate-json binary not found" >&2
+    log_error Please build it with: cargo build --bin validate-json" >&2
     exit 1
 fi
 
 # Validate arguments
 if [[ $# -eq 0 ]]; then
-    echo "[ERROR] Missing required argument: verification JSON file path" >&2
+    log_error Missing required argument: verification JSON file path" >&2
     echo "Usage: $(basename "$0") <verification-json-file>" >&2
     exit 1
 fi
@@ -72,14 +76,14 @@ JSON_FILE="$1"
 
 # Validate that JSON file exists
 if [[ ! -f "$JSON_FILE" ]]; then
-    echo "[ERROR] Verification JSON file not found: $JSON_FILE" >&2
+    log_error Verification JSON file not found: $JSON_FILE" >&2
     exit 1
 fi
 
 # Validate that schema file exists
 if [[ ! -f "$VERIFICATION_SCHEMA_FILE" ]]; then
-    echo "[ERROR] Verification schema file not found: $VERIFICATION_SCHEMA_FILE" >&2
-    echo "[ERROR] Set VERIFICATION_SCHEMA_FILE environment variable to specify the schema" >&2
+    log_error Verification schema file not found: $VERIFICATION_SCHEMA_FILE" >&2
+    log_error Set VERIFICATION_SCHEMA_FILE environment variable to specify the schema" >&2
     exit 1
 fi
 

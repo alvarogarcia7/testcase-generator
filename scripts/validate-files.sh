@@ -80,6 +80,11 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Source logger library
+source "$SCRIPT_DIR/lib/logger.sh" || exit 1
+
 PATTERN=""
 VALIDATOR=""
 CACHE_DIR=".validation-cache"
@@ -99,6 +104,7 @@ OPTIONS:
     --cache-dir DIR        Cache directory for validation results (default: .validation-cache)
     --verbose              Enable verbose output
     --watch [DIR]          Enable watch mode to monitor directory for changes (default: testcases/)
+    --no-remove            Do not remove temporary files (for debugging)
     -h, --help             Show this help message
 
 EXAMPLES:
@@ -108,20 +114,6 @@ EXAMPLES:
 
 EOF
     exit 0
-}
-
-log_verbose() {
-    if [[ $VERBOSE -eq 1 ]]; then
-        echo "[VERBOSE] $*" >&2
-    fi
-}
-
-log_info() {
-    echo "[INFO] $*" >&2
-}
-
-log_error() {
-    echo "[ERROR] $*" >&2
 }
 
 # Get mtime of a file in seconds since epoch
@@ -564,6 +556,10 @@ while [[ $# -gt 0 ]]; do
                 WATCH_DIR="testcases/"
                 shift
             fi
+            ;;
+        --no-remove)
+            disable_cleanup
+            shift
             ;;
         -h|--help)
             usage
