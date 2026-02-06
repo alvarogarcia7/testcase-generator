@@ -53,6 +53,7 @@ push-image:
     - docker push $CI_REGISTRY_IMAGE:${CI_COMMIT_SHORT_SHA}
   only:
     - master
+    - main
   tags:
     - dind-amd
 
@@ -212,6 +213,7 @@ docker:push:
       fi
   only:
     - master
+    - main
   tags:
     - dind-amd
 #
@@ -235,6 +237,7 @@ docker:push:
 #    expire_in: 1 month
 #  only:
 #    - master
+#    - main
 #
 #performance:compare:
 #  image: rust:1.92-bookworm
