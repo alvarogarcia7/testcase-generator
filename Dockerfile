@@ -44,10 +44,9 @@ COPY tests ./tests
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/app/target \
     cargo build --all --locked --release --target-dir ./target && \
-mkdir -p /deliverable && \
 for bin in $(ls -F /app/target/release | grep -E ".*\*" | cut -d"*" -f1); do \
       if [ -n "$bin" ]; then \
-        cp "/app/target/release/$bin" /deliverable/ && chmod +x "/deliverable/$bin"; \
+        cp "/app/target/release/$bin" /usr/local/bin/ && chmod +x "/usr/local/bin/$bin"; \
       fi; \
     done
 
@@ -57,9 +56,6 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-
-# Copy only the compiled binaries (not auxiliary build files)
-COPY /deliverable/* /usr/local/bin/
 
 RUN \
 ls -lah /usr/local/bin/testcase-manager > /dev/null && \
