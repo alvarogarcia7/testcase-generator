@@ -406,7 +406,7 @@ fn test_json_log_format_compliance() -> Result<()> {
 }
 
 fn create_simple_test_case() -> TestCase {
-    use testcase_manager::{Expected, Step, TestSequence, Verification};
+    use testcase_manager::{Expected, Step, TestSequence, Verification, VerificationExpression};
 
     let mut test_case = TestCase::new(
         "REQ001".to_string(),
@@ -442,7 +442,7 @@ fn create_simple_test_case() -> TestCase {
 }
 
 fn create_multi_sequence_test_case() -> TestCase {
-    use testcase_manager::{Expected, Step, TestSequence, Verification};
+    use testcase_manager::{Expected, Step, TestSequence, Verification, VerificationExpression};
 
     let mut test_case = TestCase::new(
         "REQ001".to_string(),
@@ -546,7 +546,7 @@ fn create_multi_sequence_test_case() -> TestCase {
 }
 
 fn create_test_case_with_manual_steps() -> TestCase {
-    use testcase_manager::{Expected, Step, TestSequence, Verification};
+    use testcase_manager::{Expected, Step, TestSequence, Verification, VerificationExpression};
 
     let mut test_case = TestCase::new(
         "REQ001".to_string(),
@@ -624,7 +624,7 @@ fn create_test_case_with_manual_steps() -> TestCase {
 }
 
 fn create_test_case_with_special_characters() -> TestCase {
-    use testcase_manager::{Expected, Step, TestSequence, Verification};
+    use testcase_manager::{Expected, Step, TestSequence, Verification, VerificationExpression};
 
     let mut test_case = TestCase::new(
         "REQ001".to_string(),

@@ -1,4 +1,4 @@
-use crate::models::Verification;
+use crate::models::{Verification, VerificationExpression};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -100,8 +100,8 @@ impl VerificationTemplate {
         }
 
         Verification {
-            result: crate::models::VerificationExpression::Simple(result),
-            output: crate::models::VerificationExpression::Simple(output),
+            result: VerificationExpression::Simple(result),
+            output: VerificationExpression::Simple(output),
             output_file: None,
         }
     }
@@ -109,8 +109,8 @@ impl VerificationTemplate {
     /// Expand the template without substitutions (use as-is)
     pub fn expand_default(&self) -> Verification {
         Verification {
-            result: crate::models::VerificationExpression::Simple(self.result_expression.clone()),
-            output: crate::models::VerificationExpression::Simple(self.output_expression.clone()),
+            result: VerificationExpression::Simple(self.result_expression.clone()),
+            output: VerificationExpression::Simple(self.output_expression.clone()),
             output_file: None,
         }
     }
@@ -560,13 +560,11 @@ mod tests {
         let verification = template.expand(&substitutions);
         assert_eq!(
             verification.result,
-            crate::models::VerificationExpression::Simple(
-                "[[ \"$RESULT\" == \"success\" ]]".to_string()
-            )
+            VerificationExpression::Simple("[[ \"$RESULT\" == \"success\" ]]".to_string())
         );
         assert_eq!(
             verification.output,
-            crate::models::VerificationExpression::Simple(
+            VerificationExpression::Simple(
                 "cat $COMMAND_OUTPUT | grep -q \"completed\"".to_string()
             )
         );
@@ -586,11 +584,11 @@ mod tests {
         let verification = template.expand_default();
         assert_eq!(
             verification.result,
-            crate::models::VerificationExpression::Simple("[[ $? -eq 0 ]]".to_string())
+            VerificationExpression::Simple("[[ $? -eq 0 ]]".to_string())
         );
         assert_eq!(
             verification.output,
-            crate::models::VerificationExpression::Simple("cat $COMMAND_OUTPUT".to_string())
+            VerificationExpression::Simple("cat $COMMAND_OUTPUT".to_string())
         );
     }
 
