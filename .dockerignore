@@ -1,10 +1,6 @@
 # Build artifacts
 target/
 
-# Test directories and files
-testcases/
-test_e2e_*
-test_basic_*
 *.json
 
 # Version control
@@ -32,7 +28,6 @@ test_basic_*
 
 # Documentation (will be generated in container)
 README.md
-docs/
 AGENTS.md
 LICENSE
 CONTRIBUTING.md
@@ -47,5 +42,4 @@ Thumbs.db
 .github/
 
 # Docker files
-Dockerfile
 .dockerignore
