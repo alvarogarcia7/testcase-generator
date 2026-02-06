@@ -32,11 +32,16 @@ impl TestExecutor {
                 // Evaluate the condition and execute appropriate branch
                 script.push_str(&format!("if {}; then\n", condition));
 
+                script.push_str(&format!("   {}=true\n", var_name));
+
+
                 // Execute if_true commands
                 if let Some(commands) = if_true {
                     for cmd in commands {
                         script.push_str(&format!("    {}\n", cmd));
                     }
+                } else {
+                    script.push_str(&format!("    {}\n", "true # empty so bash does not fail"));
                 }
 
                 script.push_str("else\n");
@@ -46,6 +51,8 @@ impl TestExecutor {
                     for cmd in commands {
                         script.push_str(&format!("    {}\n", cmd));
                     }
+                } else {
+                    script.push_str(&format!("    {}\n", "true # empty so bash does not fail"));
                 }
 
                 script.push_str("fi\n");
@@ -268,7 +275,7 @@ impl TestExecutor {
                 script.push_str(&step.command.replace("\"", "\\\""));
                 script.push_str("\"\n");
                 script.push_str("    echo \"  Exit code: $EXIT_CODE\"\n");
-                script.push_str("    echo \"  Output: $COMMAND_OUTPUT\"\n");
+                script.push_str("    echo \"  Output: '$COMMAND_OUTPUT'\"\n");
                 script.push_str("    echo \"  Result verification: $VERIFICATION_RESULT_PASS\"\n");
                 script.push_str("    echo \"  Output verification: $VERIFICATION_OUTPUT_PASS\"\n");
                 script.push_str("    exit 1\n");
@@ -337,7 +344,7 @@ impl TestExecutor {
                 }
 
                 println!(
-                    "[RUN] Step {} (Sequence {}): {}",
+                    "[RUN ] Step {} (Sequence {}): {}",
                     step.step, sequence.id, step.description
                 );
 
