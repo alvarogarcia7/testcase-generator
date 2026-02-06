@@ -40,12 +40,13 @@ COPY src ./src
 COPY examples ./examples
 COPY tests ./tests
 
-RUN cargo build --all
+RUN cargo build --all --release
 
 # Build the application against cached dependencies
 # The previous RUN command will be reused if only Cargo.toml/Cargo.lock are unchanged
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/app/target \
+#RUN --mount=type=cache,target=/usr/local/cargo/registry \
+#    --mount=type=cache,target=/app/target \
+RUN \
     cargo build --all --locked --release --target-dir ./target && \
 for bin in $(ls -F /app/target/release | grep -E ".*\*" | cut -d"*" -f1); do \
       if [ -n "$bin" ]; then \
@@ -82,11 +83,11 @@ COPY scripts ./scripts
 # Copy Makefile for convenient commands
 COPY Makefile ./Makefile
 
-RUN cargo build --all
+RUN cargo build --all --release
 
 COPY . .
 
-RUN cargo build --all
+RUN cargo build --all --release
 
 # Make scripts executable
 RUN chmod +x scripts/*.sh && \
