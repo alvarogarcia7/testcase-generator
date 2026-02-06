@@ -28,8 +28,9 @@ RUN mkdir src && \
     echo "fn main() {}" > "examples/junit_export_example.rs"
 
 # Build dependencies (this will be cached)
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/app/target \
+#RUN --mount=type=cache,target=/usr/local/cargo/registry \
+#    --mount=type=cache,target=/app/target \
+RUN \
     cargo build --all --locked --release --target-dir ./target
 
 WORKDIR /app
