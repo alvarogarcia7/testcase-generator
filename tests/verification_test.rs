@@ -1,6 +1,8 @@
 use chrono::{Local, Utc};
 use std::path::PathBuf;
-use testcase_manager::models::{Expected, Step, TestCase, TestSequence, Verification};
+use testcase_manager::models::{
+    Expected, Step, TestCase, TestSequence, Verification, VerificationExpression,
+};
 use testcase_manager::verification::{
     DiffDetail, MatchStrategy, StepVerificationResult, TestExecutionLog, TestVerifier,
     VerificationDiff,
@@ -19,8 +21,10 @@ fn create_step(step_num: i64, result: &str, output: &str, success: Option<bool>)
             output: output.to_string(),
         },
         verification: Verification {
-            result: "[[ $? -eq 0 ]]".to_string(),
-            output: "cat $COMMAND_OUTPUT | grep -q \"${OUTPUT}\"".to_string(),
+            result: VerificationExpression::Simple("[[ $? -eq 0 ]]".to_string()),
+            output: VerificationExpression::Simple(
+                "cat $COMMAND_OUTPUT | grep -q \"${OUTPUT}\"".to_string(),
+            ),
             output_file: None,
         },
     }

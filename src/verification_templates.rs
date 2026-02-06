@@ -100,8 +100,8 @@ impl VerificationTemplate {
         }
 
         Verification {
-            result,
-            output,
+            result: crate::models::VerificationExpression::Simple(result),
+            output: crate::models::VerificationExpression::Simple(output),
             output_file: None,
         }
     }
@@ -109,8 +109,8 @@ impl VerificationTemplate {
     /// Expand the template without substitutions (use as-is)
     pub fn expand_default(&self) -> Verification {
         Verification {
-            result: self.result_expression.clone(),
-            output: self.output_expression.clone(),
+            result: crate::models::VerificationExpression::Simple(self.result_expression.clone()),
+            output: crate::models::VerificationExpression::Simple(self.output_expression.clone()),
             output_file: None,
         }
     }
@@ -558,10 +558,17 @@ mod tests {
         substitutions.insert("OUTPUT".to_string(), "completed".to_string());
 
         let verification = template.expand(&substitutions);
-        assert_eq!(verification.result, "[[ \"$RESULT\" == \"success\" ]]");
+        assert_eq!(
+            verification.result,
+            crate::models::VerificationExpression::Simple(
+                "[[ \"$RESULT\" == \"success\" ]]".to_string()
+            )
+        );
         assert_eq!(
             verification.output,
-            "cat $COMMAND_OUTPUT | grep -q \"completed\""
+            crate::models::VerificationExpression::Simple(
+                "cat $COMMAND_OUTPUT | grep -q \"completed\"".to_string()
+            )
         );
     }
 
@@ -577,8 +584,14 @@ mod tests {
         );
 
         let verification = template.expand_default();
-        assert_eq!(verification.result, "[[ $? -eq 0 ]]");
-        assert_eq!(verification.output, "cat $COMMAND_OUTPUT");
+        assert_eq!(
+            verification.result,
+            crate::models::VerificationExpression::Simple("[[ $? -eq 0 ]]".to_string())
+        );
+        assert_eq!(
+            verification.output,
+            crate::models::VerificationExpression::Simple("cat $COMMAND_OUTPUT".to_string())
+        );
     }
 
     #[test]

@@ -9,6 +9,8 @@ general_initial_conditions:
     - "Network connectivity to API server is available"
   system:
     - "curl command-line tool is installed"
+  text:
+    - ECHO "${#API_BASE_URL}"
 
 initial_conditions:
   api:

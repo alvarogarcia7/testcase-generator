@@ -56,29 +56,88 @@ pub type EnvVarConfig = EnvVariable;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Verification {
     /// Verification result value
-    pub result: String,
+    pub result: VerificationExpression,
 
     /// Verification output (from output variable)
-    pub output: String,
+    pub output: VerificationExpression,
 
     /// Verification output from file (optional - reads from LOG_FILE instead of COMMAND_OUTPUT)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub output_file: Option<String>,
+    pub output_file: Option<VerificationExpression>,
 }
 
 impl fmt::Display for Verification {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let result_str = match &self.result {
+            VerificationExpression::Simple(s) => s.clone(),
+            VerificationExpression::Conditional { condition, .. } => {
+                format!("conditional({})", condition)
+            }
+        };
+        let output_str = match &self.output {
+            VerificationExpression::Simple(s) => s.clone(),
+            VerificationExpression::Conditional { condition, .. } => {
+                format!("conditional({})", condition)
+            }
+        };
         write!(
             f,
             "result: {} | output: {}{}",
-            self.result,
-            self.output,
+            result_str,
+            output_str,
             if self.output_file.is_some() {
                 " | output_file: enabled"
             } else {
                 ""
             }
         )
+    }
+}
+
+/// Verification expression that can be either a simple string or a conditional expression
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[serde(untagged)]
+pub enum VerificationExpression {
+    /// Simple string expression for backward compatibility
+    Simple(String),
+
+    /// Conditional expression with condition and branches
+    Conditional {
+        /// The condition to evaluate
+        condition: String,
+
+        /// Expressions to run if condition is true
+        #[serde(skip_serializing_if = "Option::is_none")]
+        if_true: Option<Vec<String>>,
+
+        /// Expressions to run if condition is false
+        #[serde(skip_serializing_if = "Option::is_none")]
+        if_false: Option<Vec<String>>,
+
+        /// Expressions to always run regardless of condition
+        #[serde(skip_serializing_if = "Option::is_none")]
+        always: Option<Vec<String>>,
+    },
+}
+
+impl fmt::Display for VerificationExpression {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            VerificationExpression::Simple(s) => write!(f, "{}", s),
+            VerificationExpression::Conditional { condition, .. } => {
+                write!(f, "conditional({})", condition)
+            }
+        }
+    }
+}
+
+impl VerificationExpression {
+    /// Check if the expression is empty (for Simple variant)
+    pub fn is_empty(&self) -> bool {
+        match self {
+            VerificationExpression::Simple(s) => s.is_empty(),
+            VerificationExpression::Conditional { .. } => false,
+        }
     }
 }
 
@@ -142,8 +201,10 @@ pub struct Step {
 /// Default verification based on expected values (for backward compatibility)
 fn default_verification_from_expected() -> Verification {
     Verification {
-        result: "[[ $? -eq 0 ]]".to_string(),
-        output: "cat $COMMAND_OUTPUT | grep -q \"${OUTPUT}\"".to_string(),
+        result: VerificationExpression::Simple("[[ $? -eq 0 ]]".to_string()),
+        output: VerificationExpression::Simple(
+            "cat $COMMAND_OUTPUT | grep -q \"${OUTPUT}\"".to_string(),
+        ),
         output_file: None,
     }
 }

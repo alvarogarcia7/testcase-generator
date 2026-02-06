@@ -920,7 +920,7 @@ impl TestOrchestrator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::{Expected, Step, TestSequence, Verification};
+    use crate::models::{Expected, Step, TestSequence, Verification, VerificationExpression};
     use tempfile::TempDir;
 
     fn create_simple_test_case(id: &str) -> TestCase {
@@ -945,8 +945,10 @@ mod tests {
                 output: "hello".to_string(),
             },
             verification: Verification {
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "echo \"$COMMAND_OUTPUT\" | grep -q 'hello'".to_string(),
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple(
+                    "echo \"$COMMAND_OUTPUT\" | grep -q 'hello'".to_string(),
+                ),
                 output_file: None,
             },
         };

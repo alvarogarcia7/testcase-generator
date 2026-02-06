@@ -1,6 +1,6 @@
 use crate::bdd_parser::BddStepRegistry;
 use crate::hydration::VarHydrator;
-use crate::models::{TestCase, TestStepExecutionEntry};
+use crate::models::{TestCase, TestStepExecutionEntry, VerificationExpression};
 use anyhow::{Context, Result};
 use chrono::Local;
 use regex::Regex;
@@ -11,6 +11,31 @@ use std::process::Command;
 
 pub struct TestExecutor {
     output_dir: Option<PathBuf>,
+}
+
+/// Extract strings from VerificationExpression for pattern checking
+fn extract_verification_strings(expr: &VerificationExpression) -> Vec<String> {
+    match expr {
+        VerificationExpression::Simple(s) => vec![s.clone()],
+        VerificationExpression::Conditional {
+            condition,
+            if_true,
+            if_false,
+            always,
+        } => {
+            let mut strings = vec![condition.clone()];
+            if let Some(commands) = if_true {
+                strings.extend(commands.clone());
+            }
+            if let Some(commands) = if_false {
+                strings.extend(commands.clone());
+            }
+            if let Some(commands) = always {
+                strings.extend(commands.clone());
+            }
+            strings
+        }
+    }
 }
 
 /// Check if a test case uses variables that require bash 4.0+ associative arrays
@@ -37,19 +62,21 @@ fn test_case_uses_variables(test_case: &TestCase) -> bool {
             }
 
             // Check if verification expressions use variables
-            if step.verification.result.contains("${")
-                || step.verification.result.contains("$STEP_VARS")
-            {
-                return true;
+            for s in extract_verification_strings(&step.verification.result) {
+                if s.contains("${") || s.contains("$STEP_VARS") {
+                    return true;
+                }
             }
-            if step.verification.output.contains("${")
-                || step.verification.output.contains("$STEP_VARS")
-            {
-                return true;
+            for s in extract_verification_strings(&step.verification.output) {
+                if s.contains("${") || s.contains("$STEP_VARS") {
+                    return true;
+                }
             }
             if let Some(ref output_file) = step.verification.output_file {
-                if output_file.contains("${") || output_file.contains("$STEP_VARS") {
-                    return true;
+                for s in extract_verification_strings(output_file) {
+                    if s.contains("${") || s.contains("$STEP_VARS") {
+                        return true;
+                    }
                 }
             }
         }
@@ -72,25 +99,25 @@ fn test_case_uses_hydration_vars(test_case: &TestCase) -> bool {
             }
 
             // Check verification result
-            if !hydrator
-                .extract_placeholders(&step.verification.result)
-                .is_empty()
-            {
-                return true;
+            for s in extract_verification_strings(&step.verification.result) {
+                if !hydrator.extract_placeholders(&s).is_empty() {
+                    return true;
+                }
             }
 
             // Check verification output
-            if !hydrator
-                .extract_placeholders(&step.verification.output)
-                .is_empty()
-            {
-                return true;
+            for s in extract_verification_strings(&step.verification.output) {
+                if !hydrator.extract_placeholders(&s).is_empty() {
+                    return true;
+                }
             }
 
             // Check verification output_file
             if let Some(ref output_file) = step.verification.output_file {
-                if !hydrator.extract_placeholders(output_file).is_empty() {
-                    return true;
+                for s in extract_verification_strings(output_file) {
+                    if !hydrator.extract_placeholders(&s).is_empty() {
+                        return true;
+                    }
                 }
             }
         }
@@ -105,6 +132,130 @@ fn convert_hydration_placeholder_to_bash(text: &str) -> String {
     placeholder_pattern.replace_all(text, "$${$1}").to_string()
 }
 
+/// Convert hydration placeholders in a VerificationExpression
+fn convert_verification_expr_hydration(expr: &VerificationExpression) -> VerificationExpression {
+    match expr {
+        VerificationExpression::Simple(s) => {
+            VerificationExpression::Simple(convert_hydration_placeholder_to_bash(s))
+        }
+        VerificationExpression::Conditional {
+            condition,
+            if_true,
+            if_false,
+            always,
+        } => VerificationExpression::Conditional {
+            condition: convert_hydration_placeholder_to_bash(condition),
+            if_true: if_true.as_ref().map(|cmds| {
+                cmds.iter()
+                    .map(|s| convert_hydration_placeholder_to_bash(s))
+                    .collect()
+            }),
+            if_false: if_false.as_ref().map(|cmds| {
+                cmds.iter()
+                    .map(|s| convert_hydration_placeholder_to_bash(s))
+                    .collect()
+            }),
+            always: always.as_ref().map(|cmds| {
+                cmds.iter()
+                    .map(|s| convert_hydration_placeholder_to_bash(s))
+                    .collect()
+            }),
+        },
+    }
+}
+
+/// Generate verification script with variable substitution support
+fn generate_verification_with_var_subst(expr: &VerificationExpression, var_name: &str) -> String {
+    match expr {
+        VerificationExpression::Simple(s) => {
+            // For simple expressions with potential variables, perform substitution
+            let mut script = String::new();
+            let escaped_expr = s
+                .replace("\\", "\\\\")
+                .replace("$", "\\$")
+                .replace("\"", "\\\"");
+            script.push_str(&format!("EXPR=\"{}\"\n", escaped_expr));
+            script.push_str("if [ -n \"$STEP_VAR_NAMES\" ]; then\n");
+            script.push_str("    for var_name in $STEP_VAR_NAMES; do\n");
+            script.push_str("        eval \"var_value=\\$STEP_VAR_$var_name\"\n");
+            script.push_str("        # Escape special characters for sed\n");
+            script.push_str(
+                "        escaped_value=$(printf '%s' \"$var_value\" | sed 's/[&/\\]/\\\\&/g')\n",
+            );
+            script.push_str("        # Replace ${var_name} pattern\n");
+            script.push_str(
+                "        EXPR=$(echo \"$EXPR\" | sed \"s/\\${$var_name}/$escaped_value/g\")\n",
+            );
+            script.push_str("    done\n");
+            script.push_str("fi\n");
+            script.push_str(&format!(
+                "if eval \"$EXPR\"; then\n    {}=true\nfi\n",
+                var_name
+            ));
+            script
+        }
+        VerificationExpression::Conditional {
+            condition,
+            if_true,
+            if_false,
+            always,
+        } => {
+            // For conditional expressions, substitute variables in all parts
+            let mut script = String::new();
+
+            // Prepare condition with variable substitution
+            let escaped_condition = condition
+                .replace("\\", "\\\\")
+                .replace("$", "\\$")
+                .replace("\"", "\\\"");
+            script.push_str(&format!("COND_EXPR=\"{}\"\n", escaped_condition));
+            script.push_str("if [ -n \"$STEP_VAR_NAMES\" ]; then\n");
+            script.push_str("    for var_name in $STEP_VAR_NAMES; do\n");
+            script.push_str("        eval \"var_value=\\$STEP_VAR_$var_name\"\n");
+            script.push_str(
+                "        escaped_value=$(printf '%s' \"$var_value\" | sed 's/[&/\\]/\\\\&/g')\n",
+            );
+            script.push_str("        COND_EXPR=$(echo \"$COND_EXPR\" | sed \"s/\\${$var_name}/$escaped_value/g\")\n");
+            script.push_str("    done\n");
+            script.push_str("fi\n");
+
+            script.push_str("if eval \"$COND_EXPR\"; then\n");
+            script.push_str(&format!("    {}=true\n", var_name));
+
+            // Execute if_true commands
+            if let Some(commands) = if_true {
+                for cmd in commands {
+                    script.push_str(&format!("    {}\n", cmd));
+                }
+            } else {
+                script.push_str("    true # empty so bash does not fail\n");
+            }
+
+            script.push_str("else\n");
+
+            // Execute if_false commands
+            if let Some(commands) = if_false {
+                for cmd in commands {
+                    script.push_str(&format!("    {}\n", cmd));
+                }
+            } else {
+                script.push_str("    true # empty so bash does not fail\n");
+            }
+
+            script.push_str("fi\n");
+
+            // Always execute commands
+            if let Some(commands) = always {
+                for cmd in commands {
+                    script.push_str(&format!("{}\n", cmd));
+                }
+            }
+
+            script
+        }
+    }
+}
+
 impl TestExecutor {
     pub fn new() -> Self {
         Self { output_dir: None }
@@ -113,6 +264,62 @@ impl TestExecutor {
     pub fn with_output_dir<P: Into<PathBuf>>(output_dir: P) -> Self {
         Self {
             output_dir: Some(output_dir.into()),
+        }
+    }
+
+    /// Generate bash script code for a VerificationExpression
+    /// For Simple expressions, generates an if statement that sets the variable on success
+    /// For Conditional expressions, generates bash code to evaluate the condition
+    /// and execute the appropriate commands based on the result
+    fn generate_verification_script(expr: &VerificationExpression, var_name: &str) -> String {
+        match expr {
+            VerificationExpression::Simple(s) => {
+                // For simple expressions, just evaluate and set the variable
+                format!("if {}; then\n    {}=true\nfi\n", s, var_name)
+            }
+            VerificationExpression::Conditional {
+                condition,
+                if_true,
+                if_false,
+                always,
+            } => {
+                let mut script = String::new();
+
+                // Evaluate the condition and execute appropriate branch
+                script.push_str(&format!("if {}; then\n", condition));
+                script.push_str(&format!("    {}=true\n", var_name));
+
+                // Execute if_true commands
+                if let Some(commands) = if_true {
+                    for cmd in commands {
+                        script.push_str(&format!("    {}\n", cmd));
+                    }
+                } else {
+                    script.push_str("    true # empty so bash does not fail\n");
+                }
+
+                script.push_str("else\n");
+
+                // Execute if_false commands
+                if let Some(commands) = if_false {
+                    for cmd in commands {
+                        script.push_str(&format!("    {}\n", cmd));
+                    }
+                } else {
+                    script.push_str("    true # empty so bash does not fail\n");
+                }
+
+                script.push_str("fi\n");
+
+                // Always execute commands in always array
+                if let Some(commands) = always {
+                    for cmd in commands {
+                        script.push_str(&format!("{}\n", cmd));
+                    }
+                }
+
+                script
+            }
         }
     }
 
@@ -451,92 +658,54 @@ impl TestExecutor {
                 }
 
                 // Convert hydration placeholders in verification expressions
-                let converted_result =
-                    convert_hydration_placeholder_to_bash(&step.verification.result);
-
-                // Determine which output verification to use and convert it
-                let output_verification =
+                let converted_result_expr =
+                    convert_verification_expr_hydration(&step.verification.result);
+                let converted_output_expr =
                     if let Some(ref output_file_verification) = step.verification.output_file {
-                        output_file_verification.as_str()
+                        convert_verification_expr_hydration(output_file_verification)
                     } else {
-                        step.verification.output.as_str()
+                        convert_verification_expr_hydration(&step.verification.output)
                     };
-                let converted_output = convert_hydration_placeholder_to_bash(output_verification);
 
-                script.push_str(&format!(
-                    "# Verification result expression: {}\n",
-                    converted_result
-                ));
-
-                if step.verification.output_file.is_some() {
-                    script.push_str(&format!(
-                        "# Verification output expression (from file): {}\n",
-                        converted_output
-                    ));
-                } else {
-                    script.push_str(&format!(
-                        "# Verification output expression (from variable): {}\n",
-                        converted_output
-                    ));
-                }
-
+                // Add comment for verification
+                script.push_str("# Verification result\n");
                 script.push_str("VERIFICATION_RESULT_PASS=false\n");
-                script.push_str("VERIFICATION_OUTPUT_PASS=false\n\n");
 
-                // Perform variable substitution on verification expressions
-                let result_needs_subst =
-                    converted_result.contains("${") || converted_result.contains("$STEP_VARS");
-                let escaped_result_expr = converted_result
-                    .replace("\\", "\\\\")
-                    .replace("$", "\\$")
-                    .replace("\"", "\\\"");
-                script.push_str(&format!("RESULT_EXPR=\"{}\"\n", escaped_result_expr));
-
-                if result_needs_subst && uses_variables {
-                    script.push_str("if [ -n \"$STEP_VAR_NAMES\" ]; then\n");
-                    script.push_str("    for var_name in $STEP_VAR_NAMES; do\n");
-                    script.push_str("        eval \"var_value=\\$STEP_VAR_$var_name\"\n");
-                    script.push_str("        # Escape special characters for sed\n");
-                    script.push_str(
-                        "        escaped_value=$(printf '%s' \"$var_value\" | sed 's/[&/\\]/\\\\&/g')\n",
-                    );
-                    script.push_str("        # Replace ${var_name} pattern\n");
-                    script.push_str("        RESULT_EXPR=$(echo \"$RESULT_EXPR\" | sed \"s/\\${$var_name}/$escaped_value/g\")\n");
-                    script.push_str("    done\n");
-                    script.push_str("fi\n");
-                }
+                // Perform variable substitution on result verification if needed
+                let result_verification_script = if uses_variables {
+                    // For variable substitution support, need to extract and substitute in the verification
+                    // Generate script that handles variable substitution before evaluation
+                    generate_verification_with_var_subst(
+                        &converted_result_expr,
+                        "VERIFICATION_RESULT_PASS",
+                    )
+                } else {
+                    // No variables, use direct generation
+                    Self::generate_verification_script(
+                        &converted_result_expr,
+                        "VERIFICATION_RESULT_PASS",
+                    )
+                };
+                script.push_str(&result_verification_script);
                 script.push('\n');
 
-                let output_needs_subst =
-                    converted_output.contains("${") || converted_output.contains("$STEP_VARS");
-                let escaped_output_expr = converted_output
-                    .replace("\\", "\\\\")
-                    .replace("$", "\\$")
-                    .replace("\"", "\\\"");
-                script.push_str(&format!("OUTPUT_EXPR=\"{}\"\n", escaped_output_expr));
+                // Determine which output verification to use
+                script.push_str("# Verification output\n");
+                script.push_str("VERIFICATION_OUTPUT_PASS=false\n");
 
-                if output_needs_subst && uses_variables {
-                    script.push_str("if [ -n \"$STEP_VAR_NAMES\" ]; then\n");
-                    script.push_str("    for var_name in $STEP_VAR_NAMES; do\n");
-                    script.push_str("        eval \"var_value=\\$STEP_VAR_$var_name\"\n");
-                    script.push_str("        # Escape special characters for sed\n");
-                    script.push_str(
-                        "        escaped_value=$(printf '%s' \"$var_value\" | sed 's/[&/\\]/\\\\&/g')\n",
-                    );
-                    script.push_str("        # Replace ${var_name} pattern\n");
-                    script.push_str("        OUTPUT_EXPR=$(echo \"$OUTPUT_EXPR\" | sed \"s/\\${$var_name}/$escaped_value/g\")\n");
-                    script.push_str("    done\n");
-                    script.push_str("fi\n");
-                }
+                let output_verification_script = if uses_variables {
+                    generate_verification_with_var_subst(
+                        &converted_output_expr,
+                        "VERIFICATION_OUTPUT_PASS",
+                    )
+                } else {
+                    Self::generate_verification_script(
+                        &converted_output_expr,
+                        "VERIFICATION_OUTPUT_PASS",
+                    )
+                };
+                script.push_str(&output_verification_script);
                 script.push('\n');
-
-                script.push_str("if eval \"$RESULT_EXPR\"; then\n");
-                script.push_str("    VERIFICATION_RESULT_PASS=true\n");
-                script.push_str("fi\n\n");
-
-                script.push_str("if eval \"$OUTPUT_EXPR\"; then\n");
-                script.push_str("    VERIFICATION_OUTPUT_PASS=true\n");
-                script.push_str("fi\n\n");
 
                 script.push_str("if [ \"$VERIFICATION_RESULT_PASS\" = true ] && [ \"$VERIFICATION_OUTPUT_PASS\" = true ]; then\n");
                 script.push_str(&format!(
@@ -825,12 +994,18 @@ impl TestExecutor {
 
     fn evaluate_verification(
         &self,
-        expression: &str,
+        expression: &VerificationExpression,
         exit_code: i32,
         command_output: &str,
     ) -> Result<bool> {
+        // Extract the simple expression or condition from VerificationExpression
+        let expr_str = match expression {
+            VerificationExpression::Simple(s) => s.as_str(),
+            VerificationExpression::Conditional { condition, .. } => condition.as_str(),
+        };
+
         // Handle simple true/false cases
-        let trimmed = expression.trim();
+        let trimmed = expr_str.trim();
         if trimmed == "true" {
             return Ok(true);
         }
@@ -853,7 +1028,7 @@ fi"#,
                 .replace("\\", "\\\\")
                 .replace("\"", "\\\"")
                 .replace("\n", "\\n"),
-            expression
+            expr_str
         );
 
         match Command::new("bash").arg("-c").arg(&script).output() {
@@ -1209,8 +1384,10 @@ mod tests {
                 output: "[ \"$COMMAND_OUTPUT\" = \"hello\" ]".to_string(),
             },
             verification: Verification {
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "[ \"$COMMAND_OUTPUT\" = \"hello\" ]".to_string(),
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple(
+                    "[ \"$COMMAND_OUTPUT\" = \"hello\" ]".to_string(),
+                ),
                 output_file: None,
             },
         };
@@ -1254,8 +1431,8 @@ mod tests {
                 output: "success".to_string(),
             },
             verification: Verification {
-                result: "true".to_string(),
-                output: "true".to_string(),
+                result: VerificationExpression::Simple("true".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
             },
         };
@@ -1335,8 +1512,8 @@ mod tests {
                 output: "test".to_string(),
             },
             verification: Verification {
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "true".to_string(),
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
             },
         };
@@ -1375,8 +1552,8 @@ mod tests {
                 output: "test".to_string(),
             },
             verification: Verification {
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "true".to_string(),
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
             },
         };
@@ -1416,8 +1593,8 @@ mod tests {
                 output: "step1".to_string(),
             },
             verification: Verification {
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "true".to_string(),
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
             },
         };
@@ -1434,8 +1611,8 @@ mod tests {
                 output: "step2".to_string(),
             },
             verification: Verification {
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "true".to_string(),
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
             },
         };
@@ -1486,8 +1663,8 @@ mod tests {
                 output: "seq1".to_string(),
             },
             verification: Verification {
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "true".to_string(),
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
             },
         };
@@ -1506,8 +1683,8 @@ mod tests {
                 output: "seq2".to_string(),
             },
             verification: Verification {
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "true".to_string(),
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
             },
         };
@@ -1560,8 +1737,8 @@ mod tests {
                 output: "output".to_string(),
             },
             verification: Verification {
-                result: "true".to_string(),
-                output: "true".to_string(),
+                result: VerificationExpression::Simple("true".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
             },
         };
@@ -1578,8 +1755,8 @@ mod tests {
                 output: "auto".to_string(),
             },
             verification: Verification {
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "true".to_string(),
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
             },
         };
@@ -1632,8 +1809,8 @@ mod tests {
                 output: "files".to_string(),
             },
             verification: Verification {
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "true".to_string(),
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
             },
         };
@@ -1680,8 +1857,8 @@ mod tests {
                 output: "test".to_string(),
             },
             verification: Verification {
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "true".to_string(),
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
             },
         };
@@ -1896,8 +2073,8 @@ mod tests {
                 output: "true".to_string(),
             },
             verification: Verification {
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "true".to_string(),
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
             },
         };
@@ -1943,8 +2120,8 @@ mod tests {
                 output: "true".to_string(),
             },
             verification: Verification {
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "true".to_string(),
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
             },
         };
@@ -1988,8 +2165,8 @@ mod tests {
                 output: "true".to_string(),
             },
             verification: Verification {
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "true".to_string(),
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
             },
         };
@@ -2035,8 +2212,12 @@ mod tests {
                 output: "[[ \"$COMMAND_OUTPUT\" == *\"${STEP_VARS[status]}\"* ]]".to_string(),
             },
             verification: Verification {
-                result: "[ $EXIT_CODE -eq ${expected_code} ]".to_string(),
-                output: "[[ \"$COMMAND_OUTPUT\" == *\"${STEP_VARS[status]}\"* ]]".to_string(),
+                result: VerificationExpression::Simple(
+                    "[ $EXIT_CODE -eq ${expected_code} ]".to_string(),
+                ),
+                output: VerificationExpression::Simple(
+                    "[[ \"$COMMAND_OUTPUT\" == *\"${STEP_VARS[status]}\"* ]]".to_string(),
+                ),
                 output_file: None,
             },
         };
@@ -2046,22 +2227,17 @@ mod tests {
         let script = executor.generate_test_script(&test_case);
 
         // Verify substitution in result expression
-        assert!(script.contains("RESULT_EXPR="));
+        assert!(script.contains("EXPR="));
         assert!(script.contains("for var_name in $STEP_VAR_NAMES; do"));
         assert!(script.contains("eval \"var_value=\\$STEP_VAR_$var_name\""));
-        assert!(script.contains(
-            "RESULT_EXPR=$(echo \"$RESULT_EXPR\" | sed \"s/\\${$var_name}/$escaped_value/g\")"
-        ));
-
-        // Verify substitution in output expression
-        assert!(script.contains("OUTPUT_EXPR="));
-        assert!(script.contains(
-            "OUTPUT_EXPR=$(echo \"$OUTPUT_EXPR\" | sed \"s/\\${$var_name}/$escaped_value/g\")"
-        ));
+        assert!(
+            script.contains("EXPR=$(echo \"$EXPR\" | sed \"s/\\${$var_name}/$escaped_value/g\")")
+        );
 
         // Verify evaluation of substituted expressions
-        assert!(script.contains("if eval \"$RESULT_EXPR\"; then"));
-        assert!(script.contains("if eval \"$OUTPUT_EXPR\"; then"));
+        assert!(script.contains("if eval \"$EXPR\"; then"));
+        assert!(script.contains("VERIFICATION_RESULT_PASS=true"));
+        assert!(script.contains("VERIFICATION_OUTPUT_PASS=true"));
     }
 
     #[test]
@@ -2097,8 +2273,8 @@ mod tests {
                 output: "true".to_string(),
             },
             verification: Verification {
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "true".to_string(),
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
             },
         };
@@ -2223,8 +2399,8 @@ mod tests {
                 output: "hello".to_string(),
             },
             verification: Verification {
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "true".to_string(),
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
             },
         };
@@ -2254,8 +2430,8 @@ mod tests {
                 output: "example.com".to_string(),
             },
             verification: Verification {
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "true".to_string(),
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
             },
         };
@@ -2289,8 +2465,10 @@ mod tests {
                 output: "example.com".to_string(),
             },
             verification: Verification {
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "[[ \"$COMMAND_OUTPUT\" == *\"${#EXPECTED_OUTPUT}\"* ]]".to_string(),
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple(
+                    "[[ \"$COMMAND_OUTPUT\" == *\"${#EXPECTED_OUTPUT}\"* ]]".to_string(),
+                ),
                 output_file: None,
             },
         };
@@ -2338,8 +2516,8 @@ mod tests {
                 output: "hello".to_string(),
             },
             verification: Verification {
-                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-                output: "true".to_string(),
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
             },
         };

@@ -5,7 +5,9 @@ use std::io::Write;
 use std::process::Command;
 use tempfile::{NamedTempFile, TempDir};
 use testcase_manager::hydration::VarHydrator;
-use testcase_manager::models::{EnvVariable, Expected, Step, TestCase, TestSequence, Verification};
+use testcase_manager::models::{
+    EnvVariable, Expected, Step, TestCase, TestSequence, Verification, VerificationExpression,
+};
 use testcase_manager::TestExecutor;
 
 // ============================================================================
@@ -449,8 +451,8 @@ fn test_generate_script_with_export_file_sourcing() {
             output: "localhost".to_string(),
         },
         verification: Verification {
-            result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-            output: "true".to_string(),
+            result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+            output: VerificationExpression::Simple("true".to_string()),
             output_file: None,
         },
     };
@@ -490,8 +492,8 @@ fn test_generate_script_without_hydration_vars() {
             output: "Hello World".to_string(),
         },
         verification: Verification {
-            result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-            output: "true".to_string(),
+            result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+            output: VerificationExpression::Simple("true".to_string()),
             output_file: None,
         },
     };
@@ -529,8 +531,10 @@ fn test_generate_script_hydration_in_verification() {
             output: "test".to_string(),
         },
         verification: Verification {
-            result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-            output: "grep -q ${#EXPECTED_VALUE} $COMMAND_OUTPUT".to_string(),
+            result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+            output: VerificationExpression::Simple(
+                "grep -q ${#EXPECTED_VALUE} $COMMAND_OUTPUT".to_string(),
+            ),
             output_file: None,
         },
     };
@@ -568,8 +572,10 @@ fn test_generate_script_converts_hydration_placeholders() {
             output: "success".to_string(),
         },
         verification: Verification {
-            result: "[ $EXIT_CODE -eq 0 ]".to_string(),
-            output: "grep ${#SUCCESS_MSG} $COMMAND_OUTPUT".to_string(),
+            result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+            output: VerificationExpression::Simple(
+                "grep ${#SUCCESS_MSG} $COMMAND_OUTPUT".to_string(),
+            ),
             output_file: None,
         },
     };
