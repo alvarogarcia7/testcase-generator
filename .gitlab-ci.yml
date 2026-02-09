@@ -28,6 +28,8 @@ build-image:
     - docker build -t $CI_REGISTRY_IMAGE:${CI_COMMIT_SHORT_SHA} .
     - docker run $CI_REGISTRY_IMAGE:latest ls
     - docker run $CI_REGISTRY_IMAGE:latest /usr/local/bin/editor --help
+    # Verify cargo works offline
+    - docker run --net none $CI_REGISTRY_IMAGE:latest cargo build --all
   tags:
     - dind-amd
 
