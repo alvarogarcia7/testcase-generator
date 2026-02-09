@@ -40,6 +40,7 @@ WORKDIR /app
 COPY src ./src
 COPY examples ./examples
 COPY tests ./tests
+COPY data ./data
 
 RUN \
     cargo test --all --all-features --tests --release --target-dir ./target && \
@@ -82,8 +83,7 @@ ls -lah /usr/local/bin/test-orchestrator > /dev/null
 
 
 
-# Copy data directory
-COPY data ./data
+
 
 
 # Copy scripts directory for watch and validation functionality
