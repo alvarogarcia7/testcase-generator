@@ -60,7 +60,12 @@ for bin in $(ls -F /app/target/release | grep -E ".*\*" | cut -d"*" -f1); do \
 
 # Install runtime dependencies: git, inotify-tools for watch mode, and make
 RUN apt-get update && \
-    apt-get install -y git inotify-tools make && \
+    apt-get install -y \
+      git \
+      inotify-tools \
+      expect \
+      iputils-ping \
+      make && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
