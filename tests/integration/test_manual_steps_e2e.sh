@@ -145,6 +145,9 @@ test_sequences:
   - id: 2
     name: Mixed Sequence
     description: Sequence with both automated and manual steps
+    initial_conditions:
+      LPA:
+        - Active
     steps:
       - step: 1
         description: Automated step before manual
@@ -330,7 +333,7 @@ fi
 section "Test 7: Verify Script Structure for Manual Steps"
 
 # Extract the section for manual step 1 and verify it doesn't have execution logic
-MANUAL_STEP_1_SECTION=$(sed -n '/# Step 1: Manually connect to device via SSH/,/# Step 2:/p' "$MANUAL_SCRIPT" | head -n -1)
+MANUAL_STEP_1_SECTION=$(sed -n '/# Step 1: Manually connect to device via SSH/,/# Step 2:/p' "$MANUAL_SCRIPT" | tail -n -1)
 
 # Manual step should not have COMMAND_OUTPUT= assignment
 if ! echo "$MANUAL_STEP_1_SECTION" | grep -q 'COMMAND_OUTPUT=$('; then
