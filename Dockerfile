@@ -31,8 +31,8 @@ RUN mkdir src && \
 #RUN --mount=type=cache,target=/usr/local/cargo/registry \
 #    --mount=type=cache,target=/app/target \
 RUN \
-    cargo build --all --locked --release --target-dir ./target && \
-    cargo build --all --locked           --target-dir ./target
+    cargo test --all --all-features --tests --release --target-dir ./target && \
+    cargo test --all --all-features --tests           --target-dir ./target
 
 WORKDIR /app
 
@@ -42,16 +42,16 @@ COPY examples ./examples
 COPY tests ./tests
 
 RUN \
-    cargo build --all --locked --release --target-dir ./target && \
-    cargo build --all --locked           --target-dir ./target
+    cargo test --all --all-features --tests --release --target-dir ./target && \
+    cargo test --all --all-features --tests           --target-dir ./target
 
 # Build the application against cached dependencies
 # The previous RUN command will be reused if only Cargo.toml/Cargo.lock are unchanged
 #RUN --mount=type=cache,target=/usr/local/cargo/registry \
 #    --mount=type=cache,target=/app/target \
 RUN \
-    cargo build --all --locked --release --target-dir ./target && \
-    cargo build --all --locked           --target-dir ./target && \
+    cargo test --all --all-features --tests --release --target-dir ./target && \
+    cargo test --all --all-features --tests           --target-dir ./target && \
 for bin in $(ls -F /app/target/release | grep -E ".*\*" | cut -d"*" -f1); do \
       if [ -n "$bin" ]; then \
         cp "/app/target/release/$bin" /usr/local/bin/ && chmod +x "/usr/local/bin/$bin"; \
@@ -88,14 +88,14 @@ COPY scripts ./scripts
 COPY Makefile ./Makefile
 
 RUN \
-    cargo build --all --locked --release --target-dir ./target && \
-    cargo build --all --locked           --target-dir ./target
+    cargo test --all --all-features --tests --release --target-dir ./target && \
+    cargo test --all --all-features --tests           --target-dir ./target
 
 COPY . .
 
 RUN \
-    cargo build --all --locked --release --target-dir ./target && \
-    cargo build --all --locked           --target-dir ./target
+    cargo test --all --all-features --tests --release --target-dir ./target && \
+    cargo test --all --all-features --tests           --target-dir ./target
 
 # Make scripts executable
 RUN chmod +x scripts/*.sh && \
