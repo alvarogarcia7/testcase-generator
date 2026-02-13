@@ -1061,3 +1061,57 @@ fn test_bdd_with_multiple_keys_in_conditions() {
     assert!(script.contains("ping -c 5 \"192.168.1.1\""));
     assert!(script.contains("sleep 3"));
 }
+
+#[test]
+fn test_command_escaping_for_json_with_single_quotes() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ011".to_string(),
+        1,
+        1,
+        "TC011".to_string(),
+        "Test command escaping with single quotes".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    // Create a step with a command containing single quotes
+    let step = create_test_step(
+        1,
+        "Echo with quotes",
+        "echo 'hello world'",
+        "0",
+        "hello world",
+        Some(true),
+    );
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let json_path = std::path::Path::new("test_output.json");
+    let script = executor.generate_test_script_with_json_output(&test_case, json_path);
+
+    // The JSON command field should contain the escaped command
+    // Single quotes should NOT be converted to double quotes
+    // Instead, they should be properly escaped for JSON (either as \' or remain as ')
+    // The command in the script should preserve single quotes, not convert them to double quotes
+
+    // Check that the script contains the original command with single quotes
+    assert!(
+        script.contains("echo 'hello world'"),
+        "Script should contain the original command with single quotes"
+    );
+
+    // Check that the JSON output does NOT incorrectly convert single quotes to double quotes
+    // The line should NOT be: "command": "echo \"hello world\""
+    // Instead it should properly escape: "command": "echo 'hello world'" or "command": "echo \\'hello world\\'"
+    assert!(
+        !script.contains("\"command\": \"echo \\\"hello world\\\"\""),
+        "JSON command field should NOT convert single quotes to double quotes"
+    );
+
+    // Verify the command is properly included in the JSON write statement
+    // The escaped_command should preserve single quotes in JSON format
+    assert!(
+        script.contains("echo '    \"command\":"),
+        "Script should write command field to JSON"
+    );
+}
