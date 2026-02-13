@@ -8,6 +8,53 @@ use std::path::{Path, PathBuf};
 /// Supported YAML file extensions
 const YAML_EXTENSIONS: &[&str] = &["yaml", "yml"];
 
+/// Filter criteria for test cases
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TestCaseFilter {
+    /// Include all test cases
+    All,
+    /// Include only test cases with manual steps
+    ManualOnly,
+    /// Include only test cases with automated (non-manual) steps
+    AutomatedOnly,
+}
+
+/// Filterer for test cases
+#[derive(Debug, Clone)]
+pub struct TestCaseFilterer;
+
+impl TestCaseFilterer {
+    /// Create a new test case filterer
+    pub fn new() -> Self {
+        Self
+    }
+
+    /// Filter test cases based on the given filter criteria
+    pub fn filter_test_cases(
+        &self,
+        test_cases: Vec<TestCase>,
+        filter: TestCaseFilter,
+    ) -> Vec<TestCase> {
+        match filter {
+            TestCaseFilter::All => test_cases,
+            TestCaseFilter::ManualOnly => test_cases
+                .into_iter()
+                .filter(|tc| tc.has_manual_steps())
+                .collect(),
+            TestCaseFilter::AutomatedOnly => test_cases
+                .into_iter()
+                .filter(|tc| tc.has_automated_steps())
+                .collect(),
+        }
+    }
+}
+
+impl Default for TestCaseFilterer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Manages storage and retrieval of test cases
 #[derive(Debug, Clone)]
 pub struct TestCaseStorage {
@@ -939,5 +986,261 @@ mod tests {
             .unwrap();
         assert_eq!(loaded.id, "gsma_4_4_2_2_TC");
         assert_eq!(loaded.description, "GSMA Test");
+    }
+
+    #[test]
+    fn test_test_case_filter_all() {
+        use crate::models::{Step, TestSequence};
+        let filterer = TestCaseFilterer::new();
+
+        let mut test_case1 = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Manual Test".to_string(),
+        );
+        let mut sequence1 = TestSequence::new(1, "Seq 1".to_string(), "Description".to_string());
+        let mut step1 = Step::new(
+            1,
+            "Manual step".to_string(),
+            "verify manually".to_string(),
+            "0".to_string(),
+            "verified".to_string(),
+        );
+        step1.manual = Some(true);
+        sequence1.steps.push(step1);
+        test_case1.test_sequences.push(sequence1);
+
+        let mut test_case2 = TestCase::new(
+            "REQ002".to_string(),
+            2,
+            2,
+            "TC002".to_string(),
+            "Automated Test".to_string(),
+        );
+        let mut sequence2 = TestSequence::new(1, "Seq 1".to_string(), "Description".to_string());
+        let step2 = Step::new(
+            1,
+            "Automated step".to_string(),
+            "echo test".to_string(),
+            "0".to_string(),
+            "test".to_string(),
+        );
+        sequence2.steps.push(step2);
+        test_case2.test_sequences.push(sequence2);
+
+        let test_cases = vec![test_case1, test_case2];
+        let filtered = filterer.filter_test_cases(test_cases, TestCaseFilter::All);
+
+        assert_eq!(filtered.len(), 2);
+    }
+
+    #[test]
+    fn test_test_case_filter_manual_only() {
+        use crate::models::{Step, TestSequence};
+        let filterer = TestCaseFilterer::new();
+
+        let mut test_case1 = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Manual Test".to_string(),
+        );
+        let mut sequence1 = TestSequence::new(1, "Seq 1".to_string(), "Description".to_string());
+        let mut step1 = Step::new(
+            1,
+            "Manual step".to_string(),
+            "verify manually".to_string(),
+            "0".to_string(),
+            "verified".to_string(),
+        );
+        step1.manual = Some(true);
+        sequence1.steps.push(step1);
+        test_case1.test_sequences.push(sequence1);
+
+        let mut test_case2 = TestCase::new(
+            "REQ002".to_string(),
+            2,
+            2,
+            "TC002".to_string(),
+            "Automated Test".to_string(),
+        );
+        let mut sequence2 = TestSequence::new(1, "Seq 1".to_string(), "Description".to_string());
+        let step2 = Step::new(
+            1,
+            "Automated step".to_string(),
+            "echo test".to_string(),
+            "0".to_string(),
+            "test".to_string(),
+        );
+        sequence2.steps.push(step2);
+        test_case2.test_sequences.push(sequence2);
+
+        let test_cases = vec![test_case1.clone(), test_case2];
+        let filtered = filterer.filter_test_cases(test_cases, TestCaseFilter::ManualOnly);
+
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0].id, "TC001");
+    }
+
+    #[test]
+    fn test_test_case_filter_automated_only() {
+        use crate::models::{Step, TestSequence};
+        let filterer = TestCaseFilterer::new();
+
+        let mut test_case1 = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Manual Test".to_string(),
+        );
+        let mut sequence1 = TestSequence::new(1, "Seq 1".to_string(), "Description".to_string());
+        let mut step1 = Step::new(
+            1,
+            "Manual step".to_string(),
+            "verify manually".to_string(),
+            "0".to_string(),
+            "verified".to_string(),
+        );
+        step1.manual = Some(true);
+        sequence1.steps.push(step1);
+        test_case1.test_sequences.push(sequence1);
+
+        let mut test_case2 = TestCase::new(
+            "REQ002".to_string(),
+            2,
+            2,
+            "TC002".to_string(),
+            "Automated Test".to_string(),
+        );
+        let mut sequence2 = TestSequence::new(1, "Seq 1".to_string(), "Description".to_string());
+        let step2 = Step::new(
+            1,
+            "Automated step".to_string(),
+            "echo test".to_string(),
+            "0".to_string(),
+            "test".to_string(),
+        );
+        sequence2.steps.push(step2);
+        test_case2.test_sequences.push(sequence2);
+
+        let test_cases = vec![test_case1, test_case2.clone()];
+        let filtered = filterer.filter_test_cases(test_cases, TestCaseFilter::AutomatedOnly);
+
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0].id, "TC002");
+    }
+
+    #[test]
+    fn test_test_case_filter_mixed_test_cases() {
+        use crate::models::{Step, TestSequence};
+        let filterer = TestCaseFilterer::new();
+
+        let mut test_case1 = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Manual Test".to_string(),
+        );
+        let mut sequence1 = TestSequence::new(1, "Seq 1".to_string(), "Description".to_string());
+        let mut step1 = Step::new(
+            1,
+            "Manual step".to_string(),
+            "verify manually".to_string(),
+            "0".to_string(),
+            "verified".to_string(),
+        );
+        step1.manual = Some(true);
+        sequence1.steps.push(step1);
+        test_case1.test_sequences.push(sequence1);
+
+        let mut test_case2 = TestCase::new(
+            "REQ002".to_string(),
+            2,
+            2,
+            "TC002".to_string(),
+            "Automated Test".to_string(),
+        );
+        let mut sequence2 = TestSequence::new(1, "Seq 1".to_string(), "Description".to_string());
+        let step2 = Step::new(
+            1,
+            "Automated step".to_string(),
+            "echo test".to_string(),
+            "0".to_string(),
+            "test".to_string(),
+        );
+        sequence2.steps.push(step2);
+        test_case2.test_sequences.push(sequence2);
+
+        let mut test_case3 = TestCase::new(
+            "REQ003".to_string(),
+            3,
+            3,
+            "TC003".to_string(),
+            "Mixed Test".to_string(),
+        );
+        let mut sequence3 = TestSequence::new(1, "Seq 1".to_string(), "Description".to_string());
+        let mut step3a = Step::new(
+            1,
+            "Manual step".to_string(),
+            "verify manually".to_string(),
+            "0".to_string(),
+            "verified".to_string(),
+        );
+        step3a.manual = Some(true);
+        let step3b = Step::new(
+            2,
+            "Automated step".to_string(),
+            "echo test".to_string(),
+            "0".to_string(),
+            "test".to_string(),
+        );
+        sequence3.steps.push(step3a);
+        sequence3.steps.push(step3b);
+        test_case3.test_sequences.push(sequence3);
+
+        let test_cases = vec![test_case1, test_case2, test_case3.clone()];
+
+        let manual_filtered =
+            filterer.filter_test_cases(test_cases.clone(), TestCaseFilter::ManualOnly);
+        assert_eq!(manual_filtered.len(), 2);
+        assert!(manual_filtered.iter().any(|tc| tc.id == "TC001"));
+        assert!(manual_filtered.iter().any(|tc| tc.id == "TC003"));
+
+        let automated_filtered =
+            filterer.filter_test_cases(test_cases, TestCaseFilter::AutomatedOnly);
+        assert_eq!(automated_filtered.len(), 2);
+        assert!(automated_filtered.iter().any(|tc| tc.id == "TC002"));
+        assert!(automated_filtered.iter().any(|tc| tc.id == "TC003"));
+    }
+
+    #[test]
+    fn test_test_case_filter_empty_list() {
+        let filterer = TestCaseFilterer::new();
+        let test_cases: Vec<TestCase> = Vec::new();
+
+        let filtered_all = filterer.filter_test_cases(test_cases.clone(), TestCaseFilter::All);
+        assert_eq!(filtered_all.len(), 0);
+
+        let filtered_manual =
+            filterer.filter_test_cases(test_cases.clone(), TestCaseFilter::ManualOnly);
+        assert_eq!(filtered_manual.len(), 0);
+
+        let filtered_automated =
+            filterer.filter_test_cases(test_cases, TestCaseFilter::AutomatedOnly);
+        assert_eq!(filtered_automated.len(), 0);
+    }
+
+    #[test]
+    #[allow(clippy::default_constructed_unit_structs)]
+    fn test_test_case_filterer_default() {
+        let filterer = TestCaseFilterer::default();
+        let test_cases: Vec<TestCase> = Vec::new();
+        let filtered = filterer.filter_test_cases(test_cases, TestCaseFilter::All);
+        assert_eq!(filtered.len(), 0);
     }
 }
