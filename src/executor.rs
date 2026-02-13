@@ -850,7 +850,7 @@ impl TestExecutor {
                 script.push_str(&format!("    echo '    \"step\": {},'\n", step.step));
                 script.push_str(&format!(
                     "    echo '    \"command\": \"{}\",'\n",
-                    escaped_command.replace("\n","\\n")
+                    escaped_command.replace("\n", "\\n")
                 ));
                 script.push_str("    echo \"    \\\"exit_code\\\": $EXIT_CODE,\"\n");
                 script.push_str("    echo \"    \\\"output\\\": \\\"$OUTPUT_ESCAPED\\\",\"\n");
