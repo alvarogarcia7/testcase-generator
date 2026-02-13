@@ -379,6 +379,29 @@ impl TestCase {
             hydration_vars: None,
         }
     }
+
+    /// Check if the test case has any manual steps
+    pub fn has_manual_steps(&self) -> bool {
+        self.test_sequences
+            .iter()
+            .any(|sequence| sequence.steps.iter().any(|step| step.manual == Some(true)))
+    }
+
+    /// Check if the test case has any automated (non-manual) steps
+    pub fn has_automated_steps(&self) -> bool {
+        self.test_sequences
+            .iter()
+            .any(|sequence| sequence.steps.iter().any(|step| step.manual != Some(true)))
+    }
+
+    /// Get the total count of manual steps across all test sequences
+    pub fn get_manual_step_count(&self) -> usize {
+        self.test_sequences
+            .iter()
+            .flat_map(|sequence| &sequence.steps)
+            .filter(|step| step.manual == Some(true))
+            .count()
+    }
 }
 
 impl TestSequence {
@@ -2083,5 +2106,446 @@ verification:
 
         let deserialized: Verification = serde_yaml::from_str(&yaml).unwrap();
         assert_eq!(verification, deserialized);
+    }
+
+    #[test]
+    fn test_has_manual_steps_with_no_steps() {
+        let test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test".to_string(),
+        );
+        assert!(!test_case.has_manual_steps());
+    }
+
+    #[test]
+    fn test_has_manual_steps_with_no_manual_steps() {
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test".to_string(),
+        );
+        let mut sequence = TestSequence::new(1, "Seq 1".to_string(), "Description".to_string());
+        let step1 = Step::new(
+            1,
+            "Automated step".to_string(),
+            "echo test".to_string(),
+            "0".to_string(),
+            "test".to_string(),
+        );
+        let mut step2 = Step::new(
+            2,
+            "Explicitly automated step".to_string(),
+            "echo test2".to_string(),
+            "0".to_string(),
+            "test2".to_string(),
+        );
+        step2.manual = Some(false);
+        sequence.steps.push(step1);
+        sequence.steps.push(step2);
+        test_case.test_sequences.push(sequence);
+
+        assert!(!test_case.has_manual_steps());
+    }
+
+    #[test]
+    fn test_has_manual_steps_with_manual_steps() {
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test".to_string(),
+        );
+        let mut sequence = TestSequence::new(1, "Seq 1".to_string(), "Description".to_string());
+        let step1 = Step::new(
+            1,
+            "Automated step".to_string(),
+            "echo test".to_string(),
+            "0".to_string(),
+            "test".to_string(),
+        );
+        let mut step2 = Step::new(
+            2,
+            "Manual step".to_string(),
+            "verify manually".to_string(),
+            "0".to_string(),
+            "verified".to_string(),
+        );
+        step2.manual = Some(true);
+        sequence.steps.push(step1);
+        sequence.steps.push(step2);
+        test_case.test_sequences.push(sequence);
+
+        assert!(test_case.has_manual_steps());
+    }
+
+    #[test]
+    fn test_has_manual_steps_across_multiple_sequences() {
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test".to_string(),
+        );
+
+        let mut sequence1 = TestSequence::new(1, "Seq 1".to_string(), "Description".to_string());
+        let step1 = Step::new(
+            1,
+            "Automated step".to_string(),
+            "echo test".to_string(),
+            "0".to_string(),
+            "test".to_string(),
+        );
+        sequence1.steps.push(step1);
+
+        let mut sequence2 = TestSequence::new(2, "Seq 2".to_string(), "Description".to_string());
+        let mut step2 = Step::new(
+            1,
+            "Manual step".to_string(),
+            "verify manually".to_string(),
+            "0".to_string(),
+            "verified".to_string(),
+        );
+        step2.manual = Some(true);
+        sequence2.steps.push(step2);
+
+        test_case.test_sequences.push(sequence1);
+        test_case.test_sequences.push(sequence2);
+
+        assert!(test_case.has_manual_steps());
+    }
+
+    #[test]
+    fn test_has_automated_steps_with_no_steps() {
+        let test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test".to_string(),
+        );
+        assert!(!test_case.has_automated_steps());
+    }
+
+    #[test]
+    fn test_has_automated_steps_with_only_manual_steps() {
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test".to_string(),
+        );
+        let mut sequence = TestSequence::new(1, "Seq 1".to_string(), "Description".to_string());
+        let mut step1 = Step::new(
+            1,
+            "Manual step 1".to_string(),
+            "verify manually".to_string(),
+            "0".to_string(),
+            "verified".to_string(),
+        );
+        step1.manual = Some(true);
+        let mut step2 = Step::new(
+            2,
+            "Manual step 2".to_string(),
+            "verify manually".to_string(),
+            "0".to_string(),
+            "verified".to_string(),
+        );
+        step2.manual = Some(true);
+        sequence.steps.push(step1);
+        sequence.steps.push(step2);
+        test_case.test_sequences.push(sequence);
+
+        assert!(!test_case.has_automated_steps());
+    }
+
+    #[test]
+    fn test_has_automated_steps_with_automated_steps() {
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test".to_string(),
+        );
+        let mut sequence = TestSequence::new(1, "Seq 1".to_string(), "Description".to_string());
+        let step = Step::new(
+            1,
+            "Automated step".to_string(),
+            "echo test".to_string(),
+            "0".to_string(),
+            "test".to_string(),
+        );
+        sequence.steps.push(step);
+        test_case.test_sequences.push(sequence);
+
+        assert!(test_case.has_automated_steps());
+    }
+
+    #[test]
+    fn test_has_automated_steps_with_explicit_false() {
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test".to_string(),
+        );
+        let mut sequence = TestSequence::new(1, "Seq 1".to_string(), "Description".to_string());
+        let mut step = Step::new(
+            1,
+            "Automated step".to_string(),
+            "echo test".to_string(),
+            "0".to_string(),
+            "test".to_string(),
+        );
+        step.manual = Some(false);
+        sequence.steps.push(step);
+        test_case.test_sequences.push(sequence);
+
+        assert!(test_case.has_automated_steps());
+    }
+
+    #[test]
+    fn test_has_automated_steps_with_mixed_steps() {
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test".to_string(),
+        );
+        let mut sequence = TestSequence::new(1, "Seq 1".to_string(), "Description".to_string());
+        let mut step1 = Step::new(
+            1,
+            "Manual step".to_string(),
+            "verify manually".to_string(),
+            "0".to_string(),
+            "verified".to_string(),
+        );
+        step1.manual = Some(true);
+        let step2 = Step::new(
+            2,
+            "Automated step".to_string(),
+            "echo test".to_string(),
+            "0".to_string(),
+            "test".to_string(),
+        );
+        sequence.steps.push(step1);
+        sequence.steps.push(step2);
+        test_case.test_sequences.push(sequence);
+
+        assert!(test_case.has_automated_steps());
+    }
+
+    #[test]
+    fn test_get_manual_step_count_with_no_steps() {
+        let test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test".to_string(),
+        );
+        assert_eq!(test_case.get_manual_step_count(), 0);
+    }
+
+    #[test]
+    fn test_get_manual_step_count_with_no_manual_steps() {
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test".to_string(),
+        );
+        let mut sequence = TestSequence::new(1, "Seq 1".to_string(), "Description".to_string());
+        let step1 = Step::new(
+            1,
+            "Automated step 1".to_string(),
+            "echo test".to_string(),
+            "0".to_string(),
+            "test".to_string(),
+        );
+        let step2 = Step::new(
+            2,
+            "Automated step 2".to_string(),
+            "echo test2".to_string(),
+            "0".to_string(),
+            "test2".to_string(),
+        );
+        sequence.steps.push(step1);
+        sequence.steps.push(step2);
+        test_case.test_sequences.push(sequence);
+
+        assert_eq!(test_case.get_manual_step_count(), 0);
+    }
+
+    #[test]
+    fn test_get_manual_step_count_with_one_manual_step() {
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test".to_string(),
+        );
+        let mut sequence = TestSequence::new(1, "Seq 1".to_string(), "Description".to_string());
+        let step1 = Step::new(
+            1,
+            "Automated step".to_string(),
+            "echo test".to_string(),
+            "0".to_string(),
+            "test".to_string(),
+        );
+        let mut step2 = Step::new(
+            2,
+            "Manual step".to_string(),
+            "verify manually".to_string(),
+            "0".to_string(),
+            "verified".to_string(),
+        );
+        step2.manual = Some(true);
+        sequence.steps.push(step1);
+        sequence.steps.push(step2);
+        test_case.test_sequences.push(sequence);
+
+        assert_eq!(test_case.get_manual_step_count(), 1);
+    }
+
+    #[test]
+    fn test_get_manual_step_count_with_multiple_manual_steps() {
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test".to_string(),
+        );
+        let mut sequence = TestSequence::new(1, "Seq 1".to_string(), "Description".to_string());
+        let mut step1 = Step::new(
+            1,
+            "Manual step 1".to_string(),
+            "verify manually".to_string(),
+            "0".to_string(),
+            "verified".to_string(),
+        );
+        step1.manual = Some(true);
+        let step2 = Step::new(
+            2,
+            "Automated step".to_string(),
+            "echo test".to_string(),
+            "0".to_string(),
+            "test".to_string(),
+        );
+        let mut step3 = Step::new(
+            3,
+            "Manual step 2".to_string(),
+            "verify manually 2".to_string(),
+            "0".to_string(),
+            "verified2".to_string(),
+        );
+        step3.manual = Some(true);
+        sequence.steps.push(step1);
+        sequence.steps.push(step2);
+        sequence.steps.push(step3);
+        test_case.test_sequences.push(sequence);
+
+        assert_eq!(test_case.get_manual_step_count(), 2);
+    }
+
+    #[test]
+    fn test_get_manual_step_count_across_multiple_sequences() {
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test".to_string(),
+        );
+
+        let mut sequence1 = TestSequence::new(1, "Seq 1".to_string(), "Description".to_string());
+        let mut step1 = Step::new(
+            1,
+            "Manual step in seq 1".to_string(),
+            "verify manually".to_string(),
+            "0".to_string(),
+            "verified".to_string(),
+        );
+        step1.manual = Some(true);
+        let step2 = Step::new(
+            2,
+            "Automated step in seq 1".to_string(),
+            "echo test".to_string(),
+            "0".to_string(),
+            "test".to_string(),
+        );
+        sequence1.steps.push(step1);
+        sequence1.steps.push(step2);
+
+        let mut sequence2 = TestSequence::new(2, "Seq 2".to_string(), "Description".to_string());
+        let mut step3 = Step::new(
+            1,
+            "Manual step 1 in seq 2".to_string(),
+            "verify manually".to_string(),
+            "0".to_string(),
+            "verified".to_string(),
+        );
+        step3.manual = Some(true);
+        let mut step4 = Step::new(
+            2,
+            "Manual step 2 in seq 2".to_string(),
+            "verify manually 2".to_string(),
+            "0".to_string(),
+            "verified2".to_string(),
+        );
+        step4.manual = Some(true);
+        sequence2.steps.push(step3);
+        sequence2.steps.push(step4);
+
+        test_case.test_sequences.push(sequence1);
+        test_case.test_sequences.push(sequence2);
+
+        assert_eq!(test_case.get_manual_step_count(), 3);
+    }
+
+    #[test]
+    fn test_get_manual_step_count_ignores_explicit_false() {
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test".to_string(),
+        );
+        let mut sequence = TestSequence::new(1, "Seq 1".to_string(), "Description".to_string());
+        let mut step1 = Step::new(
+            1,
+            "Explicit automated step".to_string(),
+            "echo test".to_string(),
+            "0".to_string(),
+            "test".to_string(),
+        );
+        step1.manual = Some(false);
+        let mut step2 = Step::new(
+            2,
+            "Manual step".to_string(),
+            "verify manually".to_string(),
+            "0".to_string(),
+            "verified".to_string(),
+        );
+        step2.manual = Some(true);
+        sequence.steps.push(step1);
+        sequence.steps.push(step2);
+        test_case.test_sequences.push(sequence);
+
+        assert_eq!(test_case.get_manual_step_count(), 1);
     }
 }
