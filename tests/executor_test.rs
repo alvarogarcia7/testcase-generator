@@ -1199,11 +1199,68 @@ fn test_command_escaping_for_json_with_mixed_quotes() {
 
     // Final check: the generated JSON line for the command field should be:
     // echo '    "command": "echo \"test \"quoted\" value\"",'
-    let expected_json_line =
-        "echo '    \"command\": \"echo \\\"test \\\"quoted\\\" value\\\"\",";
+    let expected_json_line = "echo '    \"command\": \"echo \\\"test \\\"quoted\\\" value\\\"\",";
     assert!(
         script.contains(expected_json_line),
         "Script should contain the exact JSON command line with properly escaped quotes. Expected: {}",
         expected_json_line
+    );
+}
+
+#[test]
+fn test_command_escaping_for_json_with_newlines() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ013".to_string(),
+        1,
+        1,
+        "TC013".to_string(),
+        "Test command escaping with newlines".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    // Create a step with a multi-line bash command
+    let multiline_command = "echo 'line1'\necho 'line2'\necho 'line3'";
+    let step = create_test_step(
+        1,
+        "Multi-line command",
+        multiline_command,
+        "0",
+        "line1\nline2\nline3",
+        Some(true),
+    );
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let json_path = std::path::Path::new("test_output.json");
+    let script = executor.generate_test_script_with_json_output(&test_case, json_path);
+
+    // The generated bash script should contain the original multi-line command
+    assert!(
+        script.contains("echo 'line1'\necho 'line2'\necho 'line3'"),
+        "Script should contain the original multi-line command"
+    );
+
+    // In the JSON output section of the script, newlines should be escaped as \n
+    // The command in the JSON should have the newlines converted to \n for JSON format
+    // The script writes: echo '    "command": "...",
+    // where the command value should have \n instead of literal newlines
+
+    // Looking for the escaped form in the JSON line
+    // The echo command writes the JSON with newlines escaped as \n
+    // In the bash script, within single quotes, \n is literal, so it appears as:
+    // echo '    "command": "echo \"line1\"\necho \"line2\"\necho \"line3\"",'
+    // This produces JSON with \n (which is the correct JSON escape sequence for newlines)
+    let expected =
+        "echo '    \"command\": \"echo \\\"line1\\\"\\necho \\\"line2\\\"\\necho \\\"line3\\\"\",";
+    assert!(
+        script.contains(expected),
+        "JSON command field should contain newlines escaped as \\n in the JSON output"
+    );
+
+    // Verify the JSON structure is properly written
+    assert!(
+        script.contains("echo '    \"command\":"),
+        "Script should contain JSON command field write statement"
     );
 }
