@@ -23,7 +23,11 @@ test_sequences:
     steps:
       - step: 1
         description: "Echo hello message"
-        command: echo "Hello from test-orchestrator run"
+        command: |
+          echo "Hello from test-orchestrator run
+          another one
+          hehe
+          hello"
         expected:
           success: true
           result: 0
