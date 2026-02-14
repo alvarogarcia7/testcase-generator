@@ -670,3 +670,184 @@ fn create_test_case_with_special_characters() -> TestCase {
     test_case.test_sequences.push(sequence);
     test_case
 }
+
+#[test]
+fn test_generated_script_produces_valid_json_with_special_chars() -> Result<()> {
+    use std::process::Command;
+
+    let temp_dir = TempDir::new()?;
+
+    let mut test_case = TestCase::new(
+        "REQ001".to_string(),
+        1,
+        1,
+        "SPECIAL_JSON_TC_001".to_string(),
+        "Test case with special characters for JSON".to_string(),
+    );
+
+    use testcase_manager::{Expected, Step, TestSequence, Verification, VerificationExpression};
+
+    let mut sequence = TestSequence::new(
+        1,
+        "Sequence1".to_string(),
+        "Test with various special characters".to_string(),
+    );
+
+    sequence.steps.push(Step {
+        step: 1,
+        manual: None,
+        description: "Command with single quotes".to_string(),
+        command: "echo 'single quoted text'".to_string(),
+        capture_vars: None,
+        expected: Expected {
+            success: Some(true),
+            result: "[ $EXIT_CODE -eq 0 ]".to_string(),
+            output: "true".to_string(),
+        },
+        verification: Verification {
+            result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+            output: VerificationExpression::Simple("true".to_string()),
+            output_file: None,
+        },
+    });
+
+    sequence.steps.push(Step {
+        step: 2,
+        manual: None,
+        description: "Command with double quotes".to_string(),
+        command: r#"echo "double quoted text""#.to_string(),
+        capture_vars: None,
+        expected: Expected {
+            success: Some(true),
+            result: "[ $EXIT_CODE -eq 0 ]".to_string(),
+            output: "true".to_string(),
+        },
+        verification: Verification {
+            result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+            output: VerificationExpression::Simple("true".to_string()),
+            output_file: None,
+        },
+    });
+
+    sequence.steps.push(Step {
+        step: 3,
+        manual: None,
+        description: "Command with backslashes".to_string(),
+        command: r#"echo "path\\to\\file""#.to_string(),
+        capture_vars: None,
+        expected: Expected {
+            success: Some(true),
+            result: "[ $EXIT_CODE -eq 0 ]".to_string(),
+            output: "true".to_string(),
+        },
+        verification: Verification {
+            result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+            output: VerificationExpression::Simple("true".to_string()),
+            output_file: None,
+        },
+    });
+
+    sequence.steps.push(Step {
+        step: 4,
+        manual: None,
+        description: "Command with newlines".to_string(),
+        command: "echo 'line1'\necho 'line2'".to_string(),
+        capture_vars: None,
+        expected: Expected {
+            success: Some(true),
+            result: "[ $EXIT_CODE -eq 0 ]".to_string(),
+            output: "true".to_string(),
+        },
+        verification: Verification {
+            result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+            output: VerificationExpression::Simple("true".to_string()),
+            output_file: None,
+        },
+    });
+
+    sequence.steps.push(Step {
+        step: 5,
+        manual: None,
+        description: "Command with tabs".to_string(),
+        command: "echo 'text\twith\ttabs'".to_string(),
+        capture_vars: None,
+        expected: Expected {
+            success: Some(true),
+            result: "[ $EXIT_CODE -eq 0 ]".to_string(),
+            output: "true".to_string(),
+        },
+        verification: Verification {
+            result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+            output: VerificationExpression::Simple("true".to_string()),
+            output_file: None,
+        },
+    });
+
+    test_case.test_sequences.push(sequence);
+
+    let executor = TestExecutor::with_output_dir(temp_dir.path());
+    let json_log_path = temp_dir
+        .path()
+        .join(format!("{}_execution_log.json", test_case.id));
+
+    let script = executor.generate_test_script_with_json_output(&test_case, &json_log_path);
+
+    let script_path = temp_dir.path().join("test_script.sh");
+    fs::write(&script_path, script)?;
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = fs::metadata(&script_path)?.permissions();
+        perms.set_mode(0o755);
+        fs::set_permissions(&script_path, perms)?;
+    }
+
+    let output = Command::new("bash")
+        .arg(&script_path)
+        .current_dir(temp_dir.path())
+        .output()?;
+
+    let json_content_debug = if json_log_path.exists() {
+        fs::read_to_string(&json_log_path).unwrap_or_else(|_| "Could not read JSON file".to_string())
+    } else {
+        "JSON file does not exist".to_string()
+    };
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        
+        eprintln!("Script execution failed but continuing to test JSON parsing...");
+        eprintln!("Script exit code: {:?}", output.status.code());
+        eprintln!("stdout: {}", stdout);
+        eprintln!("stderr: {}", stderr);
+    }
+
+    assert!(json_log_path.exists(), "JSON log file should be created even if script failed");
+
+    let json_content = fs::read_to_string(&json_log_path)?;
+
+    let parsed_result: Result<Vec<TestStepExecutionEntry>, _> = serde_json::from_str(&json_content);
+    assert!(
+        parsed_result.is_ok(),
+        "JSON should parse successfully with serde_json. Error: {:?}\nJSON content:\n{}",
+        parsed_result.err(),
+        json_content
+    );
+
+    let entries = parsed_result.unwrap();
+    assert_eq!(entries.len(), 5, "Should have 5 execution entries");
+
+    assert_eq!(entries[0].command, "echo \"single quoted text\"");
+    assert_eq!(entries[1].command, r#"echo "double quoted text""#);
+    assert_eq!(entries[2].command, r#"echo "path\\to\\file""#);
+    assert_eq!(entries[3].command, "echo \"line1\"\necho \"line2\"");
+    assert_eq!(entries[4].command, "echo \"text\twith\ttabs\"");
+
+    for entry in &entries {
+        assert_eq!(entry.exit_code, 0, "All commands should succeed");
+    }
+
+    Ok(())
+}
