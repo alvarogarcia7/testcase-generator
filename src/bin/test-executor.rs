@@ -2,7 +2,9 @@ use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use std::fs;
 use std::path::PathBuf;
-use testcase_manager::{TestCase, TestExecutor, VarHydrator};
+use testcase_manager::{
+    TestCase, TestCaseFilter, TestCaseFilterer, TestCaseStorage, TestExecutor, VarHydrator,
+};
 
 #[derive(Parser)]
 #[command(name = "test-executor")]
@@ -71,6 +73,24 @@ enum Commands {
         #[arg(short, long, value_name = "EXPORT_FILE")]
         export_file: PathBuf,
     },
+    /// List all test cases with optional filtering
+    List {
+        /// Optional base path to test cases directory (defaults to "testcases")
+        #[arg(value_name = "BASE_PATH")]
+        base_path: Option<PathBuf>,
+
+        /// Show only test cases with manual steps
+        #[arg(long, conflicts_with = "automated_only")]
+        manual_only: bool,
+
+        /// Show only test cases with automated steps
+        #[arg(long, conflicts_with = "manual_only")]
+        automated_only: bool,
+
+        /// Show statistics about test cases
+        #[arg(long)]
+        show_stats: bool,
+    },
 }
 
 fn load_test_case(yaml_file: &PathBuf) -> Result<TestCase> {
@@ -81,6 +101,77 @@ fn load_test_case(yaml_file: &PathBuf) -> Result<TestCase> {
         serde_yaml::from_str(&yaml_content).context("Failed to parse YAML content as TestCase")?;
 
     Ok(test_case)
+}
+
+fn list_test_cases(
+    base_path: Option<PathBuf>,
+    manual_only: bool,
+    automated_only: bool,
+    show_stats: bool,
+) -> Result<()> {
+    let path = base_path.unwrap_or_else(|| PathBuf::from("testcases"));
+    let storage = TestCaseStorage::new(&path)?;
+
+    let test_cases = storage.load_all_test_cases()?;
+
+    let filter = if manual_only {
+        TestCaseFilter::ManualOnly
+    } else if automated_only {
+        TestCaseFilter::AutomatedOnly
+    } else {
+        TestCaseFilter::All
+    };
+
+    let filterer = TestCaseFilterer::new();
+    let filtered_cases = filterer.filter_test_cases(test_cases.clone(), filter);
+
+    if filtered_cases.is_empty() {
+        println!("No test cases found.");
+        return Ok(());
+    }
+
+    println!("Test Cases:");
+    println!();
+
+    for test_case in &filtered_cases {
+        let manual_step_count = test_case.get_manual_step_count();
+        let manual_indicator = if manual_step_count > 0 {
+            format!(" [M:{}]", manual_step_count)
+        } else {
+            String::new()
+        };
+
+        println!(
+            "  {}{} - {}",
+            test_case.id, manual_indicator, test_case.description
+        );
+    }
+
+    if show_stats {
+        println!();
+        println!("Statistics:");
+
+        let total_count = filtered_cases.len();
+        let manual_count = filtered_cases
+            .iter()
+            .filter(|tc| tc.has_manual_steps())
+            .count();
+        let automated_count = filtered_cases
+            .iter()
+            .filter(|tc| tc.has_automated_steps())
+            .count();
+        let total_manual_steps: usize = filtered_cases
+            .iter()
+            .map(|tc| tc.get_manual_step_count())
+            .sum();
+
+        println!("  Total test cases: {}", total_count);
+        println!("  Test cases with manual steps: {}", manual_count);
+        println!("  Test cases with automated steps: {}", automated_count);
+        println!("  Total manual steps: {}", total_manual_steps);
+    }
+
+    Ok(())
 }
 
 fn main() -> Result<()> {
@@ -229,5 +320,11 @@ fn main() -> Result<()> {
                 std::process::exit(1);
             }
         }
+        Commands::List {
+            base_path,
+            manual_only,
+            automated_only,
+            show_stats,
+        } => list_test_cases(base_path, manual_only, automated_only, show_stats),
     }
 }
