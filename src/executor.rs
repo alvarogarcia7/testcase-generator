@@ -747,7 +747,50 @@ impl TestExecutor {
                 script.push_str(&output_verification_script);
                 script.push('\n');
 
-                script.push_str("if [ \"$VERIFICATION_RESULT_PASS\" = true ] && [ \"$VERIFICATION_OUTPUT_PASS\" = true ]; then\n");
+                // Generate general verification checks if present
+                let mut general_verification_vars = Vec::new();
+                if let Some(ref general_verifications) = step.verification.general {
+                    if !general_verifications.is_empty() {
+                        script.push_str("# General verifications\n");
+                        for general_ver in general_verifications.iter() {
+                            // Sanitize the name to create a valid bash variable name
+                            let sanitized_name = general_ver
+                                .name
+                                .replace(" ", "_")
+                                .replace("-", "_")
+                                .chars()
+                                .filter(|c| c.is_alphanumeric() || *c == '_')
+                                .collect::<String>();
+                            let var_name = format!("GENERAL_VERIFY_PASS_{}", sanitized_name);
+                            general_verification_vars.push(var_name.clone());
+
+                            script.push_str(&format!("{}=false\n", var_name));
+
+                            // Generate verification script with variable substitution support if needed
+                            let general_verification_script = if uses_variables {
+                                generate_verification_with_var_subst(
+                                    &VerificationExpression::Simple(general_ver.condition.clone()),
+                                    &var_name,
+                                )
+                            } else {
+                                Self::generate_verification_script(
+                                    &VerificationExpression::Simple(general_ver.condition.clone()),
+                                    &var_name,
+                                )
+                            };
+                            script.push_str(&general_verification_script);
+                        }
+                        script.push('\n');
+                    }
+                }
+
+                // Build the overall verification condition
+                let mut verification_condition = String::from("\"$VERIFICATION_RESULT_PASS\" = true ] && [ \"$VERIFICATION_OUTPUT_PASS\" = true");
+                for var_name in &general_verification_vars {
+                    verification_condition.push_str(&format!(" ] && [ \"${}\" = true", var_name));
+                }
+
+                script.push_str(&format!("if [ {} ]; then\n", verification_condition));
                 script.push_str(&format!(
                     "    echo \"[PASS] Step {}: {}\"\n",
                     step.step, step.description
@@ -764,6 +807,12 @@ impl TestExecutor {
                 script.push_str("    echo \"  Output: $COMMAND_OUTPUT\"\n");
                 script.push_str("    echo \"  Result verification: $VERIFICATION_RESULT_PASS\"\n");
                 script.push_str("    echo \"  Output verification: $VERIFICATION_OUTPUT_PASS\"\n");
+
+                // Add general verification results to error message
+                for var_name in &general_verification_vars {
+                    script.push_str(&format!("    echo \"  {}: ${}\"\n", var_name, var_name));
+                }
+
                 script.push_str("    exit 1\n");
                 script.push_str("fi\n\n");
 
@@ -2672,5 +2721,78 @@ mod tests {
         assert!(script.contains("STEP_VAR_NAMES=\"$STEP_VAR_NAMES file_size\""));
         assert!(script.contains("if ! echo \" $STEP_VAR_NAMES \" | grep -q \" timestamp \"; then"));
         assert!(script.contains("STEP_VAR_NAMES=\"$STEP_VAR_NAMES timestamp\""));
+    }
+
+    #[test]
+    fn test_generate_test_script_with_general_verification() {
+        use crate::models::GeneralVerification;
+
+        let executor = TestExecutor::new();
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test with general verification".to_string(),
+        );
+
+        let mut sequence = TestSequence::new(1, "Seq1".to_string(), "First sequence".to_string());
+        let step = Step {
+            step: 1,
+            manual: None,
+            description: "Echo test".to_string(),
+            command: "echo 'hello'".to_string(),
+            capture_vars: None,
+            expected: Expected {
+                success: Some(true),
+                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
+                output: "[ \"$COMMAND_OUTPUT\" = \"hello\" ]".to_string(),
+            },
+            verification: Verification {
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple(
+                    "[ \"$COMMAND_OUTPUT\" = \"hello\" ]".to_string(),
+                ),
+                output_file: None,
+                general: Some(vec![
+                    GeneralVerification {
+                        name: "check file exists".to_string(),
+                        condition: "test -f /tmp/test.txt".to_string(),
+                    },
+                    GeneralVerification {
+                        name: "verify-output".to_string(),
+                        condition: "[ -n \"$COMMAND_OUTPUT\" ]".to_string(),
+                    },
+                ]),
+            },
+        };
+        sequence.steps.push(step);
+        test_case.test_sequences.push(sequence);
+
+        let script = executor.generate_test_script(&test_case);
+
+        // Verify general verification section is present
+        assert!(script.contains("# General verifications"));
+
+        // Verify variable declarations for general verifications
+        assert!(script.contains("GENERAL_VERIFY_PASS_check_file_exists=false"));
+        assert!(script.contains("GENERAL_VERIFY_PASS_verify_output=false"));
+
+        // Verify condition checks are present
+        assert!(script.contains("test -f /tmp/test.txt"));
+        assert!(script.contains("[ -n \"$COMMAND_OUTPUT\" ]"));
+
+        // Verify if statements set the variables
+        assert!(script.contains("GENERAL_VERIFY_PASS_check_file_exists=true"));
+        assert!(script.contains("GENERAL_VERIFY_PASS_verify_output=true"));
+
+        // Verify the overall verification condition includes general verifications
+        assert!(script.contains("\"$VERIFICATION_RESULT_PASS\" = true ] && [ \"$VERIFICATION_OUTPUT_PASS\" = true ] && [ \"$GENERAL_VERIFY_PASS_check_file_exists\" = true ] && [ \"$GENERAL_VERIFY_PASS_verify_output\" = true ]"));
+
+        // Verify failure message includes general verification results
+        assert!(script.contains("echo \"  GENERAL_VERIFY_PASS_check_file_exists: $GENERAL_VERIFY_PASS_check_file_exists\""));
+        assert!(script.contains(
+            "echo \"  GENERAL_VERIFY_PASS_verify_output: $GENERAL_VERIFY_PASS_verify_output\""
+        ));
     }
 }
