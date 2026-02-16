@@ -969,6 +969,9 @@ impl TestExecutor {
             }
         }
 
+        // Initialize variable storage for captured variables
+        let mut step_vars: HashMap<String, String> = HashMap::new();
+
         for sequence in &test_case.test_sequences {
             for step in &sequence.steps {
                 if step.manual == Some(true) {
@@ -977,6 +980,24 @@ impl TestExecutor {
                         step.step, sequence.id, step.description
                     );
                     continue;
+                }
+
+                // Validate capture_vars mutual exclusivity at runtime
+                if let Some(ref capture_vars) = step.capture_vars {
+                    for (var_name, capture_pattern, command) in capture_vars_to_vec(capture_vars) {
+                        if capture_pattern.is_some() && command.is_some() {
+                            return Err(anyhow::anyhow!(
+                                "Step {} (Sequence {}): Variable '{}' has both capture and command specified. They are mutually exclusive.",
+                                step.step, sequence.id, var_name
+                            ));
+                        }
+                        if capture_pattern.is_none() && command.is_none() {
+                            return Err(anyhow::anyhow!(
+                                "Step {} (Sequence {}): Variable '{}' must have either capture or command specified.",
+                                step.step, sequence.id, var_name
+                            ));
+                        }
+                    }
                 }
 
                 println!(
@@ -1003,19 +1024,95 @@ impl TestExecutor {
 
                         execution_entries.push(entry);
 
+                        // Capture variables from output or command execution
+                        if let Some(ref capture_vars) = step.capture_vars {
+                            for (var_name, capture_pattern, command) in
+                                capture_vars_to_vec(capture_vars)
+                            {
+                                if let Some(pattern) = capture_pattern {
+                                    // Capture from COMMAND_OUTPUT using regex pattern
+                                    let re = Regex::new(&pattern).with_context(|| {
+                                        format!(
+                                            "Invalid regex pattern for variable '{}': {}",
+                                            var_name, pattern
+                                        )
+                                    })?;
+
+                                    if let Some(captures) = re.captures(&command_output) {
+                                        if let Some(captured_value) = captures.get(1) {
+                                            step_vars.insert(
+                                                var_name.clone(),
+                                                captured_value.as_str().to_string(),
+                                            );
+                                        } else if let Some(captured_value) = captures.get(0) {
+                                            // If no capture group, use the whole match
+                                            step_vars.insert(
+                                                var_name.clone(),
+                                                captured_value.as_str().to_string(),
+                                            );
+                                        }
+                                    }
+                                } else if let Some(cmd) = command {
+                                    // Command-based capture: Execute the capture command
+                                    match Command::new("bash").arg("-c").arg(&cmd).output() {
+                                        Ok(capture_output) => {
+                                            let captured_value =
+                                                String::from_utf8_lossy(&capture_output.stdout)
+                                                    .trim_end()
+                                                    .to_string();
+                                            step_vars.insert(var_name.clone(), captured_value);
+                                        }
+                                        Err(e) => {
+                                            // If command fails, store empty string
+                                            eprintln!("Warning: Failed to execute capture command for variable '{}': {}", var_name, e);
+                                            step_vars.insert(var_name.clone(), String::new());
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
                         // Perform verification
                         let result_verification_passed = self.evaluate_verification(
                             &step.verification.result,
                             exit_code,
                             &command_output,
+                            &step_vars,
                         )?;
                         let output_verification_passed = self.evaluate_verification(
                             &step.verification.output,
                             exit_code,
                             &command_output,
+                            &step_vars,
                         )?;
 
-                        if result_verification_passed && output_verification_passed {
+                        // Evaluate general verifications if present
+                        let mut general_verifications_passed = true;
+                        if let Some(ref general_verifications) = step.verification.general {
+                            for general_ver in general_verifications {
+                                let general_expr =
+                                    VerificationExpression::Simple(general_ver.condition.clone());
+                                let general_passed = self.evaluate_verification(
+                                    &general_expr,
+                                    exit_code,
+                                    &command_output,
+                                    &step_vars,
+                                )?;
+
+                                if !general_passed {
+                                    general_verifications_passed = false;
+                                    println!(
+                                        "  General verification '{}' failed",
+                                        general_ver.name
+                                    );
+                                }
+                            }
+                        }
+
+                        if result_verification_passed
+                            && output_verification_passed
+                            && general_verifications_passed
+                        {
                             println!(
                                 "[PASS] Step {} (Sequence {}): {}",
                                 step.step, sequence.id, step.description
@@ -1030,6 +1127,7 @@ impl TestExecutor {
                             println!("  COMMAND_OUTPUT: {}", command_output);
                             println!("  Result verification: {}", result_verification_passed);
                             println!("  Output verification: {}", output_verification_passed);
+                            println!("  General verifications: {}", general_verifications_passed);
                             verification_failed = true;
 
                             if execution_error.is_none() {
@@ -1086,6 +1184,7 @@ impl TestExecutor {
         expression: &VerificationExpression,
         exit_code: i32,
         command_output: &str,
+        step_vars: &HashMap<String, String>,
     ) -> Result<bool> {
         // Extract the simple expression or condition from VerificationExpression
         let expr_str = match expression {
@@ -1103,22 +1202,38 @@ impl TestExecutor {
         }
 
         // Build a bash script that evaluates the verification expression
-        // We need to set EXIT_CODE and COMMAND_OUTPUT variables and then evaluate the expression
-        let script = format!(
-            r#"EXIT_CODE={}
-COMMAND_OUTPUT="{}"
-if {}; then
+        // We need to set EXIT_CODE, COMMAND_OUTPUT, and step variables, then evaluate the expression
+        let mut script = String::new();
+        script.push_str(&format!("EXIT_CODE={}\n", exit_code));
+        script.push_str(&format!(
+            "COMMAND_OUTPUT=\"{}\"\n",
+            command_output
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+        ));
+
+        // Set captured variables as bash variables
+        for (var_name, var_value) in step_vars {
+            script.push_str(&format!(
+                "{}=\"{}\"\n",
+                var_name,
+                var_value
+                    .replace("\\", "\\\\")
+                    .replace("\"", "\\\"")
+                    .replace("\n", "\\n")
+            ));
+        }
+
+        // Evaluate the expression using bash -c
+        script.push_str(&format!(
+            r#"if {}; then
     exit 0
 else
     exit 1
 fi"#,
-            exit_code,
-            command_output
-                .replace("\\", "\\\\")
-                .replace("\"", "\\\"")
-                .replace("\n", "\\n"),
             expr_str
-        );
+        ));
 
         match Command::new("bash").arg("-c").arg(&script).output() {
             Ok(output) => Ok(output.status.success()),
