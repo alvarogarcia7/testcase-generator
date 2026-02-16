@@ -673,7 +673,10 @@ impl TestExecutor {
                                     bash_escape(&sed_pattern)
                                 ));
                             } else if let Some(cmd) = command {
-                                // Capture from command execution
+                                // Command-based capture: Execute the capture command and store result in STEP_VAR_*
+                                // The command is executed directly (not on COMMAND_OUTPUT)
+                                // Both stdout and stderr are captured (2>&1)
+                                // Fallback to empty string if command fails (|| echo "")
                                 script.push_str(&format!(
                                     "STEP_VAR_{}=$({} 2>&1 || echo \"\")\n",
                                     var_name, cmd
@@ -2588,5 +2591,86 @@ mod tests {
         assert!(!script.contains("# Source environment variables for hydration"));
         assert!(!script.contains("EXPORT_FILE="));
         assert!(!script.contains("source \"$EXPORT_FILE\""));
+    }
+
+    #[test]
+    fn test_generate_test_script_with_command_based_captures() {
+        use crate::models::CaptureVar;
+
+        let executor = TestExecutor::new();
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test with command-based capture".to_string(),
+        );
+
+        let mut sequence = TestSequence::new(1, "Seq1".to_string(), "First sequence".to_string());
+
+        // Create capture_vars with both regex and command-based captures
+        let capture_vars = vec![
+            CaptureVar {
+                name: "token".to_string(),
+                capture: Some(r#"(?<=token=)[a-zA-Z0-9]+"#.to_string()),
+                command: None,
+            },
+            CaptureVar {
+                name: "file_size".to_string(),
+                capture: None,
+                command: Some("cat /tmp/output.txt | wc -c".to_string()),
+            },
+            CaptureVar {
+                name: "timestamp".to_string(),
+                capture: None,
+                command: Some("date +%s".to_string()),
+            },
+        ];
+
+        let step = Step {
+            step: 1,
+            manual: None,
+            description: "Extract variables with commands".to_string(),
+            command: "echo 'token=abc123' > /tmp/output.txt".to_string(),
+            capture_vars: Some(CaptureVarsFormat::New(capture_vars)),
+            expected: Expected {
+                success: Some(true),
+                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
+                output: "true".to_string(),
+            },
+            verification: Verification {
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
+                output_file: None,
+                general: None,
+            },
+        };
+        sequence.steps.push(step);
+        test_case.test_sequences.push(sequence);
+
+        let script = executor.generate_test_script(&test_case);
+
+        // Verify the script contains capture variables section
+        assert!(script.contains("# Capture variables from output"));
+
+        // Verify regex-based capture (token) uses sed
+        assert!(script.contains("STEP_VAR_token=$(echo \"$COMMAND_OUTPUT\" | sed -n"));
+        assert!(script.contains("| head -n 1 || echo \"\")"));
+
+        // Verify command-based capture (file_size) executes the command
+        assert!(
+            script.contains("STEP_VAR_file_size=$(cat /tmp/output.txt | wc -c 2>&1 || echo \"\")")
+        );
+
+        // Verify command-based capture (timestamp) executes the command
+        assert!(script.contains("STEP_VAR_timestamp=$(date +%s 2>&1 || echo \"\")"));
+
+        // Verify all variables are added to STEP_VAR_NAMES
+        assert!(script.contains("if ! echo \" $STEP_VAR_NAMES \" | grep -q \" token \"; then"));
+        assert!(script.contains("STEP_VAR_NAMES=\"$STEP_VAR_NAMES token\""));
+        assert!(script.contains("if ! echo \" $STEP_VAR_NAMES \" | grep -q \" file_size \"; then"));
+        assert!(script.contains("STEP_VAR_NAMES=\"$STEP_VAR_NAMES file_size\""));
+        assert!(script.contains("if ! echo \" $STEP_VAR_NAMES \" | grep -q \" timestamp \"; then"));
+        assert!(script.contains("STEP_VAR_NAMES=\"$STEP_VAR_NAMES timestamp\""));
     }
 }
