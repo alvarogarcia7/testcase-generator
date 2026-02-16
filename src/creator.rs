@@ -768,19 +768,28 @@ steps: []
 
         let command = Prompts::input_with_oracle("Command", &self.oracle)?;
 
+        // Prompt for capture variables
+        let capture_vars = Prompts::prompt_capture_vars(&self.oracle)?;
+
         let expected_value = self.prompt_for_expected()?;
         let expected: Expected = serde_yaml::from_value(expected_value)
             .context("Failed to convert expected value to Expected struct")?;
 
         // Use template-based verification prompts
-        let verification = Prompts::prompt_verification_with_templates(&self.oracle)?;
+        let mut verification = Prompts::prompt_verification_with_templates(&self.oracle)?;
+
+        // Prompt for general verification conditions
+        let general_verifications = Prompts::prompt_general_verifications(&self.oracle)?;
+        if general_verifications.is_some() {
+            verification.general = general_verifications;
+        }
 
         Ok(Step {
             step: step_number,
             manual,
             description,
             command,
-            capture_vars: None,
+            capture_vars,
             expected,
             verification,
         })
