@@ -1426,6 +1426,7 @@ mod tests {
                     "[ \"$COMMAND_OUTPUT\" = \"hello\" ]".to_string(),
                 ),
                 output_file: None,
+                general: None,
             },
         };
         sequence.steps.push(step);
@@ -1471,6 +1472,7 @@ mod tests {
                 result: VerificationExpression::Simple("true".to_string()),
                 output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
+                general: None,
             },
         };
         sequence.steps.push(step);
@@ -1552,6 +1554,7 @@ mod tests {
                 result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
                 output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
+                general: None,
             },
         };
         sequence.steps.push(step);
@@ -1592,6 +1595,7 @@ mod tests {
                 result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
                 output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
+                general: None,
             },
         };
         sequence.steps.push(step);
@@ -1633,6 +1637,7 @@ mod tests {
                 result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
                 output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
+                general: None,
             },
         };
 
@@ -1651,6 +1656,7 @@ mod tests {
                 result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
                 output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
+                general: None,
             },
         };
 
@@ -1703,6 +1709,7 @@ mod tests {
                 result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
                 output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
+                general: None,
             },
         };
         sequence1.steps.push(step1);
@@ -1723,6 +1730,7 @@ mod tests {
                 result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
                 output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
+                general: None,
             },
         };
         sequence2.steps.push(step2);
@@ -1777,6 +1785,7 @@ mod tests {
                 result: VerificationExpression::Simple("true".to_string()),
                 output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
+                general: None,
             },
         };
 
@@ -1795,6 +1804,7 @@ mod tests {
                 result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
                 output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
+                general: None,
             },
         };
 
@@ -1849,6 +1859,7 @@ mod tests {
                 result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
                 output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
+                general: None,
             },
         };
         sequence.steps.push(step);
@@ -1897,6 +1908,7 @@ mod tests {
                 result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
                 output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
+                general: None,
             },
         };
         sequence.steps.push(step);
@@ -2113,6 +2125,7 @@ mod tests {
                 result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
                 output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
+                general: None,
             },
         };
         sequence.steps.push(step);
@@ -2160,6 +2173,7 @@ mod tests {
                 result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
                 output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
+                general: None,
             },
         };
         sequence.steps.push(step);
@@ -2205,6 +2219,7 @@ mod tests {
                 result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
                 output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
+                general: None,
             },
         };
         sequence.steps.push(step);
@@ -2256,6 +2271,7 @@ mod tests {
                     "[[ \"$COMMAND_OUTPUT\" == *\"${STEP_VARS[status]}\"* ]]".to_string(),
                 ),
                 output_file: None,
+                general: None,
             },
         };
         sequence.steps.push(step);
@@ -2313,6 +2329,7 @@ mod tests {
                 result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
                 output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
+                general: None,
             },
         };
         sequence.steps.push(step);
@@ -2439,6 +2456,7 @@ mod tests {
                 result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
                 output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
+                general: None,
             },
         };
         sequence.steps.push(step1);
@@ -2470,6 +2488,7 @@ mod tests {
                 result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
                 output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
+                general: None,
             },
         };
         sequence2.steps.push(step2);
@@ -2507,6 +2526,7 @@ mod tests {
                     "[[ \"$COMMAND_OUTPUT\" == *\"${#EXPECTED_OUTPUT}\"* ]]".to_string(),
                 ),
                 output_file: None,
+                general: None,
             },
         };
         sequence.steps.push(step);
@@ -2556,6 +2576,7 @@ mod tests {
                 result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
                 output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
+                general: None,
             },
         };
         sequence.steps.push(step);

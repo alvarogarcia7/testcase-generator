@@ -52,6 +52,22 @@ pub struct EnvVariable {
 /// Configuration for environment variables (alias for EnvVariable)
 pub type EnvVarConfig = EnvVariable;
 
+/// General verification with name and condition
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct GeneralVerification {
+    /// Name of the verification
+    pub name: String,
+
+    /// Condition to evaluate
+    pub condition: String,
+}
+
+impl fmt::Display for GeneralVerification {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}: {}", self.name, self.condition)
+    }
+}
+
 /// Verification information for a test step
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Verification {
@@ -64,6 +80,10 @@ pub struct Verification {
     /// Verification output from file (optional - reads from LOG_FILE instead of COMMAND_OUTPUT)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub output_file: Option<VerificationExpression>,
+
+    /// General verifications (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub general: Option<Vec<GeneralVerification>>,
 }
 
 impl fmt::Display for Verification {
@@ -249,6 +269,7 @@ fn default_verification_from_expected() -> Verification {
             "cat $COMMAND_OUTPUT | grep -q \"${OUTPUT}\"".to_string(),
         ),
         output_file: None,
+        general: None,
     }
 }
 
@@ -1865,5 +1886,202 @@ expected:
         let result: Step = serde_yaml::from_str(yaml).unwrap();
         assert_eq!(result.step, 1);
         assert!(result.capture_vars.is_none());
+    }
+
+    #[test]
+    fn test_general_verification_creation() {
+        let general_verification = GeneralVerification {
+            name: "check_file_exists".to_string(),
+            condition: "test -f /tmp/output.txt".to_string(),
+        };
+        assert_eq!(general_verification.name, "check_file_exists");
+        assert_eq!(general_verification.condition, "test -f /tmp/output.txt");
+    }
+
+    #[test]
+    fn test_general_verification_display() {
+        let general_verification = GeneralVerification {
+            name: "check_file_exists".to_string(),
+            condition: "test -f /tmp/output.txt".to_string(),
+        };
+        assert_eq!(
+            format!("{}", general_verification),
+            "check_file_exists: test -f /tmp/output.txt"
+        );
+    }
+
+    #[test]
+    fn test_general_verification_serialization() {
+        let general_verification = GeneralVerification {
+            name: "check_file_exists".to_string(),
+            condition: "test -f /tmp/output.txt".to_string(),
+        };
+
+        let yaml = serde_yaml::to_string(&general_verification).unwrap();
+        let deserialized: GeneralVerification = serde_yaml::from_str(&yaml).unwrap();
+
+        assert_eq!(general_verification, deserialized);
+    }
+
+    #[test]
+    fn test_general_verification_deserialization() {
+        let yaml = r#"
+name: check_directory
+condition: "test -d /var/log"
+"#;
+        let result: GeneralVerification = serde_yaml::from_str(yaml).unwrap();
+        assert_eq!(result.name, "check_directory");
+        assert_eq!(result.condition, "test -d /var/log");
+    }
+
+    #[test]
+    fn test_verification_with_general_field() {
+        let yaml = r#"
+result: "[[ $? -eq 0 ]]"
+output: "cat $COMMAND_OUTPUT | grep -q \"${OUTPUT}\""
+general:
+  - name: check_file_exists
+    condition: "test -f /tmp/output.txt"
+  - name: check_permissions
+    condition: "test -r /tmp/output.txt"
+"#;
+        let result: Verification = serde_yaml::from_str(yaml).unwrap();
+
+        assert!(result.general.is_some());
+        let general = result.general.unwrap();
+        assert_eq!(general.len(), 2);
+        assert_eq!(general[0].name, "check_file_exists");
+        assert_eq!(general[0].condition, "test -f /tmp/output.txt");
+        assert_eq!(general[1].name, "check_permissions");
+        assert_eq!(general[1].condition, "test -r /tmp/output.txt");
+    }
+
+    #[test]
+    fn test_verification_without_general_field() {
+        let yaml = r#"
+result: "[[ $? -eq 0 ]]"
+output: "cat $COMMAND_OUTPUT | grep -q \"${OUTPUT}\""
+"#;
+        let result: Verification = serde_yaml::from_str(yaml).unwrap();
+        assert!(result.general.is_none());
+    }
+
+    #[test]
+    fn test_verification_serialization_with_general() {
+        let verification = Verification {
+            result: VerificationExpression::Simple("[[ $? -eq 0 ]]".to_string()),
+            output: VerificationExpression::Simple(
+                "cat $COMMAND_OUTPUT | grep -q \"${OUTPUT}\"".to_string(),
+            ),
+            output_file: None,
+            general: Some(vec![
+                GeneralVerification {
+                    name: "check_file_exists".to_string(),
+                    condition: "test -f /tmp/output.txt".to_string(),
+                },
+                GeneralVerification {
+                    name: "check_permissions".to_string(),
+                    condition: "test -r /tmp/output.txt".to_string(),
+                },
+            ]),
+        };
+
+        let yaml = serde_yaml::to_string(&verification).unwrap();
+        let deserialized: Verification = serde_yaml::from_str(&yaml).unwrap();
+
+        assert_eq!(verification, deserialized);
+    }
+
+    #[test]
+    fn test_verification_serialization_without_general() {
+        let verification = Verification {
+            result: VerificationExpression::Simple("[[ $? -eq 0 ]]".to_string()),
+            output: VerificationExpression::Simple(
+                "cat $COMMAND_OUTPUT | grep -q \"${OUTPUT}\"".to_string(),
+            ),
+            output_file: None,
+            general: None,
+        };
+
+        let yaml = serde_yaml::to_string(&verification).unwrap();
+        assert!(!yaml.contains("general:"));
+
+        let deserialized: Verification = serde_yaml::from_str(&yaml).unwrap();
+        assert_eq!(verification, deserialized);
+    }
+
+    #[test]
+    fn test_verification_with_general_and_output_file() {
+        let yaml = r#"
+result: "[[ $? -eq 0 ]]"
+output: "cat $COMMAND_OUTPUT | grep -q \"${OUTPUT}\""
+output_file: "cat $LOG_FILE | grep -q \"${OUTPUT}\""
+general:
+  - name: check_log_size
+    condition: "test $(stat -c%s $LOG_FILE) -gt 0"
+"#;
+        let result: Verification = serde_yaml::from_str(yaml).unwrap();
+
+        assert!(result.output_file.is_some());
+        assert!(result.general.is_some());
+        let general = result.general.unwrap();
+        assert_eq!(general.len(), 1);
+        assert_eq!(general[0].name, "check_log_size");
+    }
+
+    #[test]
+    fn test_step_with_verification_general() {
+        let yaml = r#"
+step: 1
+description: "Test step with general verification"
+command: "echo test"
+expected:
+  result: "0"
+  output: "test"
+verification:
+  result: "[[ $? -eq 0 ]]"
+  output: "cat $COMMAND_OUTPUT | grep -q \"test\""
+  general:
+    - name: check_output_file
+      condition: "test -f /tmp/test_output.txt"
+"#;
+        let result: Step = serde_yaml::from_str(yaml).unwrap();
+        assert_eq!(result.step, 1);
+        assert!(result.verification.general.is_some());
+        let general = result.verification.general.unwrap();
+        assert_eq!(general.len(), 1);
+        assert_eq!(general[0].name, "check_output_file");
+        assert_eq!(general[0].condition, "test -f /tmp/test_output.txt");
+    }
+
+    #[test]
+    fn test_general_verification_json_serialization() {
+        let general_verification = GeneralVerification {
+            name: "check_status".to_string(),
+            condition: "[[ $STATUS -eq 0 ]]".to_string(),
+        };
+
+        let json = serde_json::to_string(&general_verification).unwrap();
+        let deserialized: GeneralVerification = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(general_verification, deserialized);
+    }
+
+    #[test]
+    fn test_verification_with_empty_general_vec() {
+        let verification = Verification {
+            result: VerificationExpression::Simple("[[ $? -eq 0 ]]".to_string()),
+            output: VerificationExpression::Simple(
+                "cat $COMMAND_OUTPUT | grep -q \"${OUTPUT}\"".to_string(),
+            ),
+            output_file: None,
+            general: Some(vec![]),
+        };
+
+        let yaml = serde_yaml::to_string(&verification).unwrap();
+        assert!(yaml.contains("general: []"));
+
+        let deserialized: Verification = serde_yaml::from_str(&yaml).unwrap();
+        assert_eq!(verification, deserialized);
     }
 }

@@ -31,6 +31,7 @@ fn create_test_step(
                 "[ \"$COMMAND_OUTPUT\" = \"success\" ]".to_string(),
             ),
             output_file: None,
+            general: None,
         },
     }
 }
@@ -41,6 +42,7 @@ fn test_verification_serialization() {
         result: VerificationExpression::Simple("[ $? -eq 0 ]".to_string()),
         output: VerificationExpression::Simple("[ \"$COMMAND_OUTPUT\" = \"success\" ]".to_string()),
         output_file: None,
+        general: None,
     };
 
     let yaml = serde_yaml::to_string(&verification).unwrap();
@@ -74,6 +76,7 @@ fn test_verification_round_trip() {
         result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
         output: VerificationExpression::Simple("[[ \"$COMMAND_OUTPUT\" =~ \"OK\" ]]".to_string()),
         output_file: None,
+        general: None,
     };
 
     let yaml = serde_yaml::to_string(&original).unwrap();
@@ -540,12 +543,14 @@ fn test_verification_equals_operator() {
         result: VerificationExpression::Simple("[ $? -eq 0 ]".to_string()),
         output: VerificationExpression::Simple("[ \"$COMMAND_OUTPUT\" = \"test\" ]".to_string()),
         output_file: None,
+        general: None,
     };
 
     let verification2 = Verification {
         result: VerificationExpression::Simple("[ $? -eq 0 ]".to_string()),
         output: VerificationExpression::Simple("[ \"$COMMAND_OUTPUT\" = \"test\" ]".to_string()),
         output_file: None,
+        general: None,
     };
 
     assert_eq!(verification, verification2);
@@ -557,12 +562,14 @@ fn test_verification_not_equals_operator() {
         result: VerificationExpression::Simple("[ $? -eq 0 ]".to_string()),
         output: VerificationExpression::Simple("[ \"$COMMAND_OUTPUT\" = \"test\" ]".to_string()),
         output_file: None,
+        general: None,
     };
 
     let verification2 = Verification {
         result: VerificationExpression::Simple("[ $? -eq 1 ]".to_string()),
         output: VerificationExpression::Simple("[ \"$COMMAND_OUTPUT\" = \"test\" ]".to_string()),
         output_file: None,
+        general: None,
     };
 
     assert_ne!(verification1, verification2);
@@ -574,6 +581,7 @@ fn test_verification_display_trait() {
         result: VerificationExpression::Simple("[ $? -eq 0 ]".to_string()),
         output: VerificationExpression::Simple("[ \"$COMMAND_OUTPUT\" = \"test\" ]".to_string()),
         output_file: None,
+        general: None,
     };
 
     let display_string = format!("{}", verification);
@@ -587,6 +595,7 @@ fn test_verification_clone() {
         result: VerificationExpression::Simple("[ $? -eq 0 ]".to_string()),
         output: VerificationExpression::Simple("[ \"$COMMAND_OUTPUT\" = \"test\" ]".to_string()),
         output_file: None,
+        general: None,
     };
 
     let cloned = verification.clone();

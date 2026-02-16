@@ -1073,6 +1073,7 @@ eUICC:
                                 result: crate::models::VerificationExpression::Simple(result),
                                 output: crate::models::VerificationExpression::Simple(output),
                                 output_file: None,
+                                general: None,
                             });
                         }
                     }
@@ -1091,6 +1092,7 @@ eUICC:
             result: crate::models::VerificationExpression::Simple(result),
             output: crate::models::VerificationExpression::Simple(output),
             output_file: None,
+            general: None,
         })
     }
 
@@ -1181,6 +1183,7 @@ eUICC:
             result: crate::models::VerificationExpression::Simple(result),
             output: crate::models::VerificationExpression::Simple(output),
             output_file: None,
+            general: None,
         })
     }
 
@@ -1233,6 +1236,7 @@ eUICC:
                 result: crate::models::VerificationExpression::Simple(result),
                 output: crate::models::VerificationExpression::Simple(output),
                 output_file: None,
+                general: None,
             })
         }
     }

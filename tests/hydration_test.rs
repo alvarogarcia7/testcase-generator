@@ -454,6 +454,7 @@ fn test_generate_script_with_export_file_sourcing() {
             result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
             output: VerificationExpression::Simple("true".to_string()),
             output_file: None,
+            general: None,
         },
     };
     sequence.steps.push(step);
@@ -495,6 +496,7 @@ fn test_generate_script_without_hydration_vars() {
             result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
             output: VerificationExpression::Simple("true".to_string()),
             output_file: None,
+            general: None,
         },
     };
     sequence.steps.push(step);
@@ -536,6 +538,7 @@ fn test_generate_script_hydration_in_verification() {
                 "grep -q ${#EXPECTED_VALUE} $COMMAND_OUTPUT".to_string(),
             ),
             output_file: None,
+            general: None,
         },
     };
     sequence.steps.push(step);
@@ -577,6 +580,7 @@ fn test_generate_script_converts_hydration_placeholders() {
                 "grep ${#SUCCESS_MSG} $COMMAND_OUTPUT".to_string(),
             ),
             output_file: None,
+            general: None,
         },
     };
     sequence.steps.push(step);

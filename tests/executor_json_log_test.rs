@@ -432,6 +432,7 @@ fn create_simple_test_case() -> TestCase {
             result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
             output: VerificationExpression::Simple("true".to_string()),
             output_file: None,
+            general: None,
         },
     };
     sequence.steps.push(step);
@@ -472,6 +473,7 @@ fn create_multi_sequence_test_case() -> TestCase {
             result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
             output: VerificationExpression::Simple("true".to_string()),
             output_file: None,
+            general: None,
         },
     };
     sequence1.steps.push(step1);
@@ -491,6 +493,7 @@ fn create_multi_sequence_test_case() -> TestCase {
             result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
             output: VerificationExpression::Simple("true".to_string()),
             output_file: None,
+            general: None,
         },
     };
     sequence1.steps.push(step2);
@@ -516,6 +519,7 @@ fn create_multi_sequence_test_case() -> TestCase {
             result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
             output: VerificationExpression::Simple("true".to_string()),
             output_file: None,
+            general: None,
         },
     };
     sequence2.steps.push(step3);
@@ -535,6 +539,7 @@ fn create_multi_sequence_test_case() -> TestCase {
             result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
             output: VerificationExpression::Simple("true".to_string()),
             output_file: None,
+            general: None,
         },
     };
     sequence2.steps.push(step4);
@@ -576,6 +581,7 @@ fn create_test_case_with_manual_steps() -> TestCase {
             result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
             output: VerificationExpression::Simple("true".to_string()),
             output_file: None,
+            general: None,
         },
     };
     sequence.steps.push(step1);
@@ -595,6 +601,7 @@ fn create_test_case_with_manual_steps() -> TestCase {
             result: VerificationExpression::Simple("true".to_string()),
             output: VerificationExpression::Simple("true".to_string()),
             output_file: None,
+            general: None,
         },
     };
     sequence.steps.push(step2);
@@ -614,6 +621,7 @@ fn create_test_case_with_manual_steps() -> TestCase {
             result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
             output: VerificationExpression::Simple("true".to_string()),
             output_file: None,
+            general: None,
         },
     };
     sequence.steps.push(step3);
@@ -654,6 +662,7 @@ fn create_test_case_with_special_characters() -> TestCase {
             result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
             output: VerificationExpression::Simple("true".to_string()),
             output_file: None,
+            general: None,
         },
     };
     sequence.steps.push(step);
