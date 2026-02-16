@@ -1,6 +1,6 @@
 use crate::bdd_parser::BddStepRegistry;
 use crate::hydration::VarHydrator;
-use crate::models::{TestCase, TestStepExecutionEntry, VerificationExpression};
+use crate::models::{CaptureVarsFormat, TestCase, TestStepExecutionEntry, VerificationExpression};
 use anyhow::{Context, Result};
 use chrono::Local;
 use regex::Regex;
@@ -11,6 +11,30 @@ use std::process::Command;
 
 pub struct TestExecutor {
     output_dir: Option<PathBuf>,
+}
+
+/// Helper function to check if capture_vars is empty
+fn capture_vars_is_empty(capture_vars: &CaptureVarsFormat) -> bool {
+    match capture_vars {
+        CaptureVarsFormat::Legacy(map) => map.is_empty(),
+        CaptureVarsFormat::New(vec) => vec.is_empty(),
+    }
+}
+
+/// Helper function to convert CaptureVarsFormat to a vector of (name, capture_pattern, command) tuples
+fn capture_vars_to_vec(
+    capture_vars: &CaptureVarsFormat,
+) -> Vec<(String, Option<String>, Option<String>)> {
+    match capture_vars {
+        CaptureVarsFormat::Legacy(map) => map
+            .iter()
+            .map(|(name, pattern)| (name.clone(), Some(pattern.clone()), None))
+            .collect(),
+        CaptureVarsFormat::New(vec) => vec
+            .iter()
+            .map(|cv| (cv.name.clone(), cv.capture.clone(), cv.command.clone()))
+            .collect(),
+    }
 }
 
 /// Extract strings from VerificationExpression for pattern checking
@@ -51,7 +75,7 @@ fn test_case_uses_variables(test_case: &TestCase) -> bool {
         // Check if any step has capture_vars or uses variable substitution
         for step in &sequence.steps {
             if let Some(ref capture_vars) = step.capture_vars {
-                if !capture_vars.is_empty() {
+                if !capture_vars_is_empty(capture_vars) {
                     return true;
                 }
             }
@@ -633,18 +657,28 @@ impl TestExecutor {
                 script.push_str("EXIT_CODE=$?\n");
                 script.push_str("set -e\n\n");
 
-                // Variable capture: extract values from COMMAND_OUTPUT using regex patterns
+                // Variable capture: extract values from COMMAND_OUTPUT using regex patterns or commands
                 if let Some(ref capture_vars) = step.capture_vars {
-                    if !capture_vars.is_empty() {
+                    if !capture_vars_is_empty(capture_vars) {
                         script.push_str("# Capture variables from output\n");
-                        for (var_name, pattern) in capture_vars {
-                            // Convert PCRE pattern to BSD-compatible sed pattern
-                            let sed_pattern = convert_pcre_to_sed_pattern(pattern);
-                            script.push_str(&format!(
-                                "STEP_VAR_{}=$(echo \"$COMMAND_OUTPUT\" | sed -n {} | head -n 1 || echo \"\")\n",
-                                var_name,
-                                bash_escape(&sed_pattern)
-                            ));
+                        for (var_name, capture_pattern, command) in
+                            capture_vars_to_vec(capture_vars)
+                        {
+                            if let Some(pattern) = capture_pattern {
+                                // Capture from COMMAND_OUTPUT using regex pattern
+                                let sed_pattern = convert_pcre_to_sed_pattern(&pattern);
+                                script.push_str(&format!(
+                                    "STEP_VAR_{}=$(echo \"$COMMAND_OUTPUT\" | sed -n {} | head -n 1 || echo \"\")\n",
+                                    var_name,
+                                    bash_escape(&sed_pattern)
+                                ));
+                            } else if let Some(cmd) = command {
+                                // Capture from command execution
+                                script.push_str(&format!(
+                                    "STEP_VAR_{}=$({} 2>&1 || echo \"\")\n",
+                                    var_name, cmd
+                                ));
+                            }
                             // Add to string-based list only if not already present (avoid duplicates)
                             script.push_str(&format!(
                                 "if ! echo \" $STEP_VAR_NAMES \" | grep -q \" {} \"; then\n",
@@ -2069,7 +2103,7 @@ mod tests {
             manual: None,
             description: "Extract variables".to_string(),
             command: "echo 'user_id=12345 token=abc123'".to_string(),
-            capture_vars: Some(capture_vars),
+            capture_vars: Some(CaptureVarsFormat::Legacy(capture_vars)),
             expected: Expected {
                 success: Some(true),
                 result: "[ $EXIT_CODE -eq 0 ]".to_string(),
@@ -2116,7 +2150,7 @@ mod tests {
             manual: None,
             description: "Capture session ID".to_string(),
             command: "echo 'session=abc123def'".to_string(),
-            capture_vars: Some(capture_vars),
+            capture_vars: Some(CaptureVarsFormat::Legacy(capture_vars)),
             expected: Expected {
                 success: Some(true),
                 result: "[ $EXIT_CODE -eq 0 ]".to_string(),
@@ -2269,7 +2303,7 @@ mod tests {
             manual: None,
             description: "Capture multiple variables".to_string(),
             command: "echo 'user_id=12345 token=ABC123XYZ ts=1234567890'".to_string(),
-            capture_vars: Some(capture_vars),
+            capture_vars: Some(CaptureVarsFormat::Legacy(capture_vars)),
             expected: Expected {
                 success: Some(true),
                 result: "[ $EXIT_CODE -eq 0 ]".to_string(),

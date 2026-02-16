@@ -141,6 +141,49 @@ impl VerificationExpression {
     }
 }
 
+/// Capture variable configuration
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct CaptureVar {
+    /// Name of the variable to capture
+    pub name: String,
+
+    /// Regex pattern to capture from COMMAND_OUTPUT (mutually exclusive with command)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub capture: Option<String>,
+
+    /// Command to execute to capture the value (mutually exclusive with capture)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub command: Option<String>,
+}
+
+impl CaptureVar {
+    /// Validate that capture and command are mutually exclusive
+    pub fn validate(&self) -> Result<(), String> {
+        match (&self.capture, &self.command) {
+            (Some(_), Some(_)) => Err(format!(
+                "Variable '{}': capture and command are mutually exclusive",
+                self.name
+            )),
+            (None, None) => Err(format!(
+                "Variable '{}': either capture or command must be specified",
+                self.name
+            )),
+            _ => Ok(()),
+        }
+    }
+}
+
+/// Format for capture_vars field in Step
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[serde(untagged)]
+pub enum CaptureVarsFormat {
+    /// Legacy format: map of variable names to regex patterns
+    Legacy(BTreeMap<String, String>),
+
+    /// New format: list of CaptureVar objects with name and either capture or command
+    New(Vec<CaptureVar>),
+}
+
 /// Expected outcome for a test step
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Expected {
@@ -186,9 +229,9 @@ pub struct Step {
     /// Command to execute
     pub command: String,
 
-    /// Variable names as keys with regex patterns as values for extracting values from COMMAND_OUTPUT
+    /// Variable capture configuration (supports both legacy map format and new list format)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub capture_vars: Option<BTreeMap<String, String>>,
+    pub capture_vars: Option<CaptureVarsFormat>,
 
     /// Expected outcome
     pub expected: Expected,
@@ -1651,5 +1694,176 @@ always:
             }
             _ => panic!("Expected Conditional variant"),
         }
+    }
+
+    #[test]
+    fn test_capture_var_with_capture() {
+        let yaml = r#"
+name: token
+capture: '"token":"([^"]+)"'
+"#;
+        let result: CaptureVar = serde_yaml::from_str(yaml).unwrap();
+        assert_eq!(result.name, "token");
+        assert_eq!(result.capture, Some("\"token\":\"([^\"]+)\"".to_string()));
+        assert_eq!(result.command, None);
+        assert!(result.validate().is_ok());
+    }
+
+    #[test]
+    fn test_capture_var_with_command() {
+        let yaml = r#"
+name: output_len
+command: "cat /tmp/hello.txt | wc -c"
+"#;
+        let result: CaptureVar = serde_yaml::from_str(yaml).unwrap();
+        assert_eq!(result.name, "output_len");
+        assert_eq!(result.capture, None);
+        assert_eq!(
+            result.command,
+            Some("cat /tmp/hello.txt | wc -c".to_string())
+        );
+        assert!(result.validate().is_ok());
+    }
+
+    #[test]
+    fn test_capture_var_both_fields_error() {
+        let capture_var = CaptureVar {
+            name: "test".to_string(),
+            capture: Some("pattern".to_string()),
+            command: Some("command".to_string()),
+        };
+        let result = capture_var.validate();
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("mutually exclusive"));
+    }
+
+    #[test]
+    fn test_capture_var_neither_field_error() {
+        let capture_var = CaptureVar {
+            name: "test".to_string(),
+            capture: None,
+            command: None,
+        };
+        let result = capture_var.validate();
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .contains("either capture or command must be specified"));
+    }
+
+    #[test]
+    fn test_capture_vars_format_legacy() {
+        let yaml = r#"
+token: '"token":"([^"]+)"'
+session_id: '"session_id":"([^"]+)"'
+"#;
+        let result: CaptureVarsFormat = serde_yaml::from_str(yaml).unwrap();
+        match result {
+            CaptureVarsFormat::Legacy(map) => {
+                assert_eq!(map.len(), 2);
+                assert_eq!(
+                    map.get("token"),
+                    Some(&"\"token\":\"([^\"]+)\"".to_string())
+                );
+                assert_eq!(
+                    map.get("session_id"),
+                    Some(&"\"session_id\":\"([^\"]+)\"".to_string())
+                );
+            }
+            _ => panic!("Expected Legacy variant"),
+        }
+    }
+
+    #[test]
+    fn test_capture_vars_format_new() {
+        let yaml = r#"
+- name: token
+  capture: '"token":"([^"]+)"'
+- name: output_len
+  command: "cat /tmp/hello.txt | wc -c"
+"#;
+        let result: CaptureVarsFormat = serde_yaml::from_str(yaml).unwrap();
+        match result {
+            CaptureVarsFormat::New(vec) => {
+                assert_eq!(vec.len(), 2);
+                assert_eq!(vec[0].name, "token");
+                assert_eq!(vec[0].capture, Some("\"token\":\"([^\"]+)\"".to_string()));
+                assert_eq!(vec[0].command, None);
+                assert_eq!(vec[1].name, "output_len");
+                assert_eq!(vec[1].capture, None);
+                assert_eq!(
+                    vec[1].command,
+                    Some("cat /tmp/hello.txt | wc -c".to_string())
+                );
+            }
+            _ => panic!("Expected New variant"),
+        }
+    }
+
+    #[test]
+    fn test_step_with_legacy_capture_vars() {
+        let yaml = r#"
+step: 1
+description: "Test step"
+command: "echo test"
+capture_vars:
+  token: '"token":"([^"]+)"'
+  session_id: '"session_id":"([^"]+)"'
+expected:
+  result: "0"
+  output: "test"
+"#;
+        let result: Step = serde_yaml::from_str(yaml).unwrap();
+        assert_eq!(result.step, 1);
+        assert!(result.capture_vars.is_some());
+        match result.capture_vars.unwrap() {
+            CaptureVarsFormat::Legacy(map) => {
+                assert_eq!(map.len(), 2);
+            }
+            _ => panic!("Expected Legacy variant"),
+        }
+    }
+
+    #[test]
+    fn test_step_with_new_capture_vars() {
+        let yaml = r#"
+step: 1
+description: "Test step"
+command: "echo test"
+capture_vars:
+  - name: token
+    capture: '"token":"([^"]+)"'
+  - name: output_len
+    command: "cat /tmp/hello.txt | wc -c"
+expected:
+  result: "0"
+  output: "test"
+"#;
+        let result: Step = serde_yaml::from_str(yaml).unwrap();
+        assert_eq!(result.step, 1);
+        assert!(result.capture_vars.is_some());
+        match result.capture_vars.unwrap() {
+            CaptureVarsFormat::New(vec) => {
+                assert_eq!(vec.len(), 2);
+                assert_eq!(vec[0].name, "token");
+                assert_eq!(vec[1].name, "output_len");
+            }
+            _ => panic!("Expected New variant"),
+        }
+    }
+
+    #[test]
+    fn test_step_without_capture_vars() {
+        let yaml = r#"
+step: 1
+description: "Test step"
+command: "echo test"
+expected:
+  result: "0"
+  output: "test"
+"#;
+        let result: Step = serde_yaml::from_str(yaml).unwrap();
+        assert_eq!(result.step, 1);
+        assert!(result.capture_vars.is_none());
     }
 }
