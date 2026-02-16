@@ -1,0 +1,57 @@
+id: '1'
+requirement: '1'
+item: 1
+tc: 3
+description: desc 1
+general_initial_conditions:
+  eUICC:
+  - Condition 1
+initial_conditions:
+  eUICC:
+  - is on
+test_sequences:
+- id: 1
+  name: sea1
+  steps:
+  - step: 1
+    manual: true
+    description: step 1
+    command: echo "HELLO" > /tmp/hello.txt
+    capture_vars:
+      - name: token
+        capture: '"token":"([^"]+)"'
+      - name: output_len
+        command: "cat /tmp/hello.txt | wc -c"
+        # Capture and command are mutually exclusive. If both are specified, there is an error
+    expected:
+      success: true
+      result: '0'
+      output: '1'
+    verification:
+      general:
+        - name: verify token
+          condition: "[[ $token =~ ^\"[a-zA-Z0-9]+$\" ]]"
+        - name: verify user_id
+          condition: "[[ \"$output_len\" = \"1\" ]]"
+  - step: 2
+    manual: true
+    description: step 1
+    command: |
+      echo "$output_len" > /tmp/hello.txt;
+      echo "$output_len" > /tmp/hello.txt;
+    capture_vars:
+      - name: token
+        capture: '"token":"([^"]+)"'
+      - name: output_len
+        command: "cat /tmp/hello.txt | wc -c"
+        # Capture and command are mutually exclusive. If both are specified, there is an error
+    expected:
+      success: true
+      result: '0'
+      output: '1'
+    verification:
+      general:
+        - name: verify token
+          condition: "[[ $token =~ ^\"[a-zA-Z0-9]+$\" ]]"
+        - name: verify user_id
+          condition: "[[ \"$output_len\" = \"2\" ]]"
