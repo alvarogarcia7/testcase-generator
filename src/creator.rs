@@ -792,6 +792,7 @@ steps: []
             capture_vars,
             expected,
             verification,
+            reference: None,
         })
     }
 

@@ -403,7 +403,11 @@ fn validate_yaml_parsing(yaml_file: &Path) {
         "General initial conditions should not be empty"
     );
 
-    let ic_euicc = parsed_test_case.initial_conditions.get("eUICC").unwrap();
+    let ic_euicc = parsed_test_case
+        .initial_conditions
+        .devices
+        .get("eUICC")
+        .unwrap();
 
     assert!(
         !ic_euicc.is_empty(),

@@ -47,9 +47,23 @@ impl ConditionDatabase {
         let mut sequence_items: Vec<TestSequence> = Vec::new();
 
         for test_case in test_cases {
-            for conditions in test_case.general_initial_conditions.values() {
+            for conditions in test_case.general_initial_conditions.devices.values() {
                 for condition in conditions {
-                    general_conditions_set.insert(condition.clone());
+                    // Convert InitialConditionItem to string representation for the set
+                    match condition {
+                        crate::models::InitialConditionItem::String(s) => {
+                            general_conditions_set.insert(s.clone());
+                        }
+                        crate::models::InitialConditionItem::RefItem { reference } => {
+                            general_conditions_set.insert(format!("ref: {}", reference));
+                        }
+                        crate::models::InitialConditionItem::TestSequenceRef { test_sequence } => {
+                            general_conditions_set.insert(format!(
+                                "test_sequence: id={}, step={}",
+                                test_sequence.id, test_sequence.step
+                            ));
+                        }
+                    }
                 }
             }
 
@@ -57,15 +71,52 @@ impl ConditionDatabase {
             for sequence in &test_case.test_sequences {
                 sequence_items.push(sequence.clone());
 
-                initial_conditions_map.extend(sequence.initial_conditions.clone());
+                // Convert InitialConditionItem to String for the map
+                for (device_name, conditions) in &sequence.initial_conditions.devices {
+                    let string_conditions: Vec<String> = conditions
+                        .iter()
+                        .map(|item| match item {
+                            crate::models::InitialConditionItem::String(s) => s.clone(),
+                            crate::models::InitialConditionItem::RefItem { reference } => {
+                                format!("ref: {}", reference)
+                            }
+                            crate::models::InitialConditionItem::TestSequenceRef {
+                                test_sequence,
+                            } => format!(
+                                "test_sequence: id={}, step={}",
+                                test_sequence.id, test_sequence.step
+                            ),
+                        })
+                        .collect();
+                    initial_conditions_map
+                        .entry(device_name.clone())
+                        .or_default()
+                        .extend(string_conditions);
+                }
                 // Extract device name from initial_conditions structure
-                for ic_key in sequence.initial_conditions.keys() {
+                for ic_key in sequence.initial_conditions.devices.keys() {
                     device_names_set.insert(ic_key.clone());
                 }
 
-                for conditions in sequence.initial_conditions.values() {
+                for conditions in sequence.initial_conditions.devices.values() {
                     for condition in conditions {
-                        initial_conditions_set.insert(condition.clone());
+                        // Convert InitialConditionItem to string representation for the set
+                        match condition {
+                            crate::models::InitialConditionItem::String(s) => {
+                                initial_conditions_set.insert(s.clone());
+                            }
+                            crate::models::InitialConditionItem::RefItem { reference } => {
+                                initial_conditions_set.insert(format!("ref: {}", reference));
+                            }
+                            crate::models::InitialConditionItem::TestSequenceRef {
+                                test_sequence,
+                            } => {
+                                initial_conditions_set.insert(format!(
+                                    "test_sequence: id={}, step={}",
+                                    test_sequence.id, test_sequence.step
+                                ));
+                            }
+                        }
                     }
                 }
 
