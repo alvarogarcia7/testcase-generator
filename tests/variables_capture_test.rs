@@ -695,6 +695,7 @@ fn test_step_roundtrip_with_legacy_capture_vars() {
             output_file: None,
             general: None,
         },
+        reference: None,
     };
 
     let yaml = serde_yaml::to_string(&original).unwrap();
@@ -739,6 +740,7 @@ fn test_step_roundtrip_with_new_capture_vars() {
             output_file: None,
             general: None,
         },
+        reference: None,
     };
 
     let yaml = serde_yaml::to_string(&original).unwrap();

@@ -752,6 +752,7 @@ fn test_full_script_with_complex_output() {
             output_file: None,
             general: None,
         },
+        reference: None,
     });
 
     let script = executor.generate_test_script(&test_case);
@@ -791,6 +792,7 @@ fn test_multiple_steps_all_escaped() {
                 output_file: None,
                 general: None,
             },
+            reference: None,
         });
     }
 
@@ -870,6 +872,7 @@ fn create_simple_test_case() -> TestCase {
             output_file: None,
             general: None,
         },
+        reference: None,
     });
 
     test_case.test_sequences.push(sequence);
