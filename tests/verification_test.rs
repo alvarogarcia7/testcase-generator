@@ -28,6 +28,7 @@ fn create_step(step_num: i64, result: &str, output: &str, success: Option<bool>)
             output_file: None,
             general: None,
         },
+        reference: None,
     }
 }
 

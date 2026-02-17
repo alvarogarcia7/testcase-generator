@@ -474,10 +474,13 @@ steps: []
     assert_eq!(edited.name, "Non-TTY Sequence");
     assert_eq!(edited.description, "Sequence created via non-TTY");
 
-    let euicc_conditions = edited.initial_conditions.get("eUICC");
+    let euicc_conditions = edited.initial_conditions.devices.get("eUICC");
     assert!(euicc_conditions.is_some(), "eUICC key should exist");
     assert_eq!(euicc_conditions.unwrap().len(), 1);
-    assert_eq!(euicc_conditions.unwrap()[0], "Non-TTY condition");
+    assert!(matches!(
+        &euicc_conditions.unwrap()[0],
+        testcase_manager::models::InitialConditionItem::String(s) if s == "Non-TTY condition"
+    ));
     assert_eq!(edited.steps.len(), 0);
 
     Ok(())

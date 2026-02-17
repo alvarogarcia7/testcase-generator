@@ -91,6 +91,38 @@ impl SchemaValidator {
     ) -> Result<(), Vec<String>> {
         let mut errors = Vec::new();
 
+        // Handle oneOf constraint
+        if let Some(JsonValue::Array(one_of_schemas)) = schema.get("oneOf") {
+            let mut matched = false;
+            let mut all_errors = Vec::new();
+
+            for (idx, sub_schema) in one_of_schemas.iter().enumerate() {
+                if self.validate_value(value, sub_schema, path).is_ok() {
+                    matched = true;
+                    break;
+                } else if let Err(sub_errors) = self.validate_value(value, sub_schema, path) {
+                    all_errors.push((idx, sub_errors));
+                }
+            }
+
+            if !matched {
+                let error_msg = format!(
+                    "  - Path '{}': Value does not match any of the allowed schemas (oneOf constraint)",
+                    path
+                );
+                log::error!(
+                    "oneOf validation failed at path '{}': value did not match any of {} schemas",
+                    path,
+                    one_of_schemas.len()
+                );
+                errors.push(error_msg);
+                return Err(errors);
+            }
+
+            // If oneOf matched, we're done with validation for this schema
+            return Ok(());
+        }
+
         // Check type constraint
         if let Some(expected_type) = schema.get("type") {
             if let Some(type_str) = expected_type.as_str() {
@@ -382,35 +414,126 @@ impl SchemaValidator {
             serde_json::to_value(initial_conditions).context("Failed to convert to JSON")?;
 
         if let JsonValue::Object(obj) = &json_value {
-            for (device_name, conditions) in obj.iter() {
-                if !conditions.is_array() {
+            for (key, value) in obj.iter() {
+                // Skip the "include" field - it has its own structure
+                if key == "include" {
+                    if !value.is_array() {
+                        log::error!(
+                            "Initial conditions validation error: 'include' field must be an array, got: {:?}",
+                            value
+                        );
+                        anyhow::bail!("'include' field must be an array, got: {:?}", value);
+                    }
+                    // Validate include array items
+                    if let JsonValue::Array(arr) = value {
+                        for (idx, item) in arr.iter().enumerate() {
+                            if !item.is_object() {
+                                log::error!(
+                                    "Initial conditions validation error at 'include', index {}: expected object, got {:?}",
+                                    idx,
+                                    item
+                                );
+                                anyhow::bail!(
+                                    "Include item #{} must be an object, got: {:?}",
+                                    idx + 1,
+                                    item
+                                );
+                            }
+                            if let JsonValue::Object(include_obj) = item {
+                                if !include_obj.contains_key("id") {
+                                    log::error!(
+                                        "Initial conditions validation error at 'include', index {}: missing required 'id' field",
+                                        idx
+                                    );
+                                    anyhow::bail!(
+                                        "Include item #{} must have an 'id' field",
+                                        idx + 1
+                                    );
+                                }
+                            }
+                        }
+                    }
+                    continue;
+                }
+
+                // Validate device-keyed condition arrays
+                if !value.is_array() {
                     log::error!(
-                        "Initial conditions validation error: device '{}' has invalid type. Expected: array of strings, Found: {:?}",
-                        device_name,
-                        conditions
+                        "Initial conditions validation error: device '{}' has invalid type. Expected: array of strings/objects, Found: {:?}",
+                        key,
+                        value
                     );
                     anyhow::bail!(
                         "Device '{}' must have an array of conditions, got: {:?}",
-                        device_name,
-                        conditions
+                        key,
+                        value
                     );
                 }
 
-                if let JsonValue::Array(arr) = conditions {
+                if let JsonValue::Array(arr) = value {
                     for (idx, item) in arr.iter().enumerate() {
-                        if !item.is_string() {
+                        // Items can be strings, objects with "ref" field, or objects with "test_sequence" field
+                        if !item.is_string() && !item.is_object() {
                             log::error!(
-                                "Initial conditions validation error at device '{}', index {}: expected string, got {:?}",
-                                device_name,
+                                "Initial conditions validation error at device '{}', index {}: expected string or object, got {:?}",
+                                key,
                                 idx,
                                 item
                             );
                             anyhow::bail!(
-                                "Condition #{} for device '{}' must be a string, got: {:?}",
+                                "Condition #{} for device '{}' must be a string or object, got: {:?}",
                                 idx + 1,
-                                device_name,
+                                key,
                                 item
                             );
+                        }
+
+                        // If it's an object, validate it has either "ref" or "test_sequence"
+                        if let JsonValue::Object(obj) = item {
+                            let has_ref = obj.contains_key("ref");
+                            let has_test_sequence = obj.contains_key("test_sequence");
+
+                            if !has_ref && !has_test_sequence {
+                                log::error!(
+                                    "Initial conditions validation error at device '{}', index {}: object must have either 'ref' or 'test_sequence' field",
+                                    key,
+                                    idx
+                                );
+                                anyhow::bail!(
+                                    "Condition #{} for device '{}' must have either 'ref' or 'test_sequence' field",
+                                    idx + 1,
+                                    key
+                                );
+                            }
+
+                            // Validate test_sequence structure if present
+                            if has_test_sequence {
+                                if let Some(JsonValue::Object(ts_obj)) = obj.get("test_sequence") {
+                                    if !ts_obj.contains_key("id") || !ts_obj.contains_key("step") {
+                                        log::error!(
+                                            "Initial conditions validation error at device '{}', index {}: test_sequence must have 'id' and 'step' fields",
+                                            key,
+                                            idx
+                                        );
+                                        anyhow::bail!(
+                                            "Condition #{} for device '{}': test_sequence must have 'id' and 'step' fields",
+                                            idx + 1,
+                                            key
+                                        );
+                                    }
+                                } else {
+                                    log::error!(
+                                        "Initial conditions validation error at device '{}', index {}: test_sequence must be an object",
+                                        key,
+                                        idx
+                                    );
+                                    anyhow::bail!(
+                                        "Condition #{} for device '{}': test_sequence must be an object",
+                                        idx + 1,
+                                        key
+                                    );
+                                }
+                            }
                         }
                     }
                 }
@@ -1203,14 +1326,58 @@ initial_conditions:
 "#;
 
         let result = validator.validate_chunk(yaml_content);
-        assert!(result.is_err(), "Should reject non-string array items");
+        assert!(
+            result.is_err(),
+            "Should reject non-string/non-object array items (plain integers)"
+        );
         let error_msg = result.unwrap_err().to_string();
         assert!(
             error_msg.contains("type")
                 || error_msg.contains("Invalid")
+                || error_msg.contains("oneOf")
                 || error_msg.contains("string"),
             "Error should mention type mismatch: {}",
             error_msg
+        );
+    }
+
+    #[test]
+    fn test_validate_chunk_initial_conditions_with_ref_object() {
+        let validator = SchemaValidator::new().unwrap();
+
+        let yaml_content = r#"
+initial_conditions:
+  eUICC:
+    - "Valid string"
+    - ref: "some_ref"
+"#;
+
+        let result = validator.validate_chunk(yaml_content);
+        assert!(
+            result.is_ok(),
+            "Should accept objects with ref field: {:?}",
+            result.err()
+        );
+    }
+
+    #[test]
+    fn test_validate_chunk_initial_conditions_with_test_sequence_object() {
+        let validator = SchemaValidator::new().unwrap();
+
+        let yaml_content = r#"
+initial_conditions:
+  eUICC:
+    - "Valid string"
+    - test_sequence:
+        id: 1
+        step: "2"
+"#;
+
+        let result = validator.validate_chunk(yaml_content);
+        assert!(
+            result.is_ok(),
+            "Should accept objects with test_sequence field: {:?}",
+            result.err()
         );
     }
 

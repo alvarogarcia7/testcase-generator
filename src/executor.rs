@@ -384,8 +384,6 @@ impl TestExecutor {
 
                 // Evaluate the condition and execute appropriate branch
                 script.push_str(&format!("if {}; then\n", condition));
-                script.push_str(&format!("    {}=true\n", var_name));
-
                 // Set the variable to true when condition is met
                 script.push_str(&format!("    {}=true\n", var_name));
 
@@ -582,13 +580,40 @@ impl TestExecutor {
 
         if !test_case.general_initial_conditions.is_empty() {
             script.push_str("# General Initial Conditions\n");
-            for (key, values) in &test_case.general_initial_conditions {
+
+            // Output include array as comments
+            if let Some(ref includes) = test_case.general_initial_conditions.include {
+                for include_ref in includes {
+                    if let Some(ref test_seq) = include_ref.test_sequence {
+                        script.push_str(&format!(
+                            "# Include: {} (test_sequence: {})\n",
+                            include_ref.id, test_seq
+                        ));
+                    } else {
+                        script.push_str(&format!("# Include: {}\n", include_ref.id));
+                    }
+                }
+            }
+
+            for (key, values) in &test_case.general_initial_conditions.devices {
                 for value in values {
-                    if let Some(command) = bdd_registry.try_parse_as_bdd(value) {
-                        script.push_str(&format!("# {}: {}\n", key, value));
+                    let value_str = match value {
+                        crate::models::InitialConditionItem::String(s) => s.clone(),
+                        crate::models::InitialConditionItem::RefItem { reference } => {
+                            format!("ref: {}", reference)
+                        }
+                        crate::models::InitialConditionItem::TestSequenceRef { test_sequence } => {
+                            format!(
+                                "test_sequence: id={}, step={}",
+                                test_sequence.id, test_sequence.step
+                            )
+                        }
+                    };
+                    if let Some(command) = bdd_registry.try_parse_as_bdd(&value_str) {
+                        script.push_str(&format!("# {}: {}\n", key, value_str));
                         script.push_str(&format!("{}\n", command));
                     } else {
-                        script.push_str(&format!("# {}: {}\n", key, value));
+                        script.push_str(&format!("# {}: {}\n", key, value_str));
                     }
                 }
             }
@@ -597,13 +622,40 @@ impl TestExecutor {
 
         if !test_case.initial_conditions.is_empty() {
             script.push_str("# Initial Conditions\n");
-            for (key, values) in &test_case.initial_conditions {
+
+            // Output include array as comments
+            if let Some(ref includes) = test_case.initial_conditions.include {
+                for include_ref in includes {
+                    if let Some(ref test_seq) = include_ref.test_sequence {
+                        script.push_str(&format!(
+                            "# Include: {} (test_sequence: {})\n",
+                            include_ref.id, test_seq
+                        ));
+                    } else {
+                        script.push_str(&format!("# Include: {}\n", include_ref.id));
+                    }
+                }
+            }
+
+            for (key, values) in &test_case.initial_conditions.devices {
                 for value in values {
-                    if let Some(command) = bdd_registry.try_parse_as_bdd(value) {
-                        script.push_str(&format!("# {}: {}\n", key, value));
+                    let value_str = match value {
+                        crate::models::InitialConditionItem::String(s) => s.clone(),
+                        crate::models::InitialConditionItem::RefItem { reference } => {
+                            format!("ref: {}", reference)
+                        }
+                        crate::models::InitialConditionItem::TestSequenceRef { test_sequence } => {
+                            format!(
+                                "test_sequence: id={}, step={}",
+                                test_sequence.id, test_sequence.step
+                            )
+                        }
+                    };
+                    if let Some(command) = bdd_registry.try_parse_as_bdd(&value_str) {
+                        script.push_str(&format!("# {}: {}\n", key, value_str));
                         script.push_str(&format!("{}\n", command));
                     } else {
-                        script.push_str(&format!("# {}: {}\n", key, value));
+                        script.push_str(&format!("# {}: {}\n", key, value_str));
                     }
                 }
             }
@@ -621,13 +673,40 @@ impl TestExecutor {
 
             if !sequence.initial_conditions.is_empty() {
                 script.push_str("# Sequence Initial Conditions\n");
-                for (key, values) in &sequence.initial_conditions {
+
+                // Output include array as comments
+                if let Some(ref includes) = sequence.initial_conditions.include {
+                    for include_ref in includes {
+                        if let Some(ref test_seq) = include_ref.test_sequence {
+                            script.push_str(&format!(
+                                "# Include: {} (test_sequence: {})\n",
+                                include_ref.id, test_seq
+                            ));
+                        } else {
+                            script.push_str(&format!("# Include: {}\n", include_ref.id));
+                        }
+                    }
+                }
+
+                for (key, values) in &sequence.initial_conditions.devices {
                     for value in values {
-                        if let Some(command) = bdd_registry.try_parse_as_bdd(value) {
-                            script.push_str(&format!("# {}: {}\n", key, value));
+                        let value_str = match value {
+                            crate::models::InitialConditionItem::String(s) => s.clone(),
+                            crate::models::InitialConditionItem::RefItem { reference } => {
+                                format!("ref: {}", reference)
+                            }
+                            crate::models::InitialConditionItem::TestSequenceRef {
+                                test_sequence,
+                            } => format!(
+                                "test_sequence: id={}, step={}",
+                                test_sequence.id, test_sequence.step
+                            ),
+                        };
+                        if let Some(command) = bdd_registry.try_parse_as_bdd(&value_str) {
+                            script.push_str(&format!("# {}: {}\n", key, value_str));
                             script.push_str(&format!("{}\n", command));
                         } else {
-                            script.push_str(&format!("# {}: {}\n", key, value));
+                            script.push_str(&format!("# {}: {}\n", key, value_str));
                         }
                     }
                 }
@@ -1663,6 +1742,7 @@ mod tests {
                 output_file: None,
                 general: None,
             },
+            reference: None,
         };
         sequence.steps.push(step);
         test_case.test_sequences.push(sequence);
@@ -1709,6 +1789,7 @@ mod tests {
                 output_file: None,
                 general: None,
             },
+            reference: None,
         };
         sequence.steps.push(step);
         test_case.test_sequences.push(sequence);
@@ -1743,12 +1824,22 @@ mod tests {
             "Test with conditions".to_string(),
         );
 
-        let mut general_conditions = HashMap::new();
-        general_conditions.insert("Device".to_string(), vec!["Powered on".to_string()]);
+        let mut general_conditions = crate::models::InitialConditions::default();
+        general_conditions.devices.insert(
+            "Device".to_string(),
+            vec![crate::models::InitialConditionItem::String(
+                "Powered on".to_string(),
+            )],
+        );
         test_case.general_initial_conditions = general_conditions;
 
-        let mut conditions = HashMap::new();
-        conditions.insert("Connection".to_string(), vec!["Established".to_string()]);
+        let mut conditions = crate::models::InitialConditions::default();
+        conditions.devices.insert(
+            "Connection".to_string(),
+            vec![crate::models::InitialConditionItem::String(
+                "Established".to_string(),
+            )],
+        );
         test_case.initial_conditions = conditions;
 
         let sequence = TestSequence::new(1, "Seq1".to_string(), "Sequence".to_string());
@@ -1791,6 +1882,7 @@ mod tests {
                 output_file: None,
                 general: None,
             },
+            reference: None,
         };
         sequence.steps.push(step);
         test_case.test_sequences.push(sequence);
@@ -1832,6 +1924,7 @@ mod tests {
                 output_file: None,
                 general: None,
             },
+            reference: None,
         };
         sequence.steps.push(step);
         test_case.test_sequences.push(sequence);
@@ -1874,6 +1967,7 @@ mod tests {
                 output_file: None,
                 general: None,
             },
+            reference: None,
         };
 
         let step2 = Step {
@@ -1893,6 +1987,7 @@ mod tests {
                 output_file: None,
                 general: None,
             },
+            reference: None,
         };
 
         sequence.steps.push(step1);
@@ -1946,6 +2041,7 @@ mod tests {
                 output_file: None,
                 general: None,
             },
+            reference: None,
         };
         sequence1.steps.push(step1);
 
@@ -1967,6 +2063,7 @@ mod tests {
                 output_file: None,
                 general: None,
             },
+            reference: None,
         };
         sequence2.steps.push(step2);
 
@@ -2022,6 +2119,7 @@ mod tests {
                 output_file: None,
                 general: None,
             },
+            reference: None,
         };
 
         let auto_step = Step {
@@ -2041,6 +2139,7 @@ mod tests {
                 output_file: None,
                 general: None,
             },
+            reference: None,
         };
 
         sequence.steps.push(manual_step);
@@ -2096,6 +2195,7 @@ mod tests {
                 output_file: None,
                 general: None,
             },
+            reference: None,
         };
         sequence.steps.push(step);
         test_case.test_sequences.push(sequence);
@@ -2145,6 +2245,7 @@ mod tests {
                 output_file: None,
                 general: None,
             },
+            reference: None,
         };
         sequence.steps.push(step);
         test_case.test_sequences.push(sequence);
@@ -2362,6 +2463,7 @@ mod tests {
                 output_file: None,
                 general: None,
             },
+            reference: None,
         };
         sequence.steps.push(step);
         test_case.test_sequences.push(sequence);
@@ -2410,6 +2512,7 @@ mod tests {
                 output_file: None,
                 general: None,
             },
+            reference: None,
         };
         sequence.steps.push(step);
         test_case.test_sequences.push(sequence);
@@ -2456,6 +2559,7 @@ mod tests {
                 output_file: None,
                 general: None,
             },
+            reference: None,
         };
         sequence.steps.push(step);
         test_case.test_sequences.push(sequence);
@@ -2508,6 +2612,7 @@ mod tests {
                 output_file: None,
                 general: None,
             },
+            reference: None,
         };
         sequence.steps.push(step);
         test_case.test_sequences.push(sequence);
@@ -2566,6 +2671,7 @@ mod tests {
                 output_file: None,
                 general: None,
             },
+            reference: None,
         };
         sequence.steps.push(step);
         test_case.test_sequences.push(sequence);
@@ -2693,6 +2799,7 @@ mod tests {
                 output_file: None,
                 general: None,
             },
+            reference: None,
         };
         sequence.steps.push(step1);
         test_case.test_sequences.push(sequence.clone());
@@ -2725,6 +2832,7 @@ mod tests {
                 output_file: None,
                 general: None,
             },
+            reference: None,
         };
         sequence2.steps.push(step2);
         test_case2.test_sequences.push(sequence2);
@@ -2763,6 +2871,7 @@ mod tests {
                 output_file: None,
                 general: None,
             },
+            reference: None,
         };
         sequence.steps.push(step);
         test_case.test_sequences.push(sequence);
@@ -2813,6 +2922,7 @@ mod tests {
                 output_file: None,
                 general: None,
             },
+            reference: None,
         };
         sequence.steps.push(step);
         test_case.test_sequences.push(sequence);
@@ -2876,6 +2986,7 @@ mod tests {
                 output_file: None,
                 general: None,
             },
+            reference: None,
         };
         sequence.steps.push(step);
         test_case.test_sequences.push(sequence);
@@ -2948,6 +3059,7 @@ mod tests {
                     },
                 ]),
             },
+            reference: None,
         };
         sequence.steps.push(step);
         test_case.test_sequences.push(sequence);

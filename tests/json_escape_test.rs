@@ -244,6 +244,405 @@ fn test_json_escape_binary_test_mode_valid() -> Result<()> {
 }
 
 // ============================================================================
+// JSON Escape Binary Tests - Edge Cases
+// ============================================================================
+
+/// Test json-escape binary with empty string in test mode
+#[test]
+fn test_json_escape_binary_empty_string_test_mode() -> Result<()> {
+    let input = "";
+    let output = Command::new("cargo")
+        .args(["run", "--bin", "json-escape", "--", "--test"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            if let Some(mut stdin) = child.stdin.take() {
+                stdin.write_all(input.as_bytes())?;
+            }
+            child.wait_with_output()
+        })?;
+
+    assert!(output.status.success());
+    let result = String::from_utf8(output.stdout)?;
+    assert_eq!(result, "");
+    Ok(())
+}
+
+/// Test json-escape binary with very long input string (10KB+)
+#[test]
+fn test_json_escape_binary_very_long_input() -> Result<()> {
+    // Create a 12KB string with mixed content
+    let mut input = String::new();
+    for i in 0..1000 {
+        input.push_str(&format!(
+            "Line {} with \"quotes\" and \\backslashes\\ and\ttabs\n",
+            i
+        ));
+    }
+
+    let output = Command::new("cargo")
+        .args(["run", "--bin", "json-escape"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            if let Some(mut stdin) = child.stdin.take() {
+                stdin.write_all(input.as_bytes())?;
+            }
+            child.wait_with_output()
+        })?;
+
+    assert!(output.status.success());
+    let result = String::from_utf8(output.stdout)?;
+
+    // Verify length increased due to escaping
+    assert!(result.len() > input.len());
+
+    // Verify specific patterns are escaped
+    assert!(result.contains(r#"\"quotes\""#));
+    assert!(result.contains(r#"\\"#));
+    assert!(result.contains(r#"\t"#));
+    assert!(result.contains(r#"\n"#));
+
+    // Verify the escaped output is valid JSON when wrapped in quotes
+    let test_json = format!("\"{}\"", result);
+    assert!(serde_json::from_str::<serde_json::Value>(&test_json).is_ok());
+
+    Ok(())
+}
+
+/// Test json-escape binary with consecutive backslashes
+#[test]
+fn test_json_escape_binary_consecutive_backslashes() -> Result<()> {
+    let input = r#"One\Two\\Three\\\Four\\\\Five"#;
+    let output = Command::new("cargo")
+        .args(["run", "--bin", "json-escape"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            if let Some(mut stdin) = child.stdin.take() {
+                stdin.write_all(input.as_bytes())?;
+            }
+            child.wait_with_output()
+        })?;
+
+    assert!(output.status.success());
+    let result = String::from_utf8(output.stdout)?;
+    assert_eq!(result, r#"One\\Two\\\\Three\\\\\\Four\\\\\\\\Five"#);
+
+    // Verify it's valid JSON
+    let test_json = format!("\"{}\"", result);
+    assert!(serde_json::from_str::<serde_json::Value>(&test_json).is_ok());
+
+    Ok(())
+}
+
+/// Test json-escape binary with nested quotes
+#[test]
+fn test_json_escape_binary_nested_quotes() -> Result<()> {
+    let input = r#"He said "She said "Hello" to me" yesterday"#;
+    let output = Command::new("cargo")
+        .args(["run", "--bin", "json-escape"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            if let Some(mut stdin) = child.stdin.take() {
+                stdin.write_all(input.as_bytes())?;
+            }
+            child.wait_with_output()
+        })?;
+
+    assert!(output.status.success());
+    let result = String::from_utf8(output.stdout)?;
+    assert_eq!(result, r#"He said \"She said \"Hello\" to me\" yesterday"#);
+
+    // Verify it's valid JSON
+    let test_json = format!("\"{}\"", result);
+    assert!(serde_json::from_str::<serde_json::Value>(&test_json).is_ok());
+
+    Ok(())
+}
+
+/// Test json-escape binary with multiple consecutive special characters
+#[test]
+fn test_json_escape_binary_consecutive_special_chars() -> Result<()> {
+    let input = "test\"\"\\\\\n\n\t\t\r\r";
+    let output = Command::new("cargo")
+        .args(["run", "--bin", "json-escape"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            if let Some(mut stdin) = child.stdin.take() {
+                stdin.write_all(input.as_bytes())?;
+            }
+            child.wait_with_output()
+        })?;
+
+    assert!(output.status.success());
+    let result = String::from_utf8(output.stdout)?;
+    assert_eq!(result, r#"test\"\"\\\\\n\n\t\t\r\r"#);
+
+    // Verify it's valid JSON
+    let test_json = format!("\"{}\"", result);
+    assert!(serde_json::from_str::<serde_json::Value>(&test_json).is_ok());
+
+    Ok(())
+}
+
+/// Test json-escape binary with all control characters \x00 through \x1F
+#[test]
+fn test_json_escape_binary_all_control_characters() -> Result<()> {
+    // Create input with all control characters from \x00 to \x1F
+    let mut input = Vec::new();
+    input.extend_from_slice(b"Start:");
+    for i in 0x00..=0x1F {
+        input.push(i);
+    }
+    input.extend_from_slice(b":End");
+
+    let output = Command::new("cargo")
+        .args(["run", "--bin", "json-escape"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            if let Some(mut stdin) = child.stdin.take() {
+                stdin.write_all(&input)?;
+            }
+            child.wait_with_output()
+        })?;
+
+    assert!(output.status.success());
+    let result = String::from_utf8(output.stdout)?;
+
+    // Verify specific control characters are properly escaped
+    assert!(result.contains(r#"\u0000"#)); // NULL
+    assert!(result.contains(r#"\u0001"#)); // SOH
+    assert!(result.contains(r#"\b"#)); // Backspace (\x08)
+    assert!(result.contains(r#"\t"#)); // Tab (\x09)
+    assert!(result.contains(r#"\n"#)); // Newline (\x0A)
+    assert!(result.contains(r#"\f"#)); // Form feed (\x0C)
+    assert!(result.contains(r#"\r"#)); // Carriage return (\x0D)
+    assert!(result.contains(r#"\u000e"#)); // Shift Out
+    assert!(result.contains(r#"\u001f"#)); // Unit Separator
+    assert!(result.contains("Start:"));
+    assert!(result.contains(":End"));
+
+    // Verify it's valid JSON
+    let test_json = format!("\"{}\"", result);
+    assert!(serde_json::from_str::<serde_json::Value>(&test_json).is_ok());
+
+    Ok(())
+}
+
+/// Test json-escape binary with control character sequences
+#[test]
+fn test_json_escape_binary_control_sequences() -> Result<()> {
+    // Test various combinations of control characters
+    let input = "Before\x00\x01\x02After";
+    let output = Command::new("cargo")
+        .args(["run", "--bin", "json-escape"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            if let Some(mut stdin) = child.stdin.take() {
+                stdin.write_all(input.as_bytes())?;
+            }
+            child.wait_with_output()
+        })?;
+
+    assert!(output.status.success());
+    let result = String::from_utf8(output.stdout)?;
+    assert!(result.contains(r#"Before\u0000\u0001\u0002After"#));
+
+    // Verify it's valid JSON
+    let test_json = format!("\"{}\"", result);
+    assert!(serde_json::from_str::<serde_json::Value>(&test_json).is_ok());
+
+    Ok(())
+}
+
+/// Test json-escape binary with invalid UTF-8 sequences
+#[test]
+fn test_json_escape_binary_invalid_utf8() -> Result<()> {
+    // Create invalid UTF-8 sequences
+    let invalid_utf8 = vec![
+        0x48, 0x65, 0x6C, 0x6C, 0x6F, // "Hello"
+        0xFF, // Invalid UTF-8
+        0xFE, // Invalid UTF-8
+        0x57, 0x6F, 0x72, 0x6C, 0x64, // "World"
+    ];
+
+    let output = Command::new("cargo")
+        .args(["run", "--bin", "json-escape"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            if let Some(mut stdin) = child.stdin.take() {
+                stdin.write_all(&invalid_utf8)?;
+            }
+            child.wait_with_output()
+        })?;
+
+    // The binary should fail gracefully with invalid UTF-8
+    // It uses read_to_string which will fail on invalid UTF-8
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("Failed to read from stdin")
+            || stderr.contains("stream did not contain valid UTF-8")
+    );
+
+    Ok(())
+}
+
+/// Test json-escape binary with replacement character for invalid UTF-8
+#[test]
+fn test_json_escape_binary_utf8_replacement_char() -> Result<()> {
+    // Test with the Unicode replacement character (used when invalid UTF-8 is encountered)
+    let input = "Valid text \u{FFFD} with replacement char";
+    let output = Command::new("cargo")
+        .args(["run", "--bin", "json-escape"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            if let Some(mut stdin) = child.stdin.take() {
+                stdin.write_all(input.as_bytes())?;
+            }
+            child.wait_with_output()
+        })?;
+
+    assert!(output.status.success());
+    let result = String::from_utf8(output.stdout)?;
+    // The replacement character should be preserved in output
+    assert!(result.contains("\u{FFFD}"));
+    assert_eq!(result, "Valid text \u{FFFD} with replacement char");
+
+    // Verify it's valid JSON
+    let test_json = format!("\"{}\"", result);
+    assert!(serde_json::from_str::<serde_json::Value>(&test_json).is_ok());
+
+    Ok(())
+}
+
+/// Test json-escape binary with extremely long consecutive special characters
+#[test]
+fn test_json_escape_binary_long_consecutive_specials() -> Result<()> {
+    // Create a string with many consecutive backslashes and quotes
+    let mut input = String::from("Start");
+    input.push_str(&"\\".repeat(100));
+    input.push_str(&"\"".repeat(100));
+    input.push_str("End");
+
+    let output = Command::new("cargo")
+        .args(["run", "--bin", "json-escape"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            if let Some(mut stdin) = child.stdin.take() {
+                stdin.write_all(input.as_bytes())?;
+            }
+            child.wait_with_output()
+        })?;
+
+    assert!(output.status.success());
+    let result = String::from_utf8(output.stdout)?;
+
+    // Each backslash becomes two, each quote becomes backslash-quote
+    assert!(result.contains("Start"));
+    assert!(result.contains("End"));
+    assert!(result.contains(&"\\\\".repeat(100)));
+    assert!(result.contains(&"\\\"".repeat(100)));
+
+    // Verify it's valid JSON
+    let test_json = format!("\"{}\"", result);
+    assert!(serde_json::from_str::<serde_json::Value>(&test_json).is_ok());
+
+    Ok(())
+}
+
+/// Test json-escape binary with mixed control and printable characters
+#[test]
+fn test_json_escape_binary_mixed_control_printable() -> Result<()> {
+    let input = "Line1\x00\nLine2\x01\tLine3\x02\"quoted\"\x03\\backslash\\";
+    let output = Command::new("cargo")
+        .args(["run", "--bin", "json-escape"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            if let Some(mut stdin) = child.stdin.take() {
+                stdin.write_all(input.as_bytes())?;
+            }
+            child.wait_with_output()
+        })?;
+
+    assert!(output.status.success());
+    let result = String::from_utf8(output.stdout)?;
+
+    assert!(result.contains("Line1"));
+    assert!(result.contains(r#"\u0000"#));
+    assert!(result.contains(r#"\n"#));
+    assert!(result.contains("Line2"));
+    assert!(result.contains(r#"\u0001"#));
+    assert!(result.contains(r#"\t"#));
+    assert!(result.contains("Line3"));
+    assert!(result.contains(r#"\u0002"#));
+    assert!(result.contains(r#"\"quoted\""#));
+    assert!(result.contains(r#"\u0003"#));
+    assert!(result.contains(r#"\\backslash\\"#));
+
+    // Verify it's valid JSON
+    let test_json = format!("\"{}\"", result);
+    assert!(serde_json::from_str::<serde_json::Value>(&test_json).is_ok());
+
+    Ok(())
+}
+
+/// Test json-escape binary test mode with long input
+#[test]
+fn test_json_escape_binary_test_mode_long_input() -> Result<()> {
+    // Create a moderately long string with special characters
+    let mut input = String::new();
+    for i in 0..100 {
+        input.push_str(&format!("Line {} with \"quotes\" and \\backslashes\\\n", i));
+    }
+
+    let output = Command::new("cargo")
+        .args(["run", "--bin", "json-escape", "--", "--test"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            if let Some(mut stdin) = child.stdin.take() {
+                stdin.write_all(input.as_bytes())?;
+            }
+            child.wait_with_output()
+        })?;
+
+    assert!(output.status.success());
+    let result = String::from_utf8(output.stdout)?;
+
+    // Verify escaping occurred
+    assert!(result.contains(r#"\"quotes\""#));
+    assert!(result.contains(r#"\\"#));
+    assert!(result.contains(r#"\n"#));
+
+    Ok(())
+}
+
+// ============================================================================
 // Configuration Loading Tests - JSON Escaping Method Settings
 // ============================================================================
 
@@ -752,6 +1151,7 @@ fn test_full_script_with_complex_output() {
             output_file: None,
             general: None,
         },
+        reference: None,
     });
 
     let script = executor.generate_test_script(&test_case);
@@ -791,6 +1191,7 @@ fn test_multiple_steps_all_escaped() {
                 output_file: None,
                 general: None,
             },
+            reference: None,
         });
     }
 
@@ -837,6 +1238,598 @@ fn test_manual_steps_no_escaping() {
 }
 
 // ============================================================================
+// Configuration Edge Cases and Validation Tests
+// ============================================================================
+
+/// Test Config::load() when config file is missing
+#[test]
+fn test_config_load_missing_file() -> Result<()> {
+    // Save current HOME/USERPROFILE
+    let original_home = std::env::var("HOME").ok();
+    let original_userprofile = std::env::var("USERPROFILE").ok();
+
+    // Create a temporary directory and set it as HOME
+    let temp_dir = TempDir::new()?;
+    std::env::set_var("HOME", temp_dir.path());
+    std::env::remove_var("USERPROFILE");
+
+    // Try to load config when file doesn't exist
+    let config = Config::load()?;
+
+    // Should return default config
+    assert!(matches!(
+        config.script_generation.json_escaping.method,
+        JsonEscapingMethod::Auto
+    ));
+    assert!(config.script_generation.json_escaping.enabled);
+    assert!(config.script_generation.json_escaping.binary_path.is_none());
+
+    // Restore original environment
+    if let Some(home) = original_home {
+        std::env::set_var("HOME", home);
+    }
+    if let Some(userprofile) = original_userprofile {
+        std::env::set_var("USERPROFILE", userprofile);
+    }
+
+    Ok(())
+}
+
+/// Test Config::load() when config file is corrupted (invalid TOML)
+#[test]
+fn test_config_load_corrupted_file() -> Result<()> {
+    let temp_dir = TempDir::new()?;
+    let config_dir = temp_dir.path().join(".testcase-manager");
+    fs::create_dir_all(&config_dir)?;
+    let config_path = config_dir.join("config.toml");
+
+    // Write invalid TOML
+    fs::write(&config_path, "this is not valid TOML [ } invalid")?;
+
+    // Save current HOME/USERPROFILE
+    let original_home = std::env::var("HOME").ok();
+    let original_userprofile = std::env::var("USERPROFILE").ok();
+
+    std::env::set_var("HOME", temp_dir.path());
+    std::env::remove_var("USERPROFILE");
+
+    // Try to load config - should return an error
+    let result = Config::load();
+    assert!(result.is_err());
+
+    let err = result.unwrap_err();
+    let err_msg = format!("{}", err);
+    assert!(err_msg.contains("Failed to parse config file"));
+
+    // Restore original environment
+    if let Some(home) = original_home {
+        std::env::set_var("HOME", home);
+    }
+    if let Some(userprofile) = original_userprofile {
+        std::env::set_var("USERPROFILE", userprofile);
+    }
+
+    Ok(())
+}
+
+/// Test Config::load() when config file has invalid method value
+#[test]
+fn test_config_invalid_method_value() -> Result<()> {
+    let temp_dir = TempDir::new()?;
+    let config_dir = temp_dir.path().join(".testcase-manager");
+    fs::create_dir_all(&config_dir)?;
+    let config_path = config_dir.join("config.toml");
+
+    // Write config with invalid method value
+    let invalid_config = r#"
+[script_generation.json_escaping]
+method = "invalid_method"
+enabled = true
+"#;
+    fs::write(&config_path, invalid_config)?;
+
+    // Save current HOME/USERPROFILE
+    let original_home = std::env::var("HOME").ok();
+    let original_userprofile = std::env::var("USERPROFILE").ok();
+
+    std::env::set_var("HOME", temp_dir.path());
+    std::env::remove_var("USERPROFILE");
+
+    // Try to load config - should return an error
+    let result = Config::load();
+    assert!(result.is_err());
+
+    // Restore original environment
+    if let Some(home) = original_home {
+        std::env::set_var("HOME", home);
+    }
+    if let Some(userprofile) = original_userprofile {
+        std::env::set_var("USERPROFILE", userprofile);
+    }
+
+    Ok(())
+}
+
+/// Test config with valid method values (auto, rust_binary, shell_fallback)
+#[test]
+fn test_config_valid_method_values() -> Result<()> {
+    // Test auto
+    let config_toml = r#"
+[script_generation.json_escaping]
+method = "auto"
+enabled = true
+"#;
+    let config: Config = toml::from_str(config_toml)?;
+    assert!(matches!(
+        config.script_generation.json_escaping.method,
+        JsonEscapingMethod::Auto
+    ));
+
+    // Test rust_binary
+    let config_toml = r#"
+[script_generation.json_escaping]
+method = "rust_binary"
+enabled = true
+"#;
+    let config: Config = toml::from_str(config_toml)?;
+    assert!(matches!(
+        config.script_generation.json_escaping.method,
+        JsonEscapingMethod::RustBinary
+    ));
+
+    // Test shell_fallback
+    let config_toml = r#"
+[script_generation.json_escaping]
+method = "shell_fallback"
+enabled = true
+"#;
+    let config: Config = toml::from_str(config_toml)?;
+    assert!(matches!(
+        config.script_generation.json_escaping.method,
+        JsonEscapingMethod::ShellFallback
+    ));
+
+    Ok(())
+}
+
+/// Test config with binary_path pointing to non-existent path
+#[test]
+fn test_config_nonexistent_binary_path() -> Result<()> {
+    let config = Config {
+        script_generation: ScriptGenerationConfig {
+            json_escaping: JsonEscapingConfig {
+                method: JsonEscapingMethod::RustBinary,
+                enabled: true,
+                binary_path: Some(PathBuf::from("/nonexistent/path/to/json-escape")),
+            },
+        },
+        ..Default::default()
+    };
+
+    // Config should be valid even with non-existent path
+    // The path validation happens at runtime, not config loading
+    assert_eq!(
+        config.script_generation.json_escaping.binary_path,
+        Some(PathBuf::from("/nonexistent/path/to/json-escape"))
+    );
+
+    // Test that the executor can generate a script with this config
+    let executor = TestExecutor::with_config(config);
+    let test_case = create_simple_test_case();
+    let script = executor.generate_test_script(&test_case);
+
+    // Should still generate script but will fail at runtime
+    assert!(script.contains("/nonexistent/path/to/json-escape"));
+
+    Ok(())
+}
+
+/// Test script generation with enabled=false
+#[test]
+fn test_config_json_escaping_disabled_script_generation() {
+    let config = Config {
+        script_generation: ScriptGenerationConfig {
+            json_escaping: JsonEscapingConfig {
+                method: JsonEscapingMethod::Auto,
+                enabled: false,
+                binary_path: None,
+            },
+        },
+        ..Default::default()
+    };
+
+    let executor = TestExecutor::with_config(config);
+    let test_case = create_simple_test_case();
+    let script = executor.generate_test_script(&test_case);
+
+    // When disabled, script should still be generated
+    // The enabled flag controls whether escaping logic is included
+    // Currently the implementation always includes escaping code
+    // This test documents current behavior
+    assert!(script.contains("OUTPUT_ESCAPED="));
+}
+
+/// Test Config::load_or_default() returns default on error
+#[test]
+fn test_config_load_or_default_with_error() {
+    let temp_dir = TempDir::new().unwrap();
+    let config_dir = temp_dir.path().join(".testcase-manager");
+    fs::create_dir_all(&config_dir).unwrap();
+    let config_path = config_dir.join("config.toml");
+
+    // Write invalid TOML
+    fs::write(&config_path, "invalid toml content {{{").unwrap();
+
+    // Save current HOME/USERPROFILE
+    let original_home = std::env::var("HOME").ok();
+    let original_userprofile = std::env::var("USERPROFILE").ok();
+
+    std::env::set_var("HOME", temp_dir.path());
+    std::env::remove_var("USERPROFILE");
+
+    // load_or_default should return default config without error
+    let config = Config::load_or_default();
+
+    // Should have default values
+    assert!(matches!(
+        config.script_generation.json_escaping.method,
+        JsonEscapingMethod::Auto
+    ));
+    assert!(config.script_generation.json_escaping.enabled);
+
+    // Restore original environment
+    if let Some(home) = original_home {
+        std::env::set_var("HOME", home);
+    }
+    if let Some(userprofile) = original_userprofile {
+        std::env::set_var("USERPROFILE", userprofile);
+    }
+}
+
+/// Test Config::save() and then load the saved config
+#[test]
+fn test_config_save_and_load() -> Result<()> {
+    let temp_dir = TempDir::new()?;
+
+    // Save current HOME/USERPROFILE
+    let original_home = std::env::var("HOME").ok();
+    let original_userprofile = std::env::var("USERPROFILE").ok();
+
+    std::env::set_var("HOME", temp_dir.path());
+    std::env::remove_var("USERPROFILE");
+
+    // Create a config with specific values
+    let config = Config {
+        script_generation: ScriptGenerationConfig {
+            json_escaping: JsonEscapingConfig {
+                method: JsonEscapingMethod::ShellFallback,
+                enabled: false,
+                binary_path: Some(PathBuf::from("/custom/path/json-escape")),
+            },
+        },
+        default_device_name: Some("test-device".to_string()),
+        ..Default::default()
+    };
+
+    // Save the config
+    config.save()?;
+
+    // Load it back
+    let loaded_config = Config::load()?;
+
+    // Verify values match
+    assert!(matches!(
+        loaded_config.script_generation.json_escaping.method,
+        JsonEscapingMethod::ShellFallback
+    ));
+    assert!(!loaded_config.script_generation.json_escaping.enabled);
+    assert_eq!(
+        loaded_config.script_generation.json_escaping.binary_path,
+        Some(PathBuf::from("/custom/path/json-escape"))
+    );
+    assert_eq!(
+        loaded_config.default_device_name,
+        Some("test-device".to_string())
+    );
+
+    // Restore original environment
+    if let Some(home) = original_home {
+        std::env::set_var("HOME", home);
+    }
+    if let Some(userprofile) = original_userprofile {
+        std::env::set_var("USERPROFILE", userprofile);
+    }
+
+    Ok(())
+}
+
+/// Test Config::save() creates directory if it doesn't exist
+#[test]
+fn test_config_save_creates_directory() -> Result<()> {
+    let temp_dir = TempDir::new()?;
+
+    // Save current HOME/USERPROFILE
+    let original_home = std::env::var("HOME").ok();
+    let original_userprofile = std::env::var("USERPROFILE").ok();
+
+    std::env::set_var("HOME", temp_dir.path());
+    std::env::remove_var("USERPROFILE");
+
+    // Verify config directory doesn't exist
+    let config_dir = temp_dir.path().join(".testcase-manager");
+    assert!(!config_dir.exists());
+
+    // Save config
+    let config = Config::default();
+    config.save()?;
+
+    // Verify directory was created
+    assert!(config_dir.exists());
+    assert!(config_dir.join("config.toml").exists());
+
+    // Restore original environment
+    if let Some(home) = original_home {
+        std::env::set_var("HOME", home);
+    }
+    if let Some(userprofile) = original_userprofile {
+        std::env::set_var("USERPROFILE", userprofile);
+    }
+
+    Ok(())
+}
+
+/// Test config with empty binary_path (None)
+#[test]
+fn test_config_empty_binary_path() -> Result<()> {
+    let config_toml = r#"
+[script_generation.json_escaping]
+method = "rust_binary"
+enabled = true
+"#;
+    let config: Config = toml::from_str(config_toml)?;
+
+    assert!(config.script_generation.json_escaping.binary_path.is_none());
+
+    // Test script generation with None binary_path
+    let executor = TestExecutor::with_config(config);
+    let test_case = create_simple_test_case();
+    let script = executor.generate_test_script(&test_case);
+
+    // Should use default "json-escape" command (not a path)
+    assert!(script.contains("json-escape"));
+    // Verify it's using the bare command name, not a path with slashes
+    assert!(script.contains("printf '%s' \"$COMMAND_OUTPUT\" | json-escape"));
+
+    Ok(())
+}
+
+/// Test config deserialization with missing fields (should use defaults)
+#[test]
+fn test_config_deserialization_missing_fields() -> Result<()> {
+    // Minimal config with only one field
+    let config_toml = r#"
+[script_generation.json_escaping]
+enabled = false
+"#;
+    let config: Config = toml::from_str(config_toml)?;
+
+    // Should use default values for missing fields
+    assert!(!config.script_generation.json_escaping.enabled);
+    assert!(matches!(
+        config.script_generation.json_escaping.method,
+        JsonEscapingMethod::Auto
+    ));
+    assert!(config.script_generation.json_escaping.binary_path.is_none());
+
+    Ok(())
+}
+
+/// Test config serialization and verify TOML format
+#[test]
+fn test_config_serialization_format() -> Result<()> {
+    let config = Config {
+        script_generation: ScriptGenerationConfig {
+            json_escaping: JsonEscapingConfig {
+                method: JsonEscapingMethod::Auto,
+                enabled: false,
+                binary_path: Some(PathBuf::from("/test/path")),
+            },
+        },
+        ..Default::default()
+    };
+
+    let toml_str = toml::to_string_pretty(&config)?;
+
+    // Verify TOML contains expected sections
+    assert!(toml_str.contains("[script_generation"));
+    assert!(toml_str.contains("enabled = false"));
+    assert!(toml_str.contains("method = \"auto\""));
+    assert!(toml_str.contains("binary_path = \"/test/path\""));
+
+    Ok(())
+}
+
+/// Test that Config::load() properly handles file read errors
+#[test]
+fn test_config_load_file_read_error() -> Result<()> {
+    let temp_dir = TempDir::new()?;
+    let config_dir = temp_dir.path().join(".testcase-manager");
+    fs::create_dir_all(&config_dir)?;
+    let config_path = config_dir.join("config.toml");
+
+    // Create a file we can't read (directory instead of file)
+    #[cfg(unix)]
+    {
+        // On Unix, we can create a directory with the config file name
+        fs::create_dir(&config_path)?;
+
+        // Save current HOME/USERPROFILE
+        let original_home = std::env::var("HOME").ok();
+        let original_userprofile = std::env::var("USERPROFILE").ok();
+
+        std::env::set_var("HOME", temp_dir.path());
+        std::env::remove_var("USERPROFILE");
+
+        // Try to load config - should fail with read error
+        let result = Config::load();
+        assert!(result.is_err());
+
+        let err = result.unwrap_err();
+        let err_msg = format!("{}", err);
+        assert!(err_msg.contains("Failed to read config file"));
+
+        // Restore original environment
+        if let Some(home) = original_home {
+            std::env::set_var("HOME", home);
+        }
+        if let Some(userprofile) = original_userprofile {
+            std::env::set_var("USERPROFILE", userprofile);
+        }
+    }
+
+    Ok(())
+}
+
+/// Test config with all three method types and different enabled states
+#[test]
+fn test_config_method_and_enabled_combinations() -> Result<()> {
+    // RustBinary + enabled
+    let config = Config {
+        script_generation: ScriptGenerationConfig {
+            json_escaping: JsonEscapingConfig {
+                method: JsonEscapingMethod::RustBinary,
+                enabled: true,
+                binary_path: None,
+            },
+        },
+        ..Default::default()
+    };
+    let executor = TestExecutor::with_config(config);
+    let script = executor.generate_test_script(&create_simple_test_case());
+    assert!(script.contains("json-escape"));
+
+    // ShellFallback + enabled
+    let config = Config {
+        script_generation: ScriptGenerationConfig {
+            json_escaping: JsonEscapingConfig {
+                method: JsonEscapingMethod::ShellFallback,
+                enabled: true,
+                binary_path: None,
+            },
+        },
+        ..Default::default()
+    };
+    let executor = TestExecutor::with_config(config);
+    let script = executor.generate_test_script(&create_simple_test_case());
+    assert!(script.contains("sed"));
+    assert!(script.contains("awk"));
+
+    // Auto + enabled
+    let config = Config {
+        script_generation: ScriptGenerationConfig {
+            json_escaping: JsonEscapingConfig {
+                method: JsonEscapingMethod::Auto,
+                enabled: true,
+                binary_path: None,
+            },
+        },
+        ..Default::default()
+    };
+    let executor = TestExecutor::with_config(config);
+    let script = executor.generate_test_script(&create_simple_test_case());
+    assert!(script.contains("if command -v json-escape"));
+
+    Ok(())
+}
+
+/// Test config with relative binary path
+#[test]
+fn test_config_relative_binary_path() -> Result<()> {
+    let config = Config {
+        script_generation: ScriptGenerationConfig {
+            json_escaping: JsonEscapingConfig {
+                method: JsonEscapingMethod::RustBinary,
+                enabled: true,
+                binary_path: Some(PathBuf::from("./bin/json-escape")),
+            },
+        },
+        ..Default::default()
+    };
+
+    let executor = TestExecutor::with_config(config);
+    let test_case = create_simple_test_case();
+    let script = executor.generate_test_script(&test_case);
+
+    // Should use relative path as-is
+    assert!(script.contains("./bin/json-escape"));
+
+    Ok(())
+}
+
+/// Test config with absolute binary path
+#[test]
+fn test_config_absolute_binary_path() -> Result<()> {
+    let config = Config {
+        script_generation: ScriptGenerationConfig {
+            json_escaping: JsonEscapingConfig {
+                method: JsonEscapingMethod::Auto,
+                enabled: true,
+                binary_path: Some(PathBuf::from("/usr/local/bin/json-escape")),
+            },
+        },
+        ..Default::default()
+    };
+
+    let executor = TestExecutor::with_config(config);
+    let test_case = create_simple_test_case();
+    let script = executor.generate_test_script(&test_case);
+
+    // Should use absolute path
+    assert!(script.contains("/usr/local/bin/json-escape"));
+
+    Ok(())
+}
+
+/// Test that Config::load() error message includes context
+#[test]
+fn test_config_load_error_context() -> Result<()> {
+    let temp_dir = TempDir::new()?;
+    let config_dir = temp_dir.path().join(".testcase-manager");
+    fs::create_dir_all(&config_dir)?;
+    let config_path = config_dir.join("config.toml");
+
+    // Write invalid TOML with specific syntax error
+    fs::write(&config_path, "[script_generation\nmethod = ")?;
+
+    // Save current HOME/USERPROFILE
+    let original_home = std::env::var("HOME").ok();
+    let original_userprofile = std::env::var("USERPROFILE").ok();
+
+    std::env::set_var("HOME", temp_dir.path());
+    std::env::remove_var("USERPROFILE");
+
+    // Try to load config
+    let result = Config::load();
+    assert!(result.is_err());
+
+    let err = result.unwrap_err();
+    let err_chain = format!("{:?}", err);
+
+    // Error should mention parsing failure
+    assert!(err_chain.contains("Failed to parse config file") || err_chain.contains("parse"));
+
+    // Restore original environment
+    if let Some(home) = original_home {
+        std::env::set_var("HOME", home);
+    }
+    if let Some(userprofile) = original_userprofile {
+        std::env::set_var("USERPROFILE", userprofile);
+    }
+
+    Ok(())
+}
+
+// ============================================================================
 // Helper Functions
 // ============================================================================
 
@@ -870,6 +1863,7 @@ fn create_simple_test_case() -> TestCase {
             output_file: None,
             general: None,
         },
+        reference: None,
     });
 
     test_case.test_sequences.push(sequence);

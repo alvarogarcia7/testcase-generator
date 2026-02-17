@@ -952,6 +952,7 @@ mod tests {
                 output_file: None,
                 general: None,
             },
+            reference: None,
         };
         sequence.steps.push(step);
         test_case.test_sequences.push(sequence);

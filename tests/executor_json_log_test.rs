@@ -434,6 +434,7 @@ fn create_simple_test_case() -> TestCase {
             output_file: None,
             general: None,
         },
+        reference: None,
     };
     sequence.steps.push(step);
 
@@ -475,6 +476,7 @@ fn create_multi_sequence_test_case() -> TestCase {
             output_file: None,
             general: None,
         },
+        reference: None,
     };
     sequence1.steps.push(step1);
 
@@ -495,6 +497,7 @@ fn create_multi_sequence_test_case() -> TestCase {
             output_file: None,
             general: None,
         },
+        reference: None,
     };
     sequence1.steps.push(step2);
 
@@ -521,6 +524,7 @@ fn create_multi_sequence_test_case() -> TestCase {
             output_file: None,
             general: None,
         },
+        reference: None,
     };
     sequence2.steps.push(step3);
 
@@ -541,6 +545,7 @@ fn create_multi_sequence_test_case() -> TestCase {
             output_file: None,
             general: None,
         },
+        reference: None,
     };
     sequence2.steps.push(step4);
 
@@ -583,6 +588,7 @@ fn create_test_case_with_manual_steps() -> TestCase {
             output_file: None,
             general: None,
         },
+        reference: None,
     };
     sequence.steps.push(step1);
 
@@ -603,6 +609,7 @@ fn create_test_case_with_manual_steps() -> TestCase {
             output_file: None,
             general: None,
         },
+        reference: None,
     };
     sequence.steps.push(step2);
 
@@ -623,6 +630,7 @@ fn create_test_case_with_manual_steps() -> TestCase {
             output_file: None,
             general: None,
         },
+        reference: None,
     };
     sequence.steps.push(step3);
 
@@ -664,6 +672,7 @@ fn create_test_case_with_special_characters() -> TestCase {
             output_file: None,
             general: None,
         },
+        reference: None,
     };
     sequence.steps.push(step);
 
@@ -710,6 +719,7 @@ fn test_generated_script_produces_valid_json_with_special_chars() -> Result<()> 
             output_file: None,
             general: None,
         },
+        reference: None,
     });
 
     sequence.steps.push(Step {
@@ -729,6 +739,7 @@ fn test_generated_script_produces_valid_json_with_special_chars() -> Result<()> 
             output_file: None,
             general: None,
         },
+        reference: None,
     });
 
     sequence.steps.push(Step {
@@ -748,6 +759,7 @@ fn test_generated_script_produces_valid_json_with_special_chars() -> Result<()> 
             output_file: None,
             general: None,
         },
+        reference: None,
     });
 
     sequence.steps.push(Step {
@@ -767,6 +779,7 @@ fn test_generated_script_produces_valid_json_with_special_chars() -> Result<()> 
             output_file: None,
             general: None,
         },
+        reference: None,
     });
 
     sequence.steps.push(Step {
@@ -786,6 +799,7 @@ fn test_generated_script_produces_valid_json_with_special_chars() -> Result<()> 
             output_file: None,
             general: None,
         },
+        reference: None,
     });
 
     test_case.test_sequences.push(sequence);
@@ -899,6 +913,7 @@ fn test_command_json_escaping_edge_cases() -> Result<()> {
             output_file: None,
             general: None,
         },
+        reference: None,
     });
 
     sequence.steps.push(Step {
@@ -918,6 +933,7 @@ fn test_command_json_escaping_edge_cases() -> Result<()> {
             output_file: None,
             general: None,
         },
+        reference: None,
     });
 
     sequence.steps.push(Step {
@@ -937,6 +953,7 @@ fn test_command_json_escaping_edge_cases() -> Result<()> {
             output_file: None,
             general: None,
         },
+        reference: None,
     });
 
     sequence.steps.push(Step {
@@ -956,6 +973,7 @@ fn test_command_json_escaping_edge_cases() -> Result<()> {
             output_file: None,
             general: None,
         },
+        reference: None,
     });
 
     sequence.steps.push(Step {
@@ -975,6 +993,7 @@ fn test_command_json_escaping_edge_cases() -> Result<()> {
             output_file: None,
             general: None,
         },
+        reference: None,
     });
 
     test_case.test_sequences.push(sequence);
