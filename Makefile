@@ -1,4 +1,4 @@
-pre-commit: test clippy README_INSTALL_AUTOMATED.md
+pre-commit: test clippy coverage README_INSTALL_AUTOMATED.md
 .PHONY: pre-commit
 
 README_INSTALL_AUTOMATED.md:
