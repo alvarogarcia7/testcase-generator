@@ -4,10 +4,13 @@
 - **Build**: make build
 - **Lint**: make lint
 - **Test**: make test
+- **Coverage**: make coverage (run tests with coverage analysis)
+- **Coverage HTML**: make coverage-html (generate HTML coverage report)
+- **Coverage Report**: make coverage-report (display coverage summary)
 - **Watch Mode**: make watch (monitors testcases/ for changes and auto-validates)
 - **Dev Server**: N/A
 
-You must build, test, and lint before committing
+You must build, test, lint, and verify coverage before committing
 
 ## Binaries
 
@@ -57,4 +60,49 @@ The project includes several binary utilities:
 - If tests fail, investigate and fix the failures before proceeding
 - Never commit code with failing tests
 - Update or add tests as needed when modifying functionality
+
+## Coverage Testing
+
+**MANDATORY**: Code coverage testing is required to ensure comprehensive test coverage across the codebase.
+
+### Installation
+
+Install `cargo-llvm-cov` for code coverage analysis:
+
+```bash
+cargo install cargo-llvm-cov
+```
+
+### Coverage Commands
+
+- **Run tests with coverage**: `make coverage`
+  - Executes the test suite with coverage analysis enabled
+  - Generates coverage data in the default format
+
+- **Generate HTML coverage report**: `make coverage-html`
+  - Creates an interactive HTML report showing line-by-line coverage
+  - Opens automatically in your default browser
+  - Useful for identifying untested code paths
+
+- **Display coverage summary**: `make coverage-report`
+  - Shows a summary of coverage statistics in the terminal
+  - Provides quick overview of coverage percentages
+
+### Coverage Requirements
+
+- **Minimum coverage threshold**: 70% line coverage
+- Coverage must be maintained or improved with each commit
+- New code should strive for higher coverage (80%+) when possible
+- Review coverage reports to identify critical untested paths
+
+### Pre-Commit Workflow
+
+Before committing any code changes, complete the following steps in order:
+
+1. **Build**: `make build` - Ensure code compiles without errors
+2. **Lint**: `make lint` - Fix any style or quality issues
+3. **Test**: `make test` - Verify all tests pass
+4. **Coverage**: `make coverage-report` - Verify coverage meets 70% threshold
+
+All steps must complete successfully before committing changes.
 
