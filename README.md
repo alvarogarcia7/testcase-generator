@@ -621,7 +621,7 @@ Each log file contains an array of execution entries following this schema:
 | `output` | string | Yes | Standard output captured from the command |
 | `timestamp` | string | No | ISO 8601 timestamp of execution (RFC 3339 format) |
 
-**Schema Reference:** See `schemas/test_execution_log_schema.json` for the complete JSON schema definition.
+**Schema Reference:** See `schemas/execution-log.schema.json` for the complete JSON schema definition.
 
 #### Example JSON Execution Log
 

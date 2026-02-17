@@ -261,9 +261,11 @@ examples/manual_steps_scripts/
 
 ### Schema Files
 ```
-data/
-├── test_case_schema.json
-└── test_execution_log_schema.json
+schemas/
+├── test-case.schema.json
+├── execution-log.schema.json
+├── verification-output.schema.json
+└── verification-result.schema.json
 ```
 
 ---
@@ -299,7 +301,7 @@ data/
 
 ### Developer Path
 1. Study: MANUAL_STEPS_DATA_FLOW.md (complete technical flow)
-2. Review: Schema files (schemas/test_case_schema.json)
+2. Review: Schema files (schemas/test-case.schema.json)
 3. Analyze: Source code implementation
 4. Test: Create new test cases with manual steps
 5. Validate: Against verification criteria
@@ -331,7 +333,7 @@ Use this checklist to verify the manual steps feature:
 ### Project Documentation
 - Main README.md - Project overview
 - AGENTS.md - Build, test, lint commands
-- Test case schemas - schemas/test_case_schema.json
+- Test case schemas - schemas/test-case.schema.json
 
 ### Related Features
 - Test case generation
