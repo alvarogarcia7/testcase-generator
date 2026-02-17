@@ -3,7 +3,7 @@ use crate::models::{TestCase, TestRun, TestRunStatus};
 use crate::storage::TestCaseStorage;
 use crate::test_run_storage::TestRunStorage;
 use crate::verification::{TestCaseVerificationResult, TestExecutionLog, TestVerifier};
-use crate::MatchStrategy::Exact;
+use crate::MatchStrategy::{Contains, Exact};
 use anyhow::{Context, Result};
 use chrono::Local;
 use std::collections::HashMap;
@@ -545,7 +545,7 @@ impl TestOrchestrator {
         json_log_path: &Path,
         output_dir: &Path,
     ) -> Result<()> {
-        let verifier = TestVerifier::new(Exact, Exact);
+        let verifier = TestVerifier::new(Exact, Contains);
 
         let logs = verifier
             .parse_log_file_with_test_case_id(json_log_path, &test_case.id)
@@ -633,7 +633,7 @@ impl TestOrchestrator {
         &self,
         log_files: Vec<PathBuf>,
     ) -> Result<Vec<TestCaseVerificationResult>> {
-        let verifier = TestVerifier::new(Exact, Exact);
+        let verifier = TestVerifier::new(Exact, Contains);
         let mut verification_results = Vec::new();
 
         for log_file in log_files {
@@ -688,7 +688,7 @@ impl TestOrchestrator {
         ))?;
 
         // Parse the execution log
-        let verifier = TestVerifier::new(Exact, Exact);
+        let verifier = TestVerifier::new(Exact, Contains);
         let logs = verifier
             .parse_log_file_with_test_case_id(execution_log_file, &test_case.id)
             .context(format!(
