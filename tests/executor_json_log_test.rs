@@ -848,6 +848,7 @@ fn test_generated_script_produces_valid_json_with_special_chars() -> Result<()> 
     let entries = parsed_result.unwrap();
     assert_eq!(entries.len(), 5, "Should have 5 execution entries");
 
+    // Note: Single quotes in commands are converted to double quotes to avoid bash syntax issues
     assert_eq!(entries[0].command, "echo \"single quoted text\"");
     assert_eq!(entries[1].command, r#"echo "double quoted text""#);
     assert_eq!(entries[2].command, r#"echo "path\\to\\file""#);
