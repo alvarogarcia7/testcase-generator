@@ -31,7 +31,10 @@ pub use bdd_parser::{parse_bdd_statement, BddStepDefinition, BddStepMatcher, Bdd
 pub use builder::TestCaseBuilder;
 pub use cli::Cli;
 pub use complex_structure_editor::ComplexStructureEditor;
-pub use config::{CommitMessageTemplates, Config, EditorConfig, GitAuthorInfo};
+pub use config::{
+    CommitMessageTemplates, Config, EditorConfig, GitAuthorInfo, JsonEscapingConfig,
+    JsonEscapingMethod, ScriptGenerationConfig,
+};
 pub use creator::TestCaseCreator;
 pub use database::ConditionDatabase;
 pub use editor::TestCaseEditor;
