@@ -112,6 +112,26 @@ example_export-demo:
 test-all: test test-e2e
 .PHONY: test-all
 
+coverage:
+	cargo llvm-cov --all-features --workspace --fail-under-lines 70
+.PHONY: coverage
+
+coverage-html:
+	cargo llvm-cov --all-features --workspace --html --open
+.PHONY: coverage-html
+
+coverage-lcov:
+	cargo llvm-cov --all-features --workspace --lcov --output-path target/llvm-cov/lcov.info
+.PHONY: coverage-lcov
+
+coverage-report:
+	cargo llvm-cov report --all-features --workspace
+.PHONY: coverage-report
+
+coverage-clean:
+	cargo llvm-cov clean --workspace
+.PHONY: coverage-clean
+
 test-e2e-validate-yaml: build
 	cargo run --bin validate-yaml -- --schema data/schema.json tests/sample/gsma_4.4.2.2_TC.yml >/dev/null 2>&1
 	! cargo run --bin validate-yaml -- --schema data/schema.json tests/sample/data.yml >/dev/null 2>&1
