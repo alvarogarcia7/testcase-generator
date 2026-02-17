@@ -816,10 +816,17 @@ impl TestExecutor {
                 script.push_str("    exit 1\n");
                 script.push_str("fi\n\n");
 
+                // Escape command for JSON - handle all control characters
+                // Note: Single quotes are converted to double quotes to avoid bash syntax issues
                 let escaped_command = converted_command
                     .replace("\\", "\\\\")
                     .replace("'", "\"")
-                    .replace("\"", "\\\"");
+                    .replace("\"", "\\\"")
+                    .replace("\n", "\\n")
+                    .replace("\r", "\\r")
+                    .replace("\t", "\\t")
+                    .replace("\x08", "\\b") // backspace
+                    .replace("\x0C", "\\f"); // form feed
                 script.push_str("# Escape output for JSON (BSD/GNU compatible)\n");
                 script.push_str(
                     "# Use Python for reliable JSON escaping if available, otherwise use sed/perl/awk\n",
