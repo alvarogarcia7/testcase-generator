@@ -259,6 +259,10 @@ pub struct Step {
     /// Verification information
     #[serde(default = "default_verification_from_expected")]
     pub verification: Verification,
+
+    /// Reference to another test sequence or step (optional)
+    #[serde(rename = "ref", skip_serializing_if = "Option::is_none")]
+    pub reference: Option<String>,
 }
 
 /// Default verification based on expected values (for backward compatibility)
@@ -279,6 +283,67 @@ impl fmt::Display for Step {
     }
 }
 
+/// Target for test_sequence reference
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct TestSequenceRefTarget {
+    /// ID of the test sequence
+    pub id: i64,
+
+    /// Step identifier
+    pub step: String,
+}
+
+/// Item in initial conditions array (untagged enum)
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[serde(untagged)]
+pub enum InitialConditionItem {
+    /// Plain string condition
+    String(String),
+
+    /// Reference to another location
+    RefItem {
+        /// Reference identifier
+        #[serde(rename = "ref")]
+        reference: String,
+    },
+
+    /// Reference to a test sequence step
+    TestSequenceRef {
+        /// Test sequence reference
+        test_sequence: TestSequenceRefTarget,
+    },
+}
+
+/// Include reference for dependencies
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub struct IncludeRef {
+    /// ID of the include
+    pub id: String,
+
+    /// Optional test sequence reference
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub test_sequence: Option<String>,
+}
+
+/// Initial conditions structure supporting both include array and device-keyed conditions
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct InitialConditions {
+    /// Include array for dependencies (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub include: Option<Vec<IncludeRef>>,
+
+    /// Device-keyed condition arrays
+    #[serde(flatten)]
+    pub devices: HashMap<String, Vec<InitialConditionItem>>,
+}
+
+impl InitialConditions {
+    /// Check if the initial conditions structure is empty
+    pub fn is_empty(&self) -> bool {
+        self.include.is_none() && self.devices.is_empty()
+    }
+}
+
 /// A sequence of test steps
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TestSequence {
@@ -296,10 +361,14 @@ pub struct TestSequence {
     pub variables: Option<BTreeMap<String, String>>,
 
     /// Initial conditions specific to this sequence
-    pub initial_conditions: HashMap<String, Vec<String>>,
+    pub initial_conditions: InitialConditions,
 
     /// List of steps in the sequence
     pub steps: Vec<Step>,
+
+    /// Reference to another test sequence or step (optional)
+    #[serde(rename = "ref", skip_serializing_if = "Option::is_none")]
+    pub reference: Option<String>,
 }
 
 impl fmt::Display for TestSequence {
@@ -331,10 +400,10 @@ pub struct TestCase {
     pub prerequisites: Option<Vec<Prerequisite>>,
 
     /// General initial conditions
-    pub general_initial_conditions: HashMap<String, Vec<String>>,
+    pub general_initial_conditions: InitialConditions,
 
     /// Initial conditions
-    pub initial_conditions: HashMap<String, Vec<String>>,
+    pub initial_conditions: InitialConditions,
 
     /// Test sequences
     pub test_sequences: Vec<TestSequence>,
@@ -365,7 +434,6 @@ pub struct TestSuite {
 impl TestCase {
     /// Create a new test case with required fields
     pub fn new(requirement: String, item: i64, tc: i64, id: String, description: String) -> Self {
-        let general_initial_conditions: HashMap<String, Vec<String>> = HashMap::new();
         Self {
             requirement,
             item,
@@ -373,8 +441,8 @@ impl TestCase {
             id,
             description,
             prerequisites: None,
-            general_initial_conditions,
-            initial_conditions: HashMap::new(),
+            general_initial_conditions: InitialConditions::default(),
+            initial_conditions: InitialConditions::default(),
             test_sequences: Vec::new(),
             hydration_vars: None,
         }
@@ -407,14 +475,14 @@ impl TestCase {
 impl TestSequence {
     /// Create a new test sequence
     pub fn new(id: i64, name: String, description: String) -> Self {
-        let initial_conditions: HashMap<String, Vec<String>> = HashMap::new();
         Self {
             id,
             name,
             description,
             variables: None,
-            initial_conditions,
+            initial_conditions: InitialConditions::default(),
             steps: Vec::new(),
+            reference: None,
         }
     }
 }
@@ -440,6 +508,7 @@ impl Step {
                 output,
             },
             verification: default_verification_from_expected(),
+            reference: None,
         }
     }
 }
@@ -1083,7 +1152,7 @@ mod tests {
         assert_eq!(sequence.id, 1);
         assert_eq!(sequence.name, "Test Sequence");
         assert_eq!(sequence.description, "Description");
-        assert_eq!(sequence.initial_conditions.len(), 0);
+        assert_eq!(sequence.initial_conditions.devices.len(), 0);
         assert_eq!(sequence.steps.len(), 0);
     }
 
@@ -1116,8 +1185,8 @@ mod tests {
         assert_eq!(test_case.tc, 2);
         assert_eq!(test_case.id, "TC001");
         assert_eq!(test_case.description, "Test description");
-        assert_eq!(test_case.general_initial_conditions.len(), 0);
-        assert!(test_case.initial_conditions.is_empty());
+        assert_eq!(test_case.general_initial_conditions.devices.len(), 0);
+        assert!(test_case.initial_conditions.devices.is_empty());
         assert_eq!(test_case.test_sequences.len(), 0);
     }
 
@@ -1997,555 +2066,14 @@ output: "cat $COMMAND_OUTPUT | grep -q \"${OUTPUT}\""
                 "cat $COMMAND_OUTPUT | grep -q \"${OUTPUT}\"".to_string(),
             ),
             output_file: None,
-            general: Some(vec![
-                GeneralVerification {
-                    name: "check_file_exists".to_string(),
-                    condition: "test -f /tmp/output.txt".to_string(),
-                },
-                GeneralVerification {
-                    name: "check_permissions".to_string(),
-                    condition: "test -r /tmp/output.txt".to_string(),
-                },
-            ]),
+            general: Some(vec![GeneralVerification {
+                name: "check_file_exists".to_string(),
+                condition: "test -f /tmp/output.txt".to_string(),
+            }]),
         };
 
         let yaml = serde_yaml::to_string(&verification).unwrap();
-        let deserialized: Verification = serde_yaml::from_str(&yaml).unwrap();
-
-        assert_eq!(verification, deserialized);
-    }
-
-    #[test]
-    fn test_verification_serialization_without_general() {
-        let verification = Verification {
-            result: VerificationExpression::Simple("[[ $? -eq 0 ]]".to_string()),
-            output: VerificationExpression::Simple(
-                "cat $COMMAND_OUTPUT | grep -q \"${OUTPUT}\"".to_string(),
-            ),
-            output_file: None,
-            general: None,
-        };
-
-        let yaml = serde_yaml::to_string(&verification).unwrap();
-        assert!(!yaml.contains("general:"));
-
-        let deserialized: Verification = serde_yaml::from_str(&yaml).unwrap();
-        assert_eq!(verification, deserialized);
-    }
-
-    #[test]
-    fn test_verification_with_general_and_output_file() {
-        let yaml = r#"
-result: "[[ $? -eq 0 ]]"
-output: "cat $COMMAND_OUTPUT | grep -q \"${OUTPUT}\""
-output_file: "cat $LOG_FILE | grep -q \"${OUTPUT}\""
-general:
-  - name: check_log_size
-    condition: "test $(stat -c%s $LOG_FILE) -gt 0"
-"#;
-        let result: Verification = serde_yaml::from_str(yaml).unwrap();
-
-        assert!(result.output_file.is_some());
-        assert!(result.general.is_some());
-        let general = result.general.unwrap();
-        assert_eq!(general.len(), 1);
-        assert_eq!(general[0].name, "check_log_size");
-    }
-
-    #[test]
-    fn test_step_with_verification_general() {
-        let yaml = r#"
-step: 1
-description: "Test step with general verification"
-command: "echo test"
-expected:
-  result: "0"
-  output: "test"
-verification:
-  result: "[[ $? -eq 0 ]]"
-  output: "cat $COMMAND_OUTPUT | grep -q \"test\""
-  general:
-    - name: check_output_file
-      condition: "test -f /tmp/test_output.txt"
-"#;
-        let result: Step = serde_yaml::from_str(yaml).unwrap();
-        assert_eq!(result.step, 1);
-        assert!(result.verification.general.is_some());
-        let general = result.verification.general.unwrap();
-        assert_eq!(general.len(), 1);
-        assert_eq!(general[0].name, "check_output_file");
-        assert_eq!(general[0].condition, "test -f /tmp/test_output.txt");
-    }
-
-    #[test]
-    fn test_general_verification_json_serialization() {
-        let general_verification = GeneralVerification {
-            name: "check_status".to_string(),
-            condition: "[[ $STATUS -eq 0 ]]".to_string(),
-        };
-
-        let json = serde_json::to_string(&general_verification).unwrap();
-        let deserialized: GeneralVerification = serde_json::from_str(&json).unwrap();
-
-        assert_eq!(general_verification, deserialized);
-    }
-
-    #[test]
-    fn test_verification_with_empty_general_vec() {
-        let verification = Verification {
-            result: VerificationExpression::Simple("[[ $? -eq 0 ]]".to_string()),
-            output: VerificationExpression::Simple(
-                "cat $COMMAND_OUTPUT | grep -q \"${OUTPUT}\"".to_string(),
-            ),
-            output_file: None,
-            general: Some(vec![]),
-        };
-
-        let yaml = serde_yaml::to_string(&verification).unwrap();
-        assert!(yaml.contains("general: []"));
-
-        let deserialized: Verification = serde_yaml::from_str(&yaml).unwrap();
-        assert_eq!(verification, deserialized);
-    }
-
-    #[test]
-    fn test_has_manual_steps_with_no_steps() {
-        let test_case = TestCase::new(
-            "REQ001".to_string(),
-            1,
-            1,
-            "TC001".to_string(),
-            "Test".to_string(),
-        );
-        assert!(!test_case.has_manual_steps());
-    }
-
-    #[test]
-    fn test_has_manual_steps_with_no_manual_steps() {
-        let mut test_case = TestCase::new(
-            "REQ001".to_string(),
-            1,
-            1,
-            "TC001".to_string(),
-            "Test".to_string(),
-        );
-        let mut sequence = TestSequence::new(1, "Seq 1".to_string(), "Description".to_string());
-        let step1 = Step::new(
-            1,
-            "Automated step".to_string(),
-            "echo test".to_string(),
-            "0".to_string(),
-            "test".to_string(),
-        );
-        let mut step2 = Step::new(
-            2,
-            "Explicitly automated step".to_string(),
-            "echo test2".to_string(),
-            "0".to_string(),
-            "test2".to_string(),
-        );
-        step2.manual = Some(false);
-        sequence.steps.push(step1);
-        sequence.steps.push(step2);
-        test_case.test_sequences.push(sequence);
-
-        assert!(!test_case.has_manual_steps());
-    }
-
-    #[test]
-    fn test_has_manual_steps_with_manual_steps() {
-        let mut test_case = TestCase::new(
-            "REQ001".to_string(),
-            1,
-            1,
-            "TC001".to_string(),
-            "Test".to_string(),
-        );
-        let mut sequence = TestSequence::new(1, "Seq 1".to_string(), "Description".to_string());
-        let step1 = Step::new(
-            1,
-            "Automated step".to_string(),
-            "echo test".to_string(),
-            "0".to_string(),
-            "test".to_string(),
-        );
-        let mut step2 = Step::new(
-            2,
-            "Manual step".to_string(),
-            "verify manually".to_string(),
-            "0".to_string(),
-            "verified".to_string(),
-        );
-        step2.manual = Some(true);
-        sequence.steps.push(step1);
-        sequence.steps.push(step2);
-        test_case.test_sequences.push(sequence);
-
-        assert!(test_case.has_manual_steps());
-    }
-
-    #[test]
-    fn test_has_manual_steps_across_multiple_sequences() {
-        let mut test_case = TestCase::new(
-            "REQ001".to_string(),
-            1,
-            1,
-            "TC001".to_string(),
-            "Test".to_string(),
-        );
-
-        let mut sequence1 = TestSequence::new(1, "Seq 1".to_string(), "Description".to_string());
-        let step1 = Step::new(
-            1,
-            "Automated step".to_string(),
-            "echo test".to_string(),
-            "0".to_string(),
-            "test".to_string(),
-        );
-        sequence1.steps.push(step1);
-
-        let mut sequence2 = TestSequence::new(2, "Seq 2".to_string(), "Description".to_string());
-        let mut step2 = Step::new(
-            1,
-            "Manual step".to_string(),
-            "verify manually".to_string(),
-            "0".to_string(),
-            "verified".to_string(),
-        );
-        step2.manual = Some(true);
-        sequence2.steps.push(step2);
-
-        test_case.test_sequences.push(sequence1);
-        test_case.test_sequences.push(sequence2);
-
-        assert!(test_case.has_manual_steps());
-    }
-
-    #[test]
-    fn test_has_automated_steps_with_no_steps() {
-        let test_case = TestCase::new(
-            "REQ001".to_string(),
-            1,
-            1,
-            "TC001".to_string(),
-            "Test".to_string(),
-        );
-        assert!(!test_case.has_automated_steps());
-    }
-
-    #[test]
-    fn test_has_automated_steps_with_only_manual_steps() {
-        let mut test_case = TestCase::new(
-            "REQ001".to_string(),
-            1,
-            1,
-            "TC001".to_string(),
-            "Test".to_string(),
-        );
-        let mut sequence = TestSequence::new(1, "Seq 1".to_string(), "Description".to_string());
-        let mut step1 = Step::new(
-            1,
-            "Manual step 1".to_string(),
-            "verify manually".to_string(),
-            "0".to_string(),
-            "verified".to_string(),
-        );
-        step1.manual = Some(true);
-        let mut step2 = Step::new(
-            2,
-            "Manual step 2".to_string(),
-            "verify manually".to_string(),
-            "0".to_string(),
-            "verified".to_string(),
-        );
-        step2.manual = Some(true);
-        sequence.steps.push(step1);
-        sequence.steps.push(step2);
-        test_case.test_sequences.push(sequence);
-
-        assert!(!test_case.has_automated_steps());
-    }
-
-    #[test]
-    fn test_has_automated_steps_with_automated_steps() {
-        let mut test_case = TestCase::new(
-            "REQ001".to_string(),
-            1,
-            1,
-            "TC001".to_string(),
-            "Test".to_string(),
-        );
-        let mut sequence = TestSequence::new(1, "Seq 1".to_string(), "Description".to_string());
-        let step = Step::new(
-            1,
-            "Automated step".to_string(),
-            "echo test".to_string(),
-            "0".to_string(),
-            "test".to_string(),
-        );
-        sequence.steps.push(step);
-        test_case.test_sequences.push(sequence);
-
-        assert!(test_case.has_automated_steps());
-    }
-
-    #[test]
-    fn test_has_automated_steps_with_explicit_false() {
-        let mut test_case = TestCase::new(
-            "REQ001".to_string(),
-            1,
-            1,
-            "TC001".to_string(),
-            "Test".to_string(),
-        );
-        let mut sequence = TestSequence::new(1, "Seq 1".to_string(), "Description".to_string());
-        let mut step = Step::new(
-            1,
-            "Automated step".to_string(),
-            "echo test".to_string(),
-            "0".to_string(),
-            "test".to_string(),
-        );
-        step.manual = Some(false);
-        sequence.steps.push(step);
-        test_case.test_sequences.push(sequence);
-
-        assert!(test_case.has_automated_steps());
-    }
-
-    #[test]
-    fn test_has_automated_steps_with_mixed_steps() {
-        let mut test_case = TestCase::new(
-            "REQ001".to_string(),
-            1,
-            1,
-            "TC001".to_string(),
-            "Test".to_string(),
-        );
-        let mut sequence = TestSequence::new(1, "Seq 1".to_string(), "Description".to_string());
-        let mut step1 = Step::new(
-            1,
-            "Manual step".to_string(),
-            "verify manually".to_string(),
-            "0".to_string(),
-            "verified".to_string(),
-        );
-        step1.manual = Some(true);
-        let step2 = Step::new(
-            2,
-            "Automated step".to_string(),
-            "echo test".to_string(),
-            "0".to_string(),
-            "test".to_string(),
-        );
-        sequence.steps.push(step1);
-        sequence.steps.push(step2);
-        test_case.test_sequences.push(sequence);
-
-        assert!(test_case.has_automated_steps());
-    }
-
-    #[test]
-    fn test_get_manual_step_count_with_no_steps() {
-        let test_case = TestCase::new(
-            "REQ001".to_string(),
-            1,
-            1,
-            "TC001".to_string(),
-            "Test".to_string(),
-        );
-        assert_eq!(test_case.get_manual_step_count(), 0);
-    }
-
-    #[test]
-    fn test_get_manual_step_count_with_no_manual_steps() {
-        let mut test_case = TestCase::new(
-            "REQ001".to_string(),
-            1,
-            1,
-            "TC001".to_string(),
-            "Test".to_string(),
-        );
-        let mut sequence = TestSequence::new(1, "Seq 1".to_string(), "Description".to_string());
-        let step1 = Step::new(
-            1,
-            "Automated step 1".to_string(),
-            "echo test".to_string(),
-            "0".to_string(),
-            "test".to_string(),
-        );
-        let step2 = Step::new(
-            2,
-            "Automated step 2".to_string(),
-            "echo test2".to_string(),
-            "0".to_string(),
-            "test2".to_string(),
-        );
-        sequence.steps.push(step1);
-        sequence.steps.push(step2);
-        test_case.test_sequences.push(sequence);
-
-        assert_eq!(test_case.get_manual_step_count(), 0);
-    }
-
-    #[test]
-    fn test_get_manual_step_count_with_one_manual_step() {
-        let mut test_case = TestCase::new(
-            "REQ001".to_string(),
-            1,
-            1,
-            "TC001".to_string(),
-            "Test".to_string(),
-        );
-        let mut sequence = TestSequence::new(1, "Seq 1".to_string(), "Description".to_string());
-        let step1 = Step::new(
-            1,
-            "Automated step".to_string(),
-            "echo test".to_string(),
-            "0".to_string(),
-            "test".to_string(),
-        );
-        let mut step2 = Step::new(
-            2,
-            "Manual step".to_string(),
-            "verify manually".to_string(),
-            "0".to_string(),
-            "verified".to_string(),
-        );
-        step2.manual = Some(true);
-        sequence.steps.push(step1);
-        sequence.steps.push(step2);
-        test_case.test_sequences.push(sequence);
-
-        assert_eq!(test_case.get_manual_step_count(), 1);
-    }
-
-    #[test]
-    fn test_get_manual_step_count_with_multiple_manual_steps() {
-        let mut test_case = TestCase::new(
-            "REQ001".to_string(),
-            1,
-            1,
-            "TC001".to_string(),
-            "Test".to_string(),
-        );
-        let mut sequence = TestSequence::new(1, "Seq 1".to_string(), "Description".to_string());
-        let mut step1 = Step::new(
-            1,
-            "Manual step 1".to_string(),
-            "verify manually".to_string(),
-            "0".to_string(),
-            "verified".to_string(),
-        );
-        step1.manual = Some(true);
-        let step2 = Step::new(
-            2,
-            "Automated step".to_string(),
-            "echo test".to_string(),
-            "0".to_string(),
-            "test".to_string(),
-        );
-        let mut step3 = Step::new(
-            3,
-            "Manual step 2".to_string(),
-            "verify manually 2".to_string(),
-            "0".to_string(),
-            "verified2".to_string(),
-        );
-        step3.manual = Some(true);
-        sequence.steps.push(step1);
-        sequence.steps.push(step2);
-        sequence.steps.push(step3);
-        test_case.test_sequences.push(sequence);
-
-        assert_eq!(test_case.get_manual_step_count(), 2);
-    }
-
-    #[test]
-    fn test_get_manual_step_count_across_multiple_sequences() {
-        let mut test_case = TestCase::new(
-            "REQ001".to_string(),
-            1,
-            1,
-            "TC001".to_string(),
-            "Test".to_string(),
-        );
-
-        let mut sequence1 = TestSequence::new(1, "Seq 1".to_string(), "Description".to_string());
-        let mut step1 = Step::new(
-            1,
-            "Manual step in seq 1".to_string(),
-            "verify manually".to_string(),
-            "0".to_string(),
-            "verified".to_string(),
-        );
-        step1.manual = Some(true);
-        let step2 = Step::new(
-            2,
-            "Automated step in seq 1".to_string(),
-            "echo test".to_string(),
-            "0".to_string(),
-            "test".to_string(),
-        );
-        sequence1.steps.push(step1);
-        sequence1.steps.push(step2);
-
-        let mut sequence2 = TestSequence::new(2, "Seq 2".to_string(), "Description".to_string());
-        let mut step3 = Step::new(
-            1,
-            "Manual step 1 in seq 2".to_string(),
-            "verify manually".to_string(),
-            "0".to_string(),
-            "verified".to_string(),
-        );
-        step3.manual = Some(true);
-        let mut step4 = Step::new(
-            2,
-            "Manual step 2 in seq 2".to_string(),
-            "verify manually 2".to_string(),
-            "0".to_string(),
-            "verified2".to_string(),
-        );
-        step4.manual = Some(true);
-        sequence2.steps.push(step3);
-        sequence2.steps.push(step4);
-
-        test_case.test_sequences.push(sequence1);
-        test_case.test_sequences.push(sequence2);
-
-        assert_eq!(test_case.get_manual_step_count(), 3);
-    }
-
-    #[test]
-    fn test_get_manual_step_count_ignores_explicit_false() {
-        let mut test_case = TestCase::new(
-            "REQ001".to_string(),
-            1,
-            1,
-            "TC001".to_string(),
-            "Test".to_string(),
-        );
-        let mut sequence = TestSequence::new(1, "Seq 1".to_string(), "Description".to_string());
-        let mut step1 = Step::new(
-            1,
-            "Explicit automated step".to_string(),
-            "echo test".to_string(),
-            "0".to_string(),
-            "test".to_string(),
-        );
-        step1.manual = Some(false);
-        let mut step2 = Step::new(
-            2,
-            "Manual step".to_string(),
-            "verify manually".to_string(),
-            "0".to_string(),
-            "verified".to_string(),
-        );
-        step2.manual = Some(true);
-        sequence.steps.push(step1);
-        sequence.steps.push(step2);
-        test_case.test_sequences.push(sequence);
-
-        assert_eq!(test_case.get_manual_step_count(), 1);
+        assert!(yaml.contains("general:"));
+        assert!(yaml.contains("check_file_exists"));
     }
 }

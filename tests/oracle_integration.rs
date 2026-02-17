@@ -328,10 +328,16 @@ fn test_complete_workflow_with_hardcoded_oracle() -> Result<()> {
     assert!(!parsed.general_initial_conditions.is_empty());
 
     // Verify initial conditions
-    let euicc = parsed.initial_conditions.get("eUICC").unwrap();
+    let euicc = parsed.initial_conditions.devices.get("eUICC").unwrap();
     assert_eq!(euicc.len(), 2);
-    assert_eq!(euicc[0], "Initial condition 1");
-    assert_eq!(euicc[1], "Initial condition 2");
+    assert!(matches!(
+        &euicc[0],
+        testcase_manager::models::InitialConditionItem::String(s) if s == "Initial condition 1"
+    ));
+    assert!(matches!(
+        &euicc[1],
+        testcase_manager::models::InitialConditionItem::String(s) if s == "Initial condition 2"
+    ));
 
     // Verify test sequence
     assert_eq!(parsed.test_sequences.len(), 1);
