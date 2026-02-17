@@ -1394,3 +1394,366 @@ fn test_initial_conditions_complex_mixed_roundtrip_json() {
     // Verify devices are preserved
     assert_eq!(deserialized.devices.len(), 2);
 }
+
+// ===== DependencyValidator Edge Cases =====
+
+#[test]
+fn test_dependency_validator_ref_collection_with_empty_test_sequences() {
+    let mut validator = testcase_manager::dependency_validator::DependencyValidator::new();
+
+    let test_case = TestCase::new(
+        "REQ001".to_string(),
+        1,
+        1,
+        "TC_EMPTY".to_string(),
+        "Test case with no sequences".to_string(),
+    );
+
+    validator.collect_definitions(&PathBuf::from("empty.yaml"), &test_case);
+
+    let errors = validator.validate_references(&PathBuf::from("empty.yaml"), &test_case);
+    assert_eq!(
+        errors.len(),
+        0,
+        "Empty test sequences should not produce validation errors"
+    );
+}
+
+#[test]
+fn test_dependency_validator_nested_includes_three_levels() {
+    let mut validator = testcase_manager::dependency_validator::DependencyValidator::new();
+
+    let test_case_c = TestCase::new(
+        "REQ001".to_string(),
+        1,
+        1,
+        "TC_C".to_string(),
+        "Test C".to_string(),
+    );
+
+    let mut test_case_b = TestCase::new(
+        "REQ001".to_string(),
+        1,
+        1,
+        "TC_B".to_string(),
+        "Test B".to_string(),
+    );
+    test_case_b.general_initial_conditions = InitialConditions {
+        include: Some(vec![IncludeRef {
+            id: "TC_C".to_string(),
+            test_sequence: None,
+        }]),
+        ..Default::default()
+    };
+
+    let mut test_case_a = TestCase::new(
+        "REQ001".to_string(),
+        1,
+        1,
+        "TC_A".to_string(),
+        "Test A".to_string(),
+    );
+    test_case_a.general_initial_conditions = InitialConditions {
+        include: Some(vec![IncludeRef {
+            id: "TC_B".to_string(),
+            test_sequence: None,
+        }]),
+        ..Default::default()
+    };
+
+    validator.collect_definitions(&PathBuf::from("c.yaml"), &test_case_c);
+    validator.collect_definitions(&PathBuf::from("b.yaml"), &test_case_b);
+    validator.collect_definitions(&PathBuf::from("a.yaml"), &test_case_a);
+
+    let errors_a = validator.validate_references(&PathBuf::from("a.yaml"), &test_case_a);
+    let errors_b = validator.validate_references(&PathBuf::from("b.yaml"), &test_case_b);
+    let errors_c = validator.validate_references(&PathBuf::from("c.yaml"), &test_case_c);
+
+    assert_eq!(
+        errors_a.len(),
+        0,
+        "Nested includes (A->B->C) should validate correctly for A"
+    );
+    assert_eq!(
+        errors_b.len(),
+        0,
+        "Nested includes (A->B->C) should validate correctly for B"
+    );
+    assert_eq!(
+        errors_c.len(),
+        0,
+        "Nested includes (A->B->C) should validate correctly for C"
+    );
+}
+
+#[test]
+fn test_dependency_validator_multiple_refs_same_name_different_test_cases() {
+    let mut validator = testcase_manager::dependency_validator::DependencyValidator::new();
+
+    let mut test_case1 = TestCase::new(
+        "REQ001".to_string(),
+        1,
+        1,
+        "TC001".to_string(),
+        "Test 1".to_string(),
+    );
+    let mut test_sequence1 = TestSequence::new(1, "Seq1".to_string(), "Desc1".to_string());
+    test_sequence1.reference = Some("common-ref".to_string());
+    test_case1.test_sequences.push(test_sequence1);
+
+    let mut test_case2 = TestCase::new(
+        "REQ002".to_string(),
+        1,
+        1,
+        "TC002".to_string(),
+        "Test 2".to_string(),
+    );
+    let mut test_sequence2 = TestSequence::new(1, "Seq1".to_string(), "Desc1".to_string());
+    test_sequence2.reference = Some("common-ref".to_string());
+    test_case2.test_sequences.push(test_sequence2);
+
+    let mut test_case3 = TestCase::new(
+        "REQ003".to_string(),
+        1,
+        1,
+        "TC003".to_string(),
+        "Test 3".to_string(),
+    );
+    let mut test_sequence3 = TestSequence::new(1, "Seq1".to_string(), "Desc1".to_string());
+    test_sequence3.reference = Some("common-ref".to_string());
+    test_case3.test_sequences.push(test_sequence3);
+
+    validator.collect_definitions(&PathBuf::from("test1.yaml"), &test_case1);
+    validator.collect_definitions(&PathBuf::from("test2.yaml"), &test_case2);
+    validator.collect_definitions(&PathBuf::from("test3.yaml"), &test_case3);
+
+    let mut test_case_user = TestCase::new(
+        "REQ004".to_string(),
+        1,
+        1,
+        "TC_USER".to_string(),
+        "Test User".to_string(),
+    );
+    let mut initial_conditions = InitialConditions::default();
+    initial_conditions.devices.insert(
+        "device1".to_string(),
+        vec![InitialConditionItem::RefItem {
+            reference: "common-ref".to_string(),
+        }],
+    );
+    test_case_user.initial_conditions = initial_conditions;
+
+    let errors = validator.validate_references(&PathBuf::from("test_user.yaml"), &test_case_user);
+    assert_eq!(
+        errors.len(),
+        0,
+        "Multiple test cases can define the same ref name"
+    );
+}
+
+#[test]
+fn test_dependency_validator_step_refs_without_sequence_refs() {
+    let mut validator = testcase_manager::dependency_validator::DependencyValidator::new();
+
+    let mut test_case_provider = TestCase::new(
+        "REQ001".to_string(),
+        1,
+        1,
+        "TC_PROVIDER".to_string(),
+        "Provider".to_string(),
+    );
+    let mut test_sequence = TestSequence::new(1, "Seq1".to_string(), "Desc1".to_string());
+    let mut step1 = Step::new(
+        1,
+        "Step 1".to_string(),
+        "cmd1".to_string(),
+        "0".to_string(),
+        "output1".to_string(),
+    );
+    step1.reference = Some("step-ref-only".to_string());
+    test_sequence.steps.push(step1);
+
+    let mut step2 = Step::new(
+        2,
+        "Step 2".to_string(),
+        "cmd2".to_string(),
+        "0".to_string(),
+        "output2".to_string(),
+    );
+    step2.reference = Some("another-step-ref".to_string());
+    test_sequence.steps.push(step2);
+    test_case_provider.test_sequences.push(test_sequence);
+
+    validator.collect_definitions(&PathBuf::from("provider.yaml"), &test_case_provider);
+
+    let mut test_case_consumer = TestCase::new(
+        "REQ002".to_string(),
+        1,
+        1,
+        "TC_CONSUMER".to_string(),
+        "Consumer".to_string(),
+    );
+    let mut initial_conditions = InitialConditions::default();
+    initial_conditions.devices.insert(
+        "device1".to_string(),
+        vec![
+            InitialConditionItem::RefItem {
+                reference: "step-ref-only".to_string(),
+            },
+            InitialConditionItem::RefItem {
+                reference: "another-step-ref".to_string(),
+            },
+        ],
+    );
+    test_case_consumer.initial_conditions = initial_conditions;
+
+    let errors =
+        validator.validate_references(&PathBuf::from("consumer.yaml"), &test_case_consumer);
+    assert_eq!(
+        errors.len(),
+        0,
+        "Step references without sequence references should be valid"
+    );
+}
+
+#[test]
+fn test_dependency_validator_performance_with_100_test_cases() {
+    use std::time::Instant;
+
+    let mut validator = testcase_manager::dependency_validator::DependencyValidator::new();
+    let mut all_test_cases = Vec::new();
+
+    for i in 0..100 {
+        let mut test_case = TestCase::new(
+            format!("REQ{:03}", i),
+            i,
+            i,
+            format!("TC{:03}", i),
+            format!("Test case {}", i),
+        );
+
+        for j in 0..5 {
+            let mut test_sequence =
+                TestSequence::new(j + 1, format!("Seq{}", j + 1), format!("Desc{}", j + 1));
+            test_sequence.reference = Some(format!("ref-{}-{}", i, j));
+
+            for k in 0..3 {
+                let mut step = Step::new(
+                    k + 1,
+                    format!("Step {}", k + 1),
+                    format!("cmd{}", k + 1),
+                    "0".to_string(),
+                    format!("output{}", k + 1),
+                );
+                step.reference = Some(format!("step-ref-{}-{}-{}", i, j, k));
+                test_sequence.steps.push(step);
+            }
+
+            test_case.test_sequences.push(test_sequence);
+        }
+
+        if i > 0 {
+            test_case.general_initial_conditions = InitialConditions {
+                include: Some(vec![IncludeRef {
+                    id: format!("TC{:03}", i - 1),
+                    test_sequence: None,
+                }]),
+                ..Default::default()
+            };
+
+            let mut initial_conditions = InitialConditions::default();
+            initial_conditions.devices.insert(
+                "device1".to_string(),
+                vec![InitialConditionItem::RefItem {
+                    reference: format!("ref-{}-0", i - 1),
+                }],
+            );
+            test_case.initial_conditions = initial_conditions;
+        }
+
+        all_test_cases.push((PathBuf::from(format!("test{:03}.yaml", i)), test_case));
+    }
+
+    let start_collect = Instant::now();
+    for (path, test_case) in &all_test_cases {
+        validator.collect_definitions(path, test_case);
+    }
+    let collect_duration = start_collect.elapsed();
+
+    let start_validate = Instant::now();
+    let mut all_errors = Vec::new();
+    for (path, test_case) in &all_test_cases {
+        let errors = validator.validate_references(path, test_case);
+        all_errors.extend(errors);
+    }
+    let validate_duration = start_validate.elapsed();
+
+    assert_eq!(
+        all_errors.len(),
+        0,
+        "All 100 test cases should validate without errors"
+    );
+
+    assert!(
+        collect_duration.as_millis() < 1000,
+        "Collection should complete in under 1 second (took {:?}ms)",
+        collect_duration.as_millis()
+    );
+    assert!(
+        validate_duration.as_millis() < 1000,
+        "Validation should complete in under 1 second (took {:?}ms)",
+        validate_duration.as_millis()
+    );
+}
+
+#[test]
+fn test_dependency_validator_cross_file_validation_with_100_test_cases() {
+    use std::time::Instant;
+
+    let mut all_test_cases = Vec::new();
+
+    for i in 0..100 {
+        let mut test_case = TestCase::new(
+            format!("REQ{:03}", i),
+            i,
+            i,
+            format!("TC{:03}", i),
+            format!("Test case {}", i),
+        );
+
+        for j in 0..3 {
+            let mut test_sequence =
+                TestSequence::new(j + 1, format!("Seq{}", j + 1), format!("Desc{}", j + 1));
+            test_sequence.reference = Some(format!("ref-{}-{}", i, j));
+            test_case.test_sequences.push(test_sequence);
+        }
+
+        if i > 0 {
+            test_case.general_initial_conditions = InitialConditions {
+                include: Some(vec![IncludeRef {
+                    id: format!("TC{:03}", i - 1),
+                    test_sequence: None,
+                }]),
+                ..Default::default()
+            };
+        }
+
+        all_test_cases.push((PathBuf::from(format!("test{:03}.yaml", i)), test_case));
+    }
+
+    let start = Instant::now();
+    let result =
+        testcase_manager::dependency_validator::validate_cross_file_dependencies(&all_test_cases);
+    let duration = start.elapsed();
+
+    assert!(
+        result.is_ok(),
+        "Cross-file validation with 100 test cases should succeed"
+    );
+
+    assert!(
+        duration.as_millis() < 2000,
+        "Cross-file validation should complete in under 2 seconds (took {:?}ms)",
+        duration.as_millis()
+    );
+}
