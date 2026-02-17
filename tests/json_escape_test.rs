@@ -244,6 +244,405 @@ fn test_json_escape_binary_test_mode_valid() -> Result<()> {
 }
 
 // ============================================================================
+// JSON Escape Binary Tests - Edge Cases
+// ============================================================================
+
+/// Test json-escape binary with empty string in test mode
+#[test]
+fn test_json_escape_binary_empty_string_test_mode() -> Result<()> {
+    let input = "";
+    let output = Command::new("cargo")
+        .args(["run", "--bin", "json-escape", "--", "--test"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            if let Some(mut stdin) = child.stdin.take() {
+                stdin.write_all(input.as_bytes())?;
+            }
+            child.wait_with_output()
+        })?;
+
+    assert!(output.status.success());
+    let result = String::from_utf8(output.stdout)?;
+    assert_eq!(result, "");
+    Ok(())
+}
+
+/// Test json-escape binary with very long input string (10KB+)
+#[test]
+fn test_json_escape_binary_very_long_input() -> Result<()> {
+    // Create a 12KB string with mixed content
+    let mut input = String::new();
+    for i in 0..1000 {
+        input.push_str(&format!(
+            "Line {} with \"quotes\" and \\backslashes\\ and\ttabs\n",
+            i
+        ));
+    }
+
+    let output = Command::new("cargo")
+        .args(["run", "--bin", "json-escape"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            if let Some(mut stdin) = child.stdin.take() {
+                stdin.write_all(input.as_bytes())?;
+            }
+            child.wait_with_output()
+        })?;
+
+    assert!(output.status.success());
+    let result = String::from_utf8(output.stdout)?;
+
+    // Verify length increased due to escaping
+    assert!(result.len() > input.len());
+
+    // Verify specific patterns are escaped
+    assert!(result.contains(r#"\"quotes\""#));
+    assert!(result.contains(r#"\\"#));
+    assert!(result.contains(r#"\t"#));
+    assert!(result.contains(r#"\n"#));
+
+    // Verify the escaped output is valid JSON when wrapped in quotes
+    let test_json = format!("\"{}\"", result);
+    assert!(serde_json::from_str::<serde_json::Value>(&test_json).is_ok());
+
+    Ok(())
+}
+
+/// Test json-escape binary with consecutive backslashes
+#[test]
+fn test_json_escape_binary_consecutive_backslashes() -> Result<()> {
+    let input = r#"One\Two\\Three\\\Four\\\\Five"#;
+    let output = Command::new("cargo")
+        .args(["run", "--bin", "json-escape"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            if let Some(mut stdin) = child.stdin.take() {
+                stdin.write_all(input.as_bytes())?;
+            }
+            child.wait_with_output()
+        })?;
+
+    assert!(output.status.success());
+    let result = String::from_utf8(output.stdout)?;
+    assert_eq!(result, r#"One\\Two\\\\Three\\\\\\Four\\\\\\\\Five"#);
+
+    // Verify it's valid JSON
+    let test_json = format!("\"{}\"", result);
+    assert!(serde_json::from_str::<serde_json::Value>(&test_json).is_ok());
+
+    Ok(())
+}
+
+/// Test json-escape binary with nested quotes
+#[test]
+fn test_json_escape_binary_nested_quotes() -> Result<()> {
+    let input = r#"He said "She said "Hello" to me" yesterday"#;
+    let output = Command::new("cargo")
+        .args(["run", "--bin", "json-escape"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            if let Some(mut stdin) = child.stdin.take() {
+                stdin.write_all(input.as_bytes())?;
+            }
+            child.wait_with_output()
+        })?;
+
+    assert!(output.status.success());
+    let result = String::from_utf8(output.stdout)?;
+    assert_eq!(result, r#"He said \"She said \"Hello\" to me\" yesterday"#);
+
+    // Verify it's valid JSON
+    let test_json = format!("\"{}\"", result);
+    assert!(serde_json::from_str::<serde_json::Value>(&test_json).is_ok());
+
+    Ok(())
+}
+
+/// Test json-escape binary with multiple consecutive special characters
+#[test]
+fn test_json_escape_binary_consecutive_special_chars() -> Result<()> {
+    let input = "test\"\"\\\\\n\n\t\t\r\r";
+    let output = Command::new("cargo")
+        .args(["run", "--bin", "json-escape"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            if let Some(mut stdin) = child.stdin.take() {
+                stdin.write_all(input.as_bytes())?;
+            }
+            child.wait_with_output()
+        })?;
+
+    assert!(output.status.success());
+    let result = String::from_utf8(output.stdout)?;
+    assert_eq!(result, r#"test\"\"\\\\\n\n\t\t\r\r"#);
+
+    // Verify it's valid JSON
+    let test_json = format!("\"{}\"", result);
+    assert!(serde_json::from_str::<serde_json::Value>(&test_json).is_ok());
+
+    Ok(())
+}
+
+/// Test json-escape binary with all control characters \x00 through \x1F
+#[test]
+fn test_json_escape_binary_all_control_characters() -> Result<()> {
+    // Create input with all control characters from \x00 to \x1F
+    let mut input = Vec::new();
+    input.extend_from_slice(b"Start:");
+    for i in 0x00..=0x1F {
+        input.push(i);
+    }
+    input.extend_from_slice(b":End");
+
+    let output = Command::new("cargo")
+        .args(["run", "--bin", "json-escape"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            if let Some(mut stdin) = child.stdin.take() {
+                stdin.write_all(&input)?;
+            }
+            child.wait_with_output()
+        })?;
+
+    assert!(output.status.success());
+    let result = String::from_utf8(output.stdout)?;
+
+    // Verify specific control characters are properly escaped
+    assert!(result.contains(r#"\u0000"#)); // NULL
+    assert!(result.contains(r#"\u0001"#)); // SOH
+    assert!(result.contains(r#"\b"#)); // Backspace (\x08)
+    assert!(result.contains(r#"\t"#)); // Tab (\x09)
+    assert!(result.contains(r#"\n"#)); // Newline (\x0A)
+    assert!(result.contains(r#"\f"#)); // Form feed (\x0C)
+    assert!(result.contains(r#"\r"#)); // Carriage return (\x0D)
+    assert!(result.contains(r#"\u000e"#)); // Shift Out
+    assert!(result.contains(r#"\u001f"#)); // Unit Separator
+    assert!(result.contains("Start:"));
+    assert!(result.contains(":End"));
+
+    // Verify it's valid JSON
+    let test_json = format!("\"{}\"", result);
+    assert!(serde_json::from_str::<serde_json::Value>(&test_json).is_ok());
+
+    Ok(())
+}
+
+/// Test json-escape binary with control character sequences
+#[test]
+fn test_json_escape_binary_control_sequences() -> Result<()> {
+    // Test various combinations of control characters
+    let input = "Before\x00\x01\x02After";
+    let output = Command::new("cargo")
+        .args(["run", "--bin", "json-escape"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            if let Some(mut stdin) = child.stdin.take() {
+                stdin.write_all(input.as_bytes())?;
+            }
+            child.wait_with_output()
+        })?;
+
+    assert!(output.status.success());
+    let result = String::from_utf8(output.stdout)?;
+    assert!(result.contains(r#"Before\u0000\u0001\u0002After"#));
+
+    // Verify it's valid JSON
+    let test_json = format!("\"{}\"", result);
+    assert!(serde_json::from_str::<serde_json::Value>(&test_json).is_ok());
+
+    Ok(())
+}
+
+/// Test json-escape binary with invalid UTF-8 sequences
+#[test]
+fn test_json_escape_binary_invalid_utf8() -> Result<()> {
+    // Create invalid UTF-8 sequences
+    let invalid_utf8 = vec![
+        0x48, 0x65, 0x6C, 0x6C, 0x6F, // "Hello"
+        0xFF, // Invalid UTF-8
+        0xFE, // Invalid UTF-8
+        0x57, 0x6F, 0x72, 0x6C, 0x64, // "World"
+    ];
+
+    let output = Command::new("cargo")
+        .args(["run", "--bin", "json-escape"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            if let Some(mut stdin) = child.stdin.take() {
+                stdin.write_all(&invalid_utf8)?;
+            }
+            child.wait_with_output()
+        })?;
+
+    // The binary should fail gracefully with invalid UTF-8
+    // It uses read_to_string which will fail on invalid UTF-8
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("Failed to read from stdin")
+            || stderr.contains("stream did not contain valid UTF-8")
+    );
+
+    Ok(())
+}
+
+/// Test json-escape binary with replacement character for invalid UTF-8
+#[test]
+fn test_json_escape_binary_utf8_replacement_char() -> Result<()> {
+    // Test with the Unicode replacement character (used when invalid UTF-8 is encountered)
+    let input = "Valid text \u{FFFD} with replacement char";
+    let output = Command::new("cargo")
+        .args(["run", "--bin", "json-escape"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            if let Some(mut stdin) = child.stdin.take() {
+                stdin.write_all(input.as_bytes())?;
+            }
+            child.wait_with_output()
+        })?;
+
+    assert!(output.status.success());
+    let result = String::from_utf8(output.stdout)?;
+    // The replacement character should be preserved in output
+    assert!(result.contains("\u{FFFD}"));
+    assert_eq!(result, "Valid text \u{FFFD} with replacement char");
+
+    // Verify it's valid JSON
+    let test_json = format!("\"{}\"", result);
+    assert!(serde_json::from_str::<serde_json::Value>(&test_json).is_ok());
+
+    Ok(())
+}
+
+/// Test json-escape binary with extremely long consecutive special characters
+#[test]
+fn test_json_escape_binary_long_consecutive_specials() -> Result<()> {
+    // Create a string with many consecutive backslashes and quotes
+    let mut input = String::from("Start");
+    input.push_str(&"\\".repeat(100));
+    input.push_str(&"\"".repeat(100));
+    input.push_str("End");
+
+    let output = Command::new("cargo")
+        .args(["run", "--bin", "json-escape"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            if let Some(mut stdin) = child.stdin.take() {
+                stdin.write_all(input.as_bytes())?;
+            }
+            child.wait_with_output()
+        })?;
+
+    assert!(output.status.success());
+    let result = String::from_utf8(output.stdout)?;
+
+    // Each backslash becomes two, each quote becomes backslash-quote
+    assert!(result.contains("Start"));
+    assert!(result.contains("End"));
+    assert!(result.contains(&"\\\\".repeat(100)));
+    assert!(result.contains(&"\\\"".repeat(100)));
+
+    // Verify it's valid JSON
+    let test_json = format!("\"{}\"", result);
+    assert!(serde_json::from_str::<serde_json::Value>(&test_json).is_ok());
+
+    Ok(())
+}
+
+/// Test json-escape binary with mixed control and printable characters
+#[test]
+fn test_json_escape_binary_mixed_control_printable() -> Result<()> {
+    let input = "Line1\x00\nLine2\x01\tLine3\x02\"quoted\"\x03\\backslash\\";
+    let output = Command::new("cargo")
+        .args(["run", "--bin", "json-escape"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            if let Some(mut stdin) = child.stdin.take() {
+                stdin.write_all(input.as_bytes())?;
+            }
+            child.wait_with_output()
+        })?;
+
+    assert!(output.status.success());
+    let result = String::from_utf8(output.stdout)?;
+
+    assert!(result.contains("Line1"));
+    assert!(result.contains(r#"\u0000"#));
+    assert!(result.contains(r#"\n"#));
+    assert!(result.contains("Line2"));
+    assert!(result.contains(r#"\u0001"#));
+    assert!(result.contains(r#"\t"#));
+    assert!(result.contains("Line3"));
+    assert!(result.contains(r#"\u0002"#));
+    assert!(result.contains(r#"\"quoted\""#));
+    assert!(result.contains(r#"\u0003"#));
+    assert!(result.contains(r#"\\backslash\\"#));
+
+    // Verify it's valid JSON
+    let test_json = format!("\"{}\"", result);
+    assert!(serde_json::from_str::<serde_json::Value>(&test_json).is_ok());
+
+    Ok(())
+}
+
+/// Test json-escape binary test mode with long input
+#[test]
+fn test_json_escape_binary_test_mode_long_input() -> Result<()> {
+    // Create a moderately long string with special characters
+    let mut input = String::new();
+    for i in 0..100 {
+        input.push_str(&format!("Line {} with \"quotes\" and \\backslashes\\\n", i));
+    }
+
+    let output = Command::new("cargo")
+        .args(["run", "--bin", "json-escape", "--", "--test"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            if let Some(mut stdin) = child.stdin.take() {
+                stdin.write_all(input.as_bytes())?;
+            }
+            child.wait_with_output()
+        })?;
+
+    assert!(output.status.success());
+    let result = String::from_utf8(output.stdout)?;
+
+    // Verify escaping occurred
+    assert!(result.contains(r#"\"quotes\""#));
+    assert!(result.contains(r#"\\"#));
+    assert!(result.contains(r#"\n"#));
+
+    Ok(())
+}
+
+// ============================================================================
 // Configuration Loading Tests - JSON Escaping Method Settings
 // ============================================================================
 
