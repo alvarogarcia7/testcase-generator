@@ -103,6 +103,7 @@ impl VerificationTemplate {
             result: VerificationExpression::Simple(result),
             output: VerificationExpression::Simple(output),
             output_file: None,
+            general: None,
         }
     }
 
@@ -112,6 +113,7 @@ impl VerificationTemplate {
             result: VerificationExpression::Simple(self.result_expression.clone()),
             output: VerificationExpression::Simple(self.output_expression.clone()),
             output_file: None,
+            general: None,
         }
     }
 }

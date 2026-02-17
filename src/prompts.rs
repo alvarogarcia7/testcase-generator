@@ -1073,6 +1073,7 @@ eUICC:
                                 result: crate::models::VerificationExpression::Simple(result),
                                 output: crate::models::VerificationExpression::Simple(output),
                                 output_file: None,
+                                general: None,
                             });
                         }
                     }
@@ -1091,6 +1092,7 @@ eUICC:
             result: crate::models::VerificationExpression::Simple(result),
             output: crate::models::VerificationExpression::Simple(output),
             output_file: None,
+            general: None,
         })
     }
 
@@ -1181,7 +1183,141 @@ eUICC:
             result: crate::models::VerificationExpression::Simple(result),
             output: crate::models::VerificationExpression::Simple(output),
             output_file: None,
+            general: None,
         })
+    }
+
+    /// Prompt for capture_vars array format
+    ///
+    /// Prompts for variable capture configuration, allowing users to add multiple
+    /// capture variables using either regex pattern (capture) or command-based approach.
+    /// Each variable must use only one method (mutually exclusive).
+    ///
+    /// # Arguments
+    /// * `oracle` - Oracle for user interaction
+    ///
+    /// # Returns
+    /// * `Ok(Some(CaptureVarsFormat))` - If user adds capture variables
+    /// * `Ok(None)` - If user chooses not to add capture variables
+    pub fn prompt_capture_vars(
+        oracle: &Arc<dyn Oracle>,
+    ) -> Result<Option<crate::models::CaptureVarsFormat>> {
+        use crate::models::{CaptureVar, CaptureVarsFormat};
+
+        println!("\n=== Capture Variables ===");
+
+        if !Self::confirm_with_oracle("Add capture variables?", oracle)? {
+            return Ok(None);
+        }
+
+        let mut capture_vars = Vec::new();
+
+        loop {
+            println!(
+                "\n--- Adding Capture Variable #{} ---",
+                capture_vars.len() + 1
+            );
+
+            let var_name = Self::input_with_oracle("Variable name", oracle)?;
+
+            let items = vec!["regex (capture)".to_string(), "command".to_string()];
+            let selected = Self::select_with_oracle("Capture method", items, oracle)?;
+
+            let (capture_pattern, command) = match selected.as_str() {
+                "regex (capture)" => {
+                    let pattern = Self::input_with_oracle(
+                        "Regex pattern (will be applied to COMMAND_OUTPUT)",
+                        oracle,
+                    )?;
+                    (Some(pattern), None)
+                }
+                "command" => {
+                    let cmd = Self::input_with_oracle(
+                        "Command to execute (output will be captured)",
+                        oracle,
+                    )?;
+                    (None, Some(cmd))
+                }
+                _ => anyhow::bail!("Invalid capture method: {}", selected),
+            };
+
+            let capture_var = CaptureVar {
+                name: var_name,
+                capture: capture_pattern,
+                command,
+            };
+
+            // Validate mutual exclusivity
+            if let Err(e) = capture_var.validate() {
+                anyhow::bail!("Invalid capture variable configuration: {}", e);
+            }
+
+            capture_vars.push(capture_var);
+
+            if !Self::confirm_with_oracle("\nAdd another capture variable?", oracle)? {
+                break;
+            }
+        }
+
+        if capture_vars.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(CaptureVarsFormat::New(capture_vars)))
+        }
+    }
+
+    /// Prompt for general verification conditions
+    ///
+    /// Prompts for general verification conditions with name and bash condition inputs.
+    /// These are additional checks that run after the standard result/output verification.
+    ///
+    /// # Arguments
+    /// * `oracle` - Oracle for user interaction
+    ///
+    /// # Returns
+    /// * `Ok(Some(Vec<GeneralVerification>))` - If user adds verification conditions
+    /// * `Ok(None)` - If user chooses not to add verification conditions
+    pub fn prompt_general_verifications(
+        oracle: &Arc<dyn Oracle>,
+    ) -> Result<Option<Vec<crate::models::GeneralVerification>>> {
+        use crate::models::GeneralVerification;
+
+        println!("\n=== General Verification Conditions ===");
+        println!("Add additional verification checks beyond result and output verification.");
+        println!("Examples: check file existence, validate permissions, verify environment state, etc.\n");
+
+        if !Self::confirm_with_oracle("Add general verification conditions?", oracle)? {
+            return Ok(None);
+        }
+
+        let mut verifications = Vec::new();
+
+        loop {
+            println!(
+                "\n--- Adding General Verification #{} ---",
+                verifications.len() + 1
+            );
+
+            let name =
+                Self::input_with_oracle("Verification name (e.g., 'check_file_exists')", oracle)?;
+            let condition = Self::input_with_oracle(
+                "Bash condition (e.g., 'test -f /tmp/output.txt')",
+                oracle,
+            )?;
+
+            let verification = GeneralVerification { name, condition };
+            verifications.push(verification);
+
+            if !Self::confirm_with_oracle("\nAdd another general verification?", oracle)? {
+                break;
+            }
+        }
+
+        if verifications.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(verifications))
+        }
     }
 
     /// Helper to apply a selected template with optional editing
@@ -1233,6 +1369,7 @@ eUICC:
                 result: crate::models::VerificationExpression::Simple(result),
                 output: crate::models::VerificationExpression::Simple(output),
                 output_file: None,
+                general: None,
             })
         }
     }

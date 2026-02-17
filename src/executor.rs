@@ -1,6 +1,6 @@
 use crate::bdd_parser::BddStepRegistry;
 use crate::hydration::VarHydrator;
-use crate::models::{TestCase, TestStepExecutionEntry, VerificationExpression};
+use crate::models::{CaptureVarsFormat, TestCase, TestStepExecutionEntry, VerificationExpression};
 use anyhow::{Context, Result};
 use chrono::Local;
 use regex::Regex;
@@ -11,6 +11,30 @@ use std::process::Command;
 
 pub struct TestExecutor {
     output_dir: Option<PathBuf>,
+}
+
+/// Helper function to check if capture_vars is empty
+fn capture_vars_is_empty(capture_vars: &CaptureVarsFormat) -> bool {
+    match capture_vars {
+        CaptureVarsFormat::Legacy(map) => map.is_empty(),
+        CaptureVarsFormat::New(vec) => vec.is_empty(),
+    }
+}
+
+/// Helper function to convert CaptureVarsFormat to a vector of (name, capture_pattern, command) tuples
+fn capture_vars_to_vec(
+    capture_vars: &CaptureVarsFormat,
+) -> Vec<(String, Option<String>, Option<String>)> {
+    match capture_vars {
+        CaptureVarsFormat::Legacy(map) => map
+            .iter()
+            .map(|(name, pattern)| (name.clone(), Some(pattern.clone()), None))
+            .collect(),
+        CaptureVarsFormat::New(vec) => vec
+            .iter()
+            .map(|cv| (cv.name.clone(), cv.capture.clone(), cv.command.clone()))
+            .collect(),
+    }
 }
 
 /// Extract strings from VerificationExpression for pattern checking
@@ -51,7 +75,7 @@ fn test_case_uses_variables(test_case: &TestCase) -> bool {
         // Check if any step has capture_vars or uses variable substitution
         for step in &sequence.steps {
             if let Some(ref capture_vars) = step.capture_vars {
-                if !capture_vars.is_empty() {
+                if !capture_vars_is_empty(capture_vars) {
                     return true;
                 }
             }
@@ -633,18 +657,31 @@ impl TestExecutor {
                 script.push_str("EXIT_CODE=$?\n");
                 script.push_str("set -e\n\n");
 
-                // Variable capture: extract values from COMMAND_OUTPUT using regex patterns
+                // Variable capture: extract values from COMMAND_OUTPUT using regex patterns or commands
                 if let Some(ref capture_vars) = step.capture_vars {
-                    if !capture_vars.is_empty() {
+                    if !capture_vars_is_empty(capture_vars) {
                         script.push_str("# Capture variables from output\n");
-                        for (var_name, pattern) in capture_vars {
-                            // Convert PCRE pattern to BSD-compatible sed pattern
-                            let sed_pattern = convert_pcre_to_sed_pattern(pattern);
-                            script.push_str(&format!(
-                                "STEP_VAR_{}=$(echo \"$COMMAND_OUTPUT\" | sed -n {} | head -n 1 || echo \"\")\n",
-                                var_name,
-                                bash_escape(&sed_pattern)
-                            ));
+                        for (var_name, capture_pattern, command) in
+                            capture_vars_to_vec(capture_vars)
+                        {
+                            if let Some(pattern) = capture_pattern {
+                                // Capture from COMMAND_OUTPUT using regex pattern
+                                let sed_pattern = convert_pcre_to_sed_pattern(&pattern);
+                                script.push_str(&format!(
+                                    "STEP_VAR_{}=$(echo \"$COMMAND_OUTPUT\" | sed -n {} | head -n 1 || echo \"\")\n",
+                                    var_name,
+                                    bash_escape(&sed_pattern)
+                                ));
+                            } else if let Some(cmd) = command {
+                                // Command-based capture: Execute the capture command and store result in STEP_VAR_*
+                                // The command is executed directly (not on COMMAND_OUTPUT)
+                                // Both stdout and stderr are captured (2>&1)
+                                // Fallback to empty string if command fails (|| echo "")
+                                script.push_str(&format!(
+                                    "STEP_VAR_{}=$({} 2>&1 || echo \"\")\n",
+                                    var_name, cmd
+                                ));
+                            }
                             // Add to string-based list only if not already present (avoid duplicates)
                             script.push_str(&format!(
                                 "if ! echo \" $STEP_VAR_NAMES \" | grep -q \" {} \"; then\n",
@@ -710,7 +747,50 @@ impl TestExecutor {
                 script.push_str(&output_verification_script);
                 script.push('\n');
 
-                script.push_str("if [ \"$VERIFICATION_RESULT_PASS\" = true ] && [ \"$VERIFICATION_OUTPUT_PASS\" = true ]; then\n");
+                // Generate general verification checks if present
+                let mut general_verification_vars = Vec::new();
+                if let Some(ref general_verifications) = step.verification.general {
+                    if !general_verifications.is_empty() {
+                        script.push_str("# General verifications\n");
+                        for general_ver in general_verifications.iter() {
+                            // Sanitize the name to create a valid bash variable name
+                            let sanitized_name = general_ver
+                                .name
+                                .replace(" ", "_")
+                                .replace("-", "_")
+                                .chars()
+                                .filter(|c| c.is_alphanumeric() || *c == '_')
+                                .collect::<String>();
+                            let var_name = format!("GENERAL_VERIFY_PASS_{}", sanitized_name);
+                            general_verification_vars.push(var_name.clone());
+
+                            script.push_str(&format!("{}=false\n", var_name));
+
+                            // Generate verification script with variable substitution support if needed
+                            let general_verification_script = if uses_variables {
+                                generate_verification_with_var_subst(
+                                    &VerificationExpression::Simple(general_ver.condition.clone()),
+                                    &var_name,
+                                )
+                            } else {
+                                Self::generate_verification_script(
+                                    &VerificationExpression::Simple(general_ver.condition.clone()),
+                                    &var_name,
+                                )
+                            };
+                            script.push_str(&general_verification_script);
+                        }
+                        script.push('\n');
+                    }
+                }
+
+                // Build the overall verification condition
+                let mut verification_condition = String::from("\"$VERIFICATION_RESULT_PASS\" = true ] && [ \"$VERIFICATION_OUTPUT_PASS\" = true");
+                for var_name in &general_verification_vars {
+                    verification_condition.push_str(&format!(" ] && [ \"${}\" = true", var_name));
+                }
+
+                script.push_str(&format!("if [ {} ]; then\n", verification_condition));
                 script.push_str(&format!(
                     "    echo \"[PASS] Step {}: {}\"\n",
                     step.step, step.description
@@ -727,6 +807,12 @@ impl TestExecutor {
                 script.push_str("    echo \"  Output: $COMMAND_OUTPUT\"\n");
                 script.push_str("    echo \"  Result verification: $VERIFICATION_RESULT_PASS\"\n");
                 script.push_str("    echo \"  Output verification: $VERIFICATION_OUTPUT_PASS\"\n");
+
+                // Add general verification results to error message
+                for var_name in &general_verification_vars {
+                    script.push_str(&format!("    echo \"  {}: ${}\"\n", var_name, var_name));
+                }
+
                 script.push_str("    exit 1\n");
                 script.push_str("fi\n\n");
 
@@ -883,6 +969,9 @@ impl TestExecutor {
             }
         }
 
+        // Initialize variable storage for captured variables
+        let mut step_vars: HashMap<String, String> = HashMap::new();
+
         for sequence in &test_case.test_sequences {
             for step in &sequence.steps {
                 if step.manual == Some(true) {
@@ -891,6 +980,24 @@ impl TestExecutor {
                         step.step, sequence.id, step.description
                     );
                     continue;
+                }
+
+                // Validate capture_vars mutual exclusivity at runtime
+                if let Some(ref capture_vars) = step.capture_vars {
+                    for (var_name, capture_pattern, command) in capture_vars_to_vec(capture_vars) {
+                        if capture_pattern.is_some() && command.is_some() {
+                            return Err(anyhow::anyhow!(
+                                "Step {} (Sequence {}): Variable '{}' has both capture and command specified. They are mutually exclusive.",
+                                step.step, sequence.id, var_name
+                            ));
+                        }
+                        if capture_pattern.is_none() && command.is_none() {
+                            return Err(anyhow::anyhow!(
+                                "Step {} (Sequence {}): Variable '{}' must have either capture or command specified.",
+                                step.step, sequence.id, var_name
+                            ));
+                        }
+                    }
                 }
 
                 println!(
@@ -917,19 +1024,95 @@ impl TestExecutor {
 
                         execution_entries.push(entry);
 
+                        // Capture variables from output or command execution
+                        if let Some(ref capture_vars) = step.capture_vars {
+                            for (var_name, capture_pattern, command) in
+                                capture_vars_to_vec(capture_vars)
+                            {
+                                if let Some(pattern) = capture_pattern {
+                                    // Capture from COMMAND_OUTPUT using regex pattern
+                                    let re = Regex::new(&pattern).with_context(|| {
+                                        format!(
+                                            "Invalid regex pattern for variable '{}': {}",
+                                            var_name, pattern
+                                        )
+                                    })?;
+
+                                    if let Some(captures) = re.captures(&command_output) {
+                                        if let Some(captured_value) = captures.get(1) {
+                                            step_vars.insert(
+                                                var_name.clone(),
+                                                captured_value.as_str().to_string(),
+                                            );
+                                        } else if let Some(captured_value) = captures.get(0) {
+                                            // If no capture group, use the whole match
+                                            step_vars.insert(
+                                                var_name.clone(),
+                                                captured_value.as_str().to_string(),
+                                            );
+                                        }
+                                    }
+                                } else if let Some(cmd) = command {
+                                    // Command-based capture: Execute the capture command
+                                    match Command::new("bash").arg("-c").arg(&cmd).output() {
+                                        Ok(capture_output) => {
+                                            let captured_value =
+                                                String::from_utf8_lossy(&capture_output.stdout)
+                                                    .trim_end()
+                                                    .to_string();
+                                            step_vars.insert(var_name.clone(), captured_value);
+                                        }
+                                        Err(e) => {
+                                            // If command fails, store empty string
+                                            eprintln!("Warning: Failed to execute capture command for variable '{}': {}", var_name, e);
+                                            step_vars.insert(var_name.clone(), String::new());
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
                         // Perform verification
                         let result_verification_passed = self.evaluate_verification(
                             &step.verification.result,
                             exit_code,
                             &command_output,
+                            &step_vars,
                         )?;
                         let output_verification_passed = self.evaluate_verification(
                             &step.verification.output,
                             exit_code,
                             &command_output,
+                            &step_vars,
                         )?;
 
-                        if result_verification_passed && output_verification_passed {
+                        // Evaluate general verifications if present
+                        let mut general_verifications_passed = true;
+                        if let Some(ref general_verifications) = step.verification.general {
+                            for general_ver in general_verifications {
+                                let general_expr =
+                                    VerificationExpression::Simple(general_ver.condition.clone());
+                                let general_passed = self.evaluate_verification(
+                                    &general_expr,
+                                    exit_code,
+                                    &command_output,
+                                    &step_vars,
+                                )?;
+
+                                if !general_passed {
+                                    general_verifications_passed = false;
+                                    println!(
+                                        "  General verification '{}' failed",
+                                        general_ver.name
+                                    );
+                                }
+                            }
+                        }
+
+                        if result_verification_passed
+                            && output_verification_passed
+                            && general_verifications_passed
+                        {
                             println!(
                                 "[PASS] Step {} (Sequence {}): {}",
                                 step.step, sequence.id, step.description
@@ -944,6 +1127,7 @@ impl TestExecutor {
                             println!("  COMMAND_OUTPUT: {}", command_output);
                             println!("  Result verification: {}", result_verification_passed);
                             println!("  Output verification: {}", output_verification_passed);
+                            println!("  General verifications: {}", general_verifications_passed);
                             verification_failed = true;
 
                             if execution_error.is_none() {
@@ -1000,6 +1184,7 @@ impl TestExecutor {
         expression: &VerificationExpression,
         exit_code: i32,
         command_output: &str,
+        step_vars: &HashMap<String, String>,
     ) -> Result<bool> {
         // Extract the simple expression or condition from VerificationExpression
         let expr_str = match expression {
@@ -1017,22 +1202,38 @@ impl TestExecutor {
         }
 
         // Build a bash script that evaluates the verification expression
-        // We need to set EXIT_CODE and COMMAND_OUTPUT variables and then evaluate the expression
-        let script = format!(
-            r#"EXIT_CODE={}
-COMMAND_OUTPUT="{}"
-if {}; then
+        // We need to set EXIT_CODE, COMMAND_OUTPUT, and step variables, then evaluate the expression
+        let mut script = String::new();
+        script.push_str(&format!("EXIT_CODE={}\n", exit_code));
+        script.push_str(&format!(
+            "COMMAND_OUTPUT=\"{}\"\n",
+            command_output
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+        ));
+
+        // Set captured variables as bash variables
+        for (var_name, var_value) in step_vars {
+            script.push_str(&format!(
+                "{}=\"{}\"\n",
+                var_name,
+                var_value
+                    .replace("\\", "\\\\")
+                    .replace("\"", "\\\"")
+                    .replace("\n", "\\n")
+            ));
+        }
+
+        // Evaluate the expression using bash -c
+        script.push_str(&format!(
+            r#"if {}; then
     exit 0
 else
     exit 1
 fi"#,
-            exit_code,
-            command_output
-                .replace("\\", "\\\\")
-                .replace("\"", "\\\"")
-                .replace("\n", "\\n"),
             expr_str
-        );
+        ));
 
         match Command::new("bash").arg("-c").arg(&script).output() {
             Ok(output) => Ok(output.status.success()),
@@ -1392,6 +1593,7 @@ mod tests {
                     "[ \"$COMMAND_OUTPUT\" = \"hello\" ]".to_string(),
                 ),
                 output_file: None,
+                general: None,
             },
         };
         sequence.steps.push(step);
@@ -1437,6 +1639,7 @@ mod tests {
                 result: VerificationExpression::Simple("true".to_string()),
                 output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
+                general: None,
             },
         };
         sequence.steps.push(step);
@@ -1518,6 +1721,7 @@ mod tests {
                 result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
                 output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
+                general: None,
             },
         };
         sequence.steps.push(step);
@@ -1558,6 +1762,7 @@ mod tests {
                 result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
                 output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
+                general: None,
             },
         };
         sequence.steps.push(step);
@@ -1599,6 +1804,7 @@ mod tests {
                 result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
                 output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
+                general: None,
             },
         };
 
@@ -1617,6 +1823,7 @@ mod tests {
                 result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
                 output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
+                general: None,
             },
         };
 
@@ -1669,6 +1876,7 @@ mod tests {
                 result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
                 output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
+                general: None,
             },
         };
         sequence1.steps.push(step1);
@@ -1689,6 +1897,7 @@ mod tests {
                 result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
                 output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
+                general: None,
             },
         };
         sequence2.steps.push(step2);
@@ -1743,6 +1952,7 @@ mod tests {
                 result: VerificationExpression::Simple("true".to_string()),
                 output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
+                general: None,
             },
         };
 
@@ -1761,6 +1971,7 @@ mod tests {
                 result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
                 output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
+                general: None,
             },
         };
 
@@ -1815,6 +2026,7 @@ mod tests {
                 result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
                 output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
+                general: None,
             },
         };
         sequence.steps.push(step);
@@ -1863,6 +2075,7 @@ mod tests {
                 result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
                 output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
+                general: None,
             },
         };
         sequence.steps.push(step);
@@ -2069,7 +2282,7 @@ mod tests {
             manual: None,
             description: "Extract variables".to_string(),
             command: "echo 'user_id=12345 token=abc123'".to_string(),
-            capture_vars: Some(capture_vars),
+            capture_vars: Some(CaptureVarsFormat::Legacy(capture_vars)),
             expected: Expected {
                 success: Some(true),
                 result: "[ $EXIT_CODE -eq 0 ]".to_string(),
@@ -2079,6 +2292,7 @@ mod tests {
                 result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
                 output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
+                general: None,
             },
         };
         sequence.steps.push(step);
@@ -2116,7 +2330,7 @@ mod tests {
             manual: None,
             description: "Capture session ID".to_string(),
             command: "echo 'session=abc123def'".to_string(),
-            capture_vars: Some(capture_vars),
+            capture_vars: Some(CaptureVarsFormat::Legacy(capture_vars)),
             expected: Expected {
                 success: Some(true),
                 result: "[ $EXIT_CODE -eq 0 ]".to_string(),
@@ -2126,6 +2340,7 @@ mod tests {
                 result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
                 output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
+                general: None,
             },
         };
         sequence.steps.push(step);
@@ -2171,6 +2386,7 @@ mod tests {
                 result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
                 output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
+                general: None,
             },
         };
         sequence.steps.push(step);
@@ -2222,6 +2438,7 @@ mod tests {
                     "[[ \"$COMMAND_OUTPUT\" == *\"${STEP_VARS[status]}\"* ]]".to_string(),
                 ),
                 output_file: None,
+                general: None,
             },
         };
         sequence.steps.push(step);
@@ -2269,7 +2486,7 @@ mod tests {
             manual: None,
             description: "Capture multiple variables".to_string(),
             command: "echo 'user_id=12345 token=ABC123XYZ ts=1234567890'".to_string(),
-            capture_vars: Some(capture_vars),
+            capture_vars: Some(CaptureVarsFormat::Legacy(capture_vars)),
             expected: Expected {
                 success: Some(true),
                 result: "[ $EXIT_CODE -eq 0 ]".to_string(),
@@ -2279,6 +2496,7 @@ mod tests {
                 result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
                 output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
+                general: None,
             },
         };
         sequence.steps.push(step);
@@ -2405,6 +2623,7 @@ mod tests {
                 result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
                 output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
+                general: None,
             },
         };
         sequence.steps.push(step1);
@@ -2436,6 +2655,7 @@ mod tests {
                 result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
                 output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
+                general: None,
             },
         };
         sequence2.steps.push(step2);
@@ -2473,6 +2693,7 @@ mod tests {
                     "[[ \"$COMMAND_OUTPUT\" == *\"${#EXPECTED_OUTPUT}\"* ]]".to_string(),
                 ),
                 output_file: None,
+                general: None,
             },
         };
         sequence.steps.push(step);
@@ -2522,6 +2743,7 @@ mod tests {
                 result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
                 output: VerificationExpression::Simple("true".to_string()),
                 output_file: None,
+                general: None,
             },
         };
         sequence.steps.push(step);
@@ -2533,5 +2755,159 @@ mod tests {
         assert!(!script.contains("# Source environment variables for hydration"));
         assert!(!script.contains("EXPORT_FILE="));
         assert!(!script.contains("source \"$EXPORT_FILE\""));
+    }
+
+    #[test]
+    fn test_generate_test_script_with_command_based_captures() {
+        use crate::models::CaptureVar;
+
+        let executor = TestExecutor::new();
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test with command-based capture".to_string(),
+        );
+
+        let mut sequence = TestSequence::new(1, "Seq1".to_string(), "First sequence".to_string());
+
+        // Create capture_vars with both regex and command-based captures
+        let capture_vars = vec![
+            CaptureVar {
+                name: "token".to_string(),
+                capture: Some(r#"(?<=token=)[a-zA-Z0-9]+"#.to_string()),
+                command: None,
+            },
+            CaptureVar {
+                name: "file_size".to_string(),
+                capture: None,
+                command: Some("cat /tmp/output.txt | wc -c".to_string()),
+            },
+            CaptureVar {
+                name: "timestamp".to_string(),
+                capture: None,
+                command: Some("date +%s".to_string()),
+            },
+        ];
+
+        let step = Step {
+            step: 1,
+            manual: None,
+            description: "Extract variables with commands".to_string(),
+            command: "echo 'token=abc123' > /tmp/output.txt".to_string(),
+            capture_vars: Some(CaptureVarsFormat::New(capture_vars)),
+            expected: Expected {
+                success: Some(true),
+                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
+                output: "true".to_string(),
+            },
+            verification: Verification {
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
+                output_file: None,
+                general: None,
+            },
+        };
+        sequence.steps.push(step);
+        test_case.test_sequences.push(sequence);
+
+        let script = executor.generate_test_script(&test_case);
+
+        // Verify the script contains capture variables section
+        assert!(script.contains("# Capture variables from output"));
+
+        // Verify regex-based capture (token) uses sed
+        assert!(script.contains("STEP_VAR_token=$(echo \"$COMMAND_OUTPUT\" | sed -n"));
+        assert!(script.contains("| head -n 1 || echo \"\")"));
+
+        // Verify command-based capture (file_size) executes the command
+        assert!(
+            script.contains("STEP_VAR_file_size=$(cat /tmp/output.txt | wc -c 2>&1 || echo \"\")")
+        );
+
+        // Verify command-based capture (timestamp) executes the command
+        assert!(script.contains("STEP_VAR_timestamp=$(date +%s 2>&1 || echo \"\")"));
+
+        // Verify all variables are added to STEP_VAR_NAMES
+        assert!(script.contains("if ! echo \" $STEP_VAR_NAMES \" | grep -q \" token \"; then"));
+        assert!(script.contains("STEP_VAR_NAMES=\"$STEP_VAR_NAMES token\""));
+        assert!(script.contains("if ! echo \" $STEP_VAR_NAMES \" | grep -q \" file_size \"; then"));
+        assert!(script.contains("STEP_VAR_NAMES=\"$STEP_VAR_NAMES file_size\""));
+        assert!(script.contains("if ! echo \" $STEP_VAR_NAMES \" | grep -q \" timestamp \"; then"));
+        assert!(script.contains("STEP_VAR_NAMES=\"$STEP_VAR_NAMES timestamp\""));
+    }
+
+    #[test]
+    fn test_generate_test_script_with_general_verification() {
+        use crate::models::GeneralVerification;
+
+        let executor = TestExecutor::new();
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test with general verification".to_string(),
+        );
+
+        let mut sequence = TestSequence::new(1, "Seq1".to_string(), "First sequence".to_string());
+        let step = Step {
+            step: 1,
+            manual: None,
+            description: "Echo test".to_string(),
+            command: "echo 'hello'".to_string(),
+            capture_vars: None,
+            expected: Expected {
+                success: Some(true),
+                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
+                output: "[ \"$COMMAND_OUTPUT\" = \"hello\" ]".to_string(),
+            },
+            verification: Verification {
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple(
+                    "[ \"$COMMAND_OUTPUT\" = \"hello\" ]".to_string(),
+                ),
+                output_file: None,
+                general: Some(vec![
+                    GeneralVerification {
+                        name: "check file exists".to_string(),
+                        condition: "test -f /tmp/test.txt".to_string(),
+                    },
+                    GeneralVerification {
+                        name: "verify-output".to_string(),
+                        condition: "[ -n \"$COMMAND_OUTPUT\" ]".to_string(),
+                    },
+                ]),
+            },
+        };
+        sequence.steps.push(step);
+        test_case.test_sequences.push(sequence);
+
+        let script = executor.generate_test_script(&test_case);
+
+        // Verify general verification section is present
+        assert!(script.contains("# General verifications"));
+
+        // Verify variable declarations for general verifications
+        assert!(script.contains("GENERAL_VERIFY_PASS_check_file_exists=false"));
+        assert!(script.contains("GENERAL_VERIFY_PASS_verify_output=false"));
+
+        // Verify condition checks are present
+        assert!(script.contains("test -f /tmp/test.txt"));
+        assert!(script.contains("[ -n \"$COMMAND_OUTPUT\" ]"));
+
+        // Verify if statements set the variables
+        assert!(script.contains("GENERAL_VERIFY_PASS_check_file_exists=true"));
+        assert!(script.contains("GENERAL_VERIFY_PASS_verify_output=true"));
+
+        // Verify the overall verification condition includes general verifications
+        assert!(script.contains("\"$VERIFICATION_RESULT_PASS\" = true ] && [ \"$VERIFICATION_OUTPUT_PASS\" = true ] && [ \"$GENERAL_VERIFY_PASS_check_file_exists\" = true ] && [ \"$GENERAL_VERIFY_PASS_verify_output\" = true ]"));
+
+        // Verify failure message includes general verification results
+        assert!(script.contains("echo \"  GENERAL_VERIFY_PASS_check_file_exists: $GENERAL_VERIFY_PASS_check_file_exists\""));
+        assert!(script.contains(
+            "echo \"  GENERAL_VERIFY_PASS_verify_output: $GENERAL_VERIFY_PASS_verify_output\""
+        ));
     }
 }

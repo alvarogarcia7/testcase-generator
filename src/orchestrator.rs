@@ -950,6 +950,7 @@ mod tests {
                     "echo \"$COMMAND_OUTPUT\" | grep -q 'hello'".to_string(),
                 ),
                 output_file: None,
+                general: None,
             },
         };
         sequence.steps.push(step);

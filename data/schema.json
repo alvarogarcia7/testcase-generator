@@ -30,7 +30,7 @@
           },
           "description": {
             "type": "string",
-            "description": "Human-readable description of the prerequisite."
+            "description": "Description of the prerequisite."
           },
           "verification_command": {
             "type": "string",
@@ -153,11 +153,51 @@
                   "type": ["string", "boolean"]
                 },
                 "capture_vars": {
-                  "type": "object",
-                  "description": "Variable names as keys with regex patterns as values for extracting values from COMMAND_OUTPUT.",
-                  "additionalProperties": {
-                    "type": "string"
-                  }
+                  "oneOf": [
+                    {
+                      "type": "array",
+                      "description": "Array of capture variable definitions with name and either capture pattern or command.",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string",
+                            "description": "Variable name to capture value into."
+                          },
+                          "capture": {
+                            "type": "string",
+                            "description": "Regex pattern for extracting value from COMMAND_OUTPUT."
+                          },
+                          "command": {
+                            "type": "string",
+                            "description": "Command to execute to obtain the variable value."
+                          }
+                        },
+                        "required": ["name"],
+                        "oneOf": [
+                          {
+                            "required": ["capture"],
+                            "not": {
+                              "required": ["command"]
+                            }
+                          },
+                          {
+                            "required": ["command"],
+                            "not": {
+                              "required": ["capture"]
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "description": "Legacy format: Variable names as keys with regex patterns as values for extracting values from COMMAND_OUTPUT.",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  ]
                 },
                 "expected": {
                   "type": "object",
@@ -281,6 +321,24 @@
                           "required": ["condition"]
                         }
                       ]
+                    },
+                    "general": {
+                      "type": "array",
+                      "description": "General verification conditions that can be evaluated.",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string",
+                            "description": "Name or description of the verification check."
+                          },
+                          "condition": {
+                            "type": "string",
+                            "description": "Condition expression to evaluate for this verification."
+                          }
+                        },
+                        "required": ["name", "condition"]
+                      }
                     }
                   },
                   "required": [

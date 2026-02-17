@@ -26,6 +26,7 @@ fn create_step(step_num: i64, result: &str, output: &str, success: Option<bool>)
                 "cat $COMMAND_OUTPUT | grep -q \"${OUTPUT}\"".to_string(),
             ),
             output_file: None,
+            general: None,
         },
     }
 }
