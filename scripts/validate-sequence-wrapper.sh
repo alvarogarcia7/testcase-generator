@@ -15,7 +15,7 @@
 #
 # CONFIGURATION:
 #   SEQUENCE_SCHEMA_FILE  Environment variable to specify the sequence schema file 
-#                         (default: data/sequence-schema.json)
+#                         (default: schemas/sequence-schema.json)
 #   VALIDATE_SEQUENCE_BIN  Path to validate-sequence binary (default: auto-detected)
 #
 # EXIT CODES:
@@ -24,7 +24,7 @@
 #
 # EXAMPLE USAGE WITH validate-files.sh:
 #   # Validate all test sequence YAML files in a directory
-#   export SEQUENCE_SCHEMA_FILE=data/sequence-schema.json
+#   export SEQUENCE_SCHEMA_FILE=schemas/sequence-schema.json
 #   ./scripts/validate-files.sh --pattern 'sequence.*\.ya?ml$' --validator ./scripts/validate-sequence-wrapper.sh
 #
 #   # Validate with verbose output
@@ -32,7 +32,7 @@
 #
 # STANDALONE USAGE:
 #   # Validate a single test sequence file
-#   export SEQUENCE_SCHEMA_FILE=data/sequence-schema.json
+#   export SEQUENCE_SCHEMA_FILE=schemas/sequence-schema.json
 #   ./scripts/validate-sequence-wrapper.sh sequences/seq001.yml
 #
 #   # Use a different schema
@@ -46,7 +46,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib/logger.sh" || exit 1
 
 # Configuration: Schema file to validate against
-SEQUENCE_SCHEMA_FILE="${SEQUENCE_SCHEMA_FILE:-data/sequence-schema.json}"
+SEQUENCE_SCHEMA_FILE="${SEQUENCE_SCHEMA_FILE:-schemas/sequence-schema.json}"
 
 # Auto-detect validate-sequence binary location
 if [[ -n "${VALIDATE_SEQUENCE_BIN:-}" ]]; then

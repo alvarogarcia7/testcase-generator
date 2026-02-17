@@ -23,7 +23,7 @@
 #   ./scripts/validate-yaml-retry-loop.sh "*.yml"
 #
 #   # Validate YAML files in data directory
-#   export SCHEMA_FILE=data/schema.json
+#   export SCHEMA_FILE=schemas/schema.json
 #   ./scripts/validate-yaml-retry-loop.sh "data/*.yml" "data/*.yaml"
 #
 #   # Use default pattern (*.yml)

@@ -156,7 +156,7 @@ All test sequences completed successfully
 
 ## Schema Validation
 
-The YAML validates against `data/schema.json`:
+The YAML validates against `schemas/schema.json`:
 - ✓ All required fields present
 - ✓ Capture vars use new array format
 - ✓ General verification conditions properly structured

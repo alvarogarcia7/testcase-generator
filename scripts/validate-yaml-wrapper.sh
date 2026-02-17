@@ -14,7 +14,7 @@
 #   yaml-file    Path(s) to the YAML file(s) to validate
 #
 # CONFIGURATION:
-#   SCHEMA_FILE  Environment variable to specify the schema file (default: data/schema.json)
+#   SCHEMA_FILE  Environment variable to specify the schema file (default: schemas/schema.json)
 #   VALIDATE_YAML_BIN  Path to validate-yaml binary (default: auto-detected)
 #
 # EXIT CODES:
@@ -23,7 +23,7 @@
 #
 # EXAMPLE USAGE WITH validate-files.sh:
 #   # Validate all YAML files in the repository
-#   export SCHEMA_FILE=data/schema.json
+#   export SCHEMA_FILE=schemas/schema.json
 #   ./scripts/validate-files.sh --pattern '\.ya?ml$' --validator ./scripts/validate-yaml-wrapper.sh
 #
 #   # Validate with verbose output
@@ -31,11 +31,11 @@
 #
 # STANDALONE USAGE:
 #   # Validate a single YAML file
-#   export SCHEMA_FILE=data/schema.json
+#   export SCHEMA_FILE=schemas/schema.json
 #   ./scripts/validate-yaml-wrapper.sh data/gsma_4.4.2.2_TC.yml
 #
 #   # Validate multiple YAML files
-#   export SCHEMA_FILE=data/schema.json
+#   export SCHEMA_FILE=schemas/schema.json
 #   ./scripts/validate-yaml-wrapper.sh data/file1.yml data/file2.yml data/file3.yml
 #
 #   # Use a different schema
@@ -50,7 +50,7 @@ source "$SCRIPT_DIR/lib/logger.sh" || exit 1
 source "$SCRIPT_DIR/lib/find-binary.sh" || exit 1
 
 # Configuration: Schema file to validate against
-SCHEMA_FILE="${SCHEMA_FILE:-data/schema.json}"
+SCHEMA_FILE="${SCHEMA_FILE:-schemas/schema.json}"
 
 # Auto-detect validate-yaml binary location
 VALIDATE_YAML=$(find_binary_or_exit "validate-yaml" "VALIDATE_YAML_BIN")

@@ -149,7 +149,7 @@ Tests all aspects of test-executor:
 
 ### Prerequisites
 - Built binaries: `test-executor` and `validate-yaml`
-- Schema file: `data/schema.json`
+- Schema file: `schemas/schema.json`
 - Bash shell
 
 ### Execution

@@ -13,7 +13,7 @@ pub struct SchemaValidator {
 
 impl SchemaValidator {
     pub fn new() -> Result<Self> {
-        let schema_path = Path::new("data/schema.json");
+        let schema_path = Path::new("schemas/test-case.schema.json");
         let schema_content =
             fs::read_to_string(schema_path).context(format!("Failed to read {:?}", schema_path))?;
 

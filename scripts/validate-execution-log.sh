@@ -4,7 +4,7 @@
 #
 # DESCRIPTION:
 #   This script validates test_execution_log.json files against the
-#   test_execution_log_schema.json schema. It can validate either a single
+#   execution-log.schema.json schema. It can validate either a single
 #   execution log file or batch validate all execution logs in a directory.
 #
 # USAGE:
@@ -17,7 +17,7 @@
 #   directory             Optional directory to search (default: current directory)
 #
 # CONFIGURATION:
-#   SCHEMA_FILE           Path to schema file (default: data/test_execution_log_schema.json)
+#   SCHEMA_FILE           Path to schema file (default: schemas/execution-log.schema.json)
 #   VALIDATE_JSON_BIN     Path to validate-json binary (default: auto-detected)
 #
 # EXIT CODES:
@@ -41,7 +41,7 @@
 set -euo pipefail
 
 # Configuration: Schema file to validate against
-SCHEMA_FILE="${SCHEMA_FILE:-data/test_execution_log_schema.json}"
+SCHEMA_FILE="${SCHEMA_FILE:-schemas/execution-log.schema.json}"
 
 # Auto-detect validate-json binary location
 if [[ -n "${VALIDATE_JSON_BIN:-}" ]]; then

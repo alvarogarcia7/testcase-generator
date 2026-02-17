@@ -19,7 +19,7 @@ docker run -it --rm -v $(pwd)/testcases:/app/testcases testcase-manager:latest .
 
 # Watch a custom directory
 docker run -it --rm -v $(pwd)/custom:/app/custom testcase-manager:latest \
-    bash -c "SCHEMA_FILE=data/schema.json ./scripts/validate-files.sh --pattern '\.ya?ml$' --validator ./scripts/validate-yaml-wrapper.sh --watch custom/"
+    bash -c "SCHEMA_FILE=schemas/schema.json ./scripts/validate-files.sh --pattern '\.ya?ml$' --validator ./scripts/validate-yaml-wrapper.sh --watch custom/"
 ```
 
 **Note:** Use `-v` to mount the directory you want to watch into the container.
@@ -105,7 +105,7 @@ Only files matching the specified regex pattern are validated. This allows you t
 ### Example 1: YAML Validation with Schema
 ```bash
 # Set the schema file
-export SCHEMA_FILE=data/schema.json
+export SCHEMA_FILE=schemas/schema.json
 
 # Start watch mode for YAML files
 ./scripts/validate-files.sh \

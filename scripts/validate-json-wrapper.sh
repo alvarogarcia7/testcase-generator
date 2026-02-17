@@ -13,7 +13,7 @@
 #   json-file    Path to the JSON file to validate
 #
 # CONFIGURATION:
-#   SCHEMA_FILE  Environment variable to specify the schema file (default: data/schema.json)
+#   SCHEMA_FILE  Environment variable to specify the schema file (default: schemas/schema.json)
 #   VALIDATE_JSON_BIN  Path to validate-json binary (default: auto-detected)
 #
 # EXIT CODES:
@@ -22,7 +22,7 @@
 #
 # EXAMPLE USAGE WITH validate-files.sh:
 #   # Validate all JSON files in the repository
-#   export SCHEMA_FILE=data/schema.json
+#   export SCHEMA_FILE=schemas/schema.json
 #   ./scripts/validate-files.sh --pattern '\.json$' --validator ./scripts/validate-json-wrapper.sh
 #
 #   # Validate with verbose output
@@ -30,7 +30,7 @@
 #
 # STANDALONE USAGE:
 #   # Validate a single JSON file
-#   export SCHEMA_FILE=data/schema.json
+#   export SCHEMA_FILE=schemas/schema.json
 #   ./scripts/validate-json-wrapper.sh data/testcase.json
 #
 #   # Use a different schema
@@ -44,7 +44,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib/logger.sh" || exit 1
 
 # Configuration: Schema file to validate against
-SCHEMA_FILE="${SCHEMA_FILE:-data/schema.json}"
+SCHEMA_FILE="${SCHEMA_FILE:-schemas/schema.json}"
 
 # Auto-detect validate-json binary location
 if [[ -n "${VALIDATE_JSON_BIN:-}" ]]; then

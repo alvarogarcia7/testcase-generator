@@ -166,7 +166,7 @@ fn test_all_data_files_exist() {
     let _ = env_logger::builder().is_test(true).try_init();
 
     let expected_files = vec![
-        "data/schema.json",
+        "schemas/test-case.schema.json",
         "tests/sample/SGP.22_4.4.2.yaml",
         "tests/sample/data.yml",
     ];
