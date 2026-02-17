@@ -697,3 +697,700 @@ fn test_multiple_undefined_refs_in_different_locations() {
         .collect();
     assert_eq!(tc_errors.len(), 3, "Expected 3 test case ID errors");
 }
+
+// ===== InitialConditions Unit Tests =====
+
+#[test]
+fn test_initial_conditions_default() {
+    let ic = InitialConditions::default();
+    assert!(ic.is_empty());
+    assert!(ic.include.is_none());
+    assert!(ic.devices.is_empty());
+}
+
+#[test]
+fn test_initial_conditions_is_empty_with_include() {
+    let ic = InitialConditions {
+        include: Some(vec![IncludeRef {
+            id: "TC001".to_string(),
+            test_sequence: None,
+        }]),
+        devices: HashMap::new(),
+    };
+    assert!(!ic.is_empty());
+}
+
+#[test]
+fn test_initial_conditions_is_empty_with_devices() {
+    let mut ic = InitialConditions {
+        include: None,
+        devices: HashMap::new(),
+    };
+    ic.devices.insert(
+        "device1".to_string(),
+        vec![InitialConditionItem::String("condition".to_string())],
+    );
+    assert!(!ic.is_empty());
+}
+
+#[test]
+fn test_initial_conditions_is_empty_with_both() {
+    let mut ic = InitialConditions {
+        include: Some(vec![IncludeRef {
+            id: "TC001".to_string(),
+            test_sequence: None,
+        }]),
+        devices: HashMap::new(),
+    };
+    ic.devices.insert(
+        "device1".to_string(),
+        vec![InitialConditionItem::String("condition".to_string())],
+    );
+    assert!(!ic.is_empty());
+}
+
+#[test]
+fn test_initial_conditions_yaml_serialization_with_include() {
+    let ic = InitialConditions {
+        include: Some(vec![
+            IncludeRef {
+                id: "TC001".to_string(),
+                test_sequence: None,
+            },
+            IncludeRef {
+                id: "TC002".to_string(),
+                test_sequence: Some("1".to_string()),
+            },
+        ]),
+        devices: HashMap::new(),
+    };
+
+    let yaml = serde_yaml::to_string(&ic).unwrap();
+    let deserialized: InitialConditions = serde_yaml::from_str(&yaml).unwrap();
+
+    assert_eq!(ic, deserialized);
+    assert!(yaml.contains("include:"));
+    assert!(yaml.contains("TC001"));
+    assert!(yaml.contains("TC002"));
+}
+
+#[test]
+fn test_initial_conditions_yaml_deserialization_with_include() {
+    let yaml = r#"
+include:
+  - id: "TC001"
+  - id: "TC002"
+    test_sequence: "1"
+"#;
+    let ic: InitialConditions = serde_yaml::from_str(yaml).unwrap();
+
+    assert!(!ic.is_empty());
+    assert!(ic.include.is_some());
+    let include = ic.include.unwrap();
+    assert_eq!(include.len(), 2);
+    assert_eq!(include[0].id, "TC001");
+    assert_eq!(include[0].test_sequence, None);
+    assert_eq!(include[1].id, "TC002");
+    assert_eq!(include[1].test_sequence, Some("1".to_string()));
+}
+
+#[test]
+fn test_initial_conditions_yaml_serialization_with_devices() {
+    let mut ic = InitialConditions {
+        include: None,
+        devices: HashMap::new(),
+    };
+    ic.devices.insert(
+        "device1".to_string(),
+        vec![
+            InitialConditionItem::String("String condition".to_string()),
+            InitialConditionItem::RefItem {
+                reference: "ref-123".to_string(),
+            },
+        ],
+    );
+    ic.devices.insert(
+        "device2".to_string(),
+        vec![InitialConditionItem::String(
+            "Another condition".to_string(),
+        )],
+    );
+
+    let yaml = serde_yaml::to_string(&ic).unwrap();
+    let deserialized: InitialConditions = serde_yaml::from_str(&yaml).unwrap();
+
+    assert_eq!(ic, deserialized);
+    assert!(yaml.contains("device1:"));
+    assert!(yaml.contains("device2:"));
+    assert!(yaml.contains("String condition"));
+}
+
+#[test]
+fn test_initial_conditions_yaml_deserialization_with_devices() {
+    let yaml = r#"
+device1:
+  - "String condition"
+  - ref: "ref-123"
+device2:
+  - "Another condition"
+"#;
+    let ic: InitialConditions = serde_yaml::from_str(yaml).unwrap();
+
+    assert!(!ic.is_empty());
+    assert!(ic.include.is_none());
+    assert_eq!(ic.devices.len(), 2);
+
+    let device1_conditions = ic.devices.get("device1").unwrap();
+    assert_eq!(device1_conditions.len(), 2);
+    match &device1_conditions[0] {
+        InitialConditionItem::String(s) => assert_eq!(s, "String condition"),
+        _ => panic!("Expected String variant"),
+    }
+    match &device1_conditions[1] {
+        InitialConditionItem::RefItem { reference } => assert_eq!(reference, "ref-123"),
+        _ => panic!("Expected RefItem variant"),
+    }
+
+    let device2_conditions = ic.devices.get("device2").unwrap();
+    assert_eq!(device2_conditions.len(), 1);
+    match &device2_conditions[0] {
+        InitialConditionItem::String(s) => assert_eq!(s, "Another condition"),
+        _ => panic!("Expected String variant"),
+    }
+}
+
+#[test]
+fn test_initial_conditions_yaml_serialization_with_include_and_devices() {
+    let mut ic = InitialConditions {
+        include: Some(vec![IncludeRef {
+            id: "TC001".to_string(),
+            test_sequence: None,
+        }]),
+        devices: HashMap::new(),
+    };
+    ic.devices.insert(
+        "device1".to_string(),
+        vec![InitialConditionItem::String("condition".to_string())],
+    );
+
+    let yaml = serde_yaml::to_string(&ic).unwrap();
+    let deserialized: InitialConditions = serde_yaml::from_str(&yaml).unwrap();
+
+    assert_eq!(ic, deserialized);
+    assert!(yaml.contains("include:"));
+    assert!(yaml.contains("device1:"));
+}
+
+#[test]
+fn test_initial_conditions_yaml_deserialization_with_include_and_devices() {
+    let yaml = r#"
+include:
+  - id: "TC001"
+device1:
+  - "condition"
+device2:
+  - ref: "ref-456"
+"#;
+    let ic: InitialConditions = serde_yaml::from_str(yaml).unwrap();
+
+    assert!(!ic.is_empty());
+    assert!(ic.include.is_some());
+    assert_eq!(ic.devices.len(), 2);
+
+    let include = ic.include.unwrap();
+    assert_eq!(include.len(), 1);
+    assert_eq!(include[0].id, "TC001");
+}
+
+#[test]
+fn test_initial_conditions_json_serialization_with_include() {
+    let ic = InitialConditions {
+        include: Some(vec![
+            IncludeRef {
+                id: "TC001".to_string(),
+                test_sequence: None,
+            },
+            IncludeRef {
+                id: "TC002".to_string(),
+                test_sequence: Some("2".to_string()),
+            },
+        ]),
+        devices: HashMap::new(),
+    };
+
+    let json = serde_json::to_string(&ic).unwrap();
+    let deserialized: InitialConditions = serde_json::from_str(&json).unwrap();
+
+    assert_eq!(ic, deserialized);
+    assert!(json.contains("\"include\""));
+    assert!(json.contains("\"TC001\""));
+    assert!(json.contains("\"TC002\""));
+}
+
+#[test]
+fn test_initial_conditions_json_deserialization_with_include() {
+    let json = r#"{
+        "include": [
+            {"id": "TC001"},
+            {"id": "TC002", "test_sequence": "3"}
+        ]
+    }"#;
+    let ic: InitialConditions = serde_json::from_str(json).unwrap();
+
+    assert!(!ic.is_empty());
+    assert!(ic.include.is_some());
+    let include = ic.include.unwrap();
+    assert_eq!(include.len(), 2);
+    assert_eq!(include[0].id, "TC001");
+    assert_eq!(include[0].test_sequence, None);
+    assert_eq!(include[1].id, "TC002");
+    assert_eq!(include[1].test_sequence, Some("3".to_string()));
+}
+
+#[test]
+fn test_initial_conditions_json_serialization_with_devices() {
+    let mut ic = InitialConditions {
+        include: None,
+        devices: HashMap::new(),
+    };
+    ic.devices.insert(
+        "device1".to_string(),
+        vec![
+            InitialConditionItem::String("condition1".to_string()),
+            InitialConditionItem::RefItem {
+                reference: "ref-abc".to_string(),
+            },
+        ],
+    );
+
+    let json = serde_json::to_string(&ic).unwrap();
+    let deserialized: InitialConditions = serde_json::from_str(&json).unwrap();
+
+    assert_eq!(ic, deserialized);
+    assert!(json.contains("\"device1\""));
+    assert!(json.contains("\"condition1\""));
+    assert!(json.contains("\"ref\""));
+}
+
+#[test]
+fn test_initial_conditions_json_deserialization_with_devices() {
+    let json = r#"{
+        "device1": [
+            "String condition",
+            {"ref": "ref-xyz"}
+        ],
+        "device2": [
+            "Another string"
+        ]
+    }"#;
+    let ic: InitialConditions = serde_json::from_str(json).unwrap();
+
+    assert!(!ic.is_empty());
+    assert!(ic.include.is_none());
+    assert_eq!(ic.devices.len(), 2);
+
+    let device1_conditions = ic.devices.get("device1").unwrap();
+    assert_eq!(device1_conditions.len(), 2);
+    match &device1_conditions[0] {
+        InitialConditionItem::String(s) => assert_eq!(s, "String condition"),
+        _ => panic!("Expected String variant"),
+    }
+    match &device1_conditions[1] {
+        InitialConditionItem::RefItem { reference } => assert_eq!(reference, "ref-xyz"),
+        _ => panic!("Expected RefItem variant"),
+    }
+}
+
+#[test]
+fn test_initial_conditions_json_serialization_with_include_and_devices() {
+    let mut ic = InitialConditions {
+        include: Some(vec![IncludeRef {
+            id: "TC001".to_string(),
+            test_sequence: Some("1".to_string()),
+        }]),
+        devices: HashMap::new(),
+    };
+    ic.devices.insert(
+        "device1".to_string(),
+        vec![InitialConditionItem::String("condition".to_string())],
+    );
+
+    let json = serde_json::to_string(&ic).unwrap();
+    let deserialized: InitialConditions = serde_json::from_str(&json).unwrap();
+
+    assert_eq!(ic, deserialized);
+    assert!(json.contains("\"include\""));
+    assert!(json.contains("\"device1\""));
+}
+
+#[test]
+fn test_initial_conditions_json_deserialization_with_include_and_devices() {
+    let json = r#"{
+        "include": [
+            {"id": "TC001", "test_sequence": "1"}
+        ],
+        "device1": ["condition1"],
+        "device2": [{"ref": "ref-789"}]
+    }"#;
+    let ic: InitialConditions = serde_json::from_str(json).unwrap();
+
+    assert!(!ic.is_empty());
+    assert!(ic.include.is_some());
+    assert_eq!(ic.devices.len(), 2);
+
+    let include = ic.include.unwrap();
+    assert_eq!(include.len(), 1);
+    assert_eq!(include[0].id, "TC001");
+    assert_eq!(include[0].test_sequence, Some("1".to_string()));
+}
+
+#[test]
+fn test_initial_condition_item_string_variant_yaml() {
+    let yaml = r#""Plain string condition""#;
+    let item: InitialConditionItem = serde_yaml::from_str(yaml).unwrap();
+
+    match &item {
+        InitialConditionItem::String(s) => assert_eq!(s, "Plain string condition"),
+        _ => panic!("Expected String variant"),
+    }
+
+    let serialized = serde_yaml::to_string(&item).unwrap();
+    let deserialized: InitialConditionItem = serde_yaml::from_str(&serialized).unwrap();
+    assert_eq!(item, deserialized);
+}
+
+#[test]
+fn test_initial_condition_item_ref_item_variant_yaml() {
+    let yaml = r#"
+ref: "ref-12345"
+"#;
+    let item: InitialConditionItem = serde_yaml::from_str(yaml).unwrap();
+
+    match &item {
+        InitialConditionItem::RefItem { reference } => assert_eq!(reference, "ref-12345"),
+        _ => panic!("Expected RefItem variant"),
+    }
+
+    let serialized = serde_yaml::to_string(&item).unwrap();
+    let deserialized: InitialConditionItem = serde_yaml::from_str(&serialized).unwrap();
+    assert_eq!(item, deserialized);
+}
+
+#[test]
+fn test_initial_condition_item_test_sequence_ref_variant_yaml() {
+    let yaml = r#"
+test_sequence:
+  id: 42
+  step: "step-1"
+"#;
+    let item: InitialConditionItem = serde_yaml::from_str(yaml).unwrap();
+
+    match &item {
+        InitialConditionItem::TestSequenceRef { test_sequence } => {
+            assert_eq!(test_sequence.id, 42);
+            assert_eq!(test_sequence.step, "step-1");
+        }
+        _ => panic!("Expected TestSequenceRef variant"),
+    }
+
+    let serialized = serde_yaml::to_string(&item).unwrap();
+    let deserialized: InitialConditionItem = serde_yaml::from_str(&serialized).unwrap();
+    assert_eq!(item, deserialized);
+}
+
+#[test]
+fn test_initial_condition_item_string_variant_json() {
+    let json = r#""Plain JSON string""#;
+    let item: InitialConditionItem = serde_json::from_str(json).unwrap();
+
+    match &item {
+        InitialConditionItem::String(s) => assert_eq!(s, "Plain JSON string"),
+        _ => panic!("Expected String variant"),
+    }
+
+    let serialized = serde_json::to_string(&item).unwrap();
+    let deserialized: InitialConditionItem = serde_json::from_str(&serialized).unwrap();
+    assert_eq!(item, deserialized);
+}
+
+#[test]
+fn test_initial_condition_item_ref_item_variant_json() {
+    let json = r#"{"ref": "ref-json-123"}"#;
+    let item: InitialConditionItem = serde_json::from_str(json).unwrap();
+
+    match &item {
+        InitialConditionItem::RefItem { reference } => assert_eq!(reference, "ref-json-123"),
+        _ => panic!("Expected RefItem variant"),
+    }
+
+    let serialized = serde_json::to_string(&item).unwrap();
+    let deserialized: InitialConditionItem = serde_json::from_str(&serialized).unwrap();
+    assert_eq!(item, deserialized);
+}
+
+#[test]
+fn test_initial_condition_item_test_sequence_ref_variant_json() {
+    let json = r#"{
+        "test_sequence": {
+            "id": 99,
+            "step": "step-abc"
+        }
+    }"#;
+    let item: InitialConditionItem = serde_json::from_str(json).unwrap();
+
+    match &item {
+        InitialConditionItem::TestSequenceRef { test_sequence } => {
+            assert_eq!(test_sequence.id, 99);
+            assert_eq!(test_sequence.step, "step-abc");
+        }
+        _ => panic!("Expected TestSequenceRef variant"),
+    }
+
+    let serialized = serde_json::to_string(&item).unwrap();
+    let deserialized: InitialConditionItem = serde_json::from_str(&serialized).unwrap();
+    assert_eq!(item, deserialized);
+}
+
+#[test]
+fn test_mixed_initial_condition_items_yaml_roundtrip() {
+    let yaml = r#"
+device1:
+  - "String condition 1"
+  - ref: "ref-abc"
+  - test_sequence:
+      id: 10
+      step: "step-1"
+  - "String condition 2"
+  - ref: "ref-xyz"
+device2:
+  - test_sequence:
+      id: 20
+      step: "step-2"
+  - "Another string"
+"#;
+    let ic: InitialConditions = serde_yaml::from_str(yaml).unwrap();
+
+    // Verify device1 conditions
+    let device1_conditions = ic.devices.get("device1").unwrap();
+    assert_eq!(device1_conditions.len(), 5);
+
+    match &device1_conditions[0] {
+        InitialConditionItem::String(s) => assert_eq!(s, "String condition 1"),
+        _ => panic!("Expected String variant at index 0"),
+    }
+    match &device1_conditions[1] {
+        InitialConditionItem::RefItem { reference } => assert_eq!(reference, "ref-abc"),
+        _ => panic!("Expected RefItem variant at index 1"),
+    }
+    match &device1_conditions[2] {
+        InitialConditionItem::TestSequenceRef { test_sequence } => {
+            assert_eq!(test_sequence.id, 10);
+            assert_eq!(test_sequence.step, "step-1");
+        }
+        _ => panic!("Expected TestSequenceRef variant at index 2"),
+    }
+    match &device1_conditions[3] {
+        InitialConditionItem::String(s) => assert_eq!(s, "String condition 2"),
+        _ => panic!("Expected String variant at index 3"),
+    }
+    match &device1_conditions[4] {
+        InitialConditionItem::RefItem { reference } => assert_eq!(reference, "ref-xyz"),
+        _ => panic!("Expected RefItem variant at index 4"),
+    }
+
+    // Verify device2 conditions
+    let device2_conditions = ic.devices.get("device2").unwrap();
+    assert_eq!(device2_conditions.len(), 2);
+
+    match &device2_conditions[0] {
+        InitialConditionItem::TestSequenceRef { test_sequence } => {
+            assert_eq!(test_sequence.id, 20);
+            assert_eq!(test_sequence.step, "step-2");
+        }
+        _ => panic!("Expected TestSequenceRef variant at index 0"),
+    }
+    match &device2_conditions[1] {
+        InitialConditionItem::String(s) => assert_eq!(s, "Another string"),
+        _ => panic!("Expected String variant at index 1"),
+    }
+
+    // Roundtrip test
+    let serialized = serde_yaml::to_string(&ic).unwrap();
+    let deserialized: InitialConditions = serde_yaml::from_str(&serialized).unwrap();
+    assert_eq!(ic, deserialized);
+}
+
+#[test]
+fn test_mixed_initial_condition_items_json_roundtrip() {
+    let json = r#"{
+        "device1": [
+            "String condition 1",
+            {"ref": "ref-123"},
+            {"test_sequence": {"id": 5, "step": "s1"}},
+            "String condition 2"
+        ],
+        "device2": [
+            {"test_sequence": {"id": 15, "step": "s2"}},
+            {"ref": "ref-456"}
+        ]
+    }"#;
+    let ic: InitialConditions = serde_json::from_str(json).unwrap();
+
+    // Verify device1 conditions
+    let device1_conditions = ic.devices.get("device1").unwrap();
+    assert_eq!(device1_conditions.len(), 4);
+
+    match &device1_conditions[0] {
+        InitialConditionItem::String(s) => assert_eq!(s, "String condition 1"),
+        _ => panic!("Expected String variant at index 0"),
+    }
+    match &device1_conditions[1] {
+        InitialConditionItem::RefItem { reference } => assert_eq!(reference, "ref-123"),
+        _ => panic!("Expected RefItem variant at index 1"),
+    }
+    match &device1_conditions[2] {
+        InitialConditionItem::TestSequenceRef { test_sequence } => {
+            assert_eq!(test_sequence.id, 5);
+            assert_eq!(test_sequence.step, "s1");
+        }
+        _ => panic!("Expected TestSequenceRef variant at index 2"),
+    }
+    match &device1_conditions[3] {
+        InitialConditionItem::String(s) => assert_eq!(s, "String condition 2"),
+        _ => panic!("Expected String variant at index 3"),
+    }
+
+    // Verify device2 conditions
+    let device2_conditions = ic.devices.get("device2").unwrap();
+    assert_eq!(device2_conditions.len(), 2);
+
+    match &device2_conditions[0] {
+        InitialConditionItem::TestSequenceRef { test_sequence } => {
+            assert_eq!(test_sequence.id, 15);
+            assert_eq!(test_sequence.step, "s2");
+        }
+        _ => panic!("Expected TestSequenceRef variant at index 0"),
+    }
+    match &device2_conditions[1] {
+        InitialConditionItem::RefItem { reference } => assert_eq!(reference, "ref-456"),
+        _ => panic!("Expected RefItem variant at index 1"),
+    }
+
+    // Roundtrip test
+    let serialized = serde_json::to_string(&ic).unwrap();
+    let deserialized: InitialConditions = serde_json::from_str(&serialized).unwrap();
+    assert_eq!(ic, deserialized);
+}
+
+#[test]
+fn test_initial_conditions_empty_include_serialization() {
+    let ic = InitialConditions {
+        include: Some(vec![]),
+        devices: HashMap::new(),
+    };
+
+    // Even though include is Some([]), it should not be empty
+    assert!(!ic.is_empty());
+
+    let yaml = serde_yaml::to_string(&ic).unwrap();
+    let deserialized: InitialConditions = serde_yaml::from_str(&yaml).unwrap();
+    assert_eq!(ic, deserialized);
+}
+
+#[test]
+fn test_initial_conditions_complex_mixed_roundtrip_yaml() {
+    let mut ic = InitialConditions {
+        include: Some(vec![
+            IncludeRef {
+                id: "TC001".to_string(),
+                test_sequence: None,
+            },
+            IncludeRef {
+                id: "TC002".to_string(),
+                test_sequence: Some("1".to_string()),
+            },
+        ]),
+        devices: HashMap::new(),
+    };
+    ic.devices.insert(
+        "device1".to_string(),
+        vec![
+            InitialConditionItem::String("Initial setup".to_string()),
+            InitialConditionItem::RefItem {
+                reference: "ref-init".to_string(),
+            },
+            InitialConditionItem::TestSequenceRef {
+                test_sequence: testcase_manager::models::TestSequenceRefTarget {
+                    id: 1,
+                    step: "setup".to_string(),
+                },
+            },
+        ],
+    );
+    ic.devices.insert(
+        "device2".to_string(),
+        vec![
+            InitialConditionItem::TestSequenceRef {
+                test_sequence: testcase_manager::models::TestSequenceRefTarget {
+                    id: 2,
+                    step: "config".to_string(),
+                },
+            },
+            InitialConditionItem::String("Ready state".to_string()),
+        ],
+    );
+
+    let yaml = serde_yaml::to_string(&ic).unwrap();
+    let deserialized: InitialConditions = serde_yaml::from_str(&yaml).unwrap();
+    assert_eq!(ic, deserialized);
+
+    // Verify include is preserved
+    assert!(deserialized.include.is_some());
+    let include = deserialized.include.unwrap();
+    assert_eq!(include.len(), 2);
+
+    // Verify devices are preserved
+    assert_eq!(deserialized.devices.len(), 2);
+}
+
+#[test]
+fn test_initial_conditions_complex_mixed_roundtrip_json() {
+    let mut ic = InitialConditions {
+        include: Some(vec![IncludeRef {
+            id: "TC100".to_string(),
+            test_sequence: Some("5".to_string()),
+        }]),
+        devices: HashMap::new(),
+    };
+    ic.devices.insert(
+        "device_a".to_string(),
+        vec![
+            InitialConditionItem::String("condition A".to_string()),
+            InitialConditionItem::RefItem {
+                reference: "ref-a".to_string(),
+            },
+        ],
+    );
+    ic.devices.insert(
+        "device_b".to_string(),
+        vec![InitialConditionItem::TestSequenceRef {
+            test_sequence: testcase_manager::models::TestSequenceRefTarget {
+                id: 100,
+                step: "init".to_string(),
+            },
+        }],
+    );
+
+    let json = serde_json::to_string(&ic).unwrap();
+    let deserialized: InitialConditions = serde_json::from_str(&json).unwrap();
+    assert_eq!(ic, deserialized);
+
+    // Verify include is preserved
+    assert!(deserialized.include.is_some());
+    let include = deserialized.include.unwrap();
+    assert_eq!(include.len(), 1);
+    assert_eq!(include[0].id, "TC100");
+
+    // Verify devices are preserved
+    assert_eq!(deserialized.devices.len(), 2);
+}
