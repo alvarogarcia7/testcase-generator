@@ -1412,3 +1412,572 @@ fn test_command_escaping_for_json_with_backslashes() {
         "Backslashes should be properly escaped in JSON (doubled)"
     );
 }
+
+// ============================================================================
+// Integration Tests for Script Generation with Dependencies
+// ============================================================================
+
+#[test]
+fn test_initial_conditions_with_include_array_as_comments() {
+    use testcase_manager::models::IncludeRef;
+
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ001".to_string(),
+        1,
+        1,
+        "TC001".to_string(),
+        "Test with include array".to_string(),
+    );
+
+    // Add include array to general_initial_conditions
+    let include_refs = vec![
+        IncludeRef {
+            id: "TC_SETUP_001".to_string(),
+            test_sequence: None,
+        },
+        IncludeRef {
+            id: "TC_INIT_002".to_string(),
+            test_sequence: Some("Seq1".to_string()),
+        },
+    ];
+
+    let mut general_devices = HashMap::new();
+    general_devices.insert(
+        "Device".to_string(),
+        vec![InitialConditionItem::String("Powered on".to_string())],
+    );
+
+    test_case.general_initial_conditions = InitialConditions {
+        include: Some(include_refs),
+        devices: general_devices,
+    };
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let step = create_test_step(1, "Test", "echo 'test'", "0", "test", Some(true));
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify include array items appear as comments
+    assert!(script.contains("# General Initial Conditions"));
+    assert!(script.contains("# Include: TC_SETUP_001"));
+    assert!(script.contains("# Include: TC_INIT_002 (test_sequence: Seq1)"));
+    assert!(script.contains("# Device: Powered on"));
+}
+
+#[test]
+fn test_initial_conditions_mixed_item_types_as_string_representations() {
+    use testcase_manager::models::TestSequenceRefTarget;
+
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ002".to_string(),
+        1,
+        1,
+        "TC002".to_string(),
+        "Test with mixed condition items".to_string(),
+    );
+
+    // Add mixed initial condition items
+    let mut devices = HashMap::new();
+    devices.insert(
+        "Setup".to_string(),
+        vec![
+            InitialConditionItem::String("System is ready".to_string()),
+            InitialConditionItem::RefItem {
+                reference: "CONFIG_REF_001".to_string(),
+            },
+            InitialConditionItem::TestSequenceRef {
+                test_sequence: TestSequenceRefTarget {
+                    id: 5,
+                    step: "2a".to_string(),
+                },
+            },
+        ],
+    );
+
+    test_case.initial_conditions = InitialConditions {
+        include: None,
+        devices,
+    };
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let step = create_test_step(1, "Test", "echo 'test'", "0", "test", Some(true));
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify all item types are converted to string representations
+    assert!(script.contains("# Initial Conditions"));
+    assert!(script.contains("# Setup: System is ready"));
+    assert!(script.contains("# Setup: ref: CONFIG_REF_001"));
+    assert!(script.contains("# Setup: test_sequence: id=5, step=2a"));
+}
+
+#[test]
+fn test_initial_conditions_ref_items_appear_as_comments() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ003".to_string(),
+        1,
+        1,
+        "TC003".to_string(),
+        "Test with ref items".to_string(),
+    );
+
+    // Add ref items to test-level initial conditions
+    let mut devices = HashMap::new();
+    devices.insert(
+        "Environment".to_string(),
+        vec![
+            InitialConditionItem::RefItem {
+                reference: "ENV_SETUP_001".to_string(),
+            },
+            InitialConditionItem::RefItem {
+                reference: "ENV_CONFIG_002".to_string(),
+            },
+        ],
+    );
+
+    test_case.initial_conditions = InitialConditions {
+        include: None,
+        devices,
+    };
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let step = create_test_step(1, "Test", "echo 'test'", "0", "test", Some(true));
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify ref items appear as comments in the script
+    assert!(script.contains("# Initial Conditions"));
+    assert!(script.contains("# Environment: ref: ENV_SETUP_001"));
+    assert!(script.contains("# Environment: ref: ENV_CONFIG_002"));
+}
+
+#[test]
+fn test_initial_conditions_test_sequence_refs_appear_as_comments() {
+    use testcase_manager::models::TestSequenceRefTarget;
+
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ004".to_string(),
+        1,
+        1,
+        "TC004".to_string(),
+        "Test with test_sequence refs".to_string(),
+    );
+
+    // Add test_sequence ref items to sequence-level initial conditions
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+
+    let mut seq_devices = HashMap::new();
+    seq_devices.insert(
+        "Prerequisites".to_string(),
+        vec![
+            InitialConditionItem::TestSequenceRef {
+                test_sequence: TestSequenceRefTarget {
+                    id: 3,
+                    step: "1".to_string(),
+                },
+            },
+            InitialConditionItem::TestSequenceRef {
+                test_sequence: TestSequenceRefTarget {
+                    id: 7,
+                    step: "4b".to_string(),
+                },
+            },
+        ],
+    );
+
+    sequence.initial_conditions = InitialConditions {
+        include: None,
+        devices: seq_devices,
+    };
+
+    let step = create_test_step(1, "Test", "echo 'test'", "0", "test", Some(true));
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify test_sequence refs appear as comments in the script
+    assert!(script.contains("# Sequence Initial Conditions"));
+    assert!(script.contains("# Prerequisites: test_sequence: id=3, step=1"));
+    assert!(script.contains("# Prerequisites: test_sequence: id=7, step=4b"));
+}
+
+#[test]
+fn test_initial_conditions_bdd_pattern_with_include_array() {
+    use testcase_manager::models::IncludeRef;
+
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ005".to_string(),
+        1,
+        1,
+        "TC005".to_string(),
+        "Test BDD patterns with include array".to_string(),
+    );
+
+    // Add include array and BDD patterns to general_initial_conditions
+    let include_refs = vec![IncludeRef {
+        id: "TC_COMMON_SETUP".to_string(),
+        test_sequence: None,
+    }];
+
+    let mut general_devices = HashMap::new();
+    general_devices.insert(
+        "Setup".to_string(),
+        vec![
+            InitialConditionItem::String("create directory \"/tmp/testdir\"".to_string()),
+            InitialConditionItem::String("wait for 2 seconds".to_string()),
+        ],
+    );
+
+    test_case.general_initial_conditions = InitialConditions {
+        include: Some(include_refs),
+        devices: general_devices,
+    };
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let step = create_test_step(1, "Test", "echo 'test'", "0", "test", Some(true));
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify include array appears as comments
+    assert!(script.contains("# General Initial Conditions"));
+    assert!(script.contains("# Include: TC_COMMON_SETUP"));
+
+    // Verify BDD patterns are processed and generate commands
+    assert!(script.contains("# Setup: create directory \"/tmp/testdir\""));
+    assert!(script.contains("mkdir -p \"/tmp/testdir\""));
+    assert!(script.contains("# Setup: wait for 2 seconds"));
+    assert!(script.contains("sleep 2"));
+}
+
+#[test]
+fn test_initial_conditions_bdd_pattern_with_ref_items() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ006".to_string(),
+        1,
+        1,
+        "TC006".to_string(),
+        "Test BDD patterns with ref items".to_string(),
+    );
+
+    // Mix BDD patterns and ref items
+    let mut devices = HashMap::new();
+    devices.insert(
+        "Preconditions".to_string(),
+        vec![
+            InitialConditionItem::String("create directory \"/tmp/logs\"".to_string()),
+            InitialConditionItem::RefItem {
+                reference: "NETWORK_CONFIG".to_string(),
+            },
+            InitialConditionItem::String("file \"/tmp/config\" should exist".to_string()),
+        ],
+    );
+
+    test_case.initial_conditions = InitialConditions {
+        include: None,
+        devices,
+    };
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let step = create_test_step(1, "Test", "echo 'test'", "0", "test", Some(true));
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify BDD patterns generate commands
+    assert!(script.contains("# Initial Conditions"));
+    assert!(script.contains("# Preconditions: create directory \"/tmp/logs\""));
+    assert!(script.contains("mkdir -p \"/tmp/logs\""));
+
+    // Verify ref items appear as comments only
+    assert!(script.contains("# Preconditions: ref: NETWORK_CONFIG"));
+
+    // Verify second BDD pattern generates command
+    assert!(script.contains("# Preconditions: file \"/tmp/config\" should exist"));
+    assert!(script.contains("test -f \"/tmp/config\""));
+}
+
+#[test]
+fn test_initial_conditions_all_levels_with_dependencies() {
+    use testcase_manager::models::{IncludeRef, TestSequenceRefTarget};
+
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ007".to_string(),
+        1,
+        1,
+        "TC007".to_string(),
+        "Test all levels with dependencies".to_string(),
+    );
+
+    // General initial conditions with include array
+    let include_refs = vec![IncludeRef {
+        id: "TC_GLOBAL_SETUP".to_string(),
+        test_sequence: None,
+    }];
+
+    let mut general_devices = HashMap::new();
+    general_devices.insert(
+        "Global".to_string(),
+        vec![
+            InitialConditionItem::String("wait for 1 seconds".to_string()),
+            InitialConditionItem::RefItem {
+                reference: "GLOBAL_REF".to_string(),
+            },
+        ],
+    );
+
+    test_case.general_initial_conditions = InitialConditions {
+        include: Some(include_refs),
+        devices: general_devices,
+    };
+
+    // Test-level initial conditions with mixed items
+    let mut test_devices = HashMap::new();
+    test_devices.insert(
+        "Test".to_string(),
+        vec![
+            InitialConditionItem::String("create directory \"/tmp/test\"".to_string()),
+            InitialConditionItem::TestSequenceRef {
+                test_sequence: TestSequenceRefTarget {
+                    id: 2,
+                    step: "3".to_string(),
+                },
+            },
+        ],
+    );
+
+    test_case.initial_conditions = InitialConditions {
+        include: None,
+        devices: test_devices,
+    };
+
+    // Sequence-level initial conditions with include array
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+
+    let seq_include_refs = vec![IncludeRef {
+        id: "TC_SEQ_SETUP".to_string(),
+        test_sequence: Some("Seq2".to_string()),
+    }];
+
+    let mut seq_devices = HashMap::new();
+    seq_devices.insert(
+        "Sequence".to_string(),
+        vec![InitialConditionItem::String(
+            "file \"/tmp/test\" should exist".to_string(),
+        )],
+    );
+
+    sequence.initial_conditions = InitialConditions {
+        include: Some(seq_include_refs),
+        devices: seq_devices,
+    };
+
+    let step = create_test_step(1, "Test", "echo 'test'", "0", "test", Some(true));
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Check general conditions
+    assert!(script.contains("# General Initial Conditions"));
+    assert!(script.contains("# Include: TC_GLOBAL_SETUP"));
+    assert!(script.contains("# Global: wait for 1 seconds"));
+    assert!(script.contains("sleep 1"));
+    assert!(script.contains("# Global: ref: GLOBAL_REF"));
+
+    // Check test-level conditions
+    assert!(script.contains("# Initial Conditions"));
+    assert!(script.contains("# Test: create directory \"/tmp/test\""));
+    assert!(script.contains("mkdir -p \"/tmp/test\""));
+    assert!(script.contains("# Test: test_sequence: id=2, step=3"));
+
+    // Check sequence-level conditions
+    assert!(script.contains("# Sequence Initial Conditions"));
+    assert!(script.contains("# Include: TC_SEQ_SETUP (test_sequence: Seq2)"));
+    assert!(script.contains("# Sequence: file \"/tmp/test\" should exist"));
+    assert!(script.contains("test -f \"/tmp/test\""));
+}
+
+#[test]
+fn test_initial_conditions_include_array_multiple_refs() {
+    use testcase_manager::models::IncludeRef;
+
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ008".to_string(),
+        1,
+        1,
+        "TC008".to_string(),
+        "Test multiple include refs".to_string(),
+    );
+
+    // Multiple include references
+    let include_refs = vec![
+        IncludeRef {
+            id: "TC_SETUP_001".to_string(),
+            test_sequence: None,
+        },
+        IncludeRef {
+            id: "TC_SETUP_002".to_string(),
+            test_sequence: None,
+        },
+        IncludeRef {
+            id: "TC_CONFIG_003".to_string(),
+            test_sequence: Some("Seq1".to_string()),
+        },
+        IncludeRef {
+            id: "TC_INIT_004".to_string(),
+            test_sequence: Some("Seq2".to_string()),
+        },
+    ];
+
+    test_case.initial_conditions = InitialConditions {
+        include: Some(include_refs),
+        devices: HashMap::new(),
+    };
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let step = create_test_step(1, "Test", "echo 'test'", "0", "test", Some(true));
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify all include references appear as comments
+    assert!(script.contains("# Initial Conditions"));
+    assert!(script.contains("# Include: TC_SETUP_001"));
+    assert!(script.contains("# Include: TC_SETUP_002"));
+    assert!(script.contains("# Include: TC_CONFIG_003 (test_sequence: Seq1)"));
+    assert!(script.contains("# Include: TC_INIT_004 (test_sequence: Seq2)"));
+}
+
+#[test]
+fn test_initial_conditions_only_include_array_no_devices() {
+    use testcase_manager::models::IncludeRef;
+
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ009".to_string(),
+        1,
+        1,
+        "TC009".to_string(),
+        "Test only include array".to_string(),
+    );
+
+    // Only include array, no devices
+    let include_refs = vec![IncludeRef {
+        id: "TC_FULL_SETUP".to_string(),
+        test_sequence: None,
+    }];
+
+    test_case.general_initial_conditions = InitialConditions {
+        include: Some(include_refs),
+        devices: HashMap::new(),
+    };
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let step = create_test_step(1, "Test", "echo 'test'", "0", "test", Some(true));
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify include array appears even without devices
+    assert!(script.contains("# General Initial Conditions"));
+    assert!(script.contains("# Include: TC_FULL_SETUP"));
+}
+
+#[test]
+fn test_initial_conditions_complex_mixed_structure() {
+    use testcase_manager::models::{IncludeRef, TestSequenceRefTarget};
+
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ010".to_string(),
+        1,
+        1,
+        "TC010".to_string(),
+        "Test complex mixed structure".to_string(),
+    );
+
+    // Complex structure with all types
+    let include_refs = vec![
+        IncludeRef {
+            id: "TC_BASE_001".to_string(),
+            test_sequence: None,
+        },
+        IncludeRef {
+            id: "TC_BASE_002".to_string(),
+            test_sequence: Some("SeqBase".to_string()),
+        },
+    ];
+
+    let mut general_devices = HashMap::new();
+    general_devices.insert(
+        "System".to_string(),
+        vec![
+            InitialConditionItem::String("Device is powered".to_string()),
+            InitialConditionItem::String("create directory \"/tmp/sys\"".to_string()),
+            InitialConditionItem::RefItem {
+                reference: "SYS_CONFIG".to_string(),
+            },
+            InitialConditionItem::TestSequenceRef {
+                test_sequence: TestSequenceRefTarget {
+                    id: 1,
+                    step: "setup".to_string(),
+                },
+            },
+            InitialConditionItem::String("wait for 1 seconds".to_string()),
+        ],
+    );
+
+    test_case.general_initial_conditions = InitialConditions {
+        include: Some(include_refs),
+        devices: general_devices,
+    };
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let step = create_test_step(1, "Test", "echo 'test'", "0", "test", Some(true));
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify include array
+    assert!(script.contains("# General Initial Conditions"));
+    assert!(script.contains("# Include: TC_BASE_001"));
+    assert!(script.contains("# Include: TC_BASE_002 (test_sequence: SeqBase)"));
+
+    // Verify non-BDD string appears as comment only
+    assert!(script.contains("# System: Device is powered"));
+
+    // Verify BDD patterns generate commands
+    assert!(script.contains("# System: create directory \"/tmp/sys\""));
+    assert!(script.contains("mkdir -p \"/tmp/sys\""));
+
+    // Verify ref item appears as comment
+    assert!(script.contains("# System: ref: SYS_CONFIG"));
+
+    // Verify test_sequence ref appears as comment
+    assert!(script.contains("# System: test_sequence: id=1, step=setup"));
+
+    // Verify second BDD pattern generates command
+    assert!(script.contains("# System: wait for 1 seconds"));
+    assert!(script.contains("sleep 1"));
+}
