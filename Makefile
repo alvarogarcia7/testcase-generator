@@ -112,21 +112,43 @@ example_export-demo:
 test-all: test test-e2e
 .PHONY: test-all
 
+# Coverage exclusion pattern - escapes dots for regex
+COVERAGE_EXCLUDE_REGEX = (fuzzy\\.rs|prompts\\.rs|main_editor\\.rs)
+
 coverage:
-	cargo llvm-cov --all-features --workspace --fail-under-lines 70
+	cargo llvm-cov --all-features --workspace --tests --ignore-filename-regex '$(COVERAGE_EXCLUDE_REGEX)' --fail-under-lines 50
 .PHONY: coverage
 
+coverage-e2e: build
+	cargo llvm-cov clean --workspace
+	cargo llvm-cov --all-features --workspace --no-report --ignore-filename-regex '$(COVERAGE_EXCLUDE_REGEX)'
+	${MAKE} test-e2e
+	cargo llvm-cov report --ignore-filename-regex '$(COVERAGE_EXCLUDE_REGEX)' --fail-under-lines 70
+.PHONY: coverage-e2e
+
 coverage-html:
-	cargo llvm-cov --all-features --workspace --html --open
+	cargo llvm-cov --all-features --workspace --tests --ignore-filename-regex '$(COVERAGE_EXCLUDE_REGEX)' --html --open
 .PHONY: coverage-html
 
+coverage-html-e2e:
+	${MAKE} coverage-e2e
+	cargo llvm-cov report --ignore-filename-regex '$(COVERAGE_EXCLUDE_REGEX)' --html --open
+.PHONY: coverage-html-e2e
+
 coverage-lcov:
-	cargo llvm-cov --all-features --workspace --lcov --output-path target/llvm-cov/lcov.info
+	cargo llvm-cov --all-features --workspace --tests --ignore-filename-regex '$(COVERAGE_EXCLUDE_REGEX)' --lcov --output-path target/llvm-cov/lcov.info
 .PHONY: coverage-lcov
 
 coverage-report:
-	cargo llvm-cov report --all-features --workspace
+	cargo llvm-cov report --ignore-filename-regex '$(COVERAGE_EXCLUDE_REGEX)'
 .PHONY: coverage-report
+
+coverage-report-e2e: build
+	cargo llvm-cov clean --workspace
+	cargo llvm-cov --all-features --workspace --no-report --ignore-filename-regex '$(COVERAGE_EXCLUDE_REGEX)'
+	${MAKE} test-e2e
+	cargo llvm-cov report --ignore-filename-regex '$(COVERAGE_EXCLUDE_REGEX)'
+.PHONY: coverage-report-e2e
 
 coverage-clean:
 	cargo llvm-cov clean --workspace

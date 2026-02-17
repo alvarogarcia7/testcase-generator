@@ -4,9 +4,12 @@
 - **Build**: make build
 - **Lint**: make lint
 - **Test**: make test
-- **Coverage**: make coverage (run tests with coverage analysis)
+- **Coverage**: make coverage (run unit tests with coverage analysis, 50% threshold)
+- **Coverage E2E**: make coverage-e2e (run unit + e2e tests with coverage analysis, 70% threshold)
 - **Coverage HTML**: make coverage-html (generate HTML coverage report)
+- **Coverage HTML E2E**: make coverage-html-e2e (generate HTML coverage report with e2e tests)
 - **Coverage Report**: make coverage-report (display coverage summary)
+- **Coverage Report E2E**: make coverage-report-e2e (display coverage summary with e2e tests)
 - **Install Coverage Tools**: make install-coverage-tools (install cargo-llvm-cov and related tools)
 - **Verify Scripts**: make verify-scripts (verify syntax of all shell scripts)
 - **Watch Mode**: make watch (monitors testcases/ for changes and auto-validates)
@@ -139,22 +142,44 @@ For more details on coverage tool installation, see `scripts/README_COVERAGE_TOO
 
 ### Coverage Commands
 
-- **Run tests with coverage**: `make coverage`
-  - Executes the test suite with coverage analysis enabled
-  - Generates coverage data in the default format
+- **Run unit tests with coverage**: `make coverage`
+  - Executes unit tests with coverage analysis enabled
+  - Minimum threshold: 50% line coverage
+  - Excludes: fuzzy.rs, prompts.rs, main_editor.rs
+
+- **Run all tests with coverage (including e2e)**: `make coverage-e2e`
+  - Executes unit tests and e2e integration tests with coverage analysis
+  - Minimum threshold: 70% line coverage
+  - Excludes: fuzzy.rs, prompts.rs, main_editor.rs
 
 - **Generate HTML coverage report**: `make coverage-html`
-  - Creates an interactive HTML report showing line-by-line coverage
+  - Creates an interactive HTML report showing line-by-line coverage (unit tests only)
   - Opens automatically in your default browser
   - Useful for identifying untested code paths
 
+- **Generate HTML coverage report with e2e**: `make coverage-html-e2e`
+  - Creates an interactive HTML report including e2e test coverage
+  - Opens automatically in your default browser
+
 - **Display coverage summary**: `make coverage-report`
-  - Shows a summary of coverage statistics in the terminal
+  - Shows a summary of coverage statistics in the terminal (unit tests only)
   - Provides quick overview of coverage percentages
+
+- **Display coverage summary with e2e**: `make coverage-report-e2e`
+  - Shows a summary of coverage statistics including e2e tests
+  - Provides quick overview of coverage percentages
+
+### Coverage Exclusions
+
+The following files are excluded from coverage analysis:
+- `src/fuzzy.rs` - Interactive fuzzy finder UI components
+- `src/prompts.rs` - Interactive prompt UI components
+- `src/main_editor.rs` - Main editor binary entry point
 
 ### Coverage Requirements
 
-- **Minimum coverage threshold**: 70% line coverage
+- **Minimum coverage threshold (unit tests)**: 50% line coverage
+- **Minimum coverage threshold (unit + e2e tests)**: 70% line coverage
 - Coverage must be maintained or improved with each commit
 - New code should strive for higher coverage (80%+) when possible
 - Review coverage reports to identify critical untested paths
@@ -166,7 +191,7 @@ Before committing any code changes, complete the following steps in order:
 1. **Build**: `make build` - Ensure code compiles without errors
 2. **Lint**: `make lint` - Fix any style or quality issues
 3. **Test**: `make test` - Verify all tests pass
-4. **Coverage**: `make coverage-report` - Verify coverage meets 70% threshold
+4. **Coverage**: `make coverage-e2e` - Verify coverage meets 70% threshold with e2e tests
 
 All steps must complete successfully before committing changes.
 

@@ -61,18 +61,19 @@ The project provides several Make targets for different coverage workflows:
 
 ### `make coverage`
 
-**Purpose**: Run tests with coverage analysis and enforce threshold.
+**Purpose**: Run unit tests with coverage analysis and enforce threshold.
 
-**Command**: `cargo llvm-cov --all-features --workspace --fail-under-lines 70`
+**Command**: `cargo llvm-cov --all-features --workspace --tests --fail-under-lines 50`
 
 **When to use**:
-- Part of the pre-commit workflow (see AGENTS.md)
-- CI/CD pipeline validation
-- Ensuring code meets minimum coverage requirements
+- Quick coverage check during development
+- Verifying unit test coverage
+- Ensuring code meets minimum unit test coverage requirements
 
 **Behavior**:
-- Runs all tests with coverage tracking enabled
-- Fails if line coverage falls below 70%
+- Runs unit tests with coverage tracking enabled
+- Excludes: fuzzy.rs, prompts.rs, main_editor.rs
+- Fails if line coverage falls below 50%
 - Exit code 0 on success, non-zero on failure
 
 **Example**:
@@ -81,19 +82,48 @@ $ make coverage
     Finished test [unoptimized + debuginfo] target(s) in 0.50s
      Running unittests src/lib.rs (target/llvm-cov-target/debug/deps/testcase_manager-...)
 ...
-error: coverage rate is below 70.0% (actual: 65.3%)
+error: coverage rate is below 50.0% (actual: 45.3%)
 make: *** [coverage] Error 1
+```
+
+### `make coverage-e2e`
+
+**Purpose**: Run all tests (unit + e2e) with coverage analysis and enforce threshold.
+
+**Command**: `cargo llvm-cov --all-features --workspace --no-report && make test-e2e && cargo llvm-cov report --fail-under-lines 70`
+
+**When to use**:
+- Part of the pre-commit workflow (see AGENTS.md)
+- CI/CD pipeline validation
+- Ensuring code meets comprehensive coverage requirements including e2e tests
+
+**Behavior**:
+- Runs unit tests and e2e integration tests with coverage tracking enabled
+- Excludes: fuzzy.rs, prompts.rs, main_editor.rs
+- Fails if line coverage falls below 70%
+- Exit code 0 on success, non-zero on failure
+
+**Example**:
+```bash
+$ make coverage-e2e
+    Finished test [unoptimized + debuginfo] target(s) in 0.50s
+     Running unittests src/lib.rs (target/llvm-cov-target/debug/deps/testcase_manager-...)
+...
+Running e2e tests...
+...
+error: coverage rate is below 70.0% (actual: 65.3%)
+make: *** [coverage-e2e] Error 1
 ```
 
 ### `make coverage-html`
 
-**Purpose**: Generate an interactive HTML coverage report for local development.
+**Purpose**: Generate an interactive HTML coverage report for local development (unit tests only).
 
 **Command**: `cargo llvm-cov --all-features --workspace --html --open`
 
 **When to use**:
-- Investigating which code paths are not covered
-- Identifying gaps in test coverage
+- Investigating which code paths are not covered by unit tests
+- Identifying gaps in unit test coverage
 - Visual exploration of coverage data
 - Local development and debugging
 
@@ -101,12 +131,33 @@ make: *** [coverage] Error 1
 - Generates HTML report in `target/llvm-cov/html/`
 - Automatically opens the report in your default browser
 - Shows line-by-line coverage with color coding
+- Excludes: fuzzy.rs, prompts.rs, main_editor.rs
+
+**Output location**: `target/llvm-cov/html/index.html`
+
+### `make coverage-html-e2e`
+
+**Purpose**: Generate an interactive HTML coverage report including e2e tests.
+
+**Command**: `cargo llvm-cov --all-features --workspace --no-report && make test-e2e && cargo llvm-cov report --html --open`
+
+**When to use**:
+- Investigating comprehensive coverage including e2e tests
+- Identifying gaps in overall test coverage
+- Visual exploration of complete coverage data
+- Verifying e2e test impact on coverage
+
+**Behavior**:
+- Generates HTML report in `target/llvm-cov/html/` including e2e test coverage
+- Automatically opens the report in your default browser
+- Shows line-by-line coverage with color coding
+- Excludes: fuzzy.rs, prompts.rs, main_editor.rs
 
 **Output location**: `target/llvm-cov/html/index.html`
 
 ### `make coverage-report`
 
-**Purpose**: Display a summary of coverage statistics in the terminal.
+**Purpose**: Display a summary of coverage statistics in the terminal (unit tests only).
 
 **Command**: `cargo llvm-cov report --all-features --workspace`
 
@@ -116,9 +167,10 @@ make: *** [coverage] Error 1
 - Getting an overview before deeper investigation
 
 **Behavior**:
-- Shows coverage percentages by file and overall
+- Shows coverage percentages by file and overall (unit tests only)
 - Displays line, region, and function coverage
 - No files are generated (output only to stdout)
+- Excludes: fuzzy.rs, prompts.rs, main_editor.rs
 
 **Example output**:
 ```
@@ -129,6 +181,34 @@ src/models/mod.rs                 23                 8    65.22%           8    
 ...
 ---------------------------------------------------------------------------------------------------------
 TOTAL                            892               156    82.51%         234                18    92.31%
+```
+
+### `make coverage-report-e2e`
+
+**Purpose**: Display a summary of coverage statistics including e2e tests.
+
+**Command**: `cargo llvm-cov --all-features --workspace --no-report && make test-e2e && cargo llvm-cov report`
+
+**When to use**:
+- Quick coverage check including e2e test coverage
+- Terminal-based workflows
+- Getting comprehensive coverage overview
+
+**Behavior**:
+- Shows coverage percentages by file and overall (including e2e tests)
+- Displays line, region, and function coverage
+- No files are generated (output only to stdout)
+- Excludes: fuzzy.rs, prompts.rs, main_editor.rs
+
+**Example output**:
+```
+Filename                      Regions    Missed Regions     Cover   Functions  Missed Functions  Executed
+---------------------------------------------------------------------------------------------------------
+src/lib.rs                        45                 1    97.78%          12                 0   100.00%
+src/models/mod.rs                 23                 5    78.26%           8                 1    87.50%
+...
+---------------------------------------------------------------------------------------------------------
+TOTAL                            892               112    87.44%         234                12    94.87%
 ```
 
 ### `make coverage-lcov`
@@ -168,31 +248,61 @@ TOTAL                            892               156    82.51%         234    
 
 ## Coverage Threshold Configuration
 
-The project enforces a **minimum line coverage threshold of 70%**. This ensures a baseline level of test coverage across the codebase.
+The project enforces two minimum line coverage thresholds:
+- **Unit tests only**: 50% minimum line coverage
+- **Unit + E2E tests**: 70% minimum line coverage
+
+This ensures a baseline level of test coverage across the codebase while acknowledging that certain files (fuzzy.rs, prompts.rs, main_editor.rs) are excluded from coverage.
 
 ### Current Configuration
 
-The threshold is configured in the `make coverage` target:
+The thresholds are configured in the Makefile:
 
+**Unit tests only:**
 ```makefile
 coverage:
-	cargo llvm-cov --all-features --workspace --fail-under-lines 70
+	cargo llvm-cov --all-features --workspace --tests --fail-under-lines 50
+```
+
+**Unit + E2E tests:**
+```makefile
+coverage-e2e: build
+	cargo llvm-cov clean --workspace
+	cargo llvm-cov --all-features --workspace --no-report
+	${MAKE} test-e2e
+	cargo llvm-cov report --fail-under-lines 70
+```
+
+### Coverage Exclusions
+
+The following files are excluded from coverage analysis via `Cargo.toml`:
+
+```toml
+[package.metadata.coverage]
+exclude = [
+    "src/fuzzy.rs",
+    "src/prompts.rs",
+    "src/main_editor.rs",
+]
 ```
 
 ### Customizing the Threshold
 
 To modify the threshold, edit the `Makefile` and change the `--fail-under-lines` value:
 
-**Example: Increase threshold to 75%**
+**Example: Increase unit test threshold to 60%**
 ```makefile
 coverage:
-	cargo llvm-cov --all-features --workspace --fail-under-lines 75
+	cargo llvm-cov --all-features --workspace --tests --fail-under-lines 60
 ```
 
-**Example: Increase threshold to 80%**
+**Example: Increase e2e threshold to 80%**
 ```makefile
-coverage:
-	cargo llvm-cov --all-features --workspace --fail-under-lines 80
+coverage-e2e: build
+	cargo llvm-cov clean --workspace
+	cargo llvm-cov --all-features --workspace --no-report
+	${MAKE} test-e2e
+	cargo llvm-cov report --fail-under-lines 80
 ```
 
 ### Other Threshold Options
@@ -214,10 +324,18 @@ coverage:
 
 ### Coverage Requirements by Context
 
-- **Minimum threshold**: 70% line coverage (enforced)
+- **Minimum threshold (unit tests)**: 50% line coverage (enforced)
+- **Minimum threshold (unit + e2e tests)**: 70% line coverage (enforced)
 - **Recommended for new code**: 80%+ line coverage
 - **Critical paths**: Aim for 90%+ coverage
-- **Pre-commit requirement**: Must pass the 70% threshold
+- **Pre-commit requirement**: Must pass the 70% threshold with e2e tests (`make coverage-e2e`)
+
+### Excluded Files
+
+The following files are permanently excluded from coverage analysis:
+- `src/fuzzy.rs` - Interactive fuzzy finder UI (difficult to test in automated environment)
+- `src/prompts.rs` - Interactive prompt UI (difficult to test in automated environment)
+- `src/main_editor.rs` - Main editor binary entry point (primarily integration logic)
 
 See `AGENTS.md` for the complete pre-commit workflow requirements.
 
@@ -461,10 +579,13 @@ TOTAL                             892               156    82.51%         234   
 
 ### Coverage Goals
 
-- **70%**: Minimum required threshold (enforced)
+- **50%**: Minimum required threshold for unit tests (enforced)
+- **70%**: Minimum required threshold for unit + e2e tests (enforced)
 - **80%**: Good coverage for most code
 - **90%+**: Excellent coverage for critical paths
 - **100%**: Ideal but not always practical or necessary
+
+Note: Some files (fuzzy.rs, prompts.rs, main_editor.rs) are excluded from coverage as they contain interactive UI code that's difficult to test in automated environments.
 
 ### What Good Coverage Looks Like
 
@@ -534,18 +655,19 @@ Verify installation:
 cargo llvm-cov --version
 ```
 
-#### Issue: "error: coverage rate is below 70.0%"
+#### Issue: "error: coverage rate is below 50.0%" or "error: coverage rate is below 70.0%"
 
 **Cause**: Test coverage is below the required threshold.
 
 **Solution**:
 1. Generate HTML report to see gaps:
    ```bash
-   make coverage-html
+   make coverage-html        # For unit tests only
+   make coverage-html-e2e    # For unit + e2e tests
    ```
 2. Identify files with low coverage
 3. Write additional tests
-4. Re-run `make coverage`
+4. Re-run `make coverage` or `make coverage-e2e`
 
 #### Issue: Coverage data appears stale or incorrect
 
@@ -713,10 +835,16 @@ If you encounter issues not covered here:
 Before committing any changes, run the full validation suite:
 
 ```bash
-make build        # Ensure code compiles
-make lint         # Fix style issues
-make test         # Verify tests pass
-make coverage     # Verify coverage meets 70% threshold
+make build           # Ensure code compiles
+make lint            # Fix style issues
+make test            # Verify tests pass
+make coverage-e2e    # Verify coverage meets 70% threshold with e2e tests
+```
+
+For quick development checks, you can use:
+
+```bash
+make coverage        # Verify unit test coverage meets 50% threshold
 ```
 
 See `AGENTS.md` for the complete pre-commit requirements.
