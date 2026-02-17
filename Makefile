@@ -61,6 +61,14 @@ run-script-cleanup: build-script-cleanup
 	./target/debug/script-cleanup
 .PHONY: run-script-cleanup
 
+build-json-escape:
+	cargo build --bin json-escape
+.PHONY: build-json-escape
+
+run-json-escape: build-json-escape
+	./target/debug/json-escape
+.PHONY: run-json-escape
+
 test-e2e-failing: build
 	./tests/integration/run_e2e_test.sh
 	./tests/integration/test_variable_passing_e2e.sh
