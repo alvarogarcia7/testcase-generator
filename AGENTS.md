@@ -9,6 +9,15 @@
 
 You must build, test, and lint before committing
 
+## Binaries
+
+The project includes several binary utilities:
+
+- **json-escape**: A utility that reads from stdin and performs JSON string escaping. Supports a test mode (`--test`) to validate that escaped output is valid JSON when wrapped in quotes, and verbose mode (`--verbose`) for detailed logging.
+  - Build: `make build-json-escape`
+  - Run: `make run-json-escape` or `cargo run --bin json-escape`
+  - Usage: `echo "text" | json-escape`
+
 ## Shell Script Compatibility
 
 **MANDATORY**: All shell scripts and generated bash scripts must be compatible with both BSD and GNU variants of command-line tools, and must work with bash 3.2+ (the default on macOS).

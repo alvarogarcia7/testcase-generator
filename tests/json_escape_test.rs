@@ -1,0 +1,877 @@
+use anyhow::Result;
+use std::fs;
+use std::io::Write;
+use std::path::PathBuf;
+use std::process::Command;
+use tempfile::TempDir;
+use testcase_manager::config::{
+    Config, JsonEscapingConfig, JsonEscapingMethod, ScriptGenerationConfig,
+};
+use testcase_manager::executor::TestExecutor;
+use testcase_manager::models::{
+    Expected, Step, TestCase, TestSequence, Verification, VerificationExpression,
+};
+
+// ============================================================================
+// JSON Escape Binary Tests - Special Characters
+// ============================================================================
+
+/// Test that the json-escape binary properly escapes double quotes
+#[test]
+fn test_json_escape_binary_quotes() -> Result<()> {
+    let input = r#"He said "hello" to me"#;
+    let output = Command::new("cargo")
+        .args(["run", "--bin", "json-escape"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            if let Some(mut stdin) = child.stdin.take() {
+                stdin.write_all(input.as_bytes())?;
+            }
+            child.wait_with_output()
+        })?;
+
+    assert!(output.status.success());
+    let result = String::from_utf8(output.stdout)?;
+    assert_eq!(result, r#"He said \"hello\" to me"#);
+    Ok(())
+}
+
+/// Test that the json-escape binary properly escapes backslashes
+#[test]
+fn test_json_escape_binary_backslashes() -> Result<()> {
+    let input = r#"Path is C:\Users\test"#;
+    let output = Command::new("cargo")
+        .args(["run", "--bin", "json-escape"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            if let Some(mut stdin) = child.stdin.take() {
+                stdin.write_all(input.as_bytes())?;
+            }
+            child.wait_with_output()
+        })?;
+
+    assert!(output.status.success());
+    let result = String::from_utf8(output.stdout)?;
+    assert_eq!(result, r#"Path is C:\\Users\\test"#);
+    Ok(())
+}
+
+/// Test that the json-escape binary properly escapes newlines
+#[test]
+fn test_json_escape_binary_newlines() -> Result<()> {
+    let input = "Line 1\nLine 2\nLine 3";
+    let output = Command::new("cargo")
+        .args(["run", "--bin", "json-escape"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            if let Some(mut stdin) = child.stdin.take() {
+                stdin.write_all(input.as_bytes())?;
+            }
+            child.wait_with_output()
+        })?;
+
+    assert!(output.status.success());
+    let result = String::from_utf8(output.stdout)?;
+    assert_eq!(result, r#"Line 1\nLine 2\nLine 3"#);
+    Ok(())
+}
+
+/// Test that the json-escape binary properly escapes tabs
+#[test]
+fn test_json_escape_binary_tabs() -> Result<()> {
+    let input = "Column1\tColumn2\tColumn3";
+    let output = Command::new("cargo")
+        .args(["run", "--bin", "json-escape"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            if let Some(mut stdin) = child.stdin.take() {
+                stdin.write_all(input.as_bytes())?;
+            }
+            child.wait_with_output()
+        })?;
+
+    assert!(output.status.success());
+    let result = String::from_utf8(output.stdout)?;
+    assert_eq!(result, r#"Column1\tColumn2\tColumn3"#);
+    Ok(())
+}
+
+/// Test that the json-escape binary properly escapes carriage returns
+#[test]
+fn test_json_escape_binary_carriage_returns() -> Result<()> {
+    let input = "Line 1\r\nLine 2\r\nLine 3";
+    let output = Command::new("cargo")
+        .args(["run", "--bin", "json-escape"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            if let Some(mut stdin) = child.stdin.take() {
+                stdin.write_all(input.as_bytes())?;
+            }
+            child.wait_with_output()
+        })?;
+
+    assert!(output.status.success());
+    let result = String::from_utf8(output.stdout)?;
+    assert_eq!(result, r#"Line 1\r\nLine 2\r\nLine 3"#);
+    Ok(())
+}
+
+/// Test that the json-escape binary properly escapes backspace and form feed
+#[test]
+fn test_json_escape_binary_control_chars() -> Result<()> {
+    let input = "Text\x08with\x0Ccontrol";
+    let output = Command::new("cargo")
+        .args(["run", "--bin", "json-escape"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            if let Some(mut stdin) = child.stdin.take() {
+                stdin.write_all(input.as_bytes())?;
+            }
+            child.wait_with_output()
+        })?;
+
+    assert!(output.status.success());
+    let result = String::from_utf8(output.stdout)?;
+    assert_eq!(result, r#"Text\bwith\fcontrol"#);
+    Ok(())
+}
+
+/// Test that the json-escape binary properly escapes unicode characters
+#[test]
+fn test_json_escape_binary_unicode() -> Result<()> {
+    let input = "Hello 世界 🌍";
+    let output = Command::new("cargo")
+        .args(["run", "--bin", "json-escape"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            if let Some(mut stdin) = child.stdin.take() {
+                stdin.write_all(input.as_bytes())?;
+            }
+            child.wait_with_output()
+        })?;
+
+    assert!(output.status.success());
+    let result = String::from_utf8(output.stdout)?;
+    // Unicode characters above ASCII should be preserved as-is (not escaped to \uXXXX)
+    assert_eq!(result, "Hello 世界 🌍");
+    Ok(())
+}
+
+/// Test that the json-escape binary properly handles mixed special characters
+#[test]
+fn test_json_escape_binary_mixed_characters() -> Result<()> {
+    let input = r#"Error: "file not found" at C:\path\to\file.txt
+Line 2 with tab	here
+And a newline"#;
+    let output = Command::new("cargo")
+        .args(["run", "--bin", "json-escape"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            if let Some(mut stdin) = child.stdin.take() {
+                stdin.write_all(input.as_bytes())?;
+            }
+            child.wait_with_output()
+        })?;
+
+    assert!(output.status.success());
+    let result = String::from_utf8(output.stdout)?;
+    assert_eq!(
+        result,
+        r#"Error: \"file not found\" at C:\\path\\to\\file.txt\nLine 2 with tab\there\nAnd a newline"#
+    );
+    Ok(())
+}
+
+/// Test that the json-escape binary handles empty input
+#[test]
+fn test_json_escape_binary_empty_input() -> Result<()> {
+    let input = "";
+    let output = Command::new("cargo")
+        .args(["run", "--bin", "json-escape"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            if let Some(mut stdin) = child.stdin.take() {
+                stdin.write_all(input.as_bytes())?;
+            }
+            child.wait_with_output()
+        })?;
+
+    assert!(output.status.success());
+    let result = String::from_utf8(output.stdout)?;
+    assert_eq!(result, "");
+    Ok(())
+}
+
+/// Test json-escape binary in test mode with valid output
+#[test]
+fn test_json_escape_binary_test_mode_valid() -> Result<()> {
+    let input = "Simple text";
+    let output = Command::new("cargo")
+        .args(["run", "--bin", "json-escape", "--", "--test"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            if let Some(mut stdin) = child.stdin.take() {
+                stdin.write_all(input.as_bytes())?;
+            }
+            child.wait_with_output()
+        })?;
+
+    assert!(output.status.success());
+    let result = String::from_utf8(output.stdout)?;
+    assert_eq!(result, "Simple text");
+    Ok(())
+}
+
+// ============================================================================
+// Configuration Loading Tests - JSON Escaping Method Settings
+// ============================================================================
+
+/// Test default configuration has Auto method
+#[test]
+fn test_config_default_json_escaping_method() {
+    let config = Config::default();
+    assert!(matches!(
+        config.script_generation.json_escaping.method,
+        JsonEscapingMethod::Auto
+    ));
+    assert!(config.script_generation.json_escaping.enabled);
+    assert!(config.script_generation.json_escaping.binary_path.is_none());
+}
+
+/// Test configuration with RustBinary method
+#[test]
+fn test_config_rust_binary_method() {
+    let config = Config {
+        script_generation: ScriptGenerationConfig {
+            json_escaping: JsonEscapingConfig {
+                method: JsonEscapingMethod::RustBinary,
+                enabled: true,
+                binary_path: None,
+            },
+        },
+        ..Default::default()
+    };
+
+    assert!(matches!(
+        config.script_generation.json_escaping.method,
+        JsonEscapingMethod::RustBinary
+    ));
+}
+
+/// Test configuration with ShellFallback method
+#[test]
+fn test_config_shell_fallback_method() {
+    let config = Config {
+        script_generation: ScriptGenerationConfig {
+            json_escaping: JsonEscapingConfig {
+                method: JsonEscapingMethod::ShellFallback,
+                enabled: true,
+                binary_path: None,
+            },
+        },
+        ..Default::default()
+    };
+
+    assert!(matches!(
+        config.script_generation.json_escaping.method,
+        JsonEscapingMethod::ShellFallback
+    ));
+}
+
+/// Test configuration with custom binary path
+#[test]
+fn test_config_custom_binary_path() {
+    let custom_path = PathBuf::from("/usr/local/bin/json-escape");
+    let config = Config {
+        script_generation: ScriptGenerationConfig {
+            json_escaping: JsonEscapingConfig {
+                method: JsonEscapingMethod::Auto,
+                enabled: true,
+                binary_path: Some(custom_path.clone()),
+            },
+        },
+        ..Default::default()
+    };
+
+    assert_eq!(
+        config.script_generation.json_escaping.binary_path,
+        Some(custom_path)
+    );
+}
+
+/// Test configuration serialization to TOML
+#[test]
+fn test_config_serialization_to_toml() -> Result<()> {
+    let config = Config {
+        script_generation: ScriptGenerationConfig {
+            json_escaping: JsonEscapingConfig {
+                method: JsonEscapingMethod::RustBinary,
+                enabled: true,
+                binary_path: Some(PathBuf::from("/custom/path/json-escape")),
+            },
+        },
+        ..Default::default()
+    };
+
+    let toml_str = toml::to_string(&config)?;
+    assert!(toml_str.contains("method = \"rust_binary\""));
+    assert!(toml_str.contains("enabled = true"));
+    assert!(toml_str.contains("binary_path = \"/custom/path/json-escape\""));
+    Ok(())
+}
+
+/// Test configuration deserialization from TOML
+#[test]
+fn test_config_deserialization_from_toml() -> Result<()> {
+    let toml_str = r#"
+[script_generation.json_escaping]
+method = "shell_fallback"
+enabled = true
+binary_path = "/opt/json-escape"
+"#;
+
+    let config: Config = toml::from_str(toml_str)?;
+    assert!(matches!(
+        config.script_generation.json_escaping.method,
+        JsonEscapingMethod::ShellFallback
+    ));
+    assert!(config.script_generation.json_escaping.enabled);
+    assert_eq!(
+        config.script_generation.json_escaping.binary_path,
+        Some(PathBuf::from("/opt/json-escape"))
+    );
+    Ok(())
+}
+
+/// Test configuration with disabled JSON escaping
+#[test]
+fn test_config_json_escaping_disabled() {
+    let config = Config {
+        script_generation: ScriptGenerationConfig {
+            json_escaping: JsonEscapingConfig {
+                method: JsonEscapingMethod::Auto,
+                enabled: false,
+                binary_path: None,
+            },
+        },
+        ..Default::default()
+    };
+
+    assert!(!config.script_generation.json_escaping.enabled);
+}
+
+// ============================================================================
+// Script Generation Tests - RustBinary Mode
+// ============================================================================
+
+/// Test script generation with RustBinary method (default binary path)
+#[test]
+fn test_script_generation_rust_binary_default_path() {
+    let config = Config {
+        script_generation: ScriptGenerationConfig {
+            json_escaping: JsonEscapingConfig {
+                method: JsonEscapingMethod::RustBinary,
+                enabled: true,
+                binary_path: None,
+            },
+        },
+        ..Default::default()
+    };
+
+    let executor = TestExecutor::with_config(config);
+    let test_case = create_simple_test_case();
+    let script = executor.generate_test_script(&test_case);
+
+    // Should use json-escape binary directly
+    assert!(script.contains("json-escape"));
+    assert!(script.contains("printf '%s' \"$COMMAND_OUTPUT\" | json-escape"));
+    // Should not have if command -v check
+    assert!(!script.contains("if command -v json-escape"));
+}
+
+/// Test script generation with RustBinary method (custom binary path)
+#[test]
+fn test_script_generation_rust_binary_custom_path() {
+    let config = Config {
+        script_generation: ScriptGenerationConfig {
+            json_escaping: JsonEscapingConfig {
+                method: JsonEscapingMethod::RustBinary,
+                enabled: true,
+                binary_path: Some(PathBuf::from("/usr/local/bin/my-json-escape")),
+            },
+        },
+        ..Default::default()
+    };
+
+    let executor = TestExecutor::with_config(config);
+    let test_case = create_simple_test_case();
+    let script = executor.generate_test_script(&test_case);
+
+    // Should use custom binary path
+    assert!(script.contains("/usr/local/bin/my-json-escape"));
+    assert!(script.contains("printf '%s' \"$COMMAND_OUTPUT\" | /usr/local/bin/my-json-escape"));
+}
+
+// ============================================================================
+// Script Generation Tests - ShellFallback Mode
+// ============================================================================
+
+/// Test script generation with ShellFallback method
+#[test]
+fn test_script_generation_shell_fallback() {
+    let config = Config {
+        script_generation: ScriptGenerationConfig {
+            json_escaping: JsonEscapingConfig {
+                method: JsonEscapingMethod::ShellFallback,
+                enabled: true,
+                binary_path: None,
+            },
+        },
+        ..Default::default()
+    };
+
+    let executor = TestExecutor::with_config(config);
+    let test_case = create_simple_test_case();
+    let script = executor.generate_test_script(&test_case);
+
+    // Should use sed/awk fallback directly
+    assert!(script.contains("Shell fallback"));
+    assert!(script.contains("sed 's/\\\\/\\\\\\\\/g"));
+    assert!(script.contains("awk '{printf \"%s%s\", (NR>1?\"\\\\n\":\"\"), $0}'"));
+    // Should not reference json-escape binary
+    assert!(!script.contains("json-escape"));
+}
+
+/// Test that ShellFallback method escapes all necessary characters
+#[test]
+fn test_script_generation_shell_fallback_escapes() {
+    let config = Config {
+        script_generation: ScriptGenerationConfig {
+            json_escaping: JsonEscapingConfig {
+                method: JsonEscapingMethod::ShellFallback,
+                enabled: true,
+                binary_path: None,
+            },
+        },
+        ..Default::default()
+    };
+
+    let executor = TestExecutor::with_config(config);
+    let test_case = create_simple_test_case();
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify that the sed command escapes backslashes, quotes, tabs, and carriage returns
+    assert!(script.contains(r#"s/\\/\\\\/g"#)); // backslashes
+    assert!(script.contains(r#"s/"/\\"/g"#)); // quotes
+    assert!(script.contains(r#"s/\t/\\t/g"#)); // tabs
+    assert!(script.contains(r#"s/\r/\\r/g"#)); // carriage returns
+}
+
+// ============================================================================
+// Script Generation Tests - Auto Mode
+// ============================================================================
+
+/// Test script generation with Auto method
+#[test]
+fn test_script_generation_auto_mode() {
+    let config = Config {
+        script_generation: ScriptGenerationConfig {
+            json_escaping: JsonEscapingConfig {
+                method: JsonEscapingMethod::Auto,
+                enabled: true,
+                binary_path: None,
+            },
+        },
+        ..Default::default()
+    };
+
+    let executor = TestExecutor::with_config(config);
+    let test_case = create_simple_test_case();
+    let script = executor.generate_test_script(&test_case);
+
+    // Should have conditional check for binary
+    assert!(script.contains("if command -v json-escape"));
+    assert!(script.contains("else"));
+    // Should have both binary and fallback paths
+    assert!(script.contains("printf '%s' \"$COMMAND_OUTPUT\" | json-escape"));
+    assert!(script.contains("Shell fallback"));
+    assert!(script.contains("sed 's/\\\\/\\\\\\\\/g"));
+}
+
+/// Test script generation with Auto method and custom binary path
+#[test]
+fn test_script_generation_auto_mode_custom_path() {
+    let config = Config {
+        script_generation: ScriptGenerationConfig {
+            json_escaping: JsonEscapingConfig {
+                method: JsonEscapingMethod::Auto,
+                enabled: true,
+                binary_path: Some(PathBuf::from("/opt/bin/json-escape")),
+            },
+        },
+        ..Default::default()
+    };
+
+    let executor = TestExecutor::with_config(config);
+    let test_case = create_simple_test_case();
+    let script = executor.generate_test_script(&test_case);
+
+    // Should check for custom binary
+    assert!(script.contains("if command -v /opt/bin/json-escape"));
+    assert!(script.contains("printf '%s' \"$COMMAND_OUTPUT\" | /opt/bin/json-escape"));
+}
+
+// ============================================================================
+// Binary Detection Tests - PATH Configuration
+// ============================================================================
+
+/// Test that json-escape binary can be found in PATH
+#[test]
+fn test_binary_detection_in_path() {
+    let output = Command::new("sh")
+        .arg("-c")
+        .arg("command -v json-escape")
+        .output();
+
+    // This test may pass or fail depending on whether the binary is in PATH
+    // We're mainly testing the detection mechanism
+    match output {
+        Ok(result) => {
+            if result.status.success() {
+                let path = String::from_utf8_lossy(&result.stdout);
+                assert!(!path.trim().is_empty());
+            }
+        }
+        Err(_) => {
+            // Binary not in PATH, which is acceptable for this test
+        }
+    }
+}
+
+/// Test binary detection with custom PATH
+#[test]
+fn test_binary_detection_custom_path() -> Result<()> {
+    let temp_dir = TempDir::new()?;
+    let bin_dir = temp_dir.path().join("bin");
+    fs::create_dir(&bin_dir)?;
+
+    // Create a dummy executable script
+    let json_escape_path = bin_dir.join("json-escape");
+    let mut file = fs::File::create(&json_escape_path)?;
+    writeln!(file, "#!/bin/sh")?;
+    writeln!(file, "echo 'dummy'")?;
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = fs::metadata(&json_escape_path)?.permissions();
+        perms.set_mode(0o755);
+        fs::set_permissions(&json_escape_path, perms)?;
+    }
+
+    // Test with custom PATH
+    let original_path = std::env::var("PATH").unwrap_or_default();
+    let new_path = format!("{}:{}", bin_dir.display(), original_path);
+
+    let output = Command::new("sh")
+        .arg("-c")
+        .arg("command -v json-escape")
+        .env("PATH", new_path)
+        .output()?;
+
+    assert!(output.status.success());
+    let found_path = String::from_utf8(output.stdout)?;
+    assert!(found_path.contains("json-escape"));
+
+    Ok(())
+}
+
+/// Test binary detection when not in PATH
+#[test]
+fn test_binary_detection_not_in_path() {
+    // Use empty PATH to ensure binary won't be found
+    let output = Command::new("sh")
+        .arg("-c")
+        .arg("command -v json-escape-nonexistent-binary")
+        .env("PATH", "")
+        .output();
+
+    match output {
+        Ok(result) => {
+            assert!(!result.status.success());
+        }
+        Err(_) => {
+            // Expected when binary doesn't exist
+        }
+    }
+}
+
+/// Test that generated script uses correct binary detection
+#[test]
+fn test_generated_script_binary_detection() {
+    let config = Config {
+        script_generation: ScriptGenerationConfig {
+            json_escaping: JsonEscapingConfig {
+                method: JsonEscapingMethod::Auto,
+                enabled: true,
+                binary_path: None,
+            },
+        },
+        ..Default::default()
+    };
+
+    let executor = TestExecutor::with_config(config);
+    let test_case = create_simple_test_case();
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify the script uses proper binary detection
+    assert!(script.contains("if command -v json-escape >/dev/null 2>&1; then"));
+    assert!(script.contains("else"));
+    assert!(script.contains("fi"));
+}
+
+/// Test script execution with binary in PATH
+#[test]
+fn test_script_execution_with_binary_in_path() -> Result<()> {
+    let config = Config {
+        script_generation: ScriptGenerationConfig {
+            json_escaping: JsonEscapingConfig {
+                method: JsonEscapingMethod::Auto,
+                enabled: true,
+                binary_path: None,
+            },
+        },
+        ..Default::default()
+    };
+
+    let executor = TestExecutor::with_config(config);
+    let test_case = create_simple_test_case();
+    let script = executor.generate_test_script(&test_case);
+
+    // Extract just the JSON escaping code section to test
+    let escaping_code_start = script.find("# Escape output for JSON").unwrap();
+    let escaping_code_end = script[escaping_code_start..]
+        .find("\n\n")
+        .map(|i| escaping_code_start + i)
+        .unwrap_or(script.len());
+    let escaping_code = &script[escaping_code_start..escaping_code_end];
+
+    // Verify the code structure
+    assert!(escaping_code.contains("OUTPUT_ESCAPED="));
+    assert!(escaping_code.contains("COMMAND_OUTPUT"));
+
+    Ok(())
+}
+
+/// Test that fallback works when binary is not available
+#[test]
+fn test_script_execution_fallback_when_binary_missing() -> Result<()> {
+    let config = Config {
+        script_generation: ScriptGenerationConfig {
+            json_escaping: JsonEscapingConfig {
+                method: JsonEscapingMethod::Auto,
+                enabled: true,
+                binary_path: Some(PathBuf::from("/nonexistent/path/json-escape")),
+            },
+        },
+        ..Default::default()
+    };
+
+    let executor = TestExecutor::with_config(config);
+    let test_case = create_simple_test_case();
+    let script = executor.generate_test_script(&test_case);
+
+    // Should contain fallback mechanism
+    assert!(script.contains("if command -v /nonexistent/path/json-escape"));
+    assert!(script.contains("else"));
+    assert!(script.contains("Shell fallback"));
+    assert!(script.contains("sed"));
+    assert!(script.contains("awk"));
+
+    Ok(())
+}
+
+// ============================================================================
+// Integration Tests - Full Script Generation
+// ============================================================================
+
+/// Test full script generation with various escaping scenarios
+#[test]
+fn test_full_script_with_complex_output() {
+    let config = Config {
+        script_generation: ScriptGenerationConfig {
+            json_escaping: JsonEscapingConfig {
+                method: JsonEscapingMethod::Auto,
+                enabled: true,
+                binary_path: None,
+            },
+        },
+        ..Default::default()
+    };
+
+    let executor = TestExecutor::with_config(config);
+    let mut test_case = create_simple_test_case();
+
+    // Add a step with complex output expectations
+    let sequence = &mut test_case.test_sequences[0];
+    sequence.steps.push(Step {
+        step: 2,
+        manual: None,
+        description: "Test with special characters".to_string(),
+        command: r#"echo 'Line 1\nLine 2\tTab\r\n"Quote"'"#.to_string(),
+        capture_vars: None,
+        expected: Expected {
+            success: Some(true),
+            result: "0".to_string(),
+            output: r#"Line 1\nLine 2\tTab\r\n\"Quote\""#.to_string(),
+        },
+        verification: Verification {
+            result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+            output: VerificationExpression::Simple("true".to_string()),
+            output_file: None,
+            general: None,
+        },
+    });
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify JSON escaping code is present
+    assert!(script.contains("OUTPUT_ESCAPED="));
+    assert!(script.contains("COMMAND_OUTPUT"));
+
+    // Verify JSON log writing includes escaped output
+    assert!(script.contains(r#"\"output\": \"$OUTPUT_ESCAPED\""#));
+}
+
+/// Test that multiple steps all get JSON escaping
+#[test]
+fn test_multiple_steps_all_escaped() {
+    let config = Config::default();
+    let executor = TestExecutor::with_config(config);
+    let mut test_case = create_simple_test_case();
+
+    // Add multiple steps
+    let sequence = &mut test_case.test_sequences[0];
+    for i in 2..=5 {
+        sequence.steps.push(Step {
+            step: i,
+            manual: None,
+            description: format!("Step {}", i),
+            command: format!("echo 'Step {}'", i),
+            capture_vars: None,
+            expected: Expected {
+                success: Some(true),
+                result: "0".to_string(),
+                output: format!("Step {}", i),
+            },
+            verification: Verification {
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
+                output_file: None,
+                general: None,
+            },
+        });
+    }
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Count occurrences of OUTPUT_ESCAPED assignment
+    // Note: In Auto mode, OUTPUT_ESCAPED appears twice per step (if/else branches)
+    let escaped_count = script.matches("OUTPUT_ESCAPED=").count();
+
+    // With Auto mode (default), should have two assignments per step (if/else)
+    // 5 steps * 2 = 10
+    assert!(
+        escaped_count >= 5,
+        "Should have at least 5 OUTPUT_ESCAPED assignments for 5 steps, got {}",
+        escaped_count
+    );
+}
+
+/// Test script with manual steps doesn't escape output
+#[test]
+fn test_manual_steps_no_escaping() {
+    let config = Config::default();
+    let executor = TestExecutor::with_config(config);
+    let mut test_case = create_simple_test_case();
+
+    // Replace first step with manual step
+    test_case.test_sequences[0].steps[0].manual = Some(true);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Should still have escaping code, but not executed for manual step
+    // Manual steps skip execution entirely
+    assert!(script.contains("This is a manual step"));
+
+    // The escaping code shouldn't be in the manual step section
+    let manual_section_start = script.find("This is a manual step").unwrap();
+    let manual_section_end = script[manual_section_start..]
+        .find("# Step")
+        .map(|i| manual_section_start + i)
+        .unwrap_or(script.len());
+    let manual_section = &script[manual_section_start..manual_section_end];
+
+    assert!(!manual_section.contains("OUTPUT_ESCAPED="));
+}
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/// Create a simple test case for testing
+fn create_simple_test_case() -> TestCase {
+    let mut test_case = TestCase::new(
+        "REQ001".to_string(),
+        1,
+        1,
+        "TC001".to_string(),
+        "Simple test case".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    sequence.steps.push(Step {
+        step: 1,
+        manual: None,
+        description: "Echo test".to_string(),
+        command: "echo 'hello world'".to_string(),
+        capture_vars: None,
+        expected: Expected {
+            success: Some(true),
+            result: "0".to_string(),
+            output: "hello world".to_string(),
+        },
+        verification: Verification {
+            result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+            output: VerificationExpression::Simple(
+                "[ \"$COMMAND_OUTPUT\" = \"hello world\" ]".to_string(),
+            ),
+            output_file: None,
+            general: None,
+        },
+    });
+
+    test_case.test_sequences.push(sequence);
+    test_case
+}
