@@ -2485,3 +2485,920 @@ fn test_concurrent_with_shared_output_dir() -> Result<()> {
 
     Ok(())
 }
+
+// ============================================================================
+// JSON Log Validation Tests
+// ============================================================================
+//
+// These tests validate that generated scripts produce JSON logs that:
+// 1. Are parseable by serde_json
+// 2. Have properly escaped special characters in all fields
+// 3. Validate against the execution-log.schema.json schema
+// 4. Can be validated with jq when available
+//
+// To run these tests:
+//   cargo test --all-features -- json_escape_integration_test::test_.*json_log
+//
+// ============================================================================
+
+/// Test that generated scripts produce valid JSON logs parseable by serde_json
+#[test]
+fn test_json_log_serde_parsing() -> Result<()> {
+    let temp_dir = TempDir::new()?;
+
+    let config = Config {
+        script_generation: ScriptGenerationConfig {
+            json_escaping: JsonEscapingConfig {
+                method: JsonEscapingMethod::Auto,
+                enabled: true,
+                binary_path: None,
+            },
+        },
+        ..Default::default()
+    };
+
+    let executor = TestExecutor::with_output_dir_and_config(temp_dir.path(), config);
+
+    // Create test case with special characters
+    let test_case = create_test_case_with_special_characters();
+
+    // Generate and execute script
+    let script = executor.generate_test_script(&test_case);
+    let script_path = temp_dir.path().join("test_json_log.sh");
+    fs::write(&script_path, &script)?;
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = fs::metadata(&script_path)?.permissions();
+        perms.set_mode(0o755);
+        fs::set_permissions(&script_path, perms)?;
+    }
+
+    // Build json-escape binary
+    Command::new("cargo")
+        .args(["build", "--bin", "json-escape"])
+        .output()?;
+
+    // Execute script
+    let output = Command::new("bash")
+        .arg(&script_path)
+        .current_dir(temp_dir.path())
+        .output()?;
+
+    if !output.status.success() {
+        eprintln!("Script stderr: {}", String::from_utf8_lossy(&output.stderr));
+        eprintln!("Script stdout: {}", String::from_utf8_lossy(&output.stdout));
+    }
+
+    // Read and parse JSON log
+    let json_log_path = temp_dir
+        .path()
+        .join(format!("{}_execution_log.json", test_case.id));
+
+    assert!(
+        json_log_path.exists(),
+        "JSON log file should exist: {}",
+        json_log_path.display()
+    );
+
+    let json_content = fs::read_to_string(&json_log_path)?;
+
+    // Validate JSON is parseable by serde_json
+    let parsed: Result<Value, _> = serde_json::from_str(&json_content);
+    assert!(
+        parsed.is_ok(),
+        "JSON should be parseable by serde_json, error: {:?}",
+        parsed.err()
+    );
+
+    let json_value = parsed.unwrap();
+    assert!(json_value.is_array(), "JSON log should be an array");
+
+    let entries = json_value.as_array().unwrap();
+    assert!(!entries.is_empty(), "JSON log should have entries");
+
+    // Verify each entry has required fields
+    for entry in entries {
+        assert!(entry.is_object(), "Each entry should be an object");
+        assert!(
+            entry.get("test_sequence").is_some(),
+            "Entry should have test_sequence field"
+        );
+        assert!(entry.get("step").is_some(), "Entry should have step field");
+        assert!(
+            entry.get("command").is_some(),
+            "Entry should have command field"
+        );
+        assert!(
+            entry.get("exit_code").is_some(),
+            "Entry should have exit_code field"
+        );
+        assert!(
+            entry.get("output").is_some(),
+            "Entry should have output field"
+        );
+    }
+
+    Ok(())
+}
+
+/// Test that special characters in output fields are properly escaped
+#[test]
+fn test_json_log_special_character_escaping() -> Result<()> {
+    let temp_dir = TempDir::new()?;
+
+    let config = Config {
+        script_generation: ScriptGenerationConfig {
+            json_escaping: JsonEscapingConfig {
+                method: JsonEscapingMethod::Auto,
+                enabled: true,
+                binary_path: None,
+            },
+        },
+        ..Default::default()
+    };
+
+    let executor = TestExecutor::with_output_dir_and_config(temp_dir.path(), config);
+
+    // Create test case with comprehensive special characters
+    let mut test_case = TestCase::new(
+        "REQ001".to_string(),
+        1,
+        1,
+        "SPECIAL_CHARS_LOG_TC".to_string(),
+        "Test special character escaping in JSON log".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Special chars".to_string());
+
+    // Test 1: Newlines
+    sequence.steps.push(Step {
+        step: 1,
+        manual: None,
+        description: "Newlines".to_string(),
+        command: r#"printf 'Line1\nLine2\nLine3'"#.to_string(),
+        capture_vars: None,
+        expected: Expected {
+            success: Some(true),
+            result: "0".to_string(),
+            output: "true".to_string(),
+        },
+        verification: Verification {
+            result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+            output: VerificationExpression::Simple("true".to_string()),
+            output_file: None,
+            general: None,
+        },
+        reference: None,
+    });
+
+    // Test 2: Double quotes
+    sequence.steps.push(Step {
+        step: 2,
+        manual: None,
+        description: "Double quotes".to_string(),
+        command: r#"echo 'Test "quotes" here'"#.to_string(),
+        capture_vars: None,
+        expected: Expected {
+            success: Some(true),
+            result: "0".to_string(),
+            output: "true".to_string(),
+        },
+        verification: Verification {
+            result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+            output: VerificationExpression::Simple("true".to_string()),
+            output_file: None,
+            general: None,
+        },
+        reference: None,
+    });
+
+    // Test 3: Backslashes
+    sequence.steps.push(Step {
+        step: 3,
+        manual: None,
+        description: "Backslashes".to_string(),
+        command: r#"echo 'Path: C:\test\file.txt'"#.to_string(),
+        capture_vars: None,
+        expected: Expected {
+            success: Some(true),
+            result: "0".to_string(),
+            output: "true".to_string(),
+        },
+        verification: Verification {
+            result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+            output: VerificationExpression::Simple("true".to_string()),
+            output_file: None,
+            general: None,
+        },
+        reference: None,
+    });
+
+    // Test 4: Tabs
+    sequence.steps.push(Step {
+        step: 4,
+        manual: None,
+        description: "Tabs".to_string(),
+        command: r#"printf 'Col1\tCol2\tCol3'"#.to_string(),
+        capture_vars: None,
+        expected: Expected {
+            success: Some(true),
+            result: "0".to_string(),
+            output: "true".to_string(),
+        },
+        verification: Verification {
+            result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+            output: VerificationExpression::Simple("true".to_string()),
+            output_file: None,
+            general: None,
+        },
+        reference: None,
+    });
+
+    // Test 5: Carriage returns
+    sequence.steps.push(Step {
+        step: 5,
+        manual: None,
+        description: "Carriage returns".to_string(),
+        command: r#"printf 'Text\rOverwrite'"#.to_string(),
+        capture_vars: None,
+        expected: Expected {
+            success: Some(true),
+            result: "0".to_string(),
+            output: "true".to_string(),
+        },
+        verification: Verification {
+            result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+            output: VerificationExpression::Simple("true".to_string()),
+            output_file: None,
+            general: None,
+        },
+        reference: None,
+    });
+
+    // Test 6: Mixed special characters
+    sequence.steps.push(Step {
+        step: 6,
+        manual: None,
+        description: "Mixed special characters".to_string(),
+        command: r#"printf 'Line1\nQuoted: "value"\tTab\rReturn\\Backslash'"#.to_string(),
+        capture_vars: None,
+        expected: Expected {
+            success: Some(true),
+            result: "0".to_string(),
+            output: "true".to_string(),
+        },
+        verification: Verification {
+            result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+            output: VerificationExpression::Simple("true".to_string()),
+            output_file: None,
+            general: None,
+        },
+        reference: None,
+    });
+
+    test_case.test_sequences.push(sequence);
+
+    // Generate and execute script
+    let script = executor.generate_test_script(&test_case);
+    let script_path = temp_dir.path().join("test_escaping.sh");
+    fs::write(&script_path, &script)?;
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = fs::metadata(&script_path)?.permissions();
+        perms.set_mode(0o755);
+        fs::set_permissions(&script_path, perms)?;
+    }
+
+    // Build json-escape binary
+    Command::new("cargo")
+        .args(["build", "--bin", "json-escape"])
+        .output()?;
+
+    // Execute script
+    let output = Command::new("bash")
+        .arg(&script_path)
+        .current_dir(temp_dir.path())
+        .output()?;
+
+    if !output.status.success() {
+        eprintln!("Script stderr: {}", String::from_utf8_lossy(&output.stderr));
+    }
+
+    // Read JSON log
+    let json_log_path = temp_dir
+        .path()
+        .join(format!("{}_execution_log.json", test_case.id));
+
+    assert!(json_log_path.exists(), "JSON log should exist");
+
+    let json_content = fs::read_to_string(&json_log_path)?;
+
+    // Parse JSON - if this succeeds, escaping worked
+    let parsed: Result<Value, _> = serde_json::from_str(&json_content);
+    assert!(
+        parsed.is_ok(),
+        "JSON with special characters should be parseable, error: {:?}",
+        parsed.err()
+    );
+
+    let json_value = parsed.unwrap();
+    let entries = json_value.as_array().unwrap();
+    assert_eq!(entries.len(), 6, "Should have 6 entries");
+
+    // Verify that output fields are strings (not broken by unescaped characters)
+    for entry in entries {
+        assert!(
+            entry["output"].is_string(),
+            "Output field should be a valid string"
+        );
+
+        // Verify no literal unescaped newlines in the JSON string representation
+        // (they should be escaped as \n)
+        let output_json = serde_json::to_string(&entry["output"])?;
+        assert!(
+            !output_json.contains("\n\n"),
+            "JSON output should not contain literal newlines"
+        );
+    }
+
+    Ok(())
+}
+
+/// Test JSON log validation against execution-log.schema.json
+#[test]
+fn test_json_log_schema_validation() -> Result<()> {
+    use jsonschema::JSONSchema;
+
+    let temp_dir = TempDir::new()?;
+
+    let config = Config {
+        script_generation: ScriptGenerationConfig {
+            json_escaping: JsonEscapingConfig {
+                method: JsonEscapingMethod::Auto,
+                enabled: true,
+                binary_path: None,
+            },
+        },
+        ..Default::default()
+    };
+
+    let executor = TestExecutor::with_output_dir_and_config(temp_dir.path(), config);
+    let test_case = create_test_case_with_special_characters();
+
+    // Generate and execute script
+    let script = executor.generate_test_script(&test_case);
+    let script_path = temp_dir.path().join("test_schema.sh");
+    fs::write(&script_path, &script)?;
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = fs::metadata(&script_path)?.permissions();
+        perms.set_mode(0o755);
+        fs::set_permissions(&script_path, perms)?;
+    }
+
+    // Build json-escape binary
+    Command::new("cargo")
+        .args(["build", "--bin", "json-escape"])
+        .output()?;
+
+    // Execute script
+    let output = Command::new("bash")
+        .arg(&script_path)
+        .current_dir(temp_dir.path())
+        .output()?;
+
+    if !output.status.success() {
+        eprintln!("Script stderr: {}", String::from_utf8_lossy(&output.stderr));
+    }
+
+    // Read JSON log
+    let json_log_path = temp_dir
+        .path()
+        .join(format!("{}_execution_log.json", test_case.id));
+
+    assert!(json_log_path.exists(), "JSON log should exist");
+
+    let json_content = fs::read_to_string(&json_log_path)?;
+    let json_value: Value = serde_json::from_str(&json_content)?;
+
+    // Load schema
+    let schema_path = PathBuf::from("schemas/execution-log.schema.json");
+    assert!(
+        schema_path.exists(),
+        "Schema file should exist at {:?}",
+        schema_path
+    );
+
+    let schema_content = fs::read_to_string(&schema_path)?;
+    let schema_json: Value = serde_json::from_str(&schema_content)?;
+
+    // Compile schema
+    let compiled_schema = JSONSchema::compile(&schema_json)
+        .map_err(|e| anyhow::anyhow!("Failed to compile schema: {}", e))?;
+
+    // Validate each entry in the array
+    let entries = json_value.as_array().unwrap();
+    for (idx, entry) in entries.iter().enumerate() {
+        let validation_result = compiled_schema.validate(entry);
+        if let Err(errors) = validation_result {
+            let error_messages: Vec<String> = errors.map(|e| e.to_string()).collect();
+            panic!(
+                "Entry {} failed schema validation:\n{}",
+                idx,
+                error_messages.join("\n")
+            );
+        }
+    }
+
+    Ok(())
+}
+
+/// Test JSON log validation with jq (if available)
+#[test]
+fn test_json_log_jq_validation() -> Result<()> {
+    // Check if jq is available
+    let jq_check = Command::new("which").arg("jq").output();
+
+    if jq_check.is_err() || !jq_check.unwrap().status.success() {
+        println!("Skipping test: jq not available");
+        return Ok(());
+    }
+
+    let temp_dir = TempDir::new()?;
+
+    let config = Config {
+        script_generation: ScriptGenerationConfig {
+            json_escaping: JsonEscapingConfig {
+                method: JsonEscapingMethod::Auto,
+                enabled: true,
+                binary_path: None,
+            },
+        },
+        ..Default::default()
+    };
+
+    let executor = TestExecutor::with_output_dir_and_config(temp_dir.path(), config);
+    let test_case = create_test_case_with_special_characters();
+
+    // Generate and execute script
+    let script = executor.generate_test_script(&test_case);
+    let script_path = temp_dir.path().join("test_jq.sh");
+    fs::write(&script_path, &script)?;
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = fs::metadata(&script_path)?.permissions();
+        perms.set_mode(0o755);
+        fs::set_permissions(&script_path, perms)?;
+    }
+
+    // Build json-escape binary
+    Command::new("cargo")
+        .args(["build", "--bin", "json-escape"])
+        .output()?;
+
+    // Execute script
+    let output = Command::new("bash")
+        .arg(&script_path)
+        .current_dir(temp_dir.path())
+        .output()?;
+
+    if !output.status.success() {
+        eprintln!("Script stderr: {}", String::from_utf8_lossy(&output.stderr));
+    }
+
+    // Read JSON log
+    let json_log_path = temp_dir
+        .path()
+        .join(format!("{}_execution_log.json", test_case.id));
+
+    assert!(json_log_path.exists(), "JSON log should exist");
+
+    // Validate with jq
+    let jq_output = Command::new("jq")
+        .arg("empty")
+        .arg(&json_log_path)
+        .output()?;
+
+    assert!(
+        jq_output.status.success(),
+        "jq validation failed: {}",
+        String::from_utf8_lossy(&jq_output.stderr)
+    );
+
+    // Also test extracting fields with jq
+    let jq_extract = Command::new("jq")
+        .arg(".[].output")
+        .arg(&json_log_path)
+        .output()?;
+
+    assert!(
+        jq_extract.status.success(),
+        "jq field extraction failed: {}",
+        String::from_utf8_lossy(&jq_extract.stderr)
+    );
+
+    // Verify we got output from jq
+    let jq_result = String::from_utf8_lossy(&jq_extract.stdout);
+    assert!(
+        !jq_result.is_empty(),
+        "jq should extract output fields successfully"
+    );
+
+    Ok(())
+}
+
+/// Test JSON log with all escaping methods (RustBinary, ShellFallback, Auto)
+#[test]
+fn test_json_log_all_escaping_methods() -> Result<()> {
+    let methods = vec![
+        ("RustBinary", JsonEscapingMethod::RustBinary),
+        ("ShellFallback", JsonEscapingMethod::ShellFallback),
+        ("Auto", JsonEscapingMethod::Auto),
+    ];
+
+    // Build json-escape binary once
+    Command::new("cargo")
+        .args(["build", "--bin", "json-escape"])
+        .output()?;
+
+    for (method_name, method) in methods {
+        let temp_dir = TempDir::new()?;
+
+        let config = Config {
+            script_generation: ScriptGenerationConfig {
+                json_escaping: JsonEscapingConfig {
+                    method,
+                    enabled: true,
+                    binary_path: None,
+                },
+            },
+            ..Default::default()
+        };
+
+        let executor = TestExecutor::with_output_dir_and_config(temp_dir.path(), config);
+        let test_case = create_test_case_with_special_characters();
+
+        // Generate and execute script
+        let script = executor.generate_test_script(&test_case);
+        let script_path = temp_dir.path().join(format!("test_{}.sh", method_name));
+        fs::write(&script_path, &script)?;
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = fs::metadata(&script_path)?.permissions();
+            perms.set_mode(0o755);
+            fs::set_permissions(&script_path, perms)?;
+        }
+
+        // Execute script
+        let output = Command::new("bash")
+            .arg(&script_path)
+            .current_dir(temp_dir.path())
+            .output()?;
+
+        if !output.status.success() {
+            eprintln!(
+                "[{}] Script stderr: {}",
+                method_name,
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
+
+        // Read and validate JSON log
+        let json_log_path = temp_dir
+            .path()
+            .join(format!("{}_execution_log.json", test_case.id));
+
+        assert!(
+            json_log_path.exists(),
+            "[{}] JSON log should exist",
+            method_name
+        );
+
+        let json_content = fs::read_to_string(&json_log_path)?;
+        let parsed: Result<Value, _> = serde_json::from_str(&json_content);
+
+        assert!(
+            parsed.is_ok(),
+            "[{}] JSON should be valid, error: {:?}",
+            method_name,
+            parsed.err()
+        );
+
+        let json_value = parsed.unwrap();
+        let entries = json_value.as_array().unwrap();
+
+        assert!(
+            !entries.is_empty(),
+            "[{}] JSON log should have entries",
+            method_name
+        );
+
+        // Verify each entry has required fields
+        for entry in entries {
+            assert!(
+                entry.get("test_sequence").is_some(),
+                "[{}] Entry should have test_sequence",
+                method_name
+            );
+            assert!(
+                entry.get("step").is_some(),
+                "[{}] Entry should have step",
+                method_name
+            );
+            assert!(
+                entry.get("command").is_some(),
+                "[{}] Entry should have command",
+                method_name
+            );
+            assert!(
+                entry.get("exit_code").is_some(),
+                "[{}] Entry should have exit_code",
+                method_name
+            );
+            assert!(
+                entry.get("output").is_some(),
+                "[{}] Entry should have output",
+                method_name
+            );
+            assert!(
+                entry["output"].is_string(),
+                "[{}] Output should be a string",
+                method_name
+            );
+        }
+    }
+
+    Ok(())
+}
+
+/// Test JSON log with edge case characters that are challenging to escape
+#[test]
+fn test_json_log_edge_case_characters() -> Result<()> {
+    let temp_dir = TempDir::new()?;
+
+    let config = Config {
+        script_generation: ScriptGenerationConfig {
+            json_escaping: JsonEscapingConfig {
+                method: JsonEscapingMethod::Auto,
+                enabled: true,
+                binary_path: None,
+            },
+        },
+        ..Default::default()
+    };
+
+    let executor = TestExecutor::with_output_dir_and_config(temp_dir.path(), config);
+
+    // Create test case with edge case characters
+    let mut test_case = TestCase::new(
+        "REQ001".to_string(),
+        1,
+        1,
+        "EDGE_CASE_TC".to_string(),
+        "Test edge case character escaping".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Edge cases".to_string());
+
+    // Test: Unicode characters
+    sequence.steps.push(Step {
+        step: 1,
+        manual: None,
+        description: "Unicode characters".to_string(),
+        command: r#"echo 'Unicode: 你好 мир 🎉'"#.to_string(),
+        capture_vars: None,
+        expected: Expected {
+            success: Some(true),
+            result: "0".to_string(),
+            output: "true".to_string(),
+        },
+        verification: Verification {
+            result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+            output: VerificationExpression::Simple("true".to_string()),
+            output_file: None,
+            general: None,
+        },
+        reference: None,
+    });
+
+    // Test: Multiple consecutive special characters
+    sequence.steps.push(Step {
+        step: 2,
+        manual: None,
+        description: "Multiple special chars".to_string(),
+        command: r#"echo '"""\\\\"'"#.to_string(),
+        capture_vars: None,
+        expected: Expected {
+            success: Some(true),
+            result: "0".to_string(),
+            output: "true".to_string(),
+        },
+        verification: Verification {
+            result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+            output: VerificationExpression::Simple("true".to_string()),
+            output_file: None,
+            general: None,
+        },
+        reference: None,
+    });
+
+    // Test: Empty lines and whitespace
+    sequence.steps.push(Step {
+        step: 3,
+        manual: None,
+        description: "Empty lines and whitespace".to_string(),
+        command: r#"printf '\n\n   \n\t\t\n'"#.to_string(),
+        capture_vars: None,
+        expected: Expected {
+            success: Some(true),
+            result: "0".to_string(),
+            output: "true".to_string(),
+        },
+        verification: Verification {
+            result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+            output: VerificationExpression::Simple("true".to_string()),
+            output_file: None,
+            general: None,
+        },
+        reference: None,
+    });
+
+    test_case.test_sequences.push(sequence);
+
+    // Generate and execute script
+    let script = executor.generate_test_script(&test_case);
+    let script_path = temp_dir.path().join("test_edge_cases.sh");
+    fs::write(&script_path, &script)?;
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = fs::metadata(&script_path)?.permissions();
+        perms.set_mode(0o755);
+        fs::set_permissions(&script_path, perms)?;
+    }
+
+    // Build json-escape binary
+    Command::new("cargo")
+        .args(["build", "--bin", "json-escape"])
+        .output()?;
+
+    // Execute script
+    let output = Command::new("bash")
+        .arg(&script_path)
+        .current_dir(temp_dir.path())
+        .output()?;
+
+    if !output.status.success() {
+        eprintln!("Script stderr: {}", String::from_utf8_lossy(&output.stderr));
+    }
+
+    // Read JSON log
+    let json_log_path = temp_dir
+        .path()
+        .join(format!("{}_execution_log.json", test_case.id));
+
+    assert!(json_log_path.exists(), "JSON log should exist");
+
+    let json_content = fs::read_to_string(&json_log_path)?;
+
+    // Parse JSON - if this succeeds, edge case escaping worked
+    let parsed: Result<Value, _> = serde_json::from_str(&json_content);
+    assert!(
+        parsed.is_ok(),
+        "JSON with edge case characters should be parseable, error: {:?}",
+        parsed.err()
+    );
+
+    let json_value = parsed.unwrap();
+    let entries = json_value.as_array().unwrap();
+    assert_eq!(entries.len(), 3, "Should have 3 entries");
+
+    // Verify all entries are valid
+    for entry in entries {
+        assert!(entry["output"].is_string(), "Output should be a string");
+    }
+
+    Ok(())
+}
+
+/// Test JSON log validation with comprehensive special character matrix
+#[test]
+fn test_json_log_comprehensive_escaping_matrix() -> Result<()> {
+    let temp_dir = TempDir::new()?;
+
+    let config = Config {
+        script_generation: ScriptGenerationConfig {
+            json_escaping: JsonEscapingConfig {
+                method: JsonEscapingMethod::Auto,
+                enabled: true,
+                binary_path: None,
+            },
+        },
+        ..Default::default()
+    };
+
+    let executor = TestExecutor::with_output_dir_and_config(temp_dir.path(), config);
+
+    // Create comprehensive test matrix
+    let test_cases = [
+        ("newline", r#"printf 'A\nB'"#),
+        ("tab", r#"printf 'A\tB'"#),
+        ("carriage_return", r#"printf 'A\rB'"#),
+        ("backslash", r#"echo 'A\B'"#),
+        ("double_quote", r#"echo 'A"B'"#),
+        ("single_quote", r#"echo "A'B"#),
+        ("multiple_newlines", r#"printf 'A\n\nB'"#),
+        ("mixed", r#"printf 'A\nB\tC"D\\E'"#),
+    ];
+
+    for (idx, (desc, command)) in test_cases.iter().enumerate() {
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            (idx + 1) as i64,
+            format!("MATRIX_TC_{}", idx),
+            format!("Test {}", desc),
+        );
+
+        let mut sequence = TestSequence::new(1, "Seq1".to_string(), desc.to_string());
+
+        sequence.steps.push(Step {
+            step: 1,
+            manual: None,
+            description: desc.to_string(),
+            command: command.to_string(),
+            capture_vars: None,
+            expected: Expected {
+                success: Some(true),
+                result: "0".to_string(),
+                output: "true".to_string(),
+            },
+            verification: Verification {
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
+                output_file: None,
+                general: None,
+            },
+            reference: None,
+        });
+
+        test_case.test_sequences.push(sequence);
+
+        // Generate and execute script
+        let script = executor.generate_test_script(&test_case);
+        let script_path = temp_dir.path().join(format!("test_{}.sh", desc));
+        fs::write(&script_path, &script)?;
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = fs::metadata(&script_path)?.permissions();
+            perms.set_mode(0o755);
+            fs::set_permissions(&script_path, perms)?;
+        }
+
+        // Execute script
+        let output = Command::new("bash")
+            .arg(&script_path)
+            .current_dir(temp_dir.path())
+            .output()?;
+
+        if !output.status.success() {
+            eprintln!(
+                "[{}] Script stderr: {}",
+                desc,
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
+
+        // Read and validate JSON log
+        let json_log_path = temp_dir
+            .path()
+            .join(format!("{}_execution_log.json", test_case.id));
+
+        assert!(json_log_path.exists(), "[{}] JSON log should exist", desc);
+
+        let json_content = fs::read_to_string(&json_log_path)?;
+        let parsed: Result<Value, _> = serde_json::from_str(&json_content);
+
+        assert!(
+            parsed.is_ok(),
+            "[{}] JSON should be valid, error: {:?}",
+            desc,
+            parsed.err()
+        );
+    }
+
+    Ok(())
+}
