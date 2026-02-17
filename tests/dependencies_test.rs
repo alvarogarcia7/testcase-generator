@@ -1757,3 +1757,720 @@ fn test_dependency_validator_cross_file_validation_with_100_test_cases() {
         duration.as_millis()
     );
 }
+
+// ===== validate-yaml Integration Tests =====
+
+use std::process::Command;
+
+fn get_validate_yaml_binary_path() -> PathBuf {
+    let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    path.push("target");
+    path.push("debug");
+    path.push("validate-yaml");
+    path
+}
+
+fn get_schema_path() -> PathBuf {
+    let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    path.push("schemas");
+    path.push("test-case.schema.json");
+    path
+}
+
+#[test]
+fn test_validate_yaml_with_cross_file_dependencies_success() {
+    let temp_dir = tempfile::tempdir().expect("Failed to create temp directory");
+    let temp_path = temp_dir.path();
+
+    let yaml1_path = temp_path.join("tc1.yaml");
+    let yaml1_content = r#"
+requirement: "REQ001"
+item: 1
+tc: 1
+id: "TC001"
+description: "Test case 1 - defines references"
+general_initial_conditions:
+  system:
+    - "System is ready"
+initial_conditions:
+  device1:
+    - "Device ready"
+test_sequences:
+  - id: 1
+    ref: "ref-seq-001"
+    name: "Sequence 1"
+    description: "Defines ref-seq-001"
+    initial_conditions:
+      device1:
+        - "Ready"
+    steps:
+      - step: 1
+        ref: "ref-step-001"
+        description: "Step 1"
+        command: "echo test"
+        expected:
+          result: "0"
+          output: "test"
+"#;
+    fs::write(&yaml1_path, yaml1_content).expect("Failed to write yaml1");
+
+    let yaml2_path = temp_path.join("tc2.yaml");
+    let yaml2_content = r#"
+requirement: "REQ002"
+item: 1
+tc: 1
+id: "TC002"
+description: "Test case 2 - references TC001"
+general_initial_conditions:
+  include:
+    - id: "TC001"
+  device1:
+    - "Device ready"
+initial_conditions:
+  device1:
+    - ref: "ref-seq-001"
+    - ref: "ref-step-001"
+test_sequences:
+  - id: 1
+    name: "Sequence 1"
+    description: "Uses refs from TC001"
+    initial_conditions:
+      device1:
+        - "Ready"
+    steps:
+      - step: 1
+        description: "Step 1"
+        command: "echo test"
+        expected:
+          result: "0"
+          output: "test"
+"#;
+    fs::write(&yaml2_path, yaml2_content).expect("Failed to write yaml2");
+
+    let binary_path = get_validate_yaml_binary_path();
+    let schema_path = get_schema_path();
+
+    let output = Command::new(&binary_path)
+        .arg(&yaml1_path)
+        .arg(&yaml2_path)
+        .arg("--schema")
+        .arg(&schema_path)
+        .output()
+        .expect("Failed to execute validate-yaml");
+
+    assert!(
+        output.status.success(),
+        "validate-yaml should succeed when all dependencies are resolved.\nstdout: {}\nstderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("tc1.yaml") && stdout.contains("tc2.yaml"),
+        "Output should mention both files"
+    );
+}
+
+#[test]
+fn test_validate_yaml_with_unresolved_refs_failure() {
+    let temp_dir = tempfile::tempdir().expect("Failed to create temp directory");
+    let temp_path = temp_dir.path();
+
+    let yaml1_path = temp_path.join("tc1.yaml");
+    let yaml1_content = r#"
+requirement: "REQ001"
+item: 1
+tc: 1
+id: "TC001"
+description: "Test case 1"
+general_initial_conditions:
+  system:
+    - "System is ready"
+initial_conditions:
+  device1:
+    - "Device ready"
+test_sequences:
+  - id: 1
+    name: "Sequence 1"
+    description: "No refs defined"
+    initial_conditions:
+      device1:
+        - "Ready"
+    steps:
+      - step: 1
+        description: "Step 1"
+        command: "echo test"
+        expected:
+          result: "0"
+          output: "test"
+"#;
+    fs::write(&yaml1_path, yaml1_content).expect("Failed to write yaml1");
+
+    let yaml2_path = temp_path.join("tc2.yaml");
+    let yaml2_content = r#"
+requirement: "REQ002"
+item: 1
+tc: 1
+id: "TC002"
+description: "Test case 2 - references undefined refs"
+general_initial_conditions:
+  device1:
+    - "Device ready"
+initial_conditions:
+  device1:
+    - ref: "undefined-ref-123"
+    - ref: "another-undefined-ref"
+test_sequences:
+  - id: 1
+    name: "Sequence 1"
+    description: "Uses undefined refs"
+    initial_conditions:
+      device1:
+        - "Ready"
+    steps:
+      - step: 1
+        description: "Step 1"
+        command: "echo test"
+        expected:
+          result: "0"
+          output: "test"
+"#;
+    fs::write(&yaml2_path, yaml2_content).expect("Failed to write yaml2");
+
+    let binary_path = get_validate_yaml_binary_path();
+    let schema_path = get_schema_path();
+
+    let output = Command::new(&binary_path)
+        .arg(&yaml1_path)
+        .arg(&yaml2_path)
+        .arg("--schema")
+        .arg(&schema_path)
+        .output()
+        .expect("Failed to execute validate-yaml");
+
+    assert!(
+        !output.status.success(),
+        "validate-yaml should fail when references are unresolved"
+    );
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("undefined-ref-123"),
+        "Output should mention the unresolved ref 'undefined-ref-123'"
+    );
+    assert!(
+        stdout.contains("another-undefined-ref"),
+        "Output should mention the unresolved ref 'another-undefined-ref'"
+    );
+    assert!(
+        stdout.contains("Unresolved reference"),
+        "Output should indicate these are unresolved references"
+    );
+}
+
+#[test]
+fn test_validate_yaml_with_unresolved_test_case_id_failure() {
+    let temp_dir = tempfile::tempdir().expect("Failed to create temp directory");
+    let temp_path = temp_dir.path();
+
+    let yaml1_path = temp_path.join("tc1.yaml");
+    let yaml1_content = r#"
+requirement: "REQ001"
+item: 1
+tc: 1
+id: "TC001"
+description: "Test case 1"
+general_initial_conditions:
+  system:
+    - "System is ready"
+initial_conditions:
+  device1:
+    - "Device ready"
+test_sequences:
+  - id: 1
+    name: "Sequence 1"
+    description: "Sequence"
+    initial_conditions:
+      device1:
+        - "Ready"
+    steps:
+      - step: 1
+        description: "Step 1"
+        command: "echo test"
+        expected:
+          result: "0"
+          output: "test"
+"#;
+    fs::write(&yaml1_path, yaml1_content).expect("Failed to write yaml1");
+
+    let yaml2_path = temp_path.join("tc2.yaml");
+    let yaml2_content = r#"
+requirement: "REQ002"
+item: 1
+tc: 1
+id: "TC002"
+description: "Test case 2 - references undefined test case"
+general_initial_conditions:
+  include:
+    - id: "TC_UNDEFINED_999"
+  device1:
+    - "Device ready"
+initial_conditions:
+  include:
+    - id: "TC_ANOTHER_UNDEFINED"
+  device1:
+    - "Device ready"
+test_sequences:
+  - id: 1
+    name: "Sequence 1"
+    description: "Sequence"
+    initial_conditions:
+      device1:
+        - "Ready"
+    steps:
+      - step: 1
+        description: "Step 1"
+        command: "echo test"
+        expected:
+          result: "0"
+          output: "test"
+"#;
+    fs::write(&yaml2_path, yaml2_content).expect("Failed to write yaml2");
+
+    let binary_path = get_validate_yaml_binary_path();
+    let schema_path = get_schema_path();
+
+    let output = Command::new(&binary_path)
+        .arg(&yaml1_path)
+        .arg(&yaml2_path)
+        .arg("--schema")
+        .arg(&schema_path)
+        .output()
+        .expect("Failed to execute validate-yaml");
+
+    assert!(
+        !output.status.success(),
+        "validate-yaml should fail when test case IDs are unresolved"
+    );
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("TC_UNDEFINED_999"),
+        "Output should mention the unresolved test case ID 'TC_UNDEFINED_999'"
+    );
+    assert!(
+        stdout.contains("TC_ANOTHER_UNDEFINED"),
+        "Output should mention the unresolved test case ID 'TC_ANOTHER_UNDEFINED'"
+    );
+    assert!(
+        stdout.contains("Unresolved test case ID"),
+        "Output should indicate these are unresolved test case IDs"
+    );
+}
+
+#[test]
+fn test_validate_yaml_with_mixed_errors() {
+    let temp_dir = tempfile::tempdir().expect("Failed to create temp directory");
+    let temp_path = temp_dir.path();
+
+    let yaml1_path = temp_path.join("tc1.yaml");
+    let yaml1_content = r#"
+requirement: "REQ001"
+item: 1
+tc: 1
+id: "TC001"
+description: "Test case 1 - defines one ref"
+general_initial_conditions:
+  system:
+    - "System is ready"
+initial_conditions:
+  device1:
+    - "Device ready"
+test_sequences:
+  - id: 1
+    ref: "valid-ref-001"
+    name: "Sequence 1"
+    description: "Defines only one ref"
+    initial_conditions:
+      device1:
+        - "Ready"
+    steps:
+      - step: 1
+        description: "Step 1"
+        command: "echo test"
+        expected:
+          result: "0"
+          output: "test"
+"#;
+    fs::write(&yaml1_path, yaml1_content).expect("Failed to write yaml1");
+
+    let yaml2_path = temp_path.join("tc2.yaml");
+    let yaml2_content = r#"
+requirement: "REQ002"
+item: 1
+tc: 1
+id: "TC002"
+description: "Test case 2 - has both valid and invalid references"
+general_initial_conditions:
+  include:
+    - id: "TC001"
+    - id: "TC_NONEXISTENT"
+  device1:
+    - "Device ready"
+initial_conditions:
+  device1:
+    - ref: "valid-ref-001"
+    - ref: "invalid-ref-999"
+test_sequences:
+  - id: 1
+    name: "Sequence 1"
+    description: "Mixed refs"
+    initial_conditions:
+      device1:
+        - "Ready"
+    steps:
+      - step: 1
+        description: "Step 1"
+        command: "echo test"
+        expected:
+          result: "0"
+          output: "test"
+"#;
+    fs::write(&yaml2_path, yaml2_content).expect("Failed to write yaml2");
+
+    let binary_path = get_validate_yaml_binary_path();
+    let schema_path = get_schema_path();
+
+    let output = Command::new(&binary_path)
+        .arg(&yaml1_path)
+        .arg(&yaml2_path)
+        .arg("--schema")
+        .arg(&schema_path)
+        .output()
+        .expect("Failed to execute validate-yaml");
+
+    assert!(
+        !output.status.success(),
+        "validate-yaml should fail when some references are unresolved"
+    );
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("TC_NONEXISTENT"),
+        "Output should mention the unresolved test case ID"
+    );
+    assert!(
+        stdout.contains("invalid-ref-999"),
+        "Output should mention the unresolved ref"
+    );
+    assert!(
+        !stdout.contains("valid-ref-001") || !stdout.contains("Unresolved"),
+        "Valid references should not be reported as errors"
+    );
+}
+
+#[test]
+fn test_validate_yaml_single_file_no_dependency_validation() {
+    let temp_dir = tempfile::tempdir().expect("Failed to create temp directory");
+    let temp_path = temp_dir.path();
+
+    let yaml1_path = temp_path.join("tc1.yaml");
+    let yaml1_content = r#"
+requirement: "REQ001"
+item: 1
+tc: 1
+id: "TC001"
+description: "Single test case"
+general_initial_conditions:
+  system:
+    - "System is ready"
+initial_conditions:
+  device1:
+    - "Device ready"
+test_sequences:
+  - id: 1
+    name: "Sequence 1"
+    description: "Simple sequence"
+    initial_conditions:
+      device1:
+        - "Ready"
+    steps:
+      - step: 1
+        description: "Step 1"
+        command: "echo test"
+        expected:
+          result: "0"
+          output: "test"
+"#;
+    fs::write(&yaml1_path, yaml1_content).expect("Failed to write yaml1");
+
+    let binary_path = get_validate_yaml_binary_path();
+    let schema_path = get_schema_path();
+
+    let output = Command::new(&binary_path)
+        .arg(&yaml1_path)
+        .arg("--schema")
+        .arg(&schema_path)
+        .output()
+        .expect("Failed to execute validate-yaml");
+
+    assert!(
+        output.status.success(),
+        "validate-yaml should succeed for single valid file.\nstdout: {}\nstderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("tc1.yaml"),
+        "Output should mention the validated file"
+    );
+}
+
+#[test]
+fn test_validate_yaml_three_files_with_chained_dependencies() {
+    let temp_dir = tempfile::tempdir().expect("Failed to create temp directory");
+    let temp_path = temp_dir.path();
+
+    let yaml1_path = temp_path.join("tc1.yaml");
+    let yaml1_content = r#"
+requirement: "REQ001"
+item: 1
+tc: 1
+id: "TC001"
+description: "Base test case"
+general_initial_conditions:
+  system:
+    - "System is ready"
+initial_conditions:
+  device1:
+    - "Device ready"
+test_sequences:
+  - id: 1
+    ref: "ref-base"
+    name: "Base Sequence"
+    description: "Base sequence"
+    initial_conditions:
+      device1:
+        - "Ready"
+    steps:
+      - step: 1
+        ref: "ref-base-step"
+        description: "Base step"
+        command: "echo base"
+        expected:
+          result: "0"
+          output: "base"
+"#;
+    fs::write(&yaml1_path, yaml1_content).expect("Failed to write yaml1");
+
+    let yaml2_path = temp_path.join("tc2.yaml");
+    let yaml2_content = r#"
+requirement: "REQ002"
+item: 1
+tc: 1
+id: "TC002"
+description: "Middle test case - uses TC001, provides new refs"
+general_initial_conditions:
+  include:
+    - id: "TC001"
+  device1:
+    - ref: "ref-base"
+initial_conditions:
+  device1:
+    - ref: "ref-base-step"
+test_sequences:
+  - id: 1
+    ref: "ref-middle"
+    name: "Middle Sequence"
+    description: "Middle sequence"
+    initial_conditions:
+      device1:
+        - "Ready"
+    steps:
+      - step: 1
+        ref: "ref-middle-step"
+        description: "Middle step"
+        command: "echo middle"
+        expected:
+          result: "0"
+          output: "middle"
+"#;
+    fs::write(&yaml2_path, yaml2_content).expect("Failed to write yaml2");
+
+    let yaml3_path = temp_path.join("tc3.yaml");
+    let yaml3_content = r#"
+requirement: "REQ003"
+item: 1
+tc: 1
+id: "TC003"
+description: "Final test case - uses TC002 and all refs"
+general_initial_conditions:
+  include:
+    - id: "TC002"
+  device1:
+    - ref: "ref-middle"
+initial_conditions:
+  device1:
+    - ref: "ref-base"
+    - ref: "ref-base-step"
+    - ref: "ref-middle-step"
+test_sequences:
+  - id: 1
+    name: "Final Sequence"
+    description: "Final sequence"
+    initial_conditions:
+      device1:
+        - "Ready"
+    steps:
+      - step: 1
+        description: "Final step"
+        command: "echo final"
+        expected:
+          result: "0"
+          output: "final"
+"#;
+    fs::write(&yaml3_path, yaml3_content).expect("Failed to write yaml3");
+
+    let binary_path = get_validate_yaml_binary_path();
+    let schema_path = get_schema_path();
+
+    let output = Command::new(&binary_path)
+        .arg(&yaml1_path)
+        .arg(&yaml2_path)
+        .arg(&yaml3_path)
+        .arg("--schema")
+        .arg(&schema_path)
+        .output()
+        .expect("Failed to execute validate-yaml");
+
+    assert!(
+        output.status.success(),
+        "validate-yaml should succeed with chained dependencies.\nstdout: {}\nstderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("tc1.yaml") && stdout.contains("tc2.yaml") && stdout.contains("tc3.yaml"),
+        "Output should mention all three files"
+    );
+}
+
+#[test]
+fn test_validate_yaml_error_format_includes_file_location() {
+    let temp_dir = tempfile::tempdir().expect("Failed to create temp directory");
+    let temp_path = temp_dir.path();
+
+    let yaml1_path = temp_path.join("first.yaml");
+    let yaml1_content = r#"
+requirement: "REQ001"
+item: 1
+tc: 1
+id: "TC001"
+description: "First test case"
+general_initial_conditions:
+  system:
+    - "System is ready"
+initial_conditions:
+  device1:
+    - "Device ready"
+test_sequences:
+  - id: 1
+    name: "Sequence"
+    description: "Sequence"
+    initial_conditions:
+      device1:
+        - "Ready"
+    steps:
+      - step: 1
+        description: "Step"
+        command: "echo test"
+        expected:
+          result: "0"
+          output: "test"
+"#;
+    fs::write(&yaml1_path, yaml1_content).expect("Failed to write yaml1");
+
+    let yaml2_path = temp_path.join("second.yaml");
+    let yaml2_content = r#"
+requirement: "REQ002"
+item: 1
+tc: 1
+id: "TC002"
+description: "Second test case with error"
+general_initial_conditions:
+  device1:
+    - ref: "undefined-in-general"
+initial_conditions:
+  include:
+    - id: "UNDEFINED_TC_ID"
+  device2:
+    - ref: "undefined-in-initial"
+test_sequences:
+  - id: 1
+    name: "Sequence"
+    description: "Sequence"
+    initial_conditions:
+      device3:
+        - ref: "undefined-in-sequence"
+    steps:
+      - step: 1
+        description: "Step"
+        command: "echo test"
+        expected:
+          result: "0"
+          output: "test"
+"#;
+    fs::write(&yaml2_path, yaml2_content).expect("Failed to write yaml2");
+
+    let binary_path = get_validate_yaml_binary_path();
+    let schema_path = get_schema_path();
+
+    let output = Command::new(&binary_path)
+        .arg(&yaml1_path)
+        .arg(&yaml2_path)
+        .arg("--schema")
+        .arg(&schema_path)
+        .output()
+        .expect("Failed to execute validate-yaml");
+
+    assert!(
+        !output.status.success(),
+        "validate-yaml should fail with multiple errors"
+    );
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    assert!(
+        stdout.contains("second.yaml") && stdout.contains("general_initial_conditions"),
+        "Output should include file name and location for general_initial_conditions error"
+    );
+    assert!(
+        stdout.contains("undefined-in-general"),
+        "Output should mention the undefined ref in general_initial_conditions"
+    );
+    assert!(
+        stdout.contains("initial_conditions"),
+        "Output should include location for initial_conditions error"
+    );
+    assert!(
+        stdout.contains("UNDEFINED_TC_ID"),
+        "Output should mention the undefined test case ID"
+    );
+    assert!(
+        stdout.contains("undefined-in-initial"),
+        "Output should mention the undefined ref in initial_conditions"
+    );
+    assert!(
+        stdout.contains("test_sequences") && stdout.contains("initial_conditions"),
+        "Output should include location for test sequence initial_conditions error"
+    );
+    assert!(
+        stdout.contains("undefined-in-sequence"),
+        "Output should mention the undefined ref in sequence initial_conditions"
+    );
+}
