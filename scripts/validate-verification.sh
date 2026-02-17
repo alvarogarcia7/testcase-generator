@@ -15,7 +15,7 @@
 #
 # CONFIGURATION:
 #   VERIFICATION_SCHEMA  Environment variable to specify the schema file
-#                        (default: data/verification_schema.json)
+#                        (default: schemas/verification-result.schema.json)
 #   VALIDATE_JSON_BIN    Path to validate-json binary (default: auto-detected)
 #
 # EXIT CODES:
@@ -38,7 +38,7 @@
 set -euo pipefail
 
 # Configuration: Schema file to validate against
-VERIFICATION_SCHEMA="${VERIFICATION_SCHEMA:-data/verification_schema.json}"
+VERIFICATION_SCHEMA="${VERIFICATION_SCHEMA:-schemas/verification-result.schema.json}"
 
 # Auto-detect validate-json binary location
 if [[ -n "${VALIDATE_JSON_BIN:-}" ]]; then
