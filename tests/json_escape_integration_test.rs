@@ -379,6 +379,7 @@ fn test_script_execution_complex_special_characters() -> Result<()> {
             output_file: None,
             general: None,
         },
+        reference: None,
     });
 
     // Step with quotes
@@ -399,6 +400,7 @@ fn test_script_execution_complex_special_characters() -> Result<()> {
             output_file: None,
             general: None,
         },
+        reference: None,
     });
 
     // Step with mixed special characters
@@ -419,6 +421,7 @@ fn test_script_execution_complex_special_characters() -> Result<()> {
             output_file: None,
             general: None,
         },
+        reference: None,
     });
 
     test_case.test_sequences.push(sequence);
@@ -580,6 +583,7 @@ fn create_test_case_with_special_characters() -> TestCase {
             output_file: None,
             general: None,
         },
+        reference: None,
     });
 
     // Step with tabs
@@ -600,6 +604,7 @@ fn create_test_case_with_special_characters() -> TestCase {
             output_file: None,
             general: None,
         },
+        reference: None,
     });
 
     // Step with quotes
@@ -620,6 +625,7 @@ fn create_test_case_with_special_characters() -> TestCase {
             output_file: None,
             general: None,
         },
+        reference: None,
     });
 
     // Step with backslashes
@@ -640,6 +646,7 @@ fn create_test_case_with_special_characters() -> TestCase {
             output_file: None,
             general: None,
         },
+        reference: None,
     });
 
     test_case.test_sequences.push(sequence);
@@ -675,6 +682,7 @@ fn create_simple_test_case() -> TestCase {
             output_file: None,
             general: None,
         },
+        reference: None,
     });
 
     test_case.test_sequences.push(sequence);

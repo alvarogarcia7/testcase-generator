@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use testcase_manager::executor::TestExecutor;
 use testcase_manager::models::{
-    Expected, Step, TestCase, TestSequence, TestStepExecutionEntry, Verification,
-    VerificationExpression,
+    Expected, InitialConditionItem, InitialConditions, Step, TestCase, TestSequence,
+    TestStepExecutionEntry, Verification, VerificationExpression,
 };
 
 // Helper function to create a test step
@@ -33,6 +33,7 @@ fn create_test_step(
             output_file: None,
             general: None,
         },
+        reference: None,
     }
 }
 
@@ -369,21 +370,39 @@ fn test_initial_conditions_in_script() {
         "Conditions test".to_string(),
     );
 
-    let mut general_conditions = HashMap::new();
-    general_conditions.insert(
+    let mut general_devices = HashMap::new();
+    general_devices.insert(
         "Device".to_string(),
-        vec!["Powered on".to_string(), "Connected".to_string()],
+        vec![
+            InitialConditionItem::String("Powered on".to_string()),
+            InitialConditionItem::String("Connected".to_string()),
+        ],
     );
-    test_case.general_initial_conditions = general_conditions;
+    test_case.general_initial_conditions = InitialConditions {
+        include: None,
+        devices: general_devices,
+    };
 
-    let mut conditions = HashMap::new();
-    conditions.insert("Network".to_string(), vec!["Online".to_string()]);
-    test_case.initial_conditions = conditions;
+    let mut devices = HashMap::new();
+    devices.insert(
+        "Network".to_string(),
+        vec![InitialConditionItem::String("Online".to_string())],
+    );
+    test_case.initial_conditions = InitialConditions {
+        include: None,
+        devices,
+    };
 
     let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
-    let mut seq_conditions = HashMap::new();
-    seq_conditions.insert("Session".to_string(), vec!["Active".to_string()]);
-    sequence.initial_conditions = seq_conditions;
+    let mut seq_devices = HashMap::new();
+    seq_devices.insert(
+        "Session".to_string(),
+        vec![InitialConditionItem::String("Active".to_string())],
+    );
+    sequence.initial_conditions = InitialConditions {
+        include: None,
+        devices: seq_devices,
+    };
 
     let step = create_test_step(1, "Test", "echo 'test'", "0", "test", Some(true));
     sequence.steps.push(step);
@@ -672,15 +691,18 @@ fn test_bdd_in_general_initial_conditions() {
     );
 
     // Add BDD statements in general_initial_conditions
-    let mut general_conditions = HashMap::new();
-    general_conditions.insert(
+    let mut general_devices = HashMap::new();
+    general_devices.insert(
         "Setup".to_string(),
         vec![
-            "create directory \"/tmp/test\"".to_string(),
-            "wait for 2 seconds".to_string(),
+            InitialConditionItem::String("create directory \"/tmp/test\"".to_string()),
+            InitialConditionItem::String("wait for 2 seconds".to_string()),
         ],
     );
-    test_case.general_initial_conditions = general_conditions;
+    test_case.general_initial_conditions = InitialConditions {
+        include: None,
+        devices: general_devices,
+    };
 
     let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
     let step = create_test_step(1, "Echo test", "echo 'hello'", "0", "hello", Some(true));
@@ -712,15 +734,20 @@ fn test_bdd_in_test_level_initial_conditions() {
     );
 
     // Add BDD statements in test-level initial_conditions
-    let mut conditions = HashMap::new();
-    conditions.insert(
+    let mut devices = HashMap::new();
+    devices.insert(
         "Environment".to_string(),
         vec![
-            "set environment variable \"TEST_MODE\" to \"enabled\"".to_string(),
-            "file \"/tmp/config.txt\" should exist".to_string(),
+            InitialConditionItem::String(
+                "set environment variable \"TEST_MODE\" to \"enabled\"".to_string(),
+            ),
+            InitialConditionItem::String("file \"/tmp/config.txt\" should exist".to_string()),
         ],
     );
-    test_case.initial_conditions = conditions;
+    test_case.initial_conditions = InitialConditions {
+        include: None,
+        devices,
+    };
 
     let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
     let step = create_test_step(1, "Test step", "echo 'test'", "0", "test", Some(true));
@@ -756,15 +783,20 @@ fn test_bdd_in_sequence_level_initial_conditions() {
     let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
 
     // Add BDD statements in sequence-level initial_conditions
-    let mut seq_conditions = HashMap::new();
-    seq_conditions.insert(
+    let mut seq_devices = HashMap::new();
+    seq_devices.insert(
         "Precondition".to_string(),
         vec![
-            "ping device \"192.168.1.1\" with 3 retries".to_string(),
-            "create file \"/tmp/testfile.txt\" with content:".to_string(),
+            InitialConditionItem::String("ping device \"192.168.1.1\" with 3 retries".to_string()),
+            InitialConditionItem::String(
+                "create file \"/tmp/testfile.txt\" with content:".to_string(),
+            ),
         ],
     );
-    sequence.initial_conditions = seq_conditions;
+    sequence.initial_conditions = InitialConditions {
+        include: None,
+        devices: seq_devices,
+    };
 
     let step = create_test_step(1, "Test step", "echo 'test'", "0", "test", Some(true));
     sequence.steps.push(step);
@@ -797,16 +829,19 @@ fn test_mixed_bdd_and_non_bdd_statements() {
     );
 
     // Mix BDD and non-BDD statements
-    let mut general_conditions = HashMap::new();
-    general_conditions.insert(
+    let mut general_devices = HashMap::new();
+    general_devices.insert(
         "Setup".to_string(),
         vec![
-            "Device is powered on".to_string(),           // Non-BDD
-            "create directory \"/tmp/logs\"".to_string(), // BDD
-            "Network is connected".to_string(),           // Non-BDD
+            InitialConditionItem::String("Device is powered on".to_string()), // Non-BDD
+            InitialConditionItem::String("create directory \"/tmp/logs\"".to_string()), // BDD
+            InitialConditionItem::String("Network is connected".to_string()), // Non-BDD
         ],
     );
-    test_case.general_initial_conditions = general_conditions;
+    test_case.general_initial_conditions = InitialConditions {
+        include: None,
+        devices: general_devices,
+    };
 
     let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
     let step = create_test_step(1, "Test step", "echo 'test'", "0", "test", Some(true));
@@ -839,16 +874,19 @@ fn test_multiple_bdd_statements_same_type() {
     );
 
     // Multiple BDD statements of the same pattern type
-    let mut conditions = HashMap::new();
-    conditions.insert(
+    let mut devices = HashMap::new();
+    devices.insert(
         "Files".to_string(),
         vec![
-            "create directory \"/tmp/dir1\"".to_string(),
-            "create directory \"/tmp/dir2\"".to_string(),
-            "create directory \"/tmp/dir3\"".to_string(),
+            InitialConditionItem::String("create directory \"/tmp/dir1\"".to_string()),
+            InitialConditionItem::String("create directory \"/tmp/dir2\"".to_string()),
+            InitialConditionItem::String("create directory \"/tmp/dir3\"".to_string()),
         ],
     );
-    test_case.initial_conditions = conditions;
+    test_case.initial_conditions = InitialConditions {
+        include: None,
+        devices,
+    };
 
     let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
     let step = create_test_step(1, "Test step", "echo 'test'", "0", "test", Some(true));
@@ -881,26 +919,44 @@ fn test_bdd_in_all_three_locations() {
     );
 
     // BDD in general_initial_conditions
-    let mut general_conditions = HashMap::new();
-    general_conditions.insert("Global".to_string(), vec!["wait for 1 seconds".to_string()]);
-    test_case.general_initial_conditions = general_conditions;
+    let mut general_devices = HashMap::new();
+    general_devices.insert(
+        "Global".to_string(),
+        vec![InitialConditionItem::String(
+            "wait for 1 seconds".to_string(),
+        )],
+    );
+    test_case.general_initial_conditions = InitialConditions {
+        include: None,
+        devices: general_devices,
+    };
 
     // BDD in test-level initial_conditions
-    let mut conditions = HashMap::new();
-    conditions.insert(
+    let mut devices = HashMap::new();
+    devices.insert(
         "Test".to_string(),
-        vec!["create directory \"/tmp/test\"".to_string()],
+        vec![InitialConditionItem::String(
+            "create directory \"/tmp/test\"".to_string(),
+        )],
     );
-    test_case.initial_conditions = conditions;
+    test_case.initial_conditions = InitialConditions {
+        include: None,
+        devices,
+    };
 
     // BDD in sequence-level initial_conditions
     let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
-    let mut seq_conditions = HashMap::new();
-    seq_conditions.insert(
+    let mut seq_devices = HashMap::new();
+    seq_devices.insert(
         "Sequence".to_string(),
-        vec!["file \"/tmp/test\" should exist".to_string()],
+        vec![InitialConditionItem::String(
+            "file \"/tmp/test\" should exist".to_string(),
+        )],
     );
-    sequence.initial_conditions = seq_conditions;
+    sequence.initial_conditions = InitialConditions {
+        include: None,
+        devices: seq_devices,
+    };
 
     let step = create_test_step(1, "Test step", "echo 'test'", "0", "test", Some(true));
     sequence.steps.push(step);
@@ -940,12 +996,17 @@ fn test_bdd_with_missing_toml_file() {
     );
 
     // Add what would be BDD statements if the TOML file existed
-    let mut general_conditions = HashMap::new();
-    general_conditions.insert(
+    let mut general_devices = HashMap::new();
+    general_devices.insert(
         "Setup".to_string(),
-        vec!["create directory \"/tmp/test\"".to_string()],
+        vec![InitialConditionItem::String(
+            "create directory \"/tmp/test\"".to_string(),
+        )],
     );
-    test_case.general_initial_conditions = general_conditions;
+    test_case.general_initial_conditions = InitialConditions {
+        include: None,
+        devices: general_devices,
+    };
 
     let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
     let step = create_test_step(1, "Test step", "echo 'test'", "0", "test", Some(true));
@@ -976,16 +1037,23 @@ fn test_bdd_complex_patterns_in_conditions() {
     );
 
     // Use various complex BDD patterns from the TOML
-    let mut conditions = HashMap::new();
-    conditions.insert(
+    let mut devices = HashMap::new();
+    devices.insert(
         "Setup".to_string(),
         vec![
-            "change permissions of \"/tmp/file.txt\" to 755".to_string(),
-            "append \"test data\" to file \"/tmp/log.txt\"".to_string(),
-            "port 8080 on \"localhost\" should be open".to_string(),
+            InitialConditionItem::String(
+                "change permissions of \"/tmp/file.txt\" to 755".to_string(),
+            ),
+            InitialConditionItem::String(
+                "append \"test data\" to file \"/tmp/log.txt\"".to_string(),
+            ),
+            InitialConditionItem::String("port 8080 on \"localhost\" should be open".to_string()),
         ],
     );
-    test_case.initial_conditions = conditions;
+    test_case.initial_conditions = InitialConditions {
+        include: None,
+        devices,
+    };
 
     let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
     let step = create_test_step(1, "Test step", "echo 'test'", "0", "test", Some(true));
@@ -1036,17 +1104,29 @@ fn test_bdd_with_multiple_keys_in_conditions() {
     );
 
     // Multiple keys with BDD statements
-    let mut general_conditions = HashMap::new();
-    general_conditions.insert(
+    let mut general_devices = HashMap::new();
+    general_devices.insert(
         "Filesystem".to_string(),
-        vec!["create directory \"/tmp/fs1\"".to_string()],
+        vec![InitialConditionItem::String(
+            "create directory \"/tmp/fs1\"".to_string(),
+        )],
     );
-    general_conditions.insert(
+    general_devices.insert(
         "Network".to_string(),
-        vec!["ping device \"192.168.1.1\" with 5 retries".to_string()],
+        vec![InitialConditionItem::String(
+            "ping device \"192.168.1.1\" with 5 retries".to_string(),
+        )],
     );
-    general_conditions.insert("Time".to_string(), vec!["wait for 3 seconds".to_string()]);
-    test_case.general_initial_conditions = general_conditions;
+    general_devices.insert(
+        "Time".to_string(),
+        vec![InitialConditionItem::String(
+            "wait for 3 seconds".to_string(),
+        )],
+    );
+    test_case.general_initial_conditions = InitialConditions {
+        include: None,
+        devices: general_devices,
+    };
 
     let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
     let step = create_test_step(1, "Test step", "echo 'test'", "0", "test", Some(true));

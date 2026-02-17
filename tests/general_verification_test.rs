@@ -182,6 +182,7 @@ fn test_bash_generation_single_general_condition() {
                 condition: "test -f /tmp/output.txt".to_string(),
             }]),
         },
+        reference: None,
     };
     sequence.steps.push(step);
     test_case.test_sequences.push(sequence);
@@ -237,6 +238,7 @@ fn test_bash_generation_multiple_general_conditions() {
                 },
             ]),
         },
+        reference: None,
     };
     sequence.steps.push(step);
     test_case.test_sequences.push(sequence);
@@ -306,6 +308,7 @@ fn test_bash_generation_sanitizes_variable_names() {
                 },
             ]),
         },
+        reference: None,
     };
     sequence.steps.push(step);
     test_case.test_sequences.push(sequence);
@@ -361,6 +364,7 @@ fn test_bash_generation_general_conditions_in_error_message() {
                 },
             ]),
         },
+        reference: None,
     };
     sequence.steps.push(step);
     test_case.test_sequences.push(sequence);
@@ -404,6 +408,7 @@ fn test_bash_generation_no_general_conditions() {
             output_file: None,
             general: None,
         },
+        reference: None,
     };
     sequence.steps.push(step);
     test_case.test_sequences.push(sequence);
@@ -463,6 +468,7 @@ fn test_bash_generation_with_variables_and_general_conditions() {
                 condition: "[[ \"${test_var}\" = \"test_value\" ]]".to_string(),
             }]),
         },
+        reference: None,
     };
     sequence.steps.push(step);
     test_case.test_sequences.push(sequence);
@@ -525,6 +531,7 @@ fn test_general_verification_execution_all_pass() {
                 },
             ]),
         },
+        reference: None,
     };
     sequence.steps.push(step);
     test_case.test_sequences.push(sequence);
@@ -578,6 +585,7 @@ fn test_general_verification_execution_with_failing_condition() {
                 },
             ]),
         },
+        reference: None,
     };
     sequence.steps.push(step);
     test_case.test_sequences.push(sequence);
@@ -637,6 +645,7 @@ fn test_general_verification_complex_bash_conditions() {
                 },
             ]),
         },
+        reference: None,
     };
     sequence.steps.push(step);
     test_case.test_sequences.push(sequence);
@@ -687,6 +696,7 @@ fn test_general_verification_combined_with_result_output() {
                 condition: "[[ \"$COMMAND_OUTPUT\" =~ ^success$ ]]".to_string(),
             }]),
         },
+        reference: None,
     };
     sequence.steps.push(step);
     test_case.test_sequences.push(sequence);
@@ -744,6 +754,7 @@ fn test_general_verification_with_output_file() {
                 condition: "test -f $LOG_FILE".to_string(),
             }]),
         },
+        reference: None,
     };
     sequence.steps.push(step);
     test_case.test_sequences.push(sequence);
@@ -796,6 +807,7 @@ fn test_general_verification_execution_order() {
                 },
             ]),
         },
+        reference: None,
     };
     sequence.steps.push(step);
     test_case.test_sequences.push(sequence);
@@ -858,6 +870,7 @@ fn test_error_message_includes_general_verification_status() {
                 },
             ]),
         },
+        reference: None,
     };
     sequence.steps.push(step);
     test_case.test_sequences.push(sequence);
@@ -910,6 +923,7 @@ fn test_error_message_format_with_all_verifications() {
                 condition: "[[ \"$COMMAND_OUTPUT\" = \"expected\" ]]".to_string(),
             }]),
         },
+        reference: None,
     };
     sequence.steps.push(step);
     test_case.test_sequences.push(sequence);
@@ -959,6 +973,7 @@ fn test_no_error_message_for_general_when_not_present() {
             output_file: None,
             general: None,
         },
+        reference: None,
     };
     sequence.steps.push(step);
     test_case.test_sequences.push(sequence);
@@ -1003,6 +1018,7 @@ fn test_empty_general_verification_array() {
             output_file: None,
             general: Some(vec![]), // Empty array
         },
+        reference: None,
     };
     sequence.steps.push(step);
     test_case.test_sequences.push(sequence);
@@ -1108,6 +1124,7 @@ fn test_multiple_steps_each_with_general_verification() {
                     condition: "true".to_string(),
                 }]),
             },
+            reference: None,
         };
         sequence.steps.push(step);
     }

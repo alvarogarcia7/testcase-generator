@@ -3,6 +3,8 @@ use clap::Parser;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process;
+use testcase_manager::models::TestCase;
+use testcase_manager::validate_cross_file_dependencies;
 use testcase_manager::yaml_utils::log_yaml_parse_error;
 
 #[cfg(not(target_os = "windows"))]
@@ -40,6 +42,7 @@ struct ValidationResult {
     file_path: PathBuf,
     success: bool,
     error_messages: Vec<String>,
+    test_case: Option<TestCase>,
 }
 
 const COLOR_GREEN: &str = "\x1b[32m";
@@ -106,15 +109,20 @@ fn validate_files(yaml_files: &[PathBuf], schema_path: &Path) -> Vec<ValidationR
         let validation_result = validate_single_file(yaml_file, schema_path);
 
         let result = match validation_result {
-            Ok(_) => ValidationResult {
-                file_path: yaml_file.clone(),
-                success: true,
-                error_messages: Vec::new(),
-            },
+            Ok(_) => {
+                let test_case = parse_test_case(yaml_file);
+                ValidationResult {
+                    file_path: yaml_file.clone(),
+                    success: true,
+                    error_messages: Vec::new(),
+                    test_case,
+                }
+            }
             Err(e) => ValidationResult {
                 file_path: yaml_file.clone(),
                 success: false,
                 error_messages: e.to_string().lines().map(String::from).collect(),
+                test_case: None,
             },
         };
 
@@ -122,6 +130,38 @@ fn validate_files(yaml_files: &[PathBuf], schema_path: &Path) -> Vec<ValidationR
     }
 
     results
+}
+
+fn parse_test_case(yaml_file: &Path) -> Option<TestCase> {
+    let yaml_content = fs::read_to_string(yaml_file).ok()?;
+    serde_yaml::from_str(&yaml_content).ok()
+}
+
+fn validate_dependencies(results: &[ValidationResult]) -> Result<(), Vec<String>> {
+    let successful_files: Vec<(PathBuf, TestCase)> = results
+        .iter()
+        .filter_map(|r| {
+            if r.success {
+                r.test_case
+                    .as_ref()
+                    .map(|tc| (r.file_path.clone(), tc.clone()))
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    if successful_files.len() <= 1 {
+        return Ok(());
+    }
+
+    match validate_cross_file_dependencies(&successful_files) {
+        Ok(()) => Ok(()),
+        Err(errors) => {
+            let error_messages: Vec<String> = errors.iter().map(|e| e.to_string()).collect();
+            Err(error_messages)
+        }
+    }
 }
 
 fn print_results(results: &[ValidationResult]) {
@@ -145,7 +185,7 @@ fn print_results(results: &[ValidationResult]) {
     }
 }
 
-fn print_summary(results: &[ValidationResult]) {
+fn print_summary(results: &[ValidationResult], dependency_errors: Option<&Vec<String>>) {
     let total = results.len();
     let passed = results.iter().filter(|r| r.success).count();
     let failed = total - passed;
@@ -155,6 +195,17 @@ fn print_summary(results: &[ValidationResult]) {
     println!("  Total files validated: {}", total);
     println!("  {}Passed: {}{}", COLOR_GREEN, passed, COLOR_RESET);
     println!("  {}Failed: {}{}", COLOR_RED, failed, COLOR_RESET);
+
+    if let Some(errors) = dependency_errors {
+        println!();
+        println!(
+            "{}{}Dependency Validation:{}",
+            COLOR_BOLD, COLOR_RED, COLOR_RESET
+        );
+        for error in errors {
+            println!("  {}", error);
+        }
+    }
 }
 
 #[cfg(not(target_os = "windows"))]
@@ -171,7 +222,9 @@ fn run_watch_mode(yaml_files: Vec<PathBuf>, schema_path: PathBuf) -> Result<()> 
     println!("{}Initial validation:{}", COLOR_BOLD, COLOR_RESET);
     let results = validate_files(&yaml_files, &schema_path);
     print_results(&results);
-    print_summary(&results);
+
+    let dependency_errors = validate_dependencies(&results).err();
+    print_summary(&results, dependency_errors.as_ref());
     println!();
 
     let (tx, rx) = channel();
@@ -260,7 +313,8 @@ fn run_watch_mode(yaml_files: Vec<PathBuf>, schema_path: PathBuf) -> Result<()> 
 
                         let full_results = validate_files(&yaml_files, &schema_path);
                         print_results(&full_results);
-                        print_summary(&full_results);
+                        let dependency_errors = validate_dependencies(&full_results).err();
+                        print_summary(&full_results, dependency_errors.as_ref());
                     } else {
                         let passed = changed_results.iter().filter(|r| r.success).count();
                         let failed = changed_results.len() - passed;
@@ -296,10 +350,13 @@ fn main() -> Result<()> {
 
     let results = validate_files(&cli.yaml_files, &cli.schema);
     print_results(&results);
-    print_summary(&results);
+
+    let dependency_validation = validate_dependencies(&results);
+    let dependency_errors = dependency_validation.as_ref().err();
+    print_summary(&results, dependency_errors);
 
     let failed = results.iter().filter(|r| !r.success).count();
-    if failed > 0 {
+    if failed > 0 || dependency_validation.is_err() {
         process::exit(1);
     }
 

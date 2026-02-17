@@ -456,6 +456,7 @@ fn test_generate_script_with_export_file_sourcing() {
             output_file: None,
             general: None,
         },
+        reference: None,
     };
     sequence.steps.push(step);
     test_case.test_sequences.push(sequence);
@@ -498,6 +499,7 @@ fn test_generate_script_without_hydration_vars() {
             output_file: None,
             general: None,
         },
+        reference: None,
     };
     sequence.steps.push(step);
     test_case.test_sequences.push(sequence);
@@ -540,6 +542,7 @@ fn test_generate_script_hydration_in_verification() {
             output_file: None,
             general: None,
         },
+        reference: None,
     };
     sequence.steps.push(step);
     test_case.test_sequences.push(sequence);
@@ -582,6 +585,7 @@ fn test_generate_script_converts_hydration_placeholders() {
             output_file: None,
             general: None,
         },
+        reference: None,
     };
     sequence.steps.push(step);
     test_case.test_sequences.push(sequence);
