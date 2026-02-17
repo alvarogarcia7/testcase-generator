@@ -3,6 +3,10 @@ FROM rust:1.92-bookworm AS builder
 
 WORKDIR /app
 
+# Install coverage tools for CI/CD
+RUN rustup component add llvm-tools-preview && \
+    cargo install cargo-llvm-cov
+
 # Copy manifests
 COPY Cargo.toml Cargo.lock ./
 
