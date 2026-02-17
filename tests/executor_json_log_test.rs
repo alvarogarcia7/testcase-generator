@@ -708,6 +708,7 @@ fn test_generated_script_produces_valid_json_with_special_chars() -> Result<()> 
             result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
             output: VerificationExpression::Simple("true".to_string()),
             output_file: None,
+            general: None,
         },
     });
 
@@ -726,6 +727,7 @@ fn test_generated_script_produces_valid_json_with_special_chars() -> Result<()> 
             result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
             output: VerificationExpression::Simple("true".to_string()),
             output_file: None,
+            general: None,
         },
     });
 
@@ -744,6 +746,7 @@ fn test_generated_script_produces_valid_json_with_special_chars() -> Result<()> 
             result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
             output: VerificationExpression::Simple("true".to_string()),
             output_file: None,
+            general: None,
         },
     });
 
@@ -762,6 +765,7 @@ fn test_generated_script_produces_valid_json_with_special_chars() -> Result<()> 
             result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
             output: VerificationExpression::Simple("true".to_string()),
             output_file: None,
+            general: None,
         },
     });
 
@@ -780,6 +784,7 @@ fn test_generated_script_produces_valid_json_with_special_chars() -> Result<()> 
             result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
             output: VerificationExpression::Simple("true".to_string()),
             output_file: None,
+            general: None,
         },
     });
 
@@ -891,6 +896,7 @@ fn test_command_json_escaping_edge_cases() -> Result<()> {
             result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
             output: VerificationExpression::Simple("true".to_string()),
             output_file: None,
+            general: None,
         },
     });
 
@@ -909,6 +915,7 @@ fn test_command_json_escaping_edge_cases() -> Result<()> {
             result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
             output: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
             output_file: None,
+            general: None,
         },
     });
 
@@ -927,6 +934,7 @@ fn test_command_json_escaping_edge_cases() -> Result<()> {
             result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
             output: VerificationExpression::Simple("true".to_string()),
             output_file: None,
+            general: None,
         },
     });
 
@@ -945,6 +953,7 @@ fn test_command_json_escaping_edge_cases() -> Result<()> {
             result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
             output: VerificationExpression::Simple("true".to_string()),
             output_file: None,
+            general: None,
         },
     });
 
@@ -963,6 +972,7 @@ fn test_command_json_escaping_edge_cases() -> Result<()> {
             result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
             output: VerificationExpression::Simple("true".to_string()),
             output_file: None,
+            general: None,
         },
     });
 
