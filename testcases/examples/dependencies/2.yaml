@@ -1,15 +1,13 @@
 requirement: "VAR_001"
 item: 1
 tc: 1
-id: 'TC_VAR_001'
+id: 'TC_VAR_002'
 description: 'Test command-based and regex-based variable captures with general verification conditions'
 
 general_initial_conditions:
   system:
     - "Bash shell is available"
     - "Common Unix utilities (wc, cat, echo) are installed"
-  system2:
-    - ref: 1234
 
 initial_conditions:
   filesystem:
@@ -17,7 +15,7 @@ initial_conditions:
 
 test_sequences:
   - id: 1
-    ref: 1234
+    ref: 1234-af # this defines the test_sequence TC_VAR_002 number 1 as ref '1234-af'. This ref is expected to be unique in the project
     name: "Variable Capture Test"
     description: |
                   Test both command-based and regex-based variable capture
@@ -46,7 +44,7 @@ test_sequences:
               condition: "[[ $output_len -ge 5 ]]"
 
       - step: 2
-        ref: 12345
+        ref: 12345-ffaaa11-a2213129af
         description: "Echo JSON and capture token with regex pattern"
         command: |
           echo '{"status":"success","token":"abc123xyz","user_id":12345}'
