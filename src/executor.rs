@@ -580,6 +580,21 @@ impl TestExecutor {
 
         if !test_case.general_initial_conditions.is_empty() {
             script.push_str("# General Initial Conditions\n");
+
+            // Output include array as comments
+            if let Some(ref includes) = test_case.general_initial_conditions.include {
+                for include_ref in includes {
+                    if let Some(ref test_seq) = include_ref.test_sequence {
+                        script.push_str(&format!(
+                            "# Include: {} (test_sequence: {})\n",
+                            include_ref.id, test_seq
+                        ));
+                    } else {
+                        script.push_str(&format!("# Include: {}\n", include_ref.id));
+                    }
+                }
+            }
+
             for (key, values) in &test_case.general_initial_conditions.devices {
                 for value in values {
                     let value_str = match value {
@@ -607,6 +622,21 @@ impl TestExecutor {
 
         if !test_case.initial_conditions.is_empty() {
             script.push_str("# Initial Conditions\n");
+
+            // Output include array as comments
+            if let Some(ref includes) = test_case.initial_conditions.include {
+                for include_ref in includes {
+                    if let Some(ref test_seq) = include_ref.test_sequence {
+                        script.push_str(&format!(
+                            "# Include: {} (test_sequence: {})\n",
+                            include_ref.id, test_seq
+                        ));
+                    } else {
+                        script.push_str(&format!("# Include: {}\n", include_ref.id));
+                    }
+                }
+            }
+
             for (key, values) in &test_case.initial_conditions.devices {
                 for value in values {
                     let value_str = match value {
@@ -643,6 +673,21 @@ impl TestExecutor {
 
             if !sequence.initial_conditions.is_empty() {
                 script.push_str("# Sequence Initial Conditions\n");
+
+                // Output include array as comments
+                if let Some(ref includes) = sequence.initial_conditions.include {
+                    for include_ref in includes {
+                        if let Some(ref test_seq) = include_ref.test_sequence {
+                            script.push_str(&format!(
+                                "# Include: {} (test_sequence: {})\n",
+                                include_ref.id, test_seq
+                            ));
+                        } else {
+                            script.push_str(&format!("# Include: {}\n", include_ref.id));
+                        }
+                    }
+                }
+
                 for (key, values) in &sequence.initial_conditions.devices {
                     for value in values {
                         let value_str = match value {
