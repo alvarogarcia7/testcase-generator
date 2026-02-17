@@ -91,6 +91,38 @@ impl SchemaValidator {
     ) -> Result<(), Vec<String>> {
         let mut errors = Vec::new();
 
+        // Handle oneOf constraint
+        if let Some(JsonValue::Array(one_of_schemas)) = schema.get("oneOf") {
+            let mut matched = false;
+            let mut all_errors = Vec::new();
+
+            for (idx, sub_schema) in one_of_schemas.iter().enumerate() {
+                if self.validate_value(value, sub_schema, path).is_ok() {
+                    matched = true;
+                    break;
+                } else if let Err(sub_errors) = self.validate_value(value, sub_schema, path) {
+                    all_errors.push((idx, sub_errors));
+                }
+            }
+
+            if !matched {
+                let error_msg = format!(
+                    "  - Path '{}': Value does not match any of the allowed schemas (oneOf constraint)",
+                    path
+                );
+                log::error!(
+                    "oneOf validation failed at path '{}': value did not match any of {} schemas",
+                    path,
+                    one_of_schemas.len()
+                );
+                errors.push(error_msg);
+                return Err(errors);
+            }
+
+            // If oneOf matched, we're done with validation for this schema
+            return Ok(());
+        }
+
         // Check type constraint
         if let Some(expected_type) = schema.get("type") {
             if let Some(type_str) = expected_type.as_str() {
@@ -1203,14 +1235,58 @@ initial_conditions:
 "#;
 
         let result = validator.validate_chunk(yaml_content);
-        assert!(result.is_err(), "Should reject non-string array items");
+        assert!(
+            result.is_err(),
+            "Should reject non-string/non-object array items (plain integers)"
+        );
         let error_msg = result.unwrap_err().to_string();
         assert!(
             error_msg.contains("type")
                 || error_msg.contains("Invalid")
+                || error_msg.contains("oneOf")
                 || error_msg.contains("string"),
             "Error should mention type mismatch: {}",
             error_msg
+        );
+    }
+
+    #[test]
+    fn test_validate_chunk_initial_conditions_with_ref_object() {
+        let validator = SchemaValidator::new().unwrap();
+
+        let yaml_content = r#"
+initial_conditions:
+  eUICC:
+    - "Valid string"
+    - ref: "some_ref"
+"#;
+
+        let result = validator.validate_chunk(yaml_content);
+        assert!(
+            result.is_ok(),
+            "Should accept objects with ref field: {:?}",
+            result.err()
+        );
+    }
+
+    #[test]
+    fn test_validate_chunk_initial_conditions_with_test_sequence_object() {
+        let validator = SchemaValidator::new().unwrap();
+
+        let yaml_content = r#"
+initial_conditions:
+  eUICC:
+    - "Valid string"
+    - test_sequence:
+        id: 1
+        step: "2"
+"#;
+
+        let result = validator.validate_chunk(yaml_content);
+        assert!(
+            result.is_ok(),
+            "Should accept objects with test_sequence field: {:?}",
+            result.err()
         );
     }
 
