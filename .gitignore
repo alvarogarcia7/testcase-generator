@@ -53,6 +53,10 @@ bin/cargo-watch
 /testcases/*.json
 /testcases/*.sh
 
+# Coverage artifacts (cargo-llvm-cov)
+target/llvm-cov/
+*.profraw
+
 # CI/CD artifacts
 test_output.txt
 test_results.json
@@ -69,7 +73,6 @@ baseline_perf.json
 current_perf.json
 perf_comparison.json
 pipeline_summary.md
-*.profraw
 artifacts/
 grcov
 

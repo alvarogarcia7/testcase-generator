@@ -1143,6 +1143,34 @@ make test
 make lint
 ```
 
+### Coverage Tools
+
+Install code coverage tools for local development:
+
+```bash
+make install-coverage-tools
+```
+
+Run coverage analysis:
+
+```bash
+make coverage          # Run with 70% threshold
+make coverage-html     # Generate HTML report
+make coverage-report   # Show coverage summary
+```
+
+See [scripts/README_COVERAGE_TOOLS.md](scripts/README_COVERAGE_TOOLS.md) for detailed coverage tools documentation.
+
+### Script Verification
+
+Verify the syntax of all shell scripts:
+
+```bash
+make verify-scripts
+```
+
+This checks all scripts in the `scripts/` and `tests/integration/` directories for syntax errors.
+
 ### Integration Tests
 
 The project includes comprehensive end-to-end integration tests using the Expect automation tool. These tests validate the complete user workflow from metadata entry through test sequence and step creation, including git commit verification.

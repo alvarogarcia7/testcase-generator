@@ -1,0 +1,27 @@
+# Cargo configuration for coverage builds
+
+[build]
+# Require llvm-tools-preview component for coverage instrumentation
+rustflags = []
+
+[target.'cfg(all())']
+# Set default RUSTFLAGS for coverage builds with instrument-coverage flag
+# This enables source-based code coverage instrumentation
+rustflags = ["-C", "instrument-coverage"]
+
+# Cargo aliases for coverage-related tasks
+[alias]
+# Run tests with coverage instrumentation
+coverage = "llvm-cov --all-features"
+
+# Generate HTML coverage report and open in browser
+coverage-html = "llvm-cov --all-features --html --open"
+
+# Display coverage summary report in terminal
+coverage-report = "llvm-cov --all-features --summary-only"
+
+# Clean coverage artifacts
+coverage-clean = "llvm-cov clean"
+
+# Run tests with all features enabled (for development without coverage)
+test-all = "test --all-features"

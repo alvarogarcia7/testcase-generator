@@ -1,4 +1,4 @@
-pre-commit: test clippy README_INSTALL_AUTOMATED.md
+pre-commit: test clippy coverage README_INSTALL_AUTOMATED.md
 .PHONY: pre-commit
 
 README_INSTALL_AUTOMATED.md:
@@ -111,6 +111,72 @@ example_export-demo:
 
 test-all: test test-e2e
 .PHONY: test-all
+
+# Coverage exclusion pattern - escapes dots for regex
+COVERAGE_EXCLUDE_REGEX = (fuzzy\\.rs|prompts\\.rs|main_editor\\.rs)
+
+coverage:
+	cargo llvm-cov --all-features --workspace --tests --ignore-filename-regex '$(COVERAGE_EXCLUDE_REGEX)' --fail-under-lines 50
+.PHONY: coverage
+
+coverage-e2e: build
+	cargo llvm-cov clean --workspace
+	cargo llvm-cov --all-features --workspace --no-report --ignore-filename-regex '$(COVERAGE_EXCLUDE_REGEX)'
+	${MAKE} test-e2e
+	cargo llvm-cov report --ignore-filename-regex '$(COVERAGE_EXCLUDE_REGEX)' --fail-under-lines 70
+.PHONY: coverage-e2e
+
+coverage-html:
+	cargo llvm-cov --all-features --workspace --tests --ignore-filename-regex '$(COVERAGE_EXCLUDE_REGEX)' --html --open
+.PHONY: coverage-html
+
+coverage-html-e2e:
+	${MAKE} coverage-e2e
+	cargo llvm-cov report --ignore-filename-regex '$(COVERAGE_EXCLUDE_REGEX)' --html --open
+.PHONY: coverage-html-e2e
+
+coverage-lcov:
+	cargo llvm-cov --all-features --workspace --tests --ignore-filename-regex '$(COVERAGE_EXCLUDE_REGEX)' --lcov --output-path target/llvm-cov/lcov.info
+.PHONY: coverage-lcov
+
+coverage-report:
+	cargo llvm-cov report --ignore-filename-regex '$(COVERAGE_EXCLUDE_REGEX)'
+.PHONY: coverage-report
+
+coverage-report-e2e: build
+	cargo llvm-cov clean --workspace
+	cargo llvm-cov --all-features --workspace --no-report --ignore-filename-regex '$(COVERAGE_EXCLUDE_REGEX)'
+	${MAKE} test-e2e
+	cargo llvm-cov report --ignore-filename-regex '$(COVERAGE_EXCLUDE_REGEX)'
+.PHONY: coverage-report-e2e
+
+coverage-clean:
+	cargo llvm-cov clean --workspace
+.PHONY: coverage-clean
+
+install-coverage-tools:
+	./scripts/install-coverage-tools.sh --local
+.PHONY: install-coverage-tools
+
+verify-scripts:
+	@echo "Verifying shell script syntax..."
+	@FAILED=0; \
+	for script in $$(find scripts tests/integration -type f -name "*.sh" 2>/dev/null); do \
+		echo "Checking: $$script"; \
+		if bash -n "$$script" 2>&1; then \
+			echo "  ✓ PASSED"; \
+		else \
+			echo "  ✗ FAILED"; \
+			FAILED=1; \
+		fi; \
+	done; \
+	if [ $$FAILED -eq 1 ]; then \
+		echo "Some script syntax checks failed"; \
+		exit 1; \
+	else \
+		echo "All shell scripts have valid syntax"; \
+	fi
+.PHONY: verify-scripts
 
 test-e2e-validate-yaml: build
 	cargo run --bin validate-yaml -- --schema data/schema.json tests/sample/gsma_4.4.2.2_TC.yml >/dev/null 2>&1
