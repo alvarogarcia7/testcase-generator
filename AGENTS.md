@@ -7,6 +7,8 @@
 - **Coverage**: make coverage (run tests with coverage analysis)
 - **Coverage HTML**: make coverage-html (generate HTML coverage report)
 - **Coverage Report**: make coverage-report (display coverage summary)
+- **Install Coverage Tools**: make install-coverage-tools (install cargo-llvm-cov and related tools)
+- **Verify Scripts**: make verify-scripts (verify syntax of all shell scripts)
 - **Watch Mode**: make watch (monitors testcases/ for changes and auto-validates)
 - **Dev Server**: N/A
 
@@ -34,6 +36,59 @@ The project includes several binary utilities:
 - When using regex, ensure patterns are compatible with both POSIX and GNU extended regex
 - Use POSIX-compliant shell constructs where possible
 
+### Logging Library
+
+**MANDATORY**: All shell scripts must use the centralized logging library for consistent output formatting.
+
+**Location**: `scripts/lib/logger.sh`
+
+**Usage**:
+```bash
+#!/usr/bin/env bash
+set -e
+
+# Get script directory and source logger
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/logger.sh" || exit 1
+
+# Use logging functions
+log_info "Informational message"
+log_warning "Warning message"
+log_error "Error message"
+log_debug "Debug message (only shown if VERBOSE=1)"
+log_verbose "Verbose message (only shown if VERBOSE=1)"
+
+# Use color-coded test helpers
+pass "Test passed"
+fail "Test failed"
+info "Information"
+section "Section Header"
+```
+
+**Available Functions**:
+- `log_info "message"` - Standard informational message
+- `log_warning "message"` - Warning message
+- `log_error "message"` - Error message (outputs to stderr)
+- `log_debug "message"` - Debug message (only shown when VERBOSE=1)
+- `log_verbose "message"` - Verbose message (only shown when VERBOSE=1)
+- `pass "message"` - Success message with green checkmark (✓)
+- `fail "message"` - Failure message with red X (✗)
+- `info "message"` - Info message with blue info symbol (ℹ)
+- `section "title"` - Section header with yellow highlighting
+
+**Cleanup Management**:
+The logger library also provides cleanup management for temporary files and background processes:
+- `setup_cleanup "/path/to/temp/dir"` - Register temporary directory for cleanup
+- `register_background_pid $PID` - Register background process for cleanup
+- `disable_cleanup` - Disable automatic cleanup (for debugging)
+- `enable_cleanup` - Re-enable automatic cleanup
+
+**Benefits**:
+- Consistent formatting across all scripts
+- Color-coded output for better readability
+- Automatic cleanup of temporary resources
+- Easy integration with CI/CD pipelines
+
 ### Common Pitfalls:
 - `grep -P` (Perl regex) is GNU-only - use `sed -n` with capture groups instead
 - `sed -r` is GNU-only - use `sed -E` for BSD/macOS compatibility
@@ -45,6 +100,7 @@ The project includes several binary utilities:
 - Test generated scripts on both macOS and Linux when possible
 - Use portable regex patterns that work with both implementations
 - Verify scripts work with bash 3.2 (default on macOS)
+- Verify script syntax using `make verify-scripts`
 
 ## Testing Requirements
 
@@ -67,11 +123,19 @@ The project includes several binary utilities:
 
 ### Installation
 
-Install `cargo-llvm-cov` for code coverage analysis:
+Install coverage tools using the provided installation script:
+
+```bash
+make install-coverage-tools
+```
+
+Or manually install `cargo-llvm-cov`:
 
 ```bash
 cargo install cargo-llvm-cov
 ```
+
+For more details on coverage tool installation, see `scripts/README_COVERAGE_TOOLS.md`.
 
 ### Coverage Commands
 

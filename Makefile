@@ -132,6 +132,30 @@ coverage-clean:
 	cargo llvm-cov clean --workspace
 .PHONY: coverage-clean
 
+install-coverage-tools:
+	./scripts/install-coverage-tools.sh --local
+.PHONY: install-coverage-tools
+
+verify-scripts:
+	@echo "Verifying shell script syntax..."
+	@FAILED=0; \
+	for script in $$(find scripts tests/integration -type f -name "*.sh" 2>/dev/null); do \
+		echo "Checking: $$script"; \
+		if bash -n "$$script" 2>&1; then \
+			echo "  ✓ PASSED"; \
+		else \
+			echo "  ✗ FAILED"; \
+			FAILED=1; \
+		fi; \
+	done; \
+	if [ $$FAILED -eq 1 ]; then \
+		echo "Some script syntax checks failed"; \
+		exit 1; \
+	else \
+		echo "All shell scripts have valid syntax"; \
+	fi
+.PHONY: verify-scripts
+
 test-e2e-validate-yaml: build
 	cargo run --bin validate-yaml -- --schema data/schema.json tests/sample/gsma_4.4.2.2_TC.yml >/dev/null 2>&1
 	! cargo run --bin validate-yaml -- --schema data/schema.json tests/sample/data.yml >/dev/null 2>&1
