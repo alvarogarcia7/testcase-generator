@@ -7,7 +7,6 @@ use testcase_manager::{
 };
 
 #[test]
-#[ignore = "Example YAML file has unquoted scalar values that cause deserialization issues"]
 fn test_deserialize_dependencies_example_1() {
     let yaml_path = PathBuf::from("testcases/examples/dependencies/1.yaml");
     assert!(
@@ -48,9 +47,30 @@ fn test_deserialize_dependencies_example_1() {
     assert_eq!(initial_include.len(), 1);
     assert_eq!(initial_include[0].id, "TC_VAR_001");
 
-    // Note: The system2 conditions in the example YAML use unquoted values which
-    // may cause deserialization issues with certain YAML parsers. The file structure
-    // and other aspects are validated above.
+    // Verify system2 conditions are properly deserialized
+    let system2_conditions = test_case
+        .initial_conditions
+        .devices
+        .get("system2")
+        .expect("Expected system2 conditions");
+    assert_eq!(system2_conditions.len(), 2);
+
+    // First item should be a RefItem
+    match &system2_conditions[0] {
+        InitialConditionItem::RefItem { reference } => {
+            assert_eq!(reference, "1234-af");
+        }
+        _ => panic!("Expected RefItem variant for system2[0]"),
+    }
+
+    // Second item should be a TestSequenceRef
+    match &system2_conditions[1] {
+        InitialConditionItem::TestSequenceRef { test_sequence } => {
+            assert_eq!(test_sequence.id, 1);
+            assert_eq!(test_sequence.step, "[1,4]");
+        }
+        _ => panic!("Expected TestSequenceRef variant for system2[1]"),
+    }
 
     assert_eq!(test_case.test_sequences.len(), 1);
     let test_seq = &test_case.test_sequences[0];
