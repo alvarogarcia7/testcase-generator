@@ -7,7 +7,7 @@ The `test_executor_e2e.sh` script provides comprehensive end-to-end testing of t
 ## What It Tests
 
 ### 1. YAML Schema Validation
-- Validates test case YAML files against the JSON schema (`data/schema.json`)
+- Validates test case YAML files against the JSON schema (`schemas/schema.json`)
 - Tests with two YAML files:
   - **Passing test case**: Contains verification expressions that will pass
   - **Failing test case**: Contains verification expressions that will fail
@@ -119,7 +119,7 @@ make test-all    # Runs unit tests + e2e tests
 - Bash shell
 - `test-executor` binary (built from `src/bin/test-executor.rs`)
 - `validate-yaml` binary (built from `src/bin/validate-yaml.rs`)
-- JSON schema file at `data/schema.json`
+- JSON schema file at `schemas/schema.json`
 
 ## Expected Output
 
@@ -198,7 +198,7 @@ cargo build
 ```
 
 ### Schema validation errors
-Ensure `data/schema.json` exists and is valid JSON.
+Ensure `schemas/schema.json` exists and is valid JSON.
 
 ### Temporary directory permission errors
 The test creates a temporary directory using `mktemp -d`. Ensure you have write permissions in your temp directory.

@@ -19,7 +19,7 @@ source "$SCRIPT_DIR/lib/find-binary.sh"
 cd "$PROJECT_ROOT"
 
 # Set the schema file for validation
-export SCHEMA_FILE="${SCHEMA_FILE:-data/schema.json}"
+export SCHEMA_FILE="${SCHEMA_FILE:-schemas/schema.json}"
 
 # Check if schema file exists
 if [[ ! -f "$SCHEMA_FILE" ]]; then

@@ -14,7 +14,7 @@
 #
 # CONFIGURATION:
 #   TESTRUN_SCHEMA_FILE  Environment variable to specify the TestRun schema file 
-#                        (default: data/testrun-schema.json)
+#                        (default: schemas/testrun-schema.json)
 #   VALIDATE_TESTRUN_BIN  Path to validate-testrun binary (default: auto-detected)
 #
 # EXIT CODES:
@@ -23,7 +23,7 @@
 #
 # EXAMPLE USAGE WITH validate-files.sh:
 #   # Validate all test run YAML files in a directory
-#   export TESTRUN_SCHEMA_FILE=data/testrun-schema.json
+#   export TESTRUN_SCHEMA_FILE=schemas/testrun-schema.json
 #   ./scripts/validate-files.sh --pattern 'testrun.*\.ya?ml$' --validator ./scripts/validate-testrun-wrapper.sh
 #
 #   # Validate with verbose output
@@ -31,7 +31,7 @@
 #
 # STANDALONE USAGE:
 #   # Validate a single test run file
-#   export TESTRUN_SCHEMA_FILE=data/testrun-schema.json
+#   export TESTRUN_SCHEMA_FILE=schemas/testrun-schema.json
 #   ./scripts/validate-testrun-wrapper.sh testruns/run001.yml
 #
 #   # Use a different schema
@@ -45,7 +45,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib/logger.sh" || exit 1
 
 # Configuration: Schema file to validate against
-TESTRUN_SCHEMA_FILE="${TESTRUN_SCHEMA_FILE:-data/testrun-schema.json}"
+TESTRUN_SCHEMA_FILE="${TESTRUN_SCHEMA_FILE:-schemas/testrun-schema.json}"
 
 # Auto-detect validate-testrun binary location
 if [[ -n "${VALIDATE_TESTRUN_BIN:-}" ]]; then

@@ -97,7 +97,7 @@ watch: build
     ./scripts/watch-yaml-files.sh
 
 watch-verbose: build
-    SCHEMA_FILE=data/schema.json ./scripts/validate-files.sh \
+    SCHEMA_FILE=schemas/schema.json ./scripts/validate-files.sh \
         --pattern '\.ya?ml$$' --validator ./scripts/validate-yaml-wrapper.sh \
         --watch --verbose
 ```

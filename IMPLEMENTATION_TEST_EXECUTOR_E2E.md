@@ -84,7 +84,7 @@ The integration test validates:
 ### 1. YAML Schema Validation
 - ✓ Passing test case validates against schema
 - ✓ Failing test case validates against schema
-- Uses `validate-yaml` binary with `data/schema.json`
+- Uses `validate-yaml` binary with `schemas/schema.json`
 
 ### 2. Shell Script Generation
 - ✓ Script generation from passing YAML
@@ -138,7 +138,7 @@ cargo build
 ### Dependencies
 - `target/debug/test-executor` - Binary under test
 - `target/debug/validate-yaml` - Schema validation binary
-- `data/schema.json` - JSON schema for test cases
+- `schemas/schema.json` - JSON schema for test cases
 - `bash` - For syntax validation and execution
 
 ### Called by

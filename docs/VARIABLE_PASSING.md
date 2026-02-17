@@ -1013,7 +1013,7 @@ capture_vars:
 - [BDD Initial Conditions](BDD_INITIAL_CONDITIONS.md) - Using BDD patterns in initial conditions
 - [Test Verify Usage](TEST_VERIFY_USAGE.md) - Verification expressions and templates
 - [Quick Start Guide](QUICK_START.md) - Getting started with test cases
-- JSON Schema: `data/schema.json` - Complete test case schema reference
+- JSON Schema: `schemas/schema.json` - Complete test case schema reference
 
 ## Summary
 
