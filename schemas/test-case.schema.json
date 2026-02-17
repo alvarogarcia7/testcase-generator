@@ -57,22 +57,130 @@
     "general_initial_conditions": {
       "type": "object",
       "description": "Top-level general initial conditions. Values can use BDD patterns (e.g., 'create directory \"/tmp/test\"') that are automatically converted to executable commands, or plain text that becomes comments. See docs/BDD_INITIAL_CONDITIONS.md for pattern reference.",
+      "properties": {
+        "include": {
+          "type": "array",
+          "description": "Array of references to include conditions from other test cases or sequences.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "ID of the test case to include conditions from."
+              },
+              "test_sequence": {
+                "type": "string",
+                "description": "Optional test sequence ID to include conditions from a specific sequence."
+              }
+            },
+            "required": ["id"]
+          }
+        }
+      },
       "additionalProperties": {
         "type": "array",
         "items": {
-          "type": "string",
-          "description": "A condition statement. Can be a BDD pattern (e.g., 'create directory \"/path\"', 'set environment variable \"VAR\" to \"value\"', 'wait for 5 seconds') or plain text description."
+          "oneOf": [
+            {
+              "type": "string",
+              "description": "A condition statement. Can be a BDD pattern (e.g., 'create directory \"/path\"', 'set environment variable \"VAR\" to \"value\"', 'wait for 5 seconds') or plain text description."
+            },
+            {
+              "type": "object",
+              "properties": {
+                "ref": {
+                  "type": "string",
+                  "description": "Reference to a condition defined elsewhere."
+                }
+              },
+              "required": ["ref"]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "test_sequence": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer",
+                      "description": "ID of the test sequence to reference."
+                    },
+                    "step": {
+                      "type": "string",
+                      "description": "Step identifier within the test sequence."
+                    }
+                  },
+                  "required": ["id", "step"]
+                }
+              },
+              "required": ["test_sequence"]
+            }
+          ]
         }
       }
     },
     "initial_conditions": {
       "type": "object",
       "description": "Top-level initial conditions specific to devices/systems. Values can use BDD patterns (e.g., 'file \"/path\" should exist', 'restart service \"nginx\"') that are automatically converted to executable commands, or plain text that becomes comments. See docs/BDD_INITIAL_CONDITIONS.md for pattern reference.",
+      "properties": {
+        "include": {
+          "type": "array",
+          "description": "Array of references to include conditions from other test cases or sequences.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "ID of the test case to include conditions from."
+              },
+              "test_sequence": {
+                "type": "string",
+                "description": "Optional test sequence ID to include conditions from a specific sequence."
+              }
+            },
+            "required": ["id"]
+          }
+        }
+      },
       "additionalProperties": {
         "type": "array",
         "items": {
-          "type": "string",
-          "description": "A condition statement. Can be a BDD pattern (e.g., 'ping device \"192.168.1.1\" with 3 retries', 'port 80 on \"localhost\" should be open') or plain text description."
+          "oneOf": [
+            {
+              "type": "string",
+              "description": "A condition statement. Can be a BDD pattern (e.g., 'ping device \"192.168.1.1\" with 3 retries', 'port 80 on \"localhost\" should be open') or plain text description."
+            },
+            {
+              "type": "object",
+              "properties": {
+                "ref": {
+                  "type": "string",
+                  "description": "Reference to a condition defined elsewhere."
+                }
+              },
+              "required": ["ref"]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "test_sequence": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer",
+                      "description": "ID of the test sequence to reference."
+                    },
+                    "step": {
+                      "type": "string",
+                      "description": "Step identifier within the test sequence."
+                    }
+                  },
+                  "required": ["id", "step"]
+                }
+              },
+              "required": ["test_sequence"]
+            }
+          ]
         }
       }
     },
@@ -111,6 +219,10 @@
           "id": {
             "type": "integer"
           },
+          "ref": {
+            "type": "string",
+            "description": "Optional reference identifier for this test sequence."
+          },
           "name": {
             "type": "string"
           },
@@ -127,11 +239,65 @@
           "initial_conditions": {
             "type": "object",
             "description": "Sequence-level initial conditions. Values can use BDD patterns (e.g., 'wait until file \"/tmp/ready\" exists with timeout 30 seconds') that are automatically converted to executable commands, or plain text that becomes comments. See docs/BDD_INITIAL_CONDITIONS.md for pattern reference.",
+            "properties": {
+              "include": {
+                "type": "array",
+                "description": "Array of references to include conditions from other test cases or sequences.",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "description": "ID of the test case to include conditions from."
+                    },
+                    "test_sequence": {
+                      "type": "string",
+                      "description": "Optional test sequence ID to include conditions from a specific sequence."
+                    }
+                  },
+                  "required": ["id"]
+                }
+              }
+            },
             "additionalProperties": {
               "type": "array",
               "items": {
-                "type": "string",
-                "description": "A condition statement. Can be a BDD pattern or plain text description."
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "description": "A condition statement. Can be a BDD pattern or plain text description."
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "ref": {
+                        "type": "string",
+                        "description": "Reference to a condition defined elsewhere."
+                      }
+                    },
+                    "required": ["ref"]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "test_sequence": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer",
+                            "description": "ID of the test sequence to reference."
+                          },
+                          "step": {
+                            "type": "string",
+                            "description": "Step identifier within the test sequence."
+                          }
+                        },
+                        "required": ["id", "step"]
+                      }
+                    },
+                    "required": ["test_sequence"]
+                  }
+                ]
               }
             }
           },
@@ -142,6 +308,10 @@
               "properties": {
                 "step": {
                   "type": "integer"
+                },
+                "ref": {
+                  "type": "string",
+                  "description": "Optional reference identifier for this step."
                 },
                 "manual": {
                   "type": "boolean"

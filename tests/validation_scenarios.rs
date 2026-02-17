@@ -420,7 +420,7 @@ initial_conditions:
     assert!(result.is_err(), "Should reject non-string in eUICC array");
     let error = result.unwrap_err().to_string();
     assert!(
-        error.contains("Invalid type") || error.contains("string"),
+        error.contains("Invalid type") || error.contains("string") || error.contains("oneOf"),
         "Error: {}",
         error
     );
