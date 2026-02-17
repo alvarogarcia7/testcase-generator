@@ -1,19 +1,29 @@
 use crate::models::{InitialConditionItem, InitialConditions, TestCase};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
+/// Error type for dependency validation failures
 #[derive(Debug, Clone)]
 pub struct DependencyError {
+    /// Path to the file containing the error
     pub file_path: PathBuf,
+    /// Location within the file (e.g., "initial_conditions.device1[0]")
     pub location: String,
+    /// The unresolved reference string
     pub reference: String,
+    /// Type of dependency error
     pub error_type: DependencyErrorType,
 }
 
+/// Types of dependency validation errors
 #[derive(Debug, Clone, PartialEq)]
 pub enum DependencyErrorType {
+    /// A reference (from ref field) could not be resolved
     UnresolvedRef,
+    /// A test case ID (from include) could not be resolved
     UnresolvedTestCaseId,
+    /// A test sequence ID could not be resolved
+    UnresolvedTestSequenceId,
 }
 
 impl std::fmt::Display for DependencyError {
@@ -37,27 +47,47 @@ impl std::fmt::Display for DependencyError {
                     self.reference
                 )
             }
+            DependencyErrorType::UnresolvedTestSequenceId => {
+                write!(
+                    f,
+                    "{}:{} - Unresolved test sequence ID: '{}'",
+                    self.file_path.display(),
+                    self.location,
+                    self.reference
+                )
+            }
         }
     }
 }
 
+/// Validator for cross-file dependencies in test cases
 pub struct DependencyValidator {
+    /// Set of all reference strings defined across test cases
     refs: HashSet<String>,
+    /// Set of all test case IDs
     test_case_ids: HashSet<String>,
+    /// Map from test case ID to set of test sequence IDs within that test case
+    test_sequences: HashMap<String, HashSet<i64>>,
 }
 
 impl DependencyValidator {
+    /// Create a new dependency validator
     pub fn new() -> Self {
         Self {
             refs: HashSet::new(),
             test_case_ids: HashSet::new(),
+            test_sequences: HashMap::new(),
         }
     }
 
+    /// Collect all definitions (test case IDs, test sequence IDs, and references) from a test case
     pub fn collect_definitions(&mut self, _file_path: &Path, test_case: &TestCase) {
         self.test_case_ids.insert(test_case.id.clone());
 
+        let mut seq_ids = HashSet::new();
         for test_sequence in &test_case.test_sequences {
+            seq_ids.insert(test_sequence.id);
+
             if let Some(ref reference) = test_sequence.reference {
                 self.refs.insert(reference.clone());
             }
@@ -68,8 +98,10 @@ impl DependencyValidator {
                 }
             }
         }
+        self.test_sequences.insert(test_case.id.clone(), seq_ids);
     }
 
+    /// Validate all references in a test case against collected definitions
     pub fn validate_references(
         &self,
         file_path: &Path,
@@ -79,12 +111,14 @@ impl DependencyValidator {
 
         errors.extend(self.validate_initial_conditions_refs(
             file_path,
+            test_case,
             &test_case.general_initial_conditions,
             "general_initial_conditions",
         ));
 
         errors.extend(self.validate_initial_conditions_refs(
             file_path,
+            test_case,
             &test_case.initial_conditions,
             "initial_conditions",
         ));
@@ -92,6 +126,7 @@ impl DependencyValidator {
         for (seq_idx, test_sequence) in test_case.test_sequences.iter().enumerate() {
             errors.extend(self.validate_initial_conditions_refs(
                 file_path,
+                test_case,
                 &test_sequence.initial_conditions,
                 &format!("test_sequences[{}].initial_conditions", seq_idx),
             ));
@@ -103,6 +138,7 @@ impl DependencyValidator {
     fn validate_initial_conditions_refs(
         &self,
         file_path: &Path,
+        test_case: &TestCase,
         initial_conditions: &InitialConditions,
         base_location: &str,
     ) -> Vec<DependencyError> {
@@ -118,6 +154,10 @@ impl DependencyValidator {
                         error_type: DependencyErrorType::UnresolvedTestCaseId,
                     });
                 }
+                // Note: test_sequence field is not validated here because:
+                // 1. It's a soft reference that may be resolved at runtime
+                // 2. Test sequences might be added dynamically
+                // 3. The original implementation did not validate this field
             }
         }
 
@@ -135,7 +175,22 @@ impl DependencyValidator {
                         }
                     }
                     InitialConditionItem::String(_) => {}
-                    InitialConditionItem::TestSequenceRef { .. } => {}
+                    InitialConditionItem::TestSequenceRef { test_sequence } => {
+                        let seq_id = test_sequence.id;
+                        let has_sequence =
+                            test_case.test_sequences.iter().any(|ts| ts.id == seq_id);
+                        if !has_sequence {
+                            errors.push(DependencyError {
+                                file_path: file_path.to_path_buf(),
+                                location: format!(
+                                    "{}.{}[{}].test_sequence.id",
+                                    base_location, device_name, idx
+                                ),
+                                reference: seq_id.to_string(),
+                                error_type: DependencyErrorType::UnresolvedTestSequenceId,
+                            });
+                        }
+                    }
                 }
             }
         }
@@ -150,6 +205,18 @@ impl Default for DependencyValidator {
     }
 }
 
+/// Validate dependencies across multiple test case files
+///
+/// This function performs a two-pass validation:
+/// 1. First pass: collect all definitions (test case IDs, test sequence IDs, and references)
+/// 2. Second pass: validate that all references can be resolved
+///
+/// # Arguments
+/// * `files` - A slice of tuples containing file paths and their parsed test cases
+///
+/// # Returns
+/// * `Ok(())` if all dependencies are valid
+/// * `Err(Vec<DependencyError>)` containing all validation errors found
 pub fn validate_cross_file_dependencies(
     files: &[(PathBuf, TestCase)],
 ) -> Result<(), Vec<DependencyError>> {
@@ -365,5 +432,90 @@ mod tests {
 
         let errors = result.unwrap_err();
         assert_eq!(errors.len(), 2);
+    }
+
+    #[test]
+    fn test_validate_test_sequence_ref_within_same_test_case() {
+        use crate::models::TestSequenceRefTarget;
+
+        let mut test_case = create_test_case("TC001");
+        let test_sequence1 = TestSequence::new(1, "Seq1".to_string(), "Desc".to_string());
+        test_case.test_sequences.push(test_sequence1);
+
+        let mut initial_conditions = InitialConditions::default();
+        initial_conditions.devices.insert(
+            "device1".to_string(),
+            vec![InitialConditionItem::TestSequenceRef {
+                test_sequence: TestSequenceRefTarget {
+                    id: 1,
+                    step: "1".to_string(),
+                },
+            }],
+        );
+        test_case.initial_conditions = initial_conditions;
+
+        let validator = DependencyValidator::new();
+        let errors = validator.validate_references(Path::new("test.yaml"), &test_case);
+        assert_eq!(
+            errors.len(),
+            0,
+            "Valid intra-test-case test_sequence reference should not produce errors"
+        );
+    }
+
+    #[test]
+    fn test_validate_invalid_test_sequence_ref_within_same_test_case() {
+        use crate::models::TestSequenceRefTarget;
+
+        let mut test_case = create_test_case("TC001");
+        let test_sequence1 = TestSequence::new(1, "Seq1".to_string(), "Desc".to_string());
+        test_case.test_sequences.push(test_sequence1);
+
+        let mut initial_conditions = InitialConditions::default();
+        initial_conditions.devices.insert(
+            "device1".to_string(),
+            vec![InitialConditionItem::TestSequenceRef {
+                test_sequence: TestSequenceRefTarget {
+                    id: 99,
+                    step: "1".to_string(),
+                },
+            }],
+        );
+        test_case.initial_conditions = initial_conditions;
+
+        let validator = DependencyValidator::new();
+        let errors = validator.validate_references(Path::new("test.yaml"), &test_case);
+        assert_eq!(
+            errors.len(),
+            1,
+            "Invalid test_sequence.id should produce an error"
+        );
+        assert_eq!(
+            errors[0].error_type,
+            DependencyErrorType::UnresolvedTestSequenceId
+        );
+        assert_eq!(errors[0].reference, "99");
+    }
+
+    #[test]
+    fn test_collect_multiple_test_sequences() {
+        let mut validator = DependencyValidator::new();
+        let mut test_case = create_test_case("TC001");
+
+        let seq1 = TestSequence::new(1, "Seq1".to_string(), "Desc1".to_string());
+        let seq2 = TestSequence::new(2, "Seq2".to_string(), "Desc2".to_string());
+        let seq3 = TestSequence::new(3, "Seq3".to_string(), "Desc3".to_string());
+        test_case.test_sequences.push(seq1);
+        test_case.test_sequences.push(seq2);
+        test_case.test_sequences.push(seq3);
+
+        validator.collect_definitions(Path::new("test.yaml"), &test_case);
+
+        assert!(validator.test_sequences.contains_key("TC001"));
+        let seq_ids = validator.test_sequences.get("TC001").unwrap();
+        assert_eq!(seq_ids.len(), 3);
+        assert!(seq_ids.contains(&1));
+        assert!(seq_ids.contains(&2));
+        assert!(seq_ids.contains(&3));
     }
 }
