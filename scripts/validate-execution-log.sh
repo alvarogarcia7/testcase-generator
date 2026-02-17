@@ -4,7 +4,7 @@
 #
 # DESCRIPTION:
 #   This script validates test_execution_log.json files against the
-#   test_execution_log_schema.json schema. It can validate either a single
+#   execution-log.schema.json schema. It can validate either a single
 #   execution log file or batch validate all execution logs in a directory.
 #
 # USAGE:
