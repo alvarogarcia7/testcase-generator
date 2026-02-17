@@ -64,7 +64,7 @@ pub use parser::{SearchableCollections, TestCaseParser};
 pub use prompts::{Prompts, TestCaseMetadata};
 pub use recovery::{RecoveryManager, RecoveryState};
 pub use sample::SampleData;
-pub use storage::TestCaseStorage;
+pub use storage::{TestCaseFilter, TestCaseFilterer, TestCaseStorage};
 pub use test_run_storage::TestRunStorage;
 pub use ui::{print_title, TitleStyle};
 pub use validation::SchemaValidator;

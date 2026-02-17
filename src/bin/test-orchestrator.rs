@@ -3,7 +3,7 @@ use clap::{CommandFactory, Parser, Subcommand};
 use std::path::PathBuf;
 use testcase_manager::fuzzy::TestCaseFuzzyFinder;
 use testcase_manager::orchestrator::{RetryPolicy, TestOrchestrator, WorkerConfig};
-use testcase_manager::storage::TestCaseStorage;
+use testcase_manager::storage::{TestCaseFilter, TestCaseFilterer, TestCaseStorage};
 use testcase_manager::test_run_storage::TestRunStorage;
 
 #[derive(Parser)]
@@ -78,6 +78,14 @@ enum Commands {
         /// Use fuzzy search to select test cases interactively
         #[arg(short = 'f', long)]
         fuzzy: bool,
+
+        /// Filter to include only test cases with manual steps
+        #[arg(long, conflicts_with = "filter_automated")]
+        filter_manual: bool,
+
+        /// Filter to include only test cases with automated steps
+        #[arg(long, conflicts_with = "filter_manual")]
+        filter_automated: bool,
     },
 
     /// Execute all available test cases
@@ -220,6 +228,8 @@ fn main() -> Result<()> {
             save,
             report,
             fuzzy: _,
+            filter_manual,
+            filter_automated,
         } => {
             if test_case_ids.is_empty() {
                 // This branch is only reached when fuzzy is true (due to validation above)
@@ -269,9 +279,29 @@ fn main() -> Result<()> {
 
             let config = WorkerConfig::new(workers).with_retry_policy(retry_policy);
 
-            let test_cases = orchestrator
+            let mut test_cases = orchestrator
                 .select_test_cases(test_case_ids)
                 .context("Failed to load test cases")?;
+
+            // Apply filtering based on manual/automated flags
+            let filter = if filter_manual {
+                TestCaseFilter::ManualOnly
+            } else if filter_automated {
+                TestCaseFilter::AutomatedOnly
+            } else {
+                TestCaseFilter::All
+            };
+
+            if filter != TestCaseFilter::All {
+                let filterer = TestCaseFilterer::new();
+                test_cases = filterer.filter_test_cases(test_cases, filter);
+
+                if test_cases.is_empty() {
+                    let filter_name = if filter_manual { "manual" } else { "automated" };
+                    println!("No test cases with {} steps found.", filter_name);
+                    return Ok(());
+                }
+            }
 
             let results = orchestrator
                 .execute_tests(test_cases, config, verbose)
@@ -592,6 +622,12 @@ fn main() -> Result<()> {
             println!();
             println!("  # Run interactively with fuzzy search");
             println!("  test-orchestrator run --fuzzy");
+            println!();
+            println!("  # Run only test cases with manual steps");
+            println!("  test-orchestrator run TC001 TC002 --filter-manual");
+            println!();
+            println!("  # Run only test cases with automated steps");
+            println!("  test-orchestrator run TC001 TC002 --filter-automated");
             println!();
             println!("  # Run and save results with report generation");
             println!("  test-orchestrator run-all --save --report");
