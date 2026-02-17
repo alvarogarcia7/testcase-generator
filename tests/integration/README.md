@@ -64,6 +64,52 @@ make test-e2e-executor
 ./tests/integration/test_executor_e2e.sh
 ```
 
+### `test_json_escape_e2e.sh`
+
+End-to-end integration test for the json-escape feature that validates:
+
+1. **Binary Building**
+   - Builds the json-escape binary from source
+   - Verifies binary exists and is executable
+
+2. **Special Character Escaping**
+   - Tests escaping of quotes, newlines, backslashes, tabs
+   - Validates JSON string escaping correctness
+   - Tests validation mode with --test flag
+
+3. **Script Generation Modes**
+   - **RustBinary mode**: Scripts use json-escape binary for JSON escaping
+   - **ShellFallback mode**: Scripts use sed/awk for JSON escaping (no binary dependency)
+   - **Auto mode**: Scripts check for json-escape and fall back to shell if unavailable
+
+4. **Generated Script Execution**
+   - Executes test scripts with commands containing special characters
+   - Validates JSON log files are created and valid
+   - Uses jq for JSON validation when available
+
+5. **Auto Mode Fallback Testing**
+   - Tests with json-escape binary in PATH (should use binary)
+   - Tests with json-escape removed from PATH (should use shell fallback)
+   - Verifies both paths produce valid JSON output
+
+6. **Complex Character Testing**
+   - Mixed special characters (quotes, newlines, tabs, backslashes)
+   - JSON-like output strings
+   - Multiple special characters in single command
+
+7. **Shell Fallback Validation**
+   - Verifies sed/awk escaping patterns work correctly
+   - Tests BSD/GNU compatibility (sed -E, not -r)
+   - Validates portable shell constructs (bash 3.2+)
+
+Run with:
+```bash
+./tests/integration/test_json_escape_e2e.sh
+
+# Keep temporary files for debugging
+./tests/integration/test_json_escape_e2e.sh --no-remove
+```
+
 ### `e2e_complete_workflow.exp`
 
 The main end-to-end integration test that validates:

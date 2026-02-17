@@ -44,6 +44,7 @@ Quick navigation guide for all integration test documentation.
 |------|-------------|-------|
 | `run_e2e_test.sh` | Single test runner | `./run_e2e_test.sh [--build]` |
 | `run_validate_files_test.sh` | validate-files.sh test runner | `./run_validate_files_test.sh` |
+| `test_json_escape_e2e.sh` | json-escape feature test | `./test_json_escape_e2e.sh [--no-remove]` |
 | `run_all_tests.sh` | All tests runner | `./run_all_tests.sh [--build]` |
 | `ci_test.sh` | CI-friendly runner | `./ci_test.sh` |
 | `check_environment.sh` | Environment checker | `./check_environment.sh` |
@@ -223,14 +224,15 @@ See: [TESTING_GUIDE.md](TESTING_GUIDE.md)
 
 | Metric | Value |
 |--------|-------|
-| Test Files | 3 (basic + complete + validate-files) |
-| Runner Scripts | 5 |
+| Test Files | 4 (basic + complete + validate-files + json-escape) |
+| Runner Scripts | 6 |
 | Documentation Files | 8 |
-| Total Lines of Code | ~2500+ |
-| Test Duration | ~1-2 minutes |
-| Coverage | 35+ scenarios |
+| Total Lines of Code | ~3200+ |
+| Test Duration | ~1-3 minutes |
+| Coverage | 45+ scenarios |
 | Git Commits Tested | 7 (complete) / 2 (basic) |
 | validate-files Tests | 16 test cases |
+| json-escape Tests | 10 test cases (40+ assertions) |
 
 ## 🔧 Maintenance
 
