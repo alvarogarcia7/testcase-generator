@@ -1,4 +1,5 @@
 use crate::bdd_parser::BddStepRegistry;
+use crate::config::{Config, JsonEscapingMethod};
 use crate::hydration::VarHydrator;
 use crate::models::{CaptureVarsFormat, TestCase, TestStepExecutionEntry, VerificationExpression};
 use anyhow::{Context, Result};
@@ -11,6 +12,7 @@ use std::process::Command;
 
 pub struct TestExecutor {
     output_dir: Option<PathBuf>,
+    config: Config,
 }
 
 /// Helper function to check if capture_vars is empty
@@ -282,13 +284,84 @@ fn generate_verification_with_var_subst(expr: &VerificationExpression, var_name:
 
 impl TestExecutor {
     pub fn new() -> Self {
-        Self { output_dir: None }
+        Self {
+            output_dir: None,
+            config: Config::load_or_default(),
+        }
     }
 
     pub fn with_output_dir<P: Into<PathBuf>>(output_dir: P) -> Self {
         Self {
             output_dir: Some(output_dir.into()),
+            config: Config::load_or_default(),
         }
+    }
+
+    pub fn with_config(config: Config) -> Self {
+        Self {
+            output_dir: None,
+            config,
+        }
+    }
+
+    pub fn with_output_dir_and_config<P: Into<PathBuf>>(output_dir: P, config: Config) -> Self {
+        Self {
+            output_dir: Some(output_dir.into()),
+            config,
+        }
+    }
+
+    /// Generate JSON escaping code based on configuration
+    ///
+    /// Returns bash script code that reads from $COMMAND_OUTPUT and sets $OUTPUT_ESCAPED
+    /// based on the configured JSON escaping method.
+    fn generate_json_escaping_code(&self) -> String {
+        let mut script = String::new();
+
+        script.push_str("# Escape output for JSON (BSD/GNU compatible)\n");
+
+        let method = &self.config.script_generation.json_escaping.method;
+        let binary_path = &self.config.script_generation.json_escaping.binary_path;
+
+        match method {
+            JsonEscapingMethod::RustBinary => {
+                // Use json-escape binary directly
+                let bin_path = binary_path
+                    .as_ref()
+                    .and_then(|p| p.to_str())
+                    .unwrap_or("json-escape");
+                script.push_str(&format!(
+                    "OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | {} 2>/dev/null || echo \"\")\n",
+                    bin_path
+                ));
+            }
+            JsonEscapingMethod::ShellFallback => {
+                // Use sed/awk fallback directly
+                script.push_str("# Shell fallback: escape backslashes, quotes, tabs, carriage returns, and convert newlines to \\n\n");
+                script.push_str("OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g; s/\\t/\\\\t/g; s/\\r/\\\\r/g' | awk '{printf \"%s%s\", (NR>1?\"\\\\n\":\"\"), $0}')\n");
+            }
+            JsonEscapingMethod::Auto => {
+                // Try json-escape binary first, fallback to sed/awk
+                let bin_path = binary_path
+                    .as_ref()
+                    .and_then(|p| p.to_str())
+                    .unwrap_or("json-escape");
+                script.push_str(&format!(
+                    "if command -v {} >/dev/null 2>&1; then\n",
+                    bin_path
+                ));
+                script.push_str(&format!(
+                    "    OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | {} 2>/dev/null || echo \"\")\n",
+                    bin_path
+                ));
+                script.push_str("else\n");
+                script.push_str("    # Shell fallback: escape backslashes, quotes, tabs, carriage returns, and convert newlines to \\n\n");
+                script.push_str("    OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g; s/\\t/\\\\t/g; s/\\r/\\\\r/g' | awk '{printf \"%s%s\", (NR>1?\"\\\\n\":\"\"), $0}')\n");
+                script.push_str("fi\n");
+            }
+        }
+
+        script
     }
 
     /// Generate bash script code for a VerificationExpression
@@ -827,20 +900,8 @@ impl TestExecutor {
                     .replace("\t", "\\t")
                     .replace("\x08", "\\b") // backspace
                     .replace("\x0C", "\\f"); // form feed
-                script.push_str("# Escape output for JSON (BSD/GNU compatible)\n");
-                script.push_str(
-                    "# Use Python for reliable JSON escaping if available, otherwise use sed/perl/awk\n",
-                );
-                script.push_str("if command -v python3 >/dev/null 2>&1; then\n");
-                script.push_str("    OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | python3 -c 'import sys, json; s=sys.stdin.read(); print(json.dumps(s)[1:-1], end=\"\")')\n");
-                script.push_str("elif command -v python >/dev/null 2>&1; then\n");
-                script.push_str("    OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | python -c 'import sys, json; s=sys.stdin.read(); print json.dumps(s)[1:-1]')\n");
-                script.push_str("elif command -v perl >/dev/null 2>&1; then\n");
-                script.push_str("    OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | perl -pe 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g; s/\\n/\\\\n/g; s/\\r/\\\\r/g; s/\\t/\\\\t/g' | tr -d '\\n')\n");
-                script.push_str("else\n");
-                script.push_str("    # Fallback: escape backslashes, quotes, tabs, and convert newlines to \\n\n");
-                script.push_str("    OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g; s/\\t/\\\\t/g' | awk '{printf \"%s%s\", (NR>1?\"\\\\n\":\"\"), $0}')\n");
-                script.push_str("fi\n\n");
+                script.push_str(&self.generate_json_escaping_code());
+                script.push('\n');
 
                 script.push_str("if [ \"$FIRST_ENTRY\" = false ]; then\n");
                 script.push_str("    echo ',' >> \"$JSON_LOG\"\n");
