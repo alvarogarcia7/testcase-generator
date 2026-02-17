@@ -17,10 +17,10 @@ initial_conditions:
   include:
     - id: "TC_VAR_001" # can include the initial_conditions of another test (by id)
   system2:
-    - ref: 1234-af # can reference steps or test sequences by reference. The ref is assumed to be unique in the whole project.
+    - ref: "1234-af" # can reference steps or test sequences by reference. The ref is assumed to be unique in the whole project.
     - test_sequence:
         id: 1
-        step: [1,4] # means both inclusive
+        step: "[1,4]" # means both inclusive
         # [1,3) 1 included, 2 included, 3 not included
         # 2,3,5: steps 2, 3, 5. Whitespace does not matter
         # [4,1] Inclusive range in the opposite order
