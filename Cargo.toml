@@ -70,6 +70,10 @@ path = "src/bin/test-orchestrator.rs"
 name = "script-cleanup"
 path = "src/bin/script-cleanup.rs"
 
+[[bin]]
+name = "json-escape"
+path = "src/bin/json-escape.rs"
+
 [[example]]
 name = "tty_fallback_demo"
 path = "examples/tty_fallback_demo.rs"
