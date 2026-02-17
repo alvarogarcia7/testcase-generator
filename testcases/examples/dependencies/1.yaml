@@ -9,14 +9,15 @@ general_initial_conditions:
     - "Bash shell is available"
     - "Common Unix utilities (wc, cat, echo) are installed"
   include:
-    - ref: 1234
-    - id: "TC_VAR_001"
+    - id: "TC_VAR_001" # can include the general_initial_conditions of another test (by id)
 
 initial_conditions:
   filesystem:
     - "Temporary directory /tmp is writable"
+  include:
+    - id: "TC_VAR_001" # can include the initial_conditions of another test (by id)
   system2:
-    - ref: 1234
+    - ref: 1234-af # can reference steps or test sequences by reference. The ref is assumed to be unique in the whole project.
     - test_sequence:
         id: 1
         step: [1,4] # means both inclusive
@@ -35,6 +36,9 @@ test_sequences:
     initial_conditions:
       system:
         - "Test environment is ready"
+      include:
+        - id: "TC_VAR_001"
+          test_sequence: "1" # can include the initial_conditions of another test sequence (by test case id and test sequence id)
     steps:
       - step: 1
         description: "Create test file and capture byte count with command"
