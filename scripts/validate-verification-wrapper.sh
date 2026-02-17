@@ -15,7 +15,7 @@
 #
 # CONFIGURATION:
 #   VERIFICATION_SCHEMA_FILE  Environment variable to specify the schema file
-#                             (default: data/verification-schema.json)
+#                             (default: schemas/verification-schema.json)
 #   VALIDATE_JSON_BIN         Path to validate-json binary (default: auto-detected)
 #
 # EXIT CODES:
@@ -48,7 +48,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib/logger.sh" || exit 1
 
 # Configuration: Schema file to validate against
-VERIFICATION_SCHEMA_FILE="${VERIFICATION_SCHEMA_FILE:-data/verification-schema.json}"
+VERIFICATION_SCHEMA_FILE="${VERIFICATION_SCHEMA_FILE:-schemas/verification-schema.json}"
 
 # Auto-detect validate-json binary location
 if [[ -n "${VALIDATE_JSON_BIN:-}" ]]; then

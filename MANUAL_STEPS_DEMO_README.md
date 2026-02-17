@@ -335,8 +335,8 @@ Tests that combine automated setup/verification with manual operations:
 
 ## Additional Resources
 
-- **Test Case Schema:** `data/test_case_schema.json`
-- **Execution Log Schema:** `data/test_execution_log_schema.json`
+- **Test Case Schema:** `schemas/test_case_schema.json`
+- **Execution Log Schema:** `schemas/test_execution_log_schema.json`
 - **Example Test Cases:** `testcases/examples/manual_steps/`
 - **Generated Scripts:** `examples/manual_steps_scripts/`
 

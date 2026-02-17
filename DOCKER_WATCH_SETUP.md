@@ -43,7 +43,7 @@ docker run -it --rm -v $(pwd)/testcases:/app/testcases testcase-manager:latest .
 
 # Watch a custom directory
 docker run -it --rm -v $(pwd)/custom:/app/custom testcase-manager:latest bash -c \
-    "SCHEMA_FILE=data/schema.json ./scripts/validate-files.sh --pattern '\.ya?ml$' --validator ./scripts/validate-yaml-wrapper.sh --watch custom/"
+    "SCHEMA_FILE=schemas/schema.json ./scripts/validate-files.sh --pattern '\.ya?ml$' --validator ./scripts/validate-yaml-wrapper.sh --watch custom/"
 ```
 
 ## How It Works

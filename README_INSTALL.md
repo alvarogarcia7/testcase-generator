@@ -94,8 +94,8 @@ git config user.email "your.email@example.com"
 ## Links & Documentation
 
 - **GitHub Repository**: https://github.com/yourusername/testcase-manager
-- **Test Case Schema**: `/app/data/testcase_schema.json`
-- **Execution Log Schema**: `/app/data/test_execution_log_schema.json`
+- **Test Case Schema**: `/app/schemas/testcase_schema.json`
+- **Execution Log Schema**: `/app/schemas/test_execution_log_schema.json`
 
 ## Container Information
 

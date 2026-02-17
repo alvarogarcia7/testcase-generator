@@ -19,7 +19,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 TEST_EXECUTOR_BIN="$PROJECT_ROOT/target/debug/test-executor"
 VALIDATE_YAML_BIN="$PROJECT_ROOT/target/debug/validate-yaml"
-SCHEMA_FILE="$PROJECT_ROOT/data/schema.json"
+SCHEMA_FILE="$PROJECT_ROOT/schemas/test-case.schema.json"
 
 # Color codes for output
 GREEN='\033[0;32m'

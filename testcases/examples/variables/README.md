@@ -104,5 +104,5 @@ Execute test case:
 
 Validate YAML against schema:
 ```bash
-./target/release/validate-yaml --schema data/schema.json testcases/examples/variables/1.yaml
+./target/release/validate-yaml --schema schemas/schema.json testcases/examples/variables/1.yaml
 ```

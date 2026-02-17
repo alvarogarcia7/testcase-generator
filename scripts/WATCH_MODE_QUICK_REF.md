@@ -39,7 +39,7 @@ brew install fswatch
 1. Install platform-specific tool (inotify-tools or fswatch)
 2. Set schema file (if not using default):
    ```bash
-   export SCHEMA_FILE=data/schema.json
+   export SCHEMA_FILE=schemas/schema.json
    ```
 3. Run watch mode:
    ```bash
