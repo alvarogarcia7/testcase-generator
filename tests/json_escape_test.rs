@@ -1238,6 +1238,598 @@ fn test_manual_steps_no_escaping() {
 }
 
 // ============================================================================
+// Configuration Edge Cases and Validation Tests
+// ============================================================================
+
+/// Test Config::load() when config file is missing
+#[test]
+fn test_config_load_missing_file() -> Result<()> {
+    // Save current HOME/USERPROFILE
+    let original_home = std::env::var("HOME").ok();
+    let original_userprofile = std::env::var("USERPROFILE").ok();
+
+    // Create a temporary directory and set it as HOME
+    let temp_dir = TempDir::new()?;
+    std::env::set_var("HOME", temp_dir.path());
+    std::env::remove_var("USERPROFILE");
+
+    // Try to load config when file doesn't exist
+    let config = Config::load()?;
+
+    // Should return default config
+    assert!(matches!(
+        config.script_generation.json_escaping.method,
+        JsonEscapingMethod::Auto
+    ));
+    assert!(config.script_generation.json_escaping.enabled);
+    assert!(config.script_generation.json_escaping.binary_path.is_none());
+
+    // Restore original environment
+    if let Some(home) = original_home {
+        std::env::set_var("HOME", home);
+    }
+    if let Some(userprofile) = original_userprofile {
+        std::env::set_var("USERPROFILE", userprofile);
+    }
+
+    Ok(())
+}
+
+/// Test Config::load() when config file is corrupted (invalid TOML)
+#[test]
+fn test_config_load_corrupted_file() -> Result<()> {
+    let temp_dir = TempDir::new()?;
+    let config_dir = temp_dir.path().join(".testcase-manager");
+    fs::create_dir_all(&config_dir)?;
+    let config_path = config_dir.join("config.toml");
+
+    // Write invalid TOML
+    fs::write(&config_path, "this is not valid TOML [ } invalid")?;
+
+    // Save current HOME/USERPROFILE
+    let original_home = std::env::var("HOME").ok();
+    let original_userprofile = std::env::var("USERPROFILE").ok();
+
+    std::env::set_var("HOME", temp_dir.path());
+    std::env::remove_var("USERPROFILE");
+
+    // Try to load config - should return an error
+    let result = Config::load();
+    assert!(result.is_err());
+
+    let err = result.unwrap_err();
+    let err_msg = format!("{}", err);
+    assert!(err_msg.contains("Failed to parse config file"));
+
+    // Restore original environment
+    if let Some(home) = original_home {
+        std::env::set_var("HOME", home);
+    }
+    if let Some(userprofile) = original_userprofile {
+        std::env::set_var("USERPROFILE", userprofile);
+    }
+
+    Ok(())
+}
+
+/// Test Config::load() when config file has invalid method value
+#[test]
+fn test_config_invalid_method_value() -> Result<()> {
+    let temp_dir = TempDir::new()?;
+    let config_dir = temp_dir.path().join(".testcase-manager");
+    fs::create_dir_all(&config_dir)?;
+    let config_path = config_dir.join("config.toml");
+
+    // Write config with invalid method value
+    let invalid_config = r#"
+[script_generation.json_escaping]
+method = "invalid_method"
+enabled = true
+"#;
+    fs::write(&config_path, invalid_config)?;
+
+    // Save current HOME/USERPROFILE
+    let original_home = std::env::var("HOME").ok();
+    let original_userprofile = std::env::var("USERPROFILE").ok();
+
+    std::env::set_var("HOME", temp_dir.path());
+    std::env::remove_var("USERPROFILE");
+
+    // Try to load config - should return an error
+    let result = Config::load();
+    assert!(result.is_err());
+
+    // Restore original environment
+    if let Some(home) = original_home {
+        std::env::set_var("HOME", home);
+    }
+    if let Some(userprofile) = original_userprofile {
+        std::env::set_var("USERPROFILE", userprofile);
+    }
+
+    Ok(())
+}
+
+/// Test config with valid method values (auto, rust_binary, shell_fallback)
+#[test]
+fn test_config_valid_method_values() -> Result<()> {
+    // Test auto
+    let config_toml = r#"
+[script_generation.json_escaping]
+method = "auto"
+enabled = true
+"#;
+    let config: Config = toml::from_str(config_toml)?;
+    assert!(matches!(
+        config.script_generation.json_escaping.method,
+        JsonEscapingMethod::Auto
+    ));
+
+    // Test rust_binary
+    let config_toml = r#"
+[script_generation.json_escaping]
+method = "rust_binary"
+enabled = true
+"#;
+    let config: Config = toml::from_str(config_toml)?;
+    assert!(matches!(
+        config.script_generation.json_escaping.method,
+        JsonEscapingMethod::RustBinary
+    ));
+
+    // Test shell_fallback
+    let config_toml = r#"
+[script_generation.json_escaping]
+method = "shell_fallback"
+enabled = true
+"#;
+    let config: Config = toml::from_str(config_toml)?;
+    assert!(matches!(
+        config.script_generation.json_escaping.method,
+        JsonEscapingMethod::ShellFallback
+    ));
+
+    Ok(())
+}
+
+/// Test config with binary_path pointing to non-existent path
+#[test]
+fn test_config_nonexistent_binary_path() -> Result<()> {
+    let config = Config {
+        script_generation: ScriptGenerationConfig {
+            json_escaping: JsonEscapingConfig {
+                method: JsonEscapingMethod::RustBinary,
+                enabled: true,
+                binary_path: Some(PathBuf::from("/nonexistent/path/to/json-escape")),
+            },
+        },
+        ..Default::default()
+    };
+
+    // Config should be valid even with non-existent path
+    // The path validation happens at runtime, not config loading
+    assert_eq!(
+        config.script_generation.json_escaping.binary_path,
+        Some(PathBuf::from("/nonexistent/path/to/json-escape"))
+    );
+
+    // Test that the executor can generate a script with this config
+    let executor = TestExecutor::with_config(config);
+    let test_case = create_simple_test_case();
+    let script = executor.generate_test_script(&test_case);
+
+    // Should still generate script but will fail at runtime
+    assert!(script.contains("/nonexistent/path/to/json-escape"));
+
+    Ok(())
+}
+
+/// Test script generation with enabled=false
+#[test]
+fn test_config_json_escaping_disabled_script_generation() {
+    let config = Config {
+        script_generation: ScriptGenerationConfig {
+            json_escaping: JsonEscapingConfig {
+                method: JsonEscapingMethod::Auto,
+                enabled: false,
+                binary_path: None,
+            },
+        },
+        ..Default::default()
+    };
+
+    let executor = TestExecutor::with_config(config);
+    let test_case = create_simple_test_case();
+    let script = executor.generate_test_script(&test_case);
+
+    // When disabled, script should still be generated
+    // The enabled flag controls whether escaping logic is included
+    // Currently the implementation always includes escaping code
+    // This test documents current behavior
+    assert!(script.contains("OUTPUT_ESCAPED="));
+}
+
+/// Test Config::load_or_default() returns default on error
+#[test]
+fn test_config_load_or_default_with_error() {
+    let temp_dir = TempDir::new().unwrap();
+    let config_dir = temp_dir.path().join(".testcase-manager");
+    fs::create_dir_all(&config_dir).unwrap();
+    let config_path = config_dir.join("config.toml");
+
+    // Write invalid TOML
+    fs::write(&config_path, "invalid toml content {{{").unwrap();
+
+    // Save current HOME/USERPROFILE
+    let original_home = std::env::var("HOME").ok();
+    let original_userprofile = std::env::var("USERPROFILE").ok();
+
+    std::env::set_var("HOME", temp_dir.path());
+    std::env::remove_var("USERPROFILE");
+
+    // load_or_default should return default config without error
+    let config = Config::load_or_default();
+
+    // Should have default values
+    assert!(matches!(
+        config.script_generation.json_escaping.method,
+        JsonEscapingMethod::Auto
+    ));
+    assert!(config.script_generation.json_escaping.enabled);
+
+    // Restore original environment
+    if let Some(home) = original_home {
+        std::env::set_var("HOME", home);
+    }
+    if let Some(userprofile) = original_userprofile {
+        std::env::set_var("USERPROFILE", userprofile);
+    }
+}
+
+/// Test Config::save() and then load the saved config
+#[test]
+fn test_config_save_and_load() -> Result<()> {
+    let temp_dir = TempDir::new()?;
+
+    // Save current HOME/USERPROFILE
+    let original_home = std::env::var("HOME").ok();
+    let original_userprofile = std::env::var("USERPROFILE").ok();
+
+    std::env::set_var("HOME", temp_dir.path());
+    std::env::remove_var("USERPROFILE");
+
+    // Create a config with specific values
+    let config = Config {
+        script_generation: ScriptGenerationConfig {
+            json_escaping: JsonEscapingConfig {
+                method: JsonEscapingMethod::ShellFallback,
+                enabled: false,
+                binary_path: Some(PathBuf::from("/custom/path/json-escape")),
+            },
+        },
+        default_device_name: Some("test-device".to_string()),
+        ..Default::default()
+    };
+
+    // Save the config
+    config.save()?;
+
+    // Load it back
+    let loaded_config = Config::load()?;
+
+    // Verify values match
+    assert!(matches!(
+        loaded_config.script_generation.json_escaping.method,
+        JsonEscapingMethod::ShellFallback
+    ));
+    assert!(!loaded_config.script_generation.json_escaping.enabled);
+    assert_eq!(
+        loaded_config.script_generation.json_escaping.binary_path,
+        Some(PathBuf::from("/custom/path/json-escape"))
+    );
+    assert_eq!(
+        loaded_config.default_device_name,
+        Some("test-device".to_string())
+    );
+
+    // Restore original environment
+    if let Some(home) = original_home {
+        std::env::set_var("HOME", home);
+    }
+    if let Some(userprofile) = original_userprofile {
+        std::env::set_var("USERPROFILE", userprofile);
+    }
+
+    Ok(())
+}
+
+/// Test Config::save() creates directory if it doesn't exist
+#[test]
+fn test_config_save_creates_directory() -> Result<()> {
+    let temp_dir = TempDir::new()?;
+
+    // Save current HOME/USERPROFILE
+    let original_home = std::env::var("HOME").ok();
+    let original_userprofile = std::env::var("USERPROFILE").ok();
+
+    std::env::set_var("HOME", temp_dir.path());
+    std::env::remove_var("USERPROFILE");
+
+    // Verify config directory doesn't exist
+    let config_dir = temp_dir.path().join(".testcase-manager");
+    assert!(!config_dir.exists());
+
+    // Save config
+    let config = Config::default();
+    config.save()?;
+
+    // Verify directory was created
+    assert!(config_dir.exists());
+    assert!(config_dir.join("config.toml").exists());
+
+    // Restore original environment
+    if let Some(home) = original_home {
+        std::env::set_var("HOME", home);
+    }
+    if let Some(userprofile) = original_userprofile {
+        std::env::set_var("USERPROFILE", userprofile);
+    }
+
+    Ok(())
+}
+
+/// Test config with empty binary_path (None)
+#[test]
+fn test_config_empty_binary_path() -> Result<()> {
+    let config_toml = r#"
+[script_generation.json_escaping]
+method = "rust_binary"
+enabled = true
+"#;
+    let config: Config = toml::from_str(config_toml)?;
+
+    assert!(config.script_generation.json_escaping.binary_path.is_none());
+
+    // Test script generation with None binary_path
+    let executor = TestExecutor::with_config(config);
+    let test_case = create_simple_test_case();
+    let script = executor.generate_test_script(&test_case);
+
+    // Should use default "json-escape" command (not a path)
+    assert!(script.contains("json-escape"));
+    // Verify it's using the bare command name, not a path with slashes
+    assert!(script.contains("printf '%s' \"$COMMAND_OUTPUT\" | json-escape"));
+
+    Ok(())
+}
+
+/// Test config deserialization with missing fields (should use defaults)
+#[test]
+fn test_config_deserialization_missing_fields() -> Result<()> {
+    // Minimal config with only one field
+    let config_toml = r#"
+[script_generation.json_escaping]
+enabled = false
+"#;
+    let config: Config = toml::from_str(config_toml)?;
+
+    // Should use default values for missing fields
+    assert!(!config.script_generation.json_escaping.enabled);
+    assert!(matches!(
+        config.script_generation.json_escaping.method,
+        JsonEscapingMethod::Auto
+    ));
+    assert!(config.script_generation.json_escaping.binary_path.is_none());
+
+    Ok(())
+}
+
+/// Test config serialization and verify TOML format
+#[test]
+fn test_config_serialization_format() -> Result<()> {
+    let config = Config {
+        script_generation: ScriptGenerationConfig {
+            json_escaping: JsonEscapingConfig {
+                method: JsonEscapingMethod::Auto,
+                enabled: false,
+                binary_path: Some(PathBuf::from("/test/path")),
+            },
+        },
+        ..Default::default()
+    };
+
+    let toml_str = toml::to_string_pretty(&config)?;
+
+    // Verify TOML contains expected sections
+    assert!(toml_str.contains("[script_generation"));
+    assert!(toml_str.contains("enabled = false"));
+    assert!(toml_str.contains("method = \"auto\""));
+    assert!(toml_str.contains("binary_path = \"/test/path\""));
+
+    Ok(())
+}
+
+/// Test that Config::load() properly handles file read errors
+#[test]
+fn test_config_load_file_read_error() -> Result<()> {
+    let temp_dir = TempDir::new()?;
+    let config_dir = temp_dir.path().join(".testcase-manager");
+    fs::create_dir_all(&config_dir)?;
+    let config_path = config_dir.join("config.toml");
+
+    // Create a file we can't read (directory instead of file)
+    #[cfg(unix)]
+    {
+        // On Unix, we can create a directory with the config file name
+        fs::create_dir(&config_path)?;
+
+        // Save current HOME/USERPROFILE
+        let original_home = std::env::var("HOME").ok();
+        let original_userprofile = std::env::var("USERPROFILE").ok();
+
+        std::env::set_var("HOME", temp_dir.path());
+        std::env::remove_var("USERPROFILE");
+
+        // Try to load config - should fail with read error
+        let result = Config::load();
+        assert!(result.is_err());
+
+        let err = result.unwrap_err();
+        let err_msg = format!("{}", err);
+        assert!(err_msg.contains("Failed to read config file"));
+
+        // Restore original environment
+        if let Some(home) = original_home {
+            std::env::set_var("HOME", home);
+        }
+        if let Some(userprofile) = original_userprofile {
+            std::env::set_var("USERPROFILE", userprofile);
+        }
+    }
+
+    Ok(())
+}
+
+/// Test config with all three method types and different enabled states
+#[test]
+fn test_config_method_and_enabled_combinations() -> Result<()> {
+    // RustBinary + enabled
+    let config = Config {
+        script_generation: ScriptGenerationConfig {
+            json_escaping: JsonEscapingConfig {
+                method: JsonEscapingMethod::RustBinary,
+                enabled: true,
+                binary_path: None,
+            },
+        },
+        ..Default::default()
+    };
+    let executor = TestExecutor::with_config(config);
+    let script = executor.generate_test_script(&create_simple_test_case());
+    assert!(script.contains("json-escape"));
+
+    // ShellFallback + enabled
+    let config = Config {
+        script_generation: ScriptGenerationConfig {
+            json_escaping: JsonEscapingConfig {
+                method: JsonEscapingMethod::ShellFallback,
+                enabled: true,
+                binary_path: None,
+            },
+        },
+        ..Default::default()
+    };
+    let executor = TestExecutor::with_config(config);
+    let script = executor.generate_test_script(&create_simple_test_case());
+    assert!(script.contains("sed"));
+    assert!(script.contains("awk"));
+
+    // Auto + enabled
+    let config = Config {
+        script_generation: ScriptGenerationConfig {
+            json_escaping: JsonEscapingConfig {
+                method: JsonEscapingMethod::Auto,
+                enabled: true,
+                binary_path: None,
+            },
+        },
+        ..Default::default()
+    };
+    let executor = TestExecutor::with_config(config);
+    let script = executor.generate_test_script(&create_simple_test_case());
+    assert!(script.contains("if command -v json-escape"));
+
+    Ok(())
+}
+
+/// Test config with relative binary path
+#[test]
+fn test_config_relative_binary_path() -> Result<()> {
+    let config = Config {
+        script_generation: ScriptGenerationConfig {
+            json_escaping: JsonEscapingConfig {
+                method: JsonEscapingMethod::RustBinary,
+                enabled: true,
+                binary_path: Some(PathBuf::from("./bin/json-escape")),
+            },
+        },
+        ..Default::default()
+    };
+
+    let executor = TestExecutor::with_config(config);
+    let test_case = create_simple_test_case();
+    let script = executor.generate_test_script(&test_case);
+
+    // Should use relative path as-is
+    assert!(script.contains("./bin/json-escape"));
+
+    Ok(())
+}
+
+/// Test config with absolute binary path
+#[test]
+fn test_config_absolute_binary_path() -> Result<()> {
+    let config = Config {
+        script_generation: ScriptGenerationConfig {
+            json_escaping: JsonEscapingConfig {
+                method: JsonEscapingMethod::Auto,
+                enabled: true,
+                binary_path: Some(PathBuf::from("/usr/local/bin/json-escape")),
+            },
+        },
+        ..Default::default()
+    };
+
+    let executor = TestExecutor::with_config(config);
+    let test_case = create_simple_test_case();
+    let script = executor.generate_test_script(&test_case);
+
+    // Should use absolute path
+    assert!(script.contains("/usr/local/bin/json-escape"));
+
+    Ok(())
+}
+
+/// Test that Config::load() error message includes context
+#[test]
+fn test_config_load_error_context() -> Result<()> {
+    let temp_dir = TempDir::new()?;
+    let config_dir = temp_dir.path().join(".testcase-manager");
+    fs::create_dir_all(&config_dir)?;
+    let config_path = config_dir.join("config.toml");
+
+    // Write invalid TOML with specific syntax error
+    fs::write(&config_path, "[script_generation\nmethod = ")?;
+
+    // Save current HOME/USERPROFILE
+    let original_home = std::env::var("HOME").ok();
+    let original_userprofile = std::env::var("USERPROFILE").ok();
+
+    std::env::set_var("HOME", temp_dir.path());
+    std::env::remove_var("USERPROFILE");
+
+    // Try to load config
+    let result = Config::load();
+    assert!(result.is_err());
+
+    let err = result.unwrap_err();
+    let err_chain = format!("{:?}", err);
+
+    // Error should mention parsing failure
+    assert!(err_chain.contains("Failed to parse config file") || err_chain.contains("parse"));
+
+    // Restore original environment
+    if let Some(home) = original_home {
+        std::env::set_var("HOME", home);
+    }
+    if let Some(userprofile) = original_userprofile {
+        std::env::set_var("USERPROFILE", userprofile);
+    }
+
+    Ok(())
+}
+
+// ============================================================================
 // Helper Functions
 // ============================================================================
 
