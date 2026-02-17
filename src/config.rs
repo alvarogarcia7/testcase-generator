@@ -4,6 +4,39 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum JsonEscapingMethod {
+    RustBinary,
+    ShellFallback,
+    #[default]
+    Auto,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct JsonEscapingConfig {
+    pub method: JsonEscapingMethod,
+    pub enabled: bool,
+    pub binary_path: Option<PathBuf>,
+}
+
+impl Default for JsonEscapingConfig {
+    fn default() -> Self {
+        Self {
+            method: JsonEscapingMethod::Auto,
+            enabled: true,
+            binary_path: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ScriptGenerationConfig {
+    pub json_escaping: JsonEscapingConfig,
+}
+
 #[derive(Debug, Clone)]
 pub struct EditorConfig {
     pub editor: Option<String>,
@@ -99,6 +132,7 @@ pub struct Config {
     pub default_device_name: Option<String>,
     pub git_author: GitAuthorInfo,
     pub commit_templates: CommitMessageTemplates,
+    pub script_generation: ScriptGenerationConfig,
 }
 
 impl Config {
