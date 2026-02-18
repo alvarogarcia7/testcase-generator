@@ -125,6 +125,62 @@ plugins:
   - search:
       lang: en
       separator: '[\s\-\.]+'
+  - with-pdf:
+      enabled_if_env: ENABLE_PDF_EXPORT
+      author: Test Case Manager Team
+      copyright: Copyright © 2024 Test Case Manager Team
+      output_path: pdf/testcase-manager-documentation.pdf
+      cover_title: Test Case Manager Documentation
+      cover_subtitle: A comprehensive CLI tool for managing test cases in YAML format with interactive workflows, fuzzy search, git integration, and test verification capabilities
+      toc_title: Table of Contents
+      heading_shift: false
+      toc_level: 3
+      ordered_chapter_level: 2
+      excludes_children:
+        - 'IMPLEMENTATION_*.md'
+        - '*_SUMMARY.md'
+      exclude_pages:
+        - 'IMPLEMENTATION_COMPLETE_DOCS_RESTRUCTURE.md'
+        - 'tests/integration/IMPLEMENTATION_SUMMARY.md'
+        - 'testcases/examples/variables/IMPLEMENTATION_NOTES.md'
+        - 'IMPLEMENTATION_XSD_VALIDATION.md'
+        - 'IMPLEMENTATION_WATCH_MODE.md'
+        - 'IMPLEMENTATION_VALIDATE_SUBCOMMAND.md'
+        - 'IMPLEMENTATION_TTY_FALLBACK.md'
+        - 'IMPLEMENTATION_TEST_VERIFY.md'
+        - 'IMPLEMENTATION_TEST_EXECUTOR_E2E.md'
+        - 'IMPLEMENTATION_SUMMARY_STEP_COLLECTION.md'
+        - 'IMPLEMENTATION_SUMMARY_SEQUENCE_BUILDER.md'
+        - 'IMPLEMENTATION_SUMMARY_INTERACTIVE.md'
+        - 'IMPLEMENTATION_SUMMARY_INITIAL_CONDITIONS.md'
+        - 'IMPLEMENTATION_SUMMARY_CONDITIONS.md'
+        - 'IMPLEMENTATION_SUMMARY.md'
+        - 'IMPLEMENTATION_SHARED_BINARY_LIBRARY.md'
+        - 'IMPLEMENTATION_RECURSIVE_VALIDATION.md'
+        - 'IMPLEMENTATION_RECOVERY.md'
+        - 'IMPLEMENTATION_PROMPTS_DB_INJECTION.md'
+        - 'IMPLEMENTATION_JUNIT_XML.md'
+        - 'IMPLEMENTATION_JSON_ESCAPE_E2E.md'
+        - 'IMPLEMENTATION_EXAMPLE_SCRIPTS.md'
+        - 'IMPLEMENTATION_DEVICE_NAME_FUZZY_SEARCH.md'
+        - 'IMPLEMENTATION_DETAILED_VALIDATION.md'
+        - 'IMPLEMENTATION_COVERAGE_TOOLS_ENHANCED.md'
+        - 'IMPLEMENTATION_CONDITIONS_MANAGER.md'
+        - 'IMPLEMENTATION_COMPLETE.md'
+        - 'IMPLEMENTATION_CHUNK_VALIDATION.md'
+        - 'DOCUMENTATION_RESTRUCTURE_SUMMARY.md'
+        - 'tests/integration/VALIDATE_FILES_IMPLEMENTATION_SUMMARY.md'
+        - 'VALIDATION_FIX_SUMMARY.md'
+        - 'MANUAL_STEPS_EXECUTION_SUMMARY.md'
+        - 'DOCUMENTATION_SUMMARY.md'
+        - 'DOCKER_CLEANUP_SUMMARY.md'
+        - 'CROSS_PLATFORM_TESTS_SUMMARY.md'
+      custom_template_path: TEMPLATES
+      cover_logo: null
+      cover: true
+      back_cover: true
+      cover_subtitle_color: '#6c757d'
+      custom_css: docs/stylesheets/pdf.css
 
 extra:
   social:
