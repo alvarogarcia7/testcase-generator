@@ -79,3 +79,9 @@ grcov
 /test_validate_files*/
 
 /node_modules/
+
+# MkDocs
+mkdocs-venv/
+site/
+site_pdf/
+pdf_output/

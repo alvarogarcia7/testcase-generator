@@ -1,0 +1,5 @@
+mkdocs>=1.5.0
+mkdocs-material>=9.5.0
+mkdocs-with-pdf>=0.9.3
+markdown>=3.5
+pymdown-extensions>=10.7
