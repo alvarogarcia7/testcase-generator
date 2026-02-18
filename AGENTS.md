@@ -230,6 +230,19 @@ This project uses MkDocs for documentation with the Material theme.
   - Removes `site/` directory and build artifacts
   - Useful for fresh builds or troubleshooting
 
+- **Test setup**: `make docs-test`
+  - Runs end-to-end tests for MkDocs setup
+  - Validates installation, serving, building, PDF generation, and links
+  - See `scripts/README_MKDOCS_TEST.md` for detailed test documentation
+
+- **Test with clean install**: `make docs-test-clean`
+  - Runs full test suite with clean installation
+  - Removes existing virtualenv and rebuilds from scratch
+
+- **Quick test**: `make docs-test-quick`
+  - Runs fast validation skipping serve and unit tests
+  - Useful for rapid feedback during documentation development
+
 ### Automated Deployment
 
 Documentation is automatically built and deployed on every push to the `main` branch:

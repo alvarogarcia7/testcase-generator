@@ -263,3 +263,44 @@ test-e2e-orchestrator-examples: build
 	./tests/integration/test_orchestrator_examples.sh
 .PHONY: test-e2e-orchestrator-examples
 
+# Documentation targets
+VENV_DIR = mkdocs-venv
+MKDOCS = $(VENV_DIR)/bin/mkdocs
+PYTHON = python3
+
+docs-install:
+	./scripts/install-mkdocs.sh
+.PHONY: docs-install
+
+docs-serve: $(VENV_DIR)
+	$(MKDOCS) serve
+.PHONY: docs-serve
+
+docs-build: $(VENV_DIR)
+	$(MKDOCS) build
+.PHONY: docs-build
+
+docs-build-pdf: $(VENV_DIR)
+	ENABLE_PDF_EXPORT=1 $(MKDOCS) build
+.PHONY: docs-build-pdf
+
+docs-clean:
+	rm -rf site/
+.PHONY: docs-clean
+
+docs-test:
+	./scripts/test-mkdocs-setup.sh
+.PHONY: docs-test
+
+docs-test-clean:
+	./scripts/test-mkdocs-setup.sh --clean
+.PHONY: docs-test-clean
+
+docs-test-quick:
+	./scripts/test-mkdocs-setup.sh --skip-serve --skip-tests
+.PHONY: docs-test-quick
+
+$(VENV_DIR):
+	@echo "Virtual environment not found. Run 'make docs-install' first."
+	@exit 1
+
