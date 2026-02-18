@@ -13,6 +13,12 @@
 - **Install Coverage Tools**: make install-coverage-tools (install cargo-llvm-cov and related tools)
 - **Verify Scripts**: make verify-scripts (verify syntax of all shell scripts)
 - **Watch Mode**: make watch (monitors testcases/ for changes and auto-validates)
+- **Documentation**: 
+  - `make docs-install` - Install MkDocs and required dependencies
+  - `make docs-serve` - Serve documentation locally with live reload
+  - `make docs-build` - Build documentation site
+  - `make docs-build-pdf` - Build documentation with PDF export
+  - `make docs-clean` - Clean documentation build artifacts
 - **Dev Server**: N/A
 
 You must build, test, lint, and verify coverage before committing
@@ -192,8 +198,62 @@ Before committing any code changes, complete the following steps in order:
 2. **Lint**: `make lint` - Fix any style or quality issues
 3. **Test**: `make test` - Verify all tests pass
 4. **Coverage**: `make coverage-e2e` - Verify coverage meets 70% threshold with e2e tests
+5. **Documentation**: Update documentation as needed for user-facing changes
 
 All steps must complete successfully before committing changes.
+
+## Documentation
+
+This project uses MkDocs for documentation with the Material theme.
+
+### Documentation Commands
+
+- **Install dependencies**: `make docs-install`
+  - Installs MkDocs and all required plugins and themes
+  - Required before first use or after dependency updates
+
+- **Serve locally**: `make docs-serve`
+  - Starts a local development server with live reload
+  - Access at http://127.0.0.1:8000/
+  - Automatically rebuilds on file changes
+
+- **Build site**: `make docs-build`
+  - Generates static HTML documentation in `site/` directory
+  - Used for deployment and validation
+
+- **Build with PDF**: `make docs-build-pdf`
+  - Generates static HTML documentation plus PDF export
+  - PDF available in `site/pdf/` directory after build
+  - PDF also available as CI/CD artifact
+
+- **Clean artifacts**: `make docs-clean`
+  - Removes `site/` directory and build artifacts
+  - Useful for fresh builds or troubleshooting
+
+### Automated Deployment
+
+Documentation is automatically built and deployed on every push to the `main` branch:
+
+- **GitLab Pages**: Documentation is deployed to GitLab Pages (URL configured in project settings)
+- **GitHub Pages**: Documentation is also deployed to GitHub Pages (URL configured in repository settings)
+
+The CI/CD pipeline handles building and deploying documentation automatically, including PDF generation.
+
+### PDF Documentation
+
+PDF documentation is available in two ways:
+
+1. **Local build**: After running `make docs-build-pdf`, find the PDF in `site/pdf/` directory
+2. **CI/CD artifact**: Download PDF from pipeline artifacts after any main branch build
+
+### Documentation Updates
+
+When making user-facing changes, update the relevant documentation:
+
+- Add new features to appropriate documentation pages
+- Update examples and usage instructions
+- Keep API documentation in sync with code changes
+- Review generated documentation locally before committing
 
 
 <!-- BACKLOG.MD MCP GUIDELINES START -->
