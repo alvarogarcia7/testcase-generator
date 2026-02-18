@@ -91,6 +91,19 @@ else
 fi
 echo ""
 
+# Run variable display e2e test
+echo "=========================================="
+echo "Test 4: Variable Display E2E"
+echo "=========================================="
+if "$SCRIPT_DIR/test_variable_display_e2e.sh"; then
+    echo "✓ Variable display e2e test PASSED"
+    TESTS_PASSED=$((TESTS_PASSED+1))
+else
+    echo "✗ Variable display e2e test FAILED"
+    TESTS_FAILED=$((TESTS_FAILED+1))
+fi
+echo ""
+
 # Summary
 echo "=========================================="
 echo "Test Summary"
