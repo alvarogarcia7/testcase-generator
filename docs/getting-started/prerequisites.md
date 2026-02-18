@@ -937,7 +937,7 @@ verification_command: "docker info >/dev/null 2>&1 && exit 0 || exit 1"
 
 ## See Also
 
-- [BDD Initial Conditions](BDD_INITIAL_CONDITIONS.md) - For executable setup steps
-- [Quick Start Guide](QUICK_START.md) - Getting started with test cases
-- [Test Executor Usage](TEST_VERIFY_USAGE.md) - Running test scripts
-- [Schema Validation](validation.md) - YAML schema validation
+- [BDD Initial Conditions](../features/bdd-initial-conditions.md) - For executable setup steps
+- [Quick Start Guide](index.md) - Getting started with test cases
+- [Test Executor Usage](../cli-tools/test-verify-usage.md) - Running test scripts
+- [Schema Validation](../user-guide/validation.md) - YAML schema validation

@@ -172,6 +172,6 @@ export GIT_AUTHOR_EMAIL="your.email@example.com"
 
 ## Next Steps
 
-- Read the [full documentation](interactive_workflow.md)
-- Check out the [implementation details](INTERACTIVE_IMPLEMENTATION.md)
+- Read the [full documentation](../user-guide/interactive-workflow.md)
+- Check out the [implementation details](../development/interactive-implementation.md)
 - Explore other commands: `testcase-manager --help`
