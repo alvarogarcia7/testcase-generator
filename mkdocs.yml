@@ -1,0 +1,134 @@
+site_name: Test Case Manager
+site_description: A comprehensive CLI tool for managing test cases in YAML format with interactive workflows, fuzzy search, git integration, and test verification capabilities
+site_author: Test Case Manager Team
+repo_url: https://github.com/testcase-manager/testcase-manager
+
+theme:
+  name: material
+  palette:
+    # Palette toggle for light mode
+    - scheme: default
+      primary: indigo
+      accent: blue
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Palette toggle for dark mode
+    - scheme: slate
+      primary: indigo
+      accent: blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - navigation.footer
+    - navigation.tracking
+    - search.suggest
+    - search.highlight
+    - search.share
+    - toc.follow
+    - toc.integrate
+    - content.code.copy
+    - content.code.annotate
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Quick Start: docs/QUICK_START.md
+      - Prerequisites: docs/PREREQUISITES.md
+      - Installation: README_INSTALL.md
+      - Docker Setup: docs/DOCKER.md
+  - User Guide:
+      - Interactive Workflow: docs/interactive_workflow.md
+      - Interactive Implementation: docs/INTERACTIVE_IMPLEMENTATION.md
+      - Recovery Mechanism: docs/RECOVERY.md
+      - TTY Fallback: docs/TTY_FALLBACK.md
+  - CLI Tools:
+      - Test Case Manager (editor/tcm): README.md
+      - Test Executor: README.md
+      - Test Verify: docs/TEST_VERIFY_USAGE.md
+      - Test Verify Quick Reference: docs/TEST_VERIFY_QUICK_REFERENCE.md
+      - Test Verify Workflow: docs/TEST_VERIFY_WORKFLOW.md
+      - Validate YAML: docs/VALIDATE_YAML_QUICK_REF.md
+  - Features:
+      - BDD Initial Conditions: docs/BDD_INITIAL_CONDITIONS.md
+      - Variables & Data Passing: docs/VARIABLE_PASSING.md
+      - Variable Capture Command: docs/VARIABLES_CAPTURE_COMMAND.md
+      - Environment Variable Hydration: docs/ENVIRONMENT_VARIABLE_HYDRATION.md
+      - Conditional Verification: docs/CONDITIONAL_VERIFICATION.md
+      - Verification Templates: docs/VERIFICATION_TEMPLATES.md
+      - Manual Steps Handling: docs/MANUAL_STEPS_HANDLING.md
+      - Manual Step Filtering: docs/MANUAL_STEP_FILTERING.md
+      - Watch Mode Comparison: docs/WATCH_MODE_COMPARISON.md
+      - JSON Escaping Config: docs/JSON_ESCAPING_CONFIG.md
+  - Development:
+      - Validation Guide: docs/validation.md
+      - Coverage: docs/COVERAGE.md
+      - GitLab CI Setup: docs/GITLAB_CI_SETUP.md
+      - GitLab CI Examples: docs/GITLAB_CI_EXAMPLES.md
+  - Examples:
+      - JUnit Export: docs/JUNIT_EXPORT.md
+      - JUnit XML XSD Validation: docs/JUNIT_XML_XSD_VALIDATION.md
+
+markdown_extensions:
+  # Code highlighting
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  
+  # Admonitions (notes, warnings, etc.)
+  - admonition
+  - pymdownx.details
+  
+  # Tables
+  - tables
+  
+  # Table of contents
+  - toc:
+      permalink: true
+      toc_depth: 3
+  
+  # Additional useful extensions
+  - pymdownx.betterem
+  - pymdownx.caret
+  - pymdownx.mark
+  - pymdownx.tilde
+  - pymdownx.keys
+  - pymdownx.smartsymbols
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - abbr
+
+plugins:
+  - search:
+      lang: en
+      separator: '[\s\-\.]+'
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/testcase-manager/testcase-manager
+  version:
+    provider: mike
