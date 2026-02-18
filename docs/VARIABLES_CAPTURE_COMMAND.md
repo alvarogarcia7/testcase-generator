@@ -786,6 +786,7 @@ general:
 
 ## Related Documentation
 
+- [VARIABLE_DISPLAY.md](VARIABLE_DISPLAY.md) - How captured variables are displayed and debugging techniques
 - [VARIABLE_PASSING.md](VARIABLE_PASSING.md) - Variable scoping, substitution, and lifecycle
 - [CONDITIONAL_VERIFICATION.md](CONDITIONAL_VERIFICATION.md) - Advanced verification patterns
 - [TEST_VERIFY_USAGE.md](TEST_VERIFY_USAGE.md) - Verification expressions and templates
