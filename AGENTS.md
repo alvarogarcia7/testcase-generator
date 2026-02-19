@@ -41,6 +41,9 @@
 - **GitLab CI**:
   - `make gitlab-ci-test` - Run GitLab CI Pages job validation e2e tests
   - `make gitlab-ci-simulate` - Simulate GitLab CI Pages job locally (dry-run)
+- **GitHub Actions**:
+  - `make github-actions-test` - Run GitHub Actions workflow validation e2e tests
+  - `make github-actions-simulate` - Simulate GitHub Actions workflow locally (dry-run)
 - **Dev Server**: N/A
 
 You must build, test, lint, and verify coverage before committing

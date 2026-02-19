@@ -340,6 +340,14 @@ gitlab-ci-simulate:
 	./scripts/simulate-gitlab-ci-pages.sh
 .PHONY: gitlab-ci-simulate
 
+github-actions-test:
+	./tests/integration/test_github_actions_docker_workflow_e2e.sh
+.PHONY: github-actions-test
+
+github-actions-simulate:
+	./scripts/simulate-github-actions-workflow.sh
+.PHONY: github-actions-simulate
+
 $(VENV_DIR):
 	@echo "Virtual environment not found. Run 'make docs-install' first."
 	@exit 1
