@@ -358,7 +358,9 @@
                   "description": "Optional reference identifier for this step."
                 },
                 "manual": {
-                  "type": "boolean"
+                  "type": "boolean",
+                  "description": "Indicates whether this step requires manual user action rather than automated execution. Defaults to false.",
+                  "default": false
                 },
                 "description": {
                   "type": "string"
