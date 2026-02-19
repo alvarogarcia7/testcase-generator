@@ -320,6 +320,10 @@ docs-docker-test-config:
 	./tests/integration/test_docker_mkdocs_config_validation_e2e.sh
 .PHONY: docs-docker-test-config
 
+docs-docker-test-dockerignore:
+	./tests/integration/test_docker_dockerignore_e2e.sh
+.PHONY: docs-docker-test-dockerignore
+
 docs-compose-test:
 	./tests/integration/test_docker_compose_mkdocs_e2e.sh
 .PHONY: docs-compose-test
