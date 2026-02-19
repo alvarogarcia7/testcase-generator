@@ -344,6 +344,63 @@ impl InitialConditions {
     }
 }
 
+/// Error handling behavior for hooks
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[serde(rename_all = "lowercase")]
+pub enum OnError {
+    /// Fail the test execution if hook fails
+    Fail,
+    /// Continue test execution even if hook fails
+    Continue,
+}
+
+/// Configuration for a specific hook
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub struct HookConfig {
+    /// Command or script to execute
+    pub command: String,
+
+    /// Error handling behavior
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub on_error: Option<OnError>,
+}
+
+/// Hooks configuration for test execution lifecycle
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct Hooks {
+    /// Hook executed at the start of the script
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub script_start: Option<HookConfig>,
+
+    /// Hook executed before setting up a test
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub setup_test: Option<HookConfig>,
+
+    /// Hook executed before a test sequence
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub before_sequence: Option<HookConfig>,
+
+    /// Hook executed after a test sequence
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub after_sequence: Option<HookConfig>,
+
+    /// Hook executed before each test step
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub before_step: Option<HookConfig>,
+
+    /// Hook executed after each test step
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub after_step: Option<HookConfig>,
+
+    /// Hook executed when tearing down a test
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub teardown_test: Option<HookConfig>,
+
+    /// Hook executed at the end of the script
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub script_end: Option<HookConfig>,
+}
+
 /// A sequence of test steps
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TestSequence {
@@ -411,6 +468,10 @@ pub struct TestCase {
     /// Environment variables that need hydration
     #[serde(skip_serializing_if = "Option::is_none")]
     pub hydration_vars: Option<HashMap<String, EnvVariable>>,
+
+    /// Hooks configuration for test execution lifecycle
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hooks: Option<Hooks>,
 }
 
 /// Collection of test cases
@@ -445,6 +506,7 @@ impl TestCase {
             initial_conditions: InitialConditions::default(),
             test_sequences: Vec::new(),
             hydration_vars: None,
+            hooks: None,
         }
     }
 
