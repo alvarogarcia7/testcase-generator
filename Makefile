@@ -308,6 +308,10 @@ docs-docker-test-html:
 	./tests/integration/test_docker_html_build_e2e.sh
 .PHONY: docs-docker-test-html
 
+docs-docker-test-pdf:
+	./tests/integration/test_docker_pdf_build_e2e.sh
+.PHONY: docs-docker-test-pdf
+
 $(VENV_DIR):
 	@echo "Virtual environment not found. Run 'make docs-install' first."
 	@exit 1
