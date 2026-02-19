@@ -38,6 +38,9 @@
   - `make docs-compose-build-pdf` - Build site with PDF using Docker Compose
   - `make docs-compose-down` - Stop Docker Compose services
   - `make docs-compose-test` - Run Docker Compose workflow e2e tests
+- **GitLab CI**:
+  - `make gitlab-ci-test` - Run GitLab CI Pages job validation e2e tests
+  - `make gitlab-ci-simulate` - Simulate GitLab CI Pages job locally (dry-run)
 - **Dev Server**: N/A
 
 You must build, test, lint, and verify coverage before committing

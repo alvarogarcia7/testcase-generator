@@ -332,6 +332,14 @@ docs-compose-test:
 	./tests/integration/test_docker_compose_mkdocs_e2e.sh
 .PHONY: docs-compose-test
 
+gitlab-ci-test:
+	./tests/integration/test_gitlab_ci_pages_e2e.sh
+.PHONY: gitlab-ci-test
+
+gitlab-ci-simulate:
+	./scripts/simulate-gitlab-ci-pages.sh
+.PHONY: gitlab-ci-simulate
+
 $(VENV_DIR):
 	@echo "Virtual environment not found. Run 'make docs-install' first."
 	@exit 1
