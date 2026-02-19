@@ -316,6 +316,10 @@ docs-docker-test-serve:
 	./tests/integration/test_docker_serve_e2e.sh
 .PHONY: docs-docker-test-serve
 
+docs-docker-test-config:
+	./tests/integration/test_docker_mkdocs_config_validation_e2e.sh
+.PHONY: docs-docker-test-config
+
 docs-compose-test:
 	./tests/integration/test_docker_compose_mkdocs_e2e.sh
 .PHONY: docs-compose-test
