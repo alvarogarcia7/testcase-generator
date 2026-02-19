@@ -907,6 +907,43 @@ impl fmt::Display for FieldDiff {
     }
 }
 
+/// Hook type for test step execution
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[serde(rename_all = "snake_case")]
+pub enum HookType {
+    /// Hook executed at the start of the script
+    ScriptStart,
+    /// Hook executed before setting up a test
+    SetupTest,
+    /// Hook executed before a test sequence
+    BeforeSequence,
+    /// Hook executed after a test sequence
+    AfterSequence,
+    /// Hook executed before each test step
+    BeforeStep,
+    /// Hook executed after each test step
+    AfterStep,
+    /// Hook executed when tearing down a test
+    TeardownTest,
+    /// Hook executed at the end of the script
+    ScriptEnd,
+}
+
+impl fmt::Display for HookType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            HookType::ScriptStart => write!(f, "script_start"),
+            HookType::SetupTest => write!(f, "setup_test"),
+            HookType::BeforeSequence => write!(f, "before_sequence"),
+            HookType::AfterSequence => write!(f, "after_sequence"),
+            HookType::BeforeStep => write!(f, "before_step"),
+            HookType::AfterStep => write!(f, "after_step"),
+            HookType::TeardownTest => write!(f, "teardown_test"),
+            HookType::ScriptEnd => write!(f, "script_end"),
+        }
+    }
+}
+
 /// Test step execution entry following the test execution log schema
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TestStepExecutionEntry {
@@ -928,6 +965,14 @@ pub struct TestStepExecutionEntry {
     /// Timestamp of the execution (optional)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub timestamp: Option<String>,
+
+    /// Hook type if this entry represents a hook execution (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hook_type: Option<HookType>,
+
+    /// Path to the hook script if this entry represents a hook execution (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hook_path: Option<String>,
 }
 
 impl TestStepExecutionEntry {
@@ -946,6 +991,8 @@ impl TestStepExecutionEntry {
             exit_code,
             output,
             timestamp: None,
+            hook_type: None,
+            hook_path: None,
         }
     }
 
@@ -965,6 +1012,8 @@ impl TestStepExecutionEntry {
             exit_code,
             output,
             timestamp: Some(timestamp),
+            hook_type: None,
+            hook_path: None,
         }
     }
 
@@ -1025,11 +1074,23 @@ impl TestStepExecutionEntry {
 
 impl fmt::Display for TestStepExecutionEntry {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "Sequence {}, Step {}: {} (exit code: {})",
-            self.test_sequence, self.step, self.command, self.exit_code
-        )
+        if let Some(ref hook_type) = self.hook_type {
+            write!(
+                f,
+                "Sequence {}, Step {}: {} (exit code: {}) [Hook: {}",
+                self.test_sequence, self.step, self.command, self.exit_code, hook_type
+            )?;
+            if let Some(ref hook_path) = self.hook_path {
+                write!(f, ", path: {}", hook_path)?;
+            }
+            write!(f, "]")
+        } else {
+            write!(
+                f,
+                "Sequence {}, Step {}: {} (exit code: {})",
+                self.test_sequence, self.step, self.command, self.exit_code
+            )
+        }
     }
 }
 
