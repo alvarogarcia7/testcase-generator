@@ -5,6 +5,7 @@ pub mod complex_structure_editor;
 pub mod config;
 pub mod creator;
 pub mod database;
+pub mod dependency_resolver;
 pub mod dependency_validator;
 pub mod editor;
 pub mod executor;
@@ -38,6 +39,7 @@ pub use config::{
 };
 pub use creator::TestCaseCreator;
 pub use database::ConditionDatabase;
+pub use dependency_resolver::DependencyResolver;
 pub use dependency_validator::{
     validate_cross_file_dependencies, DependencyError, DependencyErrorType, DependencyValidator,
 };
