@@ -31,7 +31,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY mkdocs.yml .
 COPY docs/ ./docs/
 COPY README.md .
-COPY README_INSTALL.md .
 
 # Create non-root user
 RUN useradd -m -u 1000 -s /bin/bash mkdocs && \
