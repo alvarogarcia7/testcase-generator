@@ -2,6 +2,7 @@ use crate::bdd_parser::BddStepRegistry;
 use crate::config::{Config, JsonEscapingMethod};
 use crate::hydration::VarHydrator;
 use crate::models::{CaptureVarsFormat, TestCase, TestStepExecutionEntry, VerificationExpression};
+use crate::prompts::Prompts;
 use anyhow::{Context, Result};
 use chrono::Local;
 use regex::Regex;
@@ -1318,10 +1319,123 @@ impl TestExecutor {
         for sequence in &test_case.test_sequences {
             for step in &sequence.steps {
                 if step.manual == Some(true) {
+                    // Check if manual step has verification fields (not just "true")
+                    let has_result_verification = !matches!(&step.verification.result,
+                        VerificationExpression::Simple(s) if s.trim() == "true");
+                    let has_output_verification = !matches!(&step.verification.output,
+                        VerificationExpression::Simple(s) if s.trim() == "true");
+                    let has_verification = has_result_verification || has_output_verification;
+
+                    if !has_verification {
+                        // No verification - just skip
+                        println!(
+                            "[SKIP] Step {} (Sequence {}): {} - Manual step",
+                            step.step, sequence.id, step.description
+                        );
+                        continue;
+                    }
+
+                    // Manual step with verification - prompt user for action
                     println!(
-                        "[SKIP] Step {} (Sequence {}): {} - Manual step",
+                        "[MANUAL] Step {} (Sequence {}): {}",
                         step.step, sequence.id, step.description
                     );
+                    println!("  Command: {}", step.command);
+                    println!(
+                        "  INFO: This is a manual step. You must perform this action manually."
+                    );
+
+                    // Prompt user to confirm they've completed the action
+                    let prompt = format!(
+                        "Have you completed the manual action for Step {}?",
+                        step.step
+                    );
+                    let action_completed = match Prompts::confirm(&prompt) {
+                        Ok(confirmed) => confirmed,
+                        Err(e) => {
+                            println!(
+                                "[SKIP] Step {} (Sequence {}): Failed to get user confirmation: {}",
+                                step.step, sequence.id, e
+                            );
+                            continue;
+                        }
+                    };
+
+                    if !action_completed {
+                        println!(
+                            "[SKIP] Step {} (Sequence {}): User indicated action not completed",
+                            step.step, sequence.id
+                        );
+                        continue;
+                    }
+
+                    // Evaluate verification expressions
+                    // For manual steps, we don't have exit_code or command_output from execution
+                    // But verification expressions might reference them or use step variables
+                    let exit_code = 0; // Default for manual steps
+                    let command_output = String::new(); // Empty for manual steps
+
+                    let result_verification_passed = self.evaluate_verification(
+                        &step.verification.result,
+                        exit_code,
+                        &command_output,
+                        &step_vars,
+                    )?;
+
+                    let output_verification_passed = self.evaluate_verification(
+                        &step.verification.output,
+                        exit_code,
+                        &command_output,
+                        &step_vars,
+                    )?;
+
+                    // Evaluate general verifications if present
+                    let mut general_verifications_passed = true;
+                    if let Some(ref general_verifications) = step.verification.general {
+                        for general_ver in general_verifications {
+                            let general_expr =
+                                VerificationExpression::Simple(general_ver.condition.clone());
+                            let general_passed = self.evaluate_verification(
+                                &general_expr,
+                                exit_code,
+                                &command_output,
+                                &step_vars,
+                            )?;
+
+                            if !general_passed {
+                                general_verifications_passed = false;
+                                println!("  General verification '{}' failed", general_ver.name);
+                            }
+                        }
+                    }
+
+                    // Check if all verifications passed
+                    if result_verification_passed
+                        && output_verification_passed
+                        && general_verifications_passed
+                    {
+                        println!(
+                            "[PASS] Step {} (Sequence {}): {}",
+                            step.step, sequence.id, step.description
+                        );
+                    } else {
+                        println!(
+                            "[FAIL] Step {} (Sequence {}): {}",
+                            step.step, sequence.id, step.description
+                        );
+                        println!("  Result verification: {}", result_verification_passed);
+                        println!("  Output verification: {}", output_verification_passed);
+                        println!("  General verifications: {}", general_verifications_passed);
+                        verification_failed = true;
+
+                        if execution_error.is_none() {
+                            execution_error = Some(anyhow::anyhow!(
+                                "Manual step {} verification failed",
+                                step.step
+                            ));
+                        }
+                    }
+
                     continue;
                 }
 
