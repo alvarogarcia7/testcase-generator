@@ -266,10 +266,10 @@ test-e2e-orchestrator-examples: build
 # Documentation targets
 VENV_DIR = mkdocs-venv
 MKDOCS = $(VENV_DIR)/bin/mkdocs
-PYTHON = python3
+PYTHON ?= python3.10
 
 docs-install:
-	./scripts/install-mkdocs.sh
+	PYTHON=${PYTHON} ./scripts/install-mkdocs.sh
 .PHONY: docs-install
 
 docs-serve: $(VENV_DIR)
