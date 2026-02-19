@@ -345,6 +345,13 @@ fn test_manual_step_skipped() {
         Some(true),
     );
     step.manual = Some(true);
+    // Set verification to "true" to test simple manual step without verification
+    step.verification = Verification {
+        result: VerificationExpression::Simple("true".to_string()),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
     sequence.steps.push(step);
     test_case.test_sequences.push(sequence);
 
