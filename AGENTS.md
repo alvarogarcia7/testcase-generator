@@ -33,6 +33,7 @@
   - `make docs-docker-test-dockerignore` - Run Docker .dockerignore optimization e2e tests
   - `make docs-docker-test-volumes` - Run Docker volume mount and permissions e2e tests
   - `make docs-docker-test-cross-platform` - Run Docker cross-platform compatibility e2e tests (macOS/Linux)
+  - `make rust-docker-integration-test` - Run Rust and Docker integration tests (validates no interference)
 - **Documentation (Docker Compose)**:
   - `make docs-compose-up` - Start documentation server with Docker Compose
   - `make docs-compose-build-site` - Build site with Docker Compose

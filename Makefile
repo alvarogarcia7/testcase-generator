@@ -332,6 +332,10 @@ docs-docker-test-cross-platform:
 	./tests/integration/test_docker_cross_platform_e2e.sh
 .PHONY: docs-docker-test-cross-platform
 
+rust-docker-integration-test:
+	./tests/integration/test_rust_docker_integration_e2e.sh
+.PHONY: rust-docker-integration-test
+
 docs-compose-test:
 	./tests/integration/test_docker_compose_mkdocs_e2e.sh
 .PHONY: docs-compose-test
