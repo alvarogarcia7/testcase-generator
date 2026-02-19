@@ -8,8 +8,9 @@ This document provides a comprehensive guide to how manual steps are handled acr
 2. [YAML Definition](#yaml-definition)
 3. [Bash Script Generation](#bash-script-generation)
 4. [Test Execution](#test-execution)
-5. [Example Test Cases](#example-test-cases)
-6. [JSON Log Behavior](#json-log-behavior)
+5. [Manual Step Verification](#manual-step-verification)
+6. [Example Test Cases](#example-test-cases)
+7. [JSON Log Behavior](#json-log-behavior)
 
 ---
 
@@ -341,9 +342,216 @@ for sequence in &test_case.test_sequences {
 
 ---
 
+## Manual Step Verification
+
+Manual steps can include verification fields that enable programmatic validation of user-performed actions. This transforms a simple wait-for-input manual step into a verifiable manual step with pass/fail outcomes.
+
+### When Manual Steps Have Verification
+
+A manual step is considered to have verification when its `verification` fields contain expressions other than `"true"`. The system distinguishes between:
+
+1. **Simple wait-for-input manual steps**: Use `verification.result: "true"` and/or `verification.output: "true"` - these simply pause execution
+2. **Verified manual steps**: Use verification expressions that evaluate user-performed actions
+
+### How Verification Differs from Simple Wait-for-Input
+
+| Aspect | Simple Wait-for-Input | Verified Manual Step |
+|--------|----------------------|----------------------|
+| **Verification expressions** | `result: "true"` and/or `output: "true"` | Custom bash expressions (e.g., `"[[ $EXIT_CODE -eq 0 ]]"`) |
+| **User prompt** | "Press ENTER to continue..." | "Press ENTER after completing the manual action..." |
+| **Outcome** | No pass/fail determination | `[PASS]` or `[FAIL]` message with exit on failure |
+| **Verification evaluation** | None | Evaluates `USER_VERIFICATION_RESULT` and `USER_VERIFICATION_OUTPUT` |
+| **Script behavior** | Pauses, then continues | Pauses, evaluates expressions, shows pass/fail, exits on failure |
+| **JSON logging** | Not logged | Not logged (manual steps never logged) |
+
+### Verification Expression Examples
+
+#### Simple Exit Code Check
+
+```yaml
+verification:
+  result: "[[ $EXIT_CODE -eq 0 ]]"
+  output: "true"
+```
+
+Verifies that a command (if run) would succeed. The `$EXIT_CODE` variable can be referenced even though the command is not executed by the script.
+
+#### Pattern Matching in Output
+
+```yaml
+verification:
+  result: "true"
+  output: "grep -q 'Successfully authenticated' <<< \"$COMMAND_OUTPUT\""
+```
+
+Checks if the expected output pattern would be present. The `$COMMAND_OUTPUT` variable can be referenced for documentation purposes.
+
+#### File Existence Check
+
+```yaml
+verification:
+  result: "true"
+  output: "[[ -f /tmp/manual_operation_complete.flag ]]"
+```
+
+Verifies that a file created by the manual action exists.
+
+#### Combined Verification
+
+```yaml
+verification:
+  result: "[[ $EXIT_CODE -eq 0 ]]"
+  output: "[[ -f /tmp/device_connected.log ]] && grep -q 'Device ready' /tmp/device_connected.log"
+```
+
+Checks both exit code and file content.
+
+#### Conditional Verification
+
+```yaml
+verification:
+  result:
+    condition: "[[ -f /tmp/connection_status.txt ]]"
+    if_true:
+      - "echo 'INFO: Status file found'"
+    if_false:
+      - "echo 'ERROR: Status file not created by manual action'"
+      - "exit 1"
+  output: "true"
+```
+
+Uses conditional verification expressions for more complex validation logic.
+
+### Bash Script Generation for Verified Manual Steps
+
+When a manual step has verification fields, the generated script includes:
+
+```bash
+# Step 2: Manually SSH into device and verify login
+echo "Step 2: Manually SSH into device and verify login"
+echo "Command: ssh admin@192.168.1.100"
+echo "INFO: This is a manual step. You must perform this action manually."
+if [[ "${DEBIAN_FRONTEND}" != 'noninteractive' && -t 0 ]]; then
+    read -p "Press ENTER after completing the manual action..."
+else
+    echo "Non-interactive mode detected, skipping manual step confirmation."
+fi
+
+# Manual step verification
+USER_VERIFICATION_RESULT=false
+USER_VERIFICATION_OUTPUT=false
+
+# Evaluate result verification
+if [[ $EXIT_CODE -eq 0 ]]; then
+    USER_VERIFICATION_RESULT=true
+fi
+
+# Evaluate output verification
+if grep -q 'Successfully authenticated' <<< "$COMMAND_OUTPUT"; then
+    USER_VERIFICATION_OUTPUT=true
+fi
+
+# Set USER_VERIFICATION based on verification results
+if [ "$USER_VERIFICATION_RESULT" = true ] && [ "$USER_VERIFICATION_OUTPUT" = true ]; then
+    USER_VERIFICATION=true
+else
+    USER_VERIFICATION=false
+fi
+
+if [ "$USER_VERIFICATION" = true ]; then
+    echo "[PASS] Step 2: Manually SSH into device and verify login"
+else
+    echo "[FAIL] Step 2: Manually SSH into device and verify login"
+    echo "  Result verification: $USER_VERIFICATION_RESULT"
+    echo "  Output verification: $USER_VERIFICATION_OUTPUT"
+    exit 1
+fi
+```
+
+### Key Differences in Script Generation
+
+| Element | Simple Wait-for-Input | Verified Manual Step |
+|---------|----------------------|----------------------|
+| **Prompt message** | "Press ENTER to continue..." | "Press ENTER after completing the manual action..." |
+| **Verification code block** | Not generated | Generated with `USER_VERIFICATION_RESULT` and `USER_VERIFICATION_OUTPUT` |
+| **Pass/Fail output** | No output | `[PASS]` or `[FAIL]` message |
+| **Exit on failure** | Never exits | Exits with code 1 on verification failure |
+
+### JSON Logging Behavior for Verified Manual Steps
+
+**IMPORTANT**: Even manual steps with verification fields are **completely excluded** from the JSON execution log.
+
+This is because:
+1. No command is executed by the script itself
+2. No actual `$EXIT_CODE` or `$COMMAND_OUTPUT` is captured from automated execution
+3. The verification expressions serve as documentation and potential post-action validation
+4. Only automated steps produce verifiable, repeatable execution logs
+
+#### Example: Manual Step with Verification is Still Not Logged
+
+```yaml
+steps:
+  - step: 1
+    description: "Automated ping test"
+    command: ping -c 3 192.168.1.100
+    verification:
+      result: "[[ $EXIT_CODE -eq 0 ]]"
+      output: "grep -q 'bytes from' <<< \"$COMMAND_OUTPUT\""
+  
+  - step: 2
+    manual: true
+    description: "Manually verify LED indicator"
+    command: "Visually inspect device LED"
+    verification:
+      result: "[[ -f /tmp/led_verified.flag ]]"
+      output: "true"
+  
+  - step: 3
+    description: "Automated LED state check"
+    command: cat /sys/class/leds/status/brightness
+    verification:
+      result: "[[ $EXIT_CODE -eq 0 ]]"
+      output: "grep -q '1' <<< \"$COMMAND_OUTPUT\""
+```
+
+**JSON Log Output**:
+```json
+[
+  {
+    "test_sequence": 1,
+    "step": 1,
+    "command": "ping -c 3 192.168.1.100",
+    "exit_code": 0,
+    "output": "...",
+    "timestamp": "2024-01-15T10:30:00"
+  },
+  {
+    "test_sequence": 1,
+    "step": 3,
+    "command": "cat /sys/class/leds/status/brightness",
+    "exit_code": 0,
+    "output": "1",
+    "timestamp": "2024-01-15T10:30:10"
+  }
+]
+```
+
+Notice that Step 2 (manual step with verification) is **not** present in the JSON log, even though it has verification expressions.
+
+### Use Cases for Verified Manual Steps
+
+1. **Hardware connection verification**: Check that a flag file was created by a companion script after cable connection
+2. **GUI interaction validation**: Verify that a configuration file was updated after GUI changes
+3. **Physical state confirmation**: Check system state files after manual power operations
+4. **Multi-step manual procedures**: Validate intermediate artifacts created during manual workflows
+
+---
+
 ## JSON Log Behavior
 
 Manual steps are **completely excluded** from the JSON execution log. Only automated steps are recorded.
+
+**This exclusion applies to all manual steps**, including those with verification fields. Manual steps with verification may generate `[PASS]` or `[FAIL]` messages in console output, but they never create entries in the JSON execution log.
 
 ### Log File Naming
 
