@@ -422,6 +422,66 @@ impl TestExecutor {
         }
     }
 
+    /// Generate bash code to execute a hook
+    fn generate_hook_execution(hook_name: &str, hook_config: &crate::models::HookConfig) -> String {
+        let mut code = String::new();
+
+        code.push_str(&format!("# Execute {} hook\n", hook_name));
+
+        // Check if command is a .sh file (source it) or another executable (execute it)
+        let command = &hook_config.command;
+        let is_sh_file = command.ends_with(".sh");
+
+        // Determine on_error behavior (default is Fail)
+        let on_error = hook_config
+            .on_error
+            .as_ref()
+            .map(|e| matches!(e, crate::models::OnError::Continue))
+            .unwrap_or(false);
+
+        code.push_str("set +e\n");
+
+        if is_sh_file {
+            // Source .sh files
+            code.push_str(&format!("if [ -f \"{}\" ]; then\n", command));
+            code.push_str(&format!("    source \"{}\"\n", command));
+            code.push_str("    HOOK_EXIT_CODE=$?\n");
+            code.push_str("else\n");
+            code.push_str(&format!(
+                "    echo \"Warning: Hook script '{}' not found\" >&2\n",
+                command
+            ));
+            code.push_str("    HOOK_EXIT_CODE=127\n");
+            code.push_str("fi\n");
+        } else {
+            // Execute other files
+            code.push_str(&format!("{}\n", command));
+            code.push_str("HOOK_EXIT_CODE=$?\n");
+        }
+
+        code.push_str("set -e\n");
+
+        // Handle hook failure based on on_error setting
+        if on_error {
+            // Continue on error
+            code.push_str("if [ $HOOK_EXIT_CODE -ne 0 ]; then\n");
+            code.push_str(&format!("    echo \"Warning: {} hook failed with exit code $HOOK_EXIT_CODE (continuing)\" >&2\n", hook_name));
+            code.push_str("fi\n");
+        } else {
+            // Fail on error (default)
+            code.push_str("if [ $HOOK_EXIT_CODE -ne 0 ]; then\n");
+            code.push_str(&format!(
+                "    echo \"Error: {} hook failed with exit code $HOOK_EXIT_CODE\" >&2\n",
+                hook_name
+            ));
+            code.push_str("    exit $HOOK_EXIT_CODE\n");
+            code.push_str("fi\n");
+        }
+
+        code.push('\n');
+        code
+    }
+
     pub fn generate_test_script_with_json_output(
         &self,
         test_case: &TestCase,
@@ -431,6 +491,13 @@ impl TestExecutor {
 
         script.push_str("#!/bin/bash\n");
         script.push_str("set -euo pipefail\n\n");
+
+        // Execute script_start hook after shebang
+        if let Some(ref hooks) = test_case.hooks {
+            if let Some(ref hook) = hooks.script_start {
+                script.push_str(&Self::generate_hook_execution("script_start", hook));
+            }
+        }
 
         // Add bash helper functions for Y/n prompts
         script.push_str("# Bash helper functions for user prompts\n");
@@ -666,6 +733,13 @@ impl TestExecutor {
             }
         }
 
+        // Execute setup_test hook after prerequisites
+        if let Some(ref hooks) = test_case.hooks {
+            if let Some(ref hook) = hooks.setup_test {
+                script.push_str(&Self::generate_hook_execution("setup_test", hook));
+            }
+        }
+
         // Instantiate BDD step registry
         let bdd_registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml")
             .unwrap_or_else(|e| {
@@ -770,6 +844,16 @@ impl TestExecutor {
                 script.push_str(&format!("# {}\n", line));
             }
 
+            // Execute before_sequence hook with SEQUENCE_ID and SEQUENCE_NAME
+            if let Some(ref hooks) = test_case.hooks {
+                if let Some(ref hook) = hooks.before_sequence {
+                    script.push_str(&format!("SEQUENCE_ID={}\n", sequence.id));
+                    script.push_str(&format!("SEQUENCE_NAME={}\n", bash_escape(&sequence.name)));
+                    script.push_str("export SEQUENCE_ID SEQUENCE_NAME\n");
+                    script.push_str(&Self::generate_hook_execution("before_sequence", hook));
+                }
+            }
+
             if !sequence.initial_conditions.is_empty() {
                 script.push_str("# Sequence Initial Conditions\n");
 
@@ -833,6 +917,16 @@ impl TestExecutor {
 
             for step in &sequence.steps {
                 script.push_str(&format!("# Step {}: {}\n", step.step, step.description));
+
+                // Execute before_step hook with STEP_NUMBER and STEP_DESC
+                if let Some(ref hooks) = test_case.hooks {
+                    if let Some(ref hook) = hooks.before_step {
+                        script.push_str(&format!("STEP_NUMBER={}\n", step.step));
+                        script.push_str(&format!("STEP_DESC={}\n", bash_escape(&step.description)));
+                        script.push_str("export STEP_NUMBER STEP_DESC\n");
+                        script.push_str(&Self::generate_hook_execution("before_step", hook));
+                    }
+                }
 
                 if step.manual == Some(true) {
                     // Check if manual step has verification fields (not just "true")
@@ -949,6 +1043,14 @@ impl TestExecutor {
                         script.push_str("    echo \"Non-interactive mode detected, skipping manual step confirmation.\"\n");
                         script.push_str("fi\n\n");
                     }
+
+                    // Execute after_step hook for manual step
+                    if let Some(ref hooks) = test_case.hooks {
+                        if let Some(ref hook) = hooks.after_step {
+                            script.push_str(&Self::generate_hook_execution("after_step", hook));
+                        }
+                    }
+
                     continue;
                 }
 
@@ -1201,6 +1303,20 @@ impl TestExecutor {
                 script.push_str("    echo \"    \\\"timestamp\\\": \\\"$TIMESTAMP\\\"\"\n");
                 script.push_str("    echo '  }'\n");
                 script.push_str("} >> \"$JSON_LOG\"\n\n");
+
+                // Execute after_step hook for automated step
+                if let Some(ref hooks) = test_case.hooks {
+                    if let Some(ref hook) = hooks.after_step {
+                        script.push_str(&Self::generate_hook_execution("after_step", hook));
+                    }
+                }
+            }
+
+            // Execute after_sequence hook
+            if let Some(ref hooks) = test_case.hooks {
+                if let Some(ref hook) = hooks.after_sequence {
+                    script.push_str(&Self::generate_hook_execution("after_sequence", hook));
+                }
             }
         }
 
@@ -1217,7 +1333,22 @@ impl TestExecutor {
         script.push_str("    fi\n");
         script.push_str("fi\n\n");
 
+        // Execute teardown_test hook after all sequences
+        if let Some(ref hooks) = test_case.hooks {
+            if let Some(ref hook) = hooks.teardown_test {
+                script.push_str(&Self::generate_hook_execution("teardown_test", hook));
+            }
+        }
+
         script.push_str("echo \"All test sequences completed successfully\"\n");
+
+        // Execute script_end hook before final exit
+        if let Some(ref hooks) = test_case.hooks {
+            if let Some(ref hook) = hooks.script_end {
+                script.push_str(&Self::generate_hook_execution("script_end", hook));
+            }
+        }
+
         script.push_str("exit 0\n");
 
         script
