@@ -1,0 +1,36 @@
+requirement: "MANUAL_STEP_VERIFICATION"
+item: 1
+tc: 1
+id: 'MANUAL_STEP_VERIFICATION_001'
+description: 'Example test case for the verify subcommand, demonstrating output_file verification'
+
+general_initial_conditions:
+  system:
+    - "Shell environment is available"
+
+initial_conditions:
+  system:
+    - "All commands can be executed"
+
+test_sequences:
+  - id: 1
+    name: "Verify Echo Commands"
+    description: |
+                   Test case with echo commands for verification
+    initial_conditions:
+      system:
+        - "Shell is ready"
+    steps:
+      - step: 1
+        manual: true
+        description: "Manual step 1"
+        command: "Perform this action"
+        # After command, `read` to block and wait for user confirmation - this is already implemented.
+        expected:
+          success: true
+          result: 0
+          output: "Verify this output"
+          output_extra: "Description for the manual"
+        verification:
+          result: "[[ $(read_true_false 'Have you heard a beep? (Y/n)' -eq 1 ]]"
+          output: "[[ $USER_VERIFICATION -eq 1 ]]"
