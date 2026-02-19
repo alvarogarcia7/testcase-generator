@@ -834,6 +834,13 @@ impl TestExecutor {
                 script.push_str(&format!("# Step {}: {}\n", step.step, step.description));
 
                 if step.manual == Some(true) {
+                    // Check if manual step has verification fields (not just "true")
+                    let has_result_verification = !matches!(&step.verification.result,
+                        VerificationExpression::Simple(s) if s.trim() == "true");
+                    let has_output_verification = !matches!(&step.verification.output,
+                        VerificationExpression::Simple(s) if s.trim() == "true");
+                    let has_verification = has_result_verification || has_output_verification;
+
                     script.push_str(&format!(
                         "echo \"Step {}: {}\"\n",
                         step.step, step.description
@@ -843,13 +850,104 @@ impl TestExecutor {
                         step.command.replace("\"", "\\\"")
                     ));
                     script.push_str("echo \"INFO: This is a manual step. You must perform this action manually.\"\n");
-                    script.push_str(
-                        "if [[ \"${DEBIAN_FRONTEND}\" != 'noninteractive' && -t 0 ]]; then\n",
-                    );
-                    script.push_str("    read -p \"Press ENTER to continue...\"\n");
-                    script.push_str("else\n");
-                    script.push_str("    echo \"Non-interactive mode detected, skipping manual step confirmation.\"\n");
-                    script.push_str("fi\n\n");
+
+                    if has_verification {
+                        // Generate interactive prompt for action
+                        script.push_str(
+                            "if [[ \"${DEBIAN_FRONTEND}\" != 'noninteractive' && -t 0 ]]; then\n",
+                        );
+                        script.push_str(
+                            "    read -p \"Press ENTER after completing the manual action...\"\n",
+                        );
+                        script.push_str("else\n");
+                        script.push_str("    echo \"Non-interactive mode detected, skipping manual step confirmation.\"\n");
+                        script.push_str("fi\n\n");
+
+                        // Convert hydration placeholders in verification expressions
+                        let converted_result_expr =
+                            convert_verification_expr_hydration(&step.verification.result);
+                        let converted_output_expr =
+                            convert_verification_expr_hydration(&step.verification.output);
+
+                        // Evaluate verification expressions
+                        script.push_str("# Manual step verification\n");
+                        script.push_str("USER_VERIFICATION_RESULT=false\n");
+                        script.push_str("USER_VERIFICATION_OUTPUT=false\n");
+
+                        // Generate verification script for result
+                        if has_result_verification {
+                            let result_verification_script = if uses_variables {
+                                generate_verification_with_var_subst(
+                                    &converted_result_expr,
+                                    "USER_VERIFICATION_RESULT",
+                                )
+                            } else {
+                                Self::generate_verification_script(
+                                    &converted_result_expr,
+                                    "USER_VERIFICATION_RESULT",
+                                )
+                            };
+                            script.push_str(&result_verification_script);
+                        } else {
+                            script.push_str("USER_VERIFICATION_RESULT=true\n");
+                        }
+
+                        // Generate verification script for output
+                        if has_output_verification {
+                            let output_verification_script = if uses_variables {
+                                generate_verification_with_var_subst(
+                                    &converted_output_expr,
+                                    "USER_VERIFICATION_OUTPUT",
+                                )
+                            } else {
+                                Self::generate_verification_script(
+                                    &converted_output_expr,
+                                    "USER_VERIFICATION_OUTPUT",
+                                )
+                            };
+                            script.push_str(&output_verification_script);
+                        } else {
+                            script.push_str("USER_VERIFICATION_OUTPUT=true\n");
+                        }
+
+                        // Set USER_VERIFICATION variable with combined results
+                        script
+                            .push_str("\n# Set USER_VERIFICATION based on verification results\n");
+                        script.push_str("if [ \"$USER_VERIFICATION_RESULT\" = true ] && [ \"$USER_VERIFICATION_OUTPUT\" = true ]; then\n");
+                        script.push_str("    USER_VERIFICATION=true\n");
+                        script.push_str("else\n");
+                        script.push_str("    USER_VERIFICATION=false\n");
+                        script.push_str("fi\n\n");
+
+                        // Output [PASS]/[FAIL] messages based on verification outcome
+                        script.push_str("if [ \"$USER_VERIFICATION\" = true ]; then\n");
+                        script.push_str(&format!(
+                            "    echo \"[PASS] Step {}: {}\"\n",
+                            step.step, step.description
+                        ));
+                        script.push_str("else\n");
+                        script.push_str(&format!(
+                            "    echo \"[FAIL] Step {}: {}\"\n",
+                            step.step, step.description
+                        ));
+                        script.push_str(
+                            "    echo \"  Result verification: $USER_VERIFICATION_RESULT\"\n",
+                        );
+                        script.push_str(
+                            "    echo \"  Output verification: $USER_VERIFICATION_OUTPUT\"\n",
+                        );
+                        script.push_str("    exit 1\n");
+                        script.push_str("fi\n\n");
+                    } else {
+                        // No verification fields - just prompt to continue
+                        script.push_str(
+                            "if [[ \"${DEBIAN_FRONTEND}\" != 'noninteractive' && -t 0 ]]; then\n",
+                        );
+                        script.push_str("    read -p \"Press ENTER to continue...\"\n");
+                        script.push_str("else\n");
+                        script.push_str("    echo \"Non-interactive mode detected, skipping manual step confirmation.\"\n");
+                        script.push_str("fi\n\n");
+                    }
                     continue;
                 }
 
