@@ -328,6 +328,10 @@ docs-docker-test-volumes:
 	./tests/integration/test_docker_volume_permissions_e2e.sh
 .PHONY: docs-docker-test-volumes
 
+docs-docker-test-cross-platform:
+	./tests/integration/test_docker_cross_platform_e2e.sh
+.PHONY: docs-docker-test-cross-platform
+
 docs-compose-test:
 	./tests/integration/test_docker_compose_mkdocs_e2e.sh
 .PHONY: docs-compose-test
