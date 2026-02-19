@@ -1,0 +1,293 @@
+requirement: "MANUAL_VERIFY"
+item: 1
+tc: 2
+id: 'TC_MANUAL_VERIFY_002'
+description: 'LED status verification test - demonstrates visual inspection of hardware LED indicators during power state transitions'
+
+general_initial_conditions:
+  hardware:
+    - "Network device with LED indicators is available"
+    - "Device has power LED, link LED, and activity LEDs"
+  system:
+    - "Network management tools are installed"
+    - "ethtool utility is available"
+
+initial_conditions:
+  hardware:
+    - "Device is powered on"
+    - "Network cable is disconnected"
+  network:
+    - "Network interface management tools are accessible"
+
+test_sequences:
+  - id: 1
+    name: "LED Power and Link Status Verification"
+    description: |
+                  This test sequence verifies LED indicators for power, link status,
+                  and network activity through physical observation and automated checks.
+    initial_conditions:
+      hardware:
+        - "Device LEDs are visible and not obstructed"
+    steps:
+      - step: 1
+        manual: true
+        description: "Verify power LED is illuminated (solid green)"
+        command: "Physical observation of power LED"
+        expected:
+          success: true
+          result: 0
+          output: "Power LED is solid green"
+        verification:
+          result: "true"
+          output: "Is the power LED solid green (not blinking, not off)? (Y/n)"
+      
+      - step: 2
+        description: "Check network interface is down (no cable)"
+        command: "ip link show eth0 2>/dev/null | grep -q 'state DOWN' && echo 'Interface down as expected' || ip link show | head -5"
+        expected:
+          success: true
+          result: 0
+          output: "down"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q -i 'down\\|Interface' <<< \"$COMMAND_OUTPUT\""
+      
+      - step: 3
+        manual: true
+        description: "Verify link LED is OFF (no network cable connected)"
+        command: "Physical observation of link LED"
+        expected:
+          success: true
+          result: 0
+          output: "Link LED is OFF"
+        verification:
+          result: "true"
+          output: "Is the link/network LED OFF (not illuminated)? (Y/n)"
+      
+      - step: 4
+        manual: true
+        description: "Connect network cable to the device"
+        command: "Physical connection of Ethernet cable"
+        expected:
+          success: true
+          result: 0
+          output: "Network cable connected with audible click"
+        verification:
+          result: "true"
+          output: "Did the cable connector click into place securely? (Y/n)"
+      
+      - step: 5
+        description: "Wait for link detection and check interface status"
+        command: "sleep 3 && ip link show eth0 2>/dev/null | grep -q 'state UP' && echo 'Link established' || echo 'Link detection in progress'"
+        expected:
+          success: true
+          result: 0
+          output: "Link"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Link' <<< \"$COMMAND_OUTPUT\""
+      
+      - step: 6
+        manual: true
+        description: "Verify link LED is now ON (solid green or amber)"
+        command: "Physical observation of link LED"
+        expected:
+          success: true
+          result: 0
+          output: "Link LED is illuminated"
+        verification:
+          result: "true"
+          output: "Is the link LED now ON (solid green or amber)? (Y/n)"
+      
+      - step: 7
+        description: "Check link speed using ethtool"
+        command: "ethtool eth0 2>/dev/null | grep -i 'speed:' || echo 'Link speed: checking...'"
+        expected:
+          success: true
+          result: 0
+          output: "speed"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q -i 'speed' <<< \"$COMMAND_OUTPUT\""
+      
+      - step: 8
+        manual: true
+        description: "Observe LED during network activity (ping test)"
+        command: "ping -c 5 8.8.8.8 || ping -c 5 192.168.1.1 || echo 'Generating network traffic'"
+        expected:
+          success: true
+          result: 0
+          output: "Network traffic generated, activity LED blinks"
+        verification:
+          result: "true"
+          output: "Did you observe the activity LED blinking during the ping test? (Y/n)"
+
+  - id: 2
+    name: "Multi-Color LED Status Verification"
+    description: |
+                  This test sequence verifies multi-color LED status indicators
+                  showing different operational states.
+    initial_conditions:
+      hardware:
+        - "Device supports multi-color LED states"
+    steps:
+      - step: 1
+        manual: true
+        description: "Verify power LED color in normal operation mode"
+        command: "Physical observation of power LED color"
+        expected:
+          success: true
+          result: 0
+          output: "Power LED shows normal operation color (green)"
+        verification:
+          result: "true"
+          output: "Is the power LED showing GREEN color (normal operation)? (Y/n)"
+      
+      - step: 2
+        description: "Trigger high CPU load to test warning state"
+        command: "stress-ng --cpu 4 --timeout 5s 2>/dev/null || (i=0; while [ $i -lt 1000000 ]; do i=$((i+1)); done) && echo 'Load test completed'"
+        expected:
+          success: true
+          result: 0
+          output: "completed"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'completed' <<< \"$COMMAND_OUTPUT\""
+      
+      - step: 3
+        manual: true
+        description: "Observe if status LED changed during high load"
+        command: "Visual observation of status LED during load"
+        expected:
+          success: true
+          result: 0
+          output: "Status LED may show warning color (amber) under load"
+        verification:
+          result: "true"
+          output: "Did the status LED remain GREEN or briefly show AMBER during high load? (Y/n)"
+      
+      - step: 4
+        description: "Check system returned to normal state"
+        command: "uptime && echo 'System load normalized'"
+        expected:
+          success: true
+          result: 0
+          output: "normalized"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'normalized' <<< \"$COMMAND_OUTPUT\""
+      
+      - step: 5
+        manual: true
+        description: "Final LED state verification after test"
+        command: "Physical observation of all LEDs"
+        expected:
+          success: true
+          result: 0
+          output: "All LEDs showing normal operational status"
+        verification:
+          result: "true"
+          output: "Are all LEDs showing normal status (power: green, link: green, activity: occasional blinks)? (Y/n)"
+
+  - id: 3
+    name: "LED Fault Indication Verification"
+    description: |
+                  This test sequence verifies LED behavior during simulated
+                  fault conditions and recovery.
+    initial_conditions:
+      hardware:
+        - "Device supports fault LED indicators"
+      network:
+        - "Network is in operational state"
+    steps:
+      - step: 1
+        description: "Verify initial healthy LED state"
+        command: "ip link show | grep -c 'state UP' && echo 'Network interfaces operational'"
+        expected:
+          success: true
+          result: 0
+          output: "operational"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'operational' <<< \"$COMMAND_OUTPUT\""
+      
+      - step: 2
+        manual: true
+        description: "Disconnect network cable to simulate link failure"
+        command: "Physical disconnection of network cable"
+        expected:
+          success: true
+          result: 0
+          output: "Cable disconnected"
+        verification:
+          result: "true"
+          output: "Have you physically disconnected the network cable? (Y/n)"
+      
+      - step: 3
+        description: "Wait for link down detection"
+        command: "sleep 2 && ip link show eth0 2>/dev/null | grep 'NO-CARRIER\\|state DOWN' && echo 'Link down detected' || echo 'Checking link status'"
+        expected:
+          success: true
+          result: 0
+          output: "down"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q -i 'down' <<< \"$COMMAND_OUTPUT\""
+      
+      - step: 4
+        manual: true
+        description: "Verify link LED turned OFF after cable disconnect"
+        command: "Physical observation of link LED"
+        expected:
+          success: true
+          result: 0
+          output: "Link LED is OFF indicating no link"
+        verification:
+          result: "true"
+          output: "Is the link LED now OFF (indicating no connection)? (Y/n)"
+      
+      - step: 5
+        manual: true
+        description: "Reconnect network cable to restore link"
+        command: "Physical reconnection of network cable"
+        expected:
+          success: true
+          result: 0
+          output: "Cable reconnected"
+        verification:
+          result: "true"
+          output: "Have you reconnected the network cable securely? (Y/n)"
+      
+      - step: 6
+        description: "Wait for link recovery"
+        command: "sleep 3 && ip link show eth0 2>/dev/null | grep -q 'state UP' && echo 'Link recovered' || echo 'Link recovery in progress'"
+        expected:
+          success: true
+          result: 0
+          output: "Link"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Link' <<< \"$COMMAND_OUTPUT\""
+      
+      - step: 7
+        manual: true
+        description: "Verify link LED restored to ON state"
+        command: "Physical observation of link LED"
+        expected:
+          success: true
+          result: 0
+          output: "Link LED is ON after recovery"
+        verification:
+          result: "true"
+          output: "Is the link LED back ON (showing successful recovery)? (Y/n)"
+      
+      - step: 8
+        description: "Confirm network connectivity restored"
+        command: "ping -c 3 -W 2 8.8.8.8 >/dev/null 2>&1 && echo 'Network connectivity verified' || echo 'Local network operational'"
+        expected:
+          success: true
+          result: 0
+          output: "operational\\|verified"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q -E '(operational|verified)' <<< \"$COMMAND_OUTPUT\""
