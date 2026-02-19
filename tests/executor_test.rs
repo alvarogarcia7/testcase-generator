@@ -2407,6 +2407,897 @@ fn test_manual_verification_output_only() {
 }
 
 // ============================================================================
+// Manual Steps with Conditional Verification Expression Tests
+// ============================================================================
+
+#[test]
+fn test_manual_step_with_conditional_verification_result_generates_if_else_fi_blocks() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_CV001".to_string(),
+        1,
+        1,
+        "TC_CV001".to_string(),
+        "Test conditional verification generates if/else/fi blocks".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Manual step with conditional",
+        "perform manual action",
+        "0",
+        "success",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Conditional {
+            condition: "[ -f /tmp/production ]".to_string(),
+            if_true: Some(vec!["echo 'Production mode'".to_string()]),
+            if_false: Some(vec!["echo 'Development mode'".to_string()]),
+            always: Some(vec!["echo 'Always executed'".to_string()]),
+        },
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify if block
+    assert!(
+        script.contains("if [ -f /tmp/production ]; then"),
+        "Script must generate if statement with condition"
+    );
+
+    // Verify else block
+    assert!(
+        script.contains("else"),
+        "Script must generate else statement"
+    );
+
+    // Verify fi block
+    assert!(
+        script.contains("fi"),
+        "Script must generate fi statement to close if/else block"
+    );
+
+    // Verify structure - if comes before else, else comes before fi
+    let if_pos = script.find("if [ -f /tmp/production ]; then").unwrap();
+    let else_pos = script[if_pos..].find("else").unwrap() + if_pos;
+    let fi_pos = script[else_pos..].find("fi").unwrap() + else_pos;
+
+    assert!(
+        if_pos < else_pos && else_pos < fi_pos,
+        "if/else/fi blocks must be in correct order"
+    );
+}
+
+#[test]
+fn test_manual_step_conditional_verification_evaluates_condition_before_branching() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_CV002".to_string(),
+        1,
+        1,
+        "TC_CV002".to_string(),
+        "Test condition is evaluated before branching".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Conditional evaluation test",
+        "action",
+        "0",
+        "done",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Conditional {
+            condition: "test -d /var/log".to_string(),
+            if_true: Some(vec!["ls /var/log".to_string()]),
+            if_false: Some(vec!["echo 'Directory not found'".to_string()]),
+            always: None,
+        },
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify condition is evaluated at the beginning of the if statement
+    assert!(
+        script.contains("if test -d /var/log; then"),
+        "Condition must be evaluated in if statement"
+    );
+
+    // Verify that USER_VERIFICATION_RESULT is set to true when condition passes
+    let if_pos = script.find("if test -d /var/log; then").unwrap();
+    let set_true_pos = script[if_pos..]
+        .find("USER_VERIFICATION_RESULT=true")
+        .unwrap()
+        + if_pos;
+    let if_true_command_pos = script[if_pos..].find("ls /var/log").unwrap() + if_pos;
+
+    // Verify variable is set before if_true commands are executed
+    assert!(
+        set_true_pos < if_true_command_pos,
+        "USER_VERIFICATION_RESULT must be set to true before if_true commands"
+    );
+}
+
+#[test]
+fn test_manual_step_conditional_verification_executes_if_true_when_condition_passes() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_CV003".to_string(),
+        1,
+        1,
+        "TC_CV003".to_string(),
+        "Test if_true commands execute when condition passes".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(1, "If-true test", "action", "0", "done", Some(true));
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Conditional {
+            condition: "[ $? -eq 0 ]".to_string(),
+            if_true: Some(vec![
+                "echo 'Command succeeded'".to_string(),
+                "touch /tmp/success".to_string(),
+            ]),
+            if_false: Some(vec!["echo 'Command failed'".to_string()]),
+            always: None,
+        },
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify if_true commands are in the script
+    assert!(
+        script.contains("echo 'Command succeeded'"),
+        "if_true command 1 must be in script"
+    );
+    assert!(
+        script.contains("touch /tmp/success"),
+        "if_true command 2 must be in script"
+    );
+
+    // Verify commands are in the then block (between if and else)
+    let if_pos = script.find("if [ $? -eq 0 ]; then").unwrap();
+    let cmd1_pos = script[if_pos..].find("echo 'Command succeeded'").unwrap() + if_pos;
+    let cmd2_pos = script[cmd1_pos..].find("touch /tmp/success").unwrap() + cmd1_pos;
+    let else_pos = script[cmd2_pos..].find("else").unwrap() + cmd2_pos;
+
+    assert!(
+        if_pos < cmd1_pos && cmd1_pos < cmd2_pos && cmd2_pos < else_pos,
+        "if_true commands must be in then block before else"
+    );
+}
+
+#[test]
+fn test_manual_step_conditional_verification_executes_if_false_when_condition_fails() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_CV004".to_string(),
+        1,
+        1,
+        "TC_CV004".to_string(),
+        "Test if_false commands execute when condition fails".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(1, "If-false test", "action", "0", "done", Some(true));
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Conditional {
+            condition: "[ -f /tmp/nonexistent ]".to_string(),
+            if_true: Some(vec!["echo 'File exists'".to_string()]),
+            if_false: Some(vec![
+                "echo 'File not found'".to_string(),
+                "mkdir -p /tmp".to_string(),
+            ]),
+            always: None,
+        },
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify if_false commands are in the script
+    assert!(
+        script.contains("echo 'File not found'"),
+        "if_false command 1 must be in script"
+    );
+    assert!(
+        script.contains("mkdir -p /tmp"),
+        "if_false command 2 must be in script"
+    );
+
+    // Verify commands are in the else block (between else and fi)
+    let else_pos = script.find("else").unwrap();
+    let cmd1_pos = script[else_pos..].find("echo 'File not found'").unwrap() + else_pos;
+    let cmd2_pos = script[cmd1_pos..].find("mkdir -p /tmp").unwrap() + cmd1_pos;
+    let fi_pos = script[cmd2_pos..].find("fi").unwrap() + cmd2_pos;
+
+    assert!(
+        else_pos < cmd1_pos && cmd1_pos < cmd2_pos && cmd2_pos < fi_pos,
+        "if_false commands must be in else block before fi"
+    );
+}
+
+#[test]
+fn test_manual_step_conditional_verification_always_executes_always_commands() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_CV005".to_string(),
+        1,
+        1,
+        "TC_CV005".to_string(),
+        "Test always commands always execute".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Always execution test",
+        "action",
+        "0",
+        "done",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Conditional {
+            condition: "[ -n \"$RESULT\" ]".to_string(),
+            if_true: Some(vec!["echo 'Result is not empty'".to_string()]),
+            if_false: Some(vec!["echo 'Result is empty'".to_string()]),
+            always: Some(vec![
+                "echo 'Cleanup started'".to_string(),
+                "rm -f /tmp/temp_file".to_string(),
+                "echo 'Cleanup complete'".to_string(),
+            ]),
+        },
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify always commands are in the script
+    assert!(
+        script.contains("echo 'Cleanup started'"),
+        "always command 1 must be in script"
+    );
+    assert!(
+        script.contains("rm -f /tmp/temp_file"),
+        "always command 2 must be in script"
+    );
+    assert!(
+        script.contains("echo 'Cleanup complete'"),
+        "always command 3 must be in script"
+    );
+
+    // Verify always commands are after the fi block
+    let fi_pos = script.find("fi").unwrap();
+    let cleanup_start_pos = script[fi_pos..].find("echo 'Cleanup started'").unwrap() + fi_pos;
+    let cleanup_action_pos = script[cleanup_start_pos..]
+        .find("rm -f /tmp/temp_file")
+        .unwrap()
+        + cleanup_start_pos;
+    let cleanup_complete_pos = script[cleanup_action_pos..]
+        .find("echo 'Cleanup complete'")
+        .unwrap()
+        + cleanup_action_pos;
+
+    assert!(
+        fi_pos < cleanup_start_pos
+            && cleanup_start_pos < cleanup_action_pos
+            && cleanup_action_pos < cleanup_complete_pos,
+        "always commands must execute after fi block in correct order"
+    );
+}
+
+#[test]
+fn test_manual_step_conditional_verification_with_only_condition() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_CV006".to_string(),
+        1,
+        1,
+        "TC_CV006".to_string(),
+        "Test conditional with only condition (no branches)".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(1, "Minimal conditional", "action", "0", "done", Some(true));
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Conditional {
+            condition: "grep -q 'SUCCESS' /tmp/result.log".to_string(),
+            if_true: None,
+            if_false: None,
+            always: None,
+        },
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify condition is evaluated
+    assert!(
+        script.contains("if grep -q 'SUCCESS' /tmp/result.log; then"),
+        "Condition must be evaluated even without branches"
+    );
+
+    // Verify USER_VERIFICATION_RESULT is set to true when condition passes
+    assert!(
+        script.contains("USER_VERIFICATION_RESULT=true"),
+        "Variable must be set to true in then block"
+    );
+
+    // Verify else block exists (even if empty)
+    assert!(script.contains("else"), "else block must exist");
+
+    // Verify fi block closes the conditional
+    assert!(script.contains("fi"), "fi must close the conditional block");
+}
+
+#[test]
+fn test_manual_step_conditional_verification_with_condition_and_if_true_only() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_CV007".to_string(),
+        1,
+        1,
+        "TC_CV007".to_string(),
+        "Test conditional with condition and if_true only".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "If-true only conditional",
+        "action",
+        "0",
+        "done",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Conditional {
+            condition: "systemctl is-active nginx".to_string(),
+            if_true: Some(vec![
+                "echo 'Nginx is running'".to_string(),
+                "systemctl status nginx".to_string(),
+            ]),
+            if_false: None,
+            always: None,
+        },
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify condition and if_true commands
+    assert!(
+        script.contains("if systemctl is-active nginx; then"),
+        "Condition must be evaluated"
+    );
+    assert!(
+        script.contains("echo 'Nginx is running'"),
+        "if_true command 1 must be in then block"
+    );
+    assert!(
+        script.contains("systemctl status nginx"),
+        "if_true command 2 must be in then block"
+    );
+
+    // Verify else block exists (should have placeholder comment or no-op)
+    let if_pos = script.find("if systemctl is-active nginx; then").unwrap();
+    let else_pos = script[if_pos..].find("else").unwrap() + if_pos;
+    let fi_pos = script[else_pos..].find("fi").unwrap() + else_pos;
+
+    assert!(
+        if_pos < else_pos && else_pos < fi_pos,
+        "Structure must be complete with else block"
+    );
+}
+
+#[test]
+fn test_manual_step_conditional_verification_with_condition_and_if_false_only() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_CV008".to_string(),
+        1,
+        1,
+        "TC_CV008".to_string(),
+        "Test conditional with condition and if_false only".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "If-false only conditional",
+        "action",
+        "0",
+        "done",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Conditional {
+            condition: "ping -c 1 google.com".to_string(),
+            if_true: None,
+            if_false: Some(vec![
+                "echo 'Network is down'".to_string(),
+                "echo 'Check network connection'".to_string(),
+            ]),
+            always: None,
+        },
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify condition and if_false commands
+    assert!(
+        script.contains("if ping -c 1 google.com; then"),
+        "Condition must be evaluated"
+    );
+    assert!(
+        script.contains("echo 'Network is down'"),
+        "if_false command 1 must be in else block"
+    );
+    assert!(
+        script.contains("echo 'Check network connection'"),
+        "if_false command 2 must be in else block"
+    );
+
+    // Verify the if_false commands are after else
+    let else_pos = script.find("else").unwrap();
+    let cmd1_pos = script[else_pos..].find("echo 'Network is down'").unwrap() + else_pos;
+    let cmd2_pos = script[cmd1_pos..]
+        .find("echo 'Check network connection'")
+        .unwrap()
+        + cmd1_pos;
+
+    assert!(
+        else_pos < cmd1_pos && cmd1_pos < cmd2_pos,
+        "if_false commands must be in else block"
+    );
+}
+
+#[test]
+fn test_manual_step_conditional_verification_with_condition_and_always_only() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_CV009".to_string(),
+        1,
+        1,
+        "TC_CV009".to_string(),
+        "Test conditional with condition and always only".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Always only conditional",
+        "action",
+        "0",
+        "done",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Conditional {
+            condition: "[ -f /tmp/lock ]".to_string(),
+            if_true: None,
+            if_false: None,
+            always: Some(vec![
+                "rm -f /tmp/lock".to_string(),
+                "echo 'Lock removed'".to_string(),
+            ]),
+        },
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify condition is evaluated
+    assert!(
+        script.contains("if [ -f /tmp/lock ]; then"),
+        "Condition must be evaluated"
+    );
+
+    // Verify always commands are after fi
+    assert!(
+        script.contains("rm -f /tmp/lock"),
+        "always command 1 must be in script"
+    );
+    assert!(
+        script.contains("echo 'Lock removed'"),
+        "always command 2 must be in script"
+    );
+
+    let fi_pos = script.find("fi").unwrap();
+    let rm_pos = script[fi_pos..].find("rm -f /tmp/lock").unwrap() + fi_pos;
+    let echo_pos = script[rm_pos..].find("echo 'Lock removed'").unwrap() + rm_pos;
+
+    assert!(
+        fi_pos < rm_pos && rm_pos < echo_pos,
+        "always commands must execute after fi block"
+    );
+}
+
+#[test]
+fn test_manual_step_both_result_and_output_conditional_verifications() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_CV010".to_string(),
+        1,
+        1,
+        "TC_CV010".to_string(),
+        "Test both result and output with conditional verifications".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Dual conditional verification",
+        "action",
+        "0",
+        "done",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Conditional {
+            condition: "[ -f /tmp/result ]".to_string(),
+            if_true: Some(vec!["echo 'Result file exists'".to_string()]),
+            if_false: Some(vec!["echo 'Result file missing'".to_string()]),
+            always: Some(vec!["echo 'Result check complete'".to_string()]),
+        },
+        output: VerificationExpression::Conditional {
+            condition: "[ -f /tmp/output ]".to_string(),
+            if_true: Some(vec!["echo 'Output file exists'".to_string()]),
+            if_false: Some(vec!["echo 'Output file missing'".to_string()]),
+            always: Some(vec!["echo 'Output check complete'".to_string()]),
+        },
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify result verification conditional
+    assert!(
+        script.contains("if [ -f /tmp/result ]; then"),
+        "Result condition must be evaluated"
+    );
+    assert!(
+        script.contains("echo 'Result file exists'"),
+        "Result if_true must be present"
+    );
+    assert!(
+        script.contains("echo 'Result file missing'"),
+        "Result if_false must be present"
+    );
+    assert!(
+        script.contains("echo 'Result check complete'"),
+        "Result always must be present"
+    );
+
+    // Verify output verification conditional
+    assert!(
+        script.contains("if [ -f /tmp/output ]; then"),
+        "Output condition must be evaluated"
+    );
+    assert!(
+        script.contains("echo 'Output file exists'"),
+        "Output if_true must be present"
+    );
+    assert!(
+        script.contains("echo 'Output file missing'"),
+        "Output if_false must be present"
+    );
+    assert!(
+        script.contains("echo 'Output check complete'"),
+        "Output always must be present"
+    );
+
+    // Verify both set USER_VERIFICATION_RESULT and USER_VERIFICATION_OUTPUT
+    assert!(
+        script.contains("USER_VERIFICATION_RESULT=true"),
+        "Result verification must set USER_VERIFICATION_RESULT"
+    );
+    assert!(
+        script.contains("USER_VERIFICATION_OUTPUT=true"),
+        "Output verification must set USER_VERIFICATION_OUTPUT"
+    );
+
+    // Verify combined check
+    assert!(
+        script.contains("if [ \"$USER_VERIFICATION_RESULT\" = true ] && [ \"$USER_VERIFICATION_OUTPUT\" = true ]"),
+        "Combined verification check must be present"
+    );
+}
+
+#[test]
+fn test_manual_step_conditional_verification_complex_nested_structure() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_CV011".to_string(),
+        1,
+        1,
+        "TC_CV011".to_string(),
+        "Test complex conditional with multiple commands in each branch".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(1, "Complex conditional", "action", "0", "done", Some(true));
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Conditional {
+            condition: "grep -q 'ERROR' /var/log/app.log".to_string(),
+            if_true: Some(vec![
+                "echo 'Errors found in log'".to_string(),
+                "tail -20 /var/log/app.log".to_string(),
+                "echo 'Review errors above'".to_string(),
+            ]),
+            if_false: Some(vec![
+                "echo 'No errors in log'".to_string(),
+                "echo 'Application is healthy'".to_string(),
+            ]),
+            always: Some(vec![
+                "echo 'Log check completed at $(date)'".to_string(),
+                "echo 'Next check scheduled'".to_string(),
+            ]),
+        },
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify all if_true commands are present in order
+    let if_pos = script
+        .find("if grep -q 'ERROR' /var/log/app.log; then")
+        .unwrap();
+    let cmd1_pos = script[if_pos..].find("echo 'Errors found in log'").unwrap() + if_pos;
+    let cmd2_pos = script[cmd1_pos..]
+        .find("tail -20 /var/log/app.log")
+        .unwrap()
+        + cmd1_pos;
+    let cmd3_pos = script[cmd2_pos..]
+        .find("echo 'Review errors above'")
+        .unwrap()
+        + cmd2_pos;
+    let else_pos = script[cmd3_pos..].find("else").unwrap() + cmd3_pos;
+
+    assert!(
+        if_pos < cmd1_pos && cmd1_pos < cmd2_pos && cmd2_pos < cmd3_pos && cmd3_pos < else_pos,
+        "All if_true commands must be in then block in correct order"
+    );
+
+    // Verify all if_false commands are present in order
+    let cmd4_pos = script[else_pos..].find("echo 'No errors in log'").unwrap() + else_pos;
+    let cmd5_pos = script[cmd4_pos..]
+        .find("echo 'Application is healthy'")
+        .unwrap()
+        + cmd4_pos;
+    let fi_pos = script[cmd5_pos..].find("fi").unwrap() + cmd5_pos;
+
+    assert!(
+        else_pos < cmd4_pos && cmd4_pos < cmd5_pos && cmd5_pos < fi_pos,
+        "All if_false commands must be in else block in correct order"
+    );
+
+    // Verify all always commands are present after fi
+    let always1_pos = script[fi_pos..]
+        .find("echo 'Log check completed at $(date)'")
+        .unwrap()
+        + fi_pos;
+    let always2_pos = script[always1_pos..]
+        .find("echo 'Next check scheduled'")
+        .unwrap()
+        + always1_pos;
+
+    assert!(
+        fi_pos < always1_pos && always1_pos < always2_pos,
+        "All always commands must be after fi in correct order"
+    );
+}
+
+#[test]
+fn test_manual_step_conditional_verification_sets_variable_on_condition_success() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_CV012".to_string(),
+        1,
+        1,
+        "TC_CV012".to_string(),
+        "Test USER_VERIFICATION variable is set when condition succeeds".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Variable setting test",
+        "action",
+        "0",
+        "done",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Conditional {
+            condition: "test -x /usr/bin/app".to_string(),
+            if_true: Some(vec!["echo 'App is executable'".to_string()]),
+            if_false: Some(vec!["echo 'App is not executable'".to_string()]),
+            always: None,
+        },
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify USER_VERIFICATION_RESULT is set to true in then block
+    let if_pos = script.find("if test -x /usr/bin/app; then").unwrap();
+    let set_true_pos = script[if_pos..]
+        .find("USER_VERIFICATION_RESULT=true")
+        .unwrap()
+        + if_pos;
+    let else_pos = script[set_true_pos..].find("else").unwrap() + set_true_pos;
+
+    assert!(
+        if_pos < set_true_pos && set_true_pos < else_pos,
+        "USER_VERIFICATION_RESULT=true must be in then block"
+    );
+
+    // Verify the variable is NOT set to true in else block
+    let else_block = &script[else_pos..];
+    let fi_pos = else_block.find("fi").unwrap();
+    let else_section = &else_block[..fi_pos];
+
+    assert!(
+        !else_section.contains("USER_VERIFICATION_RESULT=true"),
+        "USER_VERIFICATION_RESULT should not be set to true in else block"
+    );
+}
+
+#[test]
+fn test_manual_step_conditional_verification_integrates_with_pass_fail_logic() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_CV013".to_string(),
+        1,
+        1,
+        "TC_CV013".to_string(),
+        "Test conditional verification integrates with PASS/FAIL logic".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(1, "Integration test", "action", "0", "done", Some(true));
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Conditional {
+            condition: "pgrep nginx".to_string(),
+            if_true: Some(vec!["echo 'Nginx process found'".to_string()]),
+            if_false: Some(vec!["echo 'Nginx process not found'".to_string()]),
+            always: Some(vec!["echo 'Process check done'".to_string()]),
+        },
+        output: VerificationExpression::Conditional {
+            condition: "curl -s http://localhost > /dev/null".to_string(),
+            if_true: Some(vec!["echo 'Service is responding'".to_string()]),
+            if_false: Some(vec!["echo 'Service is not responding'".to_string()]),
+            always: None,
+        },
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify both conditional verifications set their variables
+    assert!(
+        script.contains("USER_VERIFICATION_RESULT=true"),
+        "Result verification must set variable"
+    );
+    assert!(
+        script.contains("USER_VERIFICATION_OUTPUT=true"),
+        "Output verification must set variable"
+    );
+
+    // Verify combined USER_VERIFICATION logic
+    assert!(
+        script.contains("if [ \"$USER_VERIFICATION_RESULT\" = true ] && [ \"$USER_VERIFICATION_OUTPUT\" = true ]"),
+        "Combined verification must check both variables"
+    );
+    assert!(
+        script.contains("USER_VERIFICATION=true"),
+        "Combined verification sets USER_VERIFICATION=true"
+    );
+    assert!(
+        script.contains("USER_VERIFICATION=false"),
+        "Combined verification sets USER_VERIFICATION=false on failure"
+    );
+
+    // Verify PASS/FAIL messages
+    assert!(
+        script.contains("[PASS] Step 1: Integration test"),
+        "PASS message must be present"
+    );
+    assert!(
+        script.contains("[FAIL] Step 1: Integration test"),
+        "FAIL message must be present"
+    );
+
+    // Verify diagnostic output
+    assert!(
+        script.contains("Result verification: $USER_VERIFICATION_RESULT"),
+        "Diagnostic must show result verification"
+    );
+    assert!(
+        script.contains("Output verification: $USER_VERIFICATION_OUTPUT"),
+        "Diagnostic must show output verification"
+    );
+
+    // Verify exit on failure
+    let fail_pos = script.find("[FAIL] Step 1").unwrap();
+    let exit_pos = script[fail_pos..].find("exit 1").unwrap() + fail_pos;
+    assert!(fail_pos < exit_pos, "exit 1 must be after FAIL message");
+}
+
+// ============================================================================
 // BDD Initial Conditions Integration Tests for generate_test_script_with_json_output
 // ============================================================================
 
@@ -3810,7 +4701,7 @@ fn test_manual_step_without_verification_no_evaluation_code() {
         !script.contains("if [ \"$USER_VERIFICATION\""),
         "Script must NOT contain combined verification check"
     );
-    
+
     // Should not contain any verification-related conditionals
     let step_section = script.split("Step 1:").nth(1).unwrap_or("");
     assert!(
@@ -3860,13 +4751,13 @@ fn test_manual_step_without_verification_simple_enter_prompt() {
         script.contains("Press ENTER to continue..."),
         "Script must contain simple 'Press ENTER to continue...' prompt"
     );
-    
+
     // Verify it uses read -p with the correct prompt
     assert!(
         script.contains("read -p \"Press ENTER to continue...\""),
         "Script must use read -p with simple continue prompt"
     );
-    
+
     // Should NOT contain verification-related prompts
     assert!(
         !script.contains("Press ENTER after completing the manual action"),
@@ -3915,7 +4806,7 @@ fn test_manual_step_without_verification_no_pass_fail_messages() {
         !script.contains("[FAIL]"),
         "Script must NOT contain [FAIL] message"
     );
-    
+
     // Specifically check for this step's pass/fail messages
     assert!(
         !script.contains("[PASS] Step 1"),
@@ -3986,16 +4877,9 @@ fn test_manual_step_without_verification_multiple_steps() {
     );
 
     let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
-    
+
     // First manual step without verification
-    let mut step1 = create_test_step(
-        1,
-        "Manual step 1",
-        "action 1",
-        "0",
-        "done",
-        Some(true),
-    );
+    let mut step1 = create_test_step(1, "Manual step 1", "action 1", "0", "done", Some(true));
     step1.manual = Some(true);
     step1.verification = Verification {
         result: VerificationExpression::Simple("true".to_string()),
@@ -4006,14 +4890,7 @@ fn test_manual_step_without_verification_multiple_steps() {
     sequence.steps.push(step1);
 
     // Second manual step without verification
-    let mut step2 = create_test_step(
-        2,
-        "Manual step 2",
-        "action 2",
-        "0",
-        "done",
-        Some(true),
-    );
+    let mut step2 = create_test_step(2, "Manual step 2", "action 2", "0", "done", Some(true));
     step2.manual = Some(true);
     step2.verification = Verification {
         result: VerificationExpression::Simple("true".to_string()),
@@ -4063,7 +4940,7 @@ fn test_manual_step_without_verification_mixed_with_verification() {
     );
 
     let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
-    
+
     // Manual step WITHOUT verification
     let mut step1 = create_test_step(
         1,
@@ -4105,7 +4982,8 @@ fn test_manual_step_without_verification_mixed_with_verification() {
     let script = executor.generate_test_script(&test_case);
 
     // Step 1: Should NOT have USER_VERIFICATION variables
-    let step1_section = &script[script.find("# Step 1:").unwrap()..script.find("# Step 2:").unwrap()];
+    let step1_section =
+        &script[script.find("# Step 1:").unwrap()..script.find("# Step 2:").unwrap()];
     assert!(
         !step1_section.contains("USER_VERIFICATION"),
         "Step 1 section must NOT contain USER_VERIFICATION variables"
@@ -4263,26 +5141,43 @@ fn test_manual_step_without_verification_complete_workflow() {
     // 3. Simple ENTER prompt
     // 4. NO verification logic
     // 5. NO pass/fail messages
-    
+
     let step_start = script.find("# Step 1:").expect("Step 1 should exist");
     let step_section = &script[step_start..];
-    
+
     // Find order of elements
-    let desc_pos = step_section.find("Full manual workflow").expect("Description should exist");
-    let cmd_pos = step_section.find("complete manual task").expect("Command should exist");
-    let manual_info_pos = step_section.find("INFO: This is a manual step").expect("Manual info should exist");
-    let enter_pos = step_section.find("Press ENTER to continue...").expect("ENTER prompt should exist");
-    
+    let desc_pos = step_section
+        .find("Full manual workflow")
+        .expect("Description should exist");
+    let cmd_pos = step_section
+        .find("complete manual task")
+        .expect("Command should exist");
+    let manual_info_pos = step_section
+        .find("INFO: This is a manual step")
+        .expect("Manual info should exist");
+    let enter_pos = step_section
+        .find("Press ENTER to continue...")
+        .expect("ENTER prompt should exist");
+
     // Verify order
     assert!(desc_pos < cmd_pos, "Description should come before command");
-    assert!(cmd_pos < manual_info_pos, "Command should come before manual info");
-    assert!(manual_info_pos < enter_pos, "Manual info should come before ENTER prompt");
-    
+    assert!(
+        cmd_pos < manual_info_pos,
+        "Command should come before manual info"
+    );
+    assert!(
+        manual_info_pos < enter_pos,
+        "Manual info should come before ENTER prompt"
+    );
+
     // Verify absences in this step section (up to next step or end)
     let step_end = step_section.find("# Step 2:").unwrap_or(step_section.len());
     let this_step = &step_section[..step_end];
-    
-    assert!(!this_step.contains("USER_VERIFICATION"), "Should not contain USER_VERIFICATION");
+
+    assert!(
+        !this_step.contains("USER_VERIFICATION"),
+        "Should not contain USER_VERIFICATION"
+    );
     assert!(!this_step.contains("[PASS]"), "Should not contain [PASS]");
     assert!(!this_step.contains("[FAIL]"), "Should not contain [FAIL]");
     assert!(!this_step.contains("exit 1"), "Should not contain exit 1");
