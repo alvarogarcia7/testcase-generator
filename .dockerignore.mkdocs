@@ -1,0 +1,74 @@
+# Docker ignore file for MkDocs builds
+# This file specifies what should NOT be copied into the MkDocs Docker image
+
+# Rust build artifacts
+target/
+Cargo.lock
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary and backup files
+*.tmp
+*.bak
+.recovery.json
+
+# Environment files
+.env
+.env.local
+.env.*.local
+.env.sh
+
+# Documentation build artifacts (will be generated in container)
+site/
+mkdocs-venv/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Docker files (except Dockerfile.mkdocs)
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Test files and directories
+tests/
+testcases/
+
+# Source code (not needed for docs)
+src/
+
+# Data files
+data/
+
+# Example scripts
+examples/*.sh
+create_*.py
+add_*.sh
+convert_*.py
+execute_*.sh
+
+# Implementation and summary markdown files
+*IMPLEMENTATION*.md
+*SUMMARY.md
+*_COMPLETE.md
+
+# Backlog
+backlog/
+
+# Scripts (except docs-related ones)
+scripts/

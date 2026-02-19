@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  mkdocs:
+    build:
+      context: .
+      dockerfile: Dockerfile.mkdocs
+    image: testcase-manager-docs:latest
+    container_name: testcase-manager-docs
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./docs:/docs/docs
+      - ./mkdocs.yml:/docs/mkdocs.yml
+      - ./site:/docs/site
+      - ./README.md:/docs/README.md
+      - ./README_INSTALL.md:/docs/README_INSTALL.md
+    command: mkdocs serve -a 0.0.0.0:8000
+    environment:
+      - ENABLE_PDF_EXPORT=0
+
+  mkdocs-build:
+    build:
+      context: .
+      dockerfile: Dockerfile.mkdocs
+    image: testcase-manager-docs:latest
+    volumes:
+      - ./site:/docs/site
+    command: mkdocs build
+
+  mkdocs-build-pdf:
+    build:
+      context: .
+      dockerfile: Dockerfile.mkdocs
+    image: testcase-manager-docs:latest
+    volumes:
+      - ./site:/docs/site
+    environment:
+      - ENABLE_PDF_EXPORT=1
+    command: mkdocs build

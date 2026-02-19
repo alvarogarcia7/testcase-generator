@@ -26,13 +26,9 @@ target/
 .env.*.local
 .env.sh
 
-# Documentation (will be generated in container)
-README.md
-AGENTS.md
-LICENSE
-CONTRIBUTING.md
-CHANGELOG.md
-CLAUDE.md
+# Documentation build artifacts
+site/
+mkdocs-venv/
 
 # OS files
 .DS_Store
