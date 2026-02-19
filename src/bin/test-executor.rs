@@ -1,9 +1,11 @@
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
+use std::collections::HashMap;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use testcase_manager::{
-    TestCase, TestCaseFilter, TestCaseFilterer, TestCaseStorage, TestExecutor, VarHydrator,
+    DependencyResolver, TestCase, TestCaseFilter, TestCaseFilterer, TestCaseStorage, TestExecutor,
+    VarHydrator,
 };
 
 #[derive(Parser)]
@@ -91,6 +93,16 @@ enum Commands {
         #[arg(long)]
         show_stats: bool,
     },
+    /// Resolve dependencies in test case YAML files
+    Resolve {
+        /// Paths to YAML test case files
+        #[arg(value_name = "YAML_FILES", required = true)]
+        yaml_files: Vec<PathBuf>,
+
+        /// Optional output directory (defaults to stdout)
+        #[arg(short, long, value_name = "OUTPUT_DIR")]
+        output: Option<PathBuf>,
+    },
 }
 
 fn load_test_case(yaml_file: &PathBuf) -> Result<TestCase> {
@@ -101,6 +113,66 @@ fn load_test_case(yaml_file: &PathBuf) -> Result<TestCase> {
         serde_yaml::from_str(&yaml_content).context("Failed to parse YAML content as TestCase")?;
 
     Ok(test_case)
+}
+
+fn load_all_yaml_files_from_dir(dir: &PathBuf) -> Result<Vec<(PathBuf, TestCase)>> {
+    let mut test_cases = Vec::new();
+
+    if !dir.is_dir() {
+        return Ok(test_cases);
+    }
+
+    for entry in
+        fs::read_dir(dir).context(format!("Failed to read directory: {}", dir.display()))?
+    {
+        let entry = entry.context("Failed to read directory entry")?;
+        let path = entry.path();
+
+        if path.is_file() {
+            if let Some(ext) = path.extension() {
+                let ext_str = ext.to_string_lossy().to_lowercase();
+                if ext_str == "yaml" || ext_str == "yml" {
+                    match load_test_case(&path) {
+                        Ok(test_case) => {
+                            test_cases.push((path, test_case));
+                        }
+                        Err(e) => {
+                            eprintln!("Warning: Failed to load {}: {}", path.display(), e);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(test_cases)
+}
+
+fn build_dependency_resolver(yaml_file: &Path) -> Result<DependencyResolver> {
+    let dir = yaml_file
+        .parent()
+        .ok_or_else(|| anyhow::anyhow!("Failed to get parent directory"))?
+        .to_path_buf();
+
+    let test_cases = load_all_yaml_files_from_dir(&dir)?;
+
+    let mut index = HashMap::new();
+    for (_, test_case) in test_cases {
+        index.insert(test_case.id.clone(), test_case);
+    }
+
+    Ok(DependencyResolver::new(index))
+}
+
+fn build_resolver_from_files(yaml_files: &[PathBuf]) -> Result<DependencyResolver> {
+    let mut index = HashMap::new();
+
+    for yaml_file in yaml_files {
+        let test_case = load_test_case(yaml_file)?;
+        index.insert(test_case.id.clone(), test_case);
+    }
+
+    Ok(DependencyResolver::new(index))
 }
 
 fn list_test_cases(
@@ -183,7 +255,13 @@ fn main() -> Result<()> {
             output,
             json_log,
         } => {
-            let test_case = load_test_case(&yaml_file)?;
+            let mut test_case = load_test_case(&yaml_file)?;
+
+            let resolver = build_dependency_resolver(&yaml_file)?;
+            test_case = resolver
+                .resolve(&test_case)
+                .context("Failed to resolve dependencies")?;
+
             let executor = TestExecutor::new();
             let script = executor.generate_test_script(&test_case);
 
@@ -210,9 +288,14 @@ fn main() -> Result<()> {
             Ok(())
         }
         Commands::Execute { yaml_file } => {
-            let test_case = load_test_case(&yaml_file)?;
-            let executor = TestExecutor::new();
+            let mut test_case = load_test_case(&yaml_file)?;
 
+            let resolver = build_dependency_resolver(&yaml_file)?;
+            test_case = resolver
+                .resolve(&test_case)
+                .context("Failed to resolve dependencies")?;
+
+            let executor = TestExecutor::new();
             executor.execute_test_case(&test_case)?;
 
             Ok(())
@@ -326,5 +409,49 @@ fn main() -> Result<()> {
             automated_only,
             show_stats,
         } => list_test_cases(base_path, manual_only, automated_only, show_stats),
+        Commands::Resolve { yaml_files, output } => {
+            let resolver = build_resolver_from_files(&yaml_files)?;
+
+            if let Some(output_dir) = output {
+                if !output_dir.exists() {
+                    fs::create_dir_all(&output_dir).context(format!(
+                        "Failed to create output directory: {}",
+                        output_dir.display()
+                    ))?;
+                }
+
+                for yaml_file in &yaml_files {
+                    let test_case = load_test_case(yaml_file)?;
+                    let resolved = resolver.resolve(&test_case)?;
+
+                    let output_filename = format!("{}_resolved.yaml", resolved.id);
+                    let output_path = output_dir.join(&output_filename);
+
+                    let yaml_content = serde_yaml::to_string(&resolved)
+                        .context("Failed to serialize resolved test case")?;
+
+                    fs::write(&output_path, yaml_content).context(format!(
+                        "Failed to write resolved YAML to: {}",
+                        output_path.display()
+                    ))?;
+
+                    println!("Resolved test case written to: {}", output_path.display());
+                }
+            } else {
+                for yaml_file in &yaml_files {
+                    let test_case = load_test_case(yaml_file)?;
+                    let resolved = resolver.resolve(&test_case)?;
+
+                    let yaml_content = serde_yaml::to_string(&resolved)
+                        .context("Failed to serialize resolved test case")?;
+
+                    println!("---");
+                    println!("# Resolved: {}", yaml_file.display());
+                    print!("{}", yaml_content);
+                }
+            }
+
+            Ok(())
+        }
     }
 }

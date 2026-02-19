@@ -39,7 +39,7 @@ pub use config::{
 };
 pub use creator::TestCaseCreator;
 pub use database::ConditionDatabase;
-pub use dependency_resolver::DependencyResolver;
+pub use dependency_resolver::{DependencyResolver, ResolutionError};
 pub use dependency_validator::{
     validate_cross_file_dependencies, DependencyError, DependencyErrorType, DependencyValidator,
 };
@@ -53,6 +53,9 @@ pub use log_cleaner::LogCleaner;
 pub use models::ActualResult;
 pub use models::Expected;
 pub use models::FileValidationStatus;
+pub use models::IncludeRef;
+pub use models::InitialConditionItem;
+pub use models::InitialConditions;
 pub use models::Prerequisite;
 pub use models::PrerequisiteType;
 pub use models::Step;
@@ -63,6 +66,7 @@ pub use models::TestExecutionLog;
 pub use models::TestRun;
 pub use models::TestRunStatus;
 pub use models::TestSequence;
+pub use models::TestSequenceRefTarget;
 pub use models::TestStepExecutionEntry;
 pub use models::TestSuite;
 pub use models::ValidationErrorDetail;
