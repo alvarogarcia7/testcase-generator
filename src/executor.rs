@@ -2009,6 +2009,8 @@ fi"#,
                     exit_code,
                     output,
                     timestamp: Some(timestamp.to_rfc3339()),
+                    hook_type: None,
+                    hook_path: None,
                 };
 
                 template_entries.push(entry);
