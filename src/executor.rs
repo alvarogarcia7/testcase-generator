@@ -431,6 +431,104 @@ impl TestExecutor {
         script.push_str("#!/bin/bash\n");
         script.push_str("set -euo pipefail\n\n");
 
+        // Add bash helper functions for Y/n prompts
+        script.push_str("# Bash helper functions for user prompts\n");
+        script.push_str("# Prompts user for Y/n input with proper validation\n");
+        script.push_str("# Returns: 1 for yes, 0 for no\n");
+        script
+            .push_str("# Supports both interactive and non-interactive modes with TTY detection\n");
+        script.push_str("read_true_false() {\n");
+        script.push_str("    local prompt=\"$1\"\n");
+        script.push_str("    local default=\"${2:-y}\"\n");
+        script.push_str("    \n");
+        script.push_str("    # Check if running in non-interactive mode\n");
+        script.push_str(
+            "    if [[ \"${DEBIAN_FRONTEND}\" == 'noninteractive' ]] || ! [ -t 0 ]; then\n",
+        );
+        script.push_str("        # Non-interactive mode: return default\n");
+        script.push_str("        if [[ \"$default\" =~ ^[Yy]$ ]]; then\n");
+        script.push_str("            return 1\n");
+        script.push_str("        else\n");
+        script.push_str("            return 0\n");
+        script.push_str("        fi\n");
+        script.push_str("    fi\n");
+        script.push_str("    \n");
+        script.push_str("    # Interactive mode: prompt user\n");
+        script.push_str("    while true; do\n");
+        script.push_str("        if [[ \"$default\" =~ ^[Yy]$ ]]; then\n");
+        script.push_str("            read -p \"$prompt [Y/n]: \" response\n");
+        script.push_str("        else\n");
+        script.push_str("            read -p \"$prompt [y/N]: \" response\n");
+        script.push_str("        fi\n");
+        script.push_str("        \n");
+        script.push_str("        # Empty response uses default\n");
+        script.push_str("        if [[ -z \"$response\" ]]; then\n");
+        script.push_str("            response=\"$default\"\n");
+        script.push_str("        fi\n");
+        script.push_str("        \n");
+        script.push_str("        # Validate response\n");
+        script.push_str("        case \"$response\" in\n");
+        script.push_str("            [Yy]|[Yy][Ee][Ss])\n");
+        script.push_str("                return 1\n");
+        script.push_str("                ;;\n");
+        script.push_str("            [Nn]|[Nn][Oo])\n");
+        script.push_str("                return 0\n");
+        script.push_str("                ;;\n");
+        script.push_str("            *)\n");
+        script.push_str("                echo \"Invalid response. Please enter Y or n.\" >&2\n");
+        script.push_str("                ;;\n");
+        script.push_str("        esac\n");
+        script.push_str("    done\n");
+        script.push_str("}\n\n");
+
+        script.push_str("# Prompts user for verification with Y/n input\n");
+        script.push_str("# Returns: 1 for yes, 0 for no\n");
+        script
+            .push_str("# Supports both interactive and non-interactive modes with TTY detection\n");
+        script.push_str("read_verification() {\n");
+        script.push_str("    local prompt=\"$1\"\n");
+        script.push_str("    local default=\"${2:-y}\"\n");
+        script.push_str("    \n");
+        script.push_str("    # Check if running in non-interactive mode\n");
+        script.push_str(
+            "    if [[ \"${DEBIAN_FRONTEND}\" == 'noninteractive' ]] || ! [ -t 0 ]; then\n",
+        );
+        script.push_str("        # Non-interactive mode: return default\n");
+        script.push_str("        if [[ \"$default\" =~ ^[Yy]$ ]]; then\n");
+        script.push_str("            return 1\n");
+        script.push_str("        else\n");
+        script.push_str("            return 0\n");
+        script.push_str("        fi\n");
+        script.push_str("    fi\n");
+        script.push_str("    \n");
+        script.push_str("    # Interactive mode: prompt user\n");
+        script.push_str("    while true; do\n");
+        script.push_str("        if [[ \"$default\" =~ ^[Yy]$ ]]; then\n");
+        script.push_str("            read -p \"$prompt [Y/n]: \" response\n");
+        script.push_str("        else\n");
+        script.push_str("            read -p \"$prompt [y/N]: \" response\n");
+        script.push_str("        fi\n");
+        script.push_str("        \n");
+        script.push_str("        # Empty response uses default\n");
+        script.push_str("        if [[ -z \"$response\" ]]; then\n");
+        script.push_str("            response=\"$default\"\n");
+        script.push_str("        fi\n");
+        script.push_str("        \n");
+        script.push_str("        # Validate response\n");
+        script.push_str("        case \"$response\" in\n");
+        script.push_str("            [Yy]|[Yy][Ee][Ss])\n");
+        script.push_str("                return 1\n");
+        script.push_str("                ;;\n");
+        script.push_str("            [Nn]|[Nn][Oo])\n");
+        script.push_str("                return 0\n");
+        script.push_str("                ;;\n");
+        script.push_str("            *)\n");
+        script.push_str("                echo \"Invalid response. Please enter Y or n.\" >&2\n");
+        script.push_str("                ;;\n");
+        script.push_str("        esac\n");
+        script.push_str("    done\n");
+        script.push_str("}\n\n");
+
         script.push_str("# Test Case: ");
         script.push_str(&test_case.id);
         script.push('\n');
@@ -1710,6 +1808,91 @@ mod tests {
     use super::*;
     use crate::models::{Expected, Step, TestSequence, Verification};
     use std::collections::HashMap;
+
+    #[test]
+    fn test_helper_functions_in_generated_script() {
+        let executor = TestExecutor::new();
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test helper functions".to_string(),
+        );
+
+        let mut sequence = TestSequence::new(1, "Seq1".to_string(), "First sequence".to_string());
+        let step = Step {
+            step: 1,
+            manual: None,
+            description: "Echo test".to_string(),
+            command: "echo 'hello'".to_string(),
+            capture_vars: None,
+            expected: Expected {
+                success: Some(true),
+                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
+                output: "[ \"$COMMAND_OUTPUT\" = \"hello\" ]".to_string(),
+            },
+            verification: Verification {
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple(
+                    "[ \"$COMMAND_OUTPUT\" = \"hello\" ]".to_string(),
+                ),
+                output_file: None,
+                general: None,
+            },
+            reference: None,
+        };
+        sequence.steps.push(step);
+        test_case.test_sequences.push(sequence);
+
+        let script = executor.generate_test_script(&test_case);
+
+        // Verify helper functions are present
+        assert!(
+            script.contains("read_true_false()"),
+            "Script should contain read_true_false function"
+        );
+        assert!(
+            script.contains("read_verification()"),
+            "Script should contain read_verification function"
+        );
+        assert!(
+            script.contains("# Bash helper functions for user prompts"),
+            "Script should contain helper function comment"
+        );
+        assert!(
+            script.contains("# Returns: 1 for yes, 0 for no"),
+            "Script should contain return value documentation"
+        );
+        assert!(
+            script.contains(
+                "# Supports both interactive and non-interactive modes with TTY detection"
+            ),
+            "Script should contain mode documentation"
+        );
+        assert!(
+            script.contains(
+                "if [[ \"${DEBIAN_FRONTEND}\" == 'noninteractive' ]] || ! [ -t 0 ]; then"
+            ),
+            "Script should contain TTY detection"
+        );
+        assert!(
+            script.contains("read -p \"$prompt [Y/n]: \" response"),
+            "Script should contain Y/n prompt"
+        );
+        assert!(
+            script.contains("read -p \"$prompt [y/N]: \" response"),
+            "Script should contain y/N prompt"
+        );
+        assert!(
+            script.contains("[Yy]|[Yy][Ee][Ss])"),
+            "Script should validate yes responses"
+        );
+        assert!(
+            script.contains("[Nn]|[Nn][Oo])"),
+            "Script should validate no responses"
+        );
+    }
 
     #[test]
     fn test_generate_test_script_basic() {
