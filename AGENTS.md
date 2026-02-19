@@ -34,6 +34,7 @@
   - `make docs-compose-build-site` - Build site with Docker Compose
   - `make docs-compose-build-pdf` - Build site with PDF using Docker Compose
   - `make docs-compose-down` - Stop Docker Compose services
+  - `make docs-compose-test` - Run Docker Compose workflow e2e tests
 - **Dev Server**: N/A
 
 You must build, test, lint, and verify coverage before committing
