@@ -79,3 +79,4 @@ grcov
 /test_validate_files*/
 
 /node_modules/
+/mkdocs-venv/
