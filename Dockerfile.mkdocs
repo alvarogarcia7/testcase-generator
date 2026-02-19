@@ -1,0 +1,50 @@
+# Dockerfile for building MkDocs documentation
+# This image contains all dependencies needed to build the documentation site
+
+FROM python:3.14-slim
+
+# Set working directory
+WORKDIR /docs
+
+# Install system dependencies for PDF generation and build tools
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    git \
+    gcc \
+    g++ \
+    make \
+    libcairo2 \
+    libpango-1.0-0 \
+    libpangocairo-1.0-0 \
+    libgdk-pixbuf-xlib-2.0-0 \
+    libffi-dev \
+    shared-mime-info \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements file
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy documentation source files
+COPY mkdocs.yml .
+COPY docs/ ./docs/
+COPY README.md .
+COPY README_INSTALL.md .
+
+# Create non-root user
+RUN useradd -m -u 1000 -s /bin/bash mkdocs && \
+    chown -R mkdocs:mkdocs /docs
+
+# Switch to non-root user
+USER mkdocs
+
+# Set environment variables for PDF generation
+ENV ENABLE_PDF_EXPORT=0
+
+# Expose port for development server
+EXPOSE 8000
+
+# Default command: build the documentation
+CMD ["mkdocs", "build"]

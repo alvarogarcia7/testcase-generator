@@ -19,6 +19,17 @@
   - `make docs-build` - Build documentation site
   - `make docs-build-pdf` - Build documentation with PDF export
   - `make docs-clean` - Clean documentation build artifacts
+- **Documentation (Docker)**:
+  - `make docs-docker-build` - Build MkDocs Docker image
+  - `make docs-docker-serve` - Serve documentation using Docker
+  - `make docs-docker-build-site` - Build site using Docker
+  - `make docs-docker-build-pdf` - Build site with PDF using Docker
+  - `make docs-docker-clean` - Remove MkDocs Docker image
+- **Documentation (Docker Compose)**:
+  - `make docs-compose-up` - Start documentation server with Docker Compose
+  - `make docs-compose-build-site` - Build site with Docker Compose
+  - `make docs-compose-build-pdf` - Build site with PDF using Docker Compose
+  - `make docs-compose-down` - Stop Docker Compose services
 - **Dev Server**: N/A
 
 You must build, test, lint, and verify coverage before committing

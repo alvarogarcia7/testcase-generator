@@ -43,6 +43,8 @@ nav:
       - Prerequisites: docs/PREREQUISITES.md
       - Installation: README_INSTALL.md
       - Docker Setup: docs/DOCKER.md
+      - Docker MkDocs Setup: docs/DOCKER_MKDOCS.md
+      - Docker MkDocs Quick Ref: docs/DOCKER_MKDOCS_QUICK_REF.md
   - User Guide:
       - Interactive Workflow: docs/interactive_workflow.md
       - Interactive Implementation: docs/INTERACTIVE_IMPLEMENTATION.md
