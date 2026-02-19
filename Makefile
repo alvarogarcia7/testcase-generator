@@ -324,6 +324,10 @@ docs-docker-test-dockerignore:
 	./tests/integration/test_docker_dockerignore_e2e.sh
 .PHONY: docs-docker-test-dockerignore
 
+docs-docker-test-volumes:
+	./tests/integration/test_docker_volume_permissions_e2e.sh
+.PHONY: docs-docker-test-volumes
+
 docs-compose-test:
 	./tests/integration/test_docker_compose_mkdocs_e2e.sh
 .PHONY: docs-compose-test

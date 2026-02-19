@@ -31,6 +31,7 @@
   - `make docs-docker-test-serve` - Run Docker development server e2e tests
   - `make docs-docker-test-config` - Run Docker MkDocs configuration validation e2e tests
   - `make docs-docker-test-dockerignore` - Run Docker .dockerignore optimization e2e tests
+  - `make docs-docker-test-volumes` - Run Docker volume mount and permissions e2e tests
 - **Documentation (Docker Compose)**:
   - `make docs-compose-up` - Start documentation server with Docker Compose
   - `make docs-compose-build-site` - Build site with Docker Compose
