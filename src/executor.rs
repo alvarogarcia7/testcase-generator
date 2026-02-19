@@ -482,6 +482,111 @@ impl TestExecutor {
         code
     }
 
+    /// Generate bash code to execute a hook with enhanced logging and environment variables
+    ///
+    /// This helper function generates bash code for running a single hook that:
+    /// - Checks if the hook file exists
+    /// - Determines if it should be sourced (ends with .sh) or executed
+    /// - Captures output and exit code
+    /// - Logs hook execution to console with [HOOK] prefix
+    /// - Handles on_error behavior (exit script on failure if fail mode, log warning and continue if continue mode)
+    /// - Passes environment variables like TEST_CASE_ID, SEQUENCE_ID, STEP_NUMBER to hook scripts
+    ///
+    /// # Arguments
+    /// * `hook_name` - Name of the hook (e.g., "before_step", "after_sequence")
+    /// * `hook_config` - Hook configuration containing command and on_error behavior
+    ///
+    /// # Returns
+    /// Generated bash script code as a String
+    #[allow(dead_code)]
+    fn execute_hook(hook_name: &str, hook_config: &crate::models::HookConfig) -> String {
+        let mut code = String::new();
+
+        // Log hook execution with [HOOK] prefix
+        code.push_str(&format!(
+            "echo \"[HOOK] Executing {} hook: {}\"\n",
+            hook_name, hook_config.command
+        ));
+
+        // Check if command is a .sh file (source it) or another executable (execute it)
+        let command = &hook_config.command;
+        let is_sh_file = command.ends_with(".sh");
+
+        // Determine on_error behavior (default is Fail)
+        let on_error = hook_config
+            .on_error
+            .as_ref()
+            .map(|e| matches!(e, crate::models::OnError::Continue))
+            .unwrap_or(false);
+
+        // Export environment variables for hook scripts
+        code.push_str("# Export environment variables for hook\n");
+        code.push_str("export TEST_CASE_ID=\"${TEST_CASE_ID:-}\"\n");
+        code.push_str("export SEQUENCE_ID=\"${SEQUENCE_ID:-}\"\n");
+        code.push_str("export STEP_NUMBER=\"${STEP_NUMBER:-}\"\n\n");
+
+        // Temporarily disable errexit to capture hook exit code
+        code.push_str("set +e\n");
+
+        // Check if hook file exists before execution
+        code.push_str(&format!("if [ -f \"{}\" ]; then\n", command));
+        code.push_str("    # Create temporary file to capture hook output\n");
+        code.push_str("    HOOK_OUTPUT=$(mktemp)\n");
+        code.push_str("    \n");
+
+        if is_sh_file {
+            // Source .sh files and capture output
+            code.push_str(&format!(
+                "    source \"{}\" 2>&1 | tee \"$HOOK_OUTPUT\"\n",
+                command
+            ));
+            code.push_str("    HOOK_EXIT_CODE=$?\n");
+        } else {
+            // Execute other files and capture output
+            code.push_str(&format!(
+                "    \"{}\" 2>&1 | tee \"$HOOK_OUTPUT\"\n",
+                command
+            ));
+            code.push_str("    HOOK_EXIT_CODE=$?\n");
+        }
+
+        code.push_str("    \n");
+        code.push_str("    # Clean up temporary output file\n");
+        code.push_str("    rm -f \"$HOOK_OUTPUT\"\n");
+        code.push_str("else\n");
+        code.push_str(&format!(
+            "    echo \"[HOOK] Warning: Hook file '{}' not found\" >&2\n",
+            command
+        ));
+        code.push_str("    HOOK_EXIT_CODE=127\n");
+        code.push_str("fi\n\n");
+
+        // Re-enable errexit
+        code.push_str("set -e\n\n");
+
+        // Handle hook failure based on on_error setting
+        code.push_str("if [ $HOOK_EXIT_CODE -ne 0 ]; then\n");
+        if on_error {
+            // Continue on error
+            code.push_str(&format!("    echo \"[HOOK] Warning: {} hook failed with exit code $HOOK_EXIT_CODE (continuing)\" >&2\n", hook_name));
+        } else {
+            // Fail on error (default)
+            code.push_str(&format!(
+                "    echo \"[HOOK] Error: {} hook failed with exit code $HOOK_EXIT_CODE\" >&2\n",
+                hook_name
+            ));
+            code.push_str("    exit $HOOK_EXIT_CODE\n");
+        }
+        code.push_str("else\n");
+        code.push_str(&format!(
+            "    echo \"[HOOK] {} hook completed successfully\"\n",
+            hook_name
+        ));
+        code.push_str("fi\n\n");
+
+        code
+    }
+
     pub fn generate_test_script_with_json_output(
         &self,
         test_case: &TestCase,
