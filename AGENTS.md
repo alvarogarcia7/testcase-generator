@@ -25,6 +25,7 @@
   - `make docs-docker-build-site` - Build site using Docker
   - `make docs-docker-build-pdf` - Build site with PDF using Docker
   - `make docs-docker-clean` - Remove MkDocs Docker image
+  - `make docs-docker-test` - Run Docker MkDocs e2e tests
 - **Documentation (Docker Compose)**:
   - `make docs-compose-up` - Start documentation server with Docker Compose
   - `make docs-compose-build-site` - Build site with Docker Compose

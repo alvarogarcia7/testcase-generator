@@ -6,6 +6,22 @@ This directory contains end-to-end integration tests for the testcase-manager CL
 
 The integration tests use the [Expect](https://core.tcl-lang.org/expect/index) automation tool to simulate user interactions with the testcase-manager CLI, validating the complete workflow from metadata entry through test sequence and step creation.
 
+## Docker MkDocs Tests
+
+**Script:** `test_docker_mkdocs_e2e.sh`  
+**Command:** `make docs-docker-test`  
+**Documentation:** [README_DOCKER_MKDOCS_TEST.md](README_DOCKER_MKDOCS_TEST.md) | [Quick Reference](DOCKER_MKDOCS_TEST_QUICK_REF.md)
+
+Comprehensive end-to-end testing of the Docker-based MkDocs documentation setup:
+- Validates Dockerfile syntax and best practices
+- Builds Docker image and verifies creation
+- Checks Python dependencies (mkdocs, mkdocs-material, mkdocs-with-pdf)
+- Verifies system dependencies for PDF generation
+- Tests non-root user configuration
+- Validates image size (< 1GB)
+- Checks environment variables
+- Tests documentation build functionality
+
 ## Prerequisites
 
 - **Expect**: The automation tool that sends commands and validates responses
