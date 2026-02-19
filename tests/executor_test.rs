@@ -3712,3 +3712,578 @@ fn test_initial_conditions_complex_mixed_structure() {
     assert!(script.contains("# System: wait for 1 seconds"));
     assert!(script.contains("sleep 1"));
 }
+
+// ============================================================================
+// Manual Step Without Verification Tests
+// ============================================================================
+
+#[test]
+fn test_manual_step_without_verification_no_user_verification_variables() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_NO_VERIFY_001".to_string(),
+        1,
+        1,
+        "TC_NO_VERIFY_001".to_string(),
+        "Manual step without verification - no variables".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Manual action without verification",
+        "ssh device 'reboot'",
+        "0",
+        "rebooted",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple("true".to_string()),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // REQUIREMENT: No USER_VERIFICATION variables should be generated
+    assert!(
+        !script.contains("USER_VERIFICATION_RESULT"),
+        "Script must NOT contain USER_VERIFICATION_RESULT variable"
+    );
+    assert!(
+        !script.contains("USER_VERIFICATION_OUTPUT"),
+        "Script must NOT contain USER_VERIFICATION_OUTPUT variable"
+    );
+    assert!(
+        !script.contains("USER_VERIFICATION="),
+        "Script must NOT contain USER_VERIFICATION variable assignment"
+    );
+}
+
+#[test]
+fn test_manual_step_without_verification_no_evaluation_code() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_NO_VERIFY_002".to_string(),
+        1,
+        1,
+        "TC_NO_VERIFY_002".to_string(),
+        "Manual step without verification - no evaluation".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Manual task",
+        "configure device manually",
+        "0",
+        "configured",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple("true".to_string()),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // REQUIREMENT: No verification evaluation code should be generated
+    // Check that script does NOT contain if statements for verification
+    assert!(
+        !script.contains("if [ \"$USER_VERIFICATION_RESULT\""),
+        "Script must NOT contain verification result check"
+    );
+    assert!(
+        !script.contains("if [ \"$USER_VERIFICATION_OUTPUT\""),
+        "Script must NOT contain verification output check"
+    );
+    assert!(
+        !script.contains("if [ \"$USER_VERIFICATION\""),
+        "Script must NOT contain combined verification check"
+    );
+    
+    // Should not contain any verification-related conditionals
+    let step_section = script.split("Step 1:").nth(1).unwrap_or("");
+    assert!(
+        !step_section.contains("if [ -"),
+        "Step section should not contain file check conditionals"
+    );
+    assert!(
+        !step_section.contains("if grep"),
+        "Step section should not contain grep conditionals"
+    );
+}
+
+#[test]
+fn test_manual_step_without_verification_simple_enter_prompt() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_NO_VERIFY_003".to_string(),
+        1,
+        1,
+        "TC_NO_VERIFY_003".to_string(),
+        "Manual step without verification - simple prompt".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Observe LED",
+        "check device LED",
+        "0",
+        "checked",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple("true".to_string()),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // REQUIREMENT: Only simple ENTER prompt should be generated
+    assert!(
+        script.contains("Press ENTER to continue..."),
+        "Script must contain simple 'Press ENTER to continue...' prompt"
+    );
+    
+    // Verify it uses read -p with the correct prompt
+    assert!(
+        script.contains("read -p \"Press ENTER to continue...\""),
+        "Script must use read -p with simple continue prompt"
+    );
+    
+    // Should NOT contain verification-related prompts
+    assert!(
+        !script.contains("Press ENTER after completing the manual action"),
+        "Script should not contain verification-specific prompt"
+    );
+}
+
+#[test]
+fn test_manual_step_without_verification_no_pass_fail_messages() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_NO_VERIFY_004".to_string(),
+        1,
+        1,
+        "TC_NO_VERIFY_004".to_string(),
+        "Manual step without verification - no pass/fail".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Physical inspection",
+        "inspect hardware",
+        "0",
+        "inspected",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple("true".to_string()),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // REQUIREMENT: No [PASS]/[FAIL] messages should be generated
+    assert!(
+        !script.contains("[PASS]"),
+        "Script must NOT contain [PASS] message"
+    );
+    assert!(
+        !script.contains("[FAIL]"),
+        "Script must NOT contain [FAIL] message"
+    );
+    
+    // Specifically check for this step's pass/fail messages
+    assert!(
+        !script.contains("[PASS] Step 1"),
+        "Script must NOT contain [PASS] message for step 1"
+    );
+    assert!(
+        !script.contains("[FAIL] Step 1"),
+        "Script must NOT contain [FAIL] message for step 1"
+    );
+}
+
+#[test]
+fn test_manual_step_without_verification_displays_step_info() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_NO_VERIFY_005".to_string(),
+        1,
+        1,
+        "TC_NO_VERIFY_005".to_string(),
+        "Manual step without verification - displays info".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Power cycle device",
+        "unplug and replug device",
+        "0",
+        "power cycled",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple("true".to_string()),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Should still display basic step information
+    assert!(
+        script.contains("Step 1: Power cycle device"),
+        "Script must display step description"
+    );
+    assert!(
+        script.contains("Command: unplug and replug device"),
+        "Script must display command"
+    );
+    assert!(
+        script.contains("INFO: This is a manual step"),
+        "Script must display manual step info"
+    );
+}
+
+#[test]
+fn test_manual_step_without_verification_multiple_steps() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_NO_VERIFY_006".to_string(),
+        1,
+        1,
+        "TC_NO_VERIFY_006".to_string(),
+        "Multiple manual steps without verification".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    
+    // First manual step without verification
+    let mut step1 = create_test_step(
+        1,
+        "Manual step 1",
+        "action 1",
+        "0",
+        "done",
+        Some(true),
+    );
+    step1.manual = Some(true);
+    step1.verification = Verification {
+        result: VerificationExpression::Simple("true".to_string()),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step1);
+
+    // Second manual step without verification
+    let mut step2 = create_test_step(
+        2,
+        "Manual step 2",
+        "action 2",
+        "0",
+        "done",
+        Some(true),
+    );
+    step2.manual = Some(true);
+    step2.verification = Verification {
+        result: VerificationExpression::Simple("true".to_string()),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step2);
+
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Both steps should have simple ENTER prompts
+    let press_enter_count = script.matches("Press ENTER to continue...").count();
+    assert!(
+        press_enter_count >= 2,
+        "Script must have ENTER prompt for each manual step without verification"
+    );
+
+    // Neither step should have USER_VERIFICATION variables
+    assert!(
+        !script.contains("USER_VERIFICATION"),
+        "Script must NOT contain any USER_VERIFICATION variables"
+    );
+
+    // Neither step should have PASS/FAIL messages
+    assert!(
+        !script.contains("[PASS]"),
+        "Script must NOT contain any [PASS] messages"
+    );
+    assert!(
+        !script.contains("[FAIL]"),
+        "Script must NOT contain any [FAIL] messages"
+    );
+}
+
+#[test]
+fn test_manual_step_without_verification_mixed_with_verification() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_NO_VERIFY_007".to_string(),
+        1,
+        1,
+        "TC_NO_VERIFY_007".to_string(),
+        "Manual steps mixed - with and without verification".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    
+    // Manual step WITHOUT verification
+    let mut step1 = create_test_step(
+        1,
+        "Simple manual step",
+        "perform action",
+        "0",
+        "done",
+        Some(true),
+    );
+    step1.manual = Some(true);
+    step1.verification = Verification {
+        result: VerificationExpression::Simple("true".to_string()),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step1);
+
+    // Manual step WITH verification
+    let mut step2 = create_test_step(
+        2,
+        "Verified manual step",
+        "perform verified action",
+        "0",
+        "done",
+        Some(true),
+    );
+    step2.manual = Some(true);
+    step2.verification = Verification {
+        result: VerificationExpression::Simple("[ -f /tmp/test ]".to_string()),
+        output: VerificationExpression::Simple("grep -q 'OK' /tmp/result".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step2);
+
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Step 1: Should NOT have USER_VERIFICATION variables
+    let step1_section = &script[script.find("# Step 1:").unwrap()..script.find("# Step 2:").unwrap()];
+    assert!(
+        !step1_section.contains("USER_VERIFICATION"),
+        "Step 1 section must NOT contain USER_VERIFICATION variables"
+    );
+    assert!(
+        !step1_section.contains("[PASS]"),
+        "Step 1 section must NOT contain [PASS] message"
+    );
+    assert!(
+        !step1_section.contains("[FAIL]"),
+        "Step 1 section must NOT contain [FAIL] message"
+    );
+    assert!(
+        step1_section.contains("Press ENTER to continue..."),
+        "Step 1 must have simple ENTER prompt"
+    );
+
+    // Step 2: SHOULD have USER_VERIFICATION variables and pass/fail logic
+    let step2_section = &script[script.find("# Step 2:").unwrap()..];
+    assert!(
+        step2_section.contains("USER_VERIFICATION_RESULT"),
+        "Step 2 section must contain USER_VERIFICATION_RESULT"
+    );
+    assert!(
+        step2_section.contains("USER_VERIFICATION_OUTPUT"),
+        "Step 2 section must contain USER_VERIFICATION_OUTPUT"
+    );
+    assert!(
+        step2_section.contains("[PASS]") || step2_section.contains("[FAIL]"),
+        "Step 2 section must contain PASS/FAIL messages"
+    );
+}
+
+#[test]
+fn test_manual_step_without_verification_result_true_output_false() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_NO_VERIFY_008".to_string(),
+        1,
+        1,
+        "TC_NO_VERIFY_008".to_string(),
+        "Manual step with result=true, output=false".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Partial verification",
+        "test action",
+        "0",
+        "done",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple("true".to_string()),
+        output: VerificationExpression::Simple("[ -f /tmp/check ]".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // This case DOES have verification (output is not "true"), so it SHOULD have USER_VERIFICATION
+    assert!(
+        script.contains("USER_VERIFICATION_RESULT"),
+        "Script with output verification should contain USER_VERIFICATION_RESULT"
+    );
+    assert!(
+        script.contains("USER_VERIFICATION_OUTPUT"),
+        "Script with output verification should contain USER_VERIFICATION_OUTPUT"
+    );
+}
+
+#[test]
+fn test_manual_step_without_verification_result_false_output_true() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_NO_VERIFY_009".to_string(),
+        1,
+        1,
+        "TC_NO_VERIFY_009".to_string(),
+        "Manual step with result=false, output=true".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Partial verification",
+        "test action",
+        "0",
+        "done",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple("[ -f /tmp/check ]".to_string()),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // This case DOES have verification (result is not "true"), so it SHOULD have USER_VERIFICATION
+    assert!(
+        script.contains("USER_VERIFICATION_RESULT"),
+        "Script with result verification should contain USER_VERIFICATION_RESULT"
+    );
+    assert!(
+        script.contains("USER_VERIFICATION_OUTPUT"),
+        "Script with result verification should contain USER_VERIFICATION_OUTPUT"
+    );
+}
+
+#[test]
+fn test_manual_step_without_verification_complete_workflow() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_NO_VERIFY_010".to_string(),
+        1,
+        1,
+        "TC_NO_VERIFY_010".to_string(),
+        "Complete workflow for manual step without verification".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Full manual workflow",
+        "complete manual task",
+        "0",
+        "completed",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple("true".to_string()),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Comprehensive check: script flow should be:
+    // 1. Display step info (description, command)
+    // 2. Display manual step notice
+    // 3. Simple ENTER prompt
+    // 4. NO verification logic
+    // 5. NO pass/fail messages
+    
+    let step_start = script.find("# Step 1:").expect("Step 1 should exist");
+    let step_section = &script[step_start..];
+    
+    // Find order of elements
+    let desc_pos = step_section.find("Full manual workflow").expect("Description should exist");
+    let cmd_pos = step_section.find("complete manual task").expect("Command should exist");
+    let manual_info_pos = step_section.find("INFO: This is a manual step").expect("Manual info should exist");
+    let enter_pos = step_section.find("Press ENTER to continue...").expect("ENTER prompt should exist");
+    
+    // Verify order
+    assert!(desc_pos < cmd_pos, "Description should come before command");
+    assert!(cmd_pos < manual_info_pos, "Command should come before manual info");
+    assert!(manual_info_pos < enter_pos, "Manual info should come before ENTER prompt");
+    
+    // Verify absences in this step section (up to next step or end)
+    let step_end = step_section.find("# Step 2:").unwrap_or(step_section.len());
+    let this_step = &step_section[..step_end];
+    
+    assert!(!this_step.contains("USER_VERIFICATION"), "Should not contain USER_VERIFICATION");
+    assert!(!this_step.contains("[PASS]"), "Should not contain [PASS]");
+    assert!(!this_step.contains("[FAIL]"), "Should not contain [FAIL]");
+    assert!(!this_step.contains("exit 1"), "Should not contain exit 1");
+}
