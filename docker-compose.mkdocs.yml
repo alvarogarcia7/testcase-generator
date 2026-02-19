@@ -1,5 +1,12 @@
 version: '3.8'
 
+# Docker Compose configuration for MkDocs documentation server
+#
+# All volume paths are relative to the repository root where this file is located.
+# If including this repository as a submodule or subdirectory in a parent repository,
+# adjust the volume mount paths accordingly. For example, if this is in 'myproject/docs/',
+# change './docs' to './docs/docs', './mkdocs.yml' to './docs/mkdocs.yml', etc.
+
 services:
   mkdocs:
     build:
@@ -10,11 +17,14 @@ services:
     ports:
       - "8000:8000"
     volumes:
+      # Mount documentation source directory
       - ./docs:/docs/docs
+      # Mount MkDocs configuration file
       - ./mkdocs.yml:/docs/mkdocs.yml
+      # Mount site output directory (for build artifacts)
       - ./site:/docs/site
+      # Mount README for inclusion in documentation
       - ./README.md:/docs/README.md
-      - ./README_INSTALL.md:/docs/README_INSTALL.md
     command: mkdocs serve -a 0.0.0.0:8000
     environment:
       - ENABLE_PDF_EXPORT=0
@@ -25,6 +35,7 @@ services:
       dockerfile: Dockerfile.mkdocs
     image: testcase-manager-docs:latest
     volumes:
+      # Mount site output directory (for build artifacts)
       - ./site:/docs/site
     command: mkdocs build
 
@@ -34,6 +45,7 @@ services:
       dockerfile: Dockerfile.mkdocs
     image: testcase-manager-docs:latest
     volumes:
+      # Mount site output directory (for build artifacts)
       - ./site:/docs/site
     environment:
       - ENABLE_PDF_EXPORT=1
