@@ -327,6 +327,53 @@ tests/integration/
     └── test_validate_files_*/            # validate-files artifacts
 ```
 
+## Docker MkDocs Tests
+
+### test_docker_mkdocs_e2e.sh
+**Purpose**: End-to-end validation of Docker-based MkDocs documentation setup
+
+**What it tests**:
+- Dockerfile.mkdocs syntax and best practices
+- Docker image build process
+- Image creation and verification
+- Python dependencies (mkdocs, mkdocs-material, mkdocs-with-pdf)
+- System dependencies for PDF generation
+- Non-root user configuration and permissions
+- Environment variables and defaults
+- Image functionality with test documentation build
+
+**Usage**:
+```bash
+make docs-docker-test
+# or
+./tests/integration/test_docker_mkdocs_e2e.sh [--no-remove]
+```
+
+**Documentation**: See [README_DOCKER_MKDOCS_TEST.md](README_DOCKER_MKDOCS_TEST.md) and [DOCKER_MKDOCS_TEST_QUICK_REF.md](DOCKER_MKDOCS_TEST_QUICK_REF.md)
+
+### test_docker_html_build_e2e.sh
+**Purpose**: End-to-end validation of Docker container HTML build process
+
+**What it tests**:
+- Docker container HTML builds via `make docs-docker-build-site`
+- Site directory creation with complete HTML structure
+- Markdown to HTML conversion for all docs
+- Asset copying (CSS, JS, images)
+- File ownership and permissions from host perspective
+- Multiple sequential builds
+- Site directory cleanup and recovery
+- HTML content quality and structure
+- Navigation sections and completeness
+
+**Usage**:
+```bash
+make docs-docker-test-html
+# or
+./tests/integration/test_docker_html_build_e2e.sh [--verbose] [--no-remove]
+```
+
+**Documentation**: See [README_DOCKER_HTML_BUILD_TEST.md](README_DOCKER_HTML_BUILD_TEST.md) and [DOCKER_HTML_BUILD_TEST_QUICK_REF.md](DOCKER_HTML_BUILD_TEST_QUICK_REF.md)
+
 ---
 
 **Last Updated**: 2024 (automatically updated with test changes)  
