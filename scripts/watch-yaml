@@ -1,0 +1,4 @@
+#!/bin/bash
+# Helper script to start watch mode easily
+cd /app
+exec ./scripts/watch-yaml-files.sh "$@"

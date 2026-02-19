@@ -78,3 +78,16 @@ jobs:
           name: documentation-pdf
           path: site/pdf/
           if-no-files-found: warn
+
+  test-docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Run Docker documentation build test
+        run: |
+          make test-docs-docker-build

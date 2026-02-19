@@ -19,6 +19,7 @@
   - `make docs-build` - Build documentation site
   - `make docs-build-pdf` - Build documentation with PDF export
   - `make docs-clean` - Clean documentation build artifacts
+  - `make test-docs-docker-build` - Test documentation builds in Docker (builds image, PDF, and HTML)
 - **Documentation (Docker)**:
   - `make docs-docker-build` - Build MkDocs Docker image
   - `make docs-docker-serve` - Serve documentation using Docker

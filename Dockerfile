@@ -25,6 +25,7 @@ RUN mkdir src && \
     echo "fn main() {}" > "src/main_editor.rs" && \
     echo "fn main() {}" > "src/bin/test-orchestrator.rs" && \
     echo "fn main() {}" > "src/bin/script-cleanup.rs" && \
+    echo "fn main() {}" > "src/bin/json-escape.rs" && \
     mkdir -p examples/ && \
     echo "fn main() {}" > "examples/tty_fallback_demo.rs" && \
     echo "fn main() {}" > "examples/test_verify_demo.rs" && \
@@ -110,14 +111,8 @@ RUN \
 RUN chmod +x scripts/*.sh && \
     find scripts -type f -name "*.sh" -exec chmod +x {} \;
 
-# Create a helper script for easy watch mode usage
-RUN cat > /usr/local/bin/watch-yaml << 'WATCHEOF'
-#!/bin/bash
-# Helper script to start watch mode easily
-cd /app
-exec ./scripts/watch-yaml-files.sh "$@"
-WATCHEOF
-
+# Copy and install watch-yaml helper script
+COPY scripts/watch-yaml /usr/local/bin/watch-yaml
 RUN chmod +x /usr/local/bin/watch-yaml
 
 # Create README guide at ~/README.md

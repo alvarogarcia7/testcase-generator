@@ -300,6 +300,10 @@ docs-test-quick:
 	./scripts/test-mkdocs-setup.sh --skip-serve --skip-tests
 .PHONY: docs-test-quick
 
+test-docs-docker-build:
+	./tests/integration/test_docs_docker_build.sh
+.PHONY: test-docs-docker-build
+
 $(VENV_DIR):
 	@echo "Virtual environment not found. Run 'make docs-install' first."
 	@exit 1
