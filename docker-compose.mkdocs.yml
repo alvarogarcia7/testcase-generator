@@ -25,7 +25,11 @@ services:
       dockerfile: Dockerfile.mkdocs
     image: testcase-manager-docs:latest
     volumes:
+      - ./docs:/docs/docs
+      - ./mkdocs.yml:/docs/mkdocs.yml
       - ./site:/docs/site
+      - ./README.md:/docs/README.md
+      - ./README_INSTALL.md:/docs/README_INSTALL.md
     command: mkdocs build
 
   mkdocs-build-pdf:
@@ -34,7 +38,11 @@ services:
       dockerfile: Dockerfile.mkdocs
     image: testcase-manager-docs:latest
     volumes:
+      - ./docs:/docs/docs
+      - ./mkdocs.yml:/docs/mkdocs.yml
       - ./site:/docs/site
+      - ./README.md:/docs/README.md
+      - ./README_INSTALL.md:/docs/README_INSTALL.md
     environment:
       - ENABLE_PDF_EXPORT=1
     command: mkdocs build

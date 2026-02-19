@@ -313,15 +313,32 @@ docs-docker-build:
 .PHONY: docs-docker-build
 
 docs-docker-serve:
-	docker run --rm -p 8000:8000 -v "$(PWD)/docs:/docs/docs" -v "$(PWD)/mkdocs.yml:/docs/mkdocs.yml" $(DOCS_IMAGE) mkdocs serve -a 0.0.0.0:8000
+	docker run --rm -p 8000:8000 \
+		-v "$(PWD)/docs:/docs/docs" \
+		-v "$(PWD)/mkdocs.yml:/docs/mkdocs.yml" \
+		-v "$(PWD)/README.md:/docs/README.md" \
+		-v "$(PWD)/README_INSTALL.md:/docs/README_INSTALL.md" \
+		$(DOCS_IMAGE) mkdocs serve -a 0.0.0.0:8000
 .PHONY: docs-docker-serve
 
 docs-docker-build-site:
-	docker run --rm -v "$(PWD)/site:/docs/site" $(DOCS_IMAGE)
+	docker run --rm \
+		-v "$(PWD)/docs:/docs/docs" \
+		-v "$(PWD)/mkdocs.yml:/docs/mkdocs.yml" \
+		-v "$(PWD)/site:/docs/site" \
+		-v "$(PWD)/README.md:/docs/README.md" \
+		-v "$(PWD)/README_INSTALL.md:/docs/README_INSTALL.md" \
+		$(DOCS_IMAGE)
 .PHONY: docs-docker-build-site
 
 docs-docker-build-pdf:
-	docker run --rm -e ENABLE_PDF_EXPORT=1 -v "$(PWD)/site:/docs/site" $(DOCS_IMAGE)
+	docker run --rm -e ENABLE_PDF_EXPORT=1 \
+		-v "$(PWD)/docs:/docs/docs" \
+		-v "$(PWD)/mkdocs.yml:/docs/mkdocs.yml" \
+		-v "$(PWD)/site:/docs/site" \
+		-v "$(PWD)/README.md:/docs/README.md" \
+		-v "$(PWD)/README_INSTALL.md:/docs/README_INSTALL.md" \
+		$(DOCS_IMAGE)
 .PHONY: docs-docker-build-pdf
 
 docs-docker-clean:

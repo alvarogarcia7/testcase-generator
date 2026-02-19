@@ -62,15 +62,26 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Install system dependencies for PDF generation
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libcairo2 \
+            libpango-1.0-0 \
+            libpangocairo-1.0-0 \
+            libgdk-pixbuf2.0-0 \
+            libffi-dev \
+            shared-mime-info
+
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
 
       - name: Build PDF
-        run: |
-          ENABLE_PDF_EXPORT=1 mkdocs build
         env:
           ENABLE_PDF_EXPORT: 1
+        run: |
+          mkdocs build
 
       - name: Upload PDF as release artifact
         uses: actions/upload-artifact@v3

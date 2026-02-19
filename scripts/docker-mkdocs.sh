@@ -98,8 +98,10 @@ serve_docs() {
     
     docker run --rm \
         -p "$port:8000" \
-        -v "$(pwd)/docs:/docs/docs" \
-        -v "$(pwd)/mkdocs.yml:/docs/mkdocs.yml" \
+        -v "$PWD/docs:/docs/docs" \
+        -v "$PWD/mkdocs.yml:/docs/mkdocs.yml" \
+        -v "$PWD/README.md:/docs/README.md" \
+        -v "$PWD/README_INSTALL.md:/docs/README_INSTALL.md" \
         "$DOCS_IMAGE" \
         mkdocs serve -a 0.0.0.0:8000
 }
@@ -108,7 +110,13 @@ build_site() {
     section "Building Static Documentation Site"
     
     log_info "Building documentation site..."
-    if docker run --rm -v "$(pwd)/site:/docs/site" "$DOCS_IMAGE"; then
+    if docker run --rm \
+        -v "$PWD/docs:/docs/docs" \
+        -v "$PWD/mkdocs.yml:/docs/mkdocs.yml" \
+        -v "$PWD/site:/docs/site" \
+        -v "$PWD/README.md:/docs/README.md" \
+        -v "$PWD/README_INSTALL.md:/docs/README_INSTALL.md" \
+        "$DOCS_IMAGE"; then
         pass "Documentation site built successfully"
         log_info "Output directory: site/"
     else
@@ -123,7 +131,11 @@ build_pdf() {
     log_info "Building documentation with PDF..."
     if docker run --rm \
         -e ENABLE_PDF_EXPORT=1 \
-        -v "$(pwd)/site:/docs/site" \
+        -v "$PWD/docs:/docs/docs" \
+        -v "$PWD/mkdocs.yml:/docs/mkdocs.yml" \
+        -v "$PWD/site:/docs/site" \
+        -v "$PWD/README.md:/docs/README.md" \
+        -v "$PWD/README_INSTALL.md:/docs/README_INSTALL.md" \
         "$DOCS_IMAGE"; then
         pass "Documentation with PDF built successfully"
         log_info "Output directory: site/"

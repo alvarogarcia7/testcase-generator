@@ -60,6 +60,9 @@ cleanup() {
         wait "$SERVE_PID" 2>/dev/null || true
         pass "Stopped MkDocs serve process"
     fi
+    
+    # Clean up temporary log file
+    rm -f /tmp/mkdocs-serve-$$.log
 }
 
 # Register cleanup on exit
@@ -210,8 +213,16 @@ test_virtualenv() {
 test_serve() {
     section "Test 3: Serve documentation"
     
+    # Check if curl is available
+    if ! command -v curl >/dev/null 2>&1; then
+        log_error "curl is not installed. Please install curl to test the documentation server."
+        log_info "  macOS:   brew install curl"
+        log_info "  Ubuntu:  apt-get install curl"
+        exit 1
+    fi
+    
     log_info "Starting MkDocs serve on port $SERVE_PORT..."
-    make -C "$PROJECT_ROOT" docs-serve >/dev/null 2>&1 &
+    make -C "$PROJECT_ROOT" docs-serve > /tmp/mkdocs-serve-$$.log 2>&1 &
     SERVE_PID=$!
     
     log_info "MkDocs serve PID: $SERVE_PID"
@@ -230,8 +241,13 @@ test_serve() {
     
     if [ $elapsed -ge $SERVE_TIMEOUT ]; then
         fail "Server failed to start within ${SERVE_TIMEOUT}s"
+        log_error "Server logs:"
+        cat /tmp/mkdocs-serve-$$.log 2>/dev/null || true
+        rm -f /tmp/mkdocs-serve-$$.log
         exit 1
     fi
+    
+    rm -f /tmp/mkdocs-serve-$$.log
     
     # Test accessibility
     log_info "Testing accessibility at http://localhost:$SERVE_PORT..."
@@ -403,9 +419,16 @@ test_pdf_verification() {
     fi
     pass "PDF exists: $PDF_PATH"
     
-    # Check PDF size
+    # Check PDF size (cross-platform compatible)
     local pdf_size
-    pdf_size=$(stat -f%z "$PDF_PATH" 2>/dev/null || stat -c%s "$PDF_PATH" 2>/dev/null)
+    if command -v stat >/dev/null 2>&1; then
+        # Try BSD stat first (macOS), then GNU stat (Linux)
+        pdf_size=$(stat -f%z "$PDF_PATH" 2>/dev/null || stat -c%s "$PDF_PATH" 2>/dev/null || echo "0")
+    else
+        # Fallback to wc if stat is not available
+        pdf_size=$(wc -c < "$PDF_PATH" 2>/dev/null | tr -d ' ' || echo "0")
+    fi
+    
     if [ -z "$pdf_size" ] || [ "$pdf_size" -eq 0 ]; then
         fail "PDF file is empty"
         exit 1

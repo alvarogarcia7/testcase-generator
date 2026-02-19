@@ -39,43 +39,46 @@ theme:
 nav:
   - Home: index.md
   - Getting Started:
-      - Quick Start: docs/QUICK_START.md
-      - Prerequisites: docs/PREREQUISITES.md
+      - Overview: getting-started/index.md
+      - Prerequisites: getting-started/prerequisites.md
       - Installation: README_INSTALL.md
-      - Docker Setup: docs/DOCKER.md
-      - Docker MkDocs Setup: docs/DOCKER_MKDOCS.md
-      - Docker MkDocs Quick Ref: docs/DOCKER_MKDOCS_QUICK_REF.md
+      - Docker Setup: getting-started/docker.md
+      - Docker MkDocs Setup: DOCKER_MKDOCS.md
+      - Docker MkDocs Quick Ref: DOCKER_MKDOCS_QUICK_REF.md
   - User Guide:
-      - Interactive Workflow: docs/interactive_workflow.md
-      - Interactive Implementation: docs/INTERACTIVE_IMPLEMENTATION.md
-      - Recovery Mechanism: docs/RECOVERY.md
-      - TTY Fallback: docs/TTY_FALLBACK.md
+      - Overview: user-guide/README.md
+      - Interactive Workflow: user-guide/interactive-workflow.md
+      - Validation Guide: user-guide/validation.md
   - CLI Tools:
-      - Test Case Manager (editor/tcm): README.md
-      - Test Executor: README.md
-      - Test Verify: docs/TEST_VERIFY_USAGE.md
-      - Test Verify Quick Reference: docs/TEST_VERIFY_QUICK_REFERENCE.md
-      - Test Verify Workflow: docs/TEST_VERIFY_WORKFLOW.md
-      - Validate YAML: docs/VALIDATE_YAML_QUICK_REF.md
+      - Overview: cli-tools/README.md
+      - Test Case Manager: README.md
+      - Test Verify: cli-tools/test-verify-usage.md
+      - Test Verify Quick Reference: cli-tools/test-verify-quick-reference.md
+      - Test Verify Workflow: cli-tools/test-verify-workflow.md
+      - Validate YAML: cli-tools/validate-yaml.md
+      - JSON Escaping Config: cli-tools/json-escaping-config.md
   - Features:
-      - BDD Initial Conditions: docs/BDD_INITIAL_CONDITIONS.md
-      - Variables & Data Passing: docs/VARIABLE_PASSING.md
-      - Variable Capture Command: docs/VARIABLES_CAPTURE_COMMAND.md
-      - Environment Variable Hydration: docs/ENVIRONMENT_VARIABLE_HYDRATION.md
-      - Conditional Verification: docs/CONDITIONAL_VERIFICATION.md
-      - Verification Templates: docs/VERIFICATION_TEMPLATES.md
-      - Manual Steps Handling: docs/MANUAL_STEPS_HANDLING.md
-      - Manual Step Filtering: docs/MANUAL_STEP_FILTERING.md
-      - Watch Mode Comparison: docs/WATCH_MODE_COMPARISON.md
-      - JSON Escaping Config: docs/JSON_ESCAPING_CONFIG.md
+      - Overview: features/README.md
+      - BDD Initial Conditions: features/bdd-initial-conditions.md
+      - Variables & Data Passing: features/variable-passing.md
+      - Variable Capture Command: features/variables-capture-command.md
+      - Environment Variable Hydration: features/environment-variable-hydration.md
+      - Conditional Verification: features/conditional-verification.md
+      - Verification Templates: features/verification-templates.md
+      - Manual Steps Handling: features/manual-steps-handling.md
+      - Manual Step Filtering: features/manual-step-filtering.md
+      - Watch Mode Comparison: features/watch-mode-comparison.md
+      - Recovery Mechanism: features/recovery.md
+      - TTY Fallback: features/tty-fallback.md
   - Development:
-      - Validation Guide: docs/validation.md
-      - Coverage: docs/COVERAGE.md
-      - GitLab CI Setup: docs/GITLAB_CI_SETUP.md
-      - GitLab CI Examples: docs/GITLAB_CI_EXAMPLES.md
+      - Overview: development/README.md
+      - Interactive Implementation: development/interactive-implementation.md
+      - Coverage: development/coverage.md
+      - GitLab CI Setup: development/gitlab-ci-setup.md
+      - GitLab CI Examples: development/gitlab-ci-examples.md
   - Examples:
-      - JUnit Export: docs/JUNIT_EXPORT.md
-      - JUnit XML XSD Validation: docs/JUNIT_XML_XSD_VALIDATION.md
+      - JUnit Export: features/junit-export.md
+      - JUnit XML XSD Validation: features/junit-xml-xsd-validation.md
 
 markdown_extensions:
   # Code highlighting

@@ -1,7 +1,11 @@
 # Dockerfile for building MkDocs documentation
 # This image contains all dependencies needed to build the documentation site
 
-FROM python:3.14-slim
+FROM python:3.12-slim
+
+LABEL maintainer="Test Case Manager Team"
+LABEL description="MkDocs documentation builder with PDF export support"
+LABEL version="1.0"
 
 # Set working directory
 WORKDIR /docs
@@ -13,10 +17,11 @@ RUN apt-get update && \
     gcc \
     g++ \
     make \
+    curl \
     libcairo2 \
     libpango-1.0-0 \
     libpangocairo-1.0-0 \
-    libgdk-pixbuf-xlib-2.0-0 \
+    libgdk-pixbuf2.0-0 \
     libffi-dev \
     shared-mime-info \
     && rm -rf /var/lib/apt/lists/*
@@ -24,8 +29,9 @@ RUN apt-get update && \
 # Copy requirements file
 COPY requirements.txt .
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Upgrade pip and install Python dependencies
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Copy documentation source files
 COPY mkdocs.yml .
@@ -45,6 +51,10 @@ ENV ENABLE_PDF_EXPORT=0
 
 # Expose port for development server
 EXPOSE 8000
+
+# Health check for development server (only runs when serve is active)
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/ || exit 1
 
 # Default command: build the documentation
 CMD ["mkdocs", "build"]
