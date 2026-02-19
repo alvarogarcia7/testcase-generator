@@ -1,0 +1,654 @@
+requirement: "VAR_DISPLAY"
+item: 1
+tc: 1
+id: 'TC_VAR_DISPLAY_001'
+description: 'Comprehensive test demonstrating variable display with diverse capture scenarios including regex captures from JSON output, command-based captures using wc/jq/awk, mixed regex and command captures in single step, and general verification conditions that reference captured variables with descriptive step names'
+
+general_initial_conditions:
+  system:
+    - "Bash shell is available"
+    - "Common Unix utilities (wc, grep, awk, jq, sed) are installed"
+
+initial_conditions:
+  filesystem:
+    - "Temporary directory /tmp is writable"
+  environment:
+    - "Test data files can be created"
+    - "Variable display functionality is enabled"
+
+test_sequences:
+  - id: 1
+    name: "Regex Captures from JSON Output"
+    description: |
+                  Demonstrate regex-based variable capture from JSON command output,
+                  showcasing extraction of various data types (strings, numbers, booleans)
+                  from structured JSON responses
+    initial_conditions:
+      system:
+        - "JSON data available for processing"
+    steps:
+      - step: 1
+        description: "Capture authentication tokens and metadata from JSON API response using regex patterns"
+        command: |
+          cat << 'EOF'
+          {"api_version":"v2.1.0","authenticated":true,"access_token":"Bearer_eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9","token_type":"Bearer","expires_in":7200,"scope":"read write admin","user_id":98765,"username":"api_user","email":"apiuser@testdomain.com","account_status":"active"}
+          EOF
+        capture_vars:
+          - name: api_version
+            capture: '"api_version":"([^"]+)"'
+          - name: access_token
+            capture: '"access_token":"([^"]+)"'
+          - name: token_type
+            capture: '"token_type":"([^"]+)"'
+          - name: expires_seconds
+            capture: '"expires_in":([0-9]+)'
+          - name: user_id
+            capture: '"user_id":([0-9]+)'
+          - name: username
+            capture: '"username":"([^"]+)"'
+          - name: email_address
+            capture: '"email":"([^"]+)"'
+          - name: account_status
+            capture: '"account_status":"([^"]+)"'
+        expected:
+          success: true
+          result: '0'
+          output: 'authenticated'
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'authenticated' <<< \"$COMMAND_OUTPUT\""
+          general:
+            - name: verify_api_version_format
+              condition: "[[ $api_version =~ ^v[0-9]+\\.[0-9]+\\.[0-9]+$ ]]"
+            - name: verify_access_token_prefix
+              condition: "[[ $access_token =~ ^Bearer_ ]]"
+            - name: verify_access_token_length
+              condition: "[[ ${#access_token} -gt 50 ]]"
+            - name: verify_token_type_is_bearer
+              condition: "[[ \"$token_type\" = \"Bearer\" ]]"
+            - name: verify_expires_is_numeric
+              condition: "[[ $expires_seconds =~ ^[0-9]+$ ]]"
+            - name: verify_expires_reasonable
+              condition: "[[ $expires_seconds -ge 3600 && $expires_seconds -le 86400 ]]"
+            - name: verify_user_id_numeric
+              condition: "[[ $user_id =~ ^[0-9]+$ ]]"
+            - name: verify_user_id_valid_range
+              condition: "[[ $user_id -gt 1000 ]]"
+            - name: verify_username_pattern
+              condition: "[[ $username =~ ^[a-z_]+$ ]]"
+            - name: verify_email_format
+              condition: "[[ $email_address =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$ ]]"
+            - name: verify_account_active
+              condition: "[[ \"$account_status\" = \"active\" ]]"
+
+      - step: 2
+        description: "Extract nested configuration settings from JSON output using complex regex patterns"
+        command: |
+          cat << 'EOF'
+          {"config":{"database":{"host":"db-primary.example.com","port":5432,"max_connections":100},"cache":{"enabled":true,"ttl":3600,"backend":"redis"},"logging":{"level":"INFO","format":"json","file":"/var/log/app.log"},"features":{"feature_flag_a":true,"feature_flag_b":false,"beta_features":true}}}
+          EOF
+        capture_vars:
+          - name: db_host
+            capture: '"host":"([^"]+)"'
+          - name: db_port
+            capture: '"port":([0-9]+)'
+          - name: max_connections
+            capture: '"max_connections":([0-9]+)'
+          - name: cache_enabled
+            capture: '"enabled":(true|false)'
+          - name: cache_ttl
+            capture: '"ttl":([0-9]+)'
+          - name: cache_backend
+            capture: '"backend":"([^"]+)"'
+          - name: log_level
+            capture: '"level":"([^"]+)"'
+          - name: log_format
+            capture: '"format":"([^"]+)"'
+          - name: log_file
+            capture: '"file":"([^"]+)"'
+        expected:
+          success: true
+          result: '0'
+          output: 'config'
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'config' <<< \"$COMMAND_OUTPUT\""
+          general:
+            - name: verify_db_host_fqdn
+              condition: "[[ $db_host =~ \\. ]]"
+            - name: verify_db_host_domain
+              condition: "[[ $db_host =~ \\.example\\.com$ ]]"
+            - name: verify_db_port_is_postgres
+              condition: "[[ $db_port -eq 5432 ]]"
+            - name: verify_max_connections_reasonable
+              condition: "[[ $max_connections -ge 10 && $max_connections -le 1000 ]]"
+            - name: verify_cache_enabled_boolean
+              condition: "[[ $cache_enabled =~ ^(true|false)$ ]]"
+            - name: verify_cache_ttl_positive
+              condition: "[[ $cache_ttl -gt 0 ]]"
+            - name: verify_cache_backend_is_redis
+              condition: "[[ \"$cache_backend\" = \"redis\" ]]"
+            - name: verify_log_level_uppercase
+              condition: "[[ $log_level =~ ^[A-Z]+$ ]]"
+            - name: verify_log_format_is_json
+              condition: "[[ \"$log_format\" = \"json\" ]]"
+            - name: verify_log_file_absolute_path
+              condition: "[[ $log_file =~ ^/ ]]"
+            - name: verify_log_file_extension
+              condition: "[[ $log_file =~ \\.log$ ]]"
+
+  - id: 2
+    name: "Command-based Captures using wc, jq, and awk"
+    description: |
+                  Demonstrate command-based variable capture using standard Unix utilities
+                  for counting, parsing, and extracting data from files and streams
+    initial_conditions:
+      system:
+        - "Unix utilities available for data processing"
+    steps:
+      - step: 1
+        description: "Create test file and capture file statistics (byte count, word count, line count) using wc command"
+        command: |
+          cat > /tmp/display_test.txt << 'EOF'
+          Line one with some data
+          Line two with more information
+          Line three containing different content
+          Line four with additional text
+          Line five is the final entry
+          EOF
+        capture_vars:
+          - name: byte_count
+            command: "wc -c /tmp/display_test.txt | awk '{print $1}'"
+          - name: word_count
+            command: "wc -w /tmp/display_test.txt | awk '{print $1}'"
+          - name: line_count
+            command: "wc -l /tmp/display_test.txt | awk '{print $1}'"
+          - name: first_word
+            command: "head -1 /tmp/display_test.txt | awk '{print $1}'"
+          - name: last_word
+            command: "tail -1 /tmp/display_test.txt | awk '{print $NF}'"
+        expected:
+          success: true
+          result: '0'
+          output: ''
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"
+          general:
+            - name: verify_byte_count_numeric
+              condition: "[[ $byte_count =~ ^[0-9]+$ ]]"
+            - name: verify_byte_count_reasonable
+              condition: "[[ $byte_count -gt 100 && $byte_count -lt 500 ]]"
+            - name: verify_word_count_numeric
+              condition: "[[ $word_count =~ ^[0-9]+$ ]]"
+            - name: verify_word_count_value
+              condition: "[[ $word_count -gt 20 ]]"
+            - name: verify_line_count_exact
+              condition: "[[ $line_count -eq 5 ]]"
+            - name: verify_first_word_is_line
+              condition: "[[ \"$first_word\" = \"Line\" ]]"
+            - name: verify_last_word_is_entry
+              condition: "[[ \"$last_word\" = \"entry\" ]]"
+
+      - step: 2
+        description: "Parse JSON file and extract specific fields using jq command-line JSON processor"
+        command: |
+          cat > /tmp/metrics.json << 'EOF'
+          {
+            "timestamp": "2024-01-15T14:30:00Z",
+            "service": "api-gateway",
+            "metrics": {
+              "requests_total": 15234,
+              "requests_success": 14890,
+              "requests_failed": 344,
+              "avg_response_time_ms": 87.5,
+              "p95_response_time_ms": 145.2,
+              "p99_response_time_ms": 289.7
+            },
+            "health": {
+              "status": "healthy",
+              "uptime_seconds": 432000,
+              "memory_usage_mb": 2048,
+              "cpu_usage_percent": 34.5
+            }
+          }
+          EOF
+        capture_vars:
+          - name: service_name
+            command: "jq -r '.service' /tmp/metrics.json"
+          - name: requests_total
+            command: "jq -r '.metrics.requests_total' /tmp/metrics.json"
+          - name: requests_success
+            command: "jq -r '.metrics.requests_success' /tmp/metrics.json"
+          - name: requests_failed
+            command: "jq -r '.metrics.requests_failed' /tmp/metrics.json"
+          - name: avg_response_ms
+            command: "jq -r '.metrics.avg_response_time_ms' /tmp/metrics.json"
+          - name: health_status
+            command: "jq -r '.health.status' /tmp/metrics.json"
+          - name: uptime_seconds
+            command: "jq -r '.health.uptime_seconds' /tmp/metrics.json"
+          - name: memory_mb
+            command: "jq -r '.health.memory_usage_mb' /tmp/metrics.json"
+          - name: cpu_percent
+            command: "jq -r '.health.cpu_usage_percent' /tmp/metrics.json"
+        expected:
+          success: true
+          result: '0'
+          output: ''
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"
+          general:
+            - name: verify_service_name_not_empty
+              condition: "[[ -n \"$service_name\" ]]"
+            - name: verify_service_name_format
+              condition: "[[ $service_name =~ ^[a-z]+-[a-z]+$ ]]"
+            - name: verify_requests_total_numeric
+              condition: "[[ $requests_total =~ ^[0-9]+$ ]]"
+            - name: verify_requests_sum_matches_total
+              condition: "[[ $((requests_success + requests_failed)) -eq $requests_total ]]"
+            - name: verify_success_rate_above_threshold
+              condition: "[[ $((requests_success * 100 / requests_total)) -ge 95 ]]"
+            - name: verify_avg_response_reasonable
+              condition: "[[ $(echo $avg_response_ms | cut -d. -f1) -lt 200 ]]"
+            - name: verify_health_status_healthy
+              condition: "[[ \"$health_status\" = \"healthy\" ]]"
+            - name: verify_uptime_at_least_5_days
+              condition: "[[ $uptime_seconds -ge 432000 ]]"
+            - name: verify_memory_usage_reasonable
+              condition: "[[ $memory_mb -ge 512 && $memory_mb -le 8192 ]]"
+            - name: verify_cpu_usage_acceptable
+              condition: "[[ $(echo $cpu_percent | cut -d. -f1) -lt 80 ]]"
+
+      - step: 3
+        description: "Extract and count patterns from log file using grep and awk for data analysis"
+        command: |
+          cat > /tmp/application.log << 'EOF'
+          2024-01-15 10:00:00 [INFO] Application started successfully
+          2024-01-15 10:00:15 [INFO] Database connection established
+          2024-01-15 10:01:30 [WARN] High memory usage detected: 75%
+          2024-01-15 10:02:45 [INFO] Processing batch job ID: batch-2024-001
+          2024-01-15 10:03:10 [ERROR] Failed to connect to external API: timeout
+          2024-01-15 10:03:15 [INFO] Retrying external API connection
+          2024-01-15 10:03:20 [INFO] External API connection successful
+          2024-01-15 10:05:00 [WARN] Disk space below 20% threshold
+          2024-01-15 10:06:30 [ERROR] Database query timeout after 30s
+          2024-01-15 10:07:00 [INFO] Background task completed successfully
+          EOF
+        capture_vars:
+          - name: total_lines
+            command: "wc -l /tmp/application.log | awk '{print $1}'"
+          - name: info_count
+            command: "grep -c '\\[INFO\\]' /tmp/application.log"
+          - name: warn_count
+            command: "grep -c '\\[WARN\\]' /tmp/application.log"
+          - name: error_count
+            command: "grep -c '\\[ERROR\\]' /tmp/application.log"
+          - name: first_timestamp
+            command: "head -1 /tmp/application.log | awk '{print $1}'"
+          - name: last_timestamp
+            command: "tail -1 /tmp/application.log | awk '{print $1}'"
+          - name: unique_dates
+            command: "awk '{print $1}' /tmp/application.log | sort -u | wc -l"
+          - name: database_mentions
+            command: "grep -i -c 'database' /tmp/application.log"
+        expected:
+          success: true
+          result: '0'
+          output: ''
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"
+          general:
+            - name: verify_total_lines_expected
+              condition: "[[ $total_lines -eq 10 ]]"
+            - name: verify_info_messages_majority
+              condition: "[[ $info_count -ge 5 ]]"
+            - name: verify_warn_messages_exist
+              condition: "[[ $warn_count -eq 2 ]]"
+            - name: verify_error_messages_exist
+              condition: "[[ $error_count -eq 2 ]]"
+            - name: verify_all_messages_accounted
+              condition: "[[ $((info_count + warn_count + error_count)) -eq $total_lines ]]"
+            - name: verify_first_timestamp_format
+              condition: "[[ $first_timestamp =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]"
+            - name: verify_last_timestamp_format
+              condition: "[[ $last_timestamp =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]"
+            - name: verify_timestamps_same_date
+              condition: "[[ \"$first_timestamp\" = \"$last_timestamp\" ]]"
+            - name: verify_single_date_in_log
+              condition: "[[ $unique_dates -eq 1 ]]"
+            - name: verify_database_mentioned
+              condition: "[[ $database_mentions -ge 2 ]]"
+
+  - id: 3
+    name: "Mixed Regex and Command Captures in Single Step"
+    description: |
+                  Demonstrate combining both regex-based and command-based capture methods
+                  within the same test step, showing how extracted and computed values
+                  can work together for comprehensive data validation
+    initial_conditions:
+      system:
+        - "Both capture methods are available"
+    steps:
+      - step: 1
+        description: "Process transaction data with mixed capture: extract fields via regex, compute statistics via commands"
+        command: |
+          cat > /tmp/transaction_data.txt << 'EOF'
+          Transaction-ID: TXN-2024-15001
+          Customer-ID: CUST-98765
+          Amount: $2,450.75
+          Currency: USD
+          Payment-Method: credit_card
+          Card-Last-Four: 4532
+          Timestamp: 2024-01-15T14:30:00Z
+          Status: APPROVED
+          Merchant-ID: MERCH-54321
+          Category: Electronics
+          EOF
+          cat /tmp/transaction_data.txt
+        capture_vars:
+          - name: transaction_id
+            capture: 'Transaction-ID: (TXN-[0-9]{4}-[0-9]+)'
+          - name: customer_id
+            capture: 'Customer-ID: (CUST-[0-9]+)'
+          - name: amount_raw
+            capture: 'Amount: \$([0-9,]+\.[0-9]{2})'
+          - name: currency_code
+            capture: 'Currency: ([A-Z]{3})'
+          - name: payment_method
+            capture: 'Payment-Method: ([a-z_]+)'
+          - name: card_digits
+            capture: 'Card-Last-Four: ([0-9]{4})'
+          - name: status
+            capture: 'Status: ([A-Z]+)'
+          - name: merchant_id
+            capture: 'Merchant-ID: (MERCH-[0-9]+)'
+          - name: category
+            capture: 'Category: ([A-Za-z]+)'
+          - name: file_line_count
+            command: "wc -l /tmp/transaction_data.txt | awk '{print $1}'"
+          - name: field_count
+            command: "grep -c ':' /tmp/transaction_data.txt"
+          - name: amount_no_comma
+            command: "grep 'Amount:' /tmp/transaction_data.txt | sed 's/.*\\$//; s/,//g' | awk '{print $1}'"
+        expected:
+          success: true
+          result: '0'
+          output: 'Transaction-ID'
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Transaction-ID' <<< \"$COMMAND_OUTPUT\""
+          general:
+            - name: verify_transaction_id_format
+              condition: "[[ $transaction_id =~ ^TXN-[0-9]{4}-[0-9]+$ ]]"
+            - name: verify_transaction_year_current
+              condition: "[[ $transaction_id =~ TXN-2024- ]]"
+            - name: verify_customer_id_format
+              condition: "[[ $customer_id =~ ^CUST-[0-9]+$ ]]"
+            - name: verify_customer_id_digits
+              condition: "[[ $(echo $customer_id | grep -o '[0-9]*') =~ ^[0-9]{5}$ ]]"
+            - name: verify_amount_has_comma
+              condition: "[[ $amount_raw =~ , ]]"
+            - name: verify_amount_has_cents
+              condition: "[[ $amount_raw =~ \\.[0-9]{2}$ ]]"
+            - name: verify_currency_is_usd
+              condition: "[[ \"$currency_code\" = \"USD\" ]]"
+            - name: verify_payment_method_valid
+              condition: "[[ $payment_method =~ ^(credit_card|debit_card|bank_transfer|paypal)$ ]]"
+            - name: verify_card_digits_numeric
+              condition: "[[ $card_digits =~ ^[0-9]{4}$ ]]"
+            - name: verify_status_approved
+              condition: "[[ \"$status\" = \"APPROVED\" ]]"
+            - name: verify_merchant_id_format
+              condition: "[[ $merchant_id =~ ^MERCH-[0-9]+$ ]]"
+            - name: verify_category_not_empty
+              condition: "[[ -n \"$category\" ]]"
+            - name: verify_category_capitalized
+              condition: "[[ $category =~ ^[A-Z] ]]"
+            - name: verify_file_has_10_lines
+              condition: "[[ $file_line_count -eq 10 ]]"
+            - name: verify_field_count_matches
+              condition: "[[ $field_count -eq 10 ]]"
+            - name: verify_amount_processed_correctly
+              condition: "[[ $amount_no_comma =~ ^[0-9]+\\.[0-9]{2}$ ]]"
+            - name: verify_amount_value_reasonable
+              condition: "[[ $(echo $amount_no_comma | cut -d. -f1) -ge 2000 ]]"
+
+      - step: 2
+        description: "Analyze server metrics combining regex extraction from output and command-based calculations"
+        command: |
+          cat << 'EOF'
+          === Server Performance Report ===
+          Hostname: web-server-prod-01
+          IP-Address: 192.168.100.50
+          Region: us-east-1
+          CPU-Cores: 8
+          CPU-Usage: 42.3%
+          Memory-Total: 32768 MB
+          Memory-Used: 18432 MB
+          Disk-Total: 500 GB
+          Disk-Used: 325 GB
+          Network-Rx: 15234 MB
+          Network-Tx: 8976 MB
+          Uptime-Days: 45
+          Active-Connections: 127
+          Load-Average: 2.45
+          === End Report ===
+          EOF
+        capture_vars:
+          - name: hostname
+            capture: 'Hostname: ([a-z0-9-]+)'
+          - name: ip_address
+            capture: 'IP-Address: ([0-9.]+)'
+          - name: region
+            capture: 'Region: ([a-z0-9-]+)'
+          - name: cpu_cores
+            capture: 'CPU-Cores: ([0-9]+)'
+          - name: cpu_usage_pct
+            capture: 'CPU-Usage: ([0-9.]+)%'
+          - name: memory_total
+            capture: 'Memory-Total: ([0-9]+) MB'
+          - name: memory_used
+            capture: 'Memory-Used: ([0-9]+) MB'
+          - name: disk_total
+            capture: 'Disk-Total: ([0-9]+) GB'
+          - name: disk_used
+            capture: 'Disk-Used: ([0-9]+) GB'
+          - name: network_rx
+            capture: 'Network-Rx: ([0-9]+) MB'
+          - name: network_tx
+            capture: 'Network-Tx: ([0-9]+) MB'
+          - name: uptime_days
+            capture: 'Uptime-Days: ([0-9]+)'
+          - name: connections
+            capture: 'Active-Connections: ([0-9]+)'
+          - name: load_avg
+            capture: 'Load-Average: ([0-9.]+)'
+          - name: report_line_count
+            command: "wc -l <<< \"$COMMAND_OUTPUT\""
+          - name: memory_free_mb
+            command: "echo $((32768 - 18432))"
+          - name: disk_free_gb
+            command: "echo $((500 - 325))"
+          - name: network_total_mb
+            command: "echo $((15234 + 8976))"
+        expected:
+          success: true
+          result: '0'
+          output: 'Performance Report'
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Performance Report' <<< \"$COMMAND_OUTPUT\""
+          general:
+            - name: verify_hostname_format
+              condition: "[[ $hostname =~ ^[a-z]+-[a-z]+-[a-z]+-[0-9]{2}$ ]]"
+            - name: verify_hostname_contains_prod
+              condition: "[[ $hostname =~ prod ]]"
+            - name: verify_ip_address_format
+              condition: "[[ $ip_address =~ ^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}$ ]]"
+            - name: verify_ip_private_range
+              condition: "[[ $ip_address =~ ^192\\.168\\. ]]"
+            - name: verify_region_aws_format
+              condition: "[[ $region =~ ^[a-z]{2}-[a-z]+-[0-9]$ ]]"
+            - name: verify_cpu_cores_power_of_two
+              condition: "[[ $cpu_cores -eq 8 ]]"
+            - name: verify_cpu_usage_reasonable
+              condition: "[[ $(echo $cpu_usage_pct | cut -d. -f1) -lt 80 ]]"
+            - name: verify_memory_total_gb_power_of_two
+              condition: "[[ $memory_total -eq 32768 ]]"
+            - name: verify_memory_used_less_than_total
+              condition: "[[ $memory_used -lt $memory_total ]]"
+            - name: verify_memory_free_calculated
+              condition: "[[ $memory_free_mb -eq 14336 ]]"
+            - name: verify_memory_usage_below_80_percent
+              condition: "[[ $((memory_used * 100 / memory_total)) -lt 80 ]]"
+            - name: verify_disk_used_less_than_total
+              condition: "[[ $disk_used -lt $disk_total ]]"
+            - name: verify_disk_free_calculated
+              condition: "[[ $disk_free_gb -eq 175 ]]"
+            - name: verify_disk_usage_percentage
+              condition: "[[ $((disk_used * 100 / disk_total)) -ge 60 && $((disk_used * 100 / disk_total)) -le 70 ]]"
+            - name: verify_network_rx_greater_than_tx
+              condition: "[[ $network_rx -gt $network_tx ]]"
+            - name: verify_network_total_calculated
+              condition: "[[ $network_total_mb -eq 24210 ]]"
+            - name: verify_uptime_days_reasonable
+              condition: "[[ $uptime_days -ge 1 && $uptime_days -le 365 ]]"
+            - name: verify_connections_positive
+              condition: "[[ $connections -gt 0 ]]"
+            - name: verify_connections_reasonable
+              condition: "[[ $connections -le 1000 ]]"
+            - name: verify_load_avg_reasonable
+              condition: "[[ $(echo $load_avg | cut -d. -f1) -lt $cpu_cores ]]"
+            - name: verify_report_line_count
+              condition: "[[ $report_line_count -ge 15 ]]"
+
+      - step: 3
+        description: "Parse application deployment info using mixed captures for version data and deployment statistics"
+        command: |
+          cat > /tmp/deployment_info.txt << 'EOF'
+          === Deployment Information ===
+          Application: payment-gateway-service
+          Version: 3.2.1
+          Build-Number: 2024.01.15.1234
+          Git-Commit: f7e9d8c6b5a4e3d2c1b0a9f8e7d6c5b4a3f2e1d0
+          Environment: production
+          Deploy-Date: 2024-01-15
+          Deploy-Time: 14:30:00
+          Deployed-By: jenkins-automation
+          Replicas: 5
+          Container-Image: registry.example.com/payment-gateway:3.2.1
+          Image-Size: 487 MB
+          Health-Check: /health
+          Port: 8080
+          === Configuration ===
+          Max-Connections: 1000
+          Timeout-Seconds: 30
+          Retry-Attempts: 3
+          Log-Level: INFO
+          === End Deployment Info ===
+          EOF
+          cat /tmp/deployment_info.txt
+        capture_vars:
+          - name: app_name
+            capture: 'Application: ([a-z-]+)'
+          - name: app_version
+            capture: 'Version: ([0-9]+\\.[0-9]+\\.[0-9]+)'
+          - name: build_number
+            capture: 'Build-Number: ([0-9.]+)'
+          - name: git_commit
+            capture: 'Git-Commit: ([a-f0-9]{40})'
+          - name: environment
+            capture: 'Environment: ([a-z]+)'
+          - name: deploy_date
+            capture: 'Deploy-Date: ([0-9-]+)'
+          - name: deploy_time
+            capture: 'Deploy-Time: ([0-9:]+)'
+          - name: deployed_by
+            capture: 'Deployed-By: ([a-z-]+)'
+          - name: replicas
+            capture: 'Replicas: ([0-9]+)'
+          - name: image_registry
+            capture: 'Container-Image: ([^/]+)'
+          - name: image_size_mb
+            capture: 'Image-Size: ([0-9]+) MB'
+          - name: port
+            capture: 'Port: ([0-9]+)'
+          - name: max_connections
+            capture: 'Max-Connections: ([0-9]+)'
+          - name: timeout_sec
+            capture: 'Timeout-Seconds: ([0-9]+)'
+          - name: retry_attempts
+            capture: 'Retry-Attempts: ([0-9]+)'
+          - name: log_level
+            capture: 'Log-Level: ([A-Z]+)'
+          - name: total_lines
+            command: "wc -l /tmp/deployment_info.txt | awk '{print $1}'"
+          - name: section_count
+            command: "grep -c '===' /tmp/deployment_info.txt"
+          - name: version_major
+            command: "echo 3"
+          - name: version_minor
+            command: "echo 2"
+          - name: total_timeout_with_retries
+            command: "echo $((30 * 3))"
+        expected:
+          success: true
+          result: '0'
+          output: 'Deployment Information'
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Deployment Information' <<< \"$COMMAND_OUTPUT\""
+          general:
+            - name: verify_app_name_format
+              condition: "[[ $app_name =~ ^[a-z]+-[a-z]+-[a-z]+$ ]]"
+            - name: verify_app_name_contains_service
+              condition: "[[ $app_name =~ service$ ]]"
+            - name: verify_version_semantic
+              condition: "[[ $app_version =~ ^[0-9]+\\.[0-9]+\\.[0-9]+$ ]]"
+            - name: verify_version_major_matches
+              condition: "[[ $(echo $app_version | cut -d. -f1) -eq $version_major ]]"
+            - name: verify_version_minor_matches
+              condition: "[[ $(echo $app_version | cut -d. -f2) -eq $version_minor ]]"
+            - name: verify_build_number_format
+              condition: "[[ $build_number =~ ^[0-9]{4}\\.[0-9]{2}\\.[0-9]{2}\\.[0-9]+$ ]]"
+            - name: verify_git_commit_length
+              condition: "[[ ${#git_commit} -eq 40 ]]"
+            - name: verify_git_commit_hex
+              condition: "[[ $git_commit =~ ^[a-f0-9]{40}$ ]]"
+            - name: verify_environment_production
+              condition: "[[ \"$environment\" = \"production\" ]]"
+            - name: verify_deploy_date_format
+              condition: "[[ $deploy_date =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]"
+            - name: verify_deploy_time_format
+              condition: "[[ $deploy_time =~ ^[0-9]{2}:[0-9]{2}:[0-9]{2}$ ]]"
+            - name: verify_deployed_by_automation
+              condition: "[[ $deployed_by =~ jenkins ]]"
+            - name: verify_replicas_reasonable
+              condition: "[[ $replicas -ge 3 && $replicas -le 10 ]]"
+            - name: verify_image_registry_fqdn
+              condition: "[[ $image_registry =~ \\. ]]"
+            - name: verify_image_size_reasonable
+              condition: "[[ $image_size_mb -ge 100 && $image_size_mb -le 1000 ]]"
+            - name: verify_port_valid_range
+              condition: "[[ $port -ge 1024 && $port -le 65535 ]]"
+            - name: verify_port_common_http
+              condition: "[[ $port -eq 8080 || $port -eq 8000 || $port -eq 3000 ]]"
+            - name: verify_max_connections_sufficient
+              condition: "[[ $max_connections -ge 100 ]]"
+            - name: verify_timeout_reasonable
+              condition: "[[ $timeout_sec -ge 10 && $timeout_sec -le 60 ]]"
+            - name: verify_retry_attempts_positive
+              condition: "[[ $retry_attempts -gt 0 && $retry_attempts -le 5 ]]"
+            - name: verify_total_timeout_calculated
+              condition: "[[ $total_timeout_with_retries -eq 90 ]]"
+            - name: verify_log_level_uppercase
+              condition: "[[ $log_level =~ ^[A-Z]+$ ]]"
+            - name: verify_log_level_valid
+              condition: "[[ $log_level =~ ^(DEBUG|INFO|WARN|ERROR)$ ]]"
+            - name: verify_total_lines_sufficient
+              condition: "[[ $total_lines -ge 18 ]]"
+            - name: verify_section_markers_present
+              condition: "[[ $section_count -ge 4 ]]"

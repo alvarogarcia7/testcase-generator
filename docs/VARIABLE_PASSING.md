@@ -1010,6 +1010,8 @@ capture_vars:
 
 ## Additional Resources
 
+- [VARIABLE_DISPLAY.md](VARIABLE_DISPLAY.md) - How captured variables are displayed and debugging techniques
+- [VARIABLES_CAPTURE_COMMAND.md](VARIABLES_CAPTURE_COMMAND.md) - Advanced variable capture with regex and command-based methods
 - [BDD Initial Conditions](BDD_INITIAL_CONDITIONS.md) - Using BDD patterns in initial conditions
 - [Test Verify Usage](TEST_VERIFY_USAGE.md) - Verification expressions and templates
 - [Quick Start Guide](QUICK_START.md) - Getting started with test cases
