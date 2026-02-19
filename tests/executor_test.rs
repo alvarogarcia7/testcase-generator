@@ -816,6 +816,347 @@ fn test_read_verification_function_signature() {
     assert!(script.contains("local default=\"${2:-y}\""));
 }
 
+#[test]
+fn test_read_verification_function_tty_detection() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ001".to_string(),
+        1,
+        1,
+        "TC001".to_string(),
+        "Test read_verification TTY detection".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let step = create_test_step(1, "Test step", "echo 'test'", "0", "test", Some(true));
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify TTY detection logic in read_verification
+    assert!(
+        script.contains("if [[ \"${DEBIAN_FRONTEND}\" == 'noninteractive' ]] || ! [ -t 0 ]; then")
+    );
+    assert!(script.contains("# Non-interactive mode: return default"));
+}
+
+#[test]
+fn test_read_verification_function_returns() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ001".to_string(),
+        1,
+        1,
+        "TC001".to_string(),
+        "Test read_verification return values".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let step = create_test_step(1, "Test step", "echo 'test'", "0", "test", Some(true));
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify return values (1 for yes, 0 for no) in read_verification
+    assert!(script.contains("return 1"));
+    assert!(script.contains("return 0"));
+    assert!(script.contains("# Returns: 1 for yes, 0 for no"));
+}
+
+#[test]
+fn test_helper_function_input_validation_case_statements() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ001".to_string(),
+        1,
+        1,
+        "TC001".to_string(),
+        "Test input validation with case statements".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let step = create_test_step(1, "Test step", "echo 'test'", "0", "test", Some(true));
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify input validation with case statements
+    assert!(script.contains("case \"$response\" in"));
+    assert!(script.contains("[Yy]|[Yy][Ee][Ss])"));
+    assert!(script.contains("[Nn]|[Nn][Oo])"));
+    assert!(script.contains("Invalid response. Please enter Y or n."));
+}
+
+#[test]
+fn test_helper_function_prompt_variations() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ001".to_string(),
+        1,
+        1,
+        "TC001".to_string(),
+        "Test prompt variations".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let step = create_test_step(1, "Test step", "echo 'test'", "0", "test", Some(true));
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify prompt variations ([Y/n] vs [y/N])
+    assert!(script.contains("read -p \"$prompt [Y/n]: \" response"));
+    assert!(script.contains("read -p \"$prompt [y/N]: \" response"));
+    assert!(script.contains("if [[ \"$default\" =~ ^[Yy]$ ]]; then"));
+}
+
+#[test]
+fn test_helper_function_default_parameter_handling() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ001".to_string(),
+        1,
+        1,
+        "TC001".to_string(),
+        "Test default parameter handling".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let step = create_test_step(1, "Test step", "echo 'test'", "0", "test", Some(true));
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify default parameter handling with ${2:-y}
+    assert!(script.contains("local default=\"${2:-y}\""));
+
+    // Verify empty response uses default
+    assert!(script.contains("# Empty response uses default"));
+    assert!(script.contains("if [[ -z \"$response\" ]]; then"));
+    assert!(script.contains("response=\"$default\""));
+}
+
+#[test]
+fn test_helper_function_interactive_mode_logic() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ001".to_string(),
+        1,
+        1,
+        "TC001".to_string(),
+        "Test interactive mode logic".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let step = create_test_step(1, "Test step", "echo 'test'", "0", "test", Some(true));
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify interactive mode loop and validation
+    assert!(script.contains("# Interactive mode: prompt user"));
+    assert!(script.contains("while true; do"));
+    assert!(script.contains("# Validate response"));
+}
+
+#[test]
+fn test_helper_function_non_interactive_default_yes() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ001".to_string(),
+        1,
+        1,
+        "TC001".to_string(),
+        "Test non-interactive mode with default yes".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let step = create_test_step(1, "Test step", "echo 'test'", "0", "test", Some(true));
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify non-interactive mode returns correct default
+    assert!(script.contains("if [[ \"$default\" =~ ^[Yy]$ ]]; then"));
+    assert!(script.contains("return 1")); // Yes returns 1
+    assert!(script.contains("return 0")); // No returns 0
+}
+
+#[test]
+fn test_read_true_false_function_complete_structure() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ001".to_string(),
+        1,
+        1,
+        "TC001".to_string(),
+        "Test read_true_false complete structure".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let step = create_test_step(1, "Test step", "echo 'test'", "0", "test", Some(true));
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify complete structure of read_true_false
+    assert!(script.contains("read_true_false() {"));
+    assert!(script.contains("local prompt=\"$1\""));
+    assert!(script.contains("local default=\"${2:-y}\""));
+    assert!(script.contains("# Check if running in non-interactive mode"));
+    assert!(
+        script.contains("if [[ \"${DEBIAN_FRONTEND}\" == 'noninteractive' ]] || ! [ -t 0 ]; then")
+    );
+    assert!(script.contains("# Non-interactive mode: return default"));
+    assert!(script.contains("# Interactive mode: prompt user"));
+    assert!(script.contains("while true; do"));
+    assert!(script.contains("case \"$response\" in"));
+    assert!(script.contains("[Yy]|[Yy][Ee][Ss])"));
+    assert!(script.contains("return 1"));
+    assert!(script.contains("[Nn]|[Nn][Oo])"));
+    assert!(script.contains("return 0"));
+    assert!(script.contains("Invalid response. Please enter Y or n."));
+    assert!(script.contains("done"));
+    assert!(script.contains("}"));
+}
+
+#[test]
+fn test_read_verification_function_complete_structure() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ001".to_string(),
+        1,
+        1,
+        "TC001".to_string(),
+        "Test read_verification complete structure".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let step = create_test_step(1, "Test step", "echo 'test'", "0", "test", Some(true));
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify complete structure of read_verification
+    assert!(script.contains("read_verification() {"));
+    assert!(script.contains("local prompt=\"$1\""));
+    assert!(script.contains("local default=\"${2:-y}\""));
+    assert!(script.contains("# Check if running in non-interactive mode"));
+    assert!(
+        script.contains("if [[ \"${DEBIAN_FRONTEND}\" == 'noninteractive' ]] || ! [ -t 0 ]; then")
+    );
+    assert!(script.contains("# Non-interactive mode: return default"));
+    assert!(script.contains("# Interactive mode: prompt user"));
+    assert!(script.contains("while true; do"));
+    assert!(script.contains("case \"$response\" in"));
+    assert!(script.contains("[Yy]|[Yy][Ee][Ss])"));
+    assert!(script.contains("return 1"));
+    assert!(script.contains("[Nn]|[Nn][Oo])"));
+    assert!(script.contains("return 0"));
+    assert!(script.contains("Invalid response. Please enter Y or n."));
+    assert!(script.contains("done"));
+    assert!(script.contains("}"));
+}
+
+#[test]
+fn test_helper_functions_comment_documentation() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ001".to_string(),
+        1,
+        1,
+        "TC001".to_string(),
+        "Test helper functions documentation".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let step = create_test_step(1, "Test step", "echo 'test'", "0", "test", Some(true));
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify documentation comments
+    assert!(script.contains("# Bash helper functions for user prompts"));
+    assert!(script.contains("# Prompts user for Y/n input with proper validation"));
+    assert!(script.contains("# Returns: 1 for yes, 0 for no"));
+    assert!(
+        script.contains("# Supports both interactive and non-interactive modes with TTY detection")
+    );
+    assert!(script.contains("# Prompts user for verification with Y/n input"));
+}
+
+#[test]
+fn test_helper_functions_stderr_error_output() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ001".to_string(),
+        1,
+        1,
+        "TC001".to_string(),
+        "Test helper functions error output to stderr".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let step = create_test_step(1, "Test step", "echo 'test'", "0", "test", Some(true));
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify invalid response errors go to stderr
+    assert!(script.contains("echo \"Invalid response. Please enter Y or n.\" >&2"));
+}
+
+#[test]
+fn test_both_helper_functions_present_in_preamble() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ001".to_string(),
+        1,
+        1,
+        "TC001".to_string(),
+        "Test both helper functions in preamble".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let step = create_test_step(1, "Test step", "echo 'test'", "0", "test", Some(true));
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Get indices to verify order
+    let preamble_start = script.find("#!/bin/bash").expect("Shebang not found");
+    let read_true_false_pos = script
+        .find("read_true_false() {")
+        .expect("read_true_false not found");
+    let read_verification_pos = script
+        .find("read_verification() {")
+        .expect("read_verification not found");
+    let test_case_pos = script
+        .find("# Test Case:")
+        .expect("Test case header not found");
+
+    // Verify both functions are in preamble (before test case)
+    assert!(read_true_false_pos > preamble_start);
+    assert!(read_true_false_pos < test_case_pos);
+    assert!(read_verification_pos > preamble_start);
+    assert!(read_verification_pos < test_case_pos);
+
+    // Verify read_true_false comes before read_verification
+    assert!(read_true_false_pos < read_verification_pos);
+}
+
 // ============================================================================
 // Manual Steps with Verification Expressions Tests
 // ============================================================================
