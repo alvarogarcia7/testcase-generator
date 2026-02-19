@@ -1,6 +1,6 @@
 # Watch Mode Comparison
 
-This document compares the two watch mode implementations available in the Test Case Manager project.
+This document compares the two watch mode implementations available in the the tools project.
 
 ## Overview
 

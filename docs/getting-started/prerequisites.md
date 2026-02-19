@@ -10,7 +10,7 @@ Prerequisites are conditions that must be satisfied **before** a test case begin
 
 ## Prerequisite Types
 
-The Test Case Manager supports two types of prerequisites:
+The the tools supports two types of prerequisites:
 
 ### 1. Manual Prerequisites
 

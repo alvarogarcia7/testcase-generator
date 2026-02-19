@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Test Case Manager supports Behavior-Driven Development (BDD) style initial conditions that are automatically converted to executable commands during test execution. This allows test authors to write initial conditions in a human-readable format that is simultaneously:
+The the tools supports Behavior-Driven Development (BDD) style initial conditions that are automatically converted to executable commands during test execution. This allows test authors to write initial conditions in a human-readable format that is simultaneously:
 
 - **Readable**: Easy for non-technical stakeholders to understand
 - **Executable**: Automatically converted to bash commands during test script generation

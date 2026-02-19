@@ -16,7 +16,7 @@ This guide demonstrates a complete workflow for using test-verify in a real-worl
 
 ### Step 1: Create Test Cases
 
-Use the Test Case Manager (tcm) to create test case definitions:
+Use the the tools (tcm) to create test case definitions:
 
 ```bash
 # Interactive test case creation

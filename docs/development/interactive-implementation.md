@@ -64,7 +64,7 @@ metadata.validate(&validator)?;
 5. Return commit OID
 
 **Environment Variables**:
-- `GIT_AUTHOR_NAME` - Author name (default: "Test Case Manager")
+- `GIT_AUTHOR_NAME` - Author name (default: "the tools")
 - `GIT_AUTHOR_EMAIL` - Author email (default: "testcase@example.com")
 
 ### 4. General Initial Conditions Flow

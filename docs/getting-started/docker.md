@@ -1,6 +1,6 @@
 # Docker Guide
 
-This guide explains how to build and use the Test Case Manager Docker image.
+This guide explains how to build and use the the tools Docker image.
 
 ## Overview
 
@@ -107,7 +107,7 @@ All binaries are in `/usr/local/bin` and available in PATH:
 
 | Binary | Description |
 |--------|-------------|
-| `tcm` | Main Test Case Manager (alias for testcase-manager) |
+| `tcm` | Main the tools (alias for testcase-manager) |
 | `test-executor` | Execute tests with JSON logging |
 | `test-verify` | Verify test execution logs and generate reports |
 | `test-orchestrator` | Coordinate complex test workflows |

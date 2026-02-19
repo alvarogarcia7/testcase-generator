@@ -325,7 +325,7 @@ fi
 ## Related Commands
 
 - `validate-json` - Validate JSON files against schemas
-- `editor validate` - Test Case Manager's built-in validation
+- `editor validate` - the tools's built-in validation
 - `./scripts/validate-files.sh` - Shell script for directory-wide validation
 
 ## See Also

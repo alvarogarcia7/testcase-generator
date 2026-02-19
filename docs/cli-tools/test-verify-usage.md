@@ -355,6 +355,6 @@ If steps show as "NOT EXECUTED":
 
 ## See Also
 
-- [Test Case Manager Documentation](../index.md)
+- [the tools Documentation](../index.md)
 - [Test Case Format Documentation](../user-guide/test-case-format.md)
 - [Example Test Execution Logs](../data/example_test_execution.log)

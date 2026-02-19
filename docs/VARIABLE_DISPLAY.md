@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document describes how captured variables are displayed throughout the Test Case Manager system:
+This document describes how captured variables are displayed throughout the the tools system:
 
 1. **Generated Bash Scripts**: Variables stored as `STEP_VAR_*` with comments
 2. **Console Output**: Variable names and values displayed during execution
@@ -227,7 +227,7 @@ fi
 
 ## Console Output During Execution
 
-When executing test cases, the Test Case Manager displays progress information to the console. While variable values are not explicitly printed during normal execution, they can be viewed through:
+When executing test cases, the the tools displays progress information to the console. While variable values are not explicitly printed during normal execution, they can be viewed through:
 
 ### 1. Step Command Output
 
@@ -823,7 +823,7 @@ Use step descriptions to document variable flow:
 
 ## Summary
 
-Variable display in Test Case Manager:
+Variable display in the tools:
 
 ✅ **Bash Scripts**: Variables stored as `STEP_VAR_*` with clear comments  
 ✅ **Console**: Command output shows variable capture sources  

@@ -3,6 +3,21 @@ DOCS_CONTAINER = testcase-manager-docs
 DOCS_IMAGE = $(DOCS_CONTAINER):latest
 CURRENT_DIR = $(shell pwd)
 
+test:
+	${MAKE} docs-docker-clean
+	${MAKE} docs-docker-build
+	${MAKE} docs-docker-build-site
+	${MAKE} docs-docker-build-pdf
+#   Docker-compose based
+	${MAKE} docs-docker-clean
+	${MAKE} docs-compose-build-site
+	${MAKE} docs-compose-build-pdf
+# Do not test these: they keep the server in watch mode
+#	${MAKE} docs-compose-up
+#	${MAKE} docs-compose-down
+.PHONY: test
+
+
 docs-docker-build:
 	docker build -f Dockerfile.mkdocs -t $(DOCS_IMAGE) .
 .PHONY: docs-docker-build

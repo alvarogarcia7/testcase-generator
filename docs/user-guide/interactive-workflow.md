@@ -349,9 +349,9 @@ The workflow integrates with Git to track progress:
 Example commit history:
 
 ```
-abc1234 - Add initial conditions (Test Case Manager)
-def5678 - Add general initial conditions (Test Case Manager)
-9ab0cde - Add test case metadata (Test Case Manager)
+abc1234 - Add initial conditions (Editor)
+def5678 - Add general initial conditions (Editor)
+9ab0cde - Add test case metadata (Editor)
 ```
 
 ## Best Practices
@@ -792,11 +792,11 @@ test_sequences:
 ```bash
 $ testcase-manager git log --limit 5
 
-a1b2c3d - Complete test case with all sequences (Test Case Manager)
-d4e5f6g - Add test sequence #2 (Test Case Manager)
-h7i8j9k - Add test sequence #1 (Test Case Manager)
-l0m1n2o - Add initial conditions (Test Case Manager)
-p3q4r5s - Add general initial conditions (Test Case Manager)
+a1b2c3d - Complete test case with all sequences (Editor)
+d4e5f6g - Add test sequence #2 (Editor)
+h7i8j9k - Add test sequence #1 (Editor)
+l0m1n2o - Add initial conditions (Editor)
+p3q4r5s - Add general initial conditions (Editor)
 ```
 
 ### Programmatic Usage

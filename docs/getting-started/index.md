@@ -1,4 +1,6 @@
-# Quick Start Guide - Interactive Test Case Creation
+# Quick Start
+
+Get started with interactive test case creation.
 
 ## Installation
 
@@ -6,172 +8,66 @@
 # Build the project
 make build
 
-# Or directly with cargo
+# Or with cargo
 cargo build --release
 ```
 
 ## Basic Usage
 
-### 1. Create a Test Case Interactively
+### Create a Test Case
 
 ```bash
-# Start the interactive workflow
-testcase-manager create-interactive
+# Start interactive workflow
+editor create-interactive
 
-# Or with a custom path
-testcase-manager create-interactive --path ./my-tests
+# Or with custom path
+editor create-interactive --path ./my-tests
 ```
 
-### 2. Follow the Prompts
+### Follow the Prompts
 
-#### Step 1: Enter Metadata
+The tool will guide you through:
 
-```
-=== Test Case Metadata ===
+1. **Metadata** - Requirement, item, TC, ID, description
+2. **Initial Conditions** - Setup requirements
+3. **Validation** - Automatic schema validation
+4. **Git Commits** - Optional version control
 
-Requirement: XXX100
-Item: 1
-TC: 4
-ID: 4.2.2.2.1_test
-Description: My test description
-```
+## Example
 
-#### Step 2: Validate and Commit
-
-```
-=== Validating Metadata ===
-✓ Metadata is valid
-
-Commit metadata to git? [Y/n]: y
-✓ Committed: Add test case metadata
-```
-
-#### Step 3: Add General Initial Conditions
-
-```
-Add general initial conditions? [Y/n]: y
-
-=== General Initial Conditions ===
-
-[Your editor will open with a template]
-```
-
-Edit the template:
 ```yaml
-- eUICC:
-    - "Condition 1"
-    - "Condition 2"
-```
+requirement: XXX100
+item: 1
+tc: 4
+id: '4.2.2.2.1_test'
+description: 'My test description'
 
-Save and close the editor.
-
-```
-✓ Valid structure
-✓ General initial conditions added
-
-Commit general initial conditions to git? [Y/n]: y
-✓ Committed: Add general initial conditions
-```
-
-#### Step 4: Add Initial Conditions
-
-```
-Add initial conditions? [Y/n]: y
-
-=== Initial Conditions ===
-
-[Your editor will open with a template]
-```
-
-Edit the template:
-```yaml
-eUICC:
-  - "Initial condition 1"
-  - "Initial condition 2"
-```
-
-Save and close the editor.
-
-```
-✓ Valid structure
-✓ Initial conditions added
-
-Commit initial conditions to git? [Y/n]: y
-✓ Committed: Add initial conditions
-```
-
-#### Step 5: Done!
-
-```
-╔═══════════════════════════════════════════════╗
-║          Test Case Created Successfully       ║
-╚═══════════════════════════════════════════════╝
-
-Saved to: ./testcases/4.2.2.2.1_test.yaml
-```
-
-## Example Run
-
-```bash
-# Run the example to see it in action
-cargo run --example interactive_workflow
+initial_conditions:
+  setup:
+    - "create directory \"/tmp/test\""
+    - "set environment variable \"MODE\" to \"test\""
 ```
 
 ## Configuration
 
-### Set Your Editor
-
 ```bash
-# Use vim
+# Set editor
 export EDITOR=vim
 
-# Or use nano
-export EDITOR=nano
-
-# Or use VS Code
-export EDITOR="code --wait"
-```
-
-### Set Git Author
-
-```bash
+# Set git author
 export GIT_AUTHOR_NAME="Your Name"
-export GIT_AUTHOR_EMAIL="your.email@example.com"
+export GIT_AUTHOR_EMAIL="your@email.com"
 ```
 
 ## Tips
 
-1. **Integer values**: Enter numbers without quotes (e.g., `1` not `"1"`)
-2. **YAML syntax**: Use spaces for indentation, not tabs
-3. **Validation errors**: Read carefully and retry
-4. **Keep defaults**: Press Y when defaults are shown if they're correct
-5. **Skip sections**: Press N when asked "Add general initial conditions?" to skip
-
-## Troubleshooting
-
-### "Invalid type, expected integer"
-- Make sure to enter numbers without quotes
-- Correct: `1`
-- Wrong: `"1"`
-
-### "Editor not found"
-- Set the EDITOR environment variable
-- `export EDITOR=vim` or `export EDITOR=nano`
-
-### "Git commit failed"
-- Set git author information:
-  ```bash
-  export GIT_AUTHOR_NAME="Your Name"
-  export GIT_AUTHOR_EMAIL="your@email.com"
-  ```
-
-### "YAML parse error"
-- Check indentation (use spaces, not tabs)
-- Check list syntax (use `- ` for list items)
-- Check for trailing spaces
+- Enter numbers without quotes (e.g., `1` not `"1"`)
+- Use spaces for indentation, not tabs
+- Press Y to accept defaults
+- Press N to skip optional sections
 
 ## Next Steps
 
-- Read the [full documentation](../user-guide/interactive-workflow.md)
-- Check out the [implementation details](../development/interactive-implementation.md)
-- Explore other commands: `testcase-manager --help`
+- [Interactive Workflow Guide](../user-guide/interactive-workflow.md)
+- [CLI Tools Reference](../cli-tools/)
+- [Examples](../examples/)

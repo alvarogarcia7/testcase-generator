@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Test Case Manager supports variable passing between test steps, allowing you to:
+The the tools supports variable passing between test steps, allowing you to:
 
 1. **Capture** dynamic values from command output using regex patterns
 2. **Store** captured values in sequence-scoped variables
