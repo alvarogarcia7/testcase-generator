@@ -683,1308 +683,712 @@ fn test_json_log_preserves_multiline_output() {
 }
 
 // ============================================================================
-// BDD Initial Conditions Integration Tests for generate_test_script_with_json_output
+// Bash Helper Functions Tests
 // ============================================================================
 
 #[test]
-fn test_bdd_in_general_initial_conditions() {
+fn test_bash_helper_functions_in_preamble() {
     let executor = TestExecutor::new();
     let mut test_case = TestCase::new(
         "REQ001".to_string(),
         1,
         1,
         "TC001".to_string(),
-        "BDD general conditions test".to_string(),
+        "Test with bash helpers".to_string(),
     );
-
-    // Add BDD statements in general_initial_conditions
-    let mut general_devices = HashMap::new();
-    general_devices.insert(
-        "Setup".to_string(),
-        vec![
-            InitialConditionItem::String("create directory \"/tmp/test\"".to_string()),
-            InitialConditionItem::String("wait for 2 seconds".to_string()),
-        ],
-    );
-    test_case.general_initial_conditions = InitialConditions {
-        include: None,
-        devices: general_devices,
-    };
 
     let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
-    let step = create_test_step(1, "Echo test", "echo 'hello'", "0", "hello", Some(true));
+    let step = create_test_step(1, "Test step", "echo 'test'", "0", "test", Some(true));
     sequence.steps.push(step);
     test_case.test_sequences.push(sequence);
 
-    let json_path = std::path::Path::new("test_output.json");
-    let script = executor.generate_test_script_with_json_output(&test_case, json_path);
+    let script = executor.generate_test_script(&test_case);
 
-    // Should contain comment for BDD statement
-    assert!(script.contains("# Setup: create directory \"/tmp/test\""));
-    // Should contain the generated command from BDD pattern
-    assert!(script.contains("mkdir -p \"/tmp/test\""));
-
-    // Should contain second BDD statement
-    assert!(script.contains("# Setup: wait for 2 seconds"));
-    assert!(script.contains("sleep 2"));
+    // Verify helper functions are present
+    assert!(
+        script.contains("read_true_false()"),
+        "Script should contain read_true_false function"
+    );
+    assert!(
+        script.contains("read_verification()"),
+        "Script should contain read_verification function"
+    );
+    assert!(
+        script.contains("# Bash helper functions for user prompts"),
+        "Script should contain helper function comment"
+    );
 }
 
 #[test]
-fn test_bdd_in_test_level_initial_conditions() {
+fn test_read_true_false_function_signature() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ001".to_string(),
+        1,
+        1,
+        "TC001".to_string(),
+        "Test read_true_false signature".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let step = create_test_step(1, "Test step", "echo 'test'", "0", "test", Some(true));
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify function has proper signature
+    assert!(script.contains("read_true_false() {"));
+    assert!(script.contains("local prompt=\"$1\""));
+    assert!(script.contains("local default=\"${2:-y}\""));
+}
+
+#[test]
+fn test_read_true_false_function_tty_detection() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ001".to_string(),
+        1,
+        1,
+        "TC001".to_string(),
+        "Test TTY detection".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let step = create_test_step(1, "Test step", "echo 'test'", "0", "test", Some(true));
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify TTY detection logic in read_true_false
+    assert!(
+        script.contains("if [[ \"${DEBIAN_FRONTEND}\" == 'noninteractive' ]] || ! [ -t 0 ]; then")
+    );
+    assert!(script.contains("# Non-interactive mode: return default"));
+}
+
+#[test]
+fn test_read_true_false_function_returns() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ001".to_string(),
+        1,
+        1,
+        "TC001".to_string(),
+        "Test return values".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let step = create_test_step(1, "Test step", "echo 'test'", "0", "test", Some(true));
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify return values (1 for yes, 0 for no)
+    assert!(script.contains("return 1"));
+    assert!(script.contains("return 0"));
+    assert!(script.contains("# Returns: 1 for yes, 0 for no"));
+}
+
+#[test]
+fn test_read_verification_function_signature() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ001".to_string(),
+        1,
+        1,
+        "TC001".to_string(),
+        "Test read_verification signature".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let step = create_test_step(1, "Test step", "echo 'test'", "0", "test", Some(true));
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify read_verification function has proper signature
+    assert!(script.contains("read_verification() {"));
+    assert!(script.contains("local prompt=\"$1\""));
+    assert!(script.contains("local default=\"${2:-y}\""));
+}
+
+// ============================================================================
+// Manual Steps with Verification Expressions Tests
+// ============================================================================
+
+#[test]
+fn test_manual_step_with_simple_verification() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ001".to_string(),
+        1,
+        1,
+        "TC001".to_string(),
+        "Manual step with verification".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Check device status",
+        "ssh device 'cat /var/log/status.log'",
+        "0",
+        "ready",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple("[ -f /tmp/device_ready ]".to_string()),
+        output: VerificationExpression::Simple("grep -q 'ready' /tmp/status.log".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify manual step is recognized
+    assert!(script.contains("echo \"Step 1: Check device status\""));
+    assert!(script
+        .contains("echo \"INFO: This is a manual step. You must perform this action manually.\""));
+
+    // Verify USER_VERIFICATION variables are set
+    assert!(script.contains("USER_VERIFICATION_RESULT=false"));
+    assert!(script.contains("USER_VERIFICATION_OUTPUT=false"));
+
+    // Verify verification logic is generated
+    assert!(script.contains("if [ -f /tmp/device_ready ]; then"));
+    assert!(script.contains("USER_VERIFICATION_RESULT=true"));
+    assert!(script.contains("if grep -q 'ready' /tmp/status.log; then"));
+    assert!(script.contains("USER_VERIFICATION_OUTPUT=true"));
+
+    // Verify combined USER_VERIFICATION check
+    assert!(script.contains("# Set USER_VERIFICATION based on verification results"));
+    assert!(script.contains(
+        "if [ \"$USER_VERIFICATION_RESULT\" = true ] && [ \"$USER_VERIFICATION_OUTPUT\" = true ]"
+    ));
+    assert!(script.contains("USER_VERIFICATION=true"));
+    assert!(script.contains("USER_VERIFICATION=false"));
+}
+
+#[test]
+fn test_manual_step_with_conditional_verification() {
     let executor = TestExecutor::new();
     let mut test_case = TestCase::new(
         "REQ002".to_string(),
         1,
         1,
         "TC002".to_string(),
-        "BDD test-level conditions test".to_string(),
+        "Manual step with conditional verification".to_string(),
     );
-
-    // Add BDD statements in test-level initial_conditions
-    let mut devices = HashMap::new();
-    devices.insert(
-        "Environment".to_string(),
-        vec![
-            InitialConditionItem::String(
-                "set environment variable \"TEST_MODE\" to \"enabled\"".to_string(),
-            ),
-            InitialConditionItem::String("file \"/tmp/config.txt\" should exist".to_string()),
-        ],
-    );
-    test_case.initial_conditions = InitialConditions {
-        include: None,
-        devices,
-    };
 
     let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
-    let step = create_test_step(1, "Test step", "echo 'test'", "0", "test", Some(true));
+    let mut step = create_test_step(
+        1,
+        "Deploy configuration",
+        "scp config.txt device:/etc/config.txt",
+        "0",
+        "success",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Conditional {
+            condition: "[ -f /tmp/deployment_mode ]".to_string(),
+            if_true: Some(vec!["echo 'Production mode'".to_string()]),
+            if_false: Some(vec!["echo 'Development mode'".to_string()]),
+            always: Some(vec!["echo 'Deployment complete'".to_string()]),
+        },
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
     sequence.steps.push(step);
     test_case.test_sequences.push(sequence);
 
-    let json_path = std::path::Path::new("test_output.json");
-    let script = executor.generate_test_script_with_json_output(&test_case, json_path);
+    let script = executor.generate_test_script(&test_case);
 
-    // Should contain Initial Conditions header
-    assert!(script.contains("# Initial Conditions"));
-    // Should contain comment for BDD statement
-    assert!(script.contains("# Environment: set environment variable \"TEST_MODE\" to \"enabled\""));
-    // Should contain the generated command from BDD pattern
-    assert!(script.contains("export TEST_MODE=enabled"));
-
-    // Should contain second BDD statement
-    assert!(script.contains("# Environment: file \"/tmp/config.txt\" should exist"));
-    assert!(script.contains("test -f \"/tmp/config.txt\""));
+    // Verify conditional verification is generated
+    assert!(script.contains("if [ -f /tmp/deployment_mode ]; then"));
+    assert!(script.contains("USER_VERIFICATION_RESULT=true"));
+    assert!(script.contains("echo 'Production mode'"));
+    assert!(script.contains("echo 'Development mode'"));
+    assert!(script.contains("echo 'Deployment complete'"));
 }
 
 #[test]
-fn test_bdd_in_sequence_level_initial_conditions() {
+fn test_manual_step_user_verification_variable_usage() {
     let executor = TestExecutor::new();
     let mut test_case = TestCase::new(
         "REQ003".to_string(),
         1,
         1,
         "TC003".to_string(),
-        "BDD sequence-level conditions test".to_string(),
+        "Test USER_VERIFICATION variable".to_string(),
     );
 
     let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
-
-    // Add BDD statements in sequence-level initial_conditions
-    let mut seq_devices = HashMap::new();
-    seq_devices.insert(
-        "Precondition".to_string(),
-        vec![
-            InitialConditionItem::String("ping device \"192.168.1.1\" with 3 retries".to_string()),
-            InitialConditionItem::String(
-                "create file \"/tmp/testfile.txt\" with content:".to_string(),
-            ),
-        ],
+    let mut step = create_test_step(
+        1,
+        "Verify system state",
+        "systemctl status app",
+        "0",
+        "active",
+        Some(true),
     );
-    sequence.initial_conditions = InitialConditions {
-        include: None,
-        devices: seq_devices,
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple("systemctl is-active app".to_string()),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
     };
-
-    let step = create_test_step(1, "Test step", "echo 'test'", "0", "test", Some(true));
     sequence.steps.push(step);
     test_case.test_sequences.push(sequence);
 
-    let json_path = std::path::Path::new("test_output.json");
-    let script = executor.generate_test_script_with_json_output(&test_case, json_path);
+    let script = executor.generate_test_script(&test_case);
 
-    // Should contain Sequence Initial Conditions header
-    assert!(script.contains("# Sequence Initial Conditions"));
-    // Should contain comment for BDD statement
-    assert!(script.contains("# Precondition: ping device \"192.168.1.1\" with 3 retries"));
-    // Should contain the generated command from BDD pattern
-    assert!(script.contains("ping -c 3 \"192.168.1.1\""));
-
-    // Should contain second BDD statement
-    assert!(script.contains("# Precondition: create file \"/tmp/testfile.txt\" with content:"));
-    assert!(script.contains("touch \"/tmp/testfile.txt\""));
+    // Verify USER_VERIFICATION variable is used for pass/fail logic
+    assert!(script.contains("if [ \"$USER_VERIFICATION\" = true ]; then"));
+    assert!(script.contains("[PASS] Step 1: Verify system state"));
+    assert!(script.contains("else"));
+    assert!(script.contains("[FAIL] Step 1: Verify system state"));
+    assert!(script.contains("echo \"  Result verification: $USER_VERIFICATION_RESULT\""));
+    assert!(script.contains("echo \"  Output verification: $USER_VERIFICATION_OUTPUT\""));
+    assert!(script.contains("exit 1"));
 }
 
 #[test]
-fn test_mixed_bdd_and_non_bdd_statements() {
+fn test_manual_step_without_verification_no_user_verification_variable() {
     let executor = TestExecutor::new();
     let mut test_case = TestCase::new(
         "REQ004".to_string(),
         1,
         1,
         "TC004".to_string(),
-        "Mixed BDD and non-BDD test".to_string(),
+        "Manual step without verification".to_string(),
     );
-
-    // Mix BDD and non-BDD statements
-    let mut general_devices = HashMap::new();
-    general_devices.insert(
-        "Setup".to_string(),
-        vec![
-            InitialConditionItem::String("Device is powered on".to_string()), // Non-BDD
-            InitialConditionItem::String("create directory \"/tmp/logs\"".to_string()), // BDD
-            InitialConditionItem::String("Network is connected".to_string()), // Non-BDD
-        ],
-    );
-    test_case.general_initial_conditions = InitialConditions {
-        include: None,
-        devices: general_devices,
-    };
 
     let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
-    let step = create_test_step(1, "Test step", "echo 'test'", "0", "test", Some(true));
+    let mut step = create_test_step(
+        1,
+        "Manual action",
+        "reboot device",
+        "0",
+        "rebooted",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple("true".to_string()),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
     sequence.steps.push(step);
     test_case.test_sequences.push(sequence);
 
-    let json_path = std::path::Path::new("test_output.json");
-    let script = executor.generate_test_script_with_json_output(&test_case, json_path);
+    let script = executor.generate_test_script(&test_case);
 
-    // Non-BDD statement should be a comment only (no executable command for it)
-    assert!(script.contains("# Setup: Device is powered on\n"));
+    // Verify no USER_VERIFICATION variables are set when verification is "true"
+    assert!(!script.contains("USER_VERIFICATION_RESULT=false"));
+    assert!(!script.contains("USER_VERIFICATION_OUTPUT=false"));
+    assert!(!script.contains("USER_VERIFICATION=true"));
+    assert!(!script.contains("[PASS] Step 1"));
+    assert!(!script.contains("[FAIL] Step 1"));
 
-    // BDD statement should generate command
-    assert!(script.contains("# Setup: create directory \"/tmp/logs\""));
-    assert!(script.contains("mkdir -p \"/tmp/logs\""));
-
-    // Non-BDD statement should be a comment only (no executable command for it)
-    assert!(script.contains("# Setup: Network is connected\n"));
+    // Should just prompt to continue
+    assert!(script.contains("read -p \"Press ENTER to continue...\""));
 }
 
 #[test]
-fn test_multiple_bdd_statements_same_type() {
+fn test_manual_step_with_read_true_false_in_verification() {
     let executor = TestExecutor::new();
     let mut test_case = TestCase::new(
         "REQ005".to_string(),
         1,
         1,
         "TC005".to_string(),
-        "Multiple BDD statements test".to_string(),
+        "Manual step using read_true_false".to_string(),
     );
-
-    // Multiple BDD statements of the same pattern type
-    let mut devices = HashMap::new();
-    devices.insert(
-        "Files".to_string(),
-        vec![
-            InitialConditionItem::String("create directory \"/tmp/dir1\"".to_string()),
-            InitialConditionItem::String("create directory \"/tmp/dir2\"".to_string()),
-            InitialConditionItem::String("create directory \"/tmp/dir3\"".to_string()),
-        ],
-    );
-    test_case.initial_conditions = InitialConditions {
-        include: None,
-        devices,
-    };
 
     let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
-    let step = create_test_step(1, "Test step", "echo 'test'", "0", "test", Some(true));
+    let mut step = create_test_step(
+        1,
+        "Confirm LED is blinking",
+        "observe device LED",
+        "0",
+        "blinking",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple(
+            "read_true_false \"Is the LED blinking?\" \"y\"".to_string(),
+        ),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
     sequence.steps.push(step);
     test_case.test_sequences.push(sequence);
 
-    let json_path = std::path::Path::new("test_output.json");
-    let script = executor.generate_test_script_with_json_output(&test_case, json_path);
+    let script = executor.generate_test_script(&test_case);
 
-    // All three BDD statements should generate commands
-    assert!(script.contains("mkdir -p \"/tmp/dir1\""));
-    assert!(script.contains("mkdir -p \"/tmp/dir2\""));
-    assert!(script.contains("mkdir -p \"/tmp/dir3\""));
-
-    // All three should have comments
-    assert!(script.contains("# Files: create directory \"/tmp/dir1\""));
-    assert!(script.contains("# Files: create directory \"/tmp/dir2\""));
-    assert!(script.contains("# Files: create directory \"/tmp/dir3\""));
+    // Verify read_true_false is called in verification
+    assert!(script.contains("if read_true_false \"Is the LED blinking?\" \"y\"; then"));
+    assert!(script.contains("USER_VERIFICATION_RESULT=true"));
 }
 
 #[test]
-fn test_bdd_in_all_three_locations() {
+fn test_manual_step_with_complex_verification_referencing_read_true_false() {
     let executor = TestExecutor::new();
     let mut test_case = TestCase::new(
         "REQ006".to_string(),
         1,
         1,
         "TC006".to_string(),
-        "BDD in all locations test".to_string(),
+        "Complex verification with read_true_false".to_string(),
     );
 
-    // BDD in general_initial_conditions
-    let mut general_devices = HashMap::new();
-    general_devices.insert(
-        "Global".to_string(),
-        vec![InitialConditionItem::String(
-            "wait for 1 seconds".to_string(),
-        )],
-    );
-    test_case.general_initial_conditions = InitialConditions {
-        include: None,
-        devices: general_devices,
-    };
-
-    // BDD in test-level initial_conditions
-    let mut devices = HashMap::new();
-    devices.insert(
-        "Test".to_string(),
-        vec![InitialConditionItem::String(
-            "create directory \"/tmp/test\"".to_string(),
-        )],
-    );
-    test_case.initial_conditions = InitialConditions {
-        include: None,
-        devices,
-    };
-
-    // BDD in sequence-level initial_conditions
     let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
-    let mut seq_devices = HashMap::new();
-    seq_devices.insert(
-        "Sequence".to_string(),
-        vec![InitialConditionItem::String(
-            "file \"/tmp/test\" should exist".to_string(),
-        )],
+    let mut step = create_test_step(
+        1,
+        "Multi-step verification",
+        "complex manual steps",
+        "0",
+        "verified",
+        Some(true),
     );
-    sequence.initial_conditions = InitialConditions {
-        include: None,
-        devices: seq_devices,
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Conditional {
+            condition: "read_true_false \"Did step 1 succeed?\" \"y\"".to_string(),
+            if_true: Some(vec![
+                "read_true_false \"Did step 2 succeed?\" \"y\" || exit 1".to_string(),
+            ]),
+            if_false: Some(vec![
+                "echo 'Step 1 failed'".to_string(),
+                "exit 1".to_string(),
+            ]),
+            always: Some(vec!["echo 'Verification complete'".to_string()]),
+        },
+        output: VerificationExpression::Simple(
+            "read_true_false \"Was output correct?\" \"y\"".to_string(),
+        ),
+        output_file: None,
+        general: None,
     };
-
-    let step = create_test_step(1, "Test step", "echo 'test'", "0", "test", Some(true));
     sequence.steps.push(step);
     test_case.test_sequences.push(sequence);
 
-    let json_path = std::path::Path::new("test_output.json");
-    let script = executor.generate_test_script_with_json_output(&test_case, json_path);
+    let script = executor.generate_test_script(&test_case);
 
-    // Check general conditions
-    assert!(script.contains("# General Initial Conditions"));
-    assert!(script.contains("# Global: wait for 1 seconds"));
-    assert!(script.contains("sleep 1"));
+    // Verify complex conditional with read_true_false is generated
+    assert!(script.contains("if read_true_false \"Did step 1 succeed?\" \"y\"; then"));
+    assert!(script.contains("USER_VERIFICATION_RESULT=true"));
+    assert!(script.contains("read_true_false \"Did step 2 succeed?\" \"y\" || exit 1"));
+    assert!(script.contains("echo 'Step 1 failed'"));
+    assert!(script.contains("echo 'Verification complete'"));
 
-    // Check test-level conditions
-    assert!(script.contains("# Initial Conditions"));
-    assert!(script.contains("# Test: create directory \"/tmp/test\""));
-    assert!(script.contains("mkdir -p \"/tmp/test\""));
-
-    // Check sequence-level conditions
-    assert!(script.contains("# Sequence Initial Conditions"));
-    assert!(script.contains("# Sequence: file \"/tmp/test\" should exist"));
-    assert!(script.contains("test -f \"/tmp/test\""));
+    // Verify output verification with read_true_false
+    assert!(script.contains("if read_true_false \"Was output correct?\" \"y\"; then"));
+    assert!(script.contains("USER_VERIFICATION_OUTPUT=true"));
 }
 
 #[test]
-fn test_bdd_with_missing_toml_file() {
-    // Temporarily rename the TOML file if it exists, or test with a non-existent path
-    // This test verifies that the system gracefully handles missing BDD definitions
-
+fn test_manual_step_verification_with_file_checks() {
     let executor = TestExecutor::new();
     let mut test_case = TestCase::new(
         "REQ007".to_string(),
         1,
         1,
         "TC007".to_string(),
-        "BDD with missing TOML test".to_string(),
+        "Manual step with file checks".to_string(),
     );
-
-    // Add what would be BDD statements if the TOML file existed
-    let mut general_devices = HashMap::new();
-    general_devices.insert(
-        "Setup".to_string(),
-        vec![InitialConditionItem::String(
-            "create directory \"/tmp/test\"".to_string(),
-        )],
-    );
-    test_case.general_initial_conditions = InitialConditions {
-        include: None,
-        devices: general_devices,
-    };
 
     let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
-    let step = create_test_step(1, "Test step", "echo 'test'", "0", "test", Some(true));
+    let mut step = create_test_step(
+        1,
+        "Create config file",
+        "manually create /etc/app.conf",
+        "0",
+        "created",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple("[ -f /etc/app.conf ]".to_string()),
+        output: VerificationExpression::Simple("grep -q 'version=1.0' /etc/app.conf".to_string()),
+        output_file: None,
+        general: None,
+    };
     sequence.steps.push(step);
     test_case.test_sequences.push(sequence);
 
-    let json_path = std::path::Path::new("test_output.json");
-    let script = executor.generate_test_script_with_json_output(&test_case, json_path);
+    let script = executor.generate_test_script(&test_case);
 
-    // Script should still be generated (BDD gracefully fails)
-    assert!(script.contains("#!/bin/bash"));
-    assert!(script.contains("# Test Case: TC007"));
-
-    // If TOML is missing, the statement appears as comment only (or if it loads, as command)
-    // Either way, the statement text should appear
-    assert!(script.contains("create directory \"/tmp/test\""));
+    // Verify file check verification expressions
+    assert!(script.contains("if [ -f /etc/app.conf ]; then"));
+    assert!(script.contains("USER_VERIFICATION_RESULT=true"));
+    assert!(script.contains("if grep -q 'version=1.0' /etc/app.conf; then"));
+    assert!(script.contains("USER_VERIFICATION_OUTPUT=true"));
 }
 
 #[test]
-fn test_bdd_complex_patterns_in_conditions() {
+fn test_manual_step_verification_combining_multiple_checks() {
     let executor = TestExecutor::new();
     let mut test_case = TestCase::new(
         "REQ008".to_string(),
         1,
         1,
         "TC008".to_string(),
-        "Complex BDD patterns test".to_string(),
+        "Manual step combining multiple checks".to_string(),
     );
-
-    // Use various complex BDD patterns from the TOML
-    let mut devices = HashMap::new();
-    devices.insert(
-        "Setup".to_string(),
-        vec![
-            InitialConditionItem::String(
-                "change permissions of \"/tmp/file.txt\" to 755".to_string(),
-            ),
-            InitialConditionItem::String(
-                "append \"test data\" to file \"/tmp/log.txt\"".to_string(),
-            ),
-            InitialConditionItem::String("port 8080 on \"localhost\" should be open".to_string()),
-        ],
-    );
-    test_case.initial_conditions = InitialConditions {
-        include: None,
-        devices,
-    };
 
     let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
-    let step = create_test_step(1, "Test step", "echo 'test'", "0", "test", Some(true));
+    let mut step = create_test_step(
+        1,
+        "System verification",
+        "verify system state",
+        "0",
+        "verified",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple(
+            "[ -f /tmp/file1 ] && [ -f /tmp/file2 ] && read_true_false \"Are services running?\" \"y\"".to_string(),
+        ),
+        output: VerificationExpression::Simple(
+            "grep -q 'status=ok' /tmp/status && read_true_false \"Is display correct?\" \"y\"".to_string(),
+        ),
+        output_file: None,
+        general: None,
+    };
     sequence.steps.push(step);
     test_case.test_sequences.push(sequence);
 
-    let json_path = std::path::Path::new("test_output.json");
-    let script = executor.generate_test_script_with_json_output(&test_case, json_path);
+    let script = executor.generate_test_script(&test_case);
 
-    // Check that complex patterns are parsed correctly
-    assert!(script.contains("chmod 755 \"/tmp/file.txt\""));
-    assert!(script.contains("echo \"test data\" >> \"/tmp/log.txt\""));
-    assert!(script.contains("nc -z \"localhost\" 8080"));
+    // Verify combined checks in verification expressions
+    assert!(script.contains(
+        "[ -f /tmp/file1 ] && [ -f /tmp/file2 ] && read_true_false \"Are services running?\" \"y\""
+    ));
+    assert!(script.contains(
+        "grep -q 'status=ok' /tmp/status && read_true_false \"Is display correct?\" \"y\""
+    ));
 }
 
 #[test]
-fn test_json_output_path_in_script() {
+fn test_script_with_both_manual_and_automated_steps() {
     let executor = TestExecutor::new();
     let mut test_case = TestCase::new(
         "REQ009".to_string(),
         1,
         1,
         "TC009".to_string(),
-        "JSON output path test".to_string(),
+        "Mixed manual and automated steps".to_string(),
     );
 
     let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
-    let step = create_test_step(1, "Test step", "echo 'test'", "0", "test", Some(true));
-    sequence.steps.push(step);
+
+    // Add automated step
+    let auto_step = create_test_step(
+        1,
+        "Automated step",
+        "echo 'automated'",
+        "0",
+        "automated",
+        Some(true),
+    );
+    sequence.steps.push(auto_step);
+
+    // Add manual step with verification
+    let mut manual_step =
+        create_test_step(2, "Manual step", "manual action", "0", "done", Some(true));
+    manual_step.manual = Some(true);
+    manual_step.verification = Verification {
+        result: VerificationExpression::Simple(
+            "read_true_false \"Is it complete?\" \"y\"".to_string(),
+        ),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(manual_step);
+
+    // Add another automated step
+    let auto_step2 = create_test_step(
+        3,
+        "Another automated step",
+        "echo 'done'",
+        "0",
+        "done",
+        Some(true),
+    );
+    sequence.steps.push(auto_step2);
+
     test_case.test_sequences.push(sequence);
 
-    let json_path = std::path::Path::new("/custom/path/output.json");
-    let script = executor.generate_test_script_with_json_output(&test_case, json_path);
+    let script = executor.generate_test_script(&test_case);
 
-    // Verify the JSON_LOG variable is set to the custom path
-    assert!(script.contains("JSON_LOG=\"/custom/path/output.json\""));
+    // Verify automated steps use normal execution
+    assert!(script.contains("# Step 1: Automated step"));
+    assert!(script.contains("COMMAND_OUTPUT=$({ echo 'automated'; } 2>&1 | tee"));
+
+    // Verify manual step uses USER_VERIFICATION
+    assert!(script.contains("# Step 2: Manual step"));
+    assert!(script.contains("USER_VERIFICATION_RESULT=false"));
+    assert!(script.contains("read_true_false \"Is it complete?\" \"y\""));
+
+    // Verify third automated step
+    assert!(script.contains("# Step 3: Another automated step"));
+    assert!(script.contains("COMMAND_OUTPUT=$({ echo 'done'; } 2>&1 | tee"));
 }
 
 #[test]
-fn test_bdd_with_multiple_keys_in_conditions() {
+fn test_manual_step_pass_fail_messages() {
     let executor = TestExecutor::new();
     let mut test_case = TestCase::new(
         "REQ010".to_string(),
         1,
         1,
         "TC010".to_string(),
-        "Multiple keys test".to_string(),
+        "Manual step pass/fail messages".to_string(),
     );
-
-    // Multiple keys with BDD statements
-    let mut general_devices = HashMap::new();
-    general_devices.insert(
-        "Filesystem".to_string(),
-        vec![InitialConditionItem::String(
-            "create directory \"/tmp/fs1\"".to_string(),
-        )],
-    );
-    general_devices.insert(
-        "Network".to_string(),
-        vec![InitialConditionItem::String(
-            "ping device \"192.168.1.1\" with 5 retries".to_string(),
-        )],
-    );
-    general_devices.insert(
-        "Time".to_string(),
-        vec![InitialConditionItem::String(
-            "wait for 3 seconds".to_string(),
-        )],
-    );
-    test_case.general_initial_conditions = InitialConditions {
-        include: None,
-        devices: general_devices,
-    };
 
     let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
-    let step = create_test_step(1, "Test step", "echo 'test'", "0", "test", Some(true));
+    let mut step = create_test_step(
+        1,
+        "Critical manual check",
+        "inspect device",
+        "0",
+        "ok",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple("[ -f /tmp/check_result ]".to_string()),
+        output: VerificationExpression::Simple("grep -q 'PASS' /tmp/check_result".to_string()),
+        output_file: None,
+        general: None,
+    };
     sequence.steps.push(step);
     test_case.test_sequences.push(sequence);
 
-    let json_path = std::path::Path::new("test_output.json");
-    let script = executor.generate_test_script_with_json_output(&test_case, json_path);
+    let script = executor.generate_test_script(&test_case);
 
-    // All three keys should have their BDD statements processed
-    assert!(script.contains("mkdir -p \"/tmp/fs1\""));
-    assert!(script.contains("ping -c 5 \"192.168.1.1\""));
-    assert!(script.contains("sleep 3"));
+    // Verify pass message
+    assert!(script.contains("echo \"[PASS] Step 1: Critical manual check\""));
+
+    // Verify fail message with details
+    assert!(script.contains("echo \"[FAIL] Step 1: Critical manual check\""));
+    assert!(script.contains("echo \"  Result verification: $USER_VERIFICATION_RESULT\""));
+    assert!(script.contains("echo \"  Output verification: $USER_VERIFICATION_OUTPUT\""));
+
+    // Verify exit on failure
+    assert!(script.contains("exit 1"));
 }
 
 #[test]
-fn test_command_escaping_for_json_with_single_quotes() {
+fn test_manual_step_interactive_prompt() {
     let executor = TestExecutor::new();
     let mut test_case = TestCase::new(
         "REQ011".to_string(),
         1,
         1,
         "TC011".to_string(),
-        "Test command escaping with single quotes".to_string(),
+        "Manual step interactive prompt".to_string(),
     );
 
     let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
-    // Create a step with a command containing single quotes
-    let step = create_test_step(
+    let mut step = create_test_step(
         1,
-        "Echo with quotes",
-        "echo 'hello world'",
+        "Interactive check",
+        "check something",
         "0",
-        "hello world",
+        "checked",
         Some(true),
     );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple("[ -f /tmp/result ]".to_string()),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
     sequence.steps.push(step);
     test_case.test_sequences.push(sequence);
 
-    let json_path = std::path::Path::new("test_output.json");
-    let script = executor.generate_test_script_with_json_output(&test_case, json_path);
+    let script = executor.generate_test_script(&test_case);
 
-    // The JSON command field should contain the escaped command
-    // The implementation converts single quotes to double quotes, then escapes the double quotes
-    // Original: echo 'hello world'
-    // After escaping (lines 733-736 of executor.rs):
-    // 1. Backslashes: no backslashes to escape
-    // 2. Single quotes: ' -> " (so 'hello world' becomes "hello world")
-    // 3. Double quotes: " -> \" (so "hello world" becomes \"hello world\")
-    // Result: echo \"hello world\"
-
-    // Check that the script contains the original command with single quotes
-    assert!(
-        script.contains("echo 'hello world'"),
-        "Script should contain the original command with single quotes"
-    );
-
-    // Check that the JSON output correctly converts and escapes quotes
-    // The JSON line should be: echo '    "command": "echo \"hello world\"",'
-    let expected_json_line = "echo '    \"command\": \"echo \\\"hello world\\\"\",";
-    assert!(
-        script.contains(expected_json_line),
-        "JSON command field should convert single quotes to escaped double quotes. Expected: {}",
-        expected_json_line
-    );
-
-    // Verify the command is properly included in the JSON write statement
-    assert!(
-        script.contains("echo '    \"command\":"),
-        "Script should write command field to JSON"
-    );
+    // Verify interactive mode check
+    assert!(script.contains("if [[ \"${DEBIAN_FRONTEND}\" != 'noninteractive' && -t 0 ]]; then"));
+    assert!(script.contains("read -p \"Press ENTER after completing the manual action...\""));
+    assert!(script.contains("else"));
+    assert!(script
+        .contains("echo \"Non-interactive mode detected, skipping manual step confirmation.\""));
 }
 
 #[test]
-fn test_command_escaping_for_json_with_mixed_quotes() {
+fn test_multiple_manual_steps_in_sequence() {
     let executor = TestExecutor::new();
     let mut test_case = TestCase::new(
         "REQ012".to_string(),
         1,
         1,
         "TC012".to_string(),
-        "Test command escaping with mixed quotes".to_string(),
+        "Multiple manual steps".to_string(),
     );
 
     let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
-    // Create a step with a command containing both single and double quotes
-    let step = create_test_step(
-        1,
-        "Echo with mixed quotes",
-        "echo 'test \"quoted\" value'",
-        "0",
-        "test \"quoted\" value",
-        Some(true),
-    );
-    sequence.steps.push(step);
-    test_case.test_sequences.push(sequence);
 
-    let json_path = std::path::Path::new("test_output.json");
-    let script = executor.generate_test_script_with_json_output(&test_case, json_path);
-
-    // The generated bash script should contain the original command
-    assert!(
-        script.contains("echo 'test \"quoted\" value'"),
-        "Script should contain the original command with mixed quotes"
-    );
-
-    // Validate the generated JSON entry contains properly escaped command string
-    // The Rust code in executor.rs (lines 733-736) performs these replacements on the command:
-    // 1. Backslashes: \ -> \\
-    // 2. Single quotes: ' -> " (this is the bug!)
-    // 3. Double quotes: " -> \"
-    // Due to step 2, a command like: echo 'test "quoted" value'
-    // becomes: echo "test \"quoted\" value" before JSON escaping
-    // Then after JSON escaping: echo \"test \\\"quoted\\\" value\"
-    // This escaped value is directly embedded in the generated bash script
-
-    // Find the line that writes the command to JSON
-    // It should be something like: echo '    "command": "...",
-    assert!(
-        script.contains(r#"echo '    "command":"#),
-        "Script should contain JSON command field write statement"
-    );
-
-    // Check that the script writes valid JSON structure
-    assert!(
-        script.contains(r#"echo '  {'"#),
-        "Script should open JSON object"
-    );
-    assert!(
-        script.contains(r#"echo '  }'"#),
-        "Script should close JSON object"
-    );
-
-    // The actual command in the JSON should be escaped
-    // Due to the bug on line 735 of executor.rs, single quotes are replaced with double quotes:
-    // Original: echo 'test "quoted" value'
-    // Step 1 - replace('", \""): echo "test "quoted" value"
-    // Step 2 - replace(""", "\\\""): echo \"test \"quoted\" value\"
-    // Note: The inner quotes don't get double-escaped because they were already double quotes
-    // So in the generated script we should find this escaped version
-    let expected_escaped = r#"echo \"test \"quoted\" value\""#;
-    assert!(
-        script.contains(expected_escaped),
-        "Script should contain the properly escaped command string in the JSON field. Expected to find: {}",
-        expected_escaped
-    );
-
-    // Verify the JSON structure can be validated
-    // The script includes a jq validation check at the end
-    assert!(
-        script.contains("if ! jq empty \"$JSON_LOG\""),
-        "Script should include JSON validation with jq"
-    );
-
-    // Final check: the generated JSON line for the command field should be:
-    // echo '    "command": "echo \"test \"quoted\" value\"",'
-    let expected_json_line = "echo '    \"command\": \"echo \\\"test \\\"quoted\\\" value\\\"\",";
-    assert!(
-        script.contains(expected_json_line),
-        "Script should contain the exact JSON command line with properly escaped quotes. Expected: {}",
-        expected_json_line
-    );
-}
-
-#[test]
-fn test_command_escaping_for_json_with_newlines() {
-    let executor = TestExecutor::new();
-    let mut test_case = TestCase::new(
-        "REQ013".to_string(),
-        1,
-        1,
-        "TC013".to_string(),
-        "Test command escaping with newlines".to_string(),
-    );
-
-    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
-    // Create a step with a multi-line bash command
-    let multiline_command = "echo 'line1'\necho 'line2'\necho 'line3'";
-    let step = create_test_step(
-        1,
-        "Multi-line command",
-        multiline_command,
-        "0",
-        "line1\nline2\nline3",
-        Some(true),
-    );
-    sequence.steps.push(step);
-    test_case.test_sequences.push(sequence);
-
-    let json_path = std::path::Path::new("test_output.json");
-    let script = executor.generate_test_script_with_json_output(&test_case, json_path);
-
-    // The generated bash script should contain the original multi-line command
-    assert!(
-        script.contains("echo 'line1'\necho 'line2'\necho 'line3'"),
-        "Script should contain the original multi-line command"
-    );
-
-    // In the JSON output section of the script, newlines should be escaped as \n
-    // The command in the JSON should have the newlines converted to \n for JSON format
-    // The script writes: echo '    "command": "...",
-    // where the command value should have \n instead of literal newlines
-
-    // Looking for the escaped form in the JSON line
-    // The echo command writes the JSON with newlines escaped as \n
-    // In the bash script, within single quotes, \n is literal, so it appears as:
-    // echo '    "command": "echo \"line1\"\necho \"line2\"\necho \"line3\"",'
-    // This produces JSON with \n (which is the correct JSON escape sequence for newlines)
-    let expected =
-        "echo '    \"command\": \"echo \\\"line1\\\"\\necho \\\"line2\\\"\\necho \\\"line3\\\"\",";
-    assert!(
-        script.contains(expected),
-        "JSON command field should contain newlines escaped as \\n in the JSON output"
-    );
-
-    // Verify the JSON structure is properly written
-    assert!(
-        script.contains("echo '    \"command\":"),
-        "Script should contain JSON command field write statement"
-    );
-}
-
-#[test]
-fn test_command_escaping_for_json_with_backslashes() {
-    let executor = TestExecutor::new();
-    let mut test_case = TestCase::new(
-        "REQ014".to_string(),
-        1,
-        1,
-        "TC014".to_string(),
-        "Test command escaping with backslashes".to_string(),
-    );
-
-    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
-    // Create a step with a command containing backslashes (e.g., grep with regex)
-    let step = create_test_step(
-        1,
-        "Grep with regex",
-        r#"grep "\d+" file.txt"#,
-        "0",
-        "123",
-        Some(true),
-    );
-    sequence.steps.push(step);
-    test_case.test_sequences.push(sequence);
-
-    let json_path = std::path::Path::new("test_output.json");
-    let script = executor.generate_test_script_with_json_output(&test_case, json_path);
-
-    // The generated bash script should contain the original command with backslashes
-    assert!(
-        script.contains(r#"grep "\d+" file.txt"#),
-        "Script should contain the original command with backslashes"
-    );
-
-    // In the JSON output, backslashes must be escaped according to JSON spec
-    // Original: grep "\d+" file.txt
-    // After escaping (lines 733-736 of executor.rs):
-    // 1. Backslashes: \ -> \\ (so \d becomes \\d)
-    // 2. Single quotes: ' -> " (no single quotes in this command)
-    // 3. Double quotes: " -> \" (so " becomes \")
-    // Result: grep \"\\d+\" file.txt
-
-    // The JSON line should be:
-    // echo '    "command": "grep \"\\d+\" file.txt",'
-    let expected_json_line = r#"echo '    "command": "grep \"\\d+\" file.txt","#;
-    assert!(
-        script.contains(expected_json_line),
-        "JSON command field should have properly escaped backslashes and quotes. Expected: {}",
-        expected_json_line
-    );
-
-    // Verify the JSON structure is properly written
-    assert!(
-        script.contains("echo '    \"command\":"),
-        "Script should contain JSON command field write statement"
-    );
-
-    // Verify that backslashes are doubled in the JSON output (JSON escaping requirement)
-    // The pattern \d should appear as \\d in the JSON string literal
-    assert!(
-        script.contains(r#"\"\\d+\""#),
-        "Backslashes should be properly escaped in JSON (doubled)"
-    );
-}
-
-// ============================================================================
-// Integration Tests for Script Generation with Dependencies
-// ============================================================================
-
-#[test]
-fn test_initial_conditions_with_include_array_as_comments() {
-    use testcase_manager::models::IncludeRef;
-
-    let executor = TestExecutor::new();
-    let mut test_case = TestCase::new(
-        "REQ001".to_string(),
-        1,
-        1,
-        "TC001".to_string(),
-        "Test with include array".to_string(),
-    );
-
-    // Add include array to general_initial_conditions
-    let include_refs = vec![
-        IncludeRef {
-            id: "TC_SETUP_001".to_string(),
-            test_sequence: None,
-        },
-        IncludeRef {
-            id: "TC_INIT_002".to_string(),
-            test_sequence: Some("Seq1".to_string()),
-        },
-    ];
-
-    let mut general_devices = HashMap::new();
-    general_devices.insert(
-        "Device".to_string(),
-        vec![InitialConditionItem::String("Powered on".to_string())],
-    );
-
-    test_case.general_initial_conditions = InitialConditions {
-        include: Some(include_refs),
-        devices: general_devices,
+    // First manual step
+    let mut step1 = create_test_step(1, "Manual step 1", "action 1", "0", "done", Some(true));
+    step1.manual = Some(true);
+    step1.verification = Verification {
+        result: VerificationExpression::Simple(
+            "read_true_false \"Step 1 done?\" \"y\"".to_string(),
+        ),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
     };
+    sequence.steps.push(step1);
 
-    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
-    let step = create_test_step(1, "Test", "echo 'test'", "0", "test", Some(true));
-    sequence.steps.push(step);
+    // Second manual step
+    let mut step2 = create_test_step(2, "Manual step 2", "action 2", "0", "done", Some(true));
+    step2.manual = Some(true);
+    step2.verification = Verification {
+        result: VerificationExpression::Simple(
+            "read_true_false \"Step 2 done?\" \"y\"".to_string(),
+        ),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step2);
+
     test_case.test_sequences.push(sequence);
 
     let script = executor.generate_test_script(&test_case);
 
-    // Verify include array items appear as comments
-    assert!(script.contains("# General Initial Conditions"));
-    assert!(script.contains("# Include: TC_SETUP_001"));
-    assert!(script.contains("# Include: TC_INIT_002 (test_sequence: Seq1)"));
-    assert!(script.contains("# Device: Powered on"));
-}
-
-#[test]
-fn test_initial_conditions_mixed_item_types_as_string_representations() {
-    use testcase_manager::models::TestSequenceRefTarget;
-
-    let executor = TestExecutor::new();
-    let mut test_case = TestCase::new(
-        "REQ002".to_string(),
-        1,
-        1,
-        "TC002".to_string(),
-        "Test with mixed condition items".to_string(),
-    );
-
-    // Add mixed initial condition items
-    let mut devices = HashMap::new();
-    devices.insert(
-        "Setup".to_string(),
-        vec![
-            InitialConditionItem::String("System is ready".to_string()),
-            InitialConditionItem::RefItem {
-                reference: "CONFIG_REF_001".to_string(),
-            },
-            InitialConditionItem::TestSequenceRef {
-                test_sequence: TestSequenceRefTarget {
-                    id: 5,
-                    step: "2a".to_string(),
-                },
-            },
-        ],
-    );
-
-    test_case.initial_conditions = InitialConditions {
-        include: None,
-        devices,
-    };
-
-    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
-    let step = create_test_step(1, "Test", "echo 'test'", "0", "test", Some(true));
-    sequence.steps.push(step);
-    test_case.test_sequences.push(sequence);
-
-    let script = executor.generate_test_script(&test_case);
-
-    // Verify all item types are converted to string representations
-    assert!(script.contains("# Initial Conditions"));
-    assert!(script.contains("# Setup: System is ready"));
-    assert!(script.contains("# Setup: ref: CONFIG_REF_001"));
-    assert!(script.contains("# Setup: test_sequence: id=5, step=2a"));
-}
-
-#[test]
-fn test_initial_conditions_ref_items_appear_as_comments() {
-    let executor = TestExecutor::new();
-    let mut test_case = TestCase::new(
-        "REQ003".to_string(),
-        1,
-        1,
-        "TC003".to_string(),
-        "Test with ref items".to_string(),
-    );
-
-    // Add ref items to test-level initial conditions
-    let mut devices = HashMap::new();
-    devices.insert(
-        "Environment".to_string(),
-        vec![
-            InitialConditionItem::RefItem {
-                reference: "ENV_SETUP_001".to_string(),
-            },
-            InitialConditionItem::RefItem {
-                reference: "ENV_CONFIG_002".to_string(),
-            },
-        ],
-    );
-
-    test_case.initial_conditions = InitialConditions {
-        include: None,
-        devices,
-    };
-
-    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
-    let step = create_test_step(1, "Test", "echo 'test'", "0", "test", Some(true));
-    sequence.steps.push(step);
-    test_case.test_sequences.push(sequence);
-
-    let script = executor.generate_test_script(&test_case);
-
-    // Verify ref items appear as comments in the script
-    assert!(script.contains("# Initial Conditions"));
-    assert!(script.contains("# Environment: ref: ENV_SETUP_001"));
-    assert!(script.contains("# Environment: ref: ENV_CONFIG_002"));
-}
-
-#[test]
-fn test_initial_conditions_test_sequence_refs_appear_as_comments() {
-    use testcase_manager::models::TestSequenceRefTarget;
-
-    let executor = TestExecutor::new();
-    let mut test_case = TestCase::new(
-        "REQ004".to_string(),
-        1,
-        1,
-        "TC004".to_string(),
-        "Test with test_sequence refs".to_string(),
-    );
-
-    // Add test_sequence ref items to sequence-level initial conditions
-    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
-
-    let mut seq_devices = HashMap::new();
-    seq_devices.insert(
-        "Prerequisites".to_string(),
-        vec![
-            InitialConditionItem::TestSequenceRef {
-                test_sequence: TestSequenceRefTarget {
-                    id: 3,
-                    step: "1".to_string(),
-                },
-            },
-            InitialConditionItem::TestSequenceRef {
-                test_sequence: TestSequenceRefTarget {
-                    id: 7,
-                    step: "4b".to_string(),
-                },
-            },
-        ],
-    );
-
-    sequence.initial_conditions = InitialConditions {
-        include: None,
-        devices: seq_devices,
-    };
-
-    let step = create_test_step(1, "Test", "echo 'test'", "0", "test", Some(true));
-    sequence.steps.push(step);
-    test_case.test_sequences.push(sequence);
-
-    let script = executor.generate_test_script(&test_case);
-
-    // Verify test_sequence refs appear as comments in the script
-    assert!(script.contains("# Sequence Initial Conditions"));
-    assert!(script.contains("# Prerequisites: test_sequence: id=3, step=1"));
-    assert!(script.contains("# Prerequisites: test_sequence: id=7, step=4b"));
-}
-
-#[test]
-fn test_initial_conditions_bdd_pattern_with_include_array() {
-    use testcase_manager::models::IncludeRef;
-
-    let executor = TestExecutor::new();
-    let mut test_case = TestCase::new(
-        "REQ005".to_string(),
-        1,
-        1,
-        "TC005".to_string(),
-        "Test BDD patterns with include array".to_string(),
-    );
-
-    // Add include array and BDD patterns to general_initial_conditions
-    let include_refs = vec![IncludeRef {
-        id: "TC_COMMON_SETUP".to_string(),
-        test_sequence: None,
-    }];
-
-    let mut general_devices = HashMap::new();
-    general_devices.insert(
-        "Setup".to_string(),
-        vec![
-            InitialConditionItem::String("create directory \"/tmp/testdir\"".to_string()),
-            InitialConditionItem::String("wait for 2 seconds".to_string()),
-        ],
-    );
-
-    test_case.general_initial_conditions = InitialConditions {
-        include: Some(include_refs),
-        devices: general_devices,
-    };
-
-    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
-    let step = create_test_step(1, "Test", "echo 'test'", "0", "test", Some(true));
-    sequence.steps.push(step);
-    test_case.test_sequences.push(sequence);
-
-    let script = executor.generate_test_script(&test_case);
-
-    // Verify include array appears as comments
-    assert!(script.contains("# General Initial Conditions"));
-    assert!(script.contains("# Include: TC_COMMON_SETUP"));
-
-    // Verify BDD patterns are processed and generate commands
-    assert!(script.contains("# Setup: create directory \"/tmp/testdir\""));
-    assert!(script.contains("mkdir -p \"/tmp/testdir\""));
-    assert!(script.contains("# Setup: wait for 2 seconds"));
-    assert!(script.contains("sleep 2"));
-}
-
-#[test]
-fn test_initial_conditions_bdd_pattern_with_ref_items() {
-    let executor = TestExecutor::new();
-    let mut test_case = TestCase::new(
-        "REQ006".to_string(),
-        1,
-        1,
-        "TC006".to_string(),
-        "Test BDD patterns with ref items".to_string(),
-    );
-
-    // Mix BDD patterns and ref items
-    let mut devices = HashMap::new();
-    devices.insert(
-        "Preconditions".to_string(),
-        vec![
-            InitialConditionItem::String("create directory \"/tmp/logs\"".to_string()),
-            InitialConditionItem::RefItem {
-                reference: "NETWORK_CONFIG".to_string(),
-            },
-            InitialConditionItem::String("file \"/tmp/config\" should exist".to_string()),
-        ],
-    );
-
-    test_case.initial_conditions = InitialConditions {
-        include: None,
-        devices,
-    };
-
-    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
-    let step = create_test_step(1, "Test", "echo 'test'", "0", "test", Some(true));
-    sequence.steps.push(step);
-    test_case.test_sequences.push(sequence);
-
-    let script = executor.generate_test_script(&test_case);
-
-    // Verify BDD patterns generate commands
-    assert!(script.contains("# Initial Conditions"));
-    assert!(script.contains("# Preconditions: create directory \"/tmp/logs\""));
-    assert!(script.contains("mkdir -p \"/tmp/logs\""));
-
-    // Verify ref items appear as comments only
-    assert!(script.contains("# Preconditions: ref: NETWORK_CONFIG"));
-
-    // Verify second BDD pattern generates command
-    assert!(script.contains("# Preconditions: file \"/tmp/config\" should exist"));
-    assert!(script.contains("test -f \"/tmp/config\""));
-}
-
-#[test]
-fn test_initial_conditions_all_levels_with_dependencies() {
-    use testcase_manager::models::{IncludeRef, TestSequenceRefTarget};
-
-    let executor = TestExecutor::new();
-    let mut test_case = TestCase::new(
-        "REQ007".to_string(),
-        1,
-        1,
-        "TC007".to_string(),
-        "Test all levels with dependencies".to_string(),
-    );
-
-    // General initial conditions with include array
-    let include_refs = vec![IncludeRef {
-        id: "TC_GLOBAL_SETUP".to_string(),
-        test_sequence: None,
-    }];
-
-    let mut general_devices = HashMap::new();
-    general_devices.insert(
-        "Global".to_string(),
-        vec![
-            InitialConditionItem::String("wait for 1 seconds".to_string()),
-            InitialConditionItem::RefItem {
-                reference: "GLOBAL_REF".to_string(),
-            },
-        ],
-    );
-
-    test_case.general_initial_conditions = InitialConditions {
-        include: Some(include_refs),
-        devices: general_devices,
-    };
-
-    // Test-level initial conditions with mixed items
-    let mut test_devices = HashMap::new();
-    test_devices.insert(
-        "Test".to_string(),
-        vec![
-            InitialConditionItem::String("create directory \"/tmp/test\"".to_string()),
-            InitialConditionItem::TestSequenceRef {
-                test_sequence: TestSequenceRefTarget {
-                    id: 2,
-                    step: "3".to_string(),
-                },
-            },
-        ],
-    );
-
-    test_case.initial_conditions = InitialConditions {
-        include: None,
-        devices: test_devices,
-    };
-
-    // Sequence-level initial conditions with include array
-    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
-
-    let seq_include_refs = vec![IncludeRef {
-        id: "TC_SEQ_SETUP".to_string(),
-        test_sequence: Some("Seq2".to_string()),
-    }];
-
-    let mut seq_devices = HashMap::new();
-    seq_devices.insert(
-        "Sequence".to_string(),
-        vec![InitialConditionItem::String(
-            "file \"/tmp/test\" should exist".to_string(),
-        )],
-    );
-
-    sequence.initial_conditions = InitialConditions {
-        include: Some(seq_include_refs),
-        devices: seq_devices,
-    };
-
-    let step = create_test_step(1, "Test", "echo 'test'", "0", "test", Some(true));
-    sequence.steps.push(step);
-    test_case.test_sequences.push(sequence);
-
-    let script = executor.generate_test_script(&test_case);
-
-    // Check general conditions
-    assert!(script.contains("# General Initial Conditions"));
-    assert!(script.contains("# Include: TC_GLOBAL_SETUP"));
-    assert!(script.contains("# Global: wait for 1 seconds"));
-    assert!(script.contains("sleep 1"));
-    assert!(script.contains("# Global: ref: GLOBAL_REF"));
-
-    // Check test-level conditions
-    assert!(script.contains("# Initial Conditions"));
-    assert!(script.contains("# Test: create directory \"/tmp/test\""));
-    assert!(script.contains("mkdir -p \"/tmp/test\""));
-    assert!(script.contains("# Test: test_sequence: id=2, step=3"));
-
-    // Check sequence-level conditions
-    assert!(script.contains("# Sequence Initial Conditions"));
-    assert!(script.contains("# Include: TC_SEQ_SETUP (test_sequence: Seq2)"));
-    assert!(script.contains("# Sequence: file \"/tmp/test\" should exist"));
-    assert!(script.contains("test -f \"/tmp/test\""));
-}
-
-#[test]
-fn test_initial_conditions_include_array_multiple_refs() {
-    use testcase_manager::models::IncludeRef;
-
-    let executor = TestExecutor::new();
-    let mut test_case = TestCase::new(
-        "REQ008".to_string(),
-        1,
-        1,
-        "TC008".to_string(),
-        "Test multiple include refs".to_string(),
-    );
-
-    // Multiple include references
-    let include_refs = vec![
-        IncludeRef {
-            id: "TC_SETUP_001".to_string(),
-            test_sequence: None,
-        },
-        IncludeRef {
-            id: "TC_SETUP_002".to_string(),
-            test_sequence: None,
-        },
-        IncludeRef {
-            id: "TC_CONFIG_003".to_string(),
-            test_sequence: Some("Seq1".to_string()),
-        },
-        IncludeRef {
-            id: "TC_INIT_004".to_string(),
-            test_sequence: Some("Seq2".to_string()),
-        },
-    ];
-
-    test_case.initial_conditions = InitialConditions {
-        include: Some(include_refs),
-        devices: HashMap::new(),
-    };
-
-    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
-    let step = create_test_step(1, "Test", "echo 'test'", "0", "test", Some(true));
-    sequence.steps.push(step);
-    test_case.test_sequences.push(sequence);
-
-    let script = executor.generate_test_script(&test_case);
-
-    // Verify all include references appear as comments
-    assert!(script.contains("# Initial Conditions"));
-    assert!(script.contains("# Include: TC_SETUP_001"));
-    assert!(script.contains("# Include: TC_SETUP_002"));
-    assert!(script.contains("# Include: TC_CONFIG_003 (test_sequence: Seq1)"));
-    assert!(script.contains("# Include: TC_INIT_004 (test_sequence: Seq2)"));
-}
-
-#[test]
-fn test_initial_conditions_only_include_array_no_devices() {
-    use testcase_manager::models::IncludeRef;
-
-    let executor = TestExecutor::new();
-    let mut test_case = TestCase::new(
-        "REQ009".to_string(),
-        1,
-        1,
-        "TC009".to_string(),
-        "Test only include array".to_string(),
-    );
-
-    // Only include array, no devices
-    let include_refs = vec![IncludeRef {
-        id: "TC_FULL_SETUP".to_string(),
-        test_sequence: None,
-    }];
-
-    test_case.general_initial_conditions = InitialConditions {
-        include: Some(include_refs),
-        devices: HashMap::new(),
-    };
-
-    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
-    let step = create_test_step(1, "Test", "echo 'test'", "0", "test", Some(true));
-    sequence.steps.push(step);
-    test_case.test_sequences.push(sequence);
-
-    let script = executor.generate_test_script(&test_case);
-
-    // Verify include array appears even without devices
-    assert!(script.contains("# General Initial Conditions"));
-    assert!(script.contains("# Include: TC_FULL_SETUP"));
-}
-
-#[test]
-fn test_initial_conditions_complex_mixed_structure() {
-    use testcase_manager::models::{IncludeRef, TestSequenceRefTarget};
-
-    let executor = TestExecutor::new();
-    let mut test_case = TestCase::new(
-        "REQ010".to_string(),
-        1,
-        1,
-        "TC010".to_string(),
-        "Test complex mixed structure".to_string(),
-    );
-
-    // Complex structure with all types
-    let include_refs = vec![
-        IncludeRef {
-            id: "TC_BASE_001".to_string(),
-            test_sequence: None,
-        },
-        IncludeRef {
-            id: "TC_BASE_002".to_string(),
-            test_sequence: Some("SeqBase".to_string()),
-        },
-    ];
-
-    let mut general_devices = HashMap::new();
-    general_devices.insert(
-        "System".to_string(),
-        vec![
-            InitialConditionItem::String("Device is powered".to_string()),
-            InitialConditionItem::String("create directory \"/tmp/sys\"".to_string()),
-            InitialConditionItem::RefItem {
-                reference: "SYS_CONFIG".to_string(),
-            },
-            InitialConditionItem::TestSequenceRef {
-                test_sequence: TestSequenceRefTarget {
-                    id: 1,
-                    step: "setup".to_string(),
-                },
-            },
-            InitialConditionItem::String("wait for 1 seconds".to_string()),
-        ],
-    );
-
-    test_case.general_initial_conditions = InitialConditions {
-        include: Some(include_refs),
-        devices: general_devices,
-    };
-
-    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
-    let step = create_test_step(1, "Test", "echo 'test'", "0", "test", Some(true));
-    sequence.steps.push(step);
-    test_case.test_sequences.push(sequence);
-
-    let script = executor.generate_test_script(&test_case);
-
-    // Verify include array
-    assert!(script.contains("# General Initial Conditions"));
-    assert!(script.contains("# Include: TC_BASE_001"));
-    assert!(script.contains("# Include: TC_BASE_002 (test_sequence: SeqBase)"));
-
-    // Verify non-BDD string appears as comment only
-    assert!(script.contains("# System: Device is powered"));
-
-    // Verify BDD patterns generate commands
-    assert!(script.contains("# System: create directory \"/tmp/sys\""));
-    assert!(script.contains("mkdir -p \"/tmp/sys\""));
-
-    // Verify ref item appears as comment
-    assert!(script.contains("# System: ref: SYS_CONFIG"));
-
-    // Verify test_sequence ref appears as comment
-    assert!(script.contains("# System: test_sequence: id=1, step=setup"));
-
-    // Verify second BDD pattern generates command
-    assert!(script.contains("# System: wait for 1 seconds"));
-    assert!(script.contains("sleep 1"));
+    // Verify both manual steps have verification
+    assert!(script.contains("# Step 1: Manual step 1"));
+    assert!(script.contains("read_true_false \"Step 1 done?\" \"y\""));
+
+    assert!(script.contains("# Step 2: Manual step 2"));
+    assert!(script.contains("read_true_false \"Step 2 done?\" \"y\""));
+
+    // Each should have their own USER_VERIFICATION checks
+    let user_verification_result_count = script.matches("USER_VERIFICATION_RESULT=false").count();
+    let user_verification_output_count = script.matches("USER_VERIFICATION_OUTPUT=false").count();
+    assert_eq!(user_verification_result_count, 2);
+    assert_eq!(user_verification_output_count, 2);
 }
