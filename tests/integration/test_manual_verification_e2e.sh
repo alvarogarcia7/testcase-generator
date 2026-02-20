@@ -38,6 +38,10 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# Test counter
+TESTS_PASSED=0
+TESTS_FAILED=0
+
 echo "======================================"
 echo "Manual Verification End-to-End Integration Test"
 echo "======================================"

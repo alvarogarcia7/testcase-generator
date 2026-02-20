@@ -96,6 +96,7 @@ test-e2e:
 	#./tests/integration/test_bdd_initial_conditions.sh
 	./tests/integration/test_executor_e2e.sh
 	./tests/integration/test_manual_steps_e2e.sh
+	./tests/integration/test_manual_verification_e2e.sh
 	./tests/integration/test_orchestrator_e2e.sh
 	./tests/integration/test_orchestrator_examples.sh
 	#./tests/integration/test_run_manager_e2e.sh
