@@ -1136,3 +1136,303 @@ test_sequences:
         result.err()
     );
 }
+
+#[test]
+fn test_manual_field_accepts_default_false() {
+    let validator = SchemaValidator::new().unwrap();
+
+    let yaml = r#"
+test_sequences:
+  - id: 1
+    name: "Sequence"
+    description: "Test"
+    initial_conditions:
+      eUICC: ["Condition"]
+    steps:
+      - step: 1
+        description: "Step without manual field (defaults to false)"
+        command: "cmd"
+        expected:
+          success: true
+          result: "OK"
+          output: "Success"
+      - step: 2
+        description: "Step 2"
+        command: "cmd2"
+        expected:
+          result: "OK"
+          output: "Success"
+"#;
+
+    let result = validator.validate_chunk(yaml);
+    assert!(
+        result.is_ok(),
+        "Should accept steps without manual field (default false): {:?}",
+        result.err()
+    );
+}
+
+#[test]
+fn test_manual_field_accepts_explicit_true() {
+    let validator = SchemaValidator::new().unwrap();
+
+    let yaml = r#"
+test_sequences:
+  - id: 1
+    name: "Sequence"
+    description: "Test"
+    initial_conditions:
+      eUICC: ["Condition"]
+    steps:
+      - step: 1
+        description: "Manual step"
+        command: "cmd"
+        manual: true
+        expected:
+          success: true
+          result: "OK"
+          output: "Success"
+      - step: 2
+        description: "Step 2"
+        command: "cmd2"
+        expected:
+          result: "OK"
+          output: "Success"
+"#;
+
+    let result = validator.validate_chunk(yaml);
+    assert!(
+        result.is_ok(),
+        "Should accept manual: true on step: {:?}",
+        result.err()
+    );
+}
+
+#[test]
+fn test_manual_field_accepts_explicit_false() {
+    let validator = SchemaValidator::new().unwrap();
+
+    let yaml = r#"
+test_sequences:
+  - id: 1
+    name: "Sequence"
+    description: "Test"
+    initial_conditions:
+      eUICC: ["Condition"]
+    steps:
+      - step: 1
+        description: "Automated step"
+        command: "cmd"
+        manual: false
+        expected:
+          success: true
+          result: "OK"
+          output: "Success"
+      - step: 2
+        description: "Step 2"
+        command: "cmd2"
+        expected:
+          result: "OK"
+          output: "Success"
+"#;
+
+    let result = validator.validate_chunk(yaml);
+    assert!(
+        result.is_ok(),
+        "Should accept manual: false on step: {:?}",
+        result.err()
+    );
+}
+
+#[test]
+fn test_manual_field_backward_compatibility_without_field() {
+    let validator = SchemaValidator::new().unwrap();
+
+    let yaml = r#"
+test_sequences:
+  - id: 1
+    name: "Sequence"
+    description: "Test"
+    initial_conditions:
+      eUICC: ["Condition"]
+    steps:
+      - step: 1
+        description: "Old style step without manual field"
+        command: "cmd1"
+        expected:
+          success: true
+          result: "OK"
+          output: "Success"
+      - step: 2
+        description: "Another old style step"
+        command: "cmd2"
+        expected:
+          result: "OK"
+          output: "Success"
+      - step: 3
+        description: "Third old style step"
+        command: "cmd3"
+        expected:
+          result: "OK"
+          output: "Success"
+"#;
+
+    let result = validator.validate_chunk(yaml);
+    assert!(
+        result.is_ok(),
+        "Should accept steps without manual field for backward compatibility: {:?}",
+        result.err()
+    );
+}
+
+#[test]
+fn test_manual_field_rejects_non_boolean_string() {
+    let validator = SchemaValidator::new().unwrap();
+
+    let yaml = r#"
+test_sequences:
+  - id: 1
+    name: "Sequence"
+    description: "Test"
+    initial_conditions:
+      eUICC: ["Condition"]
+    steps:
+      - step: 1
+        description: "Step with invalid manual value"
+        command: "cmd"
+        manual: "true"
+        expected:
+          success: true
+          result: "OK"
+          output: "Success"
+"#;
+
+    let result = validator.validate_chunk(yaml);
+    assert!(
+        result.is_err(),
+        "Should reject string value for manual field"
+    );
+    let error = result.unwrap_err().to_string();
+    assert!(
+        error.contains("Invalid type") || error.contains("boolean"),
+        "Error should mention type mismatch or boolean: {}",
+        error
+    );
+}
+
+#[test]
+fn test_manual_field_rejects_non_boolean_integer() {
+    let validator = SchemaValidator::new().unwrap();
+
+    let yaml = r#"
+test_sequences:
+  - id: 1
+    name: "Sequence"
+    description: "Test"
+    initial_conditions:
+      eUICC: ["Condition"]
+    steps:
+      - step: 1
+        description: "Step with invalid manual value"
+        command: "cmd"
+        manual: 1
+        expected:
+          success: true
+          result: "OK"
+          output: "Success"
+"#;
+
+    let result = validator.validate_chunk(yaml);
+    assert!(
+        result.is_err(),
+        "Should reject integer value for manual field"
+    );
+    let error = result.unwrap_err().to_string();
+    assert!(
+        error.contains("Invalid type") || error.contains("boolean"),
+        "Error should mention type mismatch or boolean: {}",
+        error
+    );
+}
+
+#[test]
+fn test_manual_field_rejects_non_boolean_null() {
+    let validator = SchemaValidator::new().unwrap();
+
+    let yaml = r#"
+test_sequences:
+  - id: 1
+    name: "Sequence"
+    description: "Test"
+    initial_conditions:
+      eUICC: ["Condition"]
+    steps:
+      - step: 1
+        description: "Step with invalid manual value"
+        command: "cmd"
+        manual: null
+        expected:
+          success: true
+          result: "OK"
+          output: "Success"
+"#;
+
+    let result = validator.validate_chunk(yaml);
+    assert!(result.is_err(), "Should reject null value for manual field");
+    let error = result.unwrap_err().to_string();
+    assert!(
+        error.contains("Invalid type") || error.contains("boolean"),
+        "Error should mention type mismatch or boolean: {}",
+        error
+    );
+}
+
+#[test]
+fn test_manual_field_mixed_usage() {
+    let validator = SchemaValidator::new().unwrap();
+
+    let yaml = r#"
+test_sequences:
+  - id: 1
+    name: "Sequence"
+    description: "Test"
+    initial_conditions:
+      eUICC: ["Condition"]
+    steps:
+      - step: 1
+        description: "Automated step"
+        command: "cmd1"
+        manual: false
+        expected:
+          success: true
+          result: "OK"
+          output: "Success"
+      - step: 2
+        description: "Manual step"
+        command: "cmd2"
+        manual: true
+        expected:
+          result: "OK"
+          output: "Success"
+      - step: 3
+        description: "Step without manual field"
+        command: "cmd3"
+        expected:
+          result: "OK"
+          output: "Success"
+      - step: 4
+        description: "Another manual step"
+        command: "cmd4"
+        manual: true
+        expected:
+          result: "OK"
+          output: "Success"
+"#;
+
+    let result = validator.validate_chunk(yaml);
+    assert!(
+        result.is_ok(),
+        "Should accept mixed usage of manual field: {:?}",
+        result.err()
+    );
+}
