@@ -500,54 +500,8 @@ impl TestExecutor {
         }
 
         // Add bash helper functions for Y/n prompts
-        script.push_str("# Bash helper functions for user prompts\n");
-        script.push_str("# Prompts user for Y/n input with proper validation\n");
-        script.push_str("# Returns: 1 for yes, 0 for no\n");
-        script
-            .push_str("# Supports both interactive and non-interactive modes with TTY detection\n");
-        script.push_str("read_true_false() {\n");
-        script.push_str("    local prompt=\"$1\"\n");
-        script.push_str("    local default=\"${2:-y}\"\n");
-        script.push_str("    \n");
-        script.push_str("    # Check if running in non-interactive mode\n");
-        script.push_str(
-            "    if [[ \"${DEBIAN_FRONTEND}\" == 'noninteractive' ]] || ! [ -t 0 ]; then\n",
-        );
-        script.push_str("        # Non-interactive mode: return default\n");
-        script.push_str("        if [[ \"$default\" =~ ^[Yy]$ ]]; then\n");
-        script.push_str("            return 1\n");
-        script.push_str("        else\n");
-        script.push_str("            return 0\n");
-        script.push_str("        fi\n");
-        script.push_str("    fi\n");
-        script.push_str("    \n");
-        script.push_str("    # Interactive mode: prompt user\n");
-        script.push_str("    while true; do\n");
-        script.push_str("        if [[ \"$default\" =~ ^[Yy]$ ]]; then\n");
-        script.push_str("            read -p \"$prompt [Y/n]: \" response\n");
-        script.push_str("        else\n");
-        script.push_str("            read -p \"$prompt [y/N]: \" response\n");
-        script.push_str("        fi\n");
-        script.push_str("        \n");
-        script.push_str("        # Empty response uses default\n");
-        script.push_str("        if [[ -z \"$response\" ]]; then\n");
-        script.push_str("            response=\"$default\"\n");
-        script.push_str("        fi\n");
-        script.push_str("        \n");
-        script.push_str("        # Validate response\n");
-        script.push_str("        case \"$response\" in\n");
-        script.push_str("            [Yy]|[Yy][Ee][Ss])\n");
-        script.push_str("                return 1\n");
-        script.push_str("                ;;\n");
-        script.push_str("            [Nn]|[Nn][Oo])\n");
-        script.push_str("                return 0\n");
-        script.push_str("                ;;\n");
-        script.push_str("            *)\n");
-        script.push_str("                echo \"Invalid response. Please enter Y or n.\" >&2\n");
-        script.push_str("                ;;\n");
-        script.push_str("        esac\n");
-        script.push_str("    done\n");
-        script.push_str("}\n\n");
+        script.push_str(include_str!("../scripts/lib/read_true_false.sh"));
+        script.push('\n');
 
         script.push_str("# Prompts user for verification with Y/n input\n");
         script.push_str("# Returns: 1 for yes, 0 for no\n");
