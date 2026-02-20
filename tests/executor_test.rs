@@ -5388,3 +5388,1233 @@ fn test_manual_step_without_verification_complete_workflow() {
     assert!(!this_step.contains("[FAIL]"), "Should not contain [FAIL]");
     assert!(!this_step.contains("exit 1"), "Should not contain exit 1");
 }
+
+// ============================================================================
+// Manual Step Verification Expressions - File-Based Verifications
+// ============================================================================
+
+#[test]
+fn test_manual_verification_expression_file_exists() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_FILE_001".to_string(),
+        1,
+        1,
+        "TC_FILE_001".to_string(),
+        "File exists verification".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Check file exists",
+        "manually create /tmp/testfile.txt",
+        "0",
+        "created",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple("[ -f /tmp/testfile.txt ]".to_string()),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify file existence check
+    assert!(
+        script.contains("if [ -f /tmp/testfile.txt ]; then"),
+        "Script must check if file exists"
+    );
+    assert!(
+        script.contains("USER_VERIFICATION_RESULT=true"),
+        "Script must set verification result to true when file exists"
+    );
+}
+
+#[test]
+fn test_manual_verification_expression_file_not_exists() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_FILE_002".to_string(),
+        1,
+        1,
+        "TC_FILE_002".to_string(),
+        "File not exists verification".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Check file not exists",
+        "manually remove /tmp/oldfile.txt",
+        "0",
+        "removed",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple("[ ! -f /tmp/oldfile.txt ]".to_string()),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify file non-existence check
+    assert!(
+        script.contains("if [ ! -f /tmp/oldfile.txt ]; then"),
+        "Script must check if file does not exist"
+    );
+}
+
+#[test]
+fn test_manual_verification_expression_directory_exists() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_FILE_003".to_string(),
+        1,
+        1,
+        "TC_FILE_003".to_string(),
+        "Directory exists verification".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Check directory exists",
+        "manually create /var/log/myapp",
+        "0",
+        "created",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple("[ -d /var/log/myapp ]".to_string()),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify directory existence check
+    assert!(
+        script.contains("if [ -d /var/log/myapp ]; then"),
+        "Script must check if directory exists"
+    );
+}
+
+#[test]
+fn test_manual_verification_expression_grep_pattern_in_file() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_FILE_004".to_string(),
+        1,
+        1,
+        "TC_FILE_004".to_string(),
+        "Grep pattern in file verification".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Check pattern in file",
+        "manually add 'SUCCESS' to /tmp/result.log",
+        "0",
+        "added",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple("true".to_string()),
+        output: VerificationExpression::Simple("grep -q 'SUCCESS' /tmp/result.log".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify grep pattern check
+    assert!(
+        script.contains("if grep -q 'SUCCESS' /tmp/result.log; then"),
+        "Script must check if pattern exists in file"
+    );
+    assert!(
+        script.contains("USER_VERIFICATION_OUTPUT=true"),
+        "Script must set output verification to true when pattern found"
+    );
+}
+
+#[test]
+fn test_manual_verification_expression_grep_multiple_patterns() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_FILE_005".to_string(),
+        1,
+        1,
+        "TC_FILE_005".to_string(),
+        "Multiple grep patterns verification".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Check multiple patterns",
+        "update configuration file",
+        "0",
+        "updated",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple(
+            "grep -q 'version=1.0' /etc/app.conf && grep -q 'enabled=true' /etc/app.conf"
+                .to_string(),
+        ),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify multiple grep pattern check with AND operator
+    assert!(
+        script.contains(
+            "grep -q 'version=1.0' /etc/app.conf && grep -q 'enabled=true' /etc/app.conf"
+        ),
+        "Script must check multiple patterns with AND"
+    );
+}
+
+#[test]
+fn test_manual_verification_expression_file_readable() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_FILE_006".to_string(),
+        1,
+        1,
+        "TC_FILE_006".to_string(),
+        "File readable verification".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Check file readable",
+        "set permissions on /tmp/data.txt",
+        "0",
+        "permissions set",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple("[ -r /tmp/data.txt ]".to_string()),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify file readable check
+    assert!(
+        script.contains("if [ -r /tmp/data.txt ]; then"),
+        "Script must check if file is readable"
+    );
+}
+
+#[test]
+fn test_manual_verification_expression_file_writable() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_FILE_007".to_string(),
+        1,
+        1,
+        "TC_FILE_007".to_string(),
+        "File writable verification".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Check file writable",
+        "chmod permissions on /tmp/output.txt",
+        "0",
+        "permissions changed",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple("[ -w /tmp/output.txt ]".to_string()),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify file writable check
+    assert!(
+        script.contains("if [ -w /tmp/output.txt ]; then"),
+        "Script must check if file is writable"
+    );
+}
+
+#[test]
+fn test_manual_verification_expression_file_executable() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_FILE_008".to_string(),
+        1,
+        1,
+        "TC_FILE_008".to_string(),
+        "File executable verification".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Check file executable",
+        "make script executable",
+        "0",
+        "executable",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple("[ -x /usr/local/bin/myapp ]".to_string()),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify file executable check
+    assert!(
+        script.contains("if [ -x /usr/local/bin/myapp ]; then"),
+        "Script must check if file is executable"
+    );
+}
+
+// ============================================================================
+// Manual Step Verification Expressions - Process Status Verifications
+// ============================================================================
+
+#[test]
+fn test_manual_verification_expression_pgrep_process() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_PROC_001".to_string(),
+        1,
+        1,
+        "TC_PROC_001".to_string(),
+        "Process running with pgrep verification".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Check nginx process",
+        "manually start nginx",
+        "0",
+        "started",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple("pgrep -f nginx > /dev/null".to_string()),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify pgrep process check
+    assert!(
+        script.contains("if pgrep -f nginx > /dev/null; then"),
+        "Script must check if process is running with pgrep"
+    );
+}
+
+#[test]
+fn test_manual_verification_expression_ps_aux_grep() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_PROC_002".to_string(),
+        1,
+        1,
+        "TC_PROC_002".to_string(),
+        "Process status with ps aux verification".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Check process with ps",
+        "start application",
+        "0",
+        "running",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple("ps aux | grep -v grep | grep -q myapp".to_string()),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify ps aux grep check
+    assert!(
+        script.contains("if ps aux | grep -v grep | grep -q myapp; then"),
+        "Script must check process status with ps aux | grep"
+    );
+}
+
+#[test]
+fn test_manual_verification_expression_systemctl_is_active() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_PROC_003".to_string(),
+        1,
+        1,
+        "TC_PROC_003".to_string(),
+        "Service active with systemctl verification".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Check service active",
+        "start service",
+        "0",
+        "active",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple("systemctl is-active nginx".to_string()),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify systemctl is-active check
+    assert!(
+        script.contains("if systemctl is-active nginx; then"),
+        "Script must check if service is active with systemctl"
+    );
+}
+
+#[test]
+fn test_manual_verification_expression_pidof_process() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_PROC_004".to_string(),
+        1,
+        1,
+        "TC_PROC_004".to_string(),
+        "Process PID with pidof verification".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Check process PID",
+        "start daemon",
+        "0",
+        "daemon started",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple("pidof apache2 > /dev/null".to_string()),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify pidof check
+    assert!(
+        script.contains("if pidof apache2 > /dev/null; then"),
+        "Script must check if process exists with pidof"
+    );
+}
+
+// ============================================================================
+// Manual Step Verification Expressions - Network Verifications
+// ============================================================================
+
+#[test]
+fn test_manual_verification_expression_ping_host() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_NET_001".to_string(),
+        1,
+        1,
+        "TC_NET_001".to_string(),
+        "Ping host verification".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Check network connectivity",
+        "configure network",
+        "0",
+        "configured",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple("ping -c 1 192.168.1.1 > /dev/null".to_string()),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify ping check
+    assert!(
+        script.contains("if ping -c 1 192.168.1.1 > /dev/null; then"),
+        "Script must check network connectivity with ping"
+    );
+}
+
+#[test]
+fn test_manual_verification_expression_nc_port_check() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_NET_002".to_string(),
+        1,
+        1,
+        "TC_NET_002".to_string(),
+        "Port open with nc verification".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Check port open",
+        "start service on port 8080",
+        "0",
+        "port open",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple("nc -z localhost 8080".to_string()),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify netcat port check
+    assert!(
+        script.contains("if nc -z localhost 8080; then"),
+        "Script must check if port is open with nc"
+    );
+}
+
+#[test]
+fn test_manual_verification_expression_curl_endpoint() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_NET_003".to_string(),
+        1,
+        1,
+        "TC_NET_003".to_string(),
+        "HTTP endpoint with curl verification".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Check HTTP endpoint",
+        "start web server",
+        "0",
+        "server running",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple(
+            "curl -f -s http://localhost:8080/health > /dev/null".to_string(),
+        ),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify curl endpoint check
+    assert!(
+        script.contains("if curl -f -s http://localhost:8080/health > /dev/null; then"),
+        "Script must check HTTP endpoint with curl"
+    );
+}
+
+#[test]
+fn test_manual_verification_expression_netstat_listening() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_NET_004".to_string(),
+        1,
+        1,
+        "TC_NET_004".to_string(),
+        "Port listening with netstat verification".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Check port listening",
+        "bind service to port",
+        "0",
+        "listening",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple("netstat -tuln | grep -q ':8080'".to_string()),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify netstat listening check
+    assert!(
+        script.contains("if netstat -tuln | grep -q ':8080'; then"),
+        "Script must check if port is listening with netstat"
+    );
+}
+
+#[test]
+fn test_manual_verification_expression_wget_http_code() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_NET_005".to_string(),
+        1,
+        1,
+        "TC_NET_005".to_string(),
+        "HTTP status code with wget verification".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Check HTTP status",
+        "configure web service",
+        "0",
+        "configured",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple(
+            "wget --spider -q http://localhost:8080".to_string(),
+        ),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify wget spider check
+    assert!(
+        script.contains("if wget --spider -q http://localhost:8080; then"),
+        "Script must check HTTP status with wget"
+    );
+}
+
+// ============================================================================
+// Manual Step Verification Expressions - Combined Result+Output with && and ||
+// ============================================================================
+
+#[test]
+fn test_manual_verification_expression_combined_and_operator() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_COMB_001".to_string(),
+        1,
+        1,
+        "TC_COMB_001".to_string(),
+        "Combined verification with AND operator".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Check multiple conditions with AND",
+        "setup system",
+        "0",
+        "configured",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple(
+            "[ -f /tmp/config.txt ] && [ -f /tmp/state.txt ]".to_string(),
+        ),
+        output: VerificationExpression::Simple(
+            "grep -q 'enabled=true' /tmp/config.txt && grep -q 'status=ready' /tmp/state.txt"
+                .to_string(),
+        ),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify combined AND conditions
+    assert!(
+        script.contains("if [ -f /tmp/config.txt ] && [ -f /tmp/state.txt ]; then"),
+        "Script must check multiple result conditions with AND"
+    );
+    assert!(
+        script.contains("if grep -q 'enabled=true' /tmp/config.txt && grep -q 'status=ready' /tmp/state.txt; then"),
+        "Script must check multiple output conditions with AND"
+    );
+}
+
+#[test]
+fn test_manual_verification_expression_combined_or_operator() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_COMB_002".to_string(),
+        1,
+        1,
+        "TC_COMB_002".to_string(),
+        "Combined verification with OR operator".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Check multiple conditions with OR",
+        "verify fallback",
+        "0",
+        "verified",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple(
+            "[ -f /etc/app/config.ini ] || [ -f /etc/app/config.conf ]".to_string(),
+        ),
+        output: VerificationExpression::Simple(
+            "pgrep -f app > /dev/null || pgrep -f app-daemon > /dev/null".to_string(),
+        ),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify combined OR conditions
+    assert!(
+        script.contains("if [ -f /etc/app/config.ini ] || [ -f /etc/app/config.conf ]; then"),
+        "Script must check multiple result conditions with OR"
+    );
+    assert!(
+        script.contains("if pgrep -f app > /dev/null || pgrep -f app-daemon > /dev/null; then"),
+        "Script must check multiple output conditions with OR"
+    );
+}
+
+#[test]
+fn test_manual_verification_expression_complex_boolean_logic() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_COMB_003".to_string(),
+        1,
+        1,
+        "TC_COMB_003".to_string(),
+        "Complex boolean logic verification".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Check complex boolean conditions",
+        "complex setup",
+        "0",
+        "ready",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple(
+            "[ -f /tmp/file1 ] && [ -f /tmp/file2 ] || [ -f /tmp/fallback ]".to_string(),
+        ),
+        output: VerificationExpression::Simple(
+            "(grep -q 'primary' /tmp/mode || grep -q 'secondary' /tmp/mode) && [ -f /tmp/ready ]"
+                .to_string(),
+        ),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify complex boolean logic
+    assert!(
+        script.contains("if [ -f /tmp/file1 ] && [ -f /tmp/file2 ] || [ -f /tmp/fallback ]; then"),
+        "Script must handle complex result boolean logic"
+    );
+    assert!(
+        script.contains("if (grep -q 'primary' /tmp/mode || grep -q 'secondary' /tmp/mode) && [ -f /tmp/ready ]; then"),
+        "Script must handle complex output boolean logic"
+    );
+}
+
+#[test]
+fn test_manual_verification_expression_three_conditions_and() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_COMB_004".to_string(),
+        1,
+        1,
+        "TC_COMB_004".to_string(),
+        "Three conditions with AND verification".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Check three AND conditions",
+        "multi-step setup",
+        "0",
+        "complete",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple(
+            "[ -d /var/lib/app ] && [ -f /var/lib/app/db.sqlite ] && [ -x /usr/bin/app ]"
+                .to_string(),
+        ),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify three AND conditions
+    assert!(
+        script.contains(
+            "if [ -d /var/lib/app ] && [ -f /var/lib/app/db.sqlite ] && [ -x /usr/bin/app ]; then"
+        ),
+        "Script must check three conditions with AND"
+    );
+}
+
+#[test]
+fn test_manual_verification_expression_file_and_process_check() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_COMB_005".to_string(),
+        1,
+        1,
+        "TC_COMB_005".to_string(),
+        "File and process check combined".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Check file exists and process running",
+        "deploy and start service",
+        "0",
+        "deployed",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple(
+            "[ -f /etc/app/app.conf ] && pgrep -f app > /dev/null".to_string(),
+        ),
+        output: VerificationExpression::Simple(
+            "grep -q 'status=running' /var/log/app.log".to_string(),
+        ),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify file and process check combined
+    assert!(
+        script.contains("if [ -f /etc/app/app.conf ] && pgrep -f app > /dev/null; then"),
+        "Script must check both file existence and process status"
+    );
+}
+
+#[test]
+fn test_manual_verification_expression_network_and_file_check() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_COMB_006".to_string(),
+        1,
+        1,
+        "TC_COMB_006".to_string(),
+        "Network and file check combined".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Check network and config",
+        "configure network service",
+        "0",
+        "configured",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple(
+            "nc -z localhost 8080 && [ -f /etc/nginx/nginx.conf ]".to_string(),
+        ),
+        output: VerificationExpression::Simple(
+            "curl -f -s http://localhost:8080 > /dev/null && grep -q 'server_name' /etc/nginx/nginx.conf".to_string(),
+        ),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify network and file check combined
+    assert!(
+        script.contains("if nc -z localhost 8080 && [ -f /etc/nginx/nginx.conf ]; then"),
+        "Script must check both network port and file existence"
+    );
+    assert!(
+        script.contains("if curl -f -s http://localhost:8080 > /dev/null && grep -q 'server_name' /etc/nginx/nginx.conf; then"),
+        "Script must check HTTP endpoint and file content"
+    );
+}
+
+// ============================================================================
+// Manual Step Verification Expressions - Environment Variable Checks
+// ============================================================================
+
+#[test]
+fn test_manual_verification_expression_env_var_set() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_ENV_001".to_string(),
+        1,
+        1,
+        "TC_ENV_001".to_string(),
+        "Environment variable set verification".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Check environment variable set",
+        "export APP_ENV=production",
+        "0",
+        "exported",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple("[ -n \"$APP_ENV\" ]".to_string()),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify environment variable set check
+    assert!(
+        script.contains("if [ -n \"$APP_ENV\" ]; then"),
+        "Script must check if environment variable is set"
+    );
+}
+
+#[test]
+fn test_manual_verification_expression_env_var_equals() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_ENV_002".to_string(),
+        1,
+        1,
+        "TC_ENV_002".to_string(),
+        "Environment variable equals verification".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Check environment variable value",
+        "set NODE_ENV to production",
+        "0",
+        "set",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple("[ \"$NODE_ENV\" = \"production\" ]".to_string()),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify environment variable equals check
+    assert!(
+        script.contains("if [ \"$NODE_ENV\" = \"production\" ]; then"),
+        "Script must check if environment variable equals specific value"
+    );
+}
+
+#[test]
+fn test_manual_verification_expression_env_var_not_empty() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_ENV_003".to_string(),
+        1,
+        1,
+        "TC_ENV_003".to_string(),
+        "Environment variable not empty verification".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Check variable not empty",
+        "set DATABASE_URL",
+        "0",
+        "set",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple(
+            "[ -n \"$DATABASE_URL\" ] && [ \"$DATABASE_URL\" != \"\" ]".to_string(),
+        ),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify environment variable not empty check
+    assert!(
+        script.contains("if [ -n \"$DATABASE_URL\" ] && [ \"$DATABASE_URL\" != \"\" ]; then"),
+        "Script must check if environment variable is not empty"
+    );
+}
+
+#[test]
+fn test_manual_verification_expression_multiple_env_vars() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_ENV_004".to_string(),
+        1,
+        1,
+        "TC_ENV_004".to_string(),
+        "Multiple environment variables verification".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Check multiple environment variables",
+        "configure environment",
+        "0",
+        "configured",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple(
+            "[ -n \"$API_KEY\" ] && [ -n \"$API_SECRET\" ] && [ -n \"$API_URL\" ]".to_string(),
+        ),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify multiple environment variables check
+    assert!(
+        script.contains(
+            "if [ -n \"$API_KEY\" ] && [ -n \"$API_SECRET\" ] && [ -n \"$API_URL\" ]; then"
+        ),
+        "Script must check multiple environment variables"
+    );
+}
+
+#[test]
+fn test_manual_verification_expression_env_var_pattern_match() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_ENV_005".to_string(),
+        1,
+        1,
+        "TC_ENV_005".to_string(),
+        "Environment variable pattern match verification".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Check variable pattern",
+        "set version variable",
+        "0",
+        "set",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple(
+            "[[ \"$APP_VERSION\" =~ ^[0-9]+\\.[0-9]+\\.[0-9]+$ ]]".to_string(),
+        ),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify environment variable pattern match
+    assert!(
+        script.contains("if [[ \"$APP_VERSION\" =~ ^[0-9]+\\.[0-9]+\\.[0-9]+$ ]]; then"),
+        "Script must check if environment variable matches pattern"
+    );
+}
+
+#[test]
+fn test_manual_verification_expression_env_and_file_combined() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ_ENV_006".to_string(),
+        1,
+        1,
+        "TC_ENV_006".to_string(),
+        "Environment variable and file check combined".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Check env and config file",
+        "setup application",
+        "0",
+        "ready",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple(
+            "[ -n \"$CONFIG_PATH\" ] && [ -f \"$CONFIG_PATH\" ]".to_string(),
+        ),
+        output: VerificationExpression::Simple(
+            "[ \"$APP_MODE\" = \"production\" ] && grep -q \"mode=production\" \"$CONFIG_PATH\""
+                .to_string(),
+        ),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify environment and file check combined
+    assert!(
+        script.contains("if [ -n \"$CONFIG_PATH\" ] && [ -f \"$CONFIG_PATH\" ]; then"),
+        "Script must check environment variable and file existence"
+    );
+    assert!(
+        script.contains(
+            "if [ \"$APP_MODE\" = \"production\" ] && grep -q \"mode=production\" \"$CONFIG_PATH\"; then"
+        ),
+        "Script must check environment variable value and file content"
+    );
+}
