@@ -5376,8 +5376,11 @@ fn test_manual_step_without_verification_complete_workflow() {
         "Manual info should come before ENTER prompt"
     );
 
-    // Verify absences in this step section (up to next step or end)
-    let step_end = step_section.find("# Step 2:").unwrap_or(step_section.len());
+    // Verify absences in this step section (up to next step or JSON log closing)
+    let step_end = step_section
+        .find("# Step 2:")
+        .or_else(|| step_section.find("echo ']' >> \"$JSON_LOG\""))
+        .unwrap_or(step_section.len());
     let this_step = &step_section[..step_end];
 
     assert!(

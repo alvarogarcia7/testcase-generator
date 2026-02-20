@@ -132,6 +132,7 @@ test_sequences:
         - "beep utility is installed"
     steps:
       - step: 1
+        manual: true
         description: "Check if beep utility is available"
         command: "which beep || command -v beep || echo 'beep command not found, using alternative'"
         expected:
@@ -140,7 +141,7 @@ test_sequences:
           output: "beep"
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: true
+          output: "true"
       
       - step: 2
         manual: true
