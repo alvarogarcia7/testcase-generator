@@ -254,26 +254,6 @@ impl TestExecutor {
                 }
                 script.push('\n');
 
-                script.push_str("if [ \"$VERIFICATION_RESULT_PASS\" = true ] && [ \"$VERIFICATION_OUTPUT_PASS\" = true ]; then\n");
-                script.push_str(&format!(
-                    "    echo \"[PASS] Step {}: {}\"\n",
-                    step.step, step.description
-                ));
-                script.push_str("else\n");
-                script.push_str(&format!(
-                    "    echo \"[FAIL] Step {}: {}\"\n",
-                    step.step, step.description
-                ));
-                script.push_str("    echo \"  Command: ");
-                script.push_str(&step.command.replace("\"", "\\\""));
-                script.push_str("\"\n");
-                script.push_str("    echo \"  Exit code: $EXIT_CODE\"\n");
-                script.push_str("    echo \"  Output: $COMMAND_OUTPUT\"\n");
-                script.push_str("    echo \"  Result verification: $VERIFICATION_RESULT_PASS\"\n");
-                script.push_str("    echo \"  Output verification: $VERIFICATION_OUTPUT_PASS\"\n");
-                script.push_str("    exit 1\n");
-                script.push_str("fi\n\n");
-
                 let escaped_command = step.command.replace("\\", "\\\\").replace("\"", "\\\"");
                 script.push_str("# Escape output for JSON\n");
                 script.push_str("OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | sed 's/\\\\/\\\\\\\\/g' | sed 's/\"/\\\\\"/g' | sed -e ':a' -e '$!N;s/\\n/\\\\n/;ta')\n\n");
@@ -293,6 +273,26 @@ impl TestExecutor {
                 script.push_str("    \"timestamp\": \"$TIMESTAMP\"\n");
                 script.push_str("  }\n");
                 script.push_str("EOF\n\n");
+
+                script.push_str("if [ \"$VERIFICATION_RESULT_PASS\" = true ] && [ \"$VERIFICATION_OUTPUT_PASS\" = true ]; then\n");
+                script.push_str(&format!(
+                    "    echo \"[PASS] Step {}: {}\"\n",
+                    step.step, step.description
+                ));
+                script.push_str("else\n");
+                script.push_str(&format!(
+                    "    echo \"[FAIL] Step {}: {}\"\n",
+                    step.step, step.description
+                ));
+                script.push_str("    echo \"  Command: ");
+                script.push_str(&step.command.replace("\"", "\\\""));
+                script.push_str("\"\n");
+                script.push_str("    echo \"  Exit code: $EXIT_CODE\"\n");
+                script.push_str("    echo \"  Output: $COMMAND_OUTPUT\"\n");
+                script.push_str("    echo \"  Result verification: $VERIFICATION_RESULT_PASS\"\n");
+                script.push_str("    echo \"  Output verification: $VERIFICATION_OUTPUT_PASS\"\n");
+                script.push_str("    exit 1\n");
+                script.push_str("fi\n\n");
             }
         }
 
