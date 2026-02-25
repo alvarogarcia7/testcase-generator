@@ -105,10 +105,15 @@
                   "description": "Step description"
                 }
               },
-              "required": ["step", "description"]
+              "required": [
+                "step",
+                "description"
+              ]
             }
           },
-          "required": ["Pass"],
+          "required": [
+            "Pass"
+          ],
           "additionalProperties": false
         },
         {
@@ -142,10 +147,19 @@
                   "description": "Reason for failure"
                 }
               },
-              "required": ["step", "description", "expected", "actual_result", "actual_output", "reason"]
+              "required": [
+                "step",
+                "description",
+                "expected",
+                "actual_result",
+                "actual_output",
+                "reason"
+              ]
             }
           },
-          "required": ["Fail"],
+          "required": [
+            "Fail"
+          ],
           "additionalProperties": false
         },
         {
@@ -164,10 +178,15 @@
                   "description": "Step description"
                 }
               },
-              "required": ["step", "description"]
+              "required": [
+                "step",
+                "description"
+              ]
             }
           },
-          "required": ["NotExecuted"],
+          "required": [
+            "NotExecuted"
+          ],
           "additionalProperties": false
         }
       ]
@@ -177,7 +196,10 @@
       "description": "Expected outcome for a test step",
       "properties": {
         "success": {
-          "type": ["boolean", "null"],
+          "type": [
+            "boolean",
+            "null"
+          ],
           "description": "Whether the step should succeed (optional)"
         },
         "result": {
@@ -189,7 +211,10 @@
           "description": "Expected output"
         }
       },
-      "required": ["result", "output"]
+      "required": [
+        "result",
+        "output"
+      ]
     }
   }
 }
