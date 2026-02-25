@@ -4,19 +4,22 @@ stages:
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   UV_CACHE_DIR: "$CI_PROJECT_DIR/.cache/uv"
+  APT_CACHE_DIR: "$CI_PROJECT_DIR/.cache/apt"
 
 cache:
   paths:
     - .cache/pip
     - .cache/uv
+    - .cache/apt
 
 validate:
   stage: validate
   image: python:3.14
   before_script:
+    - mkdir -p "$APT_CACHE_DIR"
+    - apt-get update -o dir::cache::archives="$APT_CACHE_DIR" && apt-get install -y -o dir::cache::archives="$APT_CACHE_DIR" jq
     - pip install -q uv
     - uv sync
-    - apt-get update && apt-get install -y jq
   script:
     - make validate-json-format
     - make validate-sh
