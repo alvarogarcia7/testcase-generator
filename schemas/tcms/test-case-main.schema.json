@@ -79,7 +79,10 @@
                   "type": "string"
                 },
                 "command": {
-                  "type": ["string", "boolean"]
+                  "type": [
+                    "string",
+                    "boolean"
+                  ]
                 },
                 "expected": {
                   "type": "object",
@@ -88,7 +91,10 @@
                       "type": "boolean"
                     },
                     "result": {
-                      "type": ["string", "integer"]
+                      "type": [
+                        "string",
+                        "integer"
+                      ]
                     },
                     "output": {
                       "type": "string"
@@ -132,7 +138,9 @@
                               }
                             }
                           },
-                          "required": ["condition"]
+                          "required": [
+                            "condition"
+                          ]
                         }
                       ]
                     },
@@ -166,7 +174,9 @@
                               }
                             }
                           },
-                          "required": ["condition"]
+                          "required": [
+                            "condition"
+                          ]
                         }
                       ]
                     },
@@ -200,7 +210,9 @@
                               }
                             }
                           },
-                          "required": ["condition"]
+                          "required": [
+                            "condition"
+                          ]
                         }
                       ]
                     }

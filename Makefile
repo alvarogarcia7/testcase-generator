@@ -3,8 +3,17 @@ help:
 	@sed -n 's/^## //p' ${MAKEFILE_LIST}
 
 .PHONY: validate
-validate: validate-schemas
+validate:
 ## validate: Run all validation checks (schemas and samples)
+	${MAKE} validate-json-format
+	${MAKE} validate-schemas
+	${MAKE} validate-sh
+
+.PHONY: validate-json-format
+validate-json-format:
+## validate-json-format: Validate JSON file formatting
+	@echo "Running JSON format validation..."
+	bash scripts/validate-json-format.sh
 
 .PHONY: validate-schemas
 validate-schemas:
@@ -13,8 +22,10 @@ validate-schemas:
 	bash scripts/validate-schemas.sh
 
 .PHONY: test
-test: validate-sh lint
+test:
 ## test: Run all tests (shell syntax, linting, validations)
+	${MAKE} validate
+	${MAKE} lint
 
 .PHONY: validate-sh
 validate-sh:
@@ -38,5 +49,6 @@ lint:
 ## lint: Run linting checks
 	@command -v pylint >/dev/null 2>&1 || echo "pylint not installed"
 	@command -v flake8 >/dev/null 2>&1 || echo "flake8 not installed"
+
 
 .DEFAULT_GOAL := help
