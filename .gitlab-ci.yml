@@ -3,29 +3,23 @@ stages:
 
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  UV_CACHE_DIR: "$CI_PROJECT_DIR/.cache/uv"
 
 cache:
   paths:
     - .cache/pip
+    - .cache/uv
 
-validate_schemas:
+validate:
   stage: validate
   image: python:3.14
   before_script:
-    - pip install uv
+    - pip install -q uv
     - uv sync
-    - source .venv/bin/activate
+    - apt-get update && apt-get install -y jq
   script:
-    - echo "Validating YAML files against schemas..."
-    - |
-      for yaml_file in samples/test-plan/*.yml; do
-        python validator.py "$yaml_file" schemas/test-plan/test-plan.schema.json
-      done
-    - |
-      for yaml_file in samples/test-case/*.yml; do
-        python validator.py "$yaml_file" schemas/test-case/test-case.schema.json
-      done
-    - echo "All validations passed!"
+    - make validate-sh
+    - make validate-schemas
   only:
     - branches
     - merge_requests
