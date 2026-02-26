@@ -92,7 +92,7 @@ info "Using temporary directory: $TEMP_DIR"
 section "Test 1: Creating Test YAML with Manual Verification"
 
 MANUAL_VERIFY_YAML="$TEMP_DIR/test_manual_verify.yaml"
-cat > "$MANUAL_VERIFY_YAML" << 'EOF'
+cat > "$MANUAL_VERIFY_YAML" << EOF
 requirement: TEST_MANUAL_VERIFY
 item: 1
 tc: 1
@@ -121,8 +121,8 @@ test_sequences:
           result: "0"
           output: green
         verification:
-          result: "[ -f /tmp/led_green ]"
-          output: "grep -q 'green' /tmp/led_status.log"
+          result: "[ -f $TEMP_DIR/led_green ]"
+          output: "grep -q 'green' $TEMP_DIR/led_status.log"
       - step: 2
         manual: true
         description: Manually verify display shows correct message
@@ -132,7 +132,7 @@ test_sequences:
           result: "0"
           output: Welcome
         verification:
-          result: "[ -f /tmp/display_ok ]"
+          result: "[ -f $TEMP_DIR/display_ok ]"
           output: "true"
       - step: 3
         description: Automated check after manual verification
@@ -142,8 +142,8 @@ test_sequences:
           result: "0"
           output: automated_check
         verification:
-          result: "[ $EXIT_CODE -eq 0 ]"
-          output: "[ \"$COMMAND_OUTPUT\" = \"automated_check\" ]"
+          result: "[ \$EXIT_CODE -eq 0 ]"
+          output: "[ \"\$COMMAND_OUTPUT\" = \"automated_check\" ]"
 EOF
 
 pass "Created test YAML with manual verification steps"
@@ -212,7 +212,7 @@ else
 fi
 
 # Check for TTY detection
-if grep -q "if \[\[ \"\${DEBIAN_FRONTEND}\" == 'noninteractive' \]\] || ! \[ -t 0 \]; then" "$MANUAL_VERIFY_SCRIPT"; then
+if grep -q "if \[\[ \"\${DEBIAN_FRONTEND:-}\" == 'noninteractive' \]\] || ! \[ -t 0 \]; then" "$MANUAL_VERIFY_SCRIPT"; then
     pass "Script contains TTY detection logic"
 else
     fail "Script missing TTY detection logic"
@@ -364,7 +364,7 @@ section "Test 10: Script Execution with Failed Verification"
 
 # Create a new YAML with verification that will fail
 FAIL_VERIFY_YAML="$TEMP_DIR/test_fail_verify.yaml"
-cat > "$FAIL_VERIFY_YAML" << 'EOF'
+cat > "$FAIL_VERIFY_YAML" << EOF
 requirement: TEST_FAIL_VERIFY
 item: 1
 tc: 1
@@ -393,7 +393,7 @@ test_sequences:
           result: "0"
           output: present
         verification:
-          result: "[ -f /tmp/nonexistent_file_xyz ]"
+          result: "[ -f $TEMP_DIR/nonexistent_file_xyz ]"
           output: "true"
 EOF
 
@@ -536,7 +536,7 @@ fi
 section "Test 15: Conditional Verification in Manual Steps"
 
 CONDITIONAL_YAML="$TEMP_DIR/test_conditional_manual.yaml"
-cat > "$CONDITIONAL_YAML" << 'EOF'
+cat > "$CONDITIONAL_YAML" << EOF
 requirement: TEST_COND_MANUAL
 item: 1
 tc: 1
@@ -566,7 +566,7 @@ test_sequences:
           output: production
         verification:
           result:
-            condition: "[ -f /tmp/production_mode ]"
+            condition: "[ -f $TEMP_DIR/production_mode ]"
             if_true:
               - "echo 'MARKER_PRODUCTION: Production mode detected'"
               - "USER_VERIFICATION_RESULT=true"
