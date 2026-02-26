@@ -7,7 +7,7 @@ read_true_false() {
     local default="${2:-y}"
     
     # Check if running in non-interactive mode
-    if [[ "${DEBIAN_FRONTEND}" == 'noninteractive' ]] || ! [ -t 0 ]; then
+    if [[ "${DEBIAN_FRONTEND:-}" == 'noninteractive' ]] || ! [ -t 0 ]; then
         # Non-interactive mode: return default
         if [[ "$default" =~ ^[Yy]$ ]]; then
             return 1

@@ -513,7 +513,7 @@ impl TestExecutor {
         script.push_str("    \n");
         script.push_str("    # Check if running in non-interactive mode\n");
         script.push_str(
-            "    if [[ \"${DEBIAN_FRONTEND}\" == 'noninteractive' ]] || ! [ -t 0 ]; then\n",
+            "    if [[ \"${DEBIAN_FRONTEND:-}\" == 'noninteractive' ]] || ! [ -t 0 ]; then\n",
         );
         script.push_str("        # Non-interactive mode: return default\n");
         script.push_str("        if [[ \"$default\" =~ ^[Yy]$ ]]; then\n");
@@ -631,7 +631,7 @@ impl TestExecutor {
                             ));
 
                             // Check if we're in interactive mode (TTY available and DEBIAN_FRONTEND not set to noninteractive)
-                            script.push_str("if [[ \"${DEBIAN_FRONTEND}\" != 'noninteractive' && -t 0 ]]; then\n");
+                            script.push_str("if [[ \"${DEBIAN_FRONTEND:-}\" != 'noninteractive' && -t 0 ]]; then\n");
                             script.push_str("    read -p \"Press ENTER to confirm this prerequisite is satisfied...\"\n");
                             script.push_str("else\n");
                             script.push_str("    echo \"Non-interactive mode: assuming prerequisite is satisfied.\"\n");
@@ -903,7 +903,7 @@ impl TestExecutor {
                     if has_verification {
                         // Generate interactive prompt for action
                         script.push_str(
-                            "if [[ \"${DEBIAN_FRONTEND}\" != 'noninteractive' && -t 0 ]]; then\n",
+                            "if [[ \"${DEBIAN_FRONTEND:-}\" != 'noninteractive' && -t 0 ]]; then\n",
                         );
                         script.push_str(
                             "    read -p \"Press ENTER after completing the manual action...\"\n",
@@ -990,7 +990,7 @@ impl TestExecutor {
                     } else {
                         // No verification fields - just prompt to continue
                         script.push_str(
-                            "if [[ \"${DEBIAN_FRONTEND}\" != 'noninteractive' && -t 0 ]]; then\n",
+                            "if [[ \"${DEBIAN_FRONTEND:-}\" != 'noninteractive' && -t 0 ]]; then\n",
                         );
                         script.push_str("    read -p \"Press ENTER to continue...\"\n");
                         script.push_str("else\n");
@@ -2171,7 +2171,7 @@ mod tests {
         );
         assert!(
             script.contains(
-                "if [[ \"${DEBIAN_FRONTEND}\" == 'noninteractive' ]] || ! [ -t 0 ]; then"
+                "if [[ \"${DEBIAN_FRONTEND:-}\" == 'noninteractive' ]] || ! [ -t 0 ]; then"
             ),
             "Script should contain TTY detection"
         );
@@ -2287,7 +2287,7 @@ mod tests {
         ));
         assert!(script.contains("read -p \"Press ENTER to continue...\""));
         assert!(
-            script.contains("if [[ \"${DEBIAN_FRONTEND}\" != 'noninteractive' && -t 0 ]]; then\n")
+            script.contains("if [[ \"${DEBIAN_FRONTEND:-}\" != 'noninteractive' && -t 0 ]]; then\n")
         );
         assert!(
             script.contains("Non-interactive mode detected, skipping manual step confirmation.")
