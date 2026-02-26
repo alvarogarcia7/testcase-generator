@@ -150,9 +150,6 @@ rust:build-test-lint:
       - clippy_output.txt
     reports:
       junit: test_results.xml
-      coverage_report:
-        coverage_format: cobertura
-        path: cobertura.xml
     expire_in: 1 week
     when: always
 
