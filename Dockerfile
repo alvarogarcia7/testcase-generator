@@ -21,6 +21,7 @@ RUN mkdir src && \
     echo "fn main() {}" > "src/bin/test-run-manager.rs" && \
     echo "fn main() {}" > "src/bin/test-verify.rs" && \
     echo "fn main() {}" > "src/bin/test-executor.rs" && \
+    echo "fn main() {}" > "src/bin/json-escape.rs" && \
     mkdir -p src/ && \
     echo "fn main() {}" > "src/main_editor.rs" && \
     echo "fn main() {}" > "src/bin/test-orchestrator.rs" && \
