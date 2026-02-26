@@ -10,6 +10,9 @@ RUN rustup component add llvm-tools-preview && \
 # Copy manifests
 COPY Cargo.toml Cargo.lock ./
 
+# Copy scripts directory early so include_str! macros can find the files
+COPY scripts ./scripts
+
 # Create dummy src/main.rs to build dependencies
 RUN mkdir src && \
     echo "fn main() {}" > src/main.rs && \
@@ -88,11 +91,6 @@ ls -lah /usr/local/bin/test-orchestrator > /dev/null
 
 
 
-
-
-
-# Copy scripts directory for watch and validation functionality
-COPY scripts ./scripts
 
 # Copy Makefile for convenient commands
 COPY Makefile ./Makefile
