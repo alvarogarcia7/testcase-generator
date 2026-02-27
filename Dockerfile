@@ -88,10 +88,12 @@ ls -lah /usr/local/bin/test-orchestrator > /dev/null
 # Copy Makefile for convenient commands
 COPY Makefile ./Makefile
 
+# Build release binaries first
+RUN cargo build --all --all-features --release
+
 # Run tests to ensure everything compiles and passes
-RUN \
-    cargo test --all --all-features --tests --release --target-dir ./target && \
-    cargo test --all --all-features --tests           --target-dir ./target
+RUN cargo test --all --all-features --tests --release && \
+    cargo test --all --all-features --tests
 
 # Make scripts executable
 RUN chmod +x scripts/*.sh && \
