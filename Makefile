@@ -151,8 +151,13 @@ coverage-report-e2e: build
 	cargo llvm-cov report --ignore-filename-regex '$(COVERAGE_EXCLUDE_REGEX)'
 .PHONY: coverage-report-e2e
 
+clean:
+	${MAKE} coverage-clean
+.PHONY: clean
+
 coverage-clean:
-	cargo llvm-cov clean --workspace
+	@-cargo llvm-cov clean --workspace > /dev/null 2>&1 || true
+	rm -f ./*.profraw
 .PHONY: coverage-clean
 
 install-coverage-tools:
