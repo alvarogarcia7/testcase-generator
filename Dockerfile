@@ -13,6 +13,9 @@ COPY Cargo.toml Cargo.lock ./
 # Copy scripts directory early so include_str! macros can find the files
 COPY scripts ./scripts
 
+# Copy schemas directory early so tests can find schema files
+COPY schemas ./schemas
+
 # Create dummy src/main.rs to build dependencies
 RUN mkdir src && \
     echo "fn main() {}" > src/main.rs && \
@@ -35,24 +38,13 @@ RUN mkdir src && \
     echo "fn main() {}" > "examples/test_verify_integration.rs" && \
     echo "fn main() {}" > "examples/junit_export_example.rs"
 
-# Build dependencies (this will be cached)
-#RUN --mount=type=cache,target=/usr/local/cargo/registry \
-#    --mount=type=cache,target=/app/target \
-RUN \
-    cargo test --all --all-features --tests --release --target-dir ./target && \
-    cargo test --all --all-features --tests           --target-dir ./target
-
-WORKDIR /app
-
-# Copy source code and perform the final build
+# Copy source code
 COPY src ./src
 COPY examples ./examples
 COPY tests ./tests
 COPY data ./data
 
-RUN \
-    cargo test --all --all-features --tests --release --target-dir ./target && \
-    cargo test --all --all-features --tests           --target-dir ./target
+WORKDIR /app
 
 # Build the application against cached dependencies
 # The previous RUN command will be reused if only Cargo.toml/Cargo.lock are unchanged
@@ -95,12 +87,7 @@ ls -lah /usr/local/bin/test-orchestrator > /dev/null
 # Copy Makefile for convenient commands
 COPY Makefile ./Makefile
 
-RUN \
-    cargo test --all --all-features --tests --release --target-dir ./target && \
-    cargo test --all --all-features --tests           --target-dir ./target
-
-COPY . .
-
+# Run tests to ensure everything compiles and passes
 RUN \
     cargo test --all --all-features --tests --release --target-dir ./target && \
     cargo test --all --all-features --tests           --target-dir ./target
