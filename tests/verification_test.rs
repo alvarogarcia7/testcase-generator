@@ -1129,3 +1129,815 @@ fn test_match_strategy_serialization() {
         assert_eq!(strategy, deserialized);
     }
 }
+
+// ============================================================================
+// Report Generation Tests
+// ============================================================================
+
+#[test]
+fn test_generate_report_yaml_basic() {
+    use testcase_manager::verification::{TestCaseVerificationResult, TestVerifier};
+
+    let verifier = TestVerifier::with_exact_matching();
+
+    let result = TestCaseVerificationResult {
+        test_case_id: "TC001".to_string(),
+        description: "Basic test case".to_string(),
+        sequences: vec![],
+        total_steps: 5,
+        passed_steps: 4,
+        failed_steps: 1,
+        not_executed_steps: 0,
+        overall_pass: false,
+        requirement: Some("REQ001".to_string()),
+        item: Some(1),
+        tc: Some(1),
+    };
+
+    let yaml = verifier.generate_report_yaml(&result).unwrap();
+
+    assert!(yaml.contains("test_case_id: TC001"));
+    assert!(yaml.contains("description: Basic test case"));
+    assert!(yaml.contains("total_steps: 5"));
+    assert!(yaml.contains("passed_steps: 4"));
+    assert!(yaml.contains("failed_steps: 1"));
+    assert!(yaml.contains("overall_pass: false"));
+    assert!(yaml.contains("requirement: REQ001"));
+}
+
+#[test]
+fn test_generate_report_yaml_with_sequences() {
+    use testcase_manager::models::Expected;
+    use testcase_manager::verification::{
+        SequenceVerificationResult, StepVerificationResultEnum, TestCaseVerificationResult,
+        TestVerifier,
+    };
+
+    let verifier = TestVerifier::with_exact_matching();
+
+    let sequence = SequenceVerificationResult {
+        sequence_id: 1,
+        name: "Test Sequence 1".to_string(),
+        step_results: vec![
+            StepVerificationResultEnum::Pass {
+                step: 1,
+                description: "Step 1 description".to_string(),
+                requirement: Some("REQ001".to_string()),
+                item: Some(1),
+                tc: Some(1),
+            },
+            StepVerificationResultEnum::Fail {
+                step: 2,
+                description: "Step 2 description".to_string(),
+                expected: Expected {
+                    success: Some(true),
+                    result: "expected_result".to_string(),
+                    output: "expected_output".to_string(),
+                },
+                actual_result: "actual_result".to_string(),
+                actual_output: "actual_output".to_string(),
+                reason: "Result mismatch".to_string(),
+                requirement: Some("REQ001".to_string()),
+                item: Some(1),
+                tc: Some(1),
+            },
+        ],
+        all_steps_passed: false,
+        requirement: Some("REQ001".to_string()),
+        item: Some(1),
+        tc: Some(1),
+    };
+
+    let result = TestCaseVerificationResult {
+        test_case_id: "TC001".to_string(),
+        description: "Test case with sequences".to_string(),
+        sequences: vec![sequence],
+        total_steps: 2,
+        passed_steps: 1,
+        failed_steps: 1,
+        not_executed_steps: 0,
+        overall_pass: false,
+        requirement: Some("REQ001".to_string()),
+        item: Some(1),
+        tc: Some(1),
+    };
+
+    let yaml = verifier.generate_report_yaml(&result).unwrap();
+
+    assert!(yaml.contains("test_case_id: TC001"));
+    assert!(yaml.contains("sequence_id: 1"));
+    assert!(yaml.contains("Test Sequence 1"));
+    assert!(yaml.contains("Step 1 description"));
+    assert!(yaml.contains("Step 2 description"));
+    assert!(yaml.contains("Pass"));
+    assert!(yaml.contains("Fail"));
+    assert!(yaml.contains("expected_result"));
+    assert!(yaml.contains("actual_result"));
+}
+
+#[test]
+fn test_generate_report_yaml_not_executed_steps() {
+    use testcase_manager::verification::{
+        SequenceVerificationResult, StepVerificationResultEnum, TestCaseVerificationResult,
+        TestVerifier,
+    };
+
+    let verifier = TestVerifier::with_exact_matching();
+
+    let sequence = SequenceVerificationResult {
+        sequence_id: 1,
+        name: "Test Sequence".to_string(),
+        step_results: vec![
+            StepVerificationResultEnum::Pass {
+                step: 1,
+                description: "Executed step".to_string(),
+                requirement: None,
+                item: None,
+                tc: None,
+            },
+            StepVerificationResultEnum::NotExecuted {
+                step: 2,
+                description: "Not executed step".to_string(),
+                requirement: None,
+                item: None,
+                tc: None,
+            },
+        ],
+        all_steps_passed: false,
+        requirement: None,
+        item: None,
+        tc: None,
+    };
+
+    let result = TestCaseVerificationResult {
+        test_case_id: "TC002".to_string(),
+        description: "Test with not executed".to_string(),
+        sequences: vec![sequence],
+        total_steps: 2,
+        passed_steps: 1,
+        failed_steps: 0,
+        not_executed_steps: 1,
+        overall_pass: false,
+        requirement: None,
+        item: None,
+        tc: None,
+    };
+
+    let yaml = verifier.generate_report_yaml(&result).unwrap();
+
+    assert!(yaml.contains("NotExecuted"));
+    assert!(yaml.contains("Not executed step"));
+    assert!(yaml.contains("not_executed_steps: 1"));
+}
+
+#[test]
+fn test_generate_report_json_basic() {
+    use testcase_manager::verification::{TestCaseVerificationResult, TestVerifier};
+
+    let verifier = TestVerifier::with_exact_matching();
+
+    let result = TestCaseVerificationResult {
+        test_case_id: "TC003".to_string(),
+        description: "JSON test case".to_string(),
+        sequences: vec![],
+        total_steps: 3,
+        passed_steps: 3,
+        failed_steps: 0,
+        not_executed_steps: 0,
+        overall_pass: true,
+        requirement: Some("REQ003".to_string()),
+        item: Some(3),
+        tc: Some(3),
+    };
+
+    let json = verifier.generate_report_json(&result).unwrap();
+
+    assert!(json.contains("\"test_case_id\": \"TC003\""));
+    assert!(json.contains("\"description\": \"JSON test case\""));
+    assert!(json.contains("\"total_steps\": 3"));
+    assert!(json.contains("\"passed_steps\": 3"));
+    assert!(json.contains("\"failed_steps\": 0"));
+    assert!(json.contains("\"overall_pass\": true"));
+    assert!(json.contains("\"requirement\": \"REQ003\""));
+
+    // Verify it can be deserialized
+    let parsed: TestCaseVerificationResult = serde_json::from_str(&json).unwrap();
+    assert_eq!(parsed.test_case_id, "TC003");
+    assert_eq!(parsed.total_steps, 3);
+    assert!(parsed.overall_pass);
+}
+
+#[test]
+fn test_generate_report_json_with_sequences() {
+    use testcase_manager::models::Expected;
+    use testcase_manager::verification::{
+        SequenceVerificationResult, StepVerificationResultEnum, TestCaseVerificationResult,
+        TestVerifier,
+    };
+
+    let verifier = TestVerifier::with_exact_matching();
+
+    let sequence = SequenceVerificationResult {
+        sequence_id: 1,
+        name: "JSON Sequence".to_string(),
+        step_results: vec![StepVerificationResultEnum::Fail {
+            step: 1,
+            description: "Failed step".to_string(),
+            expected: Expected {
+                success: None,
+                result: "0x9000".to_string(),
+                output: "Success".to_string(),
+            },
+            actual_result: "0x6A82".to_string(),
+            actual_output: "Error".to_string(),
+            reason: "Status code mismatch".to_string(),
+            requirement: None,
+            item: None,
+            tc: None,
+        }],
+        all_steps_passed: false,
+        requirement: None,
+        item: None,
+        tc: None,
+    };
+
+    let result = TestCaseVerificationResult {
+        test_case_id: "TC004".to_string(),
+        description: "JSON with sequences".to_string(),
+        sequences: vec![sequence],
+        total_steps: 1,
+        passed_steps: 0,
+        failed_steps: 1,
+        not_executed_steps: 0,
+        overall_pass: false,
+        requirement: None,
+        item: None,
+        tc: None,
+    };
+
+    let json = verifier.generate_report_json(&result).unwrap();
+
+    assert!(json.contains("\"Fail\""));
+    assert!(json.contains("\"expected\""));
+    assert!(json.contains("\"0x9000\""));
+    assert!(json.contains("\"0x6A82\""));
+    assert!(json.contains("\"Status code mismatch\""));
+
+    // Verify deserialization
+    let parsed: TestCaseVerificationResult = serde_json::from_str(&json).unwrap();
+    assert_eq!(parsed.sequences.len(), 1);
+}
+
+#[test]
+fn test_generate_report_yaml_roundtrip() {
+    use testcase_manager::verification::{TestCaseVerificationResult, TestVerifier};
+
+    let verifier = TestVerifier::with_exact_matching();
+
+    let original = TestCaseVerificationResult {
+        test_case_id: "TC005".to_string(),
+        description: "Roundtrip test".to_string(),
+        sequences: vec![],
+        total_steps: 10,
+        passed_steps: 8,
+        failed_steps: 1,
+        not_executed_steps: 1,
+        overall_pass: false,
+        requirement: Some("REQ005".to_string()),
+        item: Some(5),
+        tc: Some(5),
+    };
+
+    let yaml = verifier.generate_report_yaml(&original).unwrap();
+    let parsed: TestCaseVerificationResult = serde_yaml::from_str(&yaml).unwrap();
+
+    assert_eq!(parsed.test_case_id, original.test_case_id);
+    assert_eq!(parsed.description, original.description);
+    assert_eq!(parsed.total_steps, original.total_steps);
+    assert_eq!(parsed.passed_steps, original.passed_steps);
+    assert_eq!(parsed.failed_steps, original.failed_steps);
+    assert_eq!(parsed.not_executed_steps, original.not_executed_steps);
+    assert_eq!(parsed.overall_pass, original.overall_pass);
+}
+
+#[test]
+fn test_generate_report_json_roundtrip() {
+    use testcase_manager::verification::{TestCaseVerificationResult, TestVerifier};
+
+    let verifier = TestVerifier::with_exact_matching();
+
+    let original = TestCaseVerificationResult {
+        test_case_id: "TC006".to_string(),
+        description: "JSON roundtrip test".to_string(),
+        sequences: vec![],
+        total_steps: 7,
+        passed_steps: 7,
+        failed_steps: 0,
+        not_executed_steps: 0,
+        overall_pass: true,
+        requirement: None,
+        item: None,
+        tc: None,
+    };
+
+    let json = verifier.generate_report_json(&original).unwrap();
+    let parsed: TestCaseVerificationResult = serde_json::from_str(&json).unwrap();
+
+    assert_eq!(parsed.test_case_id, original.test_case_id);
+    assert_eq!(parsed.description, original.description);
+    assert_eq!(parsed.total_steps, original.total_steps);
+    assert_eq!(parsed.passed_steps, original.passed_steps);
+    assert_eq!(parsed.overall_pass, original.overall_pass);
+}
+
+#[test]
+fn test_report_generation_special_characters() {
+    use testcase_manager::verification::{TestCaseVerificationResult, TestVerifier};
+
+    let verifier = TestVerifier::with_exact_matching();
+
+    let result = TestCaseVerificationResult {
+        test_case_id: "TC007".to_string(),
+        description: "Test with special chars: \"quotes\", 'apostrophes', <tags>, & symbols"
+            .to_string(),
+        sequences: vec![],
+        total_steps: 1,
+        passed_steps: 1,
+        failed_steps: 0,
+        not_executed_steps: 0,
+        overall_pass: true,
+        requirement: None,
+        item: None,
+        tc: None,
+    };
+
+    // YAML generation should handle special characters
+    let yaml = verifier.generate_report_yaml(&result).unwrap();
+    assert!(yaml.contains("special chars"));
+
+    // JSON generation should escape properly
+    let json = verifier.generate_report_json(&result).unwrap();
+    assert!(json.contains("special chars"));
+
+    // Verify both can be deserialized
+    let yaml_parsed: TestCaseVerificationResult = serde_yaml::from_str(&yaml).unwrap();
+    let json_parsed: TestCaseVerificationResult = serde_json::from_str(&json).unwrap();
+
+    assert_eq!(yaml_parsed.description, result.description);
+    assert_eq!(json_parsed.description, result.description);
+}
+
+#[test]
+fn test_report_generation_unicode() {
+    use testcase_manager::verification::{TestCaseVerificationResult, TestVerifier};
+
+    let verifier = TestVerifier::with_exact_matching();
+
+    let result = TestCaseVerificationResult {
+        test_case_id: "TC008".to_string(),
+        description: "Test with unicode: 你好世界 🚀 Привет мир 日本語".to_string(),
+        sequences: vec![],
+        total_steps: 1,
+        passed_steps: 1,
+        failed_steps: 0,
+        not_executed_steps: 0,
+        overall_pass: true,
+        requirement: None,
+        item: None,
+        tc: None,
+    };
+
+    let yaml = verifier.generate_report_yaml(&result).unwrap();
+    let json = verifier.generate_report_json(&result).unwrap();
+
+    // Verify unicode is preserved
+    let yaml_parsed: TestCaseVerificationResult = serde_yaml::from_str(&yaml).unwrap();
+    let json_parsed: TestCaseVerificationResult = serde_json::from_str(&json).unwrap();
+
+    assert_eq!(yaml_parsed.description, result.description);
+    assert_eq!(json_parsed.description, result.description);
+}
+
+#[test]
+fn test_report_generation_empty_sequences() {
+    use testcase_manager::verification::{TestCaseVerificationResult, TestVerifier};
+
+    let verifier = TestVerifier::with_exact_matching();
+
+    let result = TestCaseVerificationResult {
+        test_case_id: "TC009".to_string(),
+        description: "Test with no sequences".to_string(),
+        sequences: vec![],
+        total_steps: 0,
+        passed_steps: 0,
+        failed_steps: 0,
+        not_executed_steps: 0,
+        overall_pass: true,
+        requirement: None,
+        item: None,
+        tc: None,
+    };
+
+    let yaml = verifier.generate_report_yaml(&result).unwrap();
+    let json = verifier.generate_report_json(&result).unwrap();
+
+    assert!(yaml.contains("sequences: []"));
+    assert!(json.contains("\"sequences\": []"));
+}
+
+#[test]
+fn test_report_generation_optional_fields() {
+    use testcase_manager::verification::{TestCaseVerificationResult, TestVerifier};
+
+    let verifier = TestVerifier::with_exact_matching();
+
+    // Test with all optional fields present
+    let with_fields = TestCaseVerificationResult {
+        test_case_id: "TC010".to_string(),
+        description: "With optional fields".to_string(),
+        sequences: vec![],
+        total_steps: 1,
+        passed_steps: 1,
+        failed_steps: 0,
+        not_executed_steps: 0,
+        overall_pass: true,
+        requirement: Some("REQ010".to_string()),
+        item: Some(10),
+        tc: Some(10),
+    };
+
+    let yaml_with = verifier.generate_report_yaml(&with_fields).unwrap();
+    assert!(yaml_with.contains("requirement: REQ010"));
+    assert!(yaml_with.contains("item: 10"));
+    assert!(yaml_with.contains("tc: 10"));
+
+    // Test with all optional fields absent
+    let without_fields = TestCaseVerificationResult {
+        test_case_id: "TC011".to_string(),
+        description: "Without optional fields".to_string(),
+        sequences: vec![],
+        total_steps: 1,
+        passed_steps: 1,
+        failed_steps: 0,
+        not_executed_steps: 0,
+        overall_pass: true,
+        requirement: None,
+        item: None,
+        tc: None,
+    };
+
+    let yaml_without = verifier.generate_report_yaml(&without_fields).unwrap();
+    // Optional fields should be omitted when None
+    assert!(!yaml_without.contains("requirement:"));
+    assert!(!yaml_without.contains("item:"));
+    // Note: "tc:" might appear in test_case_id, so we check more specifically
+    let lines: Vec<&str> = yaml_without.lines().collect();
+    let has_tc_field = lines.iter().any(|line| line.trim().starts_with("tc:"));
+    assert!(!has_tc_field);
+}
+
+#[test]
+fn test_generate_report_yaml_complex_sequences() {
+    use testcase_manager::models::Expected;
+    use testcase_manager::verification::{
+        SequenceVerificationResult, StepVerificationResultEnum, TestCaseVerificationResult,
+        TestVerifier,
+    };
+
+    let verifier = TestVerifier::with_exact_matching();
+
+    // Create a complex report with multiple sequences and mixed results
+    let sequences = vec![
+        SequenceVerificationResult {
+            sequence_id: 1,
+            name: "Initialization Sequence".to_string(),
+            step_results: vec![
+                StepVerificationResultEnum::Pass {
+                    step: 1,
+                    description: "Initialize system".to_string(),
+                    requirement: Some("REQ-INIT-001".to_string()),
+                    item: Some(1),
+                    tc: Some(1),
+                },
+                StepVerificationResultEnum::Pass {
+                    step: 2,
+                    description: "Verify configuration".to_string(),
+                    requirement: Some("REQ-INIT-002".to_string()),
+                    item: Some(1),
+                    tc: Some(1),
+                },
+            ],
+            all_steps_passed: true,
+            requirement: Some("REQ-INIT".to_string()),
+            item: Some(1),
+            tc: Some(1),
+        },
+        SequenceVerificationResult {
+            sequence_id: 2,
+            name: "Execution Sequence".to_string(),
+            step_results: vec![
+                StepVerificationResultEnum::Pass {
+                    step: 3,
+                    description: "Execute command".to_string(),
+                    requirement: None,
+                    item: None,
+                    tc: None,
+                },
+                StepVerificationResultEnum::Fail {
+                    step: 4,
+                    description: "Validate output".to_string(),
+                    expected: Expected {
+                        success: Some(true),
+                        result: "SUCCESS".to_string(),
+                        output: "Operation completed".to_string(),
+                    },
+                    actual_result: "ERROR".to_string(),
+                    actual_output: "Operation failed".to_string(),
+                    reason: "Unexpected error occurred during execution".to_string(),
+                    requirement: None,
+                    item: None,
+                    tc: None,
+                },
+                StepVerificationResultEnum::NotExecuted {
+                    step: 5,
+                    description: "Cleanup resources".to_string(),
+                    requirement: None,
+                    item: None,
+                    tc: None,
+                },
+            ],
+            all_steps_passed: false,
+            requirement: None,
+            item: None,
+            tc: None,
+        },
+    ];
+
+    let result = TestCaseVerificationResult {
+        test_case_id: "TC_COMPLEX".to_string(),
+        description: "Complex test with multiple sequences".to_string(),
+        sequences,
+        total_steps: 5,
+        passed_steps: 3,
+        failed_steps: 1,
+        not_executed_steps: 1,
+        overall_pass: false,
+        requirement: Some("REQ-COMPLEX".to_string()),
+        item: Some(99),
+        tc: Some(99),
+    };
+
+    let yaml = verifier.generate_report_yaml(&result).unwrap();
+
+    // Verify all sequences and steps are present
+    assert!(yaml.contains("sequence_id: 1"));
+    assert!(yaml.contains("sequence_id: 2"));
+    assert!(yaml.contains("Initialization Sequence"));
+    assert!(yaml.contains("Execution Sequence"));
+    assert!(yaml.contains("Initialize system"));
+    assert!(yaml.contains("Validate output"));
+    assert!(yaml.contains("Cleanup resources"));
+    assert!(yaml.contains("Pass"));
+    assert!(yaml.contains("Fail"));
+    assert!(yaml.contains("NotExecuted"));
+}
+
+#[test]
+fn test_generate_report_json_complex_sequences() {
+    use testcase_manager::models::Expected;
+    use testcase_manager::verification::{
+        SequenceVerificationResult, StepVerificationResultEnum, TestCaseVerificationResult,
+        TestVerifier,
+    };
+
+    let verifier = TestVerifier::with_exact_matching();
+
+    let sequences = vec![SequenceVerificationResult {
+        sequence_id: 1,
+        name: "Test Sequence".to_string(),
+        step_results: vec![
+            StepVerificationResultEnum::Pass {
+                step: 1,
+                description: "Step 1".to_string(),
+                requirement: None,
+                item: None,
+                tc: None,
+            },
+            StepVerificationResultEnum::Fail {
+                step: 2,
+                description: "Step 2".to_string(),
+                expected: Expected {
+                    success: None,
+                    result: "expected".to_string(),
+                    output: "output".to_string(),
+                },
+                actual_result: "actual".to_string(),
+                actual_output: "actual_output".to_string(),
+                reason: "mismatch".to_string(),
+                requirement: None,
+                item: None,
+                tc: None,
+            },
+        ],
+        all_steps_passed: false,
+        requirement: None,
+        item: None,
+        tc: None,
+    }];
+
+    let result = TestCaseVerificationResult {
+        test_case_id: "TC_JSON_COMPLEX".to_string(),
+        description: "JSON complex test".to_string(),
+        sequences,
+        total_steps: 2,
+        passed_steps: 1,
+        failed_steps: 1,
+        not_executed_steps: 0,
+        overall_pass: false,
+        requirement: None,
+        item: None,
+        tc: None,
+    };
+
+    let json = verifier.generate_report_json(&result).unwrap();
+
+    // Verify JSON contains all expected elements
+    assert!(json.contains("\"sequences\""));
+    assert!(json.contains("\"sequence_id\": 1"));
+    assert!(json.contains("\"Pass\""));
+    assert!(json.contains("\"Fail\""));
+    assert!(json.contains("\"expected\""));
+    assert!(json.contains("\"actual_result\""));
+
+    // Verify it can be deserialized
+    let parsed: TestCaseVerificationResult = serde_json::from_str(&json).unwrap();
+    assert_eq!(parsed.sequences.len(), 1);
+    assert_eq!(parsed.sequences[0].step_results.len(), 2);
+}
+
+#[test]
+fn test_generate_report_multiline_descriptions() {
+    use testcase_manager::verification::{
+        SequenceVerificationResult, StepVerificationResultEnum, TestCaseVerificationResult,
+        TestVerifier,
+    };
+
+    let verifier = TestVerifier::with_exact_matching();
+
+    let multiline_desc =
+        "This is a test description\nthat spans multiple lines\nwith various details";
+
+    let sequences = vec![SequenceVerificationResult {
+        sequence_id: 1,
+        name: "Multi-line test".to_string(),
+        step_results: vec![StepVerificationResultEnum::Pass {
+            step: 1,
+            description: multiline_desc.to_string(),
+            requirement: None,
+            item: None,
+            tc: None,
+        }],
+        all_steps_passed: true,
+        requirement: None,
+        item: None,
+        tc: None,
+    }];
+
+    let result = TestCaseVerificationResult {
+        test_case_id: "TC_MULTILINE".to_string(),
+        description: multiline_desc.to_string(),
+        sequences,
+        total_steps: 1,
+        passed_steps: 1,
+        failed_steps: 0,
+        not_executed_steps: 0,
+        overall_pass: true,
+        requirement: None,
+        item: None,
+        tc: None,
+    };
+
+    let yaml = verifier.generate_report_yaml(&result).unwrap();
+    let json = verifier.generate_report_json(&result).unwrap();
+
+    // Verify multiline strings are properly handled
+    let yaml_parsed: TestCaseVerificationResult = serde_yaml::from_str(&yaml).unwrap();
+    let json_parsed: TestCaseVerificationResult = serde_json::from_str(&json).unwrap();
+
+    assert_eq!(yaml_parsed.description, multiline_desc);
+    assert_eq!(json_parsed.description, multiline_desc);
+}
+
+#[test]
+fn test_generate_report_large_numbers() {
+    use testcase_manager::verification::{TestCaseVerificationResult, TestVerifier};
+
+    let verifier = TestVerifier::with_exact_matching();
+
+    let result = TestCaseVerificationResult {
+        test_case_id: "TC_LARGE".to_string(),
+        description: "Test with large numbers".to_string(),
+        sequences: vec![],
+        total_steps: 10000,
+        passed_steps: 9999,
+        failed_steps: 1,
+        not_executed_steps: 0,
+        overall_pass: false,
+        requirement: None,
+        item: Some(999999),
+        tc: Some(888888),
+    };
+
+    let yaml = verifier.generate_report_yaml(&result).unwrap();
+    let json = verifier.generate_report_json(&result).unwrap();
+
+    // Verify large numbers are properly serialized
+    assert!(yaml.contains("total_steps: 10000"));
+    assert!(yaml.contains("passed_steps: 9999"));
+    assert!(json.contains("\"total_steps\": 10000"));
+    assert!(json.contains("\"passed_steps\": 9999"));
+
+    let yaml_parsed: TestCaseVerificationResult = serde_yaml::from_str(&yaml).unwrap();
+    let json_parsed: TestCaseVerificationResult = serde_json::from_str(&json).unwrap();
+
+    assert_eq!(yaml_parsed.total_steps, 10000);
+    assert_eq!(json_parsed.total_steps, 10000);
+}
+
+#[test]
+fn test_report_generation_error_handling() {
+    use testcase_manager::verification::TestVerifier;
+
+    let verifier = TestVerifier::with_exact_matching();
+
+    // Test that report generation doesn't panic with empty data
+    let empty_result = testcase_manager::verification::TestCaseVerificationResult {
+        test_case_id: "".to_string(),
+        description: "".to_string(),
+        sequences: vec![],
+        total_steps: 0,
+        passed_steps: 0,
+        failed_steps: 0,
+        not_executed_steps: 0,
+        overall_pass: true,
+        requirement: None,
+        item: None,
+        tc: None,
+    };
+
+    let yaml = verifier.generate_report_yaml(&empty_result);
+    let json = verifier.generate_report_json(&empty_result);
+
+    assert!(yaml.is_ok());
+    assert!(json.is_ok());
+}
+
+#[test]
+fn test_step_verification_result_enum_methods() {
+    use testcase_manager::verification::StepVerificationResultEnum;
+
+    let pass = StepVerificationResultEnum::Pass {
+        step: 1,
+        description: "test".to_string(),
+        requirement: Some("REQ".to_string()),
+        item: Some(1),
+        tc: Some(1),
+    };
+
+    assert!(pass.is_pass());
+    assert_eq!(pass.step_number(), 1);
+    assert_eq!(pass.requirement(), Some(&"REQ".to_string()));
+    assert_eq!(pass.item(), Some(1));
+    assert_eq!(pass.tc(), Some(1));
+
+    let fail = StepVerificationResultEnum::Fail {
+        step: 2,
+        description: "test".to_string(),
+        expected: testcase_manager::models::Expected {
+            success: None,
+            result: "r".to_string(),
+            output: "o".to_string(),
+        },
+        actual_result: "a".to_string(),
+        actual_output: "ao".to_string(),
+        reason: "reason".to_string(),
+        requirement: None,
+        item: None,
+        tc: None,
+    };
+
+    assert!(!fail.is_pass());
+    assert_eq!(fail.step_number(), 2);
+    assert_eq!(fail.requirement(), None);
+
+    let not_executed = StepVerificationResultEnum::NotExecuted {
+        step: 3,
+        description: "test".to_string(),
+        requirement: None,
+        item: None,
+        tc: None,
+    };
+
+    assert!(!not_executed.is_pass());
+    assert_eq!(not_executed.step_number(), 3);
+}
