@@ -1139,6 +1139,18 @@ pub struct StepVerificationResult {
     /// Optional error or failure message
     #[serde(skip_serializing_if = "Option::is_none")]
     pub message: Option<String>,
+
+    /// Requirement identifier (optional, for reporting)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub requirement: Option<String>,
+
+    /// Item number (optional, for reporting)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub item: Option<i64>,
+
+    /// TC number (optional, for reporting)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tc: Option<i64>,
 }
 
 impl fmt::Display for StepVerificationResult {
@@ -1188,6 +1200,18 @@ pub struct VerificationReport {
 
     /// Overall verification status
     pub overall_status: VerificationStatus,
+
+    /// Requirement identifier (optional, for reporting)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub requirement: Option<String>,
+
+    /// Item number (optional, for reporting)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub item: Option<i64>,
+
+    /// TC number (optional, for reporting)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tc: Option<i64>,
 }
 
 impl fmt::Display for VerificationReport {

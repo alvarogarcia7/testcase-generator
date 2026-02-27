@@ -429,7 +429,9 @@ fn main() -> Result<()> {
                             use testcase_manager::verification::StepVerificationResultEnum;
 
                             match step_result {
-                                StepVerificationResultEnum::Pass { step, description } => {
+                                StepVerificationResultEnum::Pass {
+                                    step, description, ..
+                                } => {
                                     if verbose {
                                         println!("  ✓ Step {}: {}", step, description);
                                     }
@@ -441,6 +443,7 @@ fn main() -> Result<()> {
                                     actual_result,
                                     actual_output,
                                     reason,
+                                    ..
                                 } => {
                                     println!("  ✗ Step {}: {}", step, description);
                                     if verbose {
@@ -458,7 +461,11 @@ fn main() -> Result<()> {
                                         println!("    {}", reason);
                                     }
                                 }
-                                StepVerificationResultEnum::NotExecuted { step, description } => {
+                                StepVerificationResultEnum::NotExecuted {
+                                    step,
+                                    description,
+                                    ..
+                                } => {
                                     println!("  ⚠ Step {}: {} (NOT EXECUTED)", step, description);
                                 }
                             }
@@ -524,7 +531,9 @@ fn main() -> Result<()> {
                                 use testcase_manager::verification::StepVerificationResultEnum;
 
                                 match step_result {
-                                    StepVerificationResultEnum::Pass { step, description } => {
+                                    StepVerificationResultEnum::Pass {
+                                        step, description, ..
+                                    } => {
                                         if verbose {
                                             println!("  ✓ Step {}: {}", step, description);
                                         }
@@ -536,6 +545,7 @@ fn main() -> Result<()> {
                                         actual_result,
                                         actual_output,
                                         reason,
+                                        ..
                                     } => {
                                         println!("  ✗ Step {}: {}", step, description);
                                         if verbose {
@@ -556,6 +566,7 @@ fn main() -> Result<()> {
                                     StepVerificationResultEnum::NotExecuted {
                                         step,
                                         description,
+                                        ..
                                     } => {
                                         println!(
                                             "  ⚠ Step {}: {} (NOT EXECUTED)",
