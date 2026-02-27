@@ -33,7 +33,16 @@ pub struct StepVerificationResult {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum StepVerificationResultEnum {
     /// Step passed verification
-    Pass { step: i64, description: String },
+    Pass {
+        step: i64,
+        description: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        requirement: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        item: Option<i64>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        tc: Option<i64>,
+    },
     /// Step failed verification
     Fail {
         step: i64,
@@ -42,9 +51,24 @@ pub enum StepVerificationResultEnum {
         actual_result: String,
         actual_output: String,
         reason: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        requirement: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        item: Option<i64>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        tc: Option<i64>,
     },
     /// Step was not found in execution log
-    NotExecuted { step: i64, description: String },
+    NotExecuted {
+        step: i64,
+        description: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        requirement: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        item: Option<i64>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        tc: Option<i64>,
+    },
 }
 
 impl StepVerificationResultEnum {
@@ -57,6 +81,30 @@ impl StepVerificationResultEnum {
             StepVerificationResultEnum::Pass { step, .. } => *step,
             StepVerificationResultEnum::Fail { step, .. } => *step,
             StepVerificationResultEnum::NotExecuted { step, .. } => *step,
+        }
+    }
+
+    pub fn requirement(&self) -> Option<&String> {
+        match self {
+            StepVerificationResultEnum::Pass { requirement, .. } => requirement.as_ref(),
+            StepVerificationResultEnum::Fail { requirement, .. } => requirement.as_ref(),
+            StepVerificationResultEnum::NotExecuted { requirement, .. } => requirement.as_ref(),
+        }
+    }
+
+    pub fn item(&self) -> Option<i64> {
+        match self {
+            StepVerificationResultEnum::Pass { item, .. } => *item,
+            StepVerificationResultEnum::Fail { item, .. } => *item,
+            StepVerificationResultEnum::NotExecuted { item, .. } => *item,
+        }
+    }
+
+    pub fn tc(&self) -> Option<i64> {
+        match self {
+            StepVerificationResultEnum::Pass { tc, .. } => *tc,
+            StepVerificationResultEnum::Fail { tc, .. } => *tc,
+            StepVerificationResultEnum::NotExecuted { tc, .. } => *tc,
         }
     }
 }
@@ -140,6 +188,18 @@ pub struct TestCaseVerificationResult {
 
     /// Overall pass/fail status
     pub overall_pass: bool,
+
+    /// Requirement identifier (optional, for reporting)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub requirement: Option<String>,
+
+    /// Item number (optional, for reporting)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub item: Option<i64>,
+
+    /// TC number (optional, for reporting)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tc: Option<i64>,
 }
 
 /// Result of verifying a test sequence
@@ -156,6 +216,18 @@ pub struct SequenceVerificationResult {
 
     /// Whether all steps passed
     pub all_steps_passed: bool,
+
+    /// Requirement identifier (optional, for reporting)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub requirement: Option<String>,
+
+    /// Item number (optional, for reporting)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub item: Option<i64>,
+
+    /// TC number (optional, for reporting)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tc: Option<i64>,
 }
 
 /// Aggregated batch verification report
@@ -815,8 +887,14 @@ impl TestVerifier {
             }
         }
 
+        // Extract requirement, item, and tc from test case
+        let requirement = Some(test_case.requirement.clone());
+        let item = Some(test_case.item);
+        let tc = Some(test_case.tc);
+
         for sequence in &test_case.test_sequences {
-            let step_results = self.verify_sequence(sequence, &log_map);
+            let step_results =
+                self.verify_sequence(sequence, &log_map, requirement.as_ref(), item, tc);
 
             let all_steps_passed = step_results.iter().all(|r| r.is_pass());
 
@@ -834,6 +912,9 @@ impl TestVerifier {
                 name: sequence.name.clone(),
                 step_results,
                 all_steps_passed,
+                requirement: requirement.clone(),
+                item,
+                tc,
             });
         }
 
@@ -848,6 +929,9 @@ impl TestVerifier {
             failed_steps,
             not_executed_steps,
             overall_pass,
+            requirement: requirement.clone(),
+            item,
+            tc,
         }
     }
 
@@ -856,16 +940,22 @@ impl TestVerifier {
         &self,
         sequence: &TestSequence,
         log_map: &HashMap<(i64, i64), &TestExecutionLog>,
+        requirement: Option<&String>,
+        item: Option<i64>,
+        tc: Option<i64>,
     ) -> Vec<StepVerificationResultEnum> {
         let mut results = Vec::new();
 
         for step in &sequence.steps {
             let result = if let Some(log) = log_map.get(&(sequence.id, step.step)) {
-                self.verify_step_new(step, log)
+                self.verify_step_new(step, log, requirement, item, tc)
             } else {
                 StepVerificationResultEnum::NotExecuted {
                     step: step.step,
                     description: step.description.clone(),
+                    requirement: requirement.cloned(),
+                    item,
+                    tc,
                 }
             };
             results.push(result);
@@ -875,7 +965,14 @@ impl TestVerifier {
     }
 
     /// Verify a single step against its execution log (new API)
-    fn verify_step_new(&self, step: &Step, log: &TestExecutionLog) -> StepVerificationResultEnum {
+    fn verify_step_new(
+        &self,
+        step: &Step,
+        log: &TestExecutionLog,
+        requirement: Option<&String>,
+        item: Option<i64>,
+        tc: Option<i64>,
+    ) -> StepVerificationResultEnum {
         let expected = &step.expected;
 
         // Check success field if it's defined
@@ -892,6 +989,9 @@ impl TestVerifier {
                             "Success mismatch: expected {}, got {}",
                             expected_success, actual_success
                         ),
+                        requirement: requirement.cloned(),
+                        item,
+                        tc,
                     };
                 }
             }
@@ -909,6 +1009,9 @@ impl TestVerifier {
                     "Result mismatch: expected '{}', got '{}'",
                     expected.result, log.actual_result
                 ),
+                requirement: requirement.cloned(),
+                item,
+                tc,
             };
         }
 
@@ -924,12 +1027,18 @@ impl TestVerifier {
                     "Output mismatch: expected '{}', got '{}'",
                     expected.output, log.actual_output
                 ),
+                requirement: requirement.cloned(),
+                item,
+                tc,
             };
         }
 
         StepVerificationResultEnum::Pass {
             step: step.step,
             description: step.description.clone(),
+            requirement: requirement.cloned(),
+            item,
+            tc,
         }
     }
 
@@ -987,6 +1096,9 @@ impl TestVerifier {
                         failed_steps: logs.len(),
                         not_executed_steps: 0,
                         overall_pass: false,
+                        requirement: None,
+                        item: None,
+                        tc: None,
                     };
                     report.add_test_case_result(failed_result);
                 }

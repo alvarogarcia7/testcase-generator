@@ -44,6 +44,15 @@
                         },
                         "description": {
                           "type": "string"
+                        },
+                        "requirement": {
+                          "type": "string"
+                        },
+                        "item": {
+                          "type": "integer"
+                        },
+                        "tc": {
+                          "type": "integer"
                         }
                       },
                       "required": ["step", "description"],
@@ -67,6 +76,15 @@
                         },
                         "reason": {
                           "type": "string"
+                        },
+                        "requirement": {
+                          "type": "string"
+                        },
+                        "item": {
+                          "type": "integer"
+                        },
+                        "tc": {
+                          "type": "integer"
                         }
                       },
                       "required": ["step", "description", "reason"],
@@ -87,6 +105,15 @@
                         },
                         "description": {
                           "type": "string"
+                        },
+                        "requirement": {
+                          "type": "string"
+                        },
+                        "item": {
+                          "type": "integer"
+                        },
+                        "tc": {
+                          "type": "integer"
                         }
                       },
                       "required": ["step", "description"],
@@ -102,6 +129,18 @@
           "all_steps_passed": {
             "type": "boolean",
             "description": "Whether all steps in this sequence passed"
+          },
+          "requirement": {
+            "type": "string",
+            "description": "Requirement identifier (optional, for reporting)"
+          },
+          "item": {
+            "type": "integer",
+            "description": "Item number (optional, for reporting)"
+          },
+          "tc": {
+            "type": "integer",
+            "description": "TC number (optional, for reporting)"
           }
         },
         "required": ["sequence_id", "name", "step_results", "all_steps_passed"],
@@ -131,6 +170,18 @@
     "overall_pass": {
       "type": "boolean",
       "description": "Whether the entire test case passed"
+    },
+    "requirement": {
+      "type": "string",
+      "description": "Requirement identifier (optional, for reporting)"
+    },
+    "item": {
+      "type": "integer",
+      "description": "Item number (optional, for reporting)"
+    },
+    "tc": {
+      "type": "integer",
+      "description": "TC number (optional, for reporting)"
     }
   },
   "required": [

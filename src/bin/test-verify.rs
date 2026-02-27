@@ -238,7 +238,9 @@ fn print_verification_result(result: &testcase_manager::TestCaseVerificationResu
 
         for step_result in &seq_result.step_results {
             match step_result {
-                testcase_manager::StepVerificationResultEnum::Pass { step, description } => {
+                testcase_manager::StepVerificationResultEnum::Pass {
+                    step, description, ..
+                } => {
                     println!("  ✓ Step {}: {} - PASS", step, description);
                 }
                 testcase_manager::StepVerificationResultEnum::Fail {
@@ -248,6 +250,7 @@ fn print_verification_result(result: &testcase_manager::TestCaseVerificationResu
                     actual_result,
                     actual_output,
                     reason,
+                    ..
                 } => {
                     println!("  ✗ Step {}: {} - FAIL", step, description);
                     println!("    Reason: {}", reason);
@@ -261,7 +264,11 @@ fn print_verification_result(result: &testcase_manager::TestCaseVerificationResu
                     println!("      Result: {}", actual_result);
                     println!("      Output: {}", actual_output);
                 }
-                testcase_manager::StepVerificationResultEnum::NotExecuted { step, description } => {
+                testcase_manager::StepVerificationResultEnum::NotExecuted {
+                    step,
+                    description,
+                    ..
+                } => {
                     println!("  ○ Step {}: {} - NOT EXECUTED", step, description);
                 }
             }
@@ -620,6 +627,7 @@ fn format_batch_report_text(report: &BatchVerificationReport) -> String {
                         testcase_manager::StepVerificationResultEnum::NotExecuted {
                             step,
                             description,
+                            ..
                         } => {
                             output.push_str(&format!(
                                 "     ○ Step {}: {} - NOT EXECUTED\n",
