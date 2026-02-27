@@ -136,8 +136,6 @@ fn test_e2e_tc_gsma_4_4_2_2_json_output() {
     assert_eq!(parsed.total_steps, 4);
 }
 
-
-
 // ============================================================================
 // Format Comparison Tests
 // ============================================================================
@@ -182,10 +180,7 @@ fn test_yaml_json_equivalence() {
 fn test_all_test_case_types_can_be_loaded() {
     // Verify TC test case file can be loaded
     let test_case = load_test_case("gsma_4.4.2.2_TC.yml");
-    assert!(
-        !test_case.id.is_empty(),
-        "Test case ID should not be empty"
-    );
+    assert!(!test_case.id.is_empty(), "Test case ID should not be empty");
     assert!(
         !test_case.description.is_empty(),
         "Description should not be empty"
