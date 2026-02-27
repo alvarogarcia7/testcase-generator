@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# NOTE: This file must have executable permissions (chmod +x tests/integration/test_verifier_e2e.sh)
 #
 # End-to-end integration test for verifier binary
 #

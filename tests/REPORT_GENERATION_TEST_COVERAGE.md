@@ -154,14 +154,8 @@ cargo test --test verification_test test_generate_report
 # Run only TC type e2e tests
 cargo test --test report_generation_e2e_test test_e2e_tc
 
-# Run only AN type e2e tests
-cargo test --test report_generation_e2e_test test_e2e_an
-
-# Run only DM type e2e tests
-cargo test --test report_generation_e2e_test test_e2e_dm
-
-# Run only IN type e2e tests
-cargo test --test report_generation_e2e_test test_e2e_in
+# Run format comparison tests
+cargo test --test report_generation_e2e_test test_yaml_json_equivalence
 ```
 
 ## Test Statistics
@@ -180,14 +174,15 @@ cargo test --test report_generation_e2e_test test_e2e_in
 
 1. `generate_report_yaml(&TestCaseVerificationResult) -> Result<String>`
    - Generates YAML format report for a single test case
-   - Tested in: 10+ unit tests, 5 e2e tests
+   - Tested in: 10+ unit tests, 2 e2e tests
 
 2. `generate_report_json(&TestCaseVerificationResult) -> Result<String>`
    - Generates JSON format report for a single test case
-   - Tested in: 8+ unit tests, 5 e2e tests
+   - Tested in: 8+ unit tests, 2 e2e tests
 
 3. `generate_container_report(&BatchVerificationReport, format: &str) -> Result<String>`
-   - Referenced in existing tests (in src/verification.rs)
+   - Generates batch reports for multiple test cases
+   - Tested in unit tests (src/verification.rs)
    - Supports both "yaml" and "json" formats
 
 ## Validation Approach

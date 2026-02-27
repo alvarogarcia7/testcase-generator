@@ -18,7 +18,7 @@ struct Cli {
     test_case_id: Option<String>,
 
     /// Folder discovery mode: path to folder containing log files
-    #[arg(short, long, value_name = "PATH")]
+    #[arg(long, value_name = "PATH")]
     folder: Option<PathBuf>,
 
     /// Output format (yaml or json)
@@ -50,12 +50,15 @@ fn main() -> Result<()> {
     // Execute appropriate mode
     let report = match mode {
         Mode::SingleFile => {
-            let log_path = log_path.unwrap();
-            let test_case_id = test_case_id.unwrap();
+            // Safe unwraps: validate_args guarantees these are Some when mode is SingleFile
+            let log_path = log_path.expect("log_path must be Some for SingleFile mode");
+            let test_case_id = test_case_id.expect("test_case_id must be Some for SingleFile mode");
             handle_single_file_mode(&verifier, &log_path, &test_case_id)?
         }
         Mode::FolderDiscovery => {
-            let folder_path = folder_path.unwrap();
+            // Safe unwrap: validate_args guarantees this is Some when mode is FolderDiscovery
+            let folder_path =
+                folder_path.expect("folder_path must be Some for FolderDiscovery mode");
             handle_folder_mode(&verifier, &folder_path)?
         }
     };
