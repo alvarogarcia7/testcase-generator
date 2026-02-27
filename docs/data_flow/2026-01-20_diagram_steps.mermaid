@@ -1,0 +1,41 @@
+sequenceDiagram
+    participant Tester as [Person]<br> Tester User
+    participant Generator as [System=TCMS CLI - Quality: Alpha]<br>Test Case Generator
+    participant Editor as [Program=$Editor - Quality: Mature]<br>Manual Editor
+    participant Generate as [Program=Bash - Quality: Beta]<br> test-executor generate
+    participant Bash as [Program=Bash - Quality: Mature]<br> Bash
+    participant DUT as [System/Program=DUT - Quality: Under Inspection]<br>Device Under Test
+    participant Verifier as [System=TCMS CLI - Quality: Alpha]<br>Test Verifier
+    participant Reports as [System=TCMS Reports - Quality: Beta]<br>Documentation Generator
+    participant TODO as TODO_???
+
+    
+    Tester ->> Generator: generate
+    Tester ->> Editor: generate
+    Note over Editor,Tester: Produces Artifact: Test Case (YAML)<br>PK={id}
+
+    Tester ->> Generate: Create Test Case Shell Script (input: Test Case YAML)    
+    Note over Generate,Tester: Artifact: Test Case Shell Script (.sh)
+
+    Tester ->> TODO: Start Test Campaign Execution (input: set of Test Case YAML [.yaml])
+    Note over TODO,Tester: Artifact: Test Campaign Execution Log (.json) PK={id,dut_version,timestamp}
+
+    Tester ->> Bash: Execute test case <br>input: Test Case Shell Script
+    %% replaced single execution step with alternative paths
+    alt Manual Execution (includes manual steps)
+        Tester ->> Bash: manual steps + automatic steps
+    else Automatic Execution (without manual steps)
+        Tester ->> Bash: only automatic steps
+    end
+
+    Bash ->> DUT: run test commands (manual/automated)
+    DUT -->> Bash: output data
+
+    Note over Bash,Tester: Artifact: <br>1. Test Execution Log (.json), PK={id,timestamp} <br> 2. 'Actual Output' Output files (actual.log), PK={id,timestamp}
+
+    Tester ->> Verifier: Verify Test Execution<br>input: Test Case Execution Log, Test Case YAML
+    Verifier ->> Verifier: verify expectations
+    Note over Verifier,Tester: Artifact: <br>1. Test Verification Log (.json, schema=TODO) PK={id,timestamp} <br> 2. Test Execution Result (.xml) PK={id,version,timestamp}
+
+    Tester ->> Reports: Generate Test Plan Documentation (input: set of (Test Execution Result [.xml] + Test Case YAML [.yaml]))
+    Note over Reports,Tester: Artifact: Test Plan Documentation (.adoc/.html/.pdf)<br>PK={id,version,timestamp}

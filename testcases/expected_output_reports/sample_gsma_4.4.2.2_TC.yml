@@ -1,0 +1,32 @@
+type: result
+requirement: "XXX100"
+item: 1
+tc: 4
+test_case_id: '4.2.2.2.1 TC_eUICC_ES6.UpdateMetadata'
+description: 'Throughout all the ES6.UpdateMetadata test cases, SMS is used as the secure OTA channel.'
+sequences:
+  - sequence_id: 1
+    name: "Test Sequence #01 Nominal: Unset PPR1"
+    step_results:
+      - Pass:
+          step: 1
+          description: "MTD_SENDS_SMS_PP([INSTALL_PERSO_RES_ISDP]; MTD_STORE_DATA_SCRIPT(#REMOVE_PPR1, FALSE))"
+      - Pass:
+          step: 2
+          description: "Fetch 'XX'"
+    all_steps_passed: true
+  - sequence_id: 2
+    name: "Test Sequence #02 Nominal: Unset PPPR2 and update icon"
+    step_results:
+      - Pass:
+          step: 1
+          description: "MTD_SENDS_SMS_PP([INSTALL_PERSO_RES_ISDP]; MTD_STORE_DATA_SCRIPT(#REMOVE_PPR1, FALSE))"
+      - Pass:
+          step: 2
+          description: "Fetch 'XX'"
+    all_steps_passed: true
+total_steps: 4
+passed_steps: 4
+failed_steps: 0
+not_executed_steps: 0
+overall_pass: true
