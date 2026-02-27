@@ -18,11 +18,11 @@ struct Cli {
     test_case_id: Option<String>,
 
     /// Folder discovery mode: path to folder containing log files
-    #[arg(long, value_name = "PATH")]
+    #[arg(short = 'f', long, value_name = "PATH")]
     folder: Option<PathBuf>,
 
     /// Output format (yaml or json)
-    #[arg(short = 'f', long, default_value = "yaml", value_name = "FORMAT")]
+    #[arg(short = 'F', long, default_value = "yaml", value_name = "FORMAT")]
     format: String,
 
     /// Output file path (optional, defaults to stdout)
