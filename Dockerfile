@@ -47,18 +47,6 @@ COPY testcases ./testcases
 
 WORKDIR /app
 
-# Build the application against cached dependencies
-# The previous RUN command will be reused if only Cargo.toml/Cargo.lock are unchanged
-#RUN --mount=type=cache,target=/usr/local/cargo/registry \
-#    --mount=type=cache,target=/app/target \
-RUN \
-    cargo test --all --all-features --tests --release --target-dir ./target && \
-    cargo test --all --all-features --tests           --target-dir ./target && \
-for bin in $(ls -F /app/target/release | grep -E ".*\*" | cut -d"*" -f1); do \
-      if [ -n "$bin" ]; then \
-        cp "/app/target/release/$bin" /usr/local/bin/ && chmod +x "/usr/local/bin/$bin"; \
-      fi; \
-    done
 
 # Install runtime dependencies: git, inotify-tools for watch mode, and make
 RUN apt-get update && \
