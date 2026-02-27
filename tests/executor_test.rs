@@ -762,9 +762,8 @@ fn test_read_true_false_function_tty_detection() {
     let script = executor.generate_test_script(&test_case);
 
     // Verify TTY detection logic in read_true_false
-    assert!(
-        script.contains("if [[ \"${DEBIAN_FRONTEND:-}\" == 'noninteractive' ]] || ! [ -t 0 ]; then")
-    );
+    assert!(script
+        .contains("if [[ \"${DEBIAN_FRONTEND:-}\" == 'noninteractive' ]] || ! [ -t 0 ]; then"));
     assert!(script.contains("# Non-interactive mode: return default"));
 }
 
@@ -835,9 +834,8 @@ fn test_read_verification_function_tty_detection() {
     let script = executor.generate_test_script(&test_case);
 
     // Verify TTY detection logic in read_verification
-    assert!(
-        script.contains("if [[ \"${DEBIAN_FRONTEND:-}\" == 'noninteractive' ]] || ! [ -t 0 ]; then")
-    );
+    assert!(script
+        .contains("if [[ \"${DEBIAN_FRONTEND:-}\" == 'noninteractive' ]] || ! [ -t 0 ]; then"));
     assert!(script.contains("# Non-interactive mode: return default"));
 }
 
@@ -1012,9 +1010,8 @@ fn test_read_true_false_function_complete_structure() {
     assert!(script.contains("local prompt=\"$1\""));
     assert!(script.contains("local default=\"${2:-y}\""));
     assert!(script.contains("# Check if running in non-interactive mode"));
-    assert!(
-        script.contains("if [[ \"${DEBIAN_FRONTEND:-}\" == 'noninteractive' ]] || ! [ -t 0 ]; then")
-    );
+    assert!(script
+        .contains("if [[ \"${DEBIAN_FRONTEND:-}\" == 'noninteractive' ]] || ! [ -t 0 ]; then"));
     assert!(script.contains("# Non-interactive mode: return default"));
     assert!(script.contains("# Interactive mode: prompt user"));
     assert!(script.contains("while true; do"));
@@ -1051,9 +1048,8 @@ fn test_read_verification_function_complete_structure() {
     assert!(script.contains("local prompt=\"$1\""));
     assert!(script.contains("local default=\"${2:-y}\""));
     assert!(script.contains("# Check if running in non-interactive mode"));
-    assert!(
-        script.contains("if [[ \"${DEBIAN_FRONTEND:-}\" == 'noninteractive' ]] || ! [ -t 0 ]; then")
-    );
+    assert!(script
+        .contains("if [[ \"${DEBIAN_FRONTEND:-}\" == 'noninteractive' ]] || ! [ -t 0 ]; then"));
     assert!(script.contains("# Non-interactive mode: return default"));
     assert!(script.contains("# Interactive mode: prompt user"));
     assert!(script.contains("while true; do"));
