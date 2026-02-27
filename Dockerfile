@@ -89,11 +89,17 @@ ls -lah /usr/local/bin/test-orchestrator > /dev/null
 COPY Makefile ./Makefile
 
 # Build release binaries first
-RUN cargo build --all --all-features --release
+RUN cargo build --all --all-features --release && \
+    for bin in target/release/*; do \
+      if [ -f "$bin" ] && [ -x "$bin" ]; then \
+        cp "$bin" /usr/local/bin/ && chmod +x "/usr/local/bin/$(basename $bin)"; \
+      fi; \
+    done
 
 # Run tests to ensure everything compiles and passes
-RUN cargo test --all --all-features --tests --release && \
-    cargo test --all --all-features --tests
+# Add release binary directory to PATH for test execution
+RUN PATH="/app/target/release:$PATH" cargo test --all --all-features --tests --release && \
+    PATH="/app/target/release:$PATH" cargo test --all --all-features --tests
 
 # Make scripts executable
 RUN chmod +x scripts/*.sh && \
