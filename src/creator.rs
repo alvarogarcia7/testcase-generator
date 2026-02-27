@@ -2,7 +2,9 @@ use crate::complex_structure_editor::ComplexStructureEditor;
 use crate::config::EditorConfig;
 use crate::database::ConditionDatabase;
 use crate::git::GitManager;
-use crate::models::{Expected, Prerequisite, PrerequisiteType, Step, TestSequence};
+use crate::models::{
+    Expected, HookConfig, Hooks, OnError, Prerequisite, PrerequisiteType, Step, TestSequence,
+};
 use crate::oracle::Oracle;
 use crate::prompts::Prompts;
 use crate::sample::SampleData;
@@ -1089,5 +1091,239 @@ output: ""
         } else {
             anyhow::bail!("ID field not found in structure")
         }
+    }
+
+    /// Prompt for and add hooks to the structure
+    ///
+    /// Interactively prompts the user to add hooks to the test case.
+    /// Hooks can be executed at various points in the test lifecycle:
+    /// - script_start: At the start of the test script
+    /// - setup_test: Before setting up a test
+    /// - before_sequence: Before a test sequence
+    /// - after_sequence: After a test sequence
+    /// - before_step: Before each test step
+    /// - after_step: After each test step
+    /// - teardown_test: When tearing down a test
+    /// - script_end: At the end of the test script
+    ///
+    /// # Flow
+    /// 1. Asks if hooks should be added
+    /// 2. For each hook:
+    ///    - Prompts for hook type selection
+    ///    - Prompts for hook file path (with validation)
+    ///    - Offers to create placeholder scripts if path doesn't exist
+    ///    - Prompts for on_error behavior (fail/continue)
+    /// 3. Asks if more hooks should be added
+    ///
+    /// # Example
+    /// ```ignore
+    /// let mut structure = IndexMap::new();
+    /// creator.add_hooks(&mut structure)?;
+    /// ```
+    pub fn add_hooks(&self, structure: &mut IndexMap<String, Value>) -> Result<()> {
+        log::info!("\n=== Hooks ===\n");
+
+        if !Prompts::confirm_with_oracle("Add hooks?", &self.oracle)? {
+            return Ok(());
+        }
+
+        let mut hooks = Hooks::default();
+        let mut hook_count = 0;
+
+        loop {
+            log::info!("\n--- Adding Hook #{} ---", hook_count + 1);
+
+            let hook_type = self.prompt_hook_type()?;
+            let hook_config = self.prompt_hook_config(&hook_type)?;
+
+            // Assign the hook config to the appropriate field
+            match hook_type.as_str() {
+                "script_start" => hooks.script_start = Some(hook_config),
+                "setup_test" => hooks.setup_test = Some(hook_config),
+                "before_sequence" => hooks.before_sequence = Some(hook_config),
+                "after_sequence" => hooks.after_sequence = Some(hook_config),
+                "before_step" => hooks.before_step = Some(hook_config),
+                "after_step" => hooks.after_step = Some(hook_config),
+                "teardown_test" => hooks.teardown_test = Some(hook_config),
+                "script_end" => hooks.script_end = Some(hook_config),
+                _ => anyhow::bail!("Invalid hook type: {}", hook_type),
+            }
+
+            hook_count += 1;
+
+            if !Prompts::confirm_with_oracle("\nAdd another hook?", &self.oracle)? {
+                break;
+            }
+        }
+
+        if hook_count > 0 {
+            let hooks_value =
+                serde_yaml::to_value(&hooks).context("Failed to convert hooks to YAML value")?;
+            structure.insert("hooks".to_string(), hooks_value);
+            log::info!("\n✓ Added {} hook(s)\n", hook_count);
+        }
+
+        Ok(())
+    }
+
+    /// Prompt for hook type selection
+    ///
+    /// Presents a menu to select from available hook types:
+    /// - script_start: At the start of the test script
+    /// - setup_test: Before setting up a test
+    /// - before_sequence: Before a test sequence
+    /// - after_sequence: After a test sequence
+    /// - before_step: Before each test step
+    /// - after_step: After each test step
+    /// - teardown_test: When tearing down a test
+    /// - script_end: At the end of the test script
+    fn prompt_hook_type(&self) -> Result<String> {
+        let items = vec![
+            "script_start".to_string(),
+            "setup_test".to_string(),
+            "before_sequence".to_string(),
+            "after_sequence".to_string(),
+            "before_step".to_string(),
+            "after_step".to_string(),
+            "teardown_test".to_string(),
+            "script_end".to_string(),
+        ];
+
+        log::info!("\nAvailable hook types:");
+        log::info!("  script_start     - Execute at the start of the test script");
+        log::info!("  setup_test       - Execute before setting up a test");
+        log::info!("  before_sequence  - Execute before a test sequence");
+        log::info!("  after_sequence   - Execute after a test sequence");
+        log::info!("  before_step      - Execute before each test step");
+        log::info!("  after_step       - Execute after each test step");
+        log::info!("  teardown_test    - Execute when tearing down a test");
+        log::info!("  script_end       - Execute at the end of the test script\n");
+
+        let selected = Prompts::select_with_oracle("Hook type", items, &self.oracle)?;
+        Ok(selected)
+    }
+
+    /// Prompt for hook configuration (command and on_error behavior)
+    ///
+    /// Prompts for:
+    /// 1. Hook file path (validates existence, offers to create placeholder)
+    /// 2. On error behavior (fail/continue)
+    fn prompt_hook_config(&self, hook_type: &str) -> Result<HookConfig> {
+        log::info!("\nConfiguring {} hook:", hook_type);
+
+        // Prompt for hook file path with validation
+        let command = loop {
+            let path_input = Prompts::input_with_oracle(
+                "Hook file path (e.g., scripts/setup.sh)",
+                &self.oracle,
+            )?;
+
+            // Validate the path
+            let hook_path = if path_input.starts_with('/') {
+                PathBuf::from(&path_input)
+            } else {
+                self.base_path.join(&path_input)
+            };
+
+            if hook_path.exists() {
+                if hook_path.is_file() {
+                    log::info!("✓ File exists: {}", path_input);
+                    break path_input;
+                } else {
+                    log::warn!("⚠ Path exists but is not a file: {}", path_input);
+                    if !Prompts::confirm_with_oracle("Use this path anyway?", &self.oracle)? {
+                        continue;
+                    }
+                    break path_input;
+                }
+            } else {
+                log::warn!("⚠ File does not exist: {}", path_input);
+
+                if Prompts::confirm_with_oracle("Create placeholder script?", &self.oracle)? {
+                    self.create_placeholder_hook_script(&hook_path, hook_type)?;
+                    log::info!("✓ Created placeholder script: {}", path_input);
+                    break path_input;
+                } else if Prompts::confirm_with_oracle("Use this path anyway?", &self.oracle)? {
+                    log::info!("Using non-existent path: {}", path_input);
+                    break path_input;
+                } else {
+                    log::info!("Please enter a different path.");
+                    continue;
+                }
+            }
+        };
+
+        // Prompt for on_error behavior
+        let on_error = self.prompt_on_error_behavior()?;
+
+        Ok(HookConfig {
+            command,
+            on_error: Some(on_error),
+        })
+    }
+
+    /// Prompt for on_error behavior selection
+    ///
+    /// Presents a menu to select error handling behavior:
+    /// - fail: Fail the test execution if hook fails
+    /// - continue: Continue test execution even if hook fails
+    fn prompt_on_error_behavior(&self) -> Result<OnError> {
+        log::info!("\nError handling behavior:");
+        log::info!("  fail     - Fail the test if this hook fails");
+        log::info!("  continue - Continue the test even if this hook fails\n");
+
+        let items = vec!["fail".to_string(), "continue".to_string()];
+        let selected = Prompts::select_with_oracle("On error behavior", items, &self.oracle)?;
+
+        match selected.as_str() {
+            "fail" => Ok(OnError::Fail),
+            "continue" => Ok(OnError::Continue),
+            _ => anyhow::bail!("Invalid on_error value: {}", selected),
+        }
+    }
+
+    /// Create a placeholder hook script at the specified path
+    ///
+    /// Creates a basic bash script template with:
+    /// - Shebang
+    /// - Set -e for error handling
+    /// - Basic script structure
+    /// - Descriptive comments based on hook type
+    fn create_placeholder_hook_script(&self, path: &Path, hook_type: &str) -> Result<()> {
+        // Ensure parent directory exists
+        if let Some(parent) = path.parent() {
+            if !parent.exists() {
+                std::fs::create_dir_all(parent).context("Failed to create parent directories")?;
+            }
+        }
+
+        let script_content = format!(
+            r#"#!/usr/bin/env bash
+# Hook: {}
+# This is a placeholder script that can be customized for your needs.
+
+set -e
+
+# TODO: Implement {} hook logic here
+
+echo "{} hook executed"
+
+exit 0
+"#,
+            hook_type, hook_type, hook_type
+        );
+
+        std::fs::write(path, script_content).context("Failed to write placeholder script")?;
+
+        // Make the script executable on Unix systems
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = std::fs::metadata(path)?.permissions();
+            perms.set_mode(0o755);
+            std::fs::set_permissions(path, perms)?;
+        }
+
+        Ok(())
     }
 }

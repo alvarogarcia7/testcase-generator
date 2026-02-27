@@ -211,6 +211,50 @@
         "required": ["name"]
       }
     },
+    "hooks": {
+      "type": "object",
+      "description": "Optional hooks for custom script execution at various points in the test lifecycle. Hook paths are relative to the test case YAML file location or absolute paths.",
+      "properties": {
+        "script_start": {
+          "type": "string",
+          "description": "Path to script executed once at the very beginning of the test case script, before any other processing. Path is relative to test case YAML location or absolute."
+        },
+        "setup_test": {
+          "type": "string",
+          "description": "Path to script executed once at test case setup, after script_start but before any test sequences. Path is relative to test case YAML location or absolute."
+        },
+        "before_sequence": {
+          "type": "string",
+          "description": "Path to script executed before each test sequence starts. Path is relative to test case YAML location or absolute."
+        },
+        "after_sequence": {
+          "type": "string",
+          "description": "Path to script executed after each test sequence completes. Path is relative to test case YAML location or absolute."
+        },
+        "before_step": {
+          "type": "string",
+          "description": "Path to script executed before each test step. Path is relative to test case YAML location or absolute."
+        },
+        "after_step": {
+          "type": "string",
+          "description": "Path to script executed after each test step. Path is relative to test case YAML location or absolute."
+        },
+        "teardown_test": {
+          "type": "string",
+          "description": "Path to script executed once at test case teardown, after all test sequences complete but before script_end. Path is relative to test case YAML location or absolute."
+        },
+        "script_end": {
+          "type": "string",
+          "description": "Path to script executed once at the very end of the test case script, after all other processing. Path is relative to test case YAML location or absolute."
+        },
+        "on_error": {
+          "type": "string",
+          "enum": ["fail", "continue"],
+          "default": "fail",
+          "description": "Behavior when a hook script fails: 'fail' stops test execution (default), 'continue' logs the error but continues test execution."
+        }
+      }
+    },
     "test_sequences": {
       "type": "array",
       "items": {
@@ -314,7 +358,9 @@
                   "description": "Optional reference identifier for this step."
                 },
                 "manual": {
-                  "type": "boolean"
+                  "type": "boolean",
+                  "description": "Indicates whether this step requires manual user action rather than automated execution. Defaults to false.",
+                  "default": false
                 },
                 "description": {
                   "type": "string"

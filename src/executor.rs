@@ -2,6 +2,7 @@ use crate::bdd_parser::BddStepRegistry;
 use crate::config::{Config, JsonEscapingMethod};
 use crate::hydration::VarHydrator;
 use crate::models::{CaptureVarsFormat, TestCase, TestStepExecutionEntry, VerificationExpression};
+use crate::prompts::Prompts;
 use anyhow::{Context, Result};
 use chrono::Local;
 use regex::Regex;
@@ -421,6 +422,66 @@ impl TestExecutor {
         }
     }
 
+    /// Generate bash code to execute a hook
+    fn generate_hook_execution(hook_name: &str, hook_config: &crate::models::HookConfig) -> String {
+        let mut code = String::new();
+
+        code.push_str(&format!("# Execute {} hook\n", hook_name));
+
+        // Check if command is a .sh file (source it) or another executable (execute it)
+        let command = &hook_config.command;
+        let is_sh_file = command.ends_with(".sh");
+
+        // Determine on_error behavior (default is Fail)
+        let on_error = hook_config
+            .on_error
+            .as_ref()
+            .map(|e| matches!(e, crate::models::OnError::Continue))
+            .unwrap_or(false);
+
+        code.push_str("set +e\n");
+
+        if is_sh_file {
+            // Source .sh files
+            code.push_str(&format!("if [ -f \"{}\" ]; then\n", command));
+            code.push_str(&format!("    source \"{}\"\n", command));
+            code.push_str("    HOOK_EXIT_CODE=$?\n");
+            code.push_str("else\n");
+            code.push_str(&format!(
+                "    echo \"Warning: Hook script '{}' not found\" >&2\n",
+                command
+            ));
+            code.push_str("    HOOK_EXIT_CODE=127\n");
+            code.push_str("fi\n");
+        } else {
+            // Execute other files
+            code.push_str(&format!("{}\n", command));
+            code.push_str("HOOK_EXIT_CODE=$?\n");
+        }
+
+        code.push_str("set -e\n");
+
+        // Handle hook failure based on on_error setting
+        if on_error {
+            // Continue on error
+            code.push_str("if [ $HOOK_EXIT_CODE -ne 0 ]; then\n");
+            code.push_str(&format!("    echo \"Warning: {} hook failed with exit code $HOOK_EXIT_CODE (continuing)\" >&2\n", hook_name));
+            code.push_str("fi\n");
+        } else {
+            // Fail on error (default)
+            code.push_str("if [ $HOOK_EXIT_CODE -ne 0 ]; then\n");
+            code.push_str(&format!(
+                "    echo \"Error: {} hook failed with exit code $HOOK_EXIT_CODE\" >&2\n",
+                hook_name
+            ));
+            code.push_str("    exit $HOOK_EXIT_CODE\n");
+            code.push_str("fi\n");
+        }
+
+        code.push('\n');
+        code
+    }
+
     pub fn generate_test_script_with_json_output(
         &self,
         test_case: &TestCase,
@@ -430,6 +491,65 @@ impl TestExecutor {
 
         script.push_str("#!/bin/bash\n");
         script.push_str("set -euo pipefail\n\n");
+
+        // Execute script_start hook after shebang
+        if let Some(ref hooks) = test_case.hooks {
+            if let Some(ref hook) = hooks.script_start {
+                script.push_str(&Self::generate_hook_execution("script_start", hook));
+            }
+        }
+
+        // Add bash helper functions for Y/n prompts
+        script.push_str(include_str!("../scripts/lib/read_true_false.sh"));
+        script.push('\n');
+
+        script.push_str("# Prompts user for verification with Y/n input\n");
+        script.push_str("# Returns: 1 for yes, 0 for no\n");
+        script
+            .push_str("# Supports both interactive and non-interactive modes with TTY detection\n");
+        script.push_str("read_verification() {\n");
+        script.push_str("    local prompt=\"$1\"\n");
+        script.push_str("    local default=\"${2:-y}\"\n");
+        script.push_str("    \n");
+        script.push_str("    # Check if running in non-interactive mode\n");
+        script.push_str(
+            "    if [[ \"${DEBIAN_FRONTEND:-}\" == 'noninteractive' ]] || ! [ -t 0 ]; then\n",
+        );
+        script.push_str("        # Non-interactive mode: return default\n");
+        script.push_str("        if [[ \"$default\" =~ ^[Yy]$ ]]; then\n");
+        script.push_str("            return 1\n");
+        script.push_str("        else\n");
+        script.push_str("            return 0\n");
+        script.push_str("        fi\n");
+        script.push_str("    fi\n");
+        script.push_str("    \n");
+        script.push_str("    # Interactive mode: prompt user\n");
+        script.push_str("    while true; do\n");
+        script.push_str("        if [[ \"$default\" =~ ^[Yy]$ ]]; then\n");
+        script.push_str("            read -p \"$prompt [Y/n]: \" response\n");
+        script.push_str("        else\n");
+        script.push_str("            read -p \"$prompt [y/N]: \" response\n");
+        script.push_str("        fi\n");
+        script.push_str("        \n");
+        script.push_str("        # Empty response uses default\n");
+        script.push_str("        if [[ -z \"$response\" ]]; then\n");
+        script.push_str("            response=\"$default\"\n");
+        script.push_str("        fi\n");
+        script.push_str("        \n");
+        script.push_str("        # Validate response\n");
+        script.push_str("        case \"$response\" in\n");
+        script.push_str("            [Yy]|[Yy][Ee][Ss])\n");
+        script.push_str("                return 1\n");
+        script.push_str("                ;;\n");
+        script.push_str("            [Nn]|[Nn][Oo])\n");
+        script.push_str("                return 0\n");
+        script.push_str("                ;;\n");
+        script.push_str("            *)\n");
+        script.push_str("                echo \"Invalid response. Please enter Y or n.\" >&2\n");
+        script.push_str("                ;;\n");
+        script.push_str("        esac\n");
+        script.push_str("    done\n");
+        script.push_str("}\n\n");
 
         script.push_str("# Test Case: ");
         script.push_str(&test_case.id);
@@ -511,7 +631,7 @@ impl TestExecutor {
                             ));
 
                             // Check if we're in interactive mode (TTY available and DEBIAN_FRONTEND not set to noninteractive)
-                            script.push_str("if [[ \"${DEBIAN_FRONTEND}\" != 'noninteractive' && -t 0 ]]; then\n");
+                            script.push_str("if [[ \"${DEBIAN_FRONTEND:-}\" != 'noninteractive' && -t 0 ]]; then\n");
                             script.push_str("    read -p \"Press ENTER to confirm this prerequisite is satisfied...\"\n");
                             script.push_str("else\n");
                             script.push_str("    echo \"Non-interactive mode: assuming prerequisite is satisfied.\"\n");
@@ -564,6 +684,13 @@ impl TestExecutor {
 
                 script.push_str("echo \"All prerequisites satisfied\"\n");
                 script.push_str("echo \"\"\n\n");
+            }
+        }
+
+        // Execute setup_test hook after prerequisites
+        if let Some(ref hooks) = test_case.hooks {
+            if let Some(ref hook) = hooks.setup_test {
+                script.push_str(&Self::generate_hook_execution("setup_test", hook));
             }
         }
 
@@ -671,6 +798,16 @@ impl TestExecutor {
                 script.push_str(&format!("# {}\n", line));
             }
 
+            // Execute before_sequence hook with SEQUENCE_ID and SEQUENCE_NAME
+            if let Some(ref hooks) = test_case.hooks {
+                if let Some(ref hook) = hooks.before_sequence {
+                    script.push_str(&format!("SEQUENCE_ID={}\n", sequence.id));
+                    script.push_str(&format!("SEQUENCE_NAME={}\n", bash_escape(&sequence.name)));
+                    script.push_str("export SEQUENCE_ID SEQUENCE_NAME\n");
+                    script.push_str(&Self::generate_hook_execution("before_sequence", hook));
+                }
+            }
+
             if !sequence.initial_conditions.is_empty() {
                 script.push_str("# Sequence Initial Conditions\n");
 
@@ -735,7 +872,24 @@ impl TestExecutor {
             for step in &sequence.steps {
                 script.push_str(&format!("# Step {}: {}\n", step.step, step.description));
 
+                // Execute before_step hook with STEP_NUMBER and STEP_DESC
+                if let Some(ref hooks) = test_case.hooks {
+                    if let Some(ref hook) = hooks.before_step {
+                        script.push_str(&format!("STEP_NUMBER={}\n", step.step));
+                        script.push_str(&format!("STEP_DESC={}\n", bash_escape(&step.description)));
+                        script.push_str("export STEP_NUMBER STEP_DESC\n");
+                        script.push_str(&Self::generate_hook_execution("before_step", hook));
+                    }
+                }
+
                 if step.manual == Some(true) {
+                    // Check if manual step has verification fields (not just "true")
+                    let has_result_verification = !matches!(&step.verification.result,
+                        VerificationExpression::Simple(s) if s.trim() == "true");
+                    let has_output_verification = !matches!(&step.verification.output,
+                        VerificationExpression::Simple(s) if s.trim() == "true");
+                    let has_verification = has_result_verification || has_output_verification;
+
                     script.push_str(&format!(
                         "echo \"Step {}: {}\"\n",
                         step.step, step.description
@@ -745,13 +899,112 @@ impl TestExecutor {
                         step.command.replace("\"", "\\\"")
                     ));
                     script.push_str("echo \"INFO: This is a manual step. You must perform this action manually.\"\n");
-                    script.push_str(
-                        "if [[ \"${DEBIAN_FRONTEND}\" != 'noninteractive' && -t 0 ]]; then\n",
-                    );
-                    script.push_str("    read -p \"Press ENTER to continue...\"\n");
-                    script.push_str("else\n");
-                    script.push_str("    echo \"Non-interactive mode detected, skipping manual step confirmation.\"\n");
-                    script.push_str("fi\n\n");
+
+                    if has_verification {
+                        // Generate interactive prompt for action
+                        script.push_str(
+                            "if [[ \"${DEBIAN_FRONTEND:-}\" != 'noninteractive' && -t 0 ]]; then\n",
+                        );
+                        script.push_str(
+                            "    read -p \"Press ENTER after completing the manual action...\"\n",
+                        );
+                        script.push_str("else\n");
+                        script.push_str("    echo \"Non-interactive mode detected, skipping manual step confirmation.\"\n");
+                        script.push_str("fi\n\n");
+
+                        // Convert hydration placeholders in verification expressions
+                        let converted_result_expr =
+                            convert_verification_expr_hydration(&step.verification.result);
+                        let converted_output_expr =
+                            convert_verification_expr_hydration(&step.verification.output);
+
+                        // Evaluate verification expressions
+                        script.push_str("# Manual step verification\n");
+                        script.push_str("USER_VERIFICATION_RESULT=false\n");
+                        script.push_str("USER_VERIFICATION_OUTPUT=false\n");
+
+                        // Generate verification script for result
+                        if has_result_verification {
+                            let result_verification_script = if uses_variables {
+                                generate_verification_with_var_subst(
+                                    &converted_result_expr,
+                                    "USER_VERIFICATION_RESULT",
+                                )
+                            } else {
+                                Self::generate_verification_script(
+                                    &converted_result_expr,
+                                    "USER_VERIFICATION_RESULT",
+                                )
+                            };
+                            script.push_str(&result_verification_script);
+                        } else {
+                            script.push_str("USER_VERIFICATION_RESULT=true\n");
+                        }
+
+                        // Generate verification script for output
+                        if has_output_verification {
+                            let output_verification_script = if uses_variables {
+                                generate_verification_with_var_subst(
+                                    &converted_output_expr,
+                                    "USER_VERIFICATION_OUTPUT",
+                                )
+                            } else {
+                                Self::generate_verification_script(
+                                    &converted_output_expr,
+                                    "USER_VERIFICATION_OUTPUT",
+                                )
+                            };
+                            script.push_str(&output_verification_script);
+                        } else {
+                            script.push_str("USER_VERIFICATION_OUTPUT=true\n");
+                        }
+
+                        // Set USER_VERIFICATION variable with combined results
+                        script
+                            .push_str("\n# Set USER_VERIFICATION based on verification results\n");
+                        script.push_str("if [ \"$USER_VERIFICATION_RESULT\" = true ] && [ \"$USER_VERIFICATION_OUTPUT\" = true ]; then\n");
+                        script.push_str("    USER_VERIFICATION=true\n");
+                        script.push_str("else\n");
+                        script.push_str("    USER_VERIFICATION=false\n");
+                        script.push_str("fi\n\n");
+
+                        // Output [PASS]/[FAIL] messages based on verification outcome
+                        script.push_str("if [ \"$USER_VERIFICATION\" = true ]; then\n");
+                        script.push_str(&format!(
+                            "    echo \"[PASS] Step {}: {}\"\n",
+                            step.step, step.description
+                        ));
+                        script.push_str("else\n");
+                        script.push_str(&format!(
+                            "    echo \"[FAIL] Step {}: {}\"\n",
+                            step.step, step.description
+                        ));
+                        script.push_str(
+                            "    echo \"  Result verification: $USER_VERIFICATION_RESULT\"\n",
+                        );
+                        script.push_str(
+                            "    echo \"  Output verification: $USER_VERIFICATION_OUTPUT\"\n",
+                        );
+                        script.push_str("    exit 1\n");
+                        script.push_str("fi\n\n");
+                    } else {
+                        // No verification fields - just prompt to continue
+                        script.push_str(
+                            "if [[ \"${DEBIAN_FRONTEND:-}\" != 'noninteractive' && -t 0 ]]; then\n",
+                        );
+                        script.push_str("    read -p \"Press ENTER to continue...\"\n");
+                        script.push_str("else\n");
+                        script.push_str("    echo \"Non-interactive mode detected, skipping manual step confirmation.\"\n");
+                        script.push_str("fi\n\n");
+                    }
+
+                    // Execute after_step hook for manual step
+                    if let Some(ref hooks) = test_case.hooks {
+                        if let Some(ref hook) = hooks.after_step {
+                            script.push_str(&Self::generate_hook_execution("after_step", hook));
+                        }
+                    }
+
                     continue;
                 }
 
@@ -1004,6 +1257,20 @@ impl TestExecutor {
                 script.push_str("    echo \"    \\\"timestamp\\\": \\\"$TIMESTAMP\\\"\"\n");
                 script.push_str("    echo '  }'\n");
                 script.push_str("} >> \"$JSON_LOG\"\n\n");
+
+                // Execute after_step hook for automated step
+                if let Some(ref hooks) = test_case.hooks {
+                    if let Some(ref hook) = hooks.after_step {
+                        script.push_str(&Self::generate_hook_execution("after_step", hook));
+                    }
+                }
+            }
+
+            // Execute after_sequence hook
+            if let Some(ref hooks) = test_case.hooks {
+                if let Some(ref hook) = hooks.after_sequence {
+                    script.push_str(&Self::generate_hook_execution("after_sequence", hook));
+                }
             }
         }
 
@@ -1020,7 +1287,22 @@ impl TestExecutor {
         script.push_str("    fi\n");
         script.push_str("fi\n\n");
 
+        // Execute teardown_test hook after all sequences
+        if let Some(ref hooks) = test_case.hooks {
+            if let Some(ref hook) = hooks.teardown_test {
+                script.push_str(&Self::generate_hook_execution("teardown_test", hook));
+            }
+        }
+
         script.push_str("echo \"All test sequences completed successfully\"\n");
+
+        // Execute script_end hook before final exit
+        if let Some(ref hooks) = test_case.hooks {
+            if let Some(ref hook) = hooks.script_end {
+                script.push_str(&Self::generate_hook_execution("script_end", hook));
+            }
+        }
+
         script.push_str("exit 0\n");
 
         script
@@ -1122,10 +1404,123 @@ impl TestExecutor {
         for sequence in &test_case.test_sequences {
             for step in &sequence.steps {
                 if step.manual == Some(true) {
+                    // Check if manual step has verification fields (not just "true")
+                    let has_result_verification = !matches!(&step.verification.result,
+                        VerificationExpression::Simple(s) if s.trim() == "true");
+                    let has_output_verification = !matches!(&step.verification.output,
+                        VerificationExpression::Simple(s) if s.trim() == "true");
+                    let has_verification = has_result_verification || has_output_verification;
+
+                    if !has_verification {
+                        // No verification - just skip
+                        println!(
+                            "[SKIP] Step {} (Sequence {}): {} - Manual step",
+                            step.step, sequence.id, step.description
+                        );
+                        continue;
+                    }
+
+                    // Manual step with verification - prompt user for action
                     println!(
-                        "[SKIP] Step {} (Sequence {}): {} - Manual step",
+                        "[MANUAL] Step {} (Sequence {}): {}",
                         step.step, sequence.id, step.description
                     );
+                    println!("  Command: {}", step.command);
+                    println!(
+                        "  INFO: This is a manual step. You must perform this action manually."
+                    );
+
+                    // Prompt user to confirm they've completed the action
+                    let prompt = format!(
+                        "Have you completed the manual action for Step {}?",
+                        step.step
+                    );
+                    let action_completed = match Prompts::confirm(&prompt) {
+                        Ok(confirmed) => confirmed,
+                        Err(e) => {
+                            println!(
+                                "[SKIP] Step {} (Sequence {}): Failed to get user confirmation: {}",
+                                step.step, sequence.id, e
+                            );
+                            continue;
+                        }
+                    };
+
+                    if !action_completed {
+                        println!(
+                            "[SKIP] Step {} (Sequence {}): User indicated action not completed",
+                            step.step, sequence.id
+                        );
+                        continue;
+                    }
+
+                    // Evaluate verification expressions
+                    // For manual steps, we don't have exit_code or command_output from execution
+                    // But verification expressions might reference them or use step variables
+                    let exit_code = 0; // Default for manual steps
+                    let command_output = String::new(); // Empty for manual steps
+
+                    let result_verification_passed = self.evaluate_verification(
+                        &step.verification.result,
+                        exit_code,
+                        &command_output,
+                        &step_vars,
+                    )?;
+
+                    let output_verification_passed = self.evaluate_verification(
+                        &step.verification.output,
+                        exit_code,
+                        &command_output,
+                        &step_vars,
+                    )?;
+
+                    // Evaluate general verifications if present
+                    let mut general_verifications_passed = true;
+                    if let Some(ref general_verifications) = step.verification.general {
+                        for general_ver in general_verifications {
+                            let general_expr =
+                                VerificationExpression::Simple(general_ver.condition.clone());
+                            let general_passed = self.evaluate_verification(
+                                &general_expr,
+                                exit_code,
+                                &command_output,
+                                &step_vars,
+                            )?;
+
+                            if !general_passed {
+                                general_verifications_passed = false;
+                                println!("  General verification '{}' failed", general_ver.name);
+                            }
+                        }
+                    }
+
+                    // Check if all verifications passed
+                    if result_verification_passed
+                        && output_verification_passed
+                        && general_verifications_passed
+                    {
+                        println!(
+                            "[PASS] Step {} (Sequence {}): {}",
+                            step.step, sequence.id, step.description
+                        );
+                    } else {
+                        println!(
+                            "[FAIL] Step {} (Sequence {}): {}",
+                            step.step, sequence.id, step.description
+                        );
+                        println!("  Result verification: {}", result_verification_passed);
+                        println!("  Output verification: {}", output_verification_passed);
+                        println!("  General verifications: {}", general_verifications_passed);
+                        verification_failed = true;
+
+                        if execution_error.is_none() {
+                            execution_error = Some(anyhow::anyhow!(
+                                "Manual step {} verification failed",
+                                step.step
+                            ));
+                        }
+                    }
+
                     continue;
                 }
 
@@ -1463,6 +1858,8 @@ fi"#,
                     exit_code,
                     output,
                     timestamp: Some(timestamp.to_rfc3339()),
+                    hook_type: None,
+                    hook_path: None,
                 };
 
                 template_entries.push(entry);
@@ -1712,6 +2109,91 @@ mod tests {
     use std::collections::HashMap;
 
     #[test]
+    fn test_helper_functions_in_generated_script() {
+        let executor = TestExecutor::new();
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test helper functions".to_string(),
+        );
+
+        let mut sequence = TestSequence::new(1, "Seq1".to_string(), "First sequence".to_string());
+        let step = Step {
+            step: 1,
+            manual: None,
+            description: "Echo test".to_string(),
+            command: "echo 'hello'".to_string(),
+            capture_vars: None,
+            expected: Expected {
+                success: Some(true),
+                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
+                output: "[ \"$COMMAND_OUTPUT\" = \"hello\" ]".to_string(),
+            },
+            verification: Verification {
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple(
+                    "[ \"$COMMAND_OUTPUT\" = \"hello\" ]".to_string(),
+                ),
+                output_file: None,
+                general: None,
+            },
+            reference: None,
+        };
+        sequence.steps.push(step);
+        test_case.test_sequences.push(sequence);
+
+        let script = executor.generate_test_script(&test_case);
+
+        // Verify helper functions are present
+        assert!(
+            script.contains("read_true_false()"),
+            "Script should contain read_true_false function"
+        );
+        assert!(
+            script.contains("read_verification()"),
+            "Script should contain read_verification function"
+        );
+        assert!(
+            script.contains("# Bash helper functions for user prompts"),
+            "Script should contain helper function comment"
+        );
+        assert!(
+            script.contains("# Returns: 1 for yes, 0 for no"),
+            "Script should contain return value documentation"
+        );
+        assert!(
+            script.contains(
+                "# Supports both interactive and non-interactive modes with TTY detection"
+            ),
+            "Script should contain mode documentation"
+        );
+        assert!(
+            script.contains(
+                "if [[ \"${DEBIAN_FRONTEND:-}\" == 'noninteractive' ]] || ! [ -t 0 ]; then"
+            ),
+            "Script should contain TTY detection"
+        );
+        assert!(
+            script.contains("read -p \"$prompt [Y/n]: \" response"),
+            "Script should contain Y/n prompt"
+        );
+        assert!(
+            script.contains("read -p \"$prompt [y/N]: \" response"),
+            "Script should contain y/N prompt"
+        );
+        assert!(
+            script.contains("[Yy]|[Yy][Ee][Ss])"),
+            "Script should validate yes responses"
+        );
+        assert!(
+            script.contains("[Nn]|[Nn][Oo])"),
+            "Script should validate no responses"
+        );
+    }
+
+    #[test]
     fn test_generate_test_script_basic() {
         let executor = TestExecutor::new();
         let mut test_case = TestCase::new(
@@ -1804,9 +2286,8 @@ mod tests {
             "echo \"INFO: This is a manual step. You must perform this action manually.\""
         ));
         assert!(script.contains("read -p \"Press ENTER to continue...\""));
-        assert!(
-            script.contains("if [[ \"${DEBIAN_FRONTEND}\" != 'noninteractive' && -t 0 ]]; then\n")
-        );
+        assert!(script
+            .contains("if [[ \"${DEBIAN_FRONTEND:-}\" != 'noninteractive' && -t 0 ]]; then\n"));
         assert!(
             script.contains("Non-interactive mode detected, skipping manual step confirmation.")
         );

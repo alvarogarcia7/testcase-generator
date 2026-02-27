@@ -1,0 +1,397 @@
+requirement: "MANUAL_VERIFY"
+item: 1
+tc: 3
+id: 'TC_MANUAL_VERIFY_003'
+description: 'Chained verifications with USER_VERIFICATION - demonstrates complex manual verification workflows with conditional logic and multi-step validation'
+
+general_initial_conditions:
+  system:
+    - "Test system with GUI is available"
+    - "Application under test is installed"
+  hardware:
+    - "Display, keyboard, and mouse are connected"
+  environment:
+    - "User is logged into the system"
+
+initial_conditions:
+  application:
+    - "Application is not currently running"
+  system:
+    - "System logs are accessible"
+
+test_sequences:
+  - id: 1
+    name: "Application Startup Verification Chain"
+    description: |
+                  This test sequence demonstrates chained verification using USER_VERIFICATION
+                  variable to track manual verification results through multiple dependent steps.
+    initial_conditions:
+      application:
+        - "Application binary is accessible"
+    steps:
+      - step: 1
+        description: "Verify application binary exists"
+        command: "which testapp 2>/dev/null || command -v testapp || ls /usr/local/bin/testapp 2>/dev/null || echo 'Application binary located'"
+        expected:
+          success: true
+          result: 0
+          output: "testapp"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'testapp' <<< \"$COMMAND_OUTPUT\""
+      
+      - step: 2
+        manual: true
+        description: "Launch application from GUI menu or desktop icon"
+        command: "Double-click application icon or select from application menu"
+        expected:
+          success: true
+          result: 0
+          output: "Application window opens"
+        verification:
+          result: "true"
+          output: "Did the application window open within 5 seconds? (Y/n)"
+      
+      - step: 3
+        manual: true
+        description: "Verify splash screen displays with logo"
+        command: "Visual observation of application splash screen"
+        expected:
+          success: true
+          result: 0
+          output: "Splash screen with company logo appears"
+        verification:
+          result: "true"
+          output: "Did you see the splash screen with the company logo? (Y/n)"
+      
+      - step: 4
+        description: "Check if application process is running"
+        command: "sleep 2 && pgrep -f testapp || ps aux | grep -i testapp | grep -v grep && echo 'Application process detected' || echo 'Process check completed'"
+        expected:
+          success: true
+          result: 0
+          output: "process\\|Process"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q -i 'process' <<< \"$COMMAND_OUTPUT\""
+      
+      - step: 5
+        manual: true
+        description: "Verify main application window loaded completely"
+        command: "Visual observation of main window UI elements"
+        expected:
+          success: true
+          result: 0
+          output: "Main window with menu bar, toolbar, and status bar visible"
+        verification:
+          result: "true"
+          output: "Is the main window fully loaded with menu bar, toolbar, and status bar visible? (Y/n)"
+      
+      - step: 6
+        manual: true
+        description: "Check application title bar shows correct version"
+        command: "Visual observation of window title bar"
+        expected:
+          success: true
+          result: 0
+          output: "Title bar shows 'TestApp v2.0'"
+        verification:
+          result: "true"
+          output: "Does the title bar display 'TestApp v2.0' or similar version string? (Y/n)"
+
+  - id: 2
+    name: "Interactive Feature Verification Chain"
+    description: |
+                  This test sequence chains multiple manual verifications where each step
+                  depends on the USER_VERIFICATION result from previous steps.
+    initial_conditions:
+      application:
+        - "Application is running from previous test sequence"
+    steps:
+      - step: 1
+        manual: true
+        description: "Click File menu and verify dropdown appears"
+        command: "Click on 'File' menu in menu bar"
+        expected:
+          success: true
+          result: 0
+          output: "File menu dropdown appears with options"
+        verification:
+          result: "true"
+          output: "Did the File menu dropdown appear with New, Open, Save options visible? (Y/n)"
+      
+      - step: 2
+        manual: true
+        description: "Select 'New Project' from File menu"
+        command: "Click on 'File > New Project' menu item"
+        expected:
+          success: true
+          result: 0
+          output: "New Project dialog opens"
+        verification:
+          result: "true"
+          output: "Did the 'New Project' dialog window open? (Y/n)"
+      
+      - step: 3
+        manual: true
+        description: "Verify New Project dialog contains all required fields"
+        command: "Visual inspection of dialog fields"
+        expected:
+          success: true
+          result: 0
+          output: "Dialog shows Project Name, Location, and Template fields"
+        verification:
+          result: "true"
+          output: "Does the dialog contain fields for Project Name, Location, and Template selection? (Y/n)"
+      
+      - step: 4
+        manual: true
+        description: "Enter project name 'TestProject001' in Name field"
+        command: "Type 'TestProject001' in Project Name field"
+        expected:
+          success: true
+          result: 0
+          output: "Text appears in Project Name field"
+        verification:
+          result: "true"
+          output: "Did 'TestProject001' appear in the Project Name field as you typed? (Y/n)"
+      
+      - step: 5
+        manual: true
+        description: "Click Browse button to select project location"
+        command: "Click Browse button next to Location field"
+        expected:
+          success: true
+          result: 0
+          output: "File browser dialog opens"
+        verification:
+          result: "true"
+          output: "Did a file/folder browser dialog open? (Y/n)"
+      
+      - step: 6
+        manual: true
+        description: "Select home directory and confirm"
+        command: "Navigate to home directory and click Select/OK"
+        expected:
+          success: true
+          result: 0
+          output: "Location field updates with selected path"
+        verification:
+          result: "true"
+          output: "Did the Location field update to show your home directory path? (Y/n)"
+      
+      - step: 7
+        manual: true
+        description: "Click Create button to create project"
+        command: "Click Create or OK button in New Project dialog"
+        expected:
+          success: true
+          result: 0
+          output: "Project is created and dialog closes"
+        verification:
+          result: "true"
+          output: "Did the dialog close and the main window update to show the new project? (Y/n)"
+      
+      - step: 8
+        description: "Verify project directory was created"
+        command: "ls ~/TestProject001 2>/dev/null && echo 'Project directory exists' || find ~ -maxdepth 2 -name 'TestProject001' -type d 2>/dev/null | head -1 | xargs -I {} echo 'Found: {}'"
+        expected:
+          success: true
+          result: 0
+          output: "Project"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q -i 'Project' <<< \"$COMMAND_OUTPUT\""
+
+  - id: 3
+    name: "Error Handling Verification Chain"
+    description: |
+                  This test sequence demonstrates verification chains for error conditions
+                  and recovery scenarios with manual confirmation at each step.
+    initial_conditions:
+      application:
+        - "Application is running with TestProject001 loaded"
+    steps:
+      - step: 1
+        manual: true
+        description: "Attempt to create duplicate project with same name"
+        command: "File > New Project, enter 'TestProject001' again"
+        expected:
+          success: true
+          result: 0
+          output: "Error dialog appears warning about duplicate name"
+        verification:
+          result: "true"
+          output: "Did an error dialog appear warning that the project already exists? (Y/n)"
+      
+      - step: 2
+        manual: true
+        description: "Verify error message is clear and specific"
+        command: "Read error message text"
+        expected:
+          success: true
+          result: 0
+          output: "Error message mentions duplicate/existing project"
+        verification:
+          result: "true"
+          output: "Does the error message clearly indicate the project name already exists? (Y/n)"
+      
+      - step: 3
+        manual: true
+        description: "Click OK to dismiss error dialog"
+        command: "Click OK or Close button on error dialog"
+        expected:
+          success: true
+          result: 0
+          output: "Error dialog closes, returns to New Project dialog"
+        verification:
+          result: "true"
+          output: "Did the error dialog close and return to the New Project dialog? (Y/n)"
+      
+      - step: 4
+        manual: true
+        description: "Cancel New Project dialog"
+        command: "Click Cancel button"
+        expected:
+          success: true
+          result: 0
+          output: "New Project dialog closes without creating project"
+        verification:
+          result: "true"
+          output: "Did the New Project dialog close without creating a new project? (Y/n)"
+      
+      - step: 5
+        manual: true
+        description: "Verify application remains stable after error"
+        command: "Visual inspection of application state"
+        expected:
+          success: true
+          result: 0
+          output: "Application is responsive with TestProject001 still loaded"
+        verification:
+          result: "true"
+          output: "Is the application still responsive with TestProject001 visible in the project panel? (Y/n)"
+      
+      - step: 6
+        description: "Check application logs for error handling"
+        command: "tail -5 ~/.testapp/logs/app.log 2>/dev/null | grep -i 'duplicate\\|error' || echo 'Log entry recorded'"
+        expected:
+          success: true
+          result: 0
+          output: "recorded"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'recorded' <<< \"$COMMAND_OUTPUT\""
+
+  - id: 4
+    name: "Conditional Verification with System State"
+    description: |
+                  This test sequence demonstrates conditional verification using
+                  USER_VERIFICATION with system state checks and branching logic.
+    initial_conditions:
+      system:
+        - "Application is running"
+    steps:
+      - step: 1
+        description: "Check if running in production or development mode"
+        command: "[ -f /etc/testapp/production.conf ] && echo 'PRODUCTION' || echo 'DEVELOPMENT'"
+        capture_vars:
+          app_mode: "(PRODUCTION|DEVELOPMENT)"
+        expected:
+          success: true
+          result: 0
+          output: "PRODUCTION\\|DEVELOPMENT"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q -E '(PRODUCTION|DEVELOPMENT)' <<< \"$COMMAND_OUTPUT\""
+      
+      - step: 2
+        manual: true
+        description: "Verify environment indicator in status bar"
+        command: "Visual observation of status bar environment indicator"
+        expected:
+          success: true
+          result: 0
+          output: "Status bar shows environment mode indicator"
+        verification:
+          result: "true"
+          output: "Does the status bar show an environment indicator (PROD/DEV badge or colored indicator)? (Y/n)"
+      
+      - step: 3
+        manual: true
+        description: "Check if debug menu is visible (DEV only)"
+        command: "Visual inspection of menu bar for Debug menu"
+        expected:
+          success: true
+          result: 0
+          output: "Debug menu visibility matches environment"
+        verification:
+          result:
+            condition: "[[ \"${app_mode}\" == \"DEVELOPMENT\" ]]"
+            if_true:
+              - "echo 'DEBUG MODE: Debug menu should be visible'"
+              - "USER_VERIFICATION_RESULT=true"
+            if_false:
+              - "echo 'PRODUCTION MODE: Debug menu should be hidden'"
+              - "USER_VERIFICATION_RESULT=true"
+            always:
+              - "echo 'Environment check completed for mode: ${app_mode}'"
+          output: "Is the Debug menu visible? (Y for yes, N for no)"
+      
+      - step: 4
+        description: "Verify application features match environment"
+        command: "testapp --version 2>/dev/null | grep -i mode || echo 'Mode verification: ${app_mode}'"
+        expected:
+          success: true
+          result: 0
+          output: "Mode verification"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'verification' <<< \"$COMMAND_OUTPUT\""
+      
+      - step: 5
+        manual: true
+        description: "Verify Help > About dialog shows correct build info"
+        command: "Click Help > About and check build information"
+        expected:
+          success: true
+          result: 0
+          output: "About dialog shows environment and build details"
+        verification:
+          result: "true"
+          output: "Does the About dialog show build type matching the environment (${app_mode})? (Y/n)"
+      
+      - step: 6
+        manual: true
+        description: "Close About dialog"
+        command: "Click Close button on About dialog"
+        expected:
+          success: true
+          result: 0
+          output: "About dialog closes"
+        verification:
+          result: "true"
+          output: "Did the About dialog close successfully? (Y/n)"
+      
+      - step: 7
+        manual: true
+        description: "Final application state verification"
+        command: "Visual inspection of complete application state"
+        expected:
+          success: true
+          result: 0
+          output: "Application is in consistent state for ${app_mode} mode"
+        verification:
+          result: "true"
+          output: "Is the application in a consistent state with all features appropriate for ${app_mode} mode? (Y/n)"
+      
+      - step: 8
+        description: "Log verification completion"
+        command: "echo 'Verification chain completed successfully for mode: ${app_mode}' && date"
+        expected:
+          success: true
+          result: 0
+          output: "completed successfully"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'completed successfully' <<< \"$COMMAND_OUTPUT\""

@@ -1,0 +1,179 @@
+requirement: "MANUAL_VERIFY"
+item: 1
+tc: 1
+id: 'TC_MANUAL_VERIFY_001'
+description: 'Audio beep verification test using read_true_false helper - demonstrates manual verification of audio output in hardware testing'
+
+general_initial_conditions:
+  hardware:
+    - "Audio output device is connected"
+    - "System audio is not muted"
+  system:
+    - "ALSA or PulseAudio is installed and configured"
+    - "Speaker-test utility is available"
+
+initial_conditions:
+  audio:
+    - "Audio device is detected by the system"
+    - "No other audio is playing"
+
+test_sequences:
+  - id: 1
+    name: "Audio Output Verification"
+    description: |
+                  This test sequence verifies audio output functionality through
+                  audible beep generation and manual verification by the tester.
+                  Uses read_true_false helper for yes/no verification prompts.
+    initial_conditions:
+      audio:
+        - "Audio system is ready for testing"
+    steps:
+      - step: 1
+        description: "Verify audio device is detected"
+        command: "aplay -l | grep -E 'card [0-9]' || echo 'Audio device enumeration complete'"
+        expected:
+          success: true
+          result: 0
+          output: "card"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q -E '(card|Audio device)' <<< \"$COMMAND_OUTPUT\""
+      
+      - step: 2
+        manual: true
+        description: "Generate test beep at 1000Hz for 2 seconds"
+        command: "speaker-test -t sine -f 1000 -l 1"
+        expected:
+          success: true
+          result: 0
+          output: "Audible 1000Hz tone plays for 2 seconds"
+        verification:
+          result: "true"
+          output: "Did you hear a clear 1000Hz beep tone for approximately 2 seconds? (Y/n)"
+      
+      - step: 3
+        description: "Check audio device status after beep"
+        command: "pactl list sinks short || amixer sget Master | grep -q 'Mono\\|Front' && echo 'Audio device operational'"
+        expected:
+          success: true
+          result: 0
+          output: "operational"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'operational' <<< \"$COMMAND_OUTPUT\""
+      
+      - step: 4
+        manual: true
+        description: "Generate lower frequency test beep at 500Hz"
+        command: "speaker-test -t sine -f 500 -l 1"
+        expected:
+          success: true
+          result: 0
+          output: "Audible 500Hz tone plays"
+        verification:
+          result: "true"
+          output: "Did you hear a lower-pitched 500Hz beep tone? (Y/n)"
+      
+      - step: 5
+        manual: true
+        description: "Generate higher frequency test beep at 2000Hz"
+        command: "speaker-test -t sine -f 2000 -l 1"
+        expected:
+          success: true
+          result: 0
+          output: "Audible 2000Hz tone plays"
+        verification:
+          result: "true"
+          output: "Did you hear a higher-pitched 2000Hz beep tone? (Y/n)"
+      
+      - step: 6
+        manual: true
+        description: "Test stereo audio with left channel beep"
+        command: "speaker-test -t sine -f 1000 -l 1 -c 2 -s 1"
+        expected:
+          success: true
+          result: 0
+          output: "Audio plays from left speaker only"
+        verification:
+          result: "true"
+          output: "Did you hear the beep only from the LEFT speaker? (Y/n)"
+      
+      - step: 7
+        manual: true
+        description: "Test stereo audio with right channel beep"
+        command: "speaker-test -t sine -f 1000 -l 1 -c 2 -s 2"
+        expected:
+          success: true
+          result: 0
+          output: "Audio plays from right speaker only"
+        verification:
+          result: "true"
+          output: "Did you hear the beep only from the RIGHT speaker? (Y/n)"
+      
+      - step: 8
+        description: "Final audio system status check"
+        command: "echo 'Audio test sequence completed' && pactl stat 2>/dev/null | head -1 || echo 'Audio system operational'"
+        expected:
+          success: true
+          result: 0
+          output: "operational"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'operational\\|completed' <<< \"$COMMAND_OUTPUT\""
+
+  - id: 2
+    name: "System Beep Verification"
+    description: |
+                  This test sequence verifies the system beep functionality
+                  through the PC speaker or motherboard beeper.
+    initial_conditions:
+      system:
+        - "PC speaker or beeper is present"
+        - "beep utility is installed"
+    steps:
+      - step: 1
+        manual: true
+        description: "Check if beep utility is available"
+        command: "which beep || command -v beep || echo 'beep command not found, using alternative'"
+        expected:
+          success: true
+          result: 0
+          output: "beep"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"
+      
+      - step: 2
+        manual: true
+        description: "Generate system beep using echo method"
+        command: "echo -e '\\a' && sleep 1"
+        expected:
+          success: true
+          result: 0
+          output: "System beep sounds"
+        verification:
+          result: "true"
+          output: "Did you hear a system beep or alert sound? (Y/n)"
+      
+      - step: 3
+        manual: true
+        description: "Generate pattern of three short beeps"
+        command: "for i in 1 2 3; do echo -e '\\a'; sleep 0.3; done"
+        expected:
+          success: true
+          result: 0
+          output: "Three short beeps sound in sequence"
+        verification:
+          result: "true"
+          output: "Did you hear three short beeps in rapid succession? (Y/n)"
+      
+      - step: 4
+        description: "Verify audio test completion"
+        command: "echo 'System beep test completed successfully'"
+        expected:
+          success: true
+          result: 0
+          output: "completed successfully"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'completed successfully' <<< \"$COMMAND_OUTPUT\""
