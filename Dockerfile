@@ -43,6 +43,7 @@ COPY src ./src
 COPY examples ./examples
 COPY tests ./tests
 COPY data ./data
+COPY testcases ./testcases
 
 WORKDIR /app
 
