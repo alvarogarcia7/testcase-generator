@@ -69,6 +69,14 @@ run-json-escape: build-json-escape
 	./target/debug/json-escape
 .PHONY: run-json-escape
 
+build-verifier:
+	cargo build --bin verifier
+.PHONY: build-verifier
+
+run-verifier: build-verifier
+	./target/debug/verifier
+.PHONY: run-verifier
+
 test-e2e-failing: build
 	./tests/integration/run_e2e_test.sh
 	./tests/integration/test_variable_passing_e2e.sh
