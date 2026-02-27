@@ -60,19 +60,6 @@ RUN apt-get update && \
 
 WORKDIR /app
 
-RUN \
-ls -lah /usr/local/bin/testcase-manager > /dev/null && \
-ls -lah /usr/local/bin/validate-yaml > /dev/null && \
-ls -lah /usr/local/bin/validate-json > /dev/null && \
-ls -lah /usr/local/bin/trm > /dev/null && \
-ls -lah /usr/local/bin/test-verify > /dev/null && \
-ls -lah /usr/local/bin/test-executor > /dev/null && \
-ls -lah /usr/local/bin/editor > /dev/null && \
-ls -lah /usr/local/bin/test-orchestrator > /dev/null
-
-
-
-
 # Copy Makefile for convenient commands
 COPY Makefile ./Makefile
 
@@ -83,6 +70,17 @@ RUN cargo build --all --all-features --release && \
         cp "$bin" /usr/local/bin/ && chmod +x "/usr/local/bin/$(basename $bin)"; \
       fi; \
     done
+
+# Verify binaries were installed correctly
+RUN \
+ls -lah /usr/local/bin/testcase-manager > /dev/null && \
+ls -lah /usr/local/bin/validate-yaml > /dev/null && \
+ls -lah /usr/local/bin/validate-json > /dev/null && \
+ls -lah /usr/local/bin/trm > /dev/null && \
+ls -lah /usr/local/bin/test-verify > /dev/null && \
+ls -lah /usr/local/bin/test-executor > /dev/null && \
+ls -lah /usr/local/bin/editor > /dev/null && \
+ls -lah /usr/local/bin/test-orchestrator > /dev/null
 
 # Run tests to ensure everything compiles and passes
 # Add release binary directory to PATH for test execution
