@@ -111,6 +111,7 @@ test-e2e:
 	./tests/integration/test_validate_yaml_multi_e2e.sh
 	./tests/integration/test_validate_yaml_watch_e2e.sh
 	./tests/integration/test_variable_passing_e2e.sh
+	./tests/integration/test_verifier_e2e.sh
 	#./tests/integration/test_verify_e2e.sh
 .PHONY: test-e2e
 
