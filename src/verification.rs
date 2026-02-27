@@ -839,11 +839,7 @@ impl TestVerifier {
             let success = Some(entry.exit_code == 0);
 
             // Derive actual_result from exit_code
-            let actual_result = if entry.exit_code == 0 {
-                "SUCCESS".to_string()
-            } else {
-                format!("FAILED (exit code: {})", entry.exit_code)
-            };
+            let actual_result = entry.exit_code.to_string();
 
             // Parse timestamp if present
             let timestamp = entry.timestamp.as_ref().and_then(|ts| {
