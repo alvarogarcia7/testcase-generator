@@ -1,0 +1,54 @@
+requirement: "TEST_SUCCESS"
+item: 1
+tc: 1
+id: 'TEST_SUCCESS_001'
+description: 'Successful execution scenario with 3 passing steps in 1 sequence'
+
+general_initial_conditions:
+  system:
+    - "Shell environment is available"
+
+initial_conditions:
+  system:
+    - "All commands can be executed"
+
+test_sequences:
+  - id: 1
+    name: "Successful Command Sequence"
+    description: |
+                   This test sequence demonstrates successful execution with all steps passing.
+                   All commands execute successfully with matching exit codes and outputs.
+    initial_conditions:
+      system:
+        - "Shell is ready"
+    steps:
+      - step: 1
+        description: "Echo a greeting message"
+        command: echo "Hello from step 1"
+        expected:
+          success: true
+          result: 0
+          output: "Hello from step 1"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Hello from step 1' <<< \"$COMMAND_OUTPUT\""
+      - step: 2
+        description: "Echo a status message"
+        command: echo "Step 2 completed successfully"
+        expected:
+          success: true
+          result: 0
+          output: "Step 2 completed successfully"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Step 2 completed successfully' <<< \"$COMMAND_OUTPUT\""
+      - step: 3
+        description: "Execute true command"
+        command: true
+        expected:
+          success: true
+          result: 0
+          output: ""
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"
