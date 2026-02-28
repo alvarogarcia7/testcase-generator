@@ -5,8 +5,10 @@
 rustflags = []
 
 # sccache configuration for build caching
+# RUSTC_WRAPPER enables sccache by default if installed
+# If sccache is not installed, cargo will fall back to normal compilation
 [env]
-RUSTC_WRAPPER = "sccache"
+RUSTC_WRAPPER = { value = "sccache", force = false, relative = false }
 SCCACHE_DIR = { value = ".sccache", relative = true }
 
 [target.'cfg(all())']
