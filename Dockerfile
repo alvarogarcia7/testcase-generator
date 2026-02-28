@@ -17,26 +17,15 @@ COPY scripts ./scripts
 COPY schemas ./schemas
 
 # Create dummy src/main.rs to build dependencies
-RUN mkdir src && \
+RUN mkdir -p src/bin examples && \
     echo "fn main() {}" > src/main.rs && \
-    mkdir -p src/bin && \
-    echo "fn main() {}" > src/bin/validate-yaml.rs && \
-    mkdir -p src/bin/ && \
-    echo "fn main() {}" > "src/bin/validate-yaml.rs" && \
-    echo "fn main() {}" > "src/bin/validate-json.rs" && \
-    echo "fn main() {}" > "src/bin/test-run-manager.rs" && \
-    echo "fn main() {}" > "src/bin/test-verify.rs" && \
-    echo "fn main() {}" > "src/bin/test-executor.rs" && \
-    echo "fn main() {}" > "src/bin/json-escape.rs" && \
-    mkdir -p src/ && \
-    echo "fn main() {}" > "src/main_editor.rs" && \
-    echo "fn main() {}" > "src/bin/test-orchestrator.rs" && \
-    echo "fn main() {}" > "src/bin/script-cleanup.rs" && \
-    mkdir -p examples/ && \
-    echo "fn main() {}" > "examples/tty_fallback_demo.rs" && \
-    echo "fn main() {}" > "examples/test_verify_demo.rs" && \
-    echo "fn main() {}" > "examples/test_verify_integration.rs" && \
-    echo "fn main() {}" > "examples/junit_export_example.rs"
+    echo "fn main() {}" > src/main_editor.rs && \
+    for bin in validate-yaml validate-json test-run-manager test-verify test-executor json-escape verifier test-orchestrator script-cleanup; do \
+      echo "fn main() {}" > "src/bin/${bin}.rs"; \
+    done && \
+    for example in tty_fallback_demo test_verify_demo test_verify_integration junit_export_example; do \
+      echo "fn main() {}" > "examples/${example}.rs"; \
+    done
 
 # Copy source code
 COPY src ./src
@@ -74,14 +63,12 @@ RUN cargo build --all --all-features --release && \
 
 # Verify binaries were installed correctly
 RUN \
-ls -lah /usr/local/bin/testcase-manager > /dev/null && \
-ls -lah /usr/local/bin/validate-yaml > /dev/null && \
-ls -lah /usr/local/bin/validate-json > /dev/null && \
-ls -lah /usr/local/bin/trm > /dev/null && \
-ls -lah /usr/local/bin/test-verify > /dev/null && \
-ls -lah /usr/local/bin/test-executor > /dev/null && \
-ls -lah /usr/local/bin/editor > /dev/null && \
-ls -lah /usr/local/bin/test-orchestrator > /dev/null
+for bin in target/release/*; do \
+  if [ -f "$bin" ] && [ -x "$bin" ]; then \
+    bin_name="$(basename $bin)"; \
+    ls -lah "/usr/local/bin/$bin_name" > /dev/null || (echo "Binary $bin_name not found in /usr/local/bin" && exit 1); \
+  fi; \
+done
 
 # Verify shellcheck is installed
 RUN shellcheck --version
