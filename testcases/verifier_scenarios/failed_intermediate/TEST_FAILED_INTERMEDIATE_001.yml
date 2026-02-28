@@ -1,0 +1,75 @@
+requirement: "FAILED_INTERMEDIATE_STEP"
+item: 1
+tc: 1
+id: 'TEST_FAILED_INTERMEDIATE_001'
+description: 'Test case demonstrating failed intermediate step scenario where steps 1-2 pass, step 3 fails with exit code 127, and steps 4-5 are not executed'
+
+general_initial_conditions:
+  system:
+    - "Shell environment is available"
+
+initial_conditions:
+  system:
+    - "All commands can be executed"
+
+test_sequences:
+  - id: 1
+    name: "Failed Intermediate Step Sequence"
+    description: |
+                   This test sequence demonstrates a scenario where steps 1-2 execute successfully,
+                   step 3 fails with exit code 127 (command not found),
+                   and steps 4-5 are not executed as a result.
+    initial_conditions:
+      system:
+        - "Shell is ready"
+    steps:
+      - step: 1
+        description: "Create a temporary directory"
+        command: mkdir -p /tmp/test_intermediate_dir
+        expected:
+          success: true
+          result: 0
+          output: ""
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"
+      - step: 2
+        description: "Create a test file"
+        command: echo "test data" > /tmp/test_intermediate_dir/data.txt
+        expected:
+          success: true
+          result: 0
+          output: ""
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"
+      - step: 3
+        description: "Execute non-existent command (fails with exit code 127)"
+        command: nonexistent_command_xyz --option value
+        expected:
+          success: true
+          result: 0
+          output: ""
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"
+      - step: 4
+        description: "Process the test file (not executed)"
+        command: cat /tmp/test_intermediate_dir/data.txt | tr 'a-z' 'A-Z'
+        expected:
+          success: true
+          result: 0
+          output: "TEST DATA"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'TEST DATA' <<< \"$COMMAND_OUTPUT\""
+      - step: 5
+        description: "Clean up temporary directory (not executed)"
+        command: rm -rf /tmp/test_intermediate_dir
+        expected:
+          success: true
+          result: 0
+          output: ""
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"

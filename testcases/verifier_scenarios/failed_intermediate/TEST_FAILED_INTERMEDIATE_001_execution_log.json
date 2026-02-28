@@ -1,0 +1,26 @@
+[
+  {
+    "test_sequence": 1,
+    "step": 1,
+    "command": "mkdir -p /tmp/test_intermediate_dir",
+    "exit_code": 0,
+    "output": "",
+    "timestamp": "2026-02-28T10:20:30.123456+00:00"
+  },
+  {
+    "test_sequence": 1,
+    "step": 2,
+    "command": "echo \"test data\" > /tmp/test_intermediate_dir/data.txt",
+    "exit_code": 0,
+    "output": "",
+    "timestamp": "2026-02-28T10:20:30.456789+00:00"
+  },
+  {
+    "test_sequence": 1,
+    "step": 3,
+    "command": "nonexistent_command_xyz --option value",
+    "exit_code": 127,
+    "output": "bash: nonexistent_command_xyz: command not found",
+    "timestamp": "2026-02-28T10:20:30.789012+00:00"
+  }
+]
