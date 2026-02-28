@@ -1,0 +1,100 @@
+requirement: "HOOK_BEFORE_SEQUENCE_ERROR"
+item: 1
+tc: 1
+id: 'TEST_HOOK_BEFORE_SEQ_001'
+description: 'Hook error scenario for before_sequence hook - script exits with error code on second sequence'
+
+general_initial_conditions:
+  system:
+    - "Shell environment is available"
+
+initial_conditions:
+  system:
+    - "All commands can be executed"
+
+hooks:
+  before_sequence:
+    command: "scripts/hook_before_sequence_error.sh"
+    on_error: "fail"
+
+test_sequences:
+  - id: 1
+    name: "First Sequence - Before Hook Succeeds"
+    description: |
+                   First test sequence where before_sequence hook succeeds.
+                   All steps should execute successfully.
+    initial_conditions:
+      system:
+        - "Shell is ready"
+    steps:
+      - step: 1
+        description: "Execute first step of sequence 1"
+        command: echo "Sequence 1 - Step 1 executed"
+        expected:
+          success: true
+          result: 0
+          output: "Sequence 1 - Step 1 executed"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Sequence 1 - Step 1 executed' <<< \"$COMMAND_OUTPUT\""
+      - step: 2
+        description: "Execute second step of sequence 1"
+        command: echo "Sequence 1 - Step 2 executed"
+        expected:
+          success: true
+          result: 0
+          output: "Sequence 1 - Step 2 executed"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Sequence 1 - Step 2 executed' <<< \"$COMMAND_OUTPUT\""
+
+  - id: 2
+    name: "Second Sequence - Before Hook Fails"
+    description: |
+                   Second test sequence where before_sequence hook fails.
+                   The hook script detects sequence 2 and exits with error code 1.
+                   No steps in this sequence should execute.
+    initial_conditions:
+      system:
+        - "Shell is ready"
+    steps:
+      - step: 1
+        description: "This step should not execute"
+        command: echo "Sequence 2 - Step 1 should not run"
+        expected:
+          success: true
+          result: 0
+          output: "Sequence 2 - Step 1 should not run"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Sequence 2 - Step 1 should not run' <<< \"$COMMAND_OUTPUT\""
+      - step: 2
+        description: "This step should not execute"
+        command: echo "Sequence 2 - Step 2 should not run"
+        expected:
+          success: true
+          result: 0
+          output: "Sequence 2 - Step 2 should not run"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Sequence 2 - Step 2 should not run' <<< \"$COMMAND_OUTPUT\""
+
+  - id: 3
+    name: "Third Sequence - Not Executed"
+    description: |
+                   Third test sequence that should not execute due to previous hook failure.
+                   This sequence would pass if executed, but it should be skipped.
+    initial_conditions:
+      system:
+        - "Shell is ready"
+    steps:
+      - step: 1
+        description: "This step should not execute"
+        command: echo "Sequence 3 - Step 1 should not run"
+        expected:
+          success: true
+          result: 0
+          output: "Sequence 3 - Step 1 should not run"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Sequence 3 - Step 1 should not run' <<< \"$COMMAND_OUTPUT\""
