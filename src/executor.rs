@@ -1430,7 +1430,24 @@ impl TestExecutor {
                         "  INFO: This is a manual step. You must perform this action manually."
                     );
 
+                    // Check if running in non-interactive mode
+                    // We detect non-interactive mode via environment variables
+                    let is_noninteractive = std::env::var("DEBIAN_FRONTEND")
+                        .map(|v| v == "noninteractive")
+                        .unwrap_or(false)
+                        || std::env::var("CI").is_ok();
+
+                    if is_noninteractive {
+                        // Non-interactive mode: skip manual step with verification
+                        println!(
+                            "[SKIP] Step {} (Sequence {}): Non-interactive mode, skipping manual step",
+                            step.step, sequence.id
+                        );
+                        continue;
+                    }
+
                     // Prompt user to confirm they've completed the action
+                    // If prompting fails (e.g., no TTY available), skip the step
                     let prompt = format!(
                         "Have you completed the manual action for Step {}?",
                         step.step
@@ -1439,7 +1456,7 @@ impl TestExecutor {
                         Ok(confirmed) => confirmed,
                         Err(e) => {
                             println!(
-                                "[SKIP] Step {} (Sequence {}): Failed to get user confirmation: {}",
+                                "[SKIP] Step {} (Sequence {}): Failed to get user confirmation (likely no TTY): {}",
                                 step.step, sequence.id, e
                             );
                             continue;
