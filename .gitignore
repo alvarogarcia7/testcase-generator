@@ -57,6 +57,9 @@ bin/cargo-watch
 target/llvm-cov/
 *.profraw
 
+# sccache build cache
+.sccache/
+
 # CI/CD artifacts
 test_output.txt
 test_results.json
