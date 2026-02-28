@@ -1,0 +1,80 @@
+requirement: "INTERRUPTED_EXECUTION"
+item: 1
+tc: 1
+id: 'TEST_INTERRUPTED_001'
+description: 'Test case demonstrating interrupted execution scenario where only partial steps were executed'
+
+general_initial_conditions:
+  system:
+    - "Shell environment is available"
+
+initial_conditions:
+  system:
+    - "All commands can be executed"
+
+test_sequences:
+  - id: 1
+    name: "File Operations Sequence"
+    description: |
+                   This test sequence demonstrates file operations.
+                   Execution was interrupted after step 3.
+    initial_conditions:
+      system:
+        - "Shell is ready"
+    steps:
+      - step: 1
+        description: "Create a temporary file"
+        command: echo "Initial content" > /tmp/test_file.txt
+        expected:
+          success: true
+          result: 0
+          output: ""
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"
+      - step: 2
+        description: "Append to the file"
+        command: echo "Additional content" >> /tmp/test_file.txt
+        expected:
+          success: true
+          result: 0
+          output: ""
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"
+      - step: 3
+        description: "Verify file contents"
+        command: cat /tmp/test_file.txt
+        expected:
+          success: true
+          result: 0
+          output: "Initial content\nAdditional content"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Initial content' <<< \"$COMMAND_OUTPUT\" && grep -q 'Additional content' <<< \"$COMMAND_OUTPUT\""
+  - id: 2
+    name: "System Information Sequence"
+    description: |
+                   This test sequence was never executed due to interruption.
+    initial_conditions:
+      system:
+        - "Shell is ready"
+    steps:
+      - step: 1
+        description: "Get current directory"
+        command: pwd
+        expected:
+          success: true
+          result: 0
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ -n \"$COMMAND_OUTPUT\" ]]"
+      - step: 2
+        description: "List files in current directory"
+        command: ls -la
+        expected:
+          success: true
+          result: 0
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ -n \"$COMMAND_OUTPUT\" ]]"
