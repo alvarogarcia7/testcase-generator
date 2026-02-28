@@ -18,6 +18,10 @@ variables:
   CARGO_INCREMENTAL: "1"
   DOCKER_DRIVER: overlay2
   DOCKER_TLS_CERTDIR: "/certs"
+  # sccache configuration for build caching
+  RUSTC_WRAPPER: sccache
+  SCCACHE_DIR: ${CI_PROJECT_DIR}/.sccache
+  SCCACHE_CACHE_SIZE: 5G
 
 build-image:
   stage: build
@@ -67,6 +71,8 @@ rust:build-test-lint:
     - cargo --version
     - apt-get update -qq
     - apt-get install -y -qq curl
+    # Install sccache using the installation script
+    - ./scripts/install-sccache.sh --ci
     # Install coverage tools using the installation script
     - ./scripts/install-coverage-tools.sh --gitlab
   image: rust:latest
@@ -77,6 +83,8 @@ rust:build-test-lint:
       - .cargo
       # Cache the build artifacts directory
       - target
+      # Cache sccache compilation cache
+      - .sccache
     # This ensures the cache is available to all jobs in the pipeline
     policy: pull-push
   stage: rust
@@ -87,6 +95,8 @@ rust:build-test-lint:
     # Build
     - echo "===== Building Release Binaries ====="
     - cargo build --all --all-features --release
+    - echo "===== sccache Statistics ====="
+    - sccache --show-stats
     - mkdir -p artifacts/binaries
     - cp target/release/validate-yaml artifacts/binaries/ || true
     - cp target/release/validate-json artifacts/binaries/ || true
@@ -115,6 +125,8 @@ rust:build-test-lint:
     # Test - doc tests
     - echo "===== Running Doc Tests ====="
     - cargo test --doc 2>&1 | tee doc_test_output.txt || true
+    - echo "===== sccache Statistics After Tests ====="
+    - sccache --show-stats
     - export CARGO_INCREMENTAL=0
     - export RUSTFLAGS="-Cinstrument-coverage"
     - export LLVM_PROFILE_FILE="coverage-%p-%m.profraw"
@@ -126,6 +138,8 @@ rust:build-test-lint:
         python3 scripts/ci_compare_coverage.py lcov.info > coverage_report.json
         python3 scripts/ci_post_coverage_comment.py coverage_report.json
       fi
+    - echo "===== Final sccache Statistics ====="
+    - sccache --show-stats
   after_script:
     - |
       if [ -f test_results.json ]; then
