@@ -1,0 +1,26 @@
+[
+  {
+    "test_sequence": 1,
+    "step": 1,
+    "command": "echo \"Initial content\" > /tmp/test_file.txt",
+    "exit_code": 0,
+    "output": "",
+    "timestamp": "2026-02-28T10:15:30.123456+00:00"
+  },
+  {
+    "test_sequence": 1,
+    "step": 2,
+    "command": "echo \"Additional content\" >> /tmp/test_file.txt",
+    "exit_code": 0,
+    "output": "",
+    "timestamp": "2026-02-28T10:15:30.234567+00:00"
+  },
+  {
+    "test_sequence": 1,
+    "step": 3,
+    "command": "cat /tmp/test_file.txt",
+    "exit_code": 0,
+    "output": "Initial content\nAdditional content",
+    "timestamp": "2026-02-28T10:15:30.345678+00:00"
+  }
+]
