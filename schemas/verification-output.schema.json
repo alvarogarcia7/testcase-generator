@@ -74,6 +74,28 @@
                         "description": {
                           "type": "string"
                         },
+                        "expected": {
+                          "type": "object",
+                          "properties": {
+                            "success": {
+                              "type": ["boolean", "null"]
+                            },
+                            "result": {
+                              "type": "string"
+                            },
+                            "output": {
+                              "type": "string"
+                            }
+                          },
+                          "required": ["result", "output"],
+                          "additionalProperties": false
+                        },
+                        "actual_result": {
+                          "type": "string"
+                        },
+                        "actual_output": {
+                          "type": "string"
+                        },
                         "reason": {
                           "type": "string"
                         },
@@ -87,7 +109,7 @@
                           "type": "integer"
                         }
                       },
-                      "required": ["step", "description", "reason"],
+                      "required": ["step", "description", "expected", "actual_result", "actual_output", "reason"],
                       "additionalProperties": false
                     }
                   },
