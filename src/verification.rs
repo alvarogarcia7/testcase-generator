@@ -33,7 +33,16 @@ pub struct StepVerificationResult {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum StepVerificationResultEnum {
     /// Step passed verification
-    Pass { step: i64, description: String },
+    Pass {
+        step: i64,
+        description: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        requirement: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        item: Option<i64>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        tc: Option<i64>,
+    },
     /// Step failed verification
     Fail {
         step: i64,
@@ -42,9 +51,24 @@ pub enum StepVerificationResultEnum {
         actual_result: String,
         actual_output: String,
         reason: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        requirement: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        item: Option<i64>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        tc: Option<i64>,
     },
     /// Step was not found in execution log
-    NotExecuted { step: i64, description: String },
+    NotExecuted {
+        step: i64,
+        description: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        requirement: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        item: Option<i64>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        tc: Option<i64>,
+    },
 }
 
 impl StepVerificationResultEnum {
@@ -57,6 +81,30 @@ impl StepVerificationResultEnum {
             StepVerificationResultEnum::Pass { step, .. } => *step,
             StepVerificationResultEnum::Fail { step, .. } => *step,
             StepVerificationResultEnum::NotExecuted { step, .. } => *step,
+        }
+    }
+
+    pub fn requirement(&self) -> Option<&String> {
+        match self {
+            StepVerificationResultEnum::Pass { requirement, .. } => requirement.as_ref(),
+            StepVerificationResultEnum::Fail { requirement, .. } => requirement.as_ref(),
+            StepVerificationResultEnum::NotExecuted { requirement, .. } => requirement.as_ref(),
+        }
+    }
+
+    pub fn item(&self) -> Option<i64> {
+        match self {
+            StepVerificationResultEnum::Pass { item, .. } => *item,
+            StepVerificationResultEnum::Fail { item, .. } => *item,
+            StepVerificationResultEnum::NotExecuted { item, .. } => *item,
+        }
+    }
+
+    pub fn tc(&self) -> Option<i64> {
+        match self {
+            StepVerificationResultEnum::Pass { tc, .. } => *tc,
+            StepVerificationResultEnum::Fail { tc, .. } => *tc,
+            StepVerificationResultEnum::NotExecuted { tc, .. } => *tc,
         }
     }
 }
@@ -140,6 +188,18 @@ pub struct TestCaseVerificationResult {
 
     /// Overall pass/fail status
     pub overall_pass: bool,
+
+    /// Requirement identifier (optional, for reporting)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub requirement: Option<String>,
+
+    /// Item number (optional, for reporting)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub item: Option<i64>,
+
+    /// TC number (optional, for reporting)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tc: Option<i64>,
 }
 
 /// Result of verifying a test sequence
@@ -156,6 +216,18 @@ pub struct SequenceVerificationResult {
 
     /// Whether all steps passed
     pub all_steps_passed: bool,
+
+    /// Requirement identifier (optional, for reporting)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub requirement: Option<String>,
+
+    /// Item number (optional, for reporting)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub item: Option<i64>,
+
+    /// TC number (optional, for reporting)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tc: Option<i64>,
 }
 
 /// Aggregated batch verification report
@@ -767,11 +839,7 @@ impl TestVerifier {
             let success = Some(entry.exit_code == 0);
 
             // Derive actual_result from exit_code
-            let actual_result = if entry.exit_code == 0 {
-                "SUCCESS".to_string()
-            } else {
-                format!("FAILED (exit code: {})", entry.exit_code)
-            };
+            let actual_result = entry.exit_code.to_string();
 
             // Parse timestamp if present
             let timestamp = entry.timestamp.as_ref().and_then(|ts| {
@@ -815,8 +883,14 @@ impl TestVerifier {
             }
         }
 
+        // Extract requirement, item, and tc from test case
+        let requirement = Some(test_case.requirement.clone());
+        let item = Some(test_case.item);
+        let tc = Some(test_case.tc);
+
         for sequence in &test_case.test_sequences {
-            let step_results = self.verify_sequence(sequence, &log_map);
+            let step_results =
+                self.verify_sequence(sequence, &log_map, requirement.as_ref(), item, tc);
 
             let all_steps_passed = step_results.iter().all(|r| r.is_pass());
 
@@ -834,6 +908,9 @@ impl TestVerifier {
                 name: sequence.name.clone(),
                 step_results,
                 all_steps_passed,
+                requirement: requirement.clone(),
+                item,
+                tc,
             });
         }
 
@@ -848,6 +925,9 @@ impl TestVerifier {
             failed_steps,
             not_executed_steps,
             overall_pass,
+            requirement: requirement.clone(),
+            item,
+            tc,
         }
     }
 
@@ -856,16 +936,22 @@ impl TestVerifier {
         &self,
         sequence: &TestSequence,
         log_map: &HashMap<(i64, i64), &TestExecutionLog>,
+        requirement: Option<&String>,
+        item: Option<i64>,
+        tc: Option<i64>,
     ) -> Vec<StepVerificationResultEnum> {
         let mut results = Vec::new();
 
         for step in &sequence.steps {
             let result = if let Some(log) = log_map.get(&(sequence.id, step.step)) {
-                self.verify_step_new(step, log)
+                self.verify_step_new(step, log, requirement, item, tc)
             } else {
                 StepVerificationResultEnum::NotExecuted {
                     step: step.step,
                     description: step.description.clone(),
+                    requirement: requirement.cloned(),
+                    item,
+                    tc,
                 }
             };
             results.push(result);
@@ -875,7 +961,14 @@ impl TestVerifier {
     }
 
     /// Verify a single step against its execution log (new API)
-    fn verify_step_new(&self, step: &Step, log: &TestExecutionLog) -> StepVerificationResultEnum {
+    fn verify_step_new(
+        &self,
+        step: &Step,
+        log: &TestExecutionLog,
+        requirement: Option<&String>,
+        item: Option<i64>,
+        tc: Option<i64>,
+    ) -> StepVerificationResultEnum {
         let expected = &step.expected;
 
         // Check success field if it's defined
@@ -892,6 +985,9 @@ impl TestVerifier {
                             "Success mismatch: expected {}, got {}",
                             expected_success, actual_success
                         ),
+                        requirement: requirement.cloned(),
+                        item,
+                        tc,
                     };
                 }
             }
@@ -909,6 +1005,9 @@ impl TestVerifier {
                     "Result mismatch: expected '{}', got '{}'",
                     expected.result, log.actual_result
                 ),
+                requirement: requirement.cloned(),
+                item,
+                tc,
             };
         }
 
@@ -924,12 +1023,18 @@ impl TestVerifier {
                     "Output mismatch: expected '{}', got '{}'",
                     expected.output, log.actual_output
                 ),
+                requirement: requirement.cloned(),
+                item,
+                tc,
             };
         }
 
         StepVerificationResultEnum::Pass {
             step: step.step,
             description: step.description.clone(),
+            requirement: requirement.cloned(),
+            item,
+            tc,
         }
     }
 
@@ -987,6 +1092,9 @@ impl TestVerifier {
                         failed_steps: logs.len(),
                         not_executed_steps: 0,
                         overall_pass: false,
+                        requirement: None,
+                        item: None,
+                        tc: None,
                     };
                     report.add_test_case_result(failed_result);
                 }
@@ -1210,6 +1318,38 @@ impl TestVerifier {
             unexpected_steps: vec![],
         }
     }
+
+    // ========================================================================
+    // Report Generation Methods
+    // ========================================================================
+
+    /// Generate YAML report for a single test case verification result
+    pub fn generate_report_yaml(&self, result: &TestCaseVerificationResult) -> Result<String> {
+        serde_yaml::to_string(result).context("Failed to serialize verification result to YAML")
+    }
+
+    /// Generate JSON report for a single test case verification result
+    pub fn generate_report_json(&self, result: &TestCaseVerificationResult) -> Result<String> {
+        serde_json::to_string_pretty(result)
+            .context("Failed to serialize verification result to JSON")
+    }
+
+    /// Generate container report for batch verification (multiple test cases)
+    /// Supports both YAML and JSON formats
+    pub fn generate_container_report(
+        &self,
+        report: &BatchVerificationReport,
+        format: &str,
+    ) -> Result<String> {
+        match format.to_lowercase().as_str() {
+            "yaml" => {
+                serde_yaml::to_string(report).context("Failed to serialize batch report to YAML")
+            }
+            "json" => serde_json::to_string_pretty(report)
+                .context("Failed to serialize batch report to JSON"),
+            _ => anyhow::bail!("Unsupported format: {}. Use 'yaml' or 'json'.", format),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -1278,5 +1418,170 @@ mod tests {
         assert!(xml.contains("failures=\"1\""));
         assert!(xml.contains("<testcase"));
         assert!(xml.contains("<failure"));
+    }
+
+    #[test]
+    fn test_generate_report_yaml() {
+        let temp_dir = TempDir::new().unwrap();
+        let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
+        let verifier = TestVerifier::from_storage(storage);
+
+        let result = TestCaseVerificationResult {
+            test_case_id: "TC001".to_string(),
+            description: "Test Case 1".to_string(),
+            sequences: vec![],
+            total_steps: 5,
+            passed_steps: 4,
+            failed_steps: 1,
+            not_executed_steps: 0,
+            overall_pass: false,
+            requirement: Some("REQ001".to_string()),
+            item: Some(1),
+            tc: Some(1),
+        };
+
+        let yaml = verifier.generate_report_yaml(&result).unwrap();
+        assert!(yaml.contains("test_case_id: TC001"));
+        assert!(yaml.contains("description: Test Case 1"));
+        assert!(yaml.contains("total_steps: 5"));
+        assert!(yaml.contains("passed_steps: 4"));
+        assert!(yaml.contains("failed_steps: 1"));
+        assert!(yaml.contains("overall_pass: false"));
+        assert!(yaml.contains("requirement: REQ001"));
+    }
+
+    #[test]
+    fn test_generate_report_json() {
+        let temp_dir = TempDir::new().unwrap();
+        let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
+        let verifier = TestVerifier::from_storage(storage);
+
+        let result = TestCaseVerificationResult {
+            test_case_id: "TC002".to_string(),
+            description: "Test Case 2".to_string(),
+            sequences: vec![],
+            total_steps: 3,
+            passed_steps: 3,
+            failed_steps: 0,
+            not_executed_steps: 0,
+            overall_pass: true,
+            requirement: Some("REQ002".to_string()),
+            item: Some(2),
+            tc: Some(2),
+        };
+
+        let json = verifier.generate_report_json(&result).unwrap();
+        assert!(json.contains("\"test_case_id\": \"TC002\""));
+        assert!(json.contains("\"description\": \"Test Case 2\""));
+        assert!(json.contains("\"total_steps\": 3"));
+        assert!(json.contains("\"passed_steps\": 3"));
+        assert!(json.contains("\"failed_steps\": 0"));
+        assert!(json.contains("\"overall_pass\": true"));
+        assert!(json.contains("\"requirement\": \"REQ002\""));
+
+        // Verify it can be deserialized
+        let parsed: TestCaseVerificationResult = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.test_case_id, "TC002");
+        assert_eq!(parsed.total_steps, 3);
+        assert!(parsed.overall_pass);
+    }
+
+    #[test]
+    fn test_generate_container_report_json() {
+        let temp_dir = TempDir::new().unwrap();
+        let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
+        let verifier = TestVerifier::from_storage(storage);
+
+        let mut report = BatchVerificationReport::new();
+        report.add_test_case_result(TestCaseVerificationResult {
+            test_case_id: "TC001".to_string(),
+            description: "Test 1".to_string(),
+            sequences: vec![],
+            total_steps: 2,
+            passed_steps: 2,
+            failed_steps: 0,
+            not_executed_steps: 0,
+            overall_pass: true,
+            requirement: None,
+            item: None,
+            tc: None,
+        });
+        report.add_test_case_result(TestCaseVerificationResult {
+            test_case_id: "TC002".to_string(),
+            description: "Test 2".to_string(),
+            sequences: vec![],
+            total_steps: 3,
+            passed_steps: 2,
+            failed_steps: 1,
+            not_executed_steps: 0,
+            overall_pass: false,
+            requirement: None,
+            item: None,
+            tc: None,
+        });
+
+        let json = verifier.generate_container_report(&report, "json").unwrap();
+        assert!(json.contains("\"test_cases\""));
+        assert!(json.contains("\"total_test_cases\": 2"));
+        assert!(json.contains("\"passed_test_cases\": 1"));
+        assert!(json.contains("\"failed_test_cases\": 1"));
+        assert!(json.contains("\"total_steps\": 5"));
+        assert!(json.contains("\"passed_steps\": 4"));
+        assert!(json.contains("\"failed_steps\": 1"));
+
+        // Verify it can be deserialized
+        let parsed: BatchVerificationReport = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.total_test_cases, 2);
+        assert_eq!(parsed.passed_test_cases, 1);
+        assert_eq!(parsed.failed_test_cases, 1);
+    }
+
+    #[test]
+    fn test_generate_container_report_yaml() {
+        let temp_dir = TempDir::new().unwrap();
+        let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
+        let verifier = TestVerifier::from_storage(storage);
+
+        let mut report = BatchVerificationReport::new();
+        report.add_test_case_result(TestCaseVerificationResult {
+            test_case_id: "TC001".to_string(),
+            description: "Test 1".to_string(),
+            sequences: vec![],
+            total_steps: 1,
+            passed_steps: 1,
+            failed_steps: 0,
+            not_executed_steps: 0,
+            overall_pass: true,
+            requirement: None,
+            item: None,
+            tc: None,
+        });
+
+        let yaml = verifier.generate_container_report(&report, "yaml").unwrap();
+        assert!(yaml.contains("test_cases:"));
+        assert!(yaml.contains("total_test_cases: 1"));
+        assert!(yaml.contains("passed_test_cases: 1"));
+        assert!(yaml.contains("failed_test_cases: 0"));
+
+        // Verify it can be deserialized
+        let parsed: BatchVerificationReport = serde_yaml::from_str(&yaml).unwrap();
+        assert_eq!(parsed.total_test_cases, 1);
+        assert_eq!(parsed.passed_test_cases, 1);
+    }
+
+    #[test]
+    fn test_generate_container_report_unsupported_format() {
+        let temp_dir = TempDir::new().unwrap();
+        let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
+        let verifier = TestVerifier::from_storage(storage);
+
+        let report = BatchVerificationReport::new();
+
+        let result = verifier.generate_container_report(&report, "xml");
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Unsupported format"));
     }
 }

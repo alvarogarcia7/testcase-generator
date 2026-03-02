@@ -1,0 +1,11 @@
+[
+  {
+    "test_sequence": 1,
+    "step": 1,
+    "command": "ssh-keygen -t rsa -f /tmp/kp1 -N \"\" -P \"\" <<< y; cat /tmp/kp1.pub",
+    "exit_code": 0,
+    "output": "Generating public/private rsa key pair.\n/tmp/kp1 already exists.\nOverwrite (y/n)? Your identification has been saved in /tmp/kp1\nYour public key has been saved in /tmp/kp1.pub\nThe key fingerprint is:\nSHA256:8AAO/gRuNUkDo/Il2LNk2n7TKCnfc0T7ShvKU6iZKVE alvaro@alvaros-MBP-M2.home\nThe key's randomart image is:\n+---[RSA 3072]----+\n|  =o*.           |\n| * *.+           |\n|+ X + o          |\n|.BEB  .+         |\n|..+ .o .S        |\n|.. ..o+          |\n|..+=+o+.         |\n|.o==o+.o.        |\n| .. ++o.         |\n+----[SHA256]-----+\nssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC8im9F3P2zqFzC+ZNse8smd5QiZyumRgh7YQq/638lBO1cfy8lvAynxBHtodRugCKKUx8WEVHPPozrC45+TUachj9upkGR5LeWhSZPsdyLq08ZqK1jnPWX33vju2IKMaVFj4ZIVwx9vI5BbLF8xuKtCQYctnPaKy3wSOL6pfSfyLevc5eIV5YK9ocbtmCwAWcE1dU/7KojShl1qzEMuULjUhta7zR9jVI+OQD7r4SIACgUneRqk7f+/Leg0Pl44nQMeWpUywQcdS775B9kEJrpMiph+xNM6R3pi993ADdGLDT7HGHzHMRhlZPHvbFwfhDxcxVDcxgN2UK7Pb6i0mJWmq09Ikan/p0ofPLkUveS0IK8t39zhlr9VKmqs46yIi0LCx6c0syOPm7priyAzj1XtyHxO+q/HLrI42A2EdZUOMxnwkYwco7S883DC+ZeasAzYmYWI7t+RDWgDdGIGDGX8IZDBW+C3SE+Q9pxD+nn1qpdJSPMD62Bpm9dt8ntM+c= alvaro@alvaros-MBP-M2.home",
+    "timestamp": "2026-02-09T15:06:54"
+  }
+
+]

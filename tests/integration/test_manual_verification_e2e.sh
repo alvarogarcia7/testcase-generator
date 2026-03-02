@@ -319,8 +319,10 @@ echo "green" > "$TEMP_DIR/led_status.log"
 cd "$TEMP_DIR"
 
 SUCCESS_OUTPUT="$TEMP_DIR/success_output.txt"
-# No input needed since verifications pass automatically (files exist)
-if bash "$MANUAL_VERIFY_SCRIPT" > "$SUCCESS_OUTPUT" 2>&1; then
+# Execute in non-interactive mode to avoid hanging on prompts
+# Even though verifications pass automatically (files exist), the script will
+# still prompt "Press ENTER after completing the manual action..."
+if DEBIAN_FRONTEND=noninteractive bash "$MANUAL_VERIFY_SCRIPT" > "$SUCCESS_OUTPUT" 2>&1; then
     pass "Script executed successfully with passing verifications"
 else
     EXECUTION_EXIT_CODE=$?
@@ -408,7 +410,8 @@ fi
 # Execute script (should fail)
 cd "$TEMP_DIR"
 FAIL_OUTPUT="$TEMP_DIR/fail_output.txt"
-if bash "$FAIL_VERIFY_SCRIPT" > "$FAIL_OUTPUT" 2>&1; then
+# Execute in non-interactive mode to avoid hanging on manual step prompts
+if DEBIAN_FRONTEND=noninteractive bash "$FAIL_VERIFY_SCRIPT" > "$FAIL_OUTPUT" 2>&1; then
     fail "Script should have failed but passed"
 else
     pass "Script correctly failed due to verification failure"
@@ -598,7 +601,8 @@ cd "$TEMP_DIR"
 touch "$TEMP_DIR/production_mode"
 CONDITIONAL_OUTPUT="$TEMP_DIR/conditional_output.txt"
 
-if bash "$CONDITIONAL_SCRIPT" > "$CONDITIONAL_OUTPUT" 2>&1; then
+# Execute in non-interactive mode to avoid hanging on manual step prompts
+if DEBIAN_FRONTEND=noninteractive bash "$CONDITIONAL_SCRIPT" > "$CONDITIONAL_OUTPUT" 2>&1; then
     pass "Conditional manual script executed successfully"
 else
     fail "Conditional manual script execution failed"

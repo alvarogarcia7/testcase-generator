@@ -1139,6 +1139,18 @@ pub struct StepVerificationResult {
     /// Optional error or failure message
     #[serde(skip_serializing_if = "Option::is_none")]
     pub message: Option<String>,
+
+    /// Requirement identifier (optional, for reporting)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub requirement: Option<String>,
+
+    /// Item number (optional, for reporting)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub item: Option<i64>,
+
+    /// TC number (optional, for reporting)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tc: Option<i64>,
 }
 
 impl fmt::Display for StepVerificationResult {
@@ -1188,6 +1200,18 @@ pub struct VerificationReport {
 
     /// Overall verification status
     pub overall_status: VerificationStatus,
+
+    /// Requirement identifier (optional, for reporting)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub requirement: Option<String>,
+
+    /// Item number (optional, for reporting)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub item: Option<i64>,
+
+    /// TC number (optional, for reporting)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tc: Option<i64>,
 }
 
 impl fmt::Display for VerificationReport {
@@ -1212,6 +1236,186 @@ impl fmt::Display for VerificationReport {
 
         Ok(())
     }
+}
+
+/// Container-level report format supporting both single test case and multi-test case reports
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct TestReportOutput {
+    /// Report title (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+
+    /// Project name (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub project: Option<String>,
+
+    /// Test date (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub test_date: Option<String>,
+
+    /// Environment name (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub environment: Option<String>,
+
+    /// Platform information (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub platform: Option<String>,
+
+    /// Executor information (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub executor: Option<String>,
+
+    /// Execution duration in seconds (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub execution_duration: Option<f64>,
+
+    /// Test results - supports either single or multiple test cases
+    pub results: TestReportResults,
+}
+
+/// Test results can be either a single test case or multiple test cases
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(untagged)]
+pub enum TestReportResults {
+    /// Single test case result
+    Single(TestRun),
+
+    /// Multiple test case results
+    Multiple(Vec<TestRun>),
+}
+
+impl TestReportOutput {
+    /// Create a new test report output for a single test case
+    pub fn single(test_run: TestRun) -> Self {
+        Self {
+            title: None,
+            project: None,
+            test_date: None,
+            environment: None,
+            platform: None,
+            executor: None,
+            execution_duration: None,
+            results: TestReportResults::Single(test_run),
+        }
+    }
+
+    /// Create a new test report output for multiple test cases
+    pub fn multiple(test_runs: Vec<TestRun>) -> Self {
+        Self {
+            title: None,
+            project: None,
+            test_date: None,
+            environment: None,
+            platform: None,
+            executor: None,
+            execution_duration: None,
+            results: TestReportResults::Multiple(test_runs),
+        }
+    }
+
+    /// Set the report title
+    pub fn with_title(mut self, title: String) -> Self {
+        self.title = Some(title);
+        self
+    }
+
+    /// Set the project name
+    pub fn with_project(mut self, project: String) -> Self {
+        self.project = Some(project);
+        self
+    }
+
+    /// Set the test date
+    pub fn with_test_date(mut self, test_date: String) -> Self {
+        self.test_date = Some(test_date);
+        self
+    }
+
+    /// Set the environment
+    pub fn with_environment(mut self, environment: String) -> Self {
+        self.environment = Some(environment);
+        self
+    }
+
+    /// Set the platform
+    pub fn with_platform(mut self, platform: String) -> Self {
+        self.platform = Some(platform);
+        self
+    }
+
+    /// Set the executor
+    pub fn with_executor(mut self, executor: String) -> Self {
+        self.executor = Some(executor);
+        self
+    }
+
+    /// Set the execution duration
+    pub fn with_execution_duration(mut self, duration: f64) -> Self {
+        self.execution_duration = Some(duration);
+        self
+    }
+
+    /// Get the number of test cases in the report
+    pub fn test_case_count(&self) -> usize {
+        match &self.results {
+            TestReportResults::Single(_) => 1,
+            TestReportResults::Multiple(runs) => runs.len(),
+        }
+    }
+
+    /// Get all test runs as a slice
+    pub fn test_runs(&self) -> Vec<&TestRun> {
+        match &self.results {
+            TestReportResults::Single(run) => vec![run],
+            TestReportResults::Multiple(runs) => runs.iter().collect(),
+        }
+    }
+
+    /// Calculate summary statistics
+    pub fn summary_stats(&self) -> TestReportSummary {
+        let runs = self.test_runs();
+        let total = runs.len();
+        let passed = runs
+            .iter()
+            .filter(|r| r.status == TestRunStatus::Pass)
+            .count();
+        let failed = runs
+            .iter()
+            .filter(|r| r.status == TestRunStatus::Fail)
+            .count();
+        let skipped = runs
+            .iter()
+            .filter(|r| r.status == TestRunStatus::Skip)
+            .count();
+        let total_duration = runs.iter().map(|r| r.duration).sum();
+
+        TestReportSummary {
+            total,
+            passed,
+            failed,
+            skipped,
+            total_duration,
+        }
+    }
+}
+
+/// Summary statistics for a test report
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct TestReportSummary {
+    /// Total number of test cases
+    pub total: usize,
+
+    /// Number of passed test cases
+    pub passed: usize,
+
+    /// Number of failed test cases
+    pub failed: usize,
+
+    /// Number of skipped test cases
+    pub skipped: usize,
+
+    /// Total execution duration
+    pub total_duration: f64,
 }
 
 #[cfg(test)]
@@ -2198,5 +2402,250 @@ output: "cat $COMMAND_OUTPUT | grep -q \"${OUTPUT}\""
         let yaml = serde_yaml::to_string(&verification).unwrap();
         assert!(yaml.contains("general:"));
         assert!(yaml.contains("check_file_exists"));
+    }
+
+    #[test]
+    fn test_test_report_output_single() {
+        let timestamp = "2024-01-15T10:30:00Z".parse::<DateTime<Utc>>().unwrap();
+        let test_run = TestRun::new(
+            "TC001".to_string(),
+            TestRunStatus::Pass,
+            timestamp,
+            1.5,
+            "log".to_string(),
+        );
+
+        let report = TestReportOutput::single(test_run.clone());
+
+        assert_eq!(report.test_case_count(), 1);
+        assert_eq!(report.test_runs().len(), 1);
+        assert!(matches!(report.results, TestReportResults::Single(_)));
+
+        match &report.results {
+            TestReportResults::Single(run) => {
+                assert_eq!(run.test_case_id, "TC001");
+                assert_eq!(run.status, TestRunStatus::Pass);
+            }
+            _ => panic!("Expected Single variant"),
+        }
+    }
+
+    #[test]
+    fn test_test_report_output_multiple() {
+        let timestamp = "2024-01-15T10:30:00Z".parse::<DateTime<Utc>>().unwrap();
+        let test_run1 = TestRun::new(
+            "TC001".to_string(),
+            TestRunStatus::Pass,
+            timestamp,
+            1.5,
+            "log1".to_string(),
+        );
+        let test_run2 = TestRun::new(
+            "TC002".to_string(),
+            TestRunStatus::Fail,
+            timestamp,
+            2.5,
+            "log2".to_string(),
+        );
+
+        let report = TestReportOutput::multiple(vec![test_run1, test_run2]);
+
+        assert_eq!(report.test_case_count(), 2);
+        assert_eq!(report.test_runs().len(), 2);
+        assert!(matches!(report.results, TestReportResults::Multiple(_)));
+    }
+
+    #[test]
+    fn test_test_report_output_with_metadata() {
+        let timestamp = "2024-01-15T10:30:00Z".parse::<DateTime<Utc>>().unwrap();
+        let test_run = TestRun::new(
+            "TC001".to_string(),
+            TestRunStatus::Pass,
+            timestamp,
+            1.5,
+            "log".to_string(),
+        );
+
+        let report = TestReportOutput::single(test_run)
+            .with_title("Test Report".to_string())
+            .with_project("MyProject".to_string())
+            .with_test_date("2024-01-15".to_string())
+            .with_environment("production".to_string())
+            .with_platform("linux-x64".to_string())
+            .with_executor("jenkins".to_string())
+            .with_execution_duration(3.5);
+
+        assert_eq!(report.title, Some("Test Report".to_string()));
+        assert_eq!(report.project, Some("MyProject".to_string()));
+        assert_eq!(report.test_date, Some("2024-01-15".to_string()));
+        assert_eq!(report.environment, Some("production".to_string()));
+        assert_eq!(report.platform, Some("linux-x64".to_string()));
+        assert_eq!(report.executor, Some("jenkins".to_string()));
+        assert_eq!(report.execution_duration, Some(3.5));
+    }
+
+    #[test]
+    fn test_test_report_output_summary_stats() {
+        let timestamp = "2024-01-15T10:30:00Z".parse::<DateTime<Utc>>().unwrap();
+        let test_run1 = TestRun::new(
+            "TC001".to_string(),
+            TestRunStatus::Pass,
+            timestamp,
+            1.5,
+            "log1".to_string(),
+        );
+        let test_run2 = TestRun::new(
+            "TC002".to_string(),
+            TestRunStatus::Fail,
+            timestamp,
+            2.5,
+            "log2".to_string(),
+        );
+        let test_run3 = TestRun::new(
+            "TC003".to_string(),
+            TestRunStatus::Skip,
+            timestamp,
+            0.0,
+            "log3".to_string(),
+        );
+
+        let report = TestReportOutput::multiple(vec![test_run1, test_run2, test_run3]);
+        let summary = report.summary_stats();
+
+        assert_eq!(summary.total, 3);
+        assert_eq!(summary.passed, 1);
+        assert_eq!(summary.failed, 1);
+        assert_eq!(summary.skipped, 1);
+        assert_eq!(summary.total_duration, 4.0);
+    }
+
+    #[test]
+    fn test_test_report_output_json_serialization() {
+        let timestamp = "2024-01-15T10:30:00Z".parse::<DateTime<Utc>>().unwrap();
+        let test_run = TestRun::new(
+            "TC001".to_string(),
+            TestRunStatus::Pass,
+            timestamp,
+            1.5,
+            "log".to_string(),
+        );
+
+        let report = TestReportOutput::single(test_run)
+            .with_title("Test Report".to_string())
+            .with_project("MyProject".to_string());
+
+        let json = serde_json::to_string(&report).unwrap();
+        assert!(json.contains("\"title\":\"Test Report\""));
+        assert!(json.contains("\"project\":\"MyProject\""));
+        assert!(json.contains("\"TC001\""));
+
+        let deserialized: TestReportOutput = serde_json::from_str(&json).unwrap();
+        assert_eq!(report, deserialized);
+    }
+
+    #[test]
+    fn test_test_report_output_yaml_serialization() {
+        let timestamp = "2024-01-15T10:30:00Z".parse::<DateTime<Utc>>().unwrap();
+        let test_run = TestRun::new(
+            "TC001".to_string(),
+            TestRunStatus::Pass,
+            timestamp,
+            1.5,
+            "log".to_string(),
+        );
+
+        let report = TestReportOutput::single(test_run)
+            .with_title("Test Report".to_string())
+            .with_environment("staging".to_string());
+
+        let yaml = serde_yaml::to_string(&report).unwrap();
+        assert!(yaml.contains("title: Test Report"));
+        assert!(yaml.contains("environment: staging"));
+        assert!(yaml.contains("TC001"));
+
+        let deserialized: TestReportOutput = serde_yaml::from_str(&yaml).unwrap();
+        assert_eq!(report, deserialized);
+    }
+
+    #[test]
+    fn test_test_report_output_skip_none_fields() {
+        let timestamp = "2024-01-15T10:30:00Z".parse::<DateTime<Utc>>().unwrap();
+        let test_run = TestRun::new(
+            "TC001".to_string(),
+            TestRunStatus::Pass,
+            timestamp,
+            1.5,
+            "log".to_string(),
+        );
+
+        let report = TestReportOutput::single(test_run);
+
+        let json = serde_json::to_string(&report).unwrap();
+        assert!(!json.contains("\"title\""));
+        assert!(!json.contains("\"project\""));
+        assert!(!json.contains("\"test_date\""));
+        assert!(!json.contains("\"environment\""));
+        assert!(!json.contains("\"platform\""));
+        assert!(!json.contains("\"executor\""));
+        assert!(!json.contains("\"execution_duration\""));
+    }
+
+    #[test]
+    fn test_test_report_summary() {
+        let summary = TestReportSummary {
+            total: 10,
+            passed: 7,
+            failed: 2,
+            skipped: 1,
+            total_duration: 45.5,
+        };
+
+        assert_eq!(summary.total, 10);
+        assert_eq!(summary.passed, 7);
+        assert_eq!(summary.failed, 2);
+        assert_eq!(summary.skipped, 1);
+        assert_eq!(summary.total_duration, 45.5);
+    }
+
+    #[test]
+    fn test_test_report_results_untagged_single() {
+        let timestamp = "2024-01-15T10:30:00Z".parse::<DateTime<Utc>>().unwrap();
+        let test_run = TestRun::new(
+            "TC001".to_string(),
+            TestRunStatus::Pass,
+            timestamp,
+            1.5,
+            "log".to_string(),
+        );
+
+        let json = serde_json::to_string(&TestReportResults::Single(test_run)).unwrap();
+        let deserialized: TestReportResults = serde_json::from_str(&json).unwrap();
+
+        assert!(matches!(deserialized, TestReportResults::Single(_)));
+    }
+
+    #[test]
+    fn test_test_report_results_untagged_multiple() {
+        let timestamp = "2024-01-15T10:30:00Z".parse::<DateTime<Utc>>().unwrap();
+        let test_run1 = TestRun::new(
+            "TC001".to_string(),
+            TestRunStatus::Pass,
+            timestamp,
+            1.5,
+            "log1".to_string(),
+        );
+        let test_run2 = TestRun::new(
+            "TC002".to_string(),
+            TestRunStatus::Fail,
+            timestamp,
+            2.5,
+            "log2".to_string(),
+        );
+
+        let json = serde_json::to_string(&TestReportResults::Multiple(vec![test_run1, test_run2]))
+            .unwrap();
+        let deserialized: TestReportResults = serde_json::from_str(&json).unwrap();
+
+        assert!(matches!(deserialized, TestReportResults::Multiple(_)));
     }
 }

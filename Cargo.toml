@@ -74,6 +74,10 @@ path = "src/bin/script-cleanup.rs"
 name = "json-escape"
 path = "src/bin/json-escape.rs"
 
+[[bin]]
+name = "verifier"
+path = "src/bin/verifier.rs"
+
 [[example]]
 name = "tty_fallback_demo"
 path = "examples/tty_fallback_demo.rs"

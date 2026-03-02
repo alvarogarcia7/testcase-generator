@@ -253,6 +253,11 @@ fn test_executor_with_gsma_yaml_example() -> Result<()> {
 
     let temp_dir = TempDir::new()?;
 
+    // Set environment variables to run in non-interactive mode
+    // This prevents the executor from hanging on manual step prompts
+    std::env::set_var("DEBIAN_FRONTEND", "noninteractive");
+    std::env::set_var("CI", "1");
+
     let executor = TestExecutor::with_output_dir(temp_dir.path());
     let _result = executor.execute_test_case(&test_case);
 

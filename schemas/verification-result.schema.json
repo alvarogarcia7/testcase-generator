@@ -42,6 +42,18 @@
     "overall_pass": {
       "type": "boolean",
       "description": "Overall pass/fail status for the test case"
+    },
+    "requirement": {
+      "type": "string",
+      "description": "Requirement identifier (optional, for reporting)"
+    },
+    "item": {
+      "type": "integer",
+      "description": "Item number (optional, for reporting)"
+    },
+    "tc": {
+      "type": "integer",
+      "description": "TC number (optional, for reporting)"
     }
   },
   "required": [
@@ -77,6 +89,18 @@
         "all_steps_passed": {
           "type": "boolean",
           "description": "Whether all steps in the sequence passed"
+        },
+        "requirement": {
+          "type": "string",
+          "description": "Requirement identifier (optional, for reporting)"
+        },
+        "item": {
+          "type": "integer",
+          "description": "Item number (optional, for reporting)"
+        },
+        "tc": {
+          "type": "integer",
+          "description": "TC number (optional, for reporting)"
         }
       },
       "required": [
@@ -103,6 +127,18 @@
                 "description": {
                   "type": "string",
                   "description": "Step description"
+                },
+                "requirement": {
+                  "type": "string",
+                  "description": "Requirement identifier (optional, for reporting)"
+                },
+                "item": {
+                  "type": "integer",
+                  "description": "Item number (optional, for reporting)"
+                },
+                "tc": {
+                  "type": "integer",
+                  "description": "TC number (optional, for reporting)"
                 }
               },
               "required": ["step", "description"]
@@ -140,6 +176,18 @@
                 "reason": {
                   "type": "string",
                   "description": "Reason for failure"
+                },
+                "requirement": {
+                  "type": "string",
+                  "description": "Requirement identifier (optional, for reporting)"
+                },
+                "item": {
+                  "type": "integer",
+                  "description": "Item number (optional, for reporting)"
+                },
+                "tc": {
+                  "type": "integer",
+                  "description": "TC number (optional, for reporting)"
                 }
               },
               "required": ["step", "description", "expected", "actual_result", "actual_output", "reason"]
@@ -162,6 +210,18 @@
                 "description": {
                   "type": "string",
                   "description": "Step description"
+                },
+                "requirement": {
+                  "type": "string",
+                  "description": "Requirement identifier (optional, for reporting)"
+                },
+                "item": {
+                  "type": "integer",
+                  "description": "Item number (optional, for reporting)"
+                },
+                "tc": {
+                  "type": "integer",
+                  "description": "TC number (optional, for reporting)"
                 }
               },
               "required": ["step", "description"]
