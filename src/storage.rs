@@ -183,6 +183,44 @@ impl TestCaseStorage {
         Ok(matching_files)
     }
 
+    /// Recursively find a file by name in the base directory and subdirectories
+    fn find_file_recursive(&self, target_name: &str) -> Option<PathBuf> {
+        self.find_file_recursive_impl(&self.base_path, target_name)
+    }
+
+    /// Helper function for recursive file search
+    fn find_file_recursive_impl(&self, dir: &Path, target_name: &str) -> Option<PathBuf> {
+        if !dir.exists() || !dir.is_dir() {
+            return None;
+        }
+
+        // Try to read directory entries
+        let entries = match fs::read_dir(dir) {
+            Ok(entries) => entries,
+            Err(_) => return None,
+        };
+
+        for entry in entries.flatten() {
+            let path = entry.path();
+
+            if path.is_file() {
+                // Check if filename matches
+                if let Some(file_name) = path.file_name() {
+                    if file_name.to_string_lossy() == target_name {
+                        return Some(path);
+                    }
+                }
+            } else if path.is_dir() {
+                // Recursively search subdirectory
+                if let Some(found) = self.find_file_recursive_impl(&path, target_name) {
+                    return Some(found);
+                }
+            }
+        }
+
+        None
+    }
+
     /// Load a test case from a YAML file
     pub fn load_test_case<P: AsRef<Path>>(&self, file_path: P) -> Result<TestCase> {
         let file_path_ref = file_path.as_ref();
@@ -220,13 +258,26 @@ impl TestCaseStorage {
             }
         }
 
-        // Try each extension
+        // Try each extension in the base directory first
         for ext in YAML_EXTENSIONS {
             let file_name = format!("{}.{}", id, ext);
             let file_path = self.base_path.join(&file_name);
 
             if file_path.exists() {
                 return self.load_test_case(&file_name);
+            }
+        }
+
+        // If not found in base directory, search recursively
+        for ext in YAML_EXTENSIONS {
+            let file_name = format!("{}.{}", id, ext);
+            if let Some(found_path) = self.find_file_recursive(&file_name) {
+                // Convert to relative path from base_path if possible
+                if let Ok(relative) = found_path.strip_prefix(&self.base_path) {
+                    return self.load_test_case(relative);
+                }
+                // Otherwise use the absolute path
+                return self.load_test_case(&found_path);
             }
         }
 
