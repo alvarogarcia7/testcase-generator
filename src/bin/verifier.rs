@@ -110,16 +110,32 @@ fn validate_args(cli: &Cli) -> Result<ValidationResult> {
     }
 
     if single_file_mode {
-        let log_path = cli.log.clone().unwrap();
-        let test_case_id = cli.test_case_id.clone().unwrap();
+        // Safe to unwrap: single_file_mode is true only if both log and test_case_id are Some
+        let log_path = cli
+            .log
+            .as_ref()
+            .expect("log should be Some in single-file mode");
+        let test_case_id = cli
+            .test_case_id
+            .as_ref()
+            .expect("test_case_id should be Some in single-file mode");
 
         if !log_path.exists() {
             anyhow::bail!("Log file does not exist: {}", log_path.display());
         }
 
-        Ok((Mode::SingleFile, Some(log_path), Some(test_case_id), None))
+        Ok((
+            Mode::SingleFile,
+            Some(log_path.clone()),
+            Some(test_case_id.clone()),
+            None,
+        ))
     } else {
-        let folder_path = cli.folder.clone().unwrap();
+        // Safe to unwrap: folder_mode is true only if folder is Some
+        let folder_path = cli
+            .folder
+            .as_ref()
+            .expect("folder should be Some in folder mode");
 
         if !folder_path.exists() {
             anyhow::bail!("Folder does not exist: {}", folder_path.display());
@@ -129,7 +145,7 @@ fn validate_args(cli: &Cli) -> Result<ValidationResult> {
             anyhow::bail!("Path is not a directory: {}", folder_path.display());
         }
 
-        Ok((Mode::FolderDiscovery, None, None, Some(folder_path)))
+        Ok((Mode::FolderDiscovery, None, None, Some(folder_path.clone())))
     }
 }
 
@@ -232,10 +248,25 @@ fn discover_log_files_recursive(dir: &PathBuf, log_files: &mut Vec<PathBuf>) -> 
         let entry = entry.context("Failed to read directory entry")?;
         let path = entry.path();
 
-        if path.is_dir() {
+        // Get metadata to check file type without following symlinks
+        let metadata = match fs::symlink_metadata(&path) {
+            Ok(m) => m,
+            Err(e) => {
+                log::warn!("Failed to read metadata for '{}': {}", path.display(), e);
+                continue;
+            }
+        };
+
+        // Skip symlinks to avoid potential infinite loops
+        if metadata.is_symlink() {
+            log::debug!("Skipping symlink: {}", path.display());
+            continue;
+        }
+
+        if metadata.is_dir() {
             // Recursively search subdirectories
             discover_log_files_recursive(&path, log_files)?;
-        } else if path.is_file() {
+        } else if metadata.is_file() {
             // Check if filename matches the pattern *_execution_log.json
             if let Some(file_name) = path.file_name() {
                 let file_name_str = file_name.to_string_lossy();
