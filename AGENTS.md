@@ -47,6 +47,9 @@ See the [Hooks](#hooks) section for detailed documentation and examples.
 - **Coverage Report**: make coverage-report (display coverage summary)
 - **Coverage Report E2E**: make coverage-report-e2e (display coverage summary with e2e tests)
 - **Install Coverage Tools**: make install-coverage-tools (install cargo-llvm-cov and related tools)
+- **Install sccache**: make install-sccache (install sccache compilation cache)
+- **sccache Stats**: make sccache-stats (display sccache compilation cache statistics)
+- **sccache Clean**: make sccache-clean (clear sccache compilation cache)
 - **Verify Scripts**: make verify-scripts (verify syntax of all shell scripts)
 - **Watch Mode**: make watch (monitors testcases/ for changes and auto-validates)
 - **Dev Server**: N/A

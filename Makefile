@@ -153,6 +153,9 @@ coverage-report-e2e: build
 
 clean:
 	${MAKE} coverage-clean
+	@if command -v sccache >/dev/null 2>&1; then \
+		${MAKE} sccache-clean; \
+	fi
 .PHONY: clean
 
 coverage-clean:
@@ -163,6 +166,19 @@ coverage-clean:
 install-coverage-tools:
 	./scripts/install-coverage-tools.sh --local
 .PHONY: install-coverage-tools
+
+install-sccache:
+	./scripts/install-sccache.sh --local
+.PHONY: install-sccache
+
+sccache-stats:
+	@sccache --show-stats
+.PHONY: sccache-stats
+
+sccache-clean:
+	@sccache --stop-server || true
+	@echo "sccache cache cleared"
+.PHONY: sccache-clean
 
 verify-scripts:
 	@echo "Verifying shell script syntax..."

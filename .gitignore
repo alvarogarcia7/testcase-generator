@@ -3,6 +3,7 @@ target/
 Cargo.lock
 **/*.rs.bk
 *.pdb
+.cargo/config.toml.bak
 
 # Editor files
 .vscode/
@@ -56,6 +57,9 @@ bin/cargo-watch
 # Coverage artifacts (cargo-llvm-cov)
 target/llvm-cov/
 *.profraw
+
+# sccache build cache
+.sccache/
 
 # CI/CD artifacts
 test_output.txt

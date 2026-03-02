@@ -4,6 +4,13 @@
 # Require llvm-tools-preview component for coverage instrumentation
 rustflags = []
 
+# sccache configuration for build caching
+# RUSTC_WRAPPER enables sccache by default if installed
+# If sccache is not installed, cargo will fall back to normal compilation
+[env]
+RUSTC_WRAPPER = { value = "sccache", force = false, relative = false }
+SCCACHE_DIR = { value = ".sccache", relative = true }
+
 [target.'cfg(all())']
 # Set default RUSTFLAGS for coverage builds with instrument-coverage flag
 # This enables source-based code coverage instrumentation
