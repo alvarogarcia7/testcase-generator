@@ -683,7 +683,10 @@ fn test_extract_test_case_id_missing_extension() {
     let path = Path::new("TC001_execution_log");
     let id = extract_test_case_id_from_filename(path);
     // The function extracts ID from file stem, regardless of extension presence
-    assert_eq!(id, "TC001", "Should extract ID even without .json extension");
+    assert_eq!(
+        id, "TC001",
+        "Should extract ID even without .json extension"
+    );
 }
 
 #[test]
