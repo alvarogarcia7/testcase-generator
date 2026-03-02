@@ -29,6 +29,14 @@ except ImportError:
     print("Warning: reportlab not installed. Will generate HTML reports instead.")
     print("To generate PDF reports, install reportlab: pip3 install reportlab")
 
+try:
+    import yaml
+    YAML_AVAILABLE = True
+except ImportError:
+    YAML_AVAILABLE = False
+    print("Warning: PyYAML not installed. Validation features will be limited.")
+    print("To use validation, install PyYAML: pip3 install pyyaml")
+
 # Define the 7 scenarios to generate reports for
 SCENARIOS = [
     {
@@ -516,6 +524,159 @@ def generate_html_report(scenario, verification_file, output_dir):
     
     print(f"✓ HTML report generated: {html_output}")
     return html_output
+
+
+def validate_verification_data(yaml_path, verification_json_path):
+    """
+    Validate verification data against test case YAML.
+    
+    This function:
+    1. Loads the YAML test case and verification JSON
+    2. Compares test sequence counts
+    3. Compares step counts per sequence
+    4. Validates that no invalid values exist in critical fields
+    
+    Args:
+        yaml_path: Path to the YAML test case file (string or Path)
+        verification_json_path: Path to the verification JSON file (string or Path)
+    
+    Returns:
+        List of validation error messages (empty list if validation passes)
+    """
+    errors = []
+    
+    # Check if YAML library is available
+    if not YAML_AVAILABLE:
+        errors.append("PyYAML library not available - cannot validate YAML test case")
+        return errors
+    
+    # Convert to Path objects
+    yaml_path = Path(yaml_path)
+    verification_json_path = Path(verification_json_path)
+    
+    # Check if files exist
+    if not yaml_path.exists():
+        errors.append(f"YAML test case file not found: {yaml_path}")
+        return errors
+    
+    if not verification_json_path.exists():
+        errors.append(f"Verification JSON file not found: {verification_json_path}")
+        return errors
+    
+    # Load YAML test case
+    try:
+        with open(yaml_path, 'r') as f:
+            test_case = yaml.safe_load(f)
+    except Exception as e:
+        errors.append(f"Failed to load YAML test case: {e}")
+        return errors
+    
+    # Load verification JSON
+    try:
+        with open(verification_json_path, 'r') as f:
+            verification_data = json.load(f)
+    except Exception as e:
+        errors.append(f"Failed to load verification JSON: {e}")
+        return errors
+    
+    # Extract test case from verification data
+    # The verification JSON can have a 'test_cases' array or be a single test case
+    if 'test_cases' in verification_data and len(verification_data['test_cases']) > 0:
+        test_case_result = verification_data['test_cases'][0]
+    else:
+        test_case_result = verification_data
+    
+    # Get test sequences from YAML
+    yaml_sequences = test_case.get('test_sequences', [])
+    yaml_sequence_count = len(yaml_sequences)
+    
+    # Get sequences from verification JSON
+    verification_sequences = test_case_result.get('sequences', [])
+    verification_sequence_count = len(verification_sequences)
+    
+    # Validate sequence count
+    if yaml_sequence_count != verification_sequence_count:
+        errors.append(
+            f"Sequence count mismatch: YAML has {yaml_sequence_count} sequences, "
+            f"verification JSON has {verification_sequence_count} sequences"
+        )
+    
+    # Validate step counts per sequence
+    # Build a map of sequence ID to step count from YAML
+    yaml_step_counts = {}
+    for seq in yaml_sequences:
+        seq_id = seq.get('id')
+        steps = seq.get('steps', [])
+        yaml_step_counts[seq_id] = len(steps)
+    
+    # Build a map of sequence ID to step count from verification JSON
+    verification_step_counts = {}
+    for seq in verification_sequences:
+        seq_id = seq.get('sequence_id')
+        step_results = seq.get('step_results', [])
+        verification_step_counts[seq_id] = len(step_results)
+    
+    # Compare step counts
+    for seq_id, yaml_count in yaml_step_counts.items():
+        verification_count = verification_step_counts.get(seq_id)
+        if verification_count is None:
+            errors.append(
+                f"Sequence {seq_id} exists in YAML but not in verification JSON"
+            )
+        elif yaml_count != verification_count:
+            errors.append(
+                f"Sequence {seq_id} step count mismatch: YAML has {yaml_count} steps, "
+                f"verification JSON has {verification_count} steps"
+            )
+    
+    # Check for sequences in verification JSON that don't exist in YAML
+    for seq_id in verification_step_counts.keys():
+        if seq_id not in yaml_step_counts:
+            errors.append(
+                f"Sequence {seq_id} exists in verification JSON but not in YAML"
+            )
+    
+    # Validate that no invalid values exist in critical fields
+    # Invalid values are: 'N/A', 'unknown', '?', or empty strings
+    invalid_values = ['N/A', 'unknown', '?', '']
+    
+    for seq in verification_sequences:
+        seq_id = seq.get('sequence_id', 'unknown')
+        
+        for step_result in seq.get('step_results', []):
+            # Check status field
+            status = step_result.get('status')
+            if status in invalid_values:
+                errors.append(
+                    f"Sequence {seq_id}: Invalid status value '{status}' found"
+                )
+            
+            # Check description field
+            description = step_result.get('description')
+            if description in invalid_values:
+                errors.append(
+                    f"Sequence {seq_id}: Invalid description value '{description}' found"
+                )
+            
+            # Check step field (could be int or string)
+            step = step_result.get('step')
+            # Convert to string for comparison if it's not None
+            step_str = str(step) if step is not None else step
+            if step is None or step_str in invalid_values:
+                errors.append(
+                    f"Sequence {seq_id}: Invalid step value '{step}' found"
+                )
+            
+            # Check reason field (only present in Fail variants)
+            # Note: reason is only required in Fail variants, so we only check if it exists
+            if 'reason' in step_result:
+                reason = step_result.get('reason')
+                if reason in invalid_values:
+                    errors.append(
+                        f"Sequence {seq_id}, Step {step}: Invalid reason value '{reason}' found"
+                    )
+    
+    return errors
 
 
 def main():
