@@ -1,0 +1,26 @@
+[
+  {
+    "test_sequence": 1,
+    "step": 1,
+    "command": "echo \"Hello from step 1\"",
+    "exit_code": 0,
+    "output": "Hello from step 1",
+    "timestamp": "2026-02-28T10:00:00.123456+00:00"
+  },
+  {
+    "test_sequence": 1,
+    "step": 2,
+    "command": "echo \"Step 2 completed successfully\"",
+    "exit_code": 0,
+    "output": "Step 2 completed successfully",
+    "timestamp": "2026-02-28T10:00:00.456789+00:00"
+  },
+  {
+    "test_sequence": 1,
+    "step": 3,
+    "command": "true",
+    "exit_code": 0,
+    "output": "",
+    "timestamp": "2026-02-28T10:00:00.789012+00:00"
+  }
+]

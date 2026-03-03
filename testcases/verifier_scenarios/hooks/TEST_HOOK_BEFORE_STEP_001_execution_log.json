@@ -1,0 +1,48 @@
+[
+  {
+    "test_sequence": 1,
+    "step": 0,
+    "command": "scripts/hook_before_step_error.sh",
+    "exit_code": 0,
+    "output": "before_step hook: Step 1 - allowing execution",
+    "timestamp": "2024-03-15T15:00:00.100000+00:00",
+    "hook_type": "before_step",
+    "hook_script": "scripts/hook_before_step_error.sh"
+  },
+  {
+    "test_sequence": 1,
+    "step": 1,
+    "command": "echo \"Sequence 1 - Step 1 executed\"",
+    "exit_code": 0,
+    "output": "Sequence 1 - Step 1 executed",
+    "timestamp": "2024-03-15T15:00:00.200000+00:00"
+  },
+  {
+    "test_sequence": 1,
+    "step": 0,
+    "command": "scripts/hook_before_step_error.sh",
+    "exit_code": 0,
+    "output": "before_step hook: Step 2 - allowing execution",
+    "timestamp": "2024-03-15T15:00:00.300000+00:00",
+    "hook_type": "before_step",
+    "hook_script": "scripts/hook_before_step_error.sh"
+  },
+  {
+    "test_sequence": 1,
+    "step": 2,
+    "command": "echo \"Sequence 1 - Step 2 executed\"",
+    "exit_code": 0,
+    "output": "Sequence 1 - Step 2 executed",
+    "timestamp": "2024-03-15T15:00:00.400000+00:00"
+  },
+  {
+    "test_sequence": 1,
+    "step": 0,
+    "command": "scripts/hook_before_step_error.sh",
+    "exit_code": 1,
+    "output": "ERROR: before_step hook failed for step 3",
+    "timestamp": "2024-03-15T15:00:00.500000+00:00",
+    "hook_type": "before_step",
+    "hook_script": "scripts/hook_before_step_error.sh"
+  }
+]

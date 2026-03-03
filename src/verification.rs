@@ -645,28 +645,43 @@ impl TestVerifier {
                         .map(|dt| dt.with_timezone(&Utc))
                 });
 
+                // Safe to unwrap: regex capture groups 3-7 are guaranteed by successful match
                 let sequence_id = caps
                     .get(3)
-                    .unwrap()
+                    .expect("Regex capture group 3 should exist")
                     .as_str()
                     .parse::<i64>()
                     .context("Failed to parse sequence ID")?;
                 let step_number = caps
                     .get(4)
-                    .unwrap()
+                    .expect("Regex capture group 4 should exist")
                     .as_str()
                     .parse::<i64>()
                     .context("Failed to parse step number")?;
 
-                let success_str = caps.get(5).unwrap().as_str().to_lowercase();
+                let success_str = caps
+                    .get(5)
+                    .expect("Regex capture group 5 should exist")
+                    .as_str()
+                    .to_lowercase();
                 let success = match success_str.as_str() {
                     "true" => Some(true),
                     "false" => Some(false),
                     _ => None,
                 };
 
-                let actual_result = caps.get(6).unwrap().as_str().trim().to_string();
-                let actual_output = caps.get(7).unwrap().as_str().trim().to_string();
+                let actual_result = caps
+                    .get(6)
+                    .expect("Regex capture group 6 should exist")
+                    .as_str()
+                    .trim()
+                    .to_string();
+                let actual_output = caps
+                    .get(7)
+                    .expect("Regex capture group 7 should exist")
+                    .as_str()
+                    .trim()
+                    .to_string();
 
                 logs.push(TestExecutionLog {
                     test_case_id: test_case_id.to_string(),
@@ -731,29 +746,49 @@ impl TestVerifier {
                         .map(|dt| dt.with_timezone(&Utc))
                 });
 
-                let test_case_id = caps.get(2).unwrap().as_str().trim().to_string();
+                // Safe to unwrap: regex capture groups 2-7 are guaranteed by successful match
+                let test_case_id = caps
+                    .get(2)
+                    .expect("Regex capture group 2 should exist")
+                    .as_str()
+                    .trim()
+                    .to_string();
                 let sequence_id = caps
                     .get(3)
-                    .unwrap()
+                    .expect("Regex capture group 3 should exist")
                     .as_str()
                     .parse::<i64>()
                     .context("Failed to parse sequence ID")?;
                 let step_number = caps
                     .get(4)
-                    .unwrap()
+                    .expect("Regex capture group 4 should exist")
                     .as_str()
                     .parse::<i64>()
                     .context("Failed to parse step number")?;
 
-                let success_str = caps.get(5).unwrap().as_str().to_lowercase();
+                let success_str = caps
+                    .get(5)
+                    .expect("Regex capture group 5 should exist")
+                    .as_str()
+                    .to_lowercase();
                 let success = match success_str.as_str() {
                     "true" => Some(true),
                     "false" => Some(false),
                     _ => None,
                 };
 
-                let actual_result = caps.get(6).unwrap().as_str().trim().to_string();
-                let actual_output = caps.get(7).unwrap().as_str().trim().to_string();
+                let actual_result = caps
+                    .get(6)
+                    .expect("Regex capture group 6 should exist")
+                    .as_str()
+                    .trim()
+                    .to_string();
+                let actual_output = caps
+                    .get(7)
+                    .expect("Regex capture group 7 should exist")
+                    .as_str()
+                    .trim()
+                    .to_string();
 
                 logs.push(TestExecutionLog {
                     test_case_id,
@@ -1283,7 +1318,7 @@ impl TestVerifier {
             .iter()
             .find(|seq| seq.id == execution_log.sequence_id);
 
-        if sequence.is_none() {
+        let Some(sequence) = sequence else {
             return ExecutionVerificationResult {
                 test_case_id: test_case.id.clone(),
                 sequence_id: execution_log.sequence_id,
@@ -1292,9 +1327,7 @@ impl TestVerifier {
                 missing_steps: vec![],
                 unexpected_steps: vec![],
             };
-        }
-
-        let sequence = sequence.unwrap();
+        };
 
         let mut step_results = Vec::new();
         for step in &sequence.steps {
