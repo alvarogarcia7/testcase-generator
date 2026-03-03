@@ -1231,6 +1231,39 @@ def main():
     print("Test Verifier Report Generator")
     print("=" * 70)
     
+    # Check for reportlab availability and install if missing
+    global REPORTLAB_AVAILABLE
+    if not REPORTLAB_AVAILABLE:
+        print("\n⚠ reportlab not found. Installing...")
+        try:
+            result = subprocess.run(
+                [sys.executable, '-m', 'pip', 'install', 'reportlab'],
+                capture_output=True,
+                text=True
+            )
+            if result.returncode == 0:
+                print("✓ reportlab installed successfully")
+                # Re-import reportlab after installation
+                try:
+                    from reportlab.lib.pagesizes import letter, A4
+                    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+                    from reportlab.lib.units import inch
+                    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+                    from reportlab.lib import colors
+                    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
+                    from reportlab.platypus import Image as RLImage
+                    REPORTLAB_AVAILABLE = True
+                    print("✓ reportlab loaded successfully")
+                except ImportError as e:
+                    print(f"✗ Failed to import reportlab after installation: {e}")
+                    print("Continuing with HTML reports only")
+            else:
+                print(f"✗ Failed to install reportlab: {result.stderr}")
+                print("Continuing with HTML reports only")
+        except Exception as e:
+            print(f"✗ Error installing reportlab: {e}")
+            print("Continuing with HTML reports only")
+    
     # Create output directory
     output_dir = Path('reports/verifier_scenarios')
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -1242,7 +1275,8 @@ def main():
         return 1
     
     # Process each scenario
-    generated_reports = []
+    generated_pdf_reports = []
+    generated_html_reports = []
     
     for scenario in SCENARIOS:
         print("\n" + "=" * 70)
@@ -1258,21 +1292,27 @@ def main():
             print(f"⚠ Skipping report generation for {scenario['test_case_id']}")
             continue
         
-        # Generate report
+        # Generate both PDF and HTML reports (both are mandatory)
         if REPORTLAB_AVAILABLE:
-            report_file = generate_pdf_report(scenario, verification_file, output_dir)
+            pdf_report = generate_pdf_report(scenario, verification_file, output_dir)
+            if pdf_report:
+                generated_pdf_reports.append(pdf_report)
         else:
-            report_file = generate_html_report(scenario, verification_file, output_dir)
+            print(f"⚠ reportlab not available, skipping PDF generation for {scenario['test_case_id']}")
         
-        if report_file:
-            generated_reports.append(report_file)
+        html_report = generate_html_report_validated(scenario, verification_file, output_dir)
+        if html_report:
+            generated_html_reports.append(html_report)
     
     # Summary
     print("\n" + "=" * 70)
     print("Report Generation Complete")
     print("=" * 70)
-    print(f"\nGenerated {len(generated_reports)} reports:")
-    for report_path in generated_reports:
+    print(f"\nGenerated {len(generated_pdf_reports)} PDF reports:")
+    for report_path in generated_pdf_reports:
+        print(f"  • {report_path.absolute()}")
+    print(f"\nGenerated {len(generated_html_reports)} HTML reports:")
+    for report_path in generated_html_reports:
         print(f"  • {report_path.absolute()}")
     
     return 0
