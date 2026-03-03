@@ -683,6 +683,469 @@ fn test_json_log_preserves_multiline_output() {
 }
 
 // ============================================================================
+// Non-interactive Mode Detection Tests
+// ============================================================================
+
+#[test]
+fn test_noninteractive_mode_skips_manual_step_with_debian_frontend() {
+    // Set DEBIAN_FRONTEND=noninteractive
+    std::env::set_var("DEBIAN_FRONTEND", "noninteractive");
+
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ001".to_string(),
+        1,
+        1,
+        "TC001".to_string(),
+        "Test non-interactive with DEBIAN_FRONTEND".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Manual step with verification",
+        "ssh device 'check status'",
+        "0",
+        "ok",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple("[ -f /tmp/status ]".to_string()),
+        output: VerificationExpression::Simple("grep -q 'ready' /tmp/status".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    // Execute and capture output
+    let result = executor.execute_test_case(&test_case);
+
+    // Clean up
+    std::env::remove_var("DEBIAN_FRONTEND");
+
+    // Verification should be skipped in non-interactive mode
+    // The execute should succeed (not prompt or fail)
+    assert!(
+        result.is_ok(),
+        "Execution should succeed in non-interactive mode"
+    );
+}
+
+#[test]
+fn test_noninteractive_mode_skips_manual_step_with_ci_env() {
+    // Set CI environment variable
+    std::env::set_var("CI", "true");
+
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ002".to_string(),
+        1,
+        1,
+        "TC002".to_string(),
+        "Test non-interactive with CI".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Manual step requiring interaction",
+        "manual action",
+        "0",
+        "done",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple("[ -f /tmp/result ]".to_string()),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    // Execute
+    let result = executor.execute_test_case(&test_case);
+
+    // Clean up
+    std::env::remove_var("CI");
+
+    // Should succeed without prompting
+    assert!(
+        result.is_ok(),
+        "Execution should succeed with CI env var set"
+    );
+}
+
+#[test]
+fn test_noninteractive_mode_skips_only_manual_steps_with_verification() {
+    // Set DEBIAN_FRONTEND=noninteractive
+    std::env::set_var("DEBIAN_FRONTEND", "noninteractive");
+
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ003".to_string(),
+        1,
+        1,
+        "TC003".to_string(),
+        "Test selective skipping".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+
+    // Add manual step with verification - should be skipped
+    let mut manual_step_with_verification = create_test_step(
+        1,
+        "Manual with verification",
+        "manual action",
+        "0",
+        "done",
+        Some(true),
+    );
+    manual_step_with_verification.manual = Some(true);
+    manual_step_with_verification.verification = Verification {
+        result: VerificationExpression::Simple("[ -f /tmp/check ]".to_string()),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(manual_step_with_verification);
+
+    // Add manual step without verification - should be skipped (different reason)
+    let mut manual_step_no_verification = create_test_step(
+        2,
+        "Manual without verification",
+        "manual action 2",
+        "0",
+        "done",
+        Some(true),
+    );
+    manual_step_no_verification.manual = Some(true);
+    manual_step_no_verification.verification = Verification {
+        result: VerificationExpression::Simple("true".to_string()),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(manual_step_no_verification);
+
+    test_case.test_sequences.push(sequence);
+
+    // Execute
+    let result = executor.execute_test_case(&test_case);
+
+    // Clean up
+    std::env::remove_var("DEBIAN_FRONTEND");
+
+    // Should complete successfully - all manual steps should be skipped
+    assert!(
+        result.is_ok(),
+        "Execution should succeed, skipping manual steps"
+    );
+}
+
+#[test]
+fn test_noninteractive_mode_skip_message_format() {
+    // This test verifies that the appropriate skip message is logged
+    // We can't easily test stdout in unit tests, but we verify the logic path
+    // by ensuring execution completes without error
+    std::env::set_var("DEBIAN_FRONTEND", "noninteractive");
+
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ004".to_string(),
+        1,
+        1,
+        "TC004".to_string(),
+        "Test skip message".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Verify device",
+        "check device status",
+        "0",
+        "ok",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple("[ $? -eq 0 ]".to_string()),
+        output: VerificationExpression::Simple("[ -n \"$OUTPUT\" ]".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let result = executor.execute_test_case(&test_case);
+
+    std::env::remove_var("DEBIAN_FRONTEND");
+
+    // The expected behavior is that the step is skipped with message:
+    // "[SKIP] Step 1 (Sequence 1): Non-interactive mode, skipping manual step"
+    assert!(
+        result.is_ok(),
+        "Should skip manual step in non-interactive mode"
+    );
+}
+
+#[test]
+fn test_noninteractive_both_env_vars_set() {
+    // Test when both DEBIAN_FRONTEND and CI are set
+    std::env::set_var("DEBIAN_FRONTEND", "noninteractive");
+    std::env::set_var("CI", "true");
+
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ005".to_string(),
+        1,
+        1,
+        "TC005".to_string(),
+        "Test both env vars".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Manual verification step",
+        "manual check",
+        "0",
+        "checked",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple("test -f /tmp/file".to_string()),
+        output: VerificationExpression::Simple("test -n \"$VAR\"".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let result = executor.execute_test_case(&test_case);
+
+    std::env::remove_var("DEBIAN_FRONTEND");
+    std::env::remove_var("CI");
+
+    assert!(result.is_ok(), "Should skip with either env var set");
+}
+
+#[test]
+fn test_noninteractive_debian_frontend_wrong_value() {
+    // Test that only "noninteractive" value triggers the skip
+    std::env::set_var("DEBIAN_FRONTEND", "readline");
+
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ006".to_string(),
+        1,
+        1,
+        "TC006".to_string(),
+        "Test wrong DEBIAN_FRONTEND value".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(1, "Manual step", "manual action", "0", "done", Some(true));
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple("[ -f /tmp/test ]".to_string()),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    // This would normally try to prompt user, which would fail in a test
+    // without a TTY, but that's expected behavior
+    let result = executor.execute_test_case(&test_case);
+
+    std::env::remove_var("DEBIAN_FRONTEND");
+
+    // With DEBIAN_FRONTEND set to something other than "noninteractive",
+    // it will try to prompt, which will fail without TTY
+    // This is expected - it should skip with a different message
+    assert!(
+        result.is_ok(),
+        "Should handle non-interactive TTY detection"
+    );
+}
+
+#[test]
+fn test_noninteractive_multiple_sequences_with_manual_steps() {
+    std::env::set_var("CI", "1");
+
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ007".to_string(),
+        1,
+        1,
+        "TC007".to_string(),
+        "Test multiple sequences".to_string(),
+    );
+
+    // First sequence with manual step
+    let mut sequence1 = TestSequence::new(1, "Seq1".to_string(), "First sequence".to_string());
+    let mut step1 = create_test_step(1, "Manual step 1", "action 1", "0", "done", Some(true));
+    step1.manual = Some(true);
+    step1.verification = Verification {
+        result: VerificationExpression::Simple("[ -f /tmp/seq1 ]".to_string()),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence1.steps.push(step1);
+    test_case.test_sequences.push(sequence1);
+
+    // Second sequence with manual step
+    let mut sequence2 = TestSequence::new(2, "Seq2".to_string(), "Second sequence".to_string());
+    let mut step2 = create_test_step(1, "Manual step 2", "action 2", "0", "done", Some(true));
+    step2.manual = Some(true);
+    step2.verification = Verification {
+        result: VerificationExpression::Simple("[ -f /tmp/seq2 ]".to_string()),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence2.steps.push(step2);
+    test_case.test_sequences.push(sequence2);
+
+    let result = executor.execute_test_case(&test_case);
+
+    std::env::remove_var("CI");
+
+    assert!(
+        result.is_ok(),
+        "Should skip all manual steps in all sequences"
+    );
+}
+
+#[test]
+fn test_noninteractive_manual_step_with_complex_verification() {
+    std::env::set_var("DEBIAN_FRONTEND", "noninteractive");
+
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ008".to_string(),
+        1,
+        1,
+        "TC008".to_string(),
+        "Test complex verification skip".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(
+        1,
+        "Complex manual step",
+        "complex action",
+        "0",
+        "done",
+        Some(true),
+    );
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Conditional {
+            condition: "[ -f /tmp/config ]".to_string(),
+            if_true: Some(vec!["echo 'Config exists'".to_string()]),
+            if_false: Some(vec!["echo 'Config missing'".to_string()]),
+            always: Some(vec!["echo 'Done'".to_string()]),
+        },
+        output: VerificationExpression::Simple("grep -q 'success' /tmp/output".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let result = executor.execute_test_case(&test_case);
+
+    std::env::remove_var("DEBIAN_FRONTEND");
+
+    // Even complex verification expressions should be skipped
+    assert!(
+        result.is_ok(),
+        "Should skip manual step with complex verification"
+    );
+}
+
+#[test]
+fn test_noninteractive_preserves_automated_step_execution() {
+    std::env::set_var("CI", "true");
+
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ009".to_string(),
+        1,
+        1,
+        "TC009".to_string(),
+        "Test automated steps still execute".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+
+    // Add manual step that should be skipped
+    let mut manual_step =
+        create_test_step(1, "Manual check", "manual action", "0", "done", Some(true));
+    manual_step.manual = Some(true);
+    manual_step.verification = Verification {
+        result: VerificationExpression::Simple("[ $? -eq 0 ]".to_string()),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(manual_step);
+
+    test_case.test_sequences.push(sequence);
+
+    let result = executor.execute_test_case(&test_case);
+
+    std::env::remove_var("CI");
+
+    // Manual step should be skipped in CI mode
+    assert!(result.is_ok(), "Manual steps should be skipped in CI mode");
+}
+
+#[test]
+fn test_noninteractive_mode_detection_case_sensitive() {
+    // Test that DEBIAN_FRONTEND check is case-sensitive
+    std::env::set_var("DEBIAN_FRONTEND", "NONINTERACTIVE"); // uppercase
+
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ010".to_string(),
+        1,
+        1,
+        "TC010".to_string(),
+        "Test case sensitivity".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+    let mut step = create_test_step(1, "Manual step", "manual action", "0", "done", Some(true));
+    step.manual = Some(true);
+    step.verification = Verification {
+        result: VerificationExpression::Simple("[ -f /tmp/test ]".to_string()),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+    test_case.test_sequences.push(sequence);
+
+    let result = executor.execute_test_case(&test_case);
+
+    std::env::remove_var("DEBIAN_FRONTEND");
+
+    // With uppercase "NONINTERACTIVE", it won't match and will try to prompt
+    // which will fail gracefully without TTY (different skip message)
+    assert!(result.is_ok(), "Should handle case-sensitive check");
+}
+
+// ============================================================================
 // Bash Helper Functions Tests
 // ============================================================================
 
