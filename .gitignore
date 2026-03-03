@@ -86,3 +86,6 @@ grcov
 
 /node_modules/
 /mkdocs-venv/
+
+# Test execution logs (generated during testing)
+*_execution_log.json

@@ -679,6 +679,552 @@ def validate_verification_data(yaml_path, verification_json_path):
     return errors
 
 
+def generate_html_report_validated(scenario, verification_file, output_dir):
+    """
+    Generate an HTML report with validation and enhanced styling.
+    
+    This function:
+    1. Validates the verification data against the test case YAML
+    2. Exits with error code 1 if validation fails
+    3. Generates an HTML report with enhanced styling and validation status indicators
+    
+    Args:
+        scenario: Dictionary containing scenario information (name, test_case_id, yaml, etc.)
+        verification_file: Path to the verification JSON file
+        output_dir: Path to the output directory for the HTML report
+    
+    Returns:
+        Path to the generated HTML report, or exits with code 1 if validation fails
+    """
+    print(f"\n=== Generating validated HTML report for {scenario['test_case_id']} ===")
+    
+    # Step 1: Validate the verification data
+    print("Validating verification data...")
+    validation_errors = validate_verification_data(scenario['yaml'], verification_file)
+    
+    if validation_errors:
+        print("✗ Validation failed with the following errors:")
+        for error in validation_errors:
+            print(f"  • {error}")
+        sys.exit(1)
+    
+    print("✓ Validation passed")
+    
+    # Step 2: Read verification result
+    with open(verification_file, 'r') as f:
+        verification_data = json.load(f)
+    
+    # Get the test case result
+    if 'test_cases' in verification_data and len(verification_data['test_cases']) > 0:
+        test_case = verification_data['test_cases'][0]
+    else:
+        test_case = verification_data
+    
+    # Create HTML filename
+    html_output = output_dir / f"{scenario['test_case_id']}_report_validated.html"
+    
+    overall_pass = test_case.get('overall_pass', False)
+    status_color = '#28a745' if overall_pass else '#dc3545'
+    status_text = "PASS" if overall_pass else "FAIL"
+    status_icon = "✓" if overall_pass else "✗"
+    
+    # Step 3: Generate enhanced HTML report
+    html_content = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Validated Test Verification Report - {scenario['test_case_id']}</title>
+    <style>
+        * {{
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }}
+        
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }}
+        
+        .container {{
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }}
+        
+        .header {{
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+            position: relative;
+        }}
+        
+        .validation-badge {{
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background-color: #28a745;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }}
+        
+        .validation-badge::before {{
+            content: "✓ ";
+            font-weight: bold;
+        }}
+        
+        h1 {{
+            font-size: 2.2em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }}
+        
+        .test-id {{
+            font-size: 1.1em;
+            opacity: 0.9;
+            font-weight: 400;
+            letter-spacing: 1px;
+        }}
+        
+        .content {{
+            padding: 40px;
+        }}
+        
+        .status-banner {{
+            background-color: {status_color};
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 1.5em;
+            font-weight: 700;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }}
+        
+        .status-banner::before {{
+            content: "{status_icon} ";
+            font-size: 1.2em;
+        }}
+        
+        h2 {{
+            color: #2c3e50;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }}
+        
+        h2:first-child {{
+            margin-top: 0;
+        }}
+        
+        h3 {{
+            color: #34495e;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+            display: flex;
+            align-items: center;
+        }}
+        
+        h3::before {{
+            content: "▸";
+            color: #3498db;
+            margin-right: 10px;
+            font-weight: bold;
+        }}
+        
+        .summary-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }}
+        
+        .summary-card {{
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }}
+        
+        .summary-card:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        }}
+        
+        .summary-card-label {{
+            font-size: 0.85em;
+            color: #5a6c7d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }}
+        
+        .summary-card-value {{
+            font-size: 1.8em;
+            font-weight: 700;
+            color: #2c3e50;
+        }}
+        
+        .summary-table {{
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }}
+        
+        .summary-table th {{
+            background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            width: 220px;
+        }}
+        
+        .summary-table td {{
+            padding: 15px;
+            border-bottom: 1px solid #ecf0f1;
+        }}
+        
+        .summary-table tr:last-child td {{
+            border-bottom: none;
+        }}
+        
+        .summary-table tr:nth-child(even) {{
+            background-color: #f8f9fa;
+        }}
+        
+        .status-badge-inline {{
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 0.95em;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+        }}
+        
+        .status-pass {{
+            background-color: #28a745;
+            color: white;
+        }}
+        
+        .status-fail {{
+            background-color: #dc3545;
+            color: white;
+        }}
+        
+        .step-table {{
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }}
+        
+        .step-table th {{
+            background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+            color: white;
+            padding: 15px 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.95em;
+        }}
+        
+        .step-table td {{
+            padding: 12px;
+            border-bottom: 1px solid #ecf0f1;
+        }}
+        
+        .step-table tr:last-child td {{
+            border-bottom: none;
+        }}
+        
+        .step-table tbody tr {{
+            transition: background-color 0.2s;
+        }}
+        
+        .step-table tbody tr:hover {{
+            background-color: #f8f9fa;
+        }}
+        
+        .step-pass {{
+            background-color: #d4edda;
+            border-left: 4px solid #28a745;
+        }}
+        
+        .step-fail {{
+            background-color: #f8d7da;
+            border-left: 4px solid #dc3545;
+        }}
+        
+        .step-not-executed {{
+            background-color: #f0f0f0;
+            border-left: 4px solid #6c757d;
+        }}
+        
+        .step-status {{
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }}
+        
+        .step-status-pass {{
+            background-color: #28a745;
+            color: white;
+        }}
+        
+        .step-status-fail {{
+            background-color: #dc3545;
+            color: white;
+        }}
+        
+        .step-status-not-executed {{
+            background-color: #6c757d;
+            color: white;
+        }}
+        
+        .step-number {{
+            font-weight: 700;
+            color: #2c3e50;
+            font-size: 1.1em;
+        }}
+        
+        .step-description {{
+            color: #555;
+        }}
+        
+        .step-reason {{
+            color: #666;
+            font-style: italic;
+        }}
+        
+        .footer {{
+            background: linear-gradient(135deg, #ecf0f1 0%, #bdc3c7 100%);
+            padding: 30px;
+            text-align: center;
+            color: #5a6c7d;
+            font-size: 0.9em;
+            border-top: 3px solid #3498db;
+        }}
+        
+        .footer-content {{
+            max-width: 1200px;
+            margin: 0 auto;
+        }}
+        
+        .footer-title {{
+            font-weight: 700;
+            margin-bottom: 5px;
+            color: #2c3e50;
+        }}
+        
+        .stats-row {{
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            margin: 30px 0;
+        }}
+        
+        .stat-box {{
+            background: white;
+            border-radius: 8px;
+            padding: 20px 30px;
+            min-width: 150px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin: 10px;
+        }}
+        
+        .stat-label {{
+            font-size: 0.85em;
+            color: #7f8c8d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }}
+        
+        .stat-value {{
+            font-size: 2.5em;
+            font-weight: 700;
+            color: #2c3e50;
+        }}
+        
+        .stat-value.passed {{
+            color: #28a745;
+        }}
+        
+        .stat-value.failed {{
+            color: #dc3545;
+        }}
+        
+        .stat-value.not-executed {{
+            color: #6c757d;
+        }}
+        
+        @media print {{
+            body {{
+                background: white;
+                padding: 0;
+            }}
+            
+            .container {{
+                box-shadow: none;
+            }}
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="validation-badge">VALIDATED</div>
+            <h1>Test Verification Report</h1>
+            <div class="test-id">{scenario['test_case_id']}</div>
+        </div>
+        
+        <div class="content">
+            <div class="status-banner">{status_text}</div>
+            
+            <h2>Test Summary</h2>
+            
+            <div class="stats-row">
+                <div class="stat-box">
+                    <div class="stat-label">Total Steps</div>
+                    <div class="stat-value">{test_case.get('total_steps', 0)}</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Passed</div>
+                    <div class="stat-value passed">{test_case.get('passed_steps', 0)}</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Failed</div>
+                    <div class="stat-value failed">{test_case.get('failed_steps', 0)}</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Not Executed</div>
+                    <div class="stat-value not-executed">{test_case.get('not_executed_steps', 0)}</div>
+                </div>
+            </div>
+            
+            <table class="summary-table">
+                <tr>
+                    <th>Test Case ID</th>
+                    <td>{scenario['test_case_id']}</td>
+                </tr>
+                <tr>
+                    <th>Description</th>
+                    <td>{scenario['description']}</td>
+                </tr>
+                <tr>
+                    <th>Overall Status</th>
+                    <td><span class="status-badge-inline status-{status_text.lower()}">{status_text}</span></td>
+                </tr>
+                <tr>
+                    <th>Validation Status</th>
+                    <td><span class="status-badge-inline status-pass">VALIDATED ✓</span></td>
+                </tr>
+                <tr>
+                    <th>Report Date</th>
+                    <td>{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</td>
+                </tr>
+            </table>
+"""
+    
+    # Add sequences
+    if 'sequences' in test_case and test_case['sequences']:
+        html_content += """
+            <h2>Test Sequences</h2>
+"""
+        
+        for seq in test_case['sequences']:
+            seq_id = seq.get('sequence_id', 'unknown')
+            seq_name = seq.get('name', 'Unknown Sequence')
+            
+            html_content += f"""
+            <h3>Sequence {seq_id}: {seq_name}</h3>
+            <table class="step-table">
+                <thead>
+                    <tr>
+                        <th style="width: 80px;">Step</th>
+                        <th>Description</th>
+                        <th style="width: 140px;">Status</th>
+                        <th>Reason</th>
+                    </tr>
+                </thead>
+                <tbody>
+"""
+            
+            for step_result in seq.get('step_results', []):
+                status = step_result.get('status', 'unknown')
+                step_num = step_result.get('step', '?')
+                description = step_result.get('description', 'N/A')
+                reason = step_result.get('reason', '-')
+                
+                row_class = f"step-{status.replace('_', '-')}"
+                status_class = f"step-status-{status.replace('_', '-')}"
+                
+                html_content += f"""
+                    <tr class="{row_class}">
+                        <td class="step-number">{step_num}</td>
+                        <td class="step-description">{description}</td>
+                        <td><span class="step-status {status_class}">{status}</span></td>
+                        <td class="step-reason">{reason}</td>
+                    </tr>
+"""
+            
+            html_content += """
+                </tbody>
+            </table>
+"""
+    
+    html_content += """
+        </div>
+        
+        <div class="footer">
+            <div class="footer-content">
+                <div class="footer-title">Test Plan Documentation Generator</div>
+                <div>Generated with validation and enhanced reporting</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+"""
+    
+    with open(html_output, 'w') as f:
+        f.write(html_content)
+    
+    print(f"✓ Validated HTML report generated: {html_output}")
+    return html_output
+
+
 def main():
     """Main execution function."""
     print("=" * 70)
