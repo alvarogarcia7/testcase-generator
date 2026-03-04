@@ -165,6 +165,7 @@ clean:
 	@if command -v sccache >/dev/null 2>&1; then \
 		${MAKE} sccache-clean; \
 	fi
+	@rm -rf .sccache
 .PHONY: clean
 
 coverage-clean:
@@ -178,14 +179,18 @@ install-coverage-tools:
 
 install-sccache:
 	./scripts/install-sccache.sh --local
+	export RUSTC_WRAPPER=sccache
 .PHONY: install-sccache
 
 sccache-stats:
 	@sccache --show-stats
+	@echo ""
+	@echo "SCCACHE_DIR location: $${SCCACHE_DIR:-.sccache}"
 .PHONY: sccache-stats
 
 sccache-clean:
 	@sccache --stop-server || true
+	@rm -rf .sccache/host .sccache/docker
 	@echo "sccache cache cleared"
 .PHONY: sccache-clean
 
@@ -218,6 +223,7 @@ test-e2e-validate-yaml: build
 
 docker-build:
 	${MAKE} README_INSTALL_AUTOMATED.md
+	@mkdir -p .sccache/host
 	docker build -t testcase-manager:latest .
 .PHONY: docker-build
 
