@@ -325,3 +325,11 @@ test-e2e-orchestrator-examples: build
 	./tests/integration/test_orchestrator_examples.sh
 .PHONY: test-e2e-orchestrator-examples
 
+generate-docs: build
+	./scripts/generate_documentation_reports.sh
+.PHONY: generate-docs
+
+generate-docs-all: build
+	./scripts/generate_documentation_reports.sh --logs-dir testcases --test-case-dir testcases
+.PHONY: generate-docs-all
+
