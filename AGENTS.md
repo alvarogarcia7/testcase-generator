@@ -56,6 +56,58 @@ See the [Hooks](#hooks) section for detailed documentation and examples.
 
 You must build, test, lint, and verify coverage before committing
 
+### sccache Compilation Cache
+
+sccache is a compiler cache that significantly speeds up compilation by caching build artifacts. The project uses separate cache directories for different environments:
+
+- **Host cache**: `.sccache/host` (native builds)
+- **Docker cache**: `.sccache/docker` (containerized builds)
+
+#### Installation
+
+Install sccache using the provided installation script:
+
+```bash
+make install-sccache
+```
+
+To enable sccache persistently, add the following to your shell profile (`~/.bashrc`, `~/.zshrc`, etc.):
+
+```bash
+export RUSTC_WRAPPER=sccache
+```
+
+After editing your shell profile, reload it:
+
+```bash
+source ~/.bashrc  # or ~/.zshrc
+```
+
+#### Commands
+
+- **Install sccache**: `make install-sccache`
+  - Installs sccache using cargo
+  - Automatically detects if sccache is already installed
+  
+- **View cache statistics**: `make sccache-stats`
+  - Displays compilation cache hit/miss statistics
+  - Shows cache size and utilization
+  - Useful for monitoring cache effectiveness
+  
+- **Clear cache**: `make sccache-clean`
+  - Removes all cached compilation artifacts
+  - Frees up disk space
+  - Use when troubleshooting build issues or after major dependency changes
+
+#### Cache Directories
+
+The project maintains separate sccache directories:
+
+- `.sccache/host`: Used for native builds on the host system
+- `.sccache/docker`: Used for Docker containerized builds
+
+Both directories are git-ignored and can be safely deleted to reclaim disk space.
+
 ## Binaries
 
 The project includes several binary utilities:
