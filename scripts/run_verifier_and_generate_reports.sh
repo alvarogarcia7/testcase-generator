@@ -158,6 +158,49 @@ else
     echo "PDF report generation requires Python 3 and reportlab."
 fi
 
+# Generate documentation reports
+echo ""
+echo "======================================================================="
+echo "Documentation Report Generation"
+echo "======================================================================="
+echo ""
+
+# Determine test-plan-doc-gen directory
+if [ -n "$TESTPLAN_DOC_GEN_DIR" ]; then
+    DOC_GEN_DIR="$TESTPLAN_DOC_GEN_DIR"
+else
+    # Default to sibling directory
+    DOC_GEN_DIR="$(cd "$PROJECT_ROOT/.." && pwd)/test-plan-doc-gen"
+fi
+
+echo "test-plan-doc-gen directory: $DOC_GEN_DIR"
+
+# Run documentation report generation
+DOC_SCRIPT="$SCRIPT_DIR/generate_documentation_reports.sh"
+
+if [ -f "$DOC_SCRIPT" ]; then
+    echo "Running documentation report generator..."
+    echo ""
+    
+    "$DOC_SCRIPT" \
+        --output-dir "$OUTPUT_DIR" \
+        --test-case-dir "$PROJECT_ROOT/testcases" \
+        --test-plan-doc-gen "$DOC_GEN_DIR"
+    
+    if [ $? -eq 0 ]; then
+        echo ""
+        echo "✓ Documentation reports generated successfully"
+    else
+        echo ""
+        echo "⚠ Documentation report generation encountered issues"
+    fi
+else
+    echo "⚠ Documentation report generator not found: $DOC_SCRIPT"
+    echo ""
+    echo "To generate documentation reports, ensure the script exists at:"
+    echo "  $DOC_SCRIPT"
+fi
+
 echo ""
 echo "======================================================================="
 echo "Complete"
