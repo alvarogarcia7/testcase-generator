@@ -113,16 +113,20 @@ echo "PDF Report Generation"
 echo "======================================================================="
 echo ""
 
+uv sync
+
+source .venv/bin/activate
+
 if command -v python3 >/dev/null 2>&1; then
     echo "Python 3 found. Checking for reportlab..."
     
-    if python3 -c "import reportlab" 2>/dev/null; then
+    if uv run python3 -c "import reportlab" 2>/dev/null; then
         echo "✓ reportlab is installed"
         echo ""
         echo "Generating PDF reports..."
         
         cd "$PROJECT_ROOT"
-        python3 scripts/generate_verifier_reports.py
+        uv run python3 scripts/generate_verifier_reports.py
         
         if [ $? -eq 0 ]; then
             echo ""
@@ -146,7 +150,7 @@ if command -v python3 >/dev/null 2>&1; then
         echo "  pip3 install reportlab"
         echo ""
         echo "Then run:"
-        echo "  python3 scripts/generate_verifier_reports.py"
+        echo "  uv run python3 scripts/generate_verifier_reports.py"
     fi
 else
     echo "⚠ Python 3 not found"
