@@ -1,0 +1,293 @@
+#!/usr/bin/env python3
+"""
+Convert verifier JSON output to individual YAML result files.
+
+This script:
+1. Reads verifier JSON output (BatchVerificationReport or TestCaseVerificationResult)
+2. Extracts each test case result
+3. Writes individual YAML files with 'type: result' field and all verification data
+
+The output YAML files include:
+- type: result (mandatory field)
+- test_case_id
+- description
+- sequences (with step_results containing Pass/Fail/NotExecuted variants)
+- total_steps, passed_steps, failed_steps, not_executed_steps
+- overall_pass
+- requirement, item, tc (if present)
+"""
+
+import sys
+import json
+import argparse
+from pathlib import Path
+from typing import Dict, Any, List
+
+try:
+    import yaml
+    YAML_AVAILABLE = True
+except ImportError:
+    YAML_AVAILABLE = False
+    print("Error: PyYAML is required. Install with: pip3 install pyyaml")
+    sys.exit(1)
+
+
+def parse_step_result(step_result: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Parse a step result from the JSON format.
+    
+    The JSON format uses enum variants:
+    - {"Pass": {"step": 1, "description": "...", ...}}
+    - {"Fail": {"step": 1, "description": "...", "expected": {...}, ...}}
+    - {"NotExecuted": {"step": 1, "description": "...", ...}}
+    
+    Args:
+        step_result: The step result dictionary from JSON
+        
+    Returns:
+        Parsed step result dictionary with variant name and data
+    """
+    # Check which variant this is
+    if "Pass" in step_result:
+        return {"Pass": step_result["Pass"]}
+    elif "Fail" in step_result:
+        return {"Fail": step_result["Fail"]}
+    elif "NotExecuted" in step_result:
+        return {"NotExecuted": step_result["NotExecuted"]}
+    else:
+        # Unknown variant, return as-is
+        return step_result
+
+
+def convert_test_case_to_result(test_case: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Convert a TestCaseVerificationResult to a result YAML structure.
+    
+    Args:
+        test_case: Dictionary containing test case verification result
+        
+    Returns:
+        Dictionary with 'type: result' and all verification data
+    """
+    result = {
+        "type": "result",
+        "test_case_id": test_case["test_case_id"],
+        "description": test_case["description"],
+        "sequences": [],
+        "total_steps": test_case["total_steps"],
+        "passed_steps": test_case["passed_steps"],
+        "failed_steps": test_case["failed_steps"],
+        "not_executed_steps": test_case["not_executed_steps"],
+        "overall_pass": test_case["overall_pass"]
+    }
+    
+    # Add optional metadata fields if present
+    if "requirement" in test_case and test_case["requirement"] is not None:
+        result["requirement"] = test_case["requirement"]
+    if "item" in test_case and test_case["item"] is not None:
+        result["item"] = test_case["item"]
+    if "tc" in test_case and test_case["tc"] is not None:
+        result["tc"] = test_case["tc"]
+    
+    # Process sequences
+    for sequence in test_case.get("sequences", []):
+        seq_result = {
+            "sequence_id": sequence["sequence_id"],
+            "name": sequence["name"],
+            "step_results": [],
+            "all_steps_passed": sequence["all_steps_passed"]
+        }
+        
+        # Add optional sequence metadata if present
+        if "requirement" in sequence and sequence["requirement"] is not None:
+            seq_result["requirement"] = sequence["requirement"]
+        if "item" in sequence and sequence["item"] is not None:
+            seq_result["item"] = sequence["item"]
+        if "tc" in sequence and sequence["tc"] is not None:
+            seq_result["tc"] = sequence["tc"]
+        
+        # Process step results - preserve enum variant structure
+        for step_result in sequence.get("step_results", []):
+            parsed_step = parse_step_result(step_result)
+            seq_result["step_results"].append(parsed_step)
+        
+        result["sequences"].append(seq_result)
+    
+    return result
+
+
+def write_result_yaml(result: Dict[str, Any], output_path: Path) -> None:
+    """
+    Write a result dictionary to a YAML file.
+    
+    Args:
+        result: Dictionary containing result data
+        output_path: Path to write the YAML file
+    """
+    # Ensure parent directory exists
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    with open(output_path, 'w') as f:
+        yaml.dump(result, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
+    
+    print(f"✓ Wrote: {output_path}")
+
+
+def process_verification_json(input_path: Path, output_dir: Path, verbose: bool = False) -> int:
+    """
+    Process a verification JSON file and generate result YAML files.
+    
+    Args:
+        input_path: Path to the input JSON file
+        output_dir: Directory to write output YAML files
+        verbose: Whether to print verbose output
+        
+    Returns:
+        Number of result files generated
+    """
+    if verbose:
+        print(f"Reading: {input_path}")
+    
+    # Read input JSON
+    try:
+        with open(input_path, 'r') as f:
+            data = json.load(f)
+    except json.JSONDecodeError as e:
+        print(f"✗ Error: Failed to parse JSON: {e}")
+        return 0
+    except Exception as e:
+        print(f"✗ Error: Failed to read file: {e}")
+        return 0
+    
+    # Determine if this is a BatchVerificationReport or a single TestCaseVerificationResult
+    test_cases = []
+    
+    if "test_cases" in data:
+        # This is a BatchVerificationReport
+        if verbose:
+            print(f"Processing BatchVerificationReport with {len(data['test_cases'])} test case(s)")
+        test_cases = data["test_cases"]
+    elif "test_case_id" in data:
+        # This is a single TestCaseVerificationResult
+        if verbose:
+            print(f"Processing single TestCaseVerificationResult")
+        test_cases = [data]
+    else:
+        print(f"✗ Error: Unknown JSON structure. Expected BatchVerificationReport or TestCaseVerificationResult")
+        return 0
+    
+    # Process each test case
+    count = 0
+    for test_case in test_cases:
+        test_case_id = test_case.get("test_case_id", "unknown")
+        
+        # Convert to result structure
+        result = convert_test_case_to_result(test_case)
+        
+        # Generate output filename
+        output_filename = f"{test_case_id}_result.yaml"
+        output_path = output_dir / output_filename
+        
+        # Write result YAML
+        write_result_yaml(result, output_path)
+        count += 1
+    
+    return count
+
+
+def main() -> int:
+    """Main entry point."""
+    parser = argparse.ArgumentParser(
+        description="Convert verifier JSON output to individual YAML result files",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Convert a single verification JSON file
+  %(prog)s verification.json -o results/
+
+  # Convert with verbose output
+  %(prog)s verification.json -o results/ -v
+
+  # Convert from stdin
+  cat verification.json | %(prog)s -o results/
+
+Input JSON format:
+  The script accepts either:
+  1. BatchVerificationReport: {"test_cases": [...], "total_test_cases": N, ...}
+  2. TestCaseVerificationResult: {"test_case_id": "...", "description": "...", ...}
+
+Output YAML format:
+  Each test case generates a file named {test_case_id}_result.yaml with:
+  - type: result
+  - test_case_id, description
+  - sequences with step_results (Pass/Fail/NotExecuted variants)
+  - total_steps, passed_steps, failed_steps, not_executed_steps
+  - overall_pass
+  - requirement, item, tc (if present)
+        """
+    )
+    
+    parser.add_argument(
+        'input',
+        nargs='?',
+        type=Path,
+        help='Input JSON file (BatchVerificationReport or TestCaseVerificationResult). If omitted, reads from stdin.'
+    )
+    
+    parser.add_argument(
+        '-o', '--output-dir',
+        type=Path,
+        required=True,
+        help='Output directory for result YAML files'
+    )
+    
+    parser.add_argument(
+        '-v', '--verbose',
+        action='store_true',
+        help='Enable verbose output'
+    )
+    
+    args = parser.parse_args()
+    
+    # Handle stdin input
+    if args.input is None:
+        if args.verbose:
+            print("Reading from stdin...")
+        
+        # Read from stdin and write to a temporary file
+        import tempfile
+        try:
+            stdin_content = sys.stdin.read()
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as tmp:
+                tmp.write(stdin_content)
+                tmp_path = Path(tmp.name)
+            
+            count = process_verification_json(tmp_path, args.output_dir, args.verbose)
+            tmp_path.unlink()  # Clean up temporary file
+        except Exception as e:
+            print(f"✗ Error reading from stdin: {e}")
+            return 1
+    else:
+        # Validate input file
+        if not args.input.exists():
+            print(f"✗ Error: Input file not found: {args.input}")
+            return 1
+        
+        if not args.input.is_file():
+            print(f"✗ Error: Input path is not a file: {args.input}")
+            return 1
+        
+        # Process input file
+        count = process_verification_json(args.input, args.output_dir, args.verbose)
+    
+    # Summary
+    if count > 0:
+        print(f"\n✓ Successfully generated {count} result YAML file(s) in: {args.output_dir}")
+        return 0
+    else:
+        print(f"\n✗ No result files generated")
+        return 1
+
+
+if __name__ == '__main__':
+    sys.exit(main())
