@@ -1229,8 +1229,8 @@ fn test_generate_report_yaml_with_sequences() {
     assert!(yaml.contains("Test Sequence 1"));
     assert!(yaml.contains("Step 1 description"));
     assert!(yaml.contains("Step 2 description"));
-    assert!(yaml.contains("Pass"));
-    assert!(yaml.contains("Fail"));
+    assert!(yaml.contains("status: pass"));
+    assert!(yaml.contains("status: fail"));
     assert!(yaml.contains("expected_result"));
     assert!(yaml.contains("actual_result"));
 }
@@ -1285,7 +1285,7 @@ fn test_generate_report_yaml_not_executed_steps() {
 
     let yaml = verifier.generate_report_yaml(&result).unwrap();
 
-    assert!(yaml.contains("NotExecuted"));
+    assert!(yaml.contains("status: not_executed"));
     assert!(yaml.contains("Not executed step"));
     assert!(yaml.contains("not_executed_steps: 1"));
 }
@@ -1377,7 +1377,7 @@ fn test_generate_report_json_with_sequences() {
 
     let json = verifier.generate_report_json(&result).unwrap();
 
-    assert!(json.contains("\"Fail\""));
+    assert!(json.contains("\"status\": \"fail\""));
     assert!(json.contains("\"expected\""));
     assert!(json.contains("\"0x9000\""));
     assert!(json.contains("\"0x6A82\""));
@@ -1697,9 +1697,9 @@ fn test_generate_report_yaml_complex_sequences() {
     assert!(yaml.contains("Initialize system"));
     assert!(yaml.contains("Validate output"));
     assert!(yaml.contains("Cleanup resources"));
-    assert!(yaml.contains("Pass"));
-    assert!(yaml.contains("Fail"));
-    assert!(yaml.contains("NotExecuted"));
+    assert!(yaml.contains("status: pass"));
+    assert!(yaml.contains("status: fail"));
+    assert!(yaml.contains("status: not_executed"));
 }
 
 #[test]
@@ -1764,8 +1764,8 @@ fn test_generate_report_json_complex_sequences() {
     // Verify JSON contains all expected elements
     assert!(json.contains("\"sequences\""));
     assert!(json.contains("\"sequence_id\": 1"));
-    assert!(json.contains("\"Pass\""));
-    assert!(json.contains("\"Fail\""));
+    assert!(json.contains("\"status\": \"pass\""));
+    assert!(json.contains("\"status\": \"fail\""));
     assert!(json.contains("\"expected\""));
     assert!(json.contains("\"actual_result\""));
 
