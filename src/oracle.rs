@@ -901,20 +901,18 @@ impl Oracle for MenuCliOracle {
 
         let skim_items = item_reader.of_bufread(Cursor::new(items.join("\n")));
         let selected: Option<MultiInput<String>> =
-            Skim::run_with(&options, Some(skim_items)).map(|output| {
-                match output.final_event {
-                    Event::EvActIfNonMatched(x) => {
-                        println!("fuzzy_search_strings_multi: NonMatched {:?}", x);
-                        Finished
-                    }
-                    Event::EvActAccept(x) => Input_(x.unwrap()),
-                    _ => {
-                        println!(
-                            "fuzzy_search_strings_multi: Something else: {:?}",
-                            output.final_event
-                        );
-                        Error
-                    }
+            Skim::run_with(&options, Some(skim_items)).map(|output| match output.final_event {
+                Event::EvActIfNonMatched(x) => {
+                    println!("fuzzy_search_strings_multi: NonMatched {:?}", x);
+                    Finished
+                }
+                Event::EvActAccept(x) => Input_(x.unwrap()),
+                _ => {
+                    println!(
+                        "fuzzy_search_strings_multi: Something else: {:?}",
+                        output.final_event
+                    );
+                    Error
                 }
             });
         Ok(selected.unwrap())

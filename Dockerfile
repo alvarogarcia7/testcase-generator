@@ -3,15 +3,28 @@ FROM rust:1.92-bookworm AS builder
 
 WORKDIR /app
 
+# Copy scripts directory early for sccache installation
+COPY scripts ./scripts
+
+# Install sccache early for faster compilation
+RUN chmod +x scripts/*.sh && \
+    find scripts -type f -name "*.sh" -exec chmod +x {} \; && \
+    ./scripts/install-sccache.sh --ci
+
+# Set sccache environment variables
+ENV RUSTC_WRAPPER=sccache
+ENV SCCACHE_DIR=/app/.sccache/docker
+
+# Create cache directory and copy host cache if it exists
+RUN mkdir -p /app/.sccache/docker
+COPY .sccache/host* /app/.sccache/docker/ 2>/dev/null || true
+
 # Install coverage tools for CI/CD
 RUN rustup component add llvm-tools-preview && \
     cargo install cargo-llvm-cov
 
 # Copy manifests
 COPY Cargo.toml Cargo.lock ./
-
-# Copy scripts directory early so include_str! macros can find the files
-COPY scripts ./scripts
 
 # Copy schemas directory early so tests can find schema files
 COPY schemas ./schemas
@@ -60,6 +73,9 @@ RUN cargo build --all --all-features --release && \
       fi; \
     done
 
+# Show sccache statistics after build
+RUN sccache --show-stats
+
 # Verify binaries were installed correctly
 RUN \
 for bin in target/release/*; do \
@@ -74,9 +90,8 @@ done
 RUN cargo test --lib --all-features && \
     cargo test --doc --all-features
 
-# Make scripts executable
-RUN chmod +x scripts/*.sh && \
-    find scripts -type f -name "*.sh" -exec chmod +x {} \;
+# Show sccache statistics after tests
+RUN sccache --show-stats
 
 # Create a helper script for easy watch mode usage
 RUN cat > /usr/local/bin/watch-yaml << 'WATCHEOF'
