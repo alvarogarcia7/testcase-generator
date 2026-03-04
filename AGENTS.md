@@ -52,6 +52,8 @@ See the [Hooks](#hooks) section for detailed documentation and examples.
 - **sccache Clean**: make sccache-clean (clear sccache compilation cache)
 - **Verify Scripts**: make verify-scripts (verify syntax of all shell scripts)
 - **Watch Mode**: make watch (monitors testcases/ for changes and auto-validates)
+- **Generate Docs**: make generate-docs (generate documentation reports for verifier scenarios)
+- **Generate Docs All**: make generate-docs-all (generate documentation reports for all test scenarios including verifier_scenarios)
 - **Dev Server**: N/A
 
 You must build, test, lint, and verify coverage before committing
