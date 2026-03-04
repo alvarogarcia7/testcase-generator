@@ -701,8 +701,35 @@ impl Oracle for MenuCliOracle {
         }
     }
 
-    fn input_with_ctrl_d(&self, _prompt: &str) -> Result<Option<String>> {
-        todo!()
+    fn input_with_ctrl_d(&self, prompt: &str) -> Result<Option<String>> {
+        if !Self::is_tty() {
+            return Self::numbered_input_optional(prompt);
+        }
+
+        println!("{}", prompt);
+        println!("(Enter your text below. Press Ctrl+D when finished)");
+        println!();
+
+        let mut lines = Vec::new();
+        let mut handle = io::stdin().lock();
+
+        let mut line = String::new();
+        match handle.read_line(&mut line) {
+            Ok(0) => {
+                println!("Received EOF, exiting");
+            }
+            Ok(_) => {
+                println!("Received: {}", line);
+                lines.push(line);
+            }
+            Err(e) => return Err(anyhow::anyhow!("Failed to read line: {}", e)),
+        }
+
+        if lines.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(lines[0].clone()))
+        }
     }
 
     fn input_optional_with_initial_text(
@@ -853,10 +880,44 @@ impl Oracle for MenuCliOracle {
 
     fn fuzzy_search_strings_multi(
         &self,
-        _prompt: &str,
-        _items: &[String],
+        prompt: &str,
+        items: &[String],
     ) -> Result<MultiInput<String>> {
-        todo!()
+        if !Self::is_tty() {
+            anyhow::bail!("fuzzy_search_strings_multi is not supported in non-TTY environments");
+        }
+
+        use skim::prelude::*;
+        use std::io::Cursor;
+
+        let item_reader = SkimItemReader::default();
+
+        let options = SkimOptionsBuilder::default()
+            .multi(false)
+            .exact(false)
+            .prompt(Some(prompt))
+            .build()
+            .map_err(|e| anyhow::anyhow!("Failed to build skim options: {}", e))?;
+
+        let skim_items = item_reader.of_bufread(Cursor::new(items.join("\n")));
+        let selected: Option<MultiInput<String>> =
+            Skim::run_with(&options, Some(skim_items)).map(|output| {
+                match output.final_event {
+                    Event::EvActIfNonMatched(x) => {
+                        println!("fuzzy_search_strings_multi: NonMatched {:?}", x);
+                        Finished
+                    }
+                    Event::EvActAccept(x) => Input_(x.unwrap()),
+                    _ => {
+                        println!(
+                            "fuzzy_search_strings_multi: Something else: {:?}",
+                            output.final_event
+                        );
+                        Error
+                    }
+                }
+            });
+        Ok(selected.unwrap())
     }
 
     fn fuzzy_search_strings(&self, items: &[String], prompt: &str) -> Result<Option<String>> {
@@ -971,7 +1032,16 @@ impl Oracle for HardcodedOracle {
     }
 
     fn input_with_ctrl_d(&self, _prompt: &str) -> Result<Option<String>> {
-        todo!()
+        match self.next_answer()? {
+            AnswerVariant::String(s) => {
+                if s.is_empty() {
+                    Ok(None)
+                } else {
+                    Ok(Some(s))
+                }
+            }
+            _ => anyhow::bail!("Expected String answer variant"),
+        }
     }
 
     fn input_optional_with_initial_text(
@@ -1053,7 +1123,16 @@ impl Oracle for HardcodedOracle {
         _prompt: &str,
         _items: &[String],
     ) -> Result<MultiInput<String>> {
-        todo!()
+        match self.next_answer()? {
+            AnswerVariant::String(s) => {
+                if s.is_empty() {
+                    Ok(Finished)
+                } else {
+                    Ok(Input_(s))
+                }
+            }
+            _ => anyhow::bail!("Expected String answer variant for fuzzy_search_strings_multi"),
+        }
     }
 
     fn fuzzy_search_strings(&self, _items: &[String], _prompt: &str) -> Result<Option<String>> {
