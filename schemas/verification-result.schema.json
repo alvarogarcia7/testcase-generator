@@ -111,124 +111,63 @@
       ]
     },
     "StepVerificationResult": {
-      "description": "Verification result for a single step",
-      "oneOf": [
-        {
-          "type": "object",
-          "description": "Step passed verification",
-          "properties": {
-            "Pass": {
-              "type": "object",
-              "properties": {
-                "step": {
-                  "type": "integer",
-                  "description": "Step number"
-                },
-                "description": {
-                  "type": "string",
-                  "description": "Step description"
-                },
-                "requirement": {
-                  "type": "string",
-                  "description": "Requirement identifier (optional, for reporting)"
-                },
-                "item": {
-                  "type": "integer",
-                  "description": "Item number (optional, for reporting)"
-                },
-                "tc": {
-                  "type": "integer",
-                  "description": "TC number (optional, for reporting)"
-                }
-              },
-              "required": ["step", "description"]
-            }
-          },
-          "required": ["Pass"],
-          "additionalProperties": false
+      "description": "Verification result for a single step (internally tagged with status field)",
+      "type": "object",
+      "required": ["status", "step", "description"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["pass", "fail", "not_executed"],
+          "description": "Status of the step verification"
         },
-        {
-          "type": "object",
-          "description": "Step failed verification",
-          "properties": {
-            "Fail": {
-              "type": "object",
-              "properties": {
-                "step": {
-                  "type": "integer",
-                  "description": "Step number"
-                },
-                "description": {
-                  "type": "string",
-                  "description": "Step description"
-                },
-                "expected": {
-                  "$ref": "#/definitions/Expected"
-                },
-                "actual_result": {
-                  "type": "string",
-                  "description": "Actual result from execution"
-                },
-                "actual_output": {
-                  "type": "string",
-                  "description": "Actual output from execution"
-                },
-                "reason": {
-                  "type": "string",
-                  "description": "Reason for failure"
-                },
-                "requirement": {
-                  "type": "string",
-                  "description": "Requirement identifier (optional, for reporting)"
-                },
-                "item": {
-                  "type": "integer",
-                  "description": "Item number (optional, for reporting)"
-                },
-                "tc": {
-                  "type": "integer",
-                  "description": "TC number (optional, for reporting)"
-                }
-              },
-              "required": ["step", "description", "expected", "actual_result", "actual_output", "reason"]
-            }
-          },
-          "required": ["Fail"],
-          "additionalProperties": false
+        "step": {
+          "type": "integer",
+          "description": "Step number"
         },
+        "description": {
+          "type": "string",
+          "description": "Step description"
+        },
+        "requirement": {
+          "type": "string",
+          "description": "Requirement identifier (optional, for reporting)"
+        },
+        "item": {
+          "type": "integer",
+          "description": "Item number (optional, for reporting)"
+        },
+        "tc": {
+          "type": "integer",
+          "description": "TC number (optional, for reporting)"
+        }
+      },
+      "allOf": [
         {
-          "type": "object",
-          "description": "Step was not executed",
-          "properties": {
-            "NotExecuted": {
-              "type": "object",
-              "properties": {
-                "step": {
-                  "type": "integer",
-                  "description": "Step number"
-                },
-                "description": {
-                  "type": "string",
-                  "description": "Step description"
-                },
-                "requirement": {
-                  "type": "string",
-                  "description": "Requirement identifier (optional, for reporting)"
-                },
-                "item": {
-                  "type": "integer",
-                  "description": "Item number (optional, for reporting)"
-                },
-                "tc": {
-                  "type": "integer",
-                  "description": "TC number (optional, for reporting)"
-                }
-              },
-              "required": ["step", "description"]
+          "if": {
+            "properties": {
+              "status": { "const": "fail" }
             }
           },
-          "required": ["NotExecuted"],
-          "additionalProperties": false
+          "then": {
+            "required": ["expected", "actual_result", "actual_output", "reason"],
+            "properties": {
+              "expected": {
+                "$ref": "#/definitions/Expected"
+              },
+              "actual_result": {
+                "type": "string",
+                "description": "Actual result from execution"
+              },
+              "actual_output": {
+                "type": "string",
+                "description": "Actual output from execution"
+              },
+              "reason": {
+                "type": "string",
+                "description": "Reason for failure"
+              }
+            }
+          }
         }
       ]
     },
