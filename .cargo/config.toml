@@ -4,12 +4,57 @@
 # Require llvm-tools-preview component for coverage instrumentation
 rustflags = []
 
-# sccache configuration for build caching
-# RUSTC_WRAPPER enables sccache by default if installed
-# If sccache is not installed, cargo will fall back to normal compilation
-[env]
-RUSTC_WRAPPER = { value = "sccache", force = false, relative = false }
-SCCACHE_DIR = { value = ".sccache", relative = true }
+# ============================================================================
+# sccache Configuration (Compiler Cache for Faster Builds)
+# ============================================================================
+#
+# sccache is enabled via environment variables (not in this config file).
+# Cargo's config.toml does not support runtime conditional evaluation,
+# so we use environment variables that cargo reads directly.
+#
+# QUICK START:
+#   1. Install sccache: make install-sccache
+#   2. Enable for your session: source scripts/setup-sccache-env.sh
+#   3. Build as normal: cargo build
+#
+# ENVIRONMENT VARIABLES:
+#   - RUSTC_WRAPPER: Set to "sccache" to enable compiler caching
+#   - SCCACHE_DIR: Cache directory location
+#     * For local builds: .sccache/host
+#     * For Docker builds: .sccache/docker
+#   - USE_SCCACHE: Control variable (1=enable, 0=disable)
+#   - DOCKER_BUILD: Build type indicator (1=docker, 0=local)
+#
+# USAGE EXAMPLES:
+#
+#   Local build with sccache:
+#     USE_SCCACHE=1 source scripts/setup-sccache-env.sh && cargo build
+#
+#   Docker build with sccache:
+#     USE_SCCACHE=1 DOCKER_BUILD=1 source scripts/setup-sccache-env.sh && cargo build
+#
+#   Manual setup (without script):
+#     export RUSTC_WRAPPER=sccache
+#     export SCCACHE_DIR=.sccache/host
+#     cargo build
+#
+# CACHE LOCATIONS:
+#   - Local: .sccache/host/ (gitignored)
+#   - Docker: .sccache/docker/ (gitignored)
+#
+# BENEFITS:
+#   - 50-90% faster incremental builds
+#   - Shared cache between branches and clean builds
+#   - Separate caches prevent conflicts between local and Docker builds
+#
+# SEE ALSO:
+#   - docs/SCCACHE.md - Comprehensive sccache documentation
+#   - docs/SCCACHE_SETUP.md - Setup and configuration guide
+#   - scripts/setup-sccache-env.sh - Environment setup script
+#   - make install-sccache - Install sccache
+#   - make sccache-stats - View cache statistics
+#   - make sccache-clean - Clear cache
+# ============================================================================
 
 [target.'cfg(all())']
 # Set default RUSTFLAGS for coverage builds with instrument-coverage flag
