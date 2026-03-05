@@ -94,6 +94,5 @@ grcov
 *_execution_log.json
 
 # Docker Compose
-.env
 output/
 docker-compose.override.yml
