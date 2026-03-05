@@ -216,14 +216,23 @@ test-e2e-validate-yaml: build
 	./tests/integration/test_validate_yaml_watch_e2e.sh
 .PHONY: test-e2e-validate-yaml
 
-docker-build:
+docker-build-base:
 	${MAKE} README_INSTALL_AUTOMATED.md
 	docker build -t testcase-manager:latest .
-.PHONY: docker-build
+.PHONY: docker-build-base
 
 docker-build-dev:
-	./scripts/build-dev-docker.sh
+	docker build -f Dockerfile.dev -t testcase-manager:dev .
 .PHONY: docker-build-dev
+
+docker-build-all:
+	${MAKE} docker-build-base
+	${MAKE} docker-build-dev
+.PHONY: docker-build-all
+
+docker-build:
+	${MAKE} docker-build-all
+.PHONY: docker-build
 
 docker-run:
 	docker run -v $(PWD)/testcases:/app/testcases testcase-manager:latest
