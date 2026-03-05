@@ -2096,6 +2096,538 @@ fn test_manual_step_pass_fail_messages() {
     assert!(script.contains("exit 1"));
 }
 
+// ============================================================================
+// Fail-Fast Behavior Tests
+// ============================================================================
+
+#[test]
+fn test_fail_fast_stops_at_first_failure() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ001".to_string(),
+        1,
+        1,
+        "TC001".to_string(),
+        "Fail-fast test".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+
+    // Step 1: Should pass
+    let step1 = create_test_step(1, "Step 1", "echo 'success'", "0", "success", Some(true));
+    sequence.steps.push(step1);
+
+    // Step 2: Should fail verification
+    let mut step2 = create_test_step(2, "Step 2", "echo 'fail'", "0", "expected", Some(true));
+    step2.verification = Verification {
+        result: VerificationExpression::Simple("[ $? -eq 0 ]".to_string()),
+        output: VerificationExpression::Simple(
+            "[ \"$COMMAND_OUTPUT\" = \"expected\" ]".to_string(),
+        ),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step2);
+
+    // Step 3: Should NOT be executed due to fail-fast
+    let step3 = create_test_step(
+        3,
+        "Step 3",
+        "echo 'should not run'",
+        "0",
+        "success",
+        Some(true),
+    );
+    sequence.steps.push(step3);
+
+    test_case.test_sequences.push(sequence);
+
+    // Execute test case - should fail at step 2
+    let result = executor.execute_test_case(&test_case);
+
+    // Verify execution failed
+    assert!(result.is_err(), "Execution should fail at step 2");
+
+    // Verify error contains information about the failed step
+    let err = result.unwrap_err();
+    let err_msg = err.to_string();
+    assert!(
+        err_msg.contains("Step 2") || err_msg.contains("verification failed"),
+        "Error should mention step 2 or verification failure: {}",
+        err_msg
+    );
+}
+
+#[test]
+fn test_fail_fast_execution_log_written_before_exit() {
+    use std::fs;
+    use std::path::Path;
+
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ002".to_string(),
+        1,
+        1,
+        "TC002".to_string(),
+        "Fail-fast log test".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+
+    // Step 1: Should pass
+    let step1 = create_test_step(1, "Step 1", "echo 'pass'", "0", "pass", Some(true));
+    sequence.steps.push(step1);
+
+    // Step 2: Should fail
+    let mut step2 = create_test_step(2, "Step 2", "echo 'fail'", "0", "expected", Some(true));
+    step2.verification = Verification {
+        result: VerificationExpression::Simple("[ $? -eq 0 ]".to_string()),
+        output: VerificationExpression::Simple(
+            "[ \"$COMMAND_OUTPUT\" = \"expected\" ]".to_string(),
+        ),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step2);
+
+    test_case.test_sequences.push(sequence);
+
+    // Execute test case
+    let result = executor.execute_test_case(&test_case);
+    assert!(result.is_err(), "Execution should fail");
+
+    // Verify execution log was written
+    let log_file = format!("{}_execution_log.json", test_case.id);
+    let log_path = Path::new(&log_file);
+    assert!(
+        log_path.exists(),
+        "Execution log should exist: {}",
+        log_file
+    );
+
+    // Read and verify log contents
+    let log_content = fs::read_to_string(log_path).expect("Failed to read execution log");
+    let entries: Vec<TestStepExecutionEntry> =
+        serde_json::from_str(&log_content).expect("Failed to parse execution log");
+
+    // Should have entries for steps that executed before failure
+    assert!(!entries.is_empty(), "Execution log should contain entries");
+
+    // Verify step 1 is in the log
+    assert!(
+        entries.iter().any(|e| e.step == 1),
+        "Step 1 should be in execution log"
+    );
+
+    // Verify step 2 is in the log
+    assert!(
+        entries.iter().any(|e| e.step == 2),
+        "Step 2 should be in execution log"
+    );
+
+    // Clean up
+    fs::remove_file(log_path).ok();
+}
+
+#[test]
+fn test_fail_fast_error_contains_step_information() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ003".to_string(),
+        1,
+        1,
+        "TC003".to_string(),
+        "Fail-fast error info test".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+
+    // Failing step with specific number
+    let mut failing_step = create_test_step(
+        5,
+        "Critical step",
+        "echo 'output'",
+        "0",
+        "expected_output",
+        Some(true),
+    );
+    failing_step.verification = Verification {
+        result: VerificationExpression::Simple("[ $? -eq 0 ]".to_string()),
+        output: VerificationExpression::Simple(
+            "[ \"$COMMAND_OUTPUT\" = \"expected_output\" ]".to_string(),
+        ),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(failing_step);
+
+    test_case.test_sequences.push(sequence);
+
+    // Execute test case
+    let result = executor.execute_test_case(&test_case);
+
+    // Verify execution failed
+    assert!(result.is_err(), "Execution should fail");
+
+    // Verify error message contains step information
+    let err = result.unwrap_err();
+    let err_msg = err.to_string();
+
+    // Error should mention step number
+    assert!(
+        err_msg.contains("5") || err_msg.contains("Step 5"),
+        "Error should mention step number 5: {}",
+        err_msg
+    );
+
+    // Error should mention verification failure
+    assert!(
+        err_msg.contains("verification") || err_msg.contains("failed"),
+        "Error should mention verification failure: {}",
+        err_msg
+    );
+
+    // Clean up
+    let log_file = format!("{}_execution_log.json", test_case.id);
+    std::fs::remove_file(log_file).ok();
+}
+
+#[test]
+fn test_fail_fast_stops_execution_in_sequence() {
+    use std::fs;
+
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ004".to_string(),
+        1,
+        1,
+        "TC004".to_string(),
+        "Fail-fast sequence test".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+
+    // Add multiple steps - fail in the middle
+    for i in 1..=5 {
+        let mut step = create_test_step(
+            i,
+            &format!("Step {}", i),
+            &format!("echo 'step{}'", i),
+            "0",
+            &format!("step{}", i),
+            Some(true),
+        );
+
+        // Make step 3 fail
+        if i == 3 {
+            step.verification = Verification {
+                result: VerificationExpression::Simple("[ $? -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple(
+                    "[ \"$COMMAND_OUTPUT\" = \"wrong_output\" ]".to_string(),
+                ),
+                output_file: None,
+                general: None,
+            };
+        }
+
+        sequence.steps.push(step);
+    }
+
+    test_case.test_sequences.push(sequence);
+
+    // Execute test case
+    let result = executor.execute_test_case(&test_case);
+    assert!(result.is_err(), "Execution should fail at step 3");
+
+    // Read execution log
+    let log_file = format!("{}_execution_log.json", test_case.id);
+    let log_content = fs::read_to_string(&log_file).expect("Failed to read execution log");
+    let entries: Vec<TestStepExecutionEntry> =
+        serde_json::from_str(&log_content).expect("Failed to parse execution log");
+
+    // Verify only steps 1-3 executed (fail-fast should stop at step 3)
+    let executed_steps: Vec<i64> = entries.iter().map(|e| e.step).collect();
+    assert!(executed_steps.contains(&1), "Step 1 should have executed");
+    assert!(executed_steps.contains(&2), "Step 2 should have executed");
+    assert!(
+        executed_steps.contains(&3),
+        "Step 3 should have executed (and failed)"
+    );
+    assert!(
+        !executed_steps.contains(&4),
+        "Step 4 should NOT have executed due to fail-fast"
+    );
+    assert!(
+        !executed_steps.contains(&5),
+        "Step 5 should NOT have executed due to fail-fast"
+    );
+
+    // Clean up
+    fs::remove_file(log_file).ok();
+}
+
+#[test]
+fn test_fail_fast_with_command_execution_error() {
+    use std::fs;
+
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ005".to_string(),
+        1,
+        1,
+        "TC005".to_string(),
+        "Fail-fast command error test".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+
+    // Step 1: Should pass
+    let step1 = create_test_step(1, "Step 1", "echo 'pass'", "0", "pass", Some(true));
+    sequence.steps.push(step1);
+
+    // Step 2: Command that will fail to execute (invalid command)
+    let step2 = create_test_step(
+        2,
+        "Step 2",
+        "/nonexistent/command/that/fails",
+        "127",
+        "",
+        Some(false),
+    );
+    sequence.steps.push(step2);
+
+    // Step 3: Should not execute
+    let step3 = create_test_step(3, "Step 3", "echo 'skip'", "0", "skip", Some(true));
+    sequence.steps.push(step3);
+
+    test_case.test_sequences.push(sequence);
+
+    // Execute test case
+    let _result = executor.execute_test_case(&test_case);
+
+    // Note: The current implementation may handle command execution differently
+    // We're testing that execution log is still written even on command errors
+
+    // Verify execution log was written
+    let log_file = format!("{}_execution_log.json", test_case.id);
+    assert!(
+        std::path::Path::new(&log_file).exists(),
+        "Execution log should exist even on command error"
+    );
+
+    // Clean up
+    fs::remove_file(log_file).ok();
+}
+
+#[test]
+fn test_fail_fast_with_multiple_sequences() {
+    use std::fs;
+
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ006".to_string(),
+        1,
+        1,
+        "TC006".to_string(),
+        "Fail-fast multi-sequence test".to_string(),
+    );
+
+    // Sequence 1: Should pass
+    let mut sequence1 = TestSequence::new(1, "Seq1".to_string(), "First sequence".to_string());
+    let step1 = create_test_step(1, "Seq1 Step1", "echo 'pass'", "0", "pass", Some(true));
+    sequence1.steps.push(step1);
+    test_case.test_sequences.push(sequence1);
+
+    // Sequence 2: Should fail
+    let mut sequence2 = TestSequence::new(2, "Seq2".to_string(), "Second sequence".to_string());
+    let mut step2 = create_test_step(2, "Seq2 Step1", "echo 'fail'", "0", "expected", Some(true));
+    step2.verification = Verification {
+        result: VerificationExpression::Simple("[ $? -eq 0 ]".to_string()),
+        output: VerificationExpression::Simple(
+            "[ \"$COMMAND_OUTPUT\" = \"expected\" ]".to_string(),
+        ),
+        output_file: None,
+        general: None,
+    };
+    sequence2.steps.push(step2);
+    test_case.test_sequences.push(sequence2);
+
+    // Sequence 3: Should not execute
+    let mut sequence3 = TestSequence::new(3, "Seq3".to_string(), "Third sequence".to_string());
+    let step3 = create_test_step(1, "Seq3 Step1", "echo 'skip'", "0", "skip", Some(true));
+    sequence3.steps.push(step3);
+    test_case.test_sequences.push(sequence3);
+
+    // Execute test case
+    let result = executor.execute_test_case(&test_case);
+    assert!(result.is_err(), "Execution should fail at sequence 2");
+
+    // Read execution log
+    let log_file = format!("{}_execution_log.json", test_case.id);
+    let log_content = fs::read_to_string(&log_file).expect("Failed to read execution log");
+    let entries: Vec<TestStepExecutionEntry> =
+        serde_json::from_str(&log_content).expect("Failed to parse execution log");
+
+    // Verify sequences that executed
+    let executed_sequences: Vec<i64> = entries.iter().map(|e| e.test_sequence).collect();
+    assert!(
+        executed_sequences.contains(&1),
+        "Sequence 1 should have executed"
+    );
+    assert!(
+        executed_sequences.contains(&2),
+        "Sequence 2 should have executed (and failed)"
+    );
+    assert!(
+        !executed_sequences.contains(&3),
+        "Sequence 3 should NOT have executed due to fail-fast"
+    );
+
+    // Clean up
+    fs::remove_file(log_file).ok();
+}
+
+#[test]
+fn test_fail_fast_error_message_format() {
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ007".to_string(),
+        1,
+        1,
+        "TC007".to_string(),
+        "Fail-fast error format test".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+
+    // Step with specific description
+    let mut step = create_test_step(
+        42,
+        "Database initialization",
+        "echo 'db_init'",
+        "0",
+        "expected",
+        Some(true),
+    );
+    step.verification = Verification {
+        result: VerificationExpression::Simple("false".to_string()),
+        output: VerificationExpression::Simple("true".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(step);
+
+    test_case.test_sequences.push(sequence);
+
+    // Execute test case
+    let result = executor.execute_test_case(&test_case);
+    assert!(result.is_err(), "Execution should fail");
+
+    let err = result.unwrap_err();
+    let err_msg = err.to_string();
+
+    // Verify error message contains useful information
+    assert!(
+        err_msg.contains("42") || err_msg.contains("Step 42"),
+        "Error should contain step number: {}",
+        err_msg
+    );
+
+    // Clean up
+    let log_file = format!("{}_execution_log.json", test_case.id);
+    std::fs::remove_file(log_file).ok();
+}
+
+#[test]
+fn test_fail_fast_preserves_execution_log_on_failure() {
+    use std::fs;
+
+    let executor = TestExecutor::new();
+    let mut test_case = TestCase::new(
+        "REQ008".to_string(),
+        1,
+        1,
+        "TC008".to_string(),
+        "Fail-fast log preservation test".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
+
+    // Add several passing steps followed by a failure
+    for i in 1..=3 {
+        let step = create_test_step(
+            i,
+            &format!("Step {}", i),
+            &format!("echo 'output{}'", i),
+            "0",
+            &format!("output{}", i),
+            Some(true),
+        );
+        sequence.steps.push(step);
+    }
+
+    // Add failing step
+    let mut failing_step =
+        create_test_step(4, "Failing step", "echo 'fail'", "0", "pass", Some(true));
+    failing_step.verification = Verification {
+        result: VerificationExpression::Simple("[ $? -eq 0 ]".to_string()),
+        output: VerificationExpression::Simple("[ \"$COMMAND_OUTPUT\" = \"pass\" ]".to_string()),
+        output_file: None,
+        general: None,
+    };
+    sequence.steps.push(failing_step);
+
+    test_case.test_sequences.push(sequence);
+
+    // Execute test case
+    let result = executor.execute_test_case(&test_case);
+    assert!(result.is_err(), "Execution should fail");
+
+    // Verify execution log exists and contains all executed steps
+    let log_file = format!("{}_execution_log.json", test_case.id);
+    let log_content = fs::read_to_string(&log_file).expect("Failed to read execution log");
+    let entries: Vec<TestStepExecutionEntry> =
+        serde_json::from_str(&log_content).expect("Failed to parse execution log");
+
+    // Verify all steps up to and including the failing step are logged
+    assert_eq!(
+        entries.len(),
+        4,
+        "Execution log should contain all executed steps"
+    );
+
+    // Verify each step's data
+    for i in 1..=3 {
+        let entry = entries
+            .iter()
+            .find(|e| e.step == i)
+            .unwrap_or_else(|| panic!("Step {} should be in execution log", i));
+        assert_eq!(entry.exit_code, 0, "Step {} should have exit code 0", i);
+        assert_eq!(
+            entry.output,
+            format!("output{}", i),
+            "Step {} should have correct output",
+            i
+        );
+    }
+
+    let failing_entry = entries
+        .iter()
+        .find(|e| e.step == 4)
+        .expect("Failing step should be in execution log");
+    assert_eq!(
+        failing_entry.exit_code, 0,
+        "Failing step command should have exit code 0"
+    );
+    assert_eq!(
+        failing_entry.output, "fail",
+        "Failing step should have correct output"
+    );
+
+    // Clean up
+    fs::remove_file(log_file).ok();
+}
+
 #[test]
 fn test_manual_step_interactive_prompt() {
     let executor = TestExecutor::new();
@@ -2131,7 +2663,8 @@ fn test_manual_step_interactive_prompt() {
     // Verify read_true_false is used for manual action prompt with verification
     assert!(script.contains("if read_true_false \"Have you completed the manual action?\""));
     // read_true_false handles non-interactive mode internally
-    assert!(!script.contains("echo \"Non-interactive mode detected, skipping manual step confirmation.\""));
+    assert!(!script
+        .contains("echo \"Non-interactive mode detected, skipping manual step confirmation.\""));
 }
 
 #[test]
@@ -5562,7 +6095,9 @@ fn test_manual_step_without_verification_multiple_steps() {
     let script = executor.generate_test_script(&test_case);
 
     // Both steps should use read_true_false prompts
-    let read_true_false_count = script.matches("if read_true_false \"Have you completed the manual step?\"").count();
+    let read_true_false_count = script
+        .matches("if read_true_false \"Have you completed the manual step?\"")
+        .count();
     assert!(
         read_true_false_count >= 2,
         "Script must have read_true_false prompt for each manual step without verification"
@@ -5841,7 +6376,10 @@ fn test_manual_step_without_verification_complete_workflow() {
     assert!(!this_step.contains("[PASS]"), "Should not contain [PASS]");
     assert!(!this_step.contains("[FAIL]"), "Should not contain [FAIL]");
     // With read_true_false, we do have exit 1 for when user says "no"
-    assert!(this_step.contains("exit 1"), "Should contain exit 1 for user rejection");
+    assert!(
+        this_step.contains("exit 1"),
+        "Should contain exit 1 for user rejection"
+    );
 }
 
 // ============================================================================
