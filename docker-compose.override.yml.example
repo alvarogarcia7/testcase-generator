@@ -1,0 +1,94 @@
+# docker-compose.override.yml.example
+#
+# This is an example override file for customizing your Docker Compose setup.
+# Copy this file to docker-compose.override.yml and customize it for your needs.
+#
+# Docker Compose automatically merges docker-compose.yml with docker-compose.override.yml
+# if the latter exists, allowing you to customize without modifying the base configuration.
+#
+# Usage:
+#   1. Copy this file: cp docker-compose.override.yml.example docker-compose.override.yml
+#   2. Uncomment and modify the sections you need
+#   3. Run: docker-compose up -d
+#
+# Note: docker-compose.override.yml should be gitignored (user-specific configuration)
+
+version: '3.8'
+
+services:
+  testcase-manager:
+    # Uncomment to change the container name
+    # container_name: my-testcase-manager
+    
+    # Uncomment to add additional volume mounts
+    # volumes:
+    #   # Mount additional test data
+    #   - ./my-test-data:/app/my-test-data
+    #   
+    #   # Mount SSH keys for git operations
+    #   - ~/.ssh:/root/.ssh:ro
+    #   
+    #   # Mount git config
+    #   - ~/.gitconfig:/root/.gitconfig:ro
+    #   
+    #   # Mount custom scripts
+    #   - ./my-scripts:/app/my-scripts:ro
+    
+    # Uncomment to override environment variables
+    # environment:
+    #   - RUST_LOG=debug
+    #   - VERBOSE=1
+    #   - EDITOR=nano
+    
+    # Uncomment to enable resource limits
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '4'
+    #       memory: 4G
+    #     reservations:
+    #       cpus: '2'
+    #       memory: 1G
+    
+    # Uncomment to change the default command
+    # command: /bin/bash
+    
+    # Uncomment to expose ports (if needed for future features)
+    # ports:
+    #   - "8080:8080"
+    
+    # Uncomment to add labels
+    # labels:
+    #   - "com.example.description=Test Case Manager"
+    #   - "com.example.department=QA"
+    #   - "com.example.version=1.0"
+    
+    # Uncomment to change network settings
+    # networks:
+    #   - custom-network
+    
+    # Uncomment to override working directory
+    # working_dir: /app/testcases
+    
+    # Uncomment to add extra hosts
+    # extra_hosts:
+    #   - "test-server:192.168.1.100"
+    #   - "api-server:192.168.1.101"
+    
+    # Uncomment to change restart policy
+    # restart: unless-stopped
+
+# Uncomment to define custom networks
+# networks:
+#   custom-network:
+#     driver: bridge
+#     ipam:
+#       config:
+#         - subnet: 172.28.0.0/16
+
+# Uncomment to define additional volumes
+# volumes:
+#   git-config:
+#     driver: local
+#   ssh-keys:
+#     driver: local
