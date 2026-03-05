@@ -901,15 +901,17 @@ impl TestExecutor {
                     script.push_str("echo \"INFO: This is a manual step. You must perform this action manually.\"\n");
 
                     if has_verification {
-                        // Generate interactive prompt for action
+                        // Generate interactive prompt for action using read_true_false
+                        script.push_str("# Prompt user to confirm manual action completion\n");
                         script.push_str(
-                            "if [[ \"${DEBIAN_FRONTEND:-}\" != 'noninteractive' && -t 0 ]]; then\n",
+                            "if read_true_false \"Have you completed the manual action?\"; then\n",
                         );
-                        script.push_str(
-                            "    read -p \"Press ENTER after completing the manual action...\"\n",
-                        );
+                        script
+                            .push_str("    # User confirmed (read_true_false returns 1 for yes)\n");
+                        script.push_str("    :\n");
                         script.push_str("else\n");
-                        script.push_str("    echo \"Non-interactive mode detected, skipping manual step confirmation.\"\n");
+                        script.push_str("    echo \"Manual action not completed. Exiting.\" >&2\n");
+                        script.push_str("    exit 1\n");
                         script.push_str("fi\n\n");
 
                         // Convert hydration placeholders in verification expressions
@@ -988,13 +990,17 @@ impl TestExecutor {
                         script.push_str("    exit 1\n");
                         script.push_str("fi\n\n");
                     } else {
-                        // No verification fields - just prompt to continue
+                        // No verification fields - just prompt to continue using read_true_false
+                        script.push_str("# Prompt user to confirm they want to continue\n");
                         script.push_str(
-                            "if [[ \"${DEBIAN_FRONTEND:-}\" != 'noninteractive' && -t 0 ]]; then\n",
+                            "if read_true_false \"Have you completed the manual step?\"; then\n",
                         );
-                        script.push_str("    read -p \"Press ENTER to continue...\"\n");
+                        script
+                            .push_str("    # User confirmed (read_true_false returns 1 for yes)\n");
+                        script.push_str("    :\n");
                         script.push_str("else\n");
-                        script.push_str("    echo \"Non-interactive mode detected, skipping manual step confirmation.\"\n");
+                        script.push_str("    echo \"Manual step not completed. Exiting.\" >&2\n");
+                        script.push_str("    exit 1\n");
                         script.push_str("fi\n\n");
                     }
 
@@ -2302,12 +2308,7 @@ mod tests {
         assert!(script.contains(
             "echo \"INFO: This is a manual step. You must perform this action manually.\""
         ));
-        assert!(script.contains("read -p \"Press ENTER to continue...\""));
-        assert!(script
-            .contains("if [[ \"${DEBIAN_FRONTEND:-}\" != 'noninteractive' && -t 0 ]]; then\n"));
-        assert!(
-            script.contains("Non-interactive mode detected, skipping manual step confirmation.")
-        );
+        assert!(script.contains("if read_true_false \"Have you completed the manual step?\""));
         assert!(!script.contains("MANUAL STEP - Skipping"));
     }
 

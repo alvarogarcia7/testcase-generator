@@ -361,7 +361,7 @@ fn test_manual_step_skipped() {
     assert!(script.contains("echo \"Command: ssh device\""));
     assert!(script
         .contains("echo \"INFO: This is a manual step. You must perform this action manually.\""));
-    assert!(script.contains("read -p \"Press ENTER to continue...\""));
+    assert!(script.contains("if read_true_false \"Have you completed the manual step?\""));
     assert!(!script.contains("MANUAL STEP - Skipping"));
     assert!(!script.contains("COMMAND_OUTPUT=$(ssh device)"));
 }
@@ -1800,8 +1800,8 @@ fn test_manual_step_without_verification_no_user_verification_variable() {
     assert!(!script.contains("[PASS] Step 1"));
     assert!(!script.contains("[FAIL] Step 1"));
 
-    // Should just prompt to continue
-    assert!(script.contains("read -p \"Press ENTER to continue...\""));
+    // Should just prompt to continue with read_true_false
+    assert!(script.contains("if read_true_false \"Have you completed the manual step?\""));
 }
 
 #[test]
@@ -2126,12 +2126,10 @@ fn test_manual_step_interactive_prompt() {
 
     let script = executor.generate_test_script(&test_case);
 
-    // Verify interactive mode check
-    assert!(script.contains("if [[ \"${DEBIAN_FRONTEND:-}\" != 'noninteractive' && -t 0 ]]; then"));
-    assert!(script.contains("read -p \"Press ENTER after completing the manual action...\""));
-    assert!(script.contains("else"));
-    assert!(script
-        .contains("echo \"Non-interactive mode detected, skipping manual step confirmation.\""));
+    // Verify read_true_false is used for manual action prompt with verification
+    assert!(script.contains("if read_true_false \"Have you completed the manual action?\""));
+    // read_true_false handles non-interactive mode internally
+    assert!(!script.contains("echo \"Non-interactive mode detected, skipping manual step confirmation.\""));
 }
 
 #[test]
@@ -5409,21 +5407,15 @@ fn test_manual_step_without_verification_simple_enter_prompt() {
 
     let script = executor.generate_test_script(&test_case);
 
-    // REQUIREMENT: Only simple ENTER prompt should be generated
+    // REQUIREMENT: Should use read_true_false for manual step prompt
     assert!(
-        script.contains("Press ENTER to continue..."),
-        "Script must contain simple 'Press ENTER to continue...' prompt"
-    );
-
-    // Verify it uses read -p with the correct prompt
-    assert!(
-        script.contains("read -p \"Press ENTER to continue...\""),
-        "Script must use read -p with simple continue prompt"
+        script.contains("if read_true_false \"Have you completed the manual step?\""),
+        "Script must use read_true_false for manual step prompt"
     );
 
     // Should NOT contain verification-related prompts
     assert!(
-        !script.contains("Press ENTER after completing the manual action"),
+        !script.contains("Have you completed the manual action"),
         "Script should not contain verification-specific prompt"
     );
 }
@@ -5567,11 +5559,11 @@ fn test_manual_step_without_verification_multiple_steps() {
 
     let script = executor.generate_test_script(&test_case);
 
-    // Both steps should have simple ENTER prompts
-    let press_enter_count = script.matches("Press ENTER to continue...").count();
+    // Both steps should use read_true_false prompts
+    let read_true_false_count = script.matches("if read_true_false \"Have you completed the manual step?\"").count();
     assert!(
-        press_enter_count >= 2,
-        "Script must have ENTER prompt for each manual step without verification"
+        read_true_false_count >= 2,
+        "Script must have read_true_false prompt for each manual step without verification"
     );
 
     // Neither step should have USER_VERIFICATION variables
@@ -5660,8 +5652,8 @@ fn test_manual_step_without_verification_mixed_with_verification() {
         "Step 1 section must NOT contain [FAIL] message"
     );
     assert!(
-        step1_section.contains("Press ENTER to continue..."),
-        "Step 1 must have simple ENTER prompt"
+        step1_section.contains("if read_true_false \"Have you completed the manual step?\""),
+        "Step 1 must use read_true_false for manual step prompt"
     );
 
     // Step 2: SHOULD have USER_VERIFICATION variables and pass/fail logic
@@ -5818,9 +5810,9 @@ fn test_manual_step_without_verification_complete_workflow() {
     let manual_info_pos = step_section
         .find("INFO: This is a manual step")
         .expect("Manual info should exist");
-    let enter_pos = step_section
-        .find("Press ENTER to continue...")
-        .expect("ENTER prompt should exist");
+    let prompt_pos = step_section
+        .find("if read_true_false \"Have you completed the manual step?\"")
+        .expect("read_true_false prompt should exist");
 
     // Verify order
     assert!(desc_pos < cmd_pos, "Description should come before command");
@@ -5829,8 +5821,8 @@ fn test_manual_step_without_verification_complete_workflow() {
         "Command should come before manual info"
     );
     assert!(
-        manual_info_pos < enter_pos,
-        "Manual info should come before ENTER prompt"
+        manual_info_pos < prompt_pos,
+        "Manual info should come before prompt"
     );
 
     // Verify absences in this step section (up to next step or JSON log closing)
@@ -5846,7 +5838,8 @@ fn test_manual_step_without_verification_complete_workflow() {
     );
     assert!(!this_step.contains("[PASS]"), "Should not contain [PASS]");
     assert!(!this_step.contains("[FAIL]"), "Should not contain [FAIL]");
-    assert!(!this_step.contains("exit 1"), "Should not contain exit 1");
+    // With read_true_false, we do have exit 1 for when user says "no"
+    assert!(this_step.contains("exit 1"), "Should contain exit 1 for user rejection");
 }
 
 // ============================================================================
