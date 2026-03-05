@@ -87,5 +87,8 @@ grcov
 /node_modules/
 /mkdocs-venv/
 
+# Python virtual environment (uv)
+.venv/
+
 # Test execution logs (generated during testing)
 *_execution_log.json

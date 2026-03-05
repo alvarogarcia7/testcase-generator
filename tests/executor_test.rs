@@ -935,7 +935,7 @@ fn test_noninteractive_both_env_vars_set() {
     assert!(result.is_ok(), "Should skip with either env var set");
 }
 
-#[test]
+// #[test]
 // fn test_noninteractive_debian_frontend_wrong_value() {
 //     // Test that only "noninteractive" value triggers the skip
 //     std::env::set_var("DEBIAN_FRONTEND", "readline");
@@ -1110,7 +1110,7 @@ fn test_noninteractive_preserves_automated_step_execution() {
     assert!(result.is_ok(), "Manual steps should be skipped in CI mode");
 }
 
-#[test]
+// #[test]
 // fn test_noninteractive_mode_detection_case_sensitive() {
 //     // Test that DEBIAN_FRONTEND check is case-sensitive
 //     std::env::set_var("DEBIAN_FRONTEND", "NONINTERACTIVE"); // uppercase
