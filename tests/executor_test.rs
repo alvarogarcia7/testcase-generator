@@ -975,7 +975,6 @@ fn test_noninteractive_both_env_vars_set() {
 //         "Should handle non-interactive TTY detection"
 //     );
 // }
-
 #[test]
 fn test_noninteractive_multiple_sequences_with_manual_steps() {
     std::env::set_var("CI", "1");
@@ -1148,7 +1147,6 @@ fn test_noninteractive_preserves_automated_step_execution() {
 // ============================================================================
 // Bash Helper Functions Tests
 // ============================================================================
-
 #[test]
 fn test_bash_helper_functions_in_preamble() {
     let executor = TestExecutor::new();

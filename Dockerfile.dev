@@ -1,0 +1,416 @@
+# Development Dockerfile
+# Extends the base testcase-manager:latest image with development tools and configurations
+# Usage: 
+#   1. Build base image: docker build -t testcase-manager:latest .
+#   2. Build dev image: docker build -f Dockerfile.dev -t testcase-manager:dev .
+#   3. Run dev container: docker run -it --rm -v $(pwd):/app testcase-manager:dev
+
+FROM testcase-manager:latest
+
+# Set maintainer label
+LABEL maintainer="testcase-manager-dev"
+LABEL description="Development environment for testcase-manager with additional debugging tools"
+
+# Install development dependencies
+RUN apt-get update && \
+    apt-get install -y \
+      # Editors
+      vim \
+      nano \
+      # Network tools
+      curl \
+      wget \
+      netcat-openbsd \
+      # Process and system tools
+      htop \
+      procps \
+      strace \
+      lsof \
+      # Debugging tools
+      gdb \
+      valgrind \
+      # Shell utilities
+      tmux \
+      screen \
+      # File utilities
+      tree \
+      less \
+      jq \
+      # Development utilities
+      bash-completion \
+      man-db \
+      # Additional debugging tools
+      tcpdump \
+      dnsutils \
+      telnet && \
+    rm -rf /var/lib/apt/lists/*
+
+# Create development directories
+RUN mkdir -p /app/dev-workspace /app/logs /app/tmp
+
+# Copy development-specific configurations
+# Create .vimrc for development
+RUN cat > /root/.vimrc << 'VIMEOF'
+" Basic vim configuration for development
+syntax on
+set number
+set expandtab
+set tabstop=4
+set shiftwidth=4
+set autoindent
+set smartindent
+set hlsearch
+set incsearch
+set ignorecase
+set smartcase
+set ruler
+set showcmd
+set wildmenu
+set background=dark
+colorscheme default
+
+" YAML-specific settings
+autocmd FileType yaml setlocal ts=2 sts=2 sw=2 expandtab
+
+" Enable mouse support
+set mouse=a
+
+" Show trailing whitespace
+set list
+set listchars=tab:>-,trail:·
+VIMEOF
+
+# Create .bashrc with helpful aliases and configurations
+RUN cat > /root/.bashrc << 'BASHEOF'
+# Development environment bash configuration
+
+# Enable color support
+export TERM=xterm-256color
+export CLICOLOR=1
+
+# History configuration
+HISTSIZE=10000
+HISTFILESIZE=20000
+HISTCONTROL=ignoredups:erasedups
+shopt -s histappend
+
+# Better prompt
+PS1='\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
+
+# Enable bash completion
+if [ -f /usr/share/bash-completion/bash_completion ]; then
+    . /usr/share/bash-completion/bash_completion
+fi
+
+# Development aliases
+alias ll='ls -lah --color=auto'
+alias la='ls -A --color=auto'
+alias l='ls -CF --color=auto'
+alias grep='grep --color=auto'
+alias fgrep='fgrep --color=auto'
+alias egrep='egrep --color=auto'
+
+# Project-specific aliases
+alias tcm='testcase-manager'
+alias validate='validate-yaml --schema /app/schemas/schema.json'
+alias watch-yaml='cd /app && ./scripts/watch-yaml-files.sh'
+alias run-tests='cd /app && make test'
+alias build-project='cd /app && cargo build --all'
+alias build-release='cd /app && cargo build --all --release'
+alias lint-project='cd /app && make lint'
+alias clean-project='cd /app && cargo clean'
+
+# Helper functions
+validate-file() {
+    if [ -z "$1" ]; then
+        echo "Usage: validate-file <yaml-file>"
+        return 1
+    fi
+    validate-yaml --schema /app/schemas/schema.json "$1"
+}
+
+generate-script() {
+    if [ -z "$1" ]; then
+        echo "Usage: generate-script <test-case-yaml>"
+        return 1
+    fi
+    test-executor generate "$1"
+}
+
+run-orchestrator() {
+    if [ -z "$1" ]; then
+        echo "Usage: run-orchestrator <test-case-yaml>"
+        return 1
+    fi
+    test-orchestrator run "$1" --verbose
+}
+
+show-binaries() {
+    echo "Available binaries:"
+    echo "  - tcm (testcase-manager)    : Main test case manager"
+    echo "  - test-executor             : Execute tests with JSON logging"
+    echo "  - test-verify               : Verify test execution logs"
+    echo "  - test-orchestrator         : Coordinate test workflows"
+    echo "  - validate-yaml             : YAML validation"
+    echo "  - validate-json             : JSON validation"
+    echo "  - trm (test-run-manager)    : Test run manager"
+    echo "  - editor                    : Interactive editor"
+    echo "  - verifier                  : Test verifier"
+    echo "  - json-escape               : JSON string escaping utility"
+    echo "  - script-cleanup            : Script cleanup utility"
+}
+
+show-help() {
+    echo "=== Testcase Manager Development Environment ==="
+    echo ""
+    echo "Quick Commands:"
+    echo "  show-binaries          - List all available binaries"
+    echo "  validate-file <file>   - Validate a YAML test case"
+    echo "  generate-script <file> - Generate bash script from test case"
+    echo "  run-orchestrator <file>- Run test orchestrator on a test case"
+    echo "  watch-yaml             - Start watch mode for YAML files"
+    echo "  run-tests              - Run the full test suite"
+    echo "  build-project          - Build all binaries (debug mode)"
+    echo "  build-release          - Build all binaries (release mode)"
+    echo "  lint-project           - Run linter"
+    echo ""
+    echo "Development Aliases:"
+    echo "  ll, la, l              - Enhanced ls commands"
+    echo "  tcm                    - Shortcut for testcase-manager"
+    echo "  validate               - Quick validate with default schema"
+    echo ""
+    echo "Watch Mode Prerequisites:"
+    echo "  - inotify-tools: installed ✓"
+    echo "  - make: installed ✓"
+    echo ""
+    echo "Directories:"
+    echo "  /app                   - Project root"
+    echo "  /app/testcases         - Test case files"
+    echo "  /app/schemas           - JSON schemas"
+    echo "  /app/dev-workspace     - Development workspace"
+    echo "  /app/logs              - Log files"
+    echo "  /app/tmp               - Temporary files"
+    echo ""
+    echo "Documentation:"
+    echo "  cat /root/README.md    - Full project README"
+    echo "  cat /app/AGENTS.md     - Development guide"
+    echo ""
+}
+
+# Show welcome message
+echo ""
+echo "=== Testcase Manager Development Environment ==="
+echo ""
+echo "Type 'show-help' for available commands and shortcuts"
+echo "Type 'show-binaries' to see all available tools"
+echo ""
+
+# Set working directory
+cd /app
+BASHEOF
+
+# Create development configuration file
+RUN cat > /app/.dev-config << 'DEVEOF'
+# Development Configuration
+# This file is sourced by development scripts
+
+# Enable verbose logging
+export VERBOSE=1
+
+# Set default schema
+export SCHEMA_FILE=/app/schemas/schema.json
+
+# Enable debug mode
+export DEBUG=1
+
+# Set editor preferences
+export EDITOR=vim
+export VISUAL=vim
+export TESTCASE_EDITOR=vim
+
+# Watch mode settings
+export WATCH_DIR=/app/testcases
+export WATCH_PATTERN='\.ya?ml$'
+
+# Test execution settings
+export TEST_OUTPUT_DIR=/app/logs
+export TEST_WORKSPACE=/app/dev-workspace
+DEVEOF
+
+# Create a development helper script
+RUN cat > /usr/local/bin/dev-setup << 'DEVSETUPEOF'
+#!/usr/bin/env bash
+# Development environment setup script
+
+set -e
+
+echo "Setting up development environment..."
+
+# Source development configuration
+if [ -f /app/.dev-config ]; then
+    source /app/.dev-config
+fi
+
+# Verify all binaries are accessible
+echo "Verifying binaries..."
+for binary in tcm testcase-manager test-executor test-verify test-orchestrator validate-yaml validate-json trm editor verifier json-escape script-cleanup; do
+    if command -v "$binary" > /dev/null 2>&1; then
+        echo "  ✓ $binary"
+    else
+        echo "  ✗ $binary (not found)"
+    fi
+done
+
+# Check for required directories
+echo ""
+echo "Checking directories..."
+for dir in /app/testcases /app/schemas /app/dev-workspace /app/logs /app/tmp; do
+    if [ -d "$dir" ]; then
+        echo "  ✓ $dir"
+    else
+        echo "  ✗ $dir (creating...)"
+        mkdir -p "$dir"
+    fi
+done
+
+# Check for watch mode prerequisites
+echo ""
+echo "Checking watch mode prerequisites..."
+if command -v inotifywait > /dev/null 2>&1; then
+    echo "  ✓ inotify-tools"
+else
+    echo "  ✗ inotify-tools"
+fi
+
+if command -v make > /dev/null 2>&1; then
+    echo "  ✓ make"
+else
+    echo "  ✗ make"
+fi
+
+echo ""
+echo "Development environment ready!"
+echo "Run 'show-help' for available commands"
+DEVSETUPEOF
+
+RUN chmod +x /usr/local/bin/dev-setup
+
+# Create a quick test script for development
+RUN cat > /usr/local/bin/quick-test << 'QUICKTESTEOF'
+#!/usr/bin/env bash
+# Quick test script for development
+
+set -e
+
+echo "Running quick validation tests..."
+
+# Test 1: Binary availability
+echo ""
+echo "Test 1: Checking binary availability..."
+if command -v tcm > /dev/null 2>&1; then
+    echo "  ✓ tcm binary found"
+    tcm --version 2>/dev/null || echo "  ℹ version command not available"
+else
+    echo "  ✗ tcm binary not found"
+    exit 1
+fi
+
+# Test 2: Schema file
+echo ""
+echo "Test 2: Checking schema file..."
+if [ -f /app/schemas/schema.json ]; then
+    echo "  ✓ Schema file exists"
+else
+    echo "  ✗ Schema file not found"
+fi
+
+# Test 3: Testcases directory
+echo ""
+echo "Test 3: Checking testcases directory..."
+if [ -d /app/testcases ]; then
+    echo "  ✓ Testcases directory exists"
+    COUNT=$(find /app/testcases -type f -name "*.y*ml" 2>/dev/null | wc -l)
+    echo "  ℹ Found $COUNT YAML/YML files"
+else
+    echo "  ✗ Testcases directory not found"
+fi
+
+# Test 4: Watch mode script
+echo ""
+echo "Test 4: Checking watch mode script..."
+if [ -f /app/scripts/watch-yaml-files.sh ]; then
+    echo "  ✓ Watch mode script exists"
+else
+    echo "  ✗ Watch mode script not found"
+fi
+
+echo ""
+echo "Quick test completed!"
+QUICKTESTEOF
+
+RUN chmod +x /usr/local/bin/quick-test
+
+# Create a script to show current environment status
+RUN cat > /usr/local/bin/dev-status << 'DEVSTATUSEOF'
+#!/usr/bin/env bash
+# Show development environment status
+
+echo "=== Development Environment Status ==="
+echo ""
+
+# System info
+echo "System Information:"
+echo "  OS: $(cat /etc/os-release | grep PRETTY_NAME | cut -d'"' -f2)"
+echo "  Kernel: $(uname -r)"
+echo "  Shell: $SHELL"
+echo ""
+
+# Disk usage
+echo "Disk Usage:"
+echo "  /app: $(du -sh /app 2>/dev/null | cut -f1)"
+echo "  /app/testcases: $(du -sh /app/testcases 2>/dev/null | cut -f1 || echo 'N/A')"
+echo "  /app/dev-workspace: $(du -sh /app/dev-workspace 2>/dev/null | cut -f1)"
+echo ""
+
+# Memory info
+if command -v free > /dev/null 2>&1; then
+    echo "Memory:"
+    free -h | head -2
+    echo ""
+fi
+
+# Cargo version
+if command -v cargo > /dev/null 2>&1; then
+    echo "Rust toolchain:"
+    echo "  $(cargo --version)"
+    echo "  $(rustc --version)"
+    echo ""
+fi
+
+# Git status (if in a git repo)
+if [ -d /app/.git ]; then
+    echo "Git Status:"
+    cd /app
+    echo "  Branch: $(git branch --show-current 2>/dev/null || echo 'N/A')"
+    echo "  Status: $(git status --short 2>/dev/null | wc -l) file(s) modified"
+    echo ""
+fi
+
+# Running processes
+echo "Running Processes:"
+ps aux | head -10
+echo ""
+DEVSTATUSEOF
+
+RUN chmod +x /usr/local/bin/dev-status
+
+# Set environment variables for development
+ENV RUST_BACKTRACE=1
+ENV RUST_LOG=debug
+ENV CARGO_TERM_COLOR=always
+
+# Set working directory
+WORKDIR /app
+
+# Default command: Start bash with development setup
+CMD ["/bin/bash", "-c", "dev-setup && exec /bin/bash"]

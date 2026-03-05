@@ -221,9 +221,17 @@ docker-build:
 	docker build -t testcase-manager:latest .
 .PHONY: docker-build
 
+docker-build-dev:
+	./scripts/build-dev-docker.sh
+.PHONY: docker-build-dev
+
 docker-run:
 	docker run -v $(PWD)/testcases:/app/testcases testcase-manager:latest
 .PHONY: docker-run
+
+docker-run-dev:
+	docker run -it --rm -v $(PWD):/app testcase-manager:dev
+.PHONY: docker-run-dev
 
 test-verify-sample: build
 	./tests/integration/test_verify_e2e.sh

@@ -1,0 +1,40 @@
+# Development Docker ignore file
+# This file is currently not used but provided as a reference
+# for potential future use with multi-stage dev builds
+
+# Build artifacts
+target/
+*.profraw
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Documentation (we want this in dev image)
+# docs/
+# *.md
+
+# Coverage reports
+htmlcov/
+.coverage
+*.lcov
+
+# Logs
+*.log
+logs/
+
+# Temporary
+tmp/
+temp/
+*.tmp

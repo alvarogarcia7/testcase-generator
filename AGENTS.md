@@ -52,6 +52,10 @@ See the [Hooks](#hooks) section for detailed documentation and examples.
 - **sccache Clean**: make sccache-clean (clear sccache compilation cache)
 - **Verify Scripts**: make verify-scripts (verify syntax of all shell scripts)
 - **Watch Mode**: make watch (monitors testcases/ for changes and auto-validates)
+- **Docker Build**: make docker-build (build base Docker image)
+- **Docker Build Dev**: make docker-build-dev (build development Docker image with debugging tools)
+- **Docker Run**: make docker-run (run base Docker container)
+- **Docker Run Dev**: make docker-run-dev (run development Docker container with volume mount)
 - **Dev Server**: N/A
 
 You must build, test, lint, and verify coverage before committing
