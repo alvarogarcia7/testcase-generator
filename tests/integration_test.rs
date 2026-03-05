@@ -1137,3 +1137,215 @@ fn test_manual_verify_examples_verification_prompts_format() -> Result<()> {
     println!("✓ All manual verification examples have properly formatted verification prompts");
     Ok(())
 }
+
+// ===== Fail-Fast Behavior Tests =====
+
+#[test]
+fn test_execution_stops_at_first_failure() -> Result<()> {
+    use tempfile::TempDir;
+
+    // Create a temporary directory for test outputs
+    let temp_dir = TempDir::new()?;
+    let output_dir = temp_dir.path();
+
+    // Create a test case with multiple steps where the first one fails
+    let mut test_case = testcase_manager::TestCase::new(
+        "REQ-FAIL-001".to_string(),
+        1,
+        1,
+        "TC_FAIL_FAST_001".to_string(),
+        "Test case to verify fail-fast behavior on step failure".to_string(),
+    );
+
+    // Create a test sequence with 4 steps
+    let mut sequence = testcase_manager::TestSequence::new(
+        1,
+        "Fail-Fast Test Sequence".to_string(),
+        "Sequence with a failing step followed by subsequent steps".to_string(),
+    );
+
+    // Step 1: Passing step
+    let step1 = testcase_manager::Step {
+        step: 1,
+        manual: None,
+        description: "Initial passing step".to_string(),
+        command: "echo 'step1 success'".to_string(),
+        capture_vars: None,
+        expected: testcase_manager::Expected {
+            success: Some(true),
+            result: "0".to_string(),
+            output: "step1 success".to_string(),
+        },
+        verification: testcase_manager::Verification {
+            result: testcase_manager::VerificationExpression::Simple(
+                "[ $EXIT_CODE -eq 0 ]".to_string(),
+            ),
+            output: testcase_manager::VerificationExpression::Simple(
+                "[[ \"$COMMAND_OUTPUT\" = \"step1 success\" ]]".to_string(),
+            ),
+            output_file: None,
+            general: None,
+        },
+        reference: None,
+    };
+
+    // Step 2: Failing step - exit code is non-zero
+    let step2 = testcase_manager::Step {
+        step: 2,
+        manual: None,
+        description: "Failing step with non-zero exit code".to_string(),
+        command: "echo 'step2 output' && exit 1".to_string(),
+        capture_vars: None,
+        expected: testcase_manager::Expected {
+            success: Some(false),
+            result: "0".to_string(), // Expected to be 0, but will be 1
+            output: "step2 success".to_string(), // Expected output, but verification will fail
+        },
+        verification: testcase_manager::Verification {
+            result: testcase_manager::VerificationExpression::Simple(
+                "[ $EXIT_CODE -eq 0 ]".to_string(), // This will fail since exit code is 1
+            ),
+            output: testcase_manager::VerificationExpression::Simple(
+                "[[ \"$COMMAND_OUTPUT\" =~ \"step2\" ]]".to_string(),
+            ),
+            output_file: None,
+            general: None,
+        },
+        reference: None,
+    };
+
+    // Step 3: Should not be executed
+    let step3 = testcase_manager::Step {
+        step: 3,
+        manual: None,
+        description: "Step that should not be executed".to_string(),
+        command: "echo 'step3 success'".to_string(),
+        capture_vars: None,
+        expected: testcase_manager::Expected {
+            success: Some(true),
+            result: "0".to_string(),
+            output: "step3 success".to_string(),
+        },
+        verification: testcase_manager::Verification {
+            result: testcase_manager::VerificationExpression::Simple(
+                "[ $EXIT_CODE -eq 0 ]".to_string(),
+            ),
+            output: testcase_manager::VerificationExpression::Simple(
+                "[[ \"$COMMAND_OUTPUT\" = \"step3 success\" ]]".to_string(),
+            ),
+            output_file: None,
+            general: None,
+        },
+        reference: None,
+    };
+
+    // Step 4: Should not be executed
+    let step4 = testcase_manager::Step {
+        step: 4,
+        manual: None,
+        description: "Another step that should not be executed".to_string(),
+        command: "echo 'step4 success'".to_string(),
+        capture_vars: None,
+        expected: testcase_manager::Expected {
+            success: Some(true),
+            result: "0".to_string(),
+            output: "step4 success".to_string(),
+        },
+        verification: testcase_manager::Verification {
+            result: testcase_manager::VerificationExpression::Simple(
+                "[ $EXIT_CODE -eq 0 ]".to_string(),
+            ),
+            output: testcase_manager::VerificationExpression::Simple(
+                "[[ \"$COMMAND_OUTPUT\" = \"step4 success\" ]]".to_string(),
+            ),
+            output_file: None,
+            general: None,
+        },
+        reference: None,
+    };
+
+    sequence.steps.push(step1);
+    sequence.steps.push(step2);
+    sequence.steps.push(step3);
+    sequence.steps.push(step4);
+    test_case.test_sequences.push(sequence);
+
+    // Create executor with output directory
+    let executor = testcase_manager::TestExecutor::with_output_dir(output_dir.to_path_buf());
+
+    // Execute the test case - should fail at step 2
+    let result = executor.execute_test_case(&test_case);
+
+    // Verify execution failed
+    assert!(
+        result.is_err(),
+        "Execution should fail when a step verification fails"
+    );
+
+    // Verify the error message mentions step failure
+    let error = result.unwrap_err();
+    let error_message = error.to_string();
+    assert!(
+        error_message.contains("Step 2") || error_message.contains("verification failed"),
+        "Error message should mention the failed step: {}",
+        error_message
+    );
+
+    // Read the execution log
+    let log_path = output_dir.join("TC_FAIL_FAST_001_execution_log.json");
+    assert!(
+        log_path.exists(),
+        "Execution log should be written even after failure"
+    );
+
+    let log_content = fs::read_to_string(&log_path)?;
+    let log_entries: Vec<testcase_manager::TestStepExecutionEntry> =
+        serde_json::from_str(&log_content)?;
+
+    // Verify execution log contains only steps 1 and 2 (not 3 and 4)
+    assert_eq!(
+        log_entries.len(),
+        2,
+        "Execution log should contain only 2 entries (steps 1 and 2)"
+    );
+
+    // Verify step 1 succeeded
+    assert_eq!(log_entries[0].step, 1);
+    assert_eq!(log_entries[0].test_sequence, 1);
+    assert_eq!(log_entries[0].exit_code, 0);
+    assert!(
+        log_entries[0].output.contains("step1 success"),
+        "Step 1 output should be 'step1 success', got: {}",
+        log_entries[0].output
+    );
+
+    // Verify step 2 failed (exit code 1)
+    assert_eq!(log_entries[1].step, 2);
+    assert_eq!(log_entries[1].test_sequence, 1);
+    assert_eq!(
+        log_entries[1].exit_code, 1,
+        "Step 2 should have exit code 1"
+    );
+    assert!(
+        log_entries[1].output.contains("step2"),
+        "Step 2 output should contain 'step2', got: {}",
+        log_entries[1].output
+    );
+
+    // Verify steps 3 and 4 are NOT in the execution log
+    let has_step_3 = log_entries.iter().any(|e| e.step == 3);
+    let has_step_4 = log_entries.iter().any(|e| e.step == 4);
+    assert!(
+        !has_step_3,
+        "Step 3 should not be in execution log (execution should have stopped)"
+    );
+    assert!(
+        !has_step_4,
+        "Step 4 should not be in execution log (execution should have stopped)"
+    );
+
+    println!("✓ Fail-fast behavior verified: execution stopped at first failure");
+    println!("✓ Execution log contains only steps up to the failure");
+
+    Ok(())
+}
