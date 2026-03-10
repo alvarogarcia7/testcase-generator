@@ -4,6 +4,7 @@ pre-commit: test clippy coverage README_INSTALL_AUTOMATED.md
 README_INSTALL_AUTOMATED.md:
 	echo "" > README_INSTALL_AUTOMATED.md
 	@for bin in $(shell cargo run --bin 2>&1| grep "^    "|awk '{print $1}'); do \
+		cargo build --bin $$bin ; \
 		echo "## $$bin " >> README_INSTALL_AUTOMATED.md ; \
 		$$bin -- --help >> README_INSTALL_AUTOMATED.md; \
 		echo "\`\`\`" >> README_INSTALL_AUTOMATED.md ; \
