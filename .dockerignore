@@ -7,6 +7,13 @@ target/**/*.json
 **/*.tmp.json
 test-output/**/*.json
 
+# Explicitly preserve required JSON files for tests
+!schemas/*.json
+!schemas/**/*.json
+!data/*.json
+!data/**/*.json
+!testcases/**/*_execution_log.json
+
 # Version control
 .git/
 .gitignore
