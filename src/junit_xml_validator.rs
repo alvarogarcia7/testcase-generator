@@ -3,16 +3,16 @@ use anyhow::{Context, Result};
 /// Validates JUnit XML against the Maven Surefire XSD schema requirements.
 ///
 /// This function validates the XML structure and constraints defined in:
-/// https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report.xsd
+/// <https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report.xsd>
 ///
 /// Key validations performed:
-/// - Root element must be <testsuite>
+/// - Root element must be `<testsuite>`
 /// - Required attributes: name, tests, failures, skipped, time
 /// - All numeric attributes must be valid numbers
-/// - Number of <testcase> elements must match the tests attribute
-/// - Each <testcase> must have name and time attributes
-/// - Count of <failure> elements must match failures attribute
-/// - Count of <skipped> elements must match skipped attribute
+/// - Number of `<testcase>` elements must match the tests attribute
+/// - Each `<testcase>` must have name and time attributes
+/// - Count of `<failure>` elements must match failures attribute
+/// - Count of `<skipped>` elements must match skipped attribute
 pub fn validate_junit_xml(xml: &str) -> Result<()> {
     use roxmltree::Document;
 
