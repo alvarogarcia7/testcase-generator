@@ -26,6 +26,7 @@ HOOKS_YAML="$PROJECT_ROOT/testcases/examples/hooks/TC_HOOKS_001.yaml"
 
 # Source logger library
 source "$SCRIPT_DIR/../../scripts/lib/logger.sh" || exit 1
+source "$SCRIPT_DIR/../../scripts/lib/shellcheck-helper.sh" || true
 
 # Handle --no-remove flag
 REMOVE_TEMP=1
@@ -147,6 +148,7 @@ else
     fail "Generated script has invalid bash syntax"
     exit 1
 fi
+validate_with_shellcheck "$GENERATED_SCRIPT" "Generated hooks script"
 
 # Verify all eight hook execution points are present
 EXPECTED_HOOKS=(

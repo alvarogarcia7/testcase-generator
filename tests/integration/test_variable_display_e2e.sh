@@ -25,6 +25,7 @@ SCHEMA_FILE="$PROJECT_ROOT/schemas/test-case.schema.json"
 
 # Source logger library
 source "$SCRIPT_DIR/../../scripts/lib/logger.sh" || exit 1
+source "$SCRIPT_DIR/../../scripts/lib/shellcheck-helper.sh" || true
 
 # Handle --no-remove flag
 REMOVE_TEMP=1
@@ -240,6 +241,7 @@ else
     bash -n "$VARIABLE_SCRIPT" 2>&1
     exit 1
 fi
+validate_with_shellcheck "$VARIABLE_SCRIPT" "Variable display script"
 
 # Test 5: Verify STEP_VAR_* variables are set correctly in generated script
 section "Test 5: Verify STEP_VAR_* Variables in Generated Script"

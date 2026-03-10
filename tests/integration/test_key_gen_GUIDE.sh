@@ -57,6 +57,9 @@ section() {
     echo -e "${YELLOW}=== $1 ===${NC}"
 }
 
+# Source shellcheck helper for validation
+source "$SCRIPT_DIR/../../scripts/lib/shellcheck-helper.sh" || true
+
 # Check prerequisites
 section "Checking Prerequisites"
 
@@ -225,6 +228,7 @@ else
     bash -n "$VARIABLE_SCRIPT" 2>&1
     exit 1
 fi
+validate_with_shellcheck "$VARIABLE_SCRIPT" "Variable passing script"
 
 # Test 5: Verify script contains STEP_VARS array and variable capture logic
 section "Test 5: Verify Script Contains Variable Capture Logic"

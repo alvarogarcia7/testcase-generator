@@ -21,6 +21,7 @@ SCHEMA_FILE="$PROJECT_ROOT/schemas/test-case.schema.json"
 
 # Source logger library
 source "$SCRIPT_DIR/../../scripts/lib/logger.sh" || exit 1
+source "$SCRIPT_DIR/../../scripts/lib/shellcheck-helper.sh" || true
 
 # Handle --no-remove flag
 REMOVE_TEMP=1
@@ -388,6 +389,7 @@ else
     fail "TC_DEP_001 script has invalid bash syntax"
     exit 1
 fi
+validate_with_shellcheck "$SCRIPT_FILE_1" "TC_DEP_001 script"
 
 if bash -n "$SCRIPT_FILE_2" 2>/dev/null; then
     pass "TC_DEP_002 script has valid bash syntax"
@@ -395,6 +397,7 @@ else
     fail "TC_DEP_002 script has invalid bash syntax"
     exit 1
 fi
+validate_with_shellcheck "$SCRIPT_FILE_2" "TC_DEP_002 script"
 
 if bash -n "$SCRIPT_FILE_3" 2>/dev/null; then
     pass "TC_DEP_003 script has valid bash syntax"
@@ -402,6 +405,7 @@ else
     fail "TC_DEP_003 script has invalid bash syntax"
     exit 1
 fi
+validate_with_shellcheck "$SCRIPT_FILE_3" "TC_DEP_003 script"
 
 # Test 5: Verify generated scripts contain dependency references as comments
 section "Test 5: Verify Dependency References in Generated Scripts"
@@ -629,6 +633,8 @@ if [[ -f "$EXAMPLE_DEP_1" ]] && [[ -f "$EXAMPLE_DEP_2" ]]; then
         fail "Example dependency scripts have invalid bash syntax"
         exit 1
     fi
+    validate_with_shellcheck "$EXAMPLE_SCRIPT_1" "Example dependency script 1"
+    validate_with_shellcheck "$EXAMPLE_SCRIPT_2" "Example dependency script 2"
 
     # Check for expected references in example files
     if grep -q "ref:" "$EXAMPLE_SCRIPT_2" || grep -q "Include:" "$EXAMPLE_SCRIPT_2"; then

@@ -21,6 +21,7 @@ SCHEMA_FILE="$PROJECT_ROOT/schemas/test-case.schema.json"
 
 # Source logger library
 source "$SCRIPT_DIR/../../scripts/lib/logger.sh" || exit 1
+source "$SCRIPT_DIR/../../scripts/lib/shellcheck-helper.sh" || true
 
 # Handle --no-remove flag
 REMOVE_TEMP=1
@@ -205,6 +206,7 @@ if bash -n "$PASSING_SCRIPT" 2>/dev/null; then
 else
     fail "Passing script has invalid bash syntax"
 fi
+validate_with_shellcheck "$PASSING_SCRIPT" "Passing script"
 
 FAILING_SCRIPT="$TEMP_DIR/test_failing.sh"
 if "$TEST_EXECUTOR_BIN" generate "$FAILING_YAML" -o "$FAILING_SCRIPT" > /dev/null 2>&1; then
@@ -225,6 +227,7 @@ if bash -n "$FAILING_SCRIPT" 2>/dev/null; then
 else
     fail "Failing script has invalid bash syntax"
 fi
+validate_with_shellcheck "$FAILING_SCRIPT" "Failing script"
 
 # Verify script contains expected elements
 if grep -q "#!/bin/bash" "$PASSING_SCRIPT"; then
@@ -627,6 +630,7 @@ if bash -n "$MIXED_TEST_SCRIPT" 2>/dev/null; then
 else
     fail "Mixed steps script has invalid bash syntax"
 fi
+validate_with_shellcheck "$MIXED_TEST_SCRIPT" "Mixed steps script"
 
 # Verify manual steps have interactive prompts (read -p)
 MANUAL_STEP_2_CONTEXT=$(grep -A 5 "Step 2: Manual verification step" "$MIXED_TEST_SCRIPT")
@@ -813,6 +817,7 @@ if bash -n "$STDERR_TEST_SCRIPT" 2>/dev/null; then
 else
     fail "Stderr test script has invalid bash syntax"
 fi
+validate_with_shellcheck "$STDERR_TEST_SCRIPT" "Stderr test script"
 
 # Execute the script in the temp directory to create log files there
 STDERR_TEST_OUTPUT="$TEMP_DIR/stderr_test_output.txt"

@@ -23,6 +23,7 @@ SCHEMA_FILE="$PROJECT_ROOT/schemas/test-case.schema.json"
 
 # Source logger library
 source "$SCRIPT_DIR/../../scripts/lib/logger.sh" || exit 1
+source "$SCRIPT_DIR/../../scripts/lib/shellcheck-helper.sh" || true
 
 # Handle --no-remove flag
 REMOVE_TEMP=1
@@ -221,6 +222,7 @@ else
     bash -n "$MANUAL_SCRIPT" 2>&1
     exit 1
 fi
+validate_with_shellcheck "$MANUAL_SCRIPT" "Manual steps script"
 
 # Test 5: Verify script contains expected elements for manual steps
 section "Test 5: Verify Script Contains Manual Step Elements"

@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Bash helper functions for user prompts
 # Prompts user for Y/n input with proper validation
 # Returns: 1 for yes, 0 for no

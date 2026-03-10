@@ -55,6 +55,7 @@ RUN apt-get update && \
       inotify-tools \
       expect \
       iputils-ping \
+      shellcheck \
       make && \
     rm -rf /var/lib/apt/lists/*
 
@@ -81,6 +82,9 @@ ls -lah /usr/local/bin/test-verify > /dev/null && \
 ls -lah /usr/local/bin/test-executor > /dev/null && \
 ls -lah /usr/local/bin/editor > /dev/null && \
 ls -lah /usr/local/bin/test-orchestrator > /dev/null
+
+# Verify shellcheck is installed
+RUN shellcheck --version
 
 # Run tests to ensure everything compiles and passes
 # Run unit tests only (skip integration tests that require binaries in specific PATH)

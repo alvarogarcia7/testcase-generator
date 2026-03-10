@@ -34,6 +34,10 @@ enum Commands {
         /// Generate execution log JSON file alongside bash script
         #[arg(long)]
         json_log: bool,
+
+        /// Force output even if shellcheck validation fails
+        #[arg(short = 'f', long)]
+        force: bool,
     },
     /// Execute a test case by generating and running the script
     Execute {
@@ -246,6 +250,55 @@ fn list_test_cases(
     Ok(())
 }
 
+/// Run shellcheck validation on generated script content.
+/// Returns true if validation passed (or shellcheck not available), false if errors found.
+fn run_shellcheck_validation(script_content: &str, force: bool) -> Result<bool> {
+    let shellcheck_available = std::process::Command::new("shellcheck")
+        .arg("--version")
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .is_ok();
+
+    if !shellcheck_available {
+        eprintln!("Warning: shellcheck not found on PATH, skipping validation");
+        return Ok(true);
+    }
+
+    let temp_file = tempfile::Builder::new()
+        .suffix(".sh")
+        .tempfile()
+        .context("Failed to create temporary file for shellcheck")?;
+
+    fs::write(temp_file.path(), script_content)
+        .context("Failed to write script to temporary file")?;
+
+    let output = std::process::Command::new("shellcheck")
+        .arg("-S")
+        .arg("error")
+        .arg(temp_file.path())
+        .output()
+        .context("Failed to run shellcheck")?;
+
+    if output.status.success() {
+        eprintln!("shellcheck: validation passed");
+        Ok(true)
+    } else {
+        let findings = String::from_utf8_lossy(&output.stdout);
+        if force {
+            eprintln!(
+                "Warning: shellcheck found errors (--force specified, continuing):\n{}",
+                findings
+            );
+            Ok(true)
+        } else {
+            eprintln!("Error: shellcheck validation failed:\n{}", findings);
+            eprintln!("Use -f/--force to skip shellcheck validation");
+            Ok(false)
+        }
+    }
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
@@ -254,6 +307,7 @@ fn main() -> Result<()> {
             yaml_file,
             output,
             json_log,
+            force,
         } => {
             let mut test_case = load_test_case(&yaml_file)?;
 
@@ -283,6 +337,11 @@ fn main() -> Result<()> {
                 if json_log {
                     eprintln!("Warning: --json-log requires --output to be specified");
                 }
+            }
+
+            let shellcheck_passed = run_shellcheck_validation(&script, force)?;
+            if !shellcheck_passed {
+                std::process::exit(1);
             }
 
             Ok(())
@@ -453,5 +512,77 @@ fn main() -> Result<()> {
 
             Ok(())
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_shellcheck_validation_valid_script() {
+        if std::process::Command::new("shellcheck")
+            .arg("--version")
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .is_err()
+        {
+            eprintln!("shellcheck not available, skipping test");
+            return;
+        }
+
+        let script = "#!/bin/bash\nset -euo pipefail\necho 'hello world'\n";
+        let result = run_shellcheck_validation(script, false).unwrap();
+        assert!(result, "Valid script should pass shellcheck");
+    }
+
+    #[test]
+    fn test_shellcheck_validation_force_flag() {
+        if std::process::Command::new("shellcheck")
+            .arg("--version")
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .is_err()
+        {
+            eprintln!("shellcheck not available, skipping test");
+            return;
+        }
+
+        // Even if shellcheck finds issues, force=true should return Ok(true)
+        let script = "#!/bin/bash\necho 'hello world'\n";
+        let result = run_shellcheck_validation(script, true).unwrap();
+        assert!(result, "Force flag should always return true");
+    }
+
+    #[test]
+    fn test_shellcheck_validation_generated_script() {
+        if std::process::Command::new("shellcheck")
+            .arg("--version")
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .is_err()
+        {
+            eprintln!("shellcheck not available, skipping test");
+            return;
+        }
+
+        // Load a real test case YAML file and generate a script from it
+        let yaml_path = PathBuf::from("testcases/self_validated_example.yml");
+        if !yaml_path.exists() {
+            eprintln!("Test YAML file not found, skipping test");
+            return;
+        }
+
+        let test_case = load_test_case(&yaml_path).expect("Failed to load test case YAML");
+        let executor = TestExecutor::new();
+        let script = executor.generate_test_script(&test_case);
+        let result = run_shellcheck_validation(&script, false).unwrap();
+        assert!(
+            result,
+            "Generated test script should pass shellcheck validation"
+        );
     }
 }
