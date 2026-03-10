@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 pub struct DependencyError {
     /// Path to the file containing the error
     pub file_path: PathBuf,
-    /// Location within the file (e.g., "initial_conditions.device1[0]")
+    /// Location within the file (e.g., "initial_conditions.device1\[0\]")
     pub location: String,
     /// The unresolved reference string
     pub reference: String,
