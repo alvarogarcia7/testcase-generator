@@ -57,7 +57,7 @@ VALIDATE_YAML=$(find_binary_or_exit "validate-yaml" "VALIDATE_YAML_BIN")
 
 # Validate arguments
 if [[ $# -eq 0 ]]; then
-    log_error "Missing required argument: YAML file path(s)" >&2
+    log_error Missing required argument: YAML file path(s)" >&2
     echo "Usage: $(basename "$0") <yaml-file>..." >&2
     exit 1
 fi
@@ -65,15 +65,15 @@ fi
 # Validate that all YAML files exist
 for YAML_FILE in "$@"; do
     if [[ ! -f "$YAML_FILE" ]]; then
-        log_error "YAML file not found: $YAML_FILE" >&2
+        log_error YAML file not found: $YAML_FILE" >&2
         exit 1
     fi
 done
 
 # Validate that schema file exists
 if [[ ! -f "$SCHEMA_FILE" ]]; then
-    log_error "Schema file not found: $SCHEMA_FILE" >&2
-    log_error "Set SCHEMA_FILE environment variable to specify the schema" >&2
+    log_error Schema file not found: $SCHEMA_FILE" >&2
+    log_error Set SCHEMA_FILE environment variable to specify the schema" >&2
     exit 1
 fi
 

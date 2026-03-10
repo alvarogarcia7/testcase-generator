@@ -1495,6 +1495,32 @@ fn test_config_save_and_load() -> Result<()> {
     let original_home = std::env::var("HOME").ok();
     let original_userprofile = std::env::var("USERPROFILE").ok();
 
+    // Ensure cleanup on drop
+    struct EnvGuard {
+        original_home: Option<String>,
+        original_userprofile: Option<String>,
+    }
+
+    impl Drop for EnvGuard {
+        fn drop(&mut self) {
+            if let Some(home) = &self.original_home {
+                std::env::set_var("HOME", home);
+            } else {
+                std::env::remove_var("HOME");
+            }
+            if let Some(userprofile) = &self.original_userprofile {
+                std::env::set_var("USERPROFILE", userprofile);
+            } else {
+                std::env::remove_var("USERPROFILE");
+            }
+        }
+    }
+
+    let _guard = EnvGuard {
+        original_home: original_home.clone(),
+        original_userprofile: original_userprofile.clone(),
+    };
+
     std::env::set_var("HOME", temp_dir.path());
     std::env::remove_var("USERPROFILE");
 
@@ -1531,14 +1557,6 @@ fn test_config_save_and_load() -> Result<()> {
         loaded_config.default_device_name,
         Some("test-device".to_string())
     );
-
-    // Restore original environment
-    if let Some(home) = original_home {
-        std::env::set_var("HOME", home);
-    }
-    if let Some(userprofile) = original_userprofile {
-        std::env::set_var("USERPROFILE", userprofile);
-    }
 
     Ok(())
 }
