@@ -1746,7 +1746,7 @@ fn test_config_load_error_context() -> Result<()> {
 // Test Utilities
 // ============================================================================
 
-use std::sync::{Mutex, OnceLock, MutexGuard};
+use std::sync::{Mutex, MutexGuard, OnceLock};
 
 fn env_mutex() -> &'static Mutex<EnvGuardState> {
     static MUTEX: OnceLock<Mutex<EnvGuardState>> = OnceLock::new();
