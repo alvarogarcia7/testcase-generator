@@ -2,9 +2,9 @@ name: Integration Tests
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, develop, 'feature/**', 'f69c-*' ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main, develop, 'feature/**', 'f69c-*' ]
   workflow_dispatch:
 
 jobs:
