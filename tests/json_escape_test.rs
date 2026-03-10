@@ -1244,12 +1244,10 @@ fn test_manual_steps_no_escaping() {
 /// Test Config::load() when config file is missing
 #[test]
 fn test_config_load_missing_file() -> Result<()> {
-    // Save current HOME/USERPROFILE
-    let original_home = std::env::var("HOME").ok();
-    let original_userprofile = std::env::var("USERPROFILE").ok();
-
     // Create a temporary directory and set it as HOME
     let temp_dir = TempDir::new()?;
+
+    let _guard = EnvGuard::new();
     std::env::set_var("HOME", temp_dir.path());
     std::env::remove_var("USERPROFILE");
 
@@ -1263,14 +1261,6 @@ fn test_config_load_missing_file() -> Result<()> {
     ));
     assert!(config.script_generation.json_escaping.enabled);
     assert!(config.script_generation.json_escaping.binary_path.is_none());
-
-    // Restore original environment
-    if let Some(home) = original_home {
-        std::env::set_var("HOME", home);
-    }
-    if let Some(userprofile) = original_userprofile {
-        std::env::set_var("USERPROFILE", userprofile);
-    }
 
     Ok(())
 }
@@ -1286,10 +1276,7 @@ fn test_config_load_corrupted_file() -> Result<()> {
     // Write invalid TOML
     fs::write(&config_path, "this is not valid TOML [ } invalid")?;
 
-    // Save current HOME/USERPROFILE
-    let original_home = std::env::var("HOME").ok();
-    let original_userprofile = std::env::var("USERPROFILE").ok();
-
+    let _guard = EnvGuard::new();
     std::env::set_var("HOME", temp_dir.path());
     std::env::remove_var("USERPROFILE");
 
@@ -1300,14 +1287,6 @@ fn test_config_load_corrupted_file() -> Result<()> {
     let err = result.unwrap_err();
     let err_msg = format!("{}", err);
     assert!(err_msg.contains("Failed to parse config file"));
-
-    // Restore original environment
-    if let Some(home) = original_home {
-        std::env::set_var("HOME", home);
-    }
-    if let Some(userprofile) = original_userprofile {
-        std::env::set_var("USERPROFILE", userprofile);
-    }
 
     Ok(())
 }
@@ -1328,24 +1307,13 @@ enabled = true
 "#;
     fs::write(&config_path, invalid_config)?;
 
-    // Save current HOME/USERPROFILE
-    let original_home = std::env::var("HOME").ok();
-    let original_userprofile = std::env::var("USERPROFILE").ok();
-
+    let _guard = EnvGuard::new();
     std::env::set_var("HOME", temp_dir.path());
     std::env::remove_var("USERPROFILE");
 
     // Try to load config - should return an error
     let result = Config::load();
     assert!(result.is_err());
-
-    // Restore original environment
-    if let Some(home) = original_home {
-        std::env::set_var("HOME", home);
-    }
-    if let Some(userprofile) = original_userprofile {
-        std::env::set_var("USERPROFILE", userprofile);
-    }
 
     Ok(())
 }
@@ -1460,10 +1428,7 @@ fn test_config_load_or_default_with_error() {
     // Write invalid TOML
     fs::write(&config_path, "invalid toml content {{{").unwrap();
 
-    // Save current HOME/USERPROFILE
-    let original_home = std::env::var("HOME").ok();
-    let original_userprofile = std::env::var("USERPROFILE").ok();
-
+    let _guard = EnvGuard::new();
     std::env::set_var("HOME", temp_dir.path());
     std::env::remove_var("USERPROFILE");
 
@@ -1476,14 +1441,6 @@ fn test_config_load_or_default_with_error() {
         JsonEscapingMethod::Auto
     ));
     assert!(config.script_generation.json_escaping.enabled);
-
-    // Restore original environment
-    if let Some(home) = original_home {
-        std::env::set_var("HOME", home);
-    }
-    if let Some(userprofile) = original_userprofile {
-        std::env::set_var("USERPROFILE", userprofile);
-    }
 }
 
 /// Test Config::save() and then load the saved config
@@ -1491,36 +1448,7 @@ fn test_config_load_or_default_with_error() {
 fn test_config_save_and_load() -> Result<()> {
     let temp_dir = TempDir::new()?;
 
-    // Save current HOME/USERPROFILE
-    let original_home = std::env::var("HOME").ok();
-    let original_userprofile = std::env::var("USERPROFILE").ok();
-
-    // Ensure cleanup on drop
-    struct EnvGuard {
-        original_home: Option<String>,
-        original_userprofile: Option<String>,
-    }
-
-    impl Drop for EnvGuard {
-        fn drop(&mut self) {
-            if let Some(home) = &self.original_home {
-                std::env::set_var("HOME", home);
-            } else {
-                std::env::remove_var("HOME");
-            }
-            if let Some(userprofile) = &self.original_userprofile {
-                std::env::set_var("USERPROFILE", userprofile);
-            } else {
-                std::env::remove_var("USERPROFILE");
-            }
-        }
-    }
-
-    let _guard = EnvGuard {
-        original_home: original_home.clone(),
-        original_userprofile: original_userprofile.clone(),
-    };
-
+    let _guard = EnvGuard::new();
     std::env::set_var("HOME", temp_dir.path());
     std::env::remove_var("USERPROFILE");
 
@@ -1566,10 +1494,7 @@ fn test_config_save_and_load() -> Result<()> {
 fn test_config_save_creates_directory() -> Result<()> {
     let temp_dir = TempDir::new()?;
 
-    // Save current HOME/USERPROFILE
-    let original_home = std::env::var("HOME").ok();
-    let original_userprofile = std::env::var("USERPROFILE").ok();
-
+    let _guard = EnvGuard::new();
     std::env::set_var("HOME", temp_dir.path());
     std::env::remove_var("USERPROFILE");
 
@@ -1584,14 +1509,6 @@ fn test_config_save_creates_directory() -> Result<()> {
     // Verify directory was created
     assert!(config_dir.exists());
     assert!(config_dir.join("config.toml").exists());
-
-    // Restore original environment
-    if let Some(home) = original_home {
-        std::env::set_var("HOME", home);
-    }
-    if let Some(userprofile) = original_userprofile {
-        std::env::set_var("USERPROFILE", userprofile);
-    }
 
     Ok(())
 }
@@ -1681,10 +1598,7 @@ fn test_config_load_file_read_error() -> Result<()> {
         // On Unix, we can create a directory with the config file name
         fs::create_dir(&config_path)?;
 
-        // Save current HOME/USERPROFILE
-        let original_home = std::env::var("HOME").ok();
-        let original_userprofile = std::env::var("USERPROFILE").ok();
-
+        let _guard = EnvGuard::new();
         std::env::set_var("HOME", temp_dir.path());
         std::env::remove_var("USERPROFILE");
 
@@ -1695,14 +1609,6 @@ fn test_config_load_file_read_error() -> Result<()> {
         let err = result.unwrap_err();
         let err_msg = format!("{}", err);
         assert!(err_msg.contains("Failed to read config file"));
-
-        // Restore original environment
-        if let Some(home) = original_home {
-            std::env::set_var("HOME", home);
-        }
-        if let Some(userprofile) = original_userprofile {
-            std::env::set_var("USERPROFILE", userprofile);
-        }
     }
 
     Ok(())
@@ -1819,10 +1725,7 @@ fn test_config_load_error_context() -> Result<()> {
     // Write invalid TOML with specific syntax error
     fs::write(&config_path, "[script_generation\nmethod = ")?;
 
-    // Save current HOME/USERPROFILE
-    let original_home = std::env::var("HOME").ok();
-    let original_userprofile = std::env::var("USERPROFILE").ok();
-
+    let _guard = EnvGuard::new();
     std::env::set_var("HOME", temp_dir.path());
     std::env::remove_var("USERPROFILE");
 
@@ -1836,15 +1739,56 @@ fn test_config_load_error_context() -> Result<()> {
     // Error should mention parsing failure
     assert!(err_chain.contains("Failed to parse config file") || err_chain.contains("parse"));
 
-    // Restore original environment
-    if let Some(home) = original_home {
-        std::env::set_var("HOME", home);
-    }
-    if let Some(userprofile) = original_userprofile {
-        std::env::set_var("USERPROFILE", userprofile);
-    }
-
     Ok(())
+}
+
+// ============================================================================
+// Test Utilities
+// ============================================================================
+
+use std::sync::{Mutex, OnceLock, MutexGuard};
+
+fn env_mutex() -> &'static Mutex<EnvGuardState> {
+    static MUTEX: OnceLock<Mutex<EnvGuardState>> = OnceLock::new();
+    MUTEX.get_or_init(|| Mutex::new(EnvGuardState::default()))
+}
+
+#[derive(Default)]
+struct EnvGuardState {
+    original_home: Option<String>,
+    original_userprofile: Option<String>,
+}
+
+/// RAII guard for safely restoring HOME and USERPROFILE environment variables
+/// This guard holds a mutex lock to prevent concurrent tests from interfering
+struct EnvGuard {
+    _lock: MutexGuard<'static, EnvGuardState>,
+}
+
+impl EnvGuard {
+    /// Create a new guard with current environment values
+    /// This will lock a mutex to prevent other tests from modifying HOME concurrently
+    fn new() -> Self {
+        let mut lock = env_mutex().lock().unwrap();
+        lock.original_home = std::env::var("HOME").ok();
+        lock.original_userprofile = std::env::var("USERPROFILE").ok();
+        EnvGuard { _lock: lock }
+    }
+}
+
+impl Drop for EnvGuard {
+    fn drop(&mut self) {
+        if let Some(home) = self._lock.original_home.as_ref() {
+            std::env::set_var("HOME", home);
+        } else {
+            std::env::remove_var("HOME");
+        }
+        if let Some(userprofile) = self._lock.original_userprofile.as_ref() {
+            std::env::set_var("USERPROFILE", userprofile);
+        } else {
+            std::env::remove_var("USERPROFILE");
+        }
+    }
 }
 
 // ============================================================================
