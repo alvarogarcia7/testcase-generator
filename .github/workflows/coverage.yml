@@ -34,10 +34,9 @@ jobs:
       run: cargo build --all
 
     - name: Run coverage with minimum threshold
-      run: cargo llvm-cov --all-features --workspace --ignore-filename-regex '(fuzzy\.rs|prompts\.rs|main_editor\.rs)' --fail-under-lines 63
-
-    - name: Generate LCOV report
-      run: cargo llvm-cov --all-features --workspace --ignore-filename-regex '(fuzzy\.rs|prompts\.rs|main_editor\.rs)' --lcov --output-path target/llvm-cov/lcov.info
+      run: |
+        mkdir -p target/llvm-cov
+        cargo llvm-cov --all-features --workspace --ignore-filename-regex '(fuzzy\.rs|prompts\.rs|main_editor\.rs)' --fail-under-lines 63 --lcov --output-path target/llvm-cov/lcov.info
       
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
@@ -46,29 +45,7 @@ jobs:
         fail_ci_if_error: false
         token: ${{ secrets.CODECOV_TOKEN }}
         
-    - name: Generate coverage summary
-      id: coverage-summary
-      run: |
-        SUMMARY=$(cargo llvm-cov report --all-features --workspace --ignore-filename-regex '(fuzzy\.rs|prompts\.rs|main_editor\.rs)')
-        echo "$SUMMARY"
-        echo "summary<<EOF" >> $GITHUB_OUTPUT
-        echo "$SUMMARY" >> $GITHUB_OUTPUT
-        echo "EOF" >> $GITHUB_OUTPUT
         
-    - name: Post coverage comment to PR
-      if: github.event_name == 'pull_request'
-      uses: actions/github-script@v7
-      with:
-        script: |
-          const summary = `${{ steps.coverage-summary.outputs.summary }}`;
-          const body = `## Coverage Report\n\n\`\`\`\n${summary}\n\`\`\`\n\n📊 Full coverage report available on [Codecov](https://codecov.io/gh/${{ github.repository }}/pull/${{ github.event.pull_request.number }})`;
-          
-          github.rest.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: body
-          });
           
     - name: Upload coverage artifacts
       if: always()
