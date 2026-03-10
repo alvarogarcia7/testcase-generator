@@ -2,9 +2,9 @@ name: Coverage
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, 'feature/**', 'f69c-*' ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, 'feature/**', 'f69c-*' ]
   workflow_dispatch:
 
 jobs:
