@@ -10,8 +10,6 @@ env:
   CARGO_INCREMENTAL: 0
   RUSTFLAGS: "-Dwarnings"
   RUSTDOCFLAGS: "-Dwarnings"
-  SCCACHE_GHA_ENABLED: "true"
-  RUSTC_WRAPPER: "sccache"
 
 jobs:
   build:
@@ -19,7 +17,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: RustCrypto/actions/cargo-cache@master
-      - uses: mozilla-actions/sccache-action@v0.0.3
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: stable
@@ -30,7 +27,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: RustCrypto/actions/cargo-cache@master
-      - uses: mozilla-actions/sccache-action@v0.0.3
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: stable
@@ -41,7 +37,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: RustCrypto/actions/cargo-cache@master
-      - uses: mozilla-actions/sccache-action@v0.0.3
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: stable
@@ -52,7 +47,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: mozilla-actions/sccache-action@v0.0.3
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: stable
