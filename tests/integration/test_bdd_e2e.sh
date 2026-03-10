@@ -21,6 +21,7 @@ BDD_EXAMPLES_DIR="$PROJECT_ROOT/testcases/bdd_examples"
 
 # Source logger library
 source "$SCRIPT_DIR/../../scripts/lib/logger.sh" || exit 1
+source "$SCRIPT_DIR/../../scripts/lib/shellcheck-helper.sh" || true
 
 # Handle --no-remove flag
 REMOVE_TEMP=1
@@ -130,6 +131,7 @@ for yaml_file in "${BDD_YAML_FILES[@]}"; do
         bash -n "$script_file" 2>&1 | head -5
         continue
     fi
+    validate_with_shellcheck "$script_file" "BDD script"
     
     # Check script contains shebang
     if head -n 1 "$script_file" | grep -q "#!/bin/bash"; then

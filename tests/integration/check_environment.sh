@@ -51,6 +51,16 @@ else
     ((ERRORS++))
 fi
 
+# Check for shellcheck
+echo -n "Checking for shellcheck... "
+if command -v shellcheck &> /dev/null; then
+    SHELLCHECK_VERSION=$(shellcheck --version 2>&1 | grep "^version:" | head -n1)
+    echo "✓ Found: $SHELLCHECK_VERSION"
+else
+    echo "⚠ NOT FOUND (optional - shellcheck validation will be skipped)"
+    ((WARNINGS++))
+fi
+
 # Check if binary exists
 echo -n "Checking for testcase-manager binary... "
 cd "$PROJECT_ROOT"

@@ -177,7 +177,33 @@ verify-scripts:
 	else \
 		echo "All shell scripts have valid syntax"; \
 	fi
+	$(MAKE) shellcheck
 .PHONY: verify-scripts
+
+shellcheck:
+	@echo "Running shellcheck on shell scripts (errors only)..."
+	@if ! command -v shellcheck > /dev/null 2>&1; then \
+		echo "Warning: shellcheck not installed, skipping"; \
+		exit 0; \
+	fi; \
+	FAILED=0; \
+	for script in $$(find scripts tests/integration -type f -name "*.sh" 2>/dev/null); do \
+		echo "Checking: $$script"; \
+		if shellcheck -S error "$$script" > /dev/null 2>&1; then \
+			echo "  ✓ PASSED"; \
+		else \
+			echo "  ✗ FAILED"; \
+			shellcheck -S error "$$script" 2>&1 | head -10; \
+			FAILED=1; \
+		fi; \
+	done; \
+	if [ $$FAILED -eq 1 ]; then \
+		echo "Some shellcheck validations failed"; \
+		exit 1; \
+	else \
+		echo "All shell scripts pass shellcheck"; \
+	fi
+.PHONY: shellcheck
 
 test-e2e-validate-yaml: build
 	cargo run --bin validate-yaml -- --schema data/schema.json tests/sample/gsma_4.4.2.2_TC.yml >/dev/null 2>&1

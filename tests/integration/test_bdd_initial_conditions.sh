@@ -21,6 +21,7 @@ BDD_DEFINITIONS="$PROJECT_ROOT/data/bdd_step_definitions.toml"
 
 # Source logger library
 source "$SCRIPT_DIR/../../scripts/lib/logger.sh" || exit 1
+source "$SCRIPT_DIR/../../scripts/lib/shellcheck-helper.sh" || true
 
 # Handle --no-remove flag
 REMOVE_TEMP=1
@@ -184,6 +185,7 @@ else
     fail "Generated script has invalid bash syntax"
     exit 1
 fi
+validate_with_shellcheck "$GENERATED_SCRIPT" "Generated BDD script"
 
 # Test 3: Verify script contains BDD prerequisite commands
 section "Test 3: Verify Script Contains BDD Commands"
@@ -346,6 +348,7 @@ if bash -n "$COMPLEX_SCRIPT" 2>/dev/null; then
 else
     fail "Complex BDD script has invalid syntax"
 fi
+validate_with_shellcheck "$COMPLEX_SCRIPT" "Complex BDD script"
 
 # Test 7: Execute complex BDD script
 section "Test 7: Execute Complex BDD Script"

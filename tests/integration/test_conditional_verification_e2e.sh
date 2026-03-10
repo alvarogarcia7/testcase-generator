@@ -20,6 +20,7 @@ TEST_EXECUTOR_BIN="$PROJECT_ROOT/target/debug/test-executor"
 
 # Source logger library
 source "$SCRIPT_DIR/../../scripts/lib/logger.sh" || exit 1
+source "$SCRIPT_DIR/../../scripts/lib/shellcheck-helper.sh" || true
 
 # Handle --no-remove flag
 REMOVE_TEMP=1
@@ -133,6 +134,7 @@ if bash -n "$PASSING_CONDITION_SCRIPT" 2>/dev/null; then
 else
     fail "Passing condition script has invalid bash syntax"
 fi
+validate_with_shellcheck "$PASSING_CONDITION_SCRIPT" "Passing condition script"
 
 # Execute the script
 PASSING_OUTPUT="$TEMP_DIR/passing_output.txt"
@@ -227,6 +229,7 @@ if bash -n "$EXPECTED_ERROR_SCRIPT" 2>/dev/null; then
 else
     fail "Expected error script has invalid bash syntax"
 fi
+validate_with_shellcheck "$EXPECTED_ERROR_SCRIPT" "Expected error script"
 
 # Execute the script
 EXPECTED_ERROR_OUTPUT="$TEMP_DIR/expected_error_output.txt"
@@ -315,6 +318,7 @@ if bash -n "$WRONG_EXIT_SCRIPT" 2>/dev/null; then
 else
     fail "Wrong exit code script has invalid bash syntax"
 fi
+validate_with_shellcheck "$WRONG_EXIT_SCRIPT" "Wrong exit code script"
 
 # Execute the script (should fail because condition is false and if_false has exit 1)
 WRONG_EXIT_OUTPUT="$TEMP_DIR/wrong_exit_output.txt"
@@ -411,6 +415,7 @@ if bash -n "$ACTION_SUCCESS_SCRIPT" 2>/dev/null; then
 else
     fail "Action success script has invalid bash syntax"
 fi
+validate_with_shellcheck "$ACTION_SUCCESS_SCRIPT" "Action success script"
 
 # Execute the script
 ACTION_SUCCESS_OUTPUT="$TEMP_DIR/action_success_output.txt"
@@ -506,6 +511,7 @@ if bash -n "$OUTPUT_CONDITIONAL_SCRIPT" 2>/dev/null; then
 else
     fail "Output conditional script has invalid bash syntax"
 fi
+validate_with_shellcheck "$OUTPUT_CONDITIONAL_SCRIPT" "Output conditional script"
 
 # Execute the script
 OUTPUT_CONDITIONAL_OUTPUT="$TEMP_DIR/output_conditional_output.txt"
@@ -608,6 +614,7 @@ if bash -n "$MIXED_SCRIPT" 2>/dev/null; then
 else
     fail "Mixed verification script has invalid bash syntax"
 fi
+validate_with_shellcheck "$MIXED_SCRIPT" "Mixed verification script"
 
 # Execute the script
 MIXED_OUTPUT="$TEMP_DIR/mixed_output.txt"
