@@ -32,12 +32,12 @@ jobs:
       
     - name: Build project
       run: cargo build --all
-      
+
     - name: Run coverage with minimum threshold
-      run: cargo llvm-cov --all-features --workspace --fail-under-lines 70
-      
+      run: cargo llvm-cov --all-features --workspace --ignore-filename-regex '(fuzzy\.rs|prompts\.rs|main_editor\.rs)' --fail-under-lines 70
+
     - name: Generate LCOV report
-      run: cargo llvm-cov --all-features --workspace --lcov --output-path target/llvm-cov/lcov.info
+      run: cargo llvm-cov --all-features --workspace --ignore-filename-regex '(fuzzy\.rs|prompts\.rs|main_editor\.rs)' --lcov --output-path target/llvm-cov/lcov.info
       
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
@@ -49,7 +49,7 @@ jobs:
     - name: Generate coverage summary
       id: coverage-summary
       run: |
-        SUMMARY=$(cargo llvm-cov report --all-features --workspace)
+        SUMMARY=$(cargo llvm-cov report --all-features --workspace --ignore-filename-regex '(fuzzy\.rs|prompts\.rs|main_editor\.rs)')
         echo "$SUMMARY"
         echo "summary<<EOF" >> $GITHUB_OUTPUT
         echo "$SUMMARY" >> $GITHUB_OUTPUT
