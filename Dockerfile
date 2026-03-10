@@ -79,12 +79,12 @@ RUN chmod +x scripts/*.sh && \
     find scripts -type f -name "*.sh" -exec chmod +x {} \;
 
 # Create a helper script for easy watch mode usage
-RUN cat > /usr/local/bin/watch-yaml << 'WATCHEOF'
-#!/bin/bash
-# Helper script to start watch mode easily
-cd /app
-exec ./scripts/watch-yaml-files.sh "$@"
-WATCHEOF
+#RUN cat > /usr/local/bin/watch-yaml << 'WATCHEOF'
+##!/bin/bash
+## Helper script to start watch mode easily
+#cd /app
+#exec ./scripts/watch-yaml-files.sh "$@"
+#WATCHEOF
 
 RUN chmod +x /usr/local/bin/watch-yaml
 
