@@ -587,6 +587,39 @@ impl TestExecutor {
         // Add trap to ensure JSON file is properly closed on any exit
         script.push_str("# Trap to ensure JSON file is closed properly on exit\n");
         script.push_str("cleanup() {\n");
+        script.push_str("    EXIT_CODE=$?\n");
+        script.push_str("    \n");
+
+        // Execute teardown_test hook in cleanup
+        if let Some(ref hooks) = test_case.hooks {
+            if let Some(ref hook) = hooks.teardown_test {
+                script.push_str("    # Execute teardown_test hook\n");
+                let hook_code = Self::generate_hook_execution("teardown_test", hook);
+                // Indent the hook code for the cleanup function
+                for line in hook_code.lines() {
+                    script.push_str("    ");
+                    script.push_str(line);
+                    script.push('\n');
+                }
+                script.push_str("    \n");
+            }
+        }
+
+        // Execute script_end hook in cleanup
+        if let Some(ref hooks) = test_case.hooks {
+            if let Some(ref hook) = hooks.script_end {
+                script.push_str("    # Execute script_end hook\n");
+                let hook_code = Self::generate_hook_execution("script_end", hook);
+                // Indent the hook code for the cleanup function
+                for line in hook_code.lines() {
+                    script.push_str("    ");
+                    script.push_str(line);
+                    script.push('\n');
+                }
+                script.push_str("    \n");
+            }
+        }
+
         script.push_str("    if [ -f \"$JSON_LOG\" ]; then\n");
         script.push_str("        # Check if JSON_LOG ends with '[' or ','\n");
         script.push_str("        LAST_CHAR=$(tail -c 2 \"$JSON_LOG\" | head -c 1)\n");
@@ -602,6 +635,8 @@ impl TestExecutor {
         script.push_str("            fi\n");
         script.push_str("        fi\n");
         script.push_str("    fi\n");
+        script.push_str("    \n");
+        script.push_str("    exit $EXIT_CODE\n");
         script.push_str("}\n");
         script.push_str("trap cleanup EXIT\n\n");
 
@@ -1293,22 +1328,7 @@ impl TestExecutor {
         script.push_str("    fi\n");
         script.push_str("fi\n\n");
 
-        // Execute teardown_test hook after all sequences
-        if let Some(ref hooks) = test_case.hooks {
-            if let Some(ref hook) = hooks.teardown_test {
-                script.push_str(&Self::generate_hook_execution("teardown_test", hook));
-            }
-        }
-
         script.push_str("echo \"All test sequences completed successfully\"\n");
-
-        // Execute script_end hook before final exit
-        if let Some(ref hooks) = test_case.hooks {
-            if let Some(ref hook) = hooks.script_end {
-                script.push_str(&Self::generate_hook_execution("script_end", hook));
-            }
-        }
-
         script.push_str("exit 0\n");
 
         script

@@ -864,7 +864,7 @@ fn test_hook_execution_order_in_script() {
     let executor = TestExecutor::new();
     let script = executor.generate_test_script(&test_case);
 
-    // Verify hook execution order
+    // Verify hook execution order in the script
     let script_start_pos = script.find("# Execute script_start hook").unwrap();
     let setup_test_pos = script.find("# Execute setup_test hook").unwrap();
     let before_sequence_pos = script.find("# Execute before_sequence hook").unwrap();
@@ -873,15 +873,21 @@ fn test_hook_execution_order_in_script() {
     let after_sequence_pos = script.find("# Execute after_sequence hook").unwrap();
     let teardown_test_pos = script.find("# Execute teardown_test hook").unwrap();
     let script_end_pos = script.find("# Execute script_end hook").unwrap();
+    let cleanup_pos = script.find("cleanup() {").unwrap();
 
-    // Verify correct order
+    // Verify correct order for hooks executed in main flow
     assert!(script_start_pos < setup_test_pos);
     assert!(setup_test_pos < before_sequence_pos);
     assert!(before_sequence_pos < before_step_pos);
     assert!(before_step_pos < after_step_pos);
     assert!(after_step_pos < after_sequence_pos);
-    assert!(after_sequence_pos < teardown_test_pos);
+    
+    // Verify that teardown_test and script_end are in the cleanup function
+    // (defined early but executed at the end via trap)
+    assert!(cleanup_pos < teardown_test_pos);
     assert!(teardown_test_pos < script_end_pos);
+    assert!(teardown_test_pos < setup_test_pos); // In cleanup, defined before main execution
+    assert!(script_end_pos < setup_test_pos); // In cleanup, defined before main execution
 }
 
 #[test]
