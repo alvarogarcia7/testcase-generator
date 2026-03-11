@@ -118,6 +118,7 @@ test-e2e:
 	./tests/integration/test_variable_passing_e2e.sh
 	./tests/integration/test_verifier_e2e.sh
 	#./tests/integration/test_verify_e2e.sh
+	${MAKE} test-e2e-hooks-trap
 	BUILD_VARIANT="" ./scripts/run_verifier_and_generate_reports.sh
 .PHONY: test-e2e
 
@@ -325,6 +326,10 @@ test-e2e-orchestrator: build
 test-e2e-orchestrator-examples: build
 	./tests/integration/test_orchestrator_examples.sh
 .PHONY: test-e2e-orchestrator-examples
+
+test-e2e-hooks-trap: build
+	./tests/integration/test_hooks_trap_failure_e2e.sh
+.PHONY: test-e2e-hooks-trap
 
 generate-docs: build
 	./scripts/generate_documentation_reports.sh
