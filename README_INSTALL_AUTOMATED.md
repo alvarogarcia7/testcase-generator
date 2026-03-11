@@ -137,44 +137,6 @@ Options:
   -h, --help     Print help
   -V, --version  Print version
 ```
-## testcase-manager 
-```
-A tool for managing test cases in YAML format
-
-Usage: testcase-manager [OPTIONS] <COMMAND>
-
-Commands:
-  create                             Create a new test case
-  create-general-initial-conditions  
-  edit                               Edit an existing test case
-  list                               List all test cases
-  view                               View a test case
-  delete                             Delete a test case
-  validate                           Validate test case files
-  search                             Search test cases using fuzzy finder
-  export                             Export test cases to a test suite file
-  import                             Import test cases from a test suite file
-  git                                Git operations
-  init                               Initialize a new test case repository
-  create-interactive                 Create test case interactively with metadata prompts
-  build-sequences                    Build test sequences interactively with git commits
-  add-steps                          Add steps to a test sequence with git commits
-  build-sequences-with-steps         Build test sequences with step collection loops and commits
-  complete                           Complete interactive workflow: metadata, conditions, sequences, steps with git commits
-  parse-general-conditions           Parse general initial conditions from database with fuzzy search
-  parse-initial-conditions           Parse initial conditions from database with fuzzy search
-  parse-initial-conditions-complex   Parse initial conditions from database with fuzzy search
-  validate-yaml                      Validate a YAML payload against a JSON schema
-  export-junit-xml                   Export test runs to JUnit XML format
-  validate-junit-xml                 Validate JUnit XML file against XSD schema
-  help                               Print this message or the help of the given subcommand(s)
-
-Options:
-  -p, --path <PATH>  Path to the test cases directory [default: ./testcases]
-  -v, --verbose      Enable verbose logging
-  -h, --help         Print help
-  -V, --version      Print version
-```
 ## trm 
 ```
 Manage test run execution records

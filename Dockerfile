@@ -70,9 +70,6 @@ for bin in target/release/*; do \
   fi; \
 done
 
-# Verify shellcheck is installed
-RUN shellcheck --version
-
 # Run tests to ensure everything compiles and passes
 # Run unit tests only (skip integration tests that require binaries in specific PATH)
 RUN cargo test --lib --all-features && \

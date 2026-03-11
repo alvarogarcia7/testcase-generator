@@ -1,0 +1,82 @@
+version: '3.8'
+
+services:
+  testcase-manager:
+    image: testcase-manager:latest
+    container_name: testcase-manager
+    build:
+      context: .
+      dockerfile: Dockerfile
+    
+    # Interactive terminal with TTY
+    stdin_open: true
+    tty: true
+    
+    # Windows-style volume mounts
+    # These paths use Windows format and will be automatically converted by Docker
+    volumes:
+      # Mount testcases directory (read/write)
+      - ./testcases:/app/testcases
+      
+      # Mount data directory (read/write)
+      - ./data:/app/data
+      
+      # Mount schemas directory (read-only)
+      - ./schemas:/app/schemas:ro
+      
+      # Mount scripts directory (read-only)
+      - ./scripts:/app/scripts:ro
+      
+      # Mount examples directory (read-only)
+      - ./examples:/app/examples:ro
+      
+      # Volume for git configuration (optional)
+      # Uncomment if you want to persist git config
+      # - testcase-manager-git:/root/.gitconfig
+      
+      # Volume for generated outputs
+      - ./output:/app/output
+    
+    # Environment variables
+    environment:
+      # Git configuration (customize these)
+      - GIT_AUTHOR_NAME=${GIT_AUTHOR_NAME:-Test User}
+      - GIT_AUTHOR_EMAIL=${GIT_AUTHOR_EMAIL:-test@example.com}
+      - GIT_COMMITTER_NAME=${GIT_COMMITTER_NAME:-Test User}
+      - GIT_COMMITTER_EMAIL=${GIT_COMMITTER_EMAIL:-test@example.com}
+      
+      # Editor configuration
+      - EDITOR=${EDITOR:-vim}
+      - VISUAL=${VISUAL:-vim}
+      - TESTCASE_EDITOR=${TESTCASE_EDITOR:-vim}
+      
+      # Application configuration
+      - RUST_LOG=${RUST_LOG:-info}
+      - VERBOSE=${VERBOSE:-0}
+      
+      # Timezone (optional)
+      - TZ=${TZ:-UTC}
+    
+    # Working directory
+    working_dir: /app
+    
+    # Default command (can be overridden)
+    command: tcm
+    
+    # Network mode
+    network_mode: bridge
+    
+    # Resource limits (optional, adjust as needed)
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '2'
+    #       memory: 2G
+    #     reservations:
+    #       cpus: '1'
+    #       memory: 512M
+
+# Optional: named volumes
+# volumes:
+#   testcase-manager-git:
+#     driver: local
