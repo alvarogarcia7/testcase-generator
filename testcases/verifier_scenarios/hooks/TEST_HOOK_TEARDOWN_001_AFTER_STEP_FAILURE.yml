@@ -1,0 +1,50 @@
+requirement: "HOOK_TEARDOWN_TEST_ERROR"
+item: 1
+tc: 1
+id: 'TEST_HOOK_TEARDOWN_001'
+description: 'B56E33C6-20D8-447D-B170-17AD3442F5A4 Hook error scenario for teardown_test hook - script exits with error code during test cleanup'
+
+general_initial_conditions:
+  system:
+    - "Shell environment is available"
+
+initial_conditions:
+  system:
+    - "All commands can be executed"
+
+hooks:
+  teardown_test:
+    command: "scripts/cleanup.sh"
+    on_error: "failure"
+
+test_sequences:
+  - id: 1
+    name: "First Sequence - Completes Successfully"
+    description: |
+                   First test sequence where all steps execute successfully.
+                   The teardown_test hook will fail after all sequences complete,
+                   demonstrating error handling in the final test cleanup phase.
+    initial_conditions:
+      system:
+        - "Shell is ready"
+    steps:
+      - step: 1
+        description: "FAIL ON PURPOSE"
+        command: echo "Sequence 1 - Step 1 executed"
+        expected:
+          success: true
+          result: 0
+          output: "Sequence 1 - Step 1 executed"
+        verification:
+          result: "false"
+          output: "grep -q 'Sequence 1 - Step 1 executed' <<< \"$COMMAND_OUTPUT\""
+      - step: 2
+        description: "SHOULD NEVER EXECUTE"
+        command: echo "Sequence 1 - Step 2 executed"
+        expected:
+          success: true
+          result: 0
+          output: "Sequence 1 - Step 2 executed"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Sequence 1 - Step 2 executed' <<< \"$COMMAND_OUTPUT\""

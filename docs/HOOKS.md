@@ -13,6 +13,7 @@ The hooks system provides lifecycle management for test execution, allowing you 
 - [Sourcing vs Execution Behavior](#sourcing-vs-execution-behavior)
 - [Use Cases for Each Hook Type](#use-cases-for-each-hook-type)
 - [Examples from TC_HOOKS_001.yaml](#examples-from-tc_hooks_001yaml)
+- [Usage of Variables in Hooks](#usage-of-variables-in-hooks)
 - [Best Practices](#best-practices)
 
 ## Eight Hook Types
@@ -22,11 +23,14 @@ The test execution system provides eight hook types that execute at different po
 1. **`script_start`** - Executes once at the very beginning of test script execution
 2. **`setup_test`** - Executes once after prerequisites, before any test sequences
 3. **`before_sequence`** - Executes before each test sequence starts
-4. **`after_sequence`** - Executes after each test sequence completes
-5. **`before_step`** - Executes before each test step runs
-6. **`after_step`** - Executes after each test step completes
+4. **`before_step`** - Executes before each test step runs
+5. **`after_step`** - Executes after each test step completes
+6. **`after_sequence`** - Executes after each test sequence completes
 7. **`teardown_test`** - Executes once after all test sequences complete
 8. **`script_end`** - Executes once at the very end of test script execution
+
+[B56E33C6-20D8-447D-B170-17AD3442F5A4]
+Note: all the hooks will be executed even if a test step fails, allowing for robust cleanup and logging.
 
 ## Execution Points in Test Lifecycle
 
@@ -682,6 +686,20 @@ fi
 
 log_info "HOOK: teardown_test - Cleanup completed"
 ```
+
+## Usage of Variables in hooks
+
+```yaml
+  script_start:
+    command: "VARIABLE_NAME=value"
+```
+
+Then the variable name `VARIABLE_NAME` will be available as an environment variable in all hooks:
+
+```bash
+echo "Variable value: $VARIABLE_NAME"
+```
+
 
 ## Best Practices
 
