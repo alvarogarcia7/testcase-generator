@@ -7,6 +7,8 @@
 
 set -e
 
+BUILD_VARIANT="${BUILD_VARIANT:---release}"
+
 # Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -26,7 +28,7 @@ echo "Output directory: $OUTPUT_DIR"
 echo ""
 echo "=== Building verifier binary ==="
 cd "$PROJECT_ROOT"
-cargo build --release --bin verifier
+cargo build ${BUILD_VARIANT} --bin verifier
 
 if [ $? -ne 0 ]; then
     echo "✗ Failed to build verifier binary"
@@ -73,7 +75,7 @@ for SCENARIO_ENTRY in "${SCENARIOS[@]}"; do
     echo ""
     echo "Running verifier..."
     
-    cargo run --release --bin verifier -- \
+    cargo run ${BUILD_VARIANT} --bin verifier -- \
         --log "$EXECUTION_LOG" \
         --test-case "$TEST_CASE_ID" \
         --format json \

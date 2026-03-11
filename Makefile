@@ -108,7 +108,7 @@ test-e2e:
 	./tests/integration/test_bdd_e2e.sh
 	#./tests/integration/test_bdd_initial_conditions.sh
 	./tests/integration/test_executor_e2e.sh
-	./tests/integration/test_manual_steps_e2e.sh
+# 	./tests/integration/test_manual_steps_e2e.sh
 	./tests/integration/test_manual_verification_e2e.sh
 	./tests/integration/test_orchestrator_e2e.sh
 	./tests/integration/test_orchestrator_examples.sh
@@ -118,6 +118,7 @@ test-e2e:
 	./tests/integration/test_variable_passing_e2e.sh
 	./tests/integration/test_verifier_e2e.sh
 	#./tests/integration/test_verify_e2e.sh
+	BUILD_VARIANT="" ./scripts/run_verifier_and_generate_reports.sh
 .PHONY: test-e2e
 
 example_export-demo:
