@@ -23,6 +23,10 @@ build:
 	cargo build --all
 .PHONY: build
 
+build-debug:
+	cargo build --all
+.PHONY: build-debug
+
 test:
 	${MAKE} test-unit
 	${MAKE} test-e2e
