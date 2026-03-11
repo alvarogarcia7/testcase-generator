@@ -1246,10 +1246,10 @@ fn test_read_true_false_function_returns() {
 
     let script = executor.generate_test_script(&test_case);
 
-    // Verify return values (1 for yes, 0 for no)
+    // Verify return values (0 for yes, 1 for no - standard bash convention)
     assert!(script.contains("return 1"));
     assert!(script.contains("return 0"));
-    assert!(script.contains("# Returns: 1 for yes, 0 for no"));
+    assert!(script.contains("# Returns: 0 for yes, 1 for no (standard bash convention)"));
 }
 
 #[test]
@@ -1318,10 +1318,10 @@ fn test_read_verification_function_returns() {
 
     let script = executor.generate_test_script(&test_case);
 
-    // Verify return values (1 for yes, 0 for no) in read_verification
+    // Verify return values (0 for yes, 1 for no - standard bash convention) in read_verification
     assert!(script.contains("return 1"));
     assert!(script.contains("return 0"));
-    assert!(script.contains("# Returns: 1 for yes, 0 for no"));
+    assert!(script.contains("# Returns: 0 for yes, 1 for no (standard bash convention)"));
 }
 
 #[test]
@@ -1545,7 +1545,7 @@ fn test_helper_functions_comment_documentation() {
     // Verify documentation comments
     assert!(script.contains("# Bash helper functions for user prompts"));
     assert!(script.contains("# Prompts user for Y/n input with proper validation"));
-    assert!(script.contains("# Returns: 1 for yes, 0 for no"));
+    assert!(script.contains("# Returns: 0 for yes, 1 for no (standard bash convention)"));
     assert!(
         script.contains("# Supports both interactive and non-interactive modes with TTY detection")
     );

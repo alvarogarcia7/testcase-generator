@@ -262,19 +262,19 @@ else
     fail "Script missing manual step info message"
 fi
 
-# Check for read prompt
-if grep -q 'read -p "Press ENTER to continue..."' "$MANUAL_SCRIPT"; then
-    pass "Script contains read prompt for user input"
+# Check for read_true_false prompt for manual steps
+if grep -q 'read_true_false "Have you completed the manual step?"' "$MANUAL_SCRIPT"; then
+    pass "Script contains read_true_false prompt for manual steps"
 else
-    fail "Script missing read prompt"
+    fail "Script missing read_true_false prompt"
 fi
 
-# Verify multiple read prompts for multiple manual steps
-READ_PROMPT_COUNT=$(grep -c 'read -p "Press ENTER to continue..."' "$MANUAL_SCRIPT")
+# Verify multiple read_true_false prompts for multiple manual steps
+READ_PROMPT_COUNT=$(grep -c 'read_true_false "Have you completed the manual step?"' "$MANUAL_SCRIPT")
 if [[ $READ_PROMPT_COUNT -eq 3 ]]; then
-    pass "Script contains correct number of read prompts (3 manual steps)"
+    pass "Script contains correct number of read_true_false prompts (3 manual steps)"
 else
-    fail "Script has incorrect number of read prompts: expected 3, got $READ_PROMPT_COUNT"
+    fail "Script has incorrect number of read_true_false prompts: expected 3, got $READ_PROMPT_COUNT"
 fi
 
 # Test 6: Verify manual steps don't create log files
@@ -324,7 +324,7 @@ else
 fi
 
 # Verify manual steps don't use tee command
-MANUAL_STEPS_WITH_TEE=$(grep -B 5 'read -p "Press ENTER to continue..."' "$MANUAL_SCRIPT" | grep -c '| tee' || true)
+MANUAL_STEPS_WITH_TEE=$(grep -B 5 'read_true_false "Have you completed the manual step?"' "$MANUAL_SCRIPT" | grep -c '| tee' || true)
 if [[ $MANUAL_STEPS_WITH_TEE -eq 0 ]]; then
     pass "Manual steps correctly don't use tee command"
 else
