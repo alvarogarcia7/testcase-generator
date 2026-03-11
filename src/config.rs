@@ -4,12 +4,15 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum JsonEscapingMethod {
+    #[serde(rename = "rust_binary")]
     RustBinary,
+    #[serde(rename = "shell_fallback")]
     ShellFallback,
     #[default]
+    #[serde(rename = "auto")]
     Auto,
 }
 
@@ -109,6 +112,7 @@ pub struct GitAuthorInfo {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct CommitMessageTemplates {
     pub add_testcase: Option<String>,
     pub update_testcase: Option<String>,

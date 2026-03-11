@@ -1,7 +1,18 @@
 # Build artifacts
 target/
 
-*.json
+# Specific JSON exclusions (preserving schemas/*.json, data/*.json, testcases/**/*_execution_log.json)
+target/**/*.json
+**/.recovery.json
+**/*.tmp.json
+test-output/**/*.json
+
+# Explicitly preserve required JSON files for tests
+!schemas/*.json
+!schemas/**/*.json
+!data/*.json
+!data/**/*.json
+!testcases/**/*_execution_log.json
 
 # Version control
 .git/
@@ -18,7 +29,6 @@ target/
 # Temporary and backup files
 *.tmp
 *.bak
-.recovery.json
 
 # Environment files
 .env

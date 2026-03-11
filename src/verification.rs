@@ -31,6 +31,7 @@ pub struct StepVerificationResult {
 
 /// Result of verifying a single step (enum-based, for batch verification)
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(tag = "status", rename_all = "snake_case")]
 pub enum StepVerificationResultEnum {
     /// Step passed verification
     Pass {
