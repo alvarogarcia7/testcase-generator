@@ -956,3 +956,342 @@ fn test_default_test_case_dir() {
     // (but might fail because test case doesn't exist in default location)
     assert!(!stderr.contains("required arguments"));
 }
+
+// ============================================================================
+// Verbose Flag Tests
+// ============================================================================
+
+#[test]
+fn test_verbose_flag_enables_debug_logging_single_file_mode() {
+    let temp_dir = TempDir::new().unwrap();
+    let log_file = temp_dir.path().join("TC001_execution_log.json");
+    let test_case_dir = temp_dir.path().join("testcases");
+
+    create_test_case_yaml(&test_case_dir, "TC001");
+    create_execution_log(&log_file, "TC001");
+
+    // Run with --verbose flag
+    let output = std::process::Command::new("cargo")
+        .args([
+            "run",
+            "--bin",
+            "verifier",
+            "--",
+            "--log",
+            log_file.to_str().unwrap(),
+            "--test-case",
+            "TC001",
+            "-d",
+            test_case_dir.to_str().unwrap(),
+            "--verbose",
+        ])
+        .output()
+        .unwrap();
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    // Verify that debug-level messages are present
+    // Check for debug messages that should appear in single-file mode
+    assert!(
+        stderr.contains("Single-file mode: test case ID")
+            || stderr.contains("Parsing log file:")
+            || stderr.contains("Loading test case definition")
+            || stderr.contains("Successfully parsed log file")
+            || stderr.contains("Verifying test case")
+            || stderr.contains("Creating batch report"),
+        "Expected debug messages in verbose mode, but stderr was: {}",
+        stderr
+    );
+}
+
+#[test]
+fn test_verbose_flag_short_form_enables_debug_logging() {
+    let temp_dir = TempDir::new().unwrap();
+    let log_file = temp_dir.path().join("TC001_execution_log.json");
+    let test_case_dir = temp_dir.path().join("testcases");
+
+    create_test_case_yaml(&test_case_dir, "TC001");
+    create_execution_log(&log_file, "TC001");
+
+    // Run with -v flag (short form)
+    let output = std::process::Command::new("cargo")
+        .args([
+            "run",
+            "--bin",
+            "verifier",
+            "--",
+            "--log",
+            log_file.to_str().unwrap(),
+            "--test-case",
+            "TC001",
+            "-d",
+            test_case_dir.to_str().unwrap(),
+            "-v",
+        ])
+        .output()
+        .unwrap();
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    // Verify that debug-level messages are present
+    assert!(
+        stderr.contains("Single-file mode: test case ID")
+            || stderr.contains("Parsing log file:")
+            || stderr.contains("Loading test case definition")
+            || stderr.contains("Successfully parsed log file")
+            || stderr.contains("Verifying test case")
+            || stderr.contains("Creating batch report"),
+        "Expected debug messages in verbose mode, but stderr was: {}",
+        stderr
+    );
+}
+
+#[test]
+fn test_without_verbose_flag_debug_messages_suppressed_single_file_mode() {
+    let temp_dir = TempDir::new().unwrap();
+    let log_file = temp_dir.path().join("TC001_execution_log.json");
+    let test_case_dir = temp_dir.path().join("testcases");
+
+    create_test_case_yaml(&test_case_dir, "TC001");
+    create_execution_log(&log_file, "TC001");
+
+    // Run WITHOUT --verbose flag
+    let output = std::process::Command::new("cargo")
+        .args([
+            "run",
+            "--bin",
+            "verifier",
+            "--",
+            "--log",
+            log_file.to_str().unwrap(),
+            "--test-case",
+            "TC001",
+            "-d",
+            test_case_dir.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    // Verify that debug-level messages are NOT present
+    // These specific debug messages should not appear without verbose flag
+    assert!(
+        !stderr.contains("Single-file mode: test case ID"),
+        "Debug message 'Single-file mode: test case ID' should not appear without verbose flag"
+    );
+    assert!(
+        !stderr.contains("Successfully parsed log file with"),
+        "Debug message 'Successfully parsed log file with' should not appear without verbose flag"
+    );
+    assert!(
+        !stderr.contains("Successfully loaded test case")
+            || !stderr.contains("with")
+            || !stderr.contains("test sequences"),
+        "Debug message about successfully loaded test case should not appear without verbose flag"
+    );
+    assert!(
+        !stderr.contains("Creating batch report with single test case result"),
+        "Debug message 'Creating batch report' should not appear without verbose flag"
+    );
+
+    // Info-level messages should still be present
+    assert!(
+        stderr.contains("Processing log file:") || output.status.success(),
+        "Info-level messages should still be present"
+    );
+}
+
+#[test]
+fn test_verbose_flag_enables_debug_logging_folder_mode() {
+    let temp_dir = TempDir::new().unwrap();
+    let folder_path = temp_dir.path().join("logs");
+    let test_case_dir = temp_dir.path().join("testcases");
+    let log_file = folder_path.join("TC001_execution_log.json");
+
+    create_test_case_yaml(&test_case_dir, "TC001");
+    fs::create_dir_all(&folder_path).unwrap();
+    create_execution_log(&log_file, "TC001");
+
+    // Run with --verbose flag in folder mode
+    let output = std::process::Command::new("cargo")
+        .args([
+            "run",
+            "--bin",
+            "verifier",
+            "--",
+            "--folder",
+            folder_path.to_str().unwrap(),
+            "-d",
+            test_case_dir.to_str().unwrap(),
+            "--verbose",
+        ])
+        .output()
+        .unwrap();
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    // Verify that debug-level messages are present
+    // Check for debug messages that should appear in folder mode
+    assert!(
+        stderr.contains("Starting folder discovery mode")
+            || stderr.contains("Discovered log files:")
+            || stderr.contains("Extracted test case ID:")
+            || stderr.contains("Parsing log file:")
+            || stderr.contains("Loading test case definition")
+            || stderr.contains("Verifying test case")
+            || stderr.contains("Added test case result to batch report")
+            || stderr.contains("Folder mode processing complete"),
+        "Expected debug messages in verbose mode, but stderr was: {}",
+        stderr
+    );
+}
+
+#[test]
+fn test_without_verbose_flag_debug_messages_suppressed_folder_mode() {
+    let temp_dir = TempDir::new().unwrap();
+    let folder_path = temp_dir.path().join("logs");
+    let test_case_dir = temp_dir.path().join("testcases");
+    let log_file = folder_path.join("TC001_execution_log.json");
+
+    create_test_case_yaml(&test_case_dir, "TC001");
+    fs::create_dir_all(&folder_path).unwrap();
+    create_execution_log(&log_file, "TC001");
+
+    // Run WITHOUT --verbose flag in folder mode
+    let output = std::process::Command::new("cargo")
+        .args([
+            "run",
+            "--bin",
+            "verifier",
+            "--",
+            "--folder",
+            folder_path.to_str().unwrap(),
+            "-d",
+            test_case_dir.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    // Verify that debug-level messages are NOT present
+    assert!(
+        !stderr.contains("Starting folder discovery mode for:"),
+        "Debug message 'Starting folder discovery mode for:' should not appear without verbose flag"
+    );
+    assert!(
+        !stderr.contains("Discovered log files:"),
+        "Debug message 'Discovered log files:' should not appear without verbose flag"
+    );
+    assert!(
+        !stderr.contains("Extracted test case ID:"),
+        "Debug message 'Extracted test case ID:' should not appear without verbose flag"
+    );
+    assert!(
+        !stderr.contains("Successfully parsed log file with"),
+        "Debug message 'Successfully parsed log file with' should not appear without verbose flag"
+    );
+    assert!(
+        !stderr.contains("Successfully loaded test case")
+            || !stderr.contains("with")
+            || !stderr.contains("test sequences"),
+        "Debug message about successfully loaded test case should not appear without verbose flag"
+    );
+    assert!(
+        !stderr.contains("Added test case result to batch report"),
+        "Debug message 'Added test case result to batch report' should not appear without verbose flag"
+    );
+    assert!(
+        !stderr.contains("Folder mode processing complete"),
+        "Debug message 'Folder mode processing complete' should not appear without verbose flag"
+    );
+
+    // Info-level messages should still be present
+    assert!(
+        stderr.contains("Found 1 execution log file") || output.status.success(),
+        "Info-level messages should still be present"
+    );
+}
+
+#[test]
+fn test_verbose_flag_with_empty_folder() {
+    let temp_dir = TempDir::new().unwrap();
+    let folder_path = temp_dir.path().join("logs");
+    let test_case_dir = temp_dir.path().join("testcases");
+
+    create_test_case_yaml(&test_case_dir, "TC001");
+    fs::create_dir_all(&folder_path).unwrap();
+
+    // Run with --verbose flag on empty folder
+    let output = std::process::Command::new("cargo")
+        .args([
+            "run",
+            "--bin",
+            "verifier",
+            "--",
+            "--folder",
+            folder_path.to_str().unwrap(),
+            "-d",
+            test_case_dir.to_str().unwrap(),
+            "--verbose",
+        ])
+        .output()
+        .unwrap();
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    // Verify that debug-level messages about empty folder are present
+    assert!(
+        stderr.contains("Starting folder discovery mode")
+            || stderr.contains("Folder discovery completed with no files found")
+            || stderr.contains("Log file discovery complete"),
+        "Expected debug messages about empty folder in verbose mode, but stderr was: {}",
+        stderr
+    );
+}
+
+#[test]
+fn test_verbose_flag_with_multiple_log_files() {
+    let temp_dir = TempDir::new().unwrap();
+    let folder_path = temp_dir.path().join("logs");
+    let test_case_dir = temp_dir.path().join("testcases");
+
+    create_test_case_yaml(&test_case_dir, "TC001");
+    create_test_case_yaml(&test_case_dir, "TC002");
+    fs::create_dir_all(&folder_path).unwrap();
+    create_execution_log(&folder_path.join("TC001_execution_log.json"), "TC001");
+    create_execution_log(&folder_path.join("TC002_execution_log.json"), "TC002");
+
+    // Run with --verbose flag
+    let output = std::process::Command::new("cargo")
+        .args([
+            "run",
+            "--bin",
+            "verifier",
+            "--",
+            "--folder",
+            folder_path.to_str().unwrap(),
+            "-d",
+            test_case_dir.to_str().unwrap(),
+            "--verbose",
+        ])
+        .output()
+        .unwrap();
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    // Verify that debug messages appear for multiple files
+    assert!(
+        stderr.contains("Discovered log files:"),
+        "Expected debug message about discovered files"
+    );
+    assert!(
+        stderr.contains("Processing log file 1/2") || stderr.contains("Processing log file 2/2"),
+        "Expected debug messages about processing multiple files"
+    );
+    assert!(
+        stderr.contains("Folder mode processing complete"),
+        "Expected final debug message about completion"
+    );
+}
