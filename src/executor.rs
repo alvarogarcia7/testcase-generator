@@ -482,6 +482,60 @@ impl TestExecutor {
         code
     }
 
+    /// Generate bash code to execute a hook within a trap context
+    ///
+    /// This version ensures that:
+    /// - Hook execution uses `set +e` to prevent trap failures
+    /// - Hook exit codes are captured without affecting the original script exit code
+    /// - Warnings are logged if hooks fail (regardless of on_error setting)
+    /// - The original EXIT_CODE is preserved
+    #[allow(dead_code)]
+    fn generate_hook_execution_in_trap(
+        hook_name: &str,
+        hook_config: &crate::models::HookConfig,
+    ) -> String {
+        let mut code = String::new();
+
+        code.push_str(&format!("# Execute {} hook\n", hook_name));
+
+        // Check if command is a .sh file (source it) or another executable (execute it)
+        let command = &hook_config.command;
+        let is_sh_file = command.ends_with(".sh");
+
+        // In trap context, always use set +e to prevent trap failures
+        code.push_str("set +e\n");
+
+        if is_sh_file {
+            // Source .sh files
+            code.push_str(&format!("if [ -f \"{}\" ]; then\n", command));
+            code.push_str(&format!("    source \"{}\"\n", command));
+            code.push_str("    HOOK_EXIT_CODE=$?\n");
+            code.push_str("else\n");
+            code.push_str(&format!(
+                "    echo \"Warning: Hook script '{}' not found\" >&2\n",
+                command
+            ));
+            code.push_str("    HOOK_EXIT_CODE=127\n");
+            code.push_str("fi\n");
+        } else {
+            // Execute other files
+            code.push_str(&format!("{}\n", command));
+            code.push_str("HOOK_EXIT_CODE=$?\n");
+        }
+
+        // Always log warnings for hook failures in trap context, but never fail the trap
+        code.push_str("if [ $HOOK_EXIT_CODE -ne 0 ]; then\n");
+        code.push_str(&format!(
+            "    echo \"Warning: {} hook failed with exit code $HOOK_EXIT_CODE\" >&2\n",
+            hook_name
+        ));
+        code.push_str("fi\n");
+
+        // No need to restore set -e in trap context
+        code.push('\n');
+        code
+    }
+
     pub fn generate_test_script_with_json_output(
         &self,
         test_case: &TestCase,

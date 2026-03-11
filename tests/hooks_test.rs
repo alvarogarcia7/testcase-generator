@@ -881,7 +881,7 @@ fn test_hook_execution_order_in_script() {
     assert!(before_sequence_pos < before_step_pos);
     assert!(before_step_pos < after_step_pos);
     assert!(after_step_pos < after_sequence_pos);
-    
+
     // Verify that teardown_test and script_end are in the cleanup function
     // (defined early but executed at the end via trap)
     assert!(cleanup_pos < teardown_test_pos);
