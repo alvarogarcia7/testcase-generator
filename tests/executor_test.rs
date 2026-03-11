@@ -2173,7 +2173,7 @@ fn test_fail_fast_execution_log_written_before_exit() {
     let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
 
     // Step 1: Should pass
-    let step1 = create_test_step(1, "Step 1", "echo 'pass'", "0", "pass", Some(true));
+    let step1 = create_test_step(1, "Step 1", "echo 'success'", "0", "success", Some(true));
     sequence.steps.push(step1);
 
     // Step 2: Should fail
@@ -2217,7 +2217,7 @@ fn test_fail_fast_execution_log_written_before_exit() {
         "Step 1 should be in execution log"
     );
 
-    // Verify step 2 is in the log
+    // Verify step 2 is in the log (fail-fast stops after step 2 fails, but step 2 is still logged)
     assert!(
         entries.iter().any(|e| e.step == 2),
         "Step 2 should be in execution log"
@@ -2291,7 +2291,6 @@ fn test_fail_fast_error_contains_step_information() {
 }
 
 #[test]
-#[ignore = "52C2EF20-5FD5-431C-8B1A-2C13256F3F81. This test is more complex and may require adjustments to the implementation to support multiple sequences with fail-fast behavior."]
 fn test_fail_fast_stops_execution_in_sequence() {
     use std::fs;
 
@@ -2311,9 +2310,9 @@ fn test_fail_fast_stops_execution_in_sequence() {
         let mut step = create_test_step(
             i,
             &format!("Step {}", i),
-            &format!("echo 'step{}'", i),
+            "echo 'success'",
             "0",
-            &format!("step{}", i),
+            "success",
             Some(true),
         );
 
@@ -2419,7 +2418,6 @@ fn test_fail_fast_with_command_execution_error() {
 }
 
 #[test]
-#[ignore = "52C2EF20-5FD5-431C-8B1A-2C13256F3F81. This test is more complex and may require adjustments to the implementation to support multiple sequences with fail-fast behavior."]
 fn test_fail_fast_with_multiple_sequences() {
     use std::fs;
 
@@ -2434,7 +2432,14 @@ fn test_fail_fast_with_multiple_sequences() {
 
     // Sequence 1: Should pass
     let mut sequence1 = TestSequence::new(1, "Seq1".to_string(), "First sequence".to_string());
-    let step1 = create_test_step(1, "Seq1 Step1", "echo 'pass'", "0", "pass", Some(true));
+    let step1 = create_test_step(
+        1,
+        "Seq1 Step1",
+        "echo 'success'",
+        "0",
+        "success",
+        Some(true),
+    );
     sequence1.steps.push(step1);
     test_case.test_sequences.push(sequence1);
 
@@ -2558,9 +2563,9 @@ fn test_fail_fast_preserves_execution_log_on_failure() {
         let step = create_test_step(
             i,
             &format!("Step {}", i),
-            &format!("echo 'output{}'", i),
+            "echo 'success'",
             "0",
-            &format!("output{}", i),
+            "success",
             Some(true),
         );
         sequence.steps.push(step);
@@ -2568,7 +2573,7 @@ fn test_fail_fast_preserves_execution_log_on_failure() {
 
     // Add failing step
     let mut failing_step =
-        create_test_step(4, "Failing step", "echo 'fail'", "0", "pass", Some(true));
+        create_test_step(4, "Failing step", "echo 'fail'", "0", "success", Some(true));
     failing_step.verification = Verification {
         result: VerificationExpression::Simple("[ $? -eq 0 ]".to_string()),
         output: VerificationExpression::Simple("[ \"$COMMAND_OUTPUT\" = \"pass\" ]".to_string()),
@@ -2604,8 +2609,7 @@ fn test_fail_fast_preserves_execution_log_on_failure() {
             .unwrap_or_else(|| panic!("Step {} should be in execution log", i));
         assert_eq!(entry.exit_code, 0, "Step {} should have exit code 0", i);
         assert_eq!(
-            entry.output,
-            format!("output{}", i),
+            entry.output, "success",
             "Step {} should have correct output",
             i
         );

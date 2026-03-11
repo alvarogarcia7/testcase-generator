@@ -1141,7 +1141,6 @@ fn test_manual_verify_examples_verification_prompts_format() -> Result<()> {
 // ===== Fail-Fast Behavior Tests =====
 
 #[test]
-#[ignore = "52C2EF20-5FD5-431C-8B1A-2C13256F3F81. This test is more complex and may require adjustments to the implementation to support multiple sequences with fail-fast behavior."]
 fn test_execution_stops_at_first_failure() -> Result<()> {
     use tempfile::TempDir;
 
