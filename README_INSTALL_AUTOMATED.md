@@ -37,6 +37,18 @@ Options:
   -h, --help         Print help
   -V, --version      Print version
 ```
+## json-escape 
+```
+Read stdin and perform JSON string escaping
+
+Usage: json-escape [OPTIONS]
+
+Options:
+  -t, --test     Test mode: validate that the escaped output is valid JSON when wrapped in quotes
+  -v, --verbose  Enable verbose logging
+  -h, --help     Print help
+  -V, --version  Print version
+```
 ## script-cleanup 
 ```
 Clean script capture output by removing ANSI codes, backspaces, and control characters
@@ -62,6 +74,8 @@ Commands:
   hydrate          Hydrate a test case YAML file with variable values from an export file
   generate-export  Generate an export file template from test case hydration_vars declarations
   validate-export  Validate that an export file has all required variables from test case
+  list             List all test cases with optional filtering
+  resolve          Resolve dependencies in test case YAML files
   help             Print this message or the help of the given subcommand(s)
 
 Options:
@@ -123,44 +137,6 @@ Options:
   -h, --help     Print help
   -V, --version  Print version
 ```
-## testcase-manager 
-```
-A tool for managing test cases in YAML format
-
-Usage: testcase-manager [OPTIONS] <COMMAND>
-
-Commands:
-  create                             Create a new test case
-  create-general-initial-conditions  
-  edit                               Edit an existing test case
-  list                               List all test cases
-  view                               View a test case
-  delete                             Delete a test case
-  validate                           Validate test case files
-  search                             Search test cases using fuzzy finder
-  export                             Export test cases to a test suite file
-  import                             Import test cases from a test suite file
-  git                                Git operations
-  init                               Initialize a new test case repository
-  create-interactive                 Create test case interactively with metadata prompts
-  build-sequences                    Build test sequences interactively with git commits
-  add-steps                          Add steps to a test sequence with git commits
-  build-sequences-with-steps         Build test sequences with step collection loops and commits
-  complete                           Complete interactive workflow: metadata, conditions, sequences, steps with git commits
-  parse-general-conditions           Parse general initial conditions from database with fuzzy search
-  parse-initial-conditions           Parse initial conditions from database with fuzzy search
-  parse-initial-conditions-complex   Parse initial conditions from database with fuzzy search
-  validate-yaml                      Validate a YAML payload against a JSON schema
-  export-junit-xml                   Export test runs to JUnit XML format
-  validate-junit-xml                 Validate JUnit XML file against XSD schema
-  help                               Print this message or the help of the given subcommand(s)
-
-Options:
-  -p, --path <PATH>  Path to the test cases directory [default: ./testcases]
-  -v, --verbose      Enable verbose logging
-  -h, --help         Print help
-  -V, --version      Print version
-```
 ## trm 
 ```
 Manage test run execution records
@@ -207,4 +183,20 @@ Options:
   -v, --verbose               Enable verbose logging
   -h, --help                  Print help
   -V, --version               Print version
+```
+## verifier 
+```
+Verify test execution logs against test case definitions
+
+Usage: verifier [OPTIONS]
+
+Options:
+  -l, --log <PATH>           Single-file mode: path to log file
+  -c, --test-case <ID>       Single-file mode: test case ID to verify against
+  -f, --folder <PATH>        Folder discovery mode: path to folder containing log files
+  -F, --format <FORMAT>      Output format (yaml or json) [default: yaml]
+  -o, --output <PATH>        Output file path (optional, defaults to stdout)
+  -d, --test-case-dir <DIR>  Path to test case storage directory [default: testcases]
+  -h, --help                 Print help
+  -V, --version              Print version
 ```
