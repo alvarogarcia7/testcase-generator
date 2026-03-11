@@ -60,7 +60,9 @@ fn validate_json_schema(json_str: &str) {
     }
 }
 
-/// Validates that the JSON log entries match the test case structure
+/// Validates that the JSON log entries match the test case structure.
+/// With fail-fast behavior, execution stops at the first failing step, so entries
+/// may be a prefix of all expected non-manual steps.
 fn validate_log_matches_testcase(entries: &[TestStepExecutionEntry], test_case: &TestCase) {
     let mut expected_entries = Vec::new();
     for sequence in &test_case.test_sequences {
@@ -71,10 +73,11 @@ fn validate_log_matches_testcase(entries: &[TestStepExecutionEntry], test_case: 
         }
     }
 
-    assert_eq!(
+    assert!(
+        entries.len() <= expected_entries.len(),
+        "Number of log entries ({}) must not exceed non-manual steps in test case ({})",
         entries.len(),
-        expected_entries.len(),
-        "Number of log entries must match non-manual steps in test case"
+        expected_entries.len()
     );
 
     for (i, entry) in entries.iter().enumerate() {
@@ -278,10 +281,11 @@ fn test_executor_with_gsma_yaml_example() -> Result<()> {
             .filter(|step| step.manual != Some(true))
             .collect();
 
-        assert_eq!(
+        assert!(
+            entries.len() <= non_manual_steps.len(),
+            "Log entries ({}) should not exceed non-manual steps ({})",
             entries.len(),
-            non_manual_steps.len(),
-            "Log entries should match non-manual steps"
+            non_manual_steps.len()
         );
 
         for entry in &entries {

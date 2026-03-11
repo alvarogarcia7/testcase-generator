@@ -1407,7 +1407,7 @@ impl TestExecutor {
         // Initialize variable storage for captured variables
         let mut step_vars: HashMap<String, String> = HashMap::new();
 
-        for sequence in &test_case.test_sequences {
+        'outer: for sequence in &test_case.test_sequences {
             for step in &sequence.steps {
                 if step.manual == Some(true) {
                     // Check if manual step has verification fields (not just "true")
@@ -1542,6 +1542,7 @@ impl TestExecutor {
                                 step.step
                             ));
                         }
+                        break 'outer;
                     }
 
                     continue;
@@ -1701,6 +1702,7 @@ impl TestExecutor {
                                     step.step
                                 ));
                             }
+                            break 'outer;
                         }
                     }
                     Err(e) => {
@@ -1724,6 +1726,7 @@ impl TestExecutor {
                                 e
                             ));
                         }
+                        break 'outer;
                     }
                 }
             }
@@ -1775,6 +1778,7 @@ impl TestExecutor {
             command_output
                 .replace("\\", "\\\\")
                 .replace("\"", "\\\"")
+                .replace("`", "\\`")
                 .replace("\n", "\\n")
         ));
 
@@ -1786,6 +1790,7 @@ impl TestExecutor {
                 var_value
                     .replace("\\", "\\\\")
                     .replace("\"", "\\\"")
+                    .replace("`", "\\`")
                     .replace("\n", "\\n")
             ));
         }
