@@ -179,24 +179,54 @@ fn handle_single_file_mode(
     test_case_id: &str,
 ) -> Result<BatchVerificationReport> {
     log::info!("Processing log file: {}", log_path.display());
+    log::debug!("Single-file mode: test case ID = '{}'", test_case_id);
 
     // Parse log file with specified test case ID
+    log::debug!("Parsing log file: {}", log_path.display());
     let logs = verifier
         .parse_log_file_with_test_case_id(log_path, test_case_id)
         .context("Failed to parse test execution log")?;
 
+    log::debug!(
+        "Successfully parsed log file with {} log entries",
+        logs.len()
+    );
+
     // Load test case
+    log::debug!("Loading test case definition for ID: '{}'", test_case_id);
     let test_case = verifier
         .storage()
         .load_test_case_by_id(test_case_id)
         .context(format!("Failed to load test case: {}", test_case_id))?;
 
+    log::debug!(
+        "Successfully loaded test case '{}' with {} test sequences",
+        test_case_id,
+        test_case.test_sequences.len()
+    );
+
     // Verify
+    log::debug!("Verifying test case '{}' against logs", test_case_id);
     let result = verifier.verify_test_case(&test_case, &logs);
 
+    log::debug!(
+        "Verification result: pass={}, steps={}/{}",
+        result.overall_pass,
+        result.passed_steps,
+        result.total_steps
+    );
+
     // Create batch report with single test case
+    log::debug!("Creating batch report with single test case result");
     let mut report = BatchVerificationReport::new();
     report.add_test_case_result(result);
+
+    log::debug!(
+        "Batch report created: total={}, passed={}, failed={}",
+        report.total_test_cases,
+        report.passed_test_cases,
+        report.failed_test_cases
+    );
 
     Ok(report)
 }
@@ -205,6 +235,11 @@ fn handle_folder_mode(
     verifier: &TestVerifier,
     folder_path: &PathBuf,
 ) -> Result<BatchVerificationReport> {
+    log::debug!(
+        "Starting folder discovery mode for: {}",
+        folder_path.display()
+    );
+
     // Discover all log files in the folder recursively
     let log_files = discover_log_files(folder_path)?;
 
@@ -213,6 +248,7 @@ fn handle_folder_mode(
             "No execution log files (*_execution_log.json) found in folder: {}",
             folder_path.display()
         );
+        log::debug!("Folder discovery completed with no files found");
         return Ok(BatchVerificationReport::new());
     }
 
@@ -222,22 +258,59 @@ fn handle_folder_mode(
         folder_path.display()
     );
 
+    log::debug!("Discovered log files:");
+    for log_file in &log_files {
+        log::debug!("  - {}", log_file.display());
+    }
+
     // Process each log file individually for better logging
     let mut report = BatchVerificationReport::new();
+    log::debug!("Initialized empty batch verification report");
 
-    for log_file in &log_files {
-        log::info!("Processing log file: {}", log_file.display());
+    for (idx, log_file) in log_files.iter().enumerate() {
+        log::info!(
+            "Processing log file {}/{}: {}",
+            idx + 1,
+            log_files.len(),
+            log_file.display()
+        );
 
         // Extract test case ID from filename
         let test_case_id = extract_test_case_id_from_filename(log_file);
+        log::debug!("Extracted test case ID: '{}' from filename", test_case_id);
 
+        log::debug!("Parsing log file: {}", log_file.display());
         match verifier.parse_log_file(log_file) {
             Ok(logs) => {
+                log::debug!(
+                    "Successfully parsed log file with {} log entries",
+                    logs.len()
+                );
+
                 // Load test case
+                log::debug!("Loading test case definition for ID: '{}'", test_case_id);
                 match verifier.storage().load_test_case_by_id(&test_case_id) {
                     Ok(test_case) => {
+                        log::debug!(
+                            "Successfully loaded test case '{}' with {} test sequences",
+                            test_case_id,
+                            test_case.test_sequences.len()
+                        );
+                        log::debug!("Verifying test case '{}' against logs", test_case_id);
+
                         let result = verifier.verify_test_case(&test_case, &logs);
+
+                        log::debug!(
+                            "Verification result for '{}': pass={}, steps={}/{}",
+                            test_case_id,
+                            result.overall_pass,
+                            result.passed_steps,
+                            result.total_steps
+                        );
+
                         report.add_test_case_result(result);
+                        log::debug!("Added test case result to batch report. Current report stats: total={}, passed={}, failed={}",
+                                   report.total_test_cases, report.passed_test_cases, report.failed_test_cases);
                     }
                     Err(e) => {
                         log::error!(
@@ -246,27 +319,53 @@ fn handle_folder_mode(
                             log_file.display(),
                             e
                         );
+                        log::debug!(
+                            "Test case loading failed, skipping verification for this log file"
+                        );
                     }
                 }
             }
             Err(e) => {
                 log::error!("Failed to parse log file '{}': {}", log_file.display(), e);
+                log::debug!("Log file parsing failed, skipping this file");
             }
         }
     }
+
+    log::debug!("Folder mode processing complete. Final batch report stats:");
+    log::debug!("  Total test cases: {}", report.total_test_cases);
+    log::debug!("  Passed test cases: {}", report.passed_test_cases);
+    log::debug!("  Failed test cases: {}", report.failed_test_cases);
+    log::debug!("  Total steps: {}", report.total_steps);
+    log::debug!("  Passed steps: {}", report.passed_steps);
+    log::debug!("  Failed steps: {}", report.failed_steps);
 
     Ok(report)
 }
 
 fn discover_log_files(folder_path: &PathBuf) -> Result<Vec<PathBuf>> {
+    log::debug!(
+        "Beginning recursive log file discovery in: {}",
+        folder_path.display()
+    );
     let mut log_files = Vec::new();
     discover_log_files_recursive(folder_path, &mut log_files)?;
+    log::debug!(
+        "Log file discovery complete. Found {} file(s)",
+        log_files.len()
+    );
     Ok(log_files)
 }
 
 fn discover_log_files_recursive(dir: &PathBuf, log_files: &mut Vec<PathBuf>) -> Result<()> {
+    log::debug!("Scanning directory: {}", dir.display());
+
     let entries =
         fs::read_dir(dir).context(format!("Failed to read directory: {}", dir.display()))?;
+
+    let mut file_count = 0;
+    let mut dir_count = 0;
+    let mut skipped_count = 0;
 
     for entry in entries {
         let entry = entry.context("Failed to read directory entry")?;
@@ -277,6 +376,8 @@ fn discover_log_files_recursive(dir: &PathBuf, log_files: &mut Vec<PathBuf>) -> 
             Ok(m) => m,
             Err(e) => {
                 log::warn!("Failed to read metadata for '{}': {}", path.display(), e);
+                log::debug!("Skipping file due to metadata read error");
+                skipped_count += 1;
                 continue;
             }
         };
@@ -284,34 +385,57 @@ fn discover_log_files_recursive(dir: &PathBuf, log_files: &mut Vec<PathBuf>) -> 
         // Skip symlinks to avoid potential infinite loops
         if metadata.is_symlink() {
             log::debug!("Skipping symlink: {}", path.display());
+            skipped_count += 1;
             continue;
         }
 
         if metadata.is_dir() {
+            log::debug!("Found subdirectory: {}", path.display());
+            dir_count += 1;
             // Recursively search subdirectories
             discover_log_files_recursive(&path, log_files)?;
         } else if metadata.is_file() {
+            file_count += 1;
             // Check if filename matches the pattern *_execution_log.json
             if let Some(file_name) = path.file_name() {
                 let file_name_str = file_name.to_string_lossy();
                 if file_name_str.ends_with("_execution_log.json") {
+                    log::debug!("Found matching log file: {}", path.display());
                     log_files.push(path);
+                } else {
+                    log::debug!("Skipping non-matching file: {}", path.display());
                 }
             }
         }
     }
+
+    log::debug!(
+        "Directory scan complete for {}: {} files, {} subdirs, {} skipped",
+        dir.display(),
+        file_count,
+        dir_count,
+        skipped_count
+    );
 
     Ok(())
 }
 
 fn extract_test_case_id_from_filename(log_path: &Path) -> String {
     // Expected format: {test_case_id}_execution_log.json
-    log_path
+    let test_case_id = log_path
         .file_stem()
         .and_then(|s| s.to_str())
         .and_then(|s| s.strip_suffix("_execution_log"))
         .unwrap_or("UNKNOWN")
-        .to_string()
+        .to_string();
+
+    log::debug!(
+        "Extracting test case ID from filename '{}': '{}'",
+        log_path.display(),
+        test_case_id
+    );
+
+    test_case_id
 }
 
 fn log_verification_errors(report: &BatchVerificationReport) {
