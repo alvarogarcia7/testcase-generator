@@ -1,0 +1,36 @@
+[
+  {
+    "test_sequence": 1,
+    "step": 1,
+    "command": "echo \"Sequence 1 - Step 1 executed\"",
+    "exit_code": 0,
+    "output": "Sequence 1 - Step 1 executed",
+    "timestamp": "2024-03-15T15:15:00.100000+00:00"
+  },
+  {
+    "test_sequence": 0,
+    "step": 0,
+    "command": "scripts/teardown_after_failure.sh",
+    "exit_code": 0,
+    "output": "",
+    "timestamp": "2024-03-15T15:15:00.200000+00:00",
+    "hook_type": "teardown_test",
+    "hook_script": "scripts/teardown_after_failure.sh"
+  },
+  {
+    "test_sequence": 2,
+    "step": 1,
+    "command": "[ -f /tmp/teardown_hook_executed_marker ] && cat /tmp/teardown_hook_executed_marker",
+    "exit_code": 0,
+    "output": "teardown_test hook was executed",
+    "timestamp": "2024-03-15T15:15:00.300000+00:00"
+  },
+  {
+    "test_sequence": 2,
+    "step": 2,
+    "command": "rm -f /tmp/teardown_hook_executed_marker",
+    "exit_code": 0,
+    "output": "",
+    "timestamp": "2024-03-15T15:15:00.400000+00:00"
+  }
+]
