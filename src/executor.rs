@@ -485,11 +485,10 @@ impl TestExecutor {
     /// Generate bash code to execute a hook within a trap context
     ///
     /// This version ensures that:
-    /// - Hook execution uses `set +e` to prevent trap failures
+    /// - Hook execution uses `set +e` to prevent trap failures during hook execution
     /// - Hook exit codes are captured without affecting the original script exit code
-    /// - Warnings are logged if hooks fail (regardless of on_error setting)
+    /// - Error handling respects the on_error setting, but never uses `set -e` restoration
     /// - The original EXIT_CODE is preserved
-    #[allow(dead_code)]
     fn generate_hook_execution_in_trap(
         hook_name: &str,
         hook_config: &crate::models::HookConfig,
@@ -502,7 +501,14 @@ impl TestExecutor {
         let command = &hook_config.command;
         let is_sh_file = command.ends_with(".sh");
 
-        // In trap context, always use set +e to prevent trap failures
+        // Determine error handling mode
+        let on_error = hook_config
+            .on_error
+            .as_ref()
+            .map(|e| matches!(e, crate::models::OnError::Continue))
+            .unwrap_or(false);
+
+        // In trap context, always use set +e to prevent trap failures during hook execution
         code.push_str("set +e\n");
 
         if is_sh_file {
@@ -523,13 +529,23 @@ impl TestExecutor {
             code.push_str("HOOK_EXIT_CODE=$?\n");
         }
 
-        // Always log warnings for hook failures in trap context, but never fail the trap
-        code.push_str("if [ $HOOK_EXIT_CODE -ne 0 ]; then\n");
-        code.push_str(&format!(
-            "    echo \"Warning: {} hook failed with exit code $HOOK_EXIT_CODE\" >&2\n",
-            hook_name
-        ));
-        code.push_str("fi\n");
+        // Handle hook failure based on on_error setting
+        // In trap context, we never restore set -e to avoid premature trap exit
+        if on_error {
+            // Continue on error
+            code.push_str("if [ $HOOK_EXIT_CODE -ne 0 ]; then\n");
+            code.push_str(&format!("    echo \"Warning: {} hook failed with exit code $HOOK_EXIT_CODE (continuing)\" >&2\n", hook_name));
+            code.push_str("fi\n");
+        } else {
+            // Fail on error (default) - in trap context, we exit but preserve the original EXIT_CODE if it was non-zero
+            code.push_str("if [ $HOOK_EXIT_CODE -ne 0 ]; then\n");
+            code.push_str(&format!(
+                "    echo \"Error: {} hook failed with exit code $HOOK_EXIT_CODE\" >&2\n",
+                hook_name
+            ));
+            code.push_str("    exit $HOOK_EXIT_CODE\n");
+            code.push_str("fi\n");
+        }
 
         // No need to restore set -e in trap context
         code.push('\n');
@@ -648,7 +664,7 @@ impl TestExecutor {
         if let Some(ref hooks) = test_case.hooks {
             if let Some(ref hook) = hooks.teardown_test {
                 script.push_str("    # Execute teardown_test hook\n");
-                let hook_code = Self::generate_hook_execution("teardown_test", hook);
+                let hook_code = Self::generate_hook_execution_in_trap("teardown_test", hook);
                 // Indent the hook code for the cleanup function
                 for line in hook_code.lines() {
                     script.push_str("    ");
@@ -663,7 +679,7 @@ impl TestExecutor {
         if let Some(ref hooks) = test_case.hooks {
             if let Some(ref hook) = hooks.script_end {
                 script.push_str("    # Execute script_end hook\n");
-                let hook_code = Self::generate_hook_execution("script_end", hook);
+                let hook_code = Self::generate_hook_execution_in_trap("script_end", hook);
                 // Indent the hook code for the cleanup function
                 for line in hook_code.lines() {
                     script.push_str("    ");
