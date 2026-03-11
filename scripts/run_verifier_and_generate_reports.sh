@@ -46,6 +46,7 @@ declare -a SCENARIOS=(
     "interrupted:TEST_INTERRUPTED_001"
     "multiple_sequences:TEST_MULTI_SEQ_001"
     "hooks:TEST_HOOK_SCRIPT_START_001"
+    "hooks:TEST_HOOK_TEARDOWN_001_AFTER_STEP_FAILURE"
 )
 
 declare -a VERIFICATION_FILES=()
