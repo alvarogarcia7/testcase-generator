@@ -1054,3 +1054,553 @@ fn test_on_error_equality() {
     assert_eq!(OnError::Continue, OnError::Continue);
     assert_ne!(OnError::Fail, OnError::Continue);
 }
+
+// ============================================================================
+// Integration Tests - Trap Execution on Failure
+// ============================================================================
+
+/// Helper to create a test case with hooks that track execution
+fn create_tracked_hook_test_case(
+    step_should_fail: bool,
+    before_step_should_fail: bool,
+) -> TestCase {
+    use std::io::Write;
+
+    // Create temporary hook scripts that track execution
+    let temp_dir = std::env::temp_dir();
+    let tracker_file = temp_dir.join("hook_tracker.txt");
+
+    // Clean up any existing tracker file
+    let _ = std::fs::remove_file(&tracker_file);
+
+    let teardown_script = temp_dir.join("teardown_hook.sh");
+    let script_end_script = temp_dir.join("script_end_hook.sh");
+    let before_step_script = temp_dir.join("before_step_hook.sh");
+
+    // Create teardown_test hook that writes to tracker
+    let mut file = std::fs::File::create(&teardown_script).unwrap();
+    writeln!(
+        file,
+        "#!/bin/bash\necho 'teardown_test executed' >> {}",
+        tracker_file.display()
+    )
+    .unwrap();
+
+    // Create script_end hook that writes to tracker
+    let mut file = std::fs::File::create(&script_end_script).unwrap();
+    writeln!(
+        file,
+        "#!/bin/bash\necho 'script_end executed' >> {}",
+        tracker_file.display()
+    )
+    .unwrap();
+
+    // Create before_step hook that may fail
+    let mut file = std::fs::File::create(&before_step_script).unwrap();
+    if before_step_should_fail {
+        writeln!(
+            file,
+            "#!/bin/bash\necho 'before_step executed' >> {}\nexit 1",
+            tracker_file.display()
+        )
+        .unwrap();
+    } else {
+        writeln!(
+            file,
+            "#!/bin/bash\necho 'before_step executed' >> {}",
+            tracker_file.display()
+        )
+        .unwrap();
+    }
+
+    // Make scripts executable
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let perms = std::fs::Permissions::from_mode(0o755);
+        std::fs::set_permissions(&teardown_script, perms.clone()).unwrap();
+        std::fs::set_permissions(&script_end_script, perms.clone()).unwrap();
+        std::fs::set_permissions(&before_step_script, perms).unwrap();
+    }
+
+    let step = Step {
+        step: 1,
+        manual: None,
+        description: "Test step".to_string(),
+        command: if step_should_fail {
+            "exit 1".to_string()
+        } else {
+            "echo 'test'".to_string()
+        },
+        capture_vars: None,
+        expected: Expected {
+            success: Some(!step_should_fail),
+            result: if step_should_fail { "1" } else { "0" }.to_string(),
+            output: if step_should_fail {
+                "".to_string()
+            } else {
+                "test".to_string()
+            },
+        },
+        verification: Verification {
+            result: if step_should_fail {
+                VerificationExpression::Simple("[ $? -eq 1 ]".to_string())
+            } else {
+                VerificationExpression::Simple("[ $? -eq 0 ]".to_string())
+            },
+            output: if step_should_fail {
+                VerificationExpression::Simple("true".to_string())
+            } else {
+                VerificationExpression::Simple("[ \"$COMMAND_OUTPUT\" = \"test\" ]".to_string())
+            },
+            output_file: None,
+            general: None,
+        },
+        reference: None,
+    };
+
+    let sequence = TestSequence {
+        id: 1,
+        name: "Test Sequence".to_string(),
+        description: "Test Description".to_string(),
+        variables: None,
+        initial_conditions: InitialConditions::default(),
+        steps: vec![step],
+        reference: None,
+    };
+
+    let hooks = Hooks {
+        before_step: Some(HookConfig {
+            command: before_step_script.to_string_lossy().to_string(),
+            on_error: Some(if before_step_should_fail {
+                OnError::Fail
+            } else {
+                OnError::Continue
+            }),
+        }),
+        teardown_test: Some(HookConfig {
+            command: teardown_script.to_string_lossy().to_string(),
+            on_error: Some(OnError::Continue),
+        }),
+        script_end: Some(HookConfig {
+            command: script_end_script.to_string_lossy().to_string(),
+            on_error: Some(OnError::Continue),
+        }),
+        ..Default::default()
+    };
+
+    TestCase {
+        requirement: "REQ001".to_string(),
+        item: 1,
+        tc: 1,
+        id: "TC_TRAP_TEST".to_string(),
+        description: "Test case for trap execution".to_string(),
+        prerequisites: None,
+        general_initial_conditions: InitialConditions::default(),
+        initial_conditions: InitialConditions::default(),
+        test_sequences: vec![sequence],
+        hydration_vars: None,
+        hooks: Some(hooks),
+    }
+}
+
+#[test]
+fn test_teardown_and_script_end_execute_on_step_verification_failure() {
+    let test_case = create_tracked_hook_test_case(false, false);
+    let executor = TestExecutor::new();
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify that teardown_test and script_end are in the cleanup function
+    assert!(script.contains("cleanup() {"));
+    assert!(script.contains("trap cleanup EXIT"));
+
+    // Verify teardown_test is in cleanup
+    let cleanup_start = script.find("cleanup() {").unwrap();
+    let cleanup_section = &script[cleanup_start..];
+    assert!(cleanup_section.contains("# Execute teardown_test hook"));
+    assert!(cleanup_section.contains("teardown_hook.sh"));
+
+    // Verify script_end is in cleanup after teardown_test
+    let teardown_pos = cleanup_section
+        .find("# Execute teardown_test hook")
+        .unwrap();
+    let after_teardown = &cleanup_section[teardown_pos..];
+    assert!(after_teardown.contains("# Execute script_end hook"));
+    assert!(after_teardown.contains("script_end_hook.sh"));
+}
+
+#[test]
+fn test_teardown_and_script_end_execute_on_step_command_failure() {
+    // Create a test case where the step command itself fails
+    let test_case = create_tracked_hook_test_case(true, false);
+    let executor = TestExecutor::new();
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify cleanup function exists with trap
+    assert!(script.contains("cleanup() {"));
+    assert!(script.contains("trap cleanup EXIT"));
+
+    // Verify both hooks are in cleanup function
+    let cleanup_start = script.find("cleanup() {").unwrap();
+    let cleanup_section = &script[cleanup_start..];
+    assert!(cleanup_section.contains("# Execute teardown_test hook"));
+    assert!(cleanup_section.contains("# Execute script_end hook"));
+
+    // Verify ordering: teardown_test before script_end
+    let teardown_pos = cleanup_section
+        .find("# Execute teardown_test hook")
+        .unwrap();
+    let script_end_pos = cleanup_section.find("# Execute script_end hook").unwrap();
+    assert!(teardown_pos < script_end_pos);
+}
+
+#[test]
+fn test_teardown_and_script_end_execute_on_before_step_hook_failure() {
+    // Create a test case where before_step hook fails with on_error: fail
+    let test_case = create_tracked_hook_test_case(false, true);
+    let executor = TestExecutor::new();
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify cleanup function with trap
+    assert!(script.contains("cleanup() {"));
+    assert!(script.contains("trap cleanup EXIT"));
+
+    // Verify cleanup hooks are present
+    let cleanup_start = script.find("cleanup() {").unwrap();
+    let cleanup_section = &script[cleanup_start..];
+    assert!(cleanup_section.contains("# Execute teardown_test hook"));
+    assert!(cleanup_section.contains("# Execute script_end hook"));
+
+    // Verify that before_step hook has fail behavior
+    let before_step_start = script.find("# Execute before_step hook").unwrap();
+    let before_step_section = &script[before_step_start..];
+    assert!(before_step_section.contains("Error: before_step hook failed"));
+    assert!(before_step_section.contains("exit $HOOK_EXIT_CODE"));
+}
+
+#[test]
+fn test_cleanup_hooks_with_on_error_continue() {
+    let hooks = Hooks {
+        teardown_test: Some(HookConfig {
+            command: "scripts/teardown.sh".to_string(),
+            on_error: Some(OnError::Continue),
+        }),
+        script_end: Some(HookConfig {
+            command: "scripts/end.sh".to_string(),
+            on_error: Some(OnError::Continue),
+        }),
+        ..Default::default()
+    };
+
+    let test_case = create_test_case_with_hooks(Some(hooks));
+    let executor = TestExecutor::new();
+    let script = executor.generate_test_script(&test_case);
+
+    // Find cleanup function
+    let cleanup_start = script.find("cleanup() {").unwrap();
+    let cleanup_section = &script[cleanup_start..];
+
+    // Verify teardown_test is in cleanup with continue behavior
+    assert!(cleanup_section.contains("# Execute teardown_test hook"));
+    let teardown_start = cleanup_section
+        .find("# Execute teardown_test hook")
+        .unwrap();
+    let teardown_section = &cleanup_section[teardown_start..];
+    let teardown_end = teardown_section
+        .find("# Execute script_end hook")
+        .unwrap_or(teardown_section.len());
+    let teardown_code = &teardown_section[..teardown_end];
+
+    // In continue mode, should not exit on failure
+    assert!(teardown_code.contains("Warning: teardown_test hook failed"));
+    assert!(teardown_code.contains("(continuing)"));
+
+    // Verify script_end is also in cleanup
+    assert!(cleanup_section.contains("# Execute script_end hook"));
+}
+
+#[test]
+fn test_cleanup_hooks_with_on_error_fail() {
+    let hooks = Hooks {
+        teardown_test: Some(HookConfig {
+            command: "scripts/teardown.sh".to_string(),
+            on_error: Some(OnError::Fail),
+        }),
+        script_end: Some(HookConfig {
+            command: "scripts/end.sh".to_string(),
+            on_error: Some(OnError::Fail),
+        }),
+        ..Default::default()
+    };
+
+    let test_case = create_test_case_with_hooks(Some(hooks));
+    let executor = TestExecutor::new();
+    let script = executor.generate_test_script(&test_case);
+
+    // Find cleanup function
+    let cleanup_start = script.find("cleanup() {").unwrap();
+    let cleanup_section = &script[cleanup_start..];
+
+    // Verify teardown_test is in cleanup
+    assert!(cleanup_section.contains("# Execute teardown_test hook"));
+
+    // Check for fail behavior in teardown hook
+    let teardown_start = cleanup_section
+        .find("# Execute teardown_test hook")
+        .unwrap();
+    let teardown_section = &cleanup_section[teardown_start..];
+    let teardown_end = teardown_section
+        .find("# Execute script_end hook")
+        .unwrap_or(teardown_section.len());
+    let teardown_code = &teardown_section[..teardown_end];
+
+    // In fail mode, should exit on hook failure
+    assert!(teardown_code.contains("Error: teardown_test hook failed"));
+    assert!(teardown_code.contains("exit $HOOK_EXIT_CODE"));
+}
+
+#[test]
+fn test_cleanup_preserves_original_exit_code() {
+    let hooks = Hooks {
+        teardown_test: Some(HookConfig {
+            command: "scripts/teardown.sh".to_string(),
+            on_error: Some(OnError::Continue),
+        }),
+        script_end: Some(HookConfig {
+            command: "scripts/end.sh".to_string(),
+            on_error: Some(OnError::Continue),
+        }),
+        ..Default::default()
+    };
+
+    let test_case = create_test_case_with_hooks(Some(hooks));
+    let executor = TestExecutor::new();
+    let script = executor.generate_test_script(&test_case);
+
+    // Find cleanup function
+    let cleanup_start = script.find("cleanup() {").unwrap();
+    let cleanup_end = script[cleanup_start..].find("\ntrap cleanup EXIT").unwrap();
+    let cleanup_code = &script[cleanup_start..cleanup_start + cleanup_end];
+
+    // Verify EXIT_CODE is captured at the start of cleanup
+    assert!(cleanup_code.contains("EXIT_CODE=$?"));
+
+    // Verify EXIT_CODE is preserved through hook executions
+    assert!(cleanup_code.contains("exit $EXIT_CODE"));
+
+    // The exit should be at the end of cleanup, after all hooks
+    let exit_pos = cleanup_code.rfind("exit $EXIT_CODE").unwrap();
+    let teardown_pos = cleanup_code
+        .find("# Execute teardown_test hook")
+        .unwrap_or(0);
+    let script_end_pos = cleanup_code.find("# Execute script_end hook").unwrap_or(0);
+
+    // exit should come after both hooks
+    assert!(exit_pos > teardown_pos);
+    assert!(exit_pos > script_end_pos);
+}
+
+#[test]
+fn test_trap_executes_on_any_exit() {
+    let hooks = Hooks {
+        teardown_test: Some(HookConfig {
+            command: "scripts/teardown.sh".to_string(),
+            on_error: Some(OnError::Continue),
+        }),
+        script_end: Some(HookConfig {
+            command: "scripts/end.sh".to_string(),
+            on_error: Some(OnError::Continue),
+        }),
+        ..Default::default()
+    };
+
+    let test_case = create_test_case_with_hooks(Some(hooks));
+    let executor = TestExecutor::new();
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify trap is set up to catch EXIT signal
+    assert!(script.contains("trap cleanup EXIT"));
+
+    // Verify cleanup function is defined before trap
+    let cleanup_def = script.find("cleanup() {").unwrap();
+    let trap_def = script.find("trap cleanup EXIT").unwrap();
+    assert!(cleanup_def < trap_def);
+
+    // Verify cleanup function contains both hooks
+    let cleanup_start = script.find("cleanup() {").unwrap();
+    let trap_pos = script.find("trap cleanup EXIT").unwrap();
+    let cleanup_section = &script[cleanup_start..trap_pos];
+
+    assert!(cleanup_section.contains("# Execute teardown_test hook"));
+    assert!(cleanup_section.contains("# Execute script_end hook"));
+}
+
+#[test]
+fn test_hooks_in_cleanup_use_proper_error_handling() {
+    let hooks = Hooks {
+        teardown_test: Some(HookConfig {
+            command: "scripts/teardown_might_fail.sh".to_string(),
+            on_error: Some(OnError::Continue),
+        }),
+        script_end: Some(HookConfig {
+            command: "scripts/end_might_fail.sh".to_string(),
+            on_error: Some(OnError::Fail),
+        }),
+        ..Default::default()
+    };
+
+    let test_case = create_test_case_with_hooks(Some(hooks));
+    let executor = TestExecutor::new();
+    let script = executor.generate_test_script(&test_case);
+
+    let cleanup_start = script.find("cleanup() {").unwrap();
+    let cleanup_section = &script[cleanup_start..];
+
+    // Find teardown_test hook section
+    let teardown_pos = cleanup_section
+        .find("# Execute teardown_test hook")
+        .unwrap();
+    let script_end_pos = cleanup_section.find("# Execute script_end hook").unwrap();
+    let teardown_section = &cleanup_section[teardown_pos..script_end_pos];
+
+    // Verify continue behavior for teardown_test
+    assert!(teardown_section.contains("if [ $HOOK_EXIT_CODE -ne 0 ]; then"));
+    assert!(teardown_section.contains("Warning: teardown_test hook failed"));
+    assert!(teardown_section.contains("(continuing)"));
+
+    // Find script_end hook section
+    let script_end_section = &cleanup_section[script_end_pos..];
+    let next_major_section = script_end_section
+        .find("\n    exit $EXIT_CODE")
+        .unwrap_or(script_end_section.len());
+    let script_end_code = &script_end_section[..next_major_section];
+
+    // Verify fail behavior for script_end
+    assert!(script_end_code.contains("if [ $HOOK_EXIT_CODE -ne 0 ]; then"));
+    assert!(script_end_code.contains("Error: script_end hook failed"));
+    assert!(script_end_code.contains("exit $HOOK_EXIT_CODE"));
+}
+
+#[test]
+fn test_cleanup_with_missing_hook_files() {
+    let hooks = Hooks {
+        teardown_test: Some(HookConfig {
+            command: "scripts/nonexistent_teardown.sh".to_string(),
+            on_error: Some(OnError::Continue),
+        }),
+        script_end: Some(HookConfig {
+            command: "scripts/nonexistent_end.sh".to_string(),
+            on_error: Some(OnError::Continue),
+        }),
+        ..Default::default()
+    };
+
+    let test_case = create_test_case_with_hooks(Some(hooks));
+    let executor = TestExecutor::new();
+    let script = executor.generate_test_script(&test_case);
+
+    let cleanup_start = script.find("cleanup() {").unwrap();
+    let cleanup_section = &script[cleanup_start..];
+
+    // Verify file existence checks for both hooks
+    assert!(cleanup_section.contains("if [ -f \"scripts/nonexistent_teardown.sh\" ]; then"));
+    assert!(cleanup_section
+        .contains("Warning: Hook script 'scripts/nonexistent_teardown.sh' not found"));
+
+    assert!(cleanup_section.contains("if [ -f \"scripts/nonexistent_end.sh\" ]; then"));
+    assert!(cleanup_section.contains("Warning: Hook script 'scripts/nonexistent_end.sh' not found"));
+
+    // Both should set HOOK_EXIT_CODE=127 when file not found
+    let teardown_section =
+        &cleanup_section[..cleanup_section.find("# Execute script_end hook").unwrap()];
+    assert!(teardown_section.contains("HOOK_EXIT_CODE=127"));
+}
+
+#[test]
+fn test_only_teardown_test_in_cleanup() {
+    let hooks = Hooks {
+        teardown_test: Some(HookConfig {
+            command: "scripts/teardown.sh".to_string(),
+            on_error: Some(OnError::Continue),
+        }),
+        script_end: None,
+        ..Default::default()
+    };
+
+    let test_case = create_test_case_with_hooks(Some(hooks));
+    let executor = TestExecutor::new();
+    let script = executor.generate_test_script(&test_case);
+
+    let cleanup_start = script.find("cleanup() {").unwrap();
+    let cleanup_section = &script[cleanup_start..];
+
+    // Should have teardown_test
+    assert!(cleanup_section.contains("# Execute teardown_test hook"));
+    assert!(cleanup_section.contains("scripts/teardown.sh"));
+
+    // Should not have script_end
+    assert!(!cleanup_section.contains("# Execute script_end hook"));
+}
+
+#[test]
+fn test_only_script_end_in_cleanup() {
+    let hooks = Hooks {
+        teardown_test: None,
+        script_end: Some(HookConfig {
+            command: "scripts/end.sh".to_string(),
+            on_error: Some(OnError::Fail),
+        }),
+        ..Default::default()
+    };
+
+    let test_case = create_test_case_with_hooks(Some(hooks));
+    let executor = TestExecutor::new();
+    let script = executor.generate_test_script(&test_case);
+
+    let cleanup_start = script.find("cleanup() {").unwrap();
+    let cleanup_section = &script[cleanup_start..];
+
+    // Should not have teardown_test
+    assert!(!cleanup_section.contains("# Execute teardown_test hook"));
+
+    // Should have script_end
+    assert!(cleanup_section.contains("# Execute script_end hook"));
+    assert!(cleanup_section.contains("scripts/end.sh"));
+}
+
+#[test]
+fn test_cleanup_hooks_execute_in_correct_order() {
+    let hooks = Hooks {
+        teardown_test: Some(HookConfig {
+            command: "scripts/teardown.sh".to_string(),
+            on_error: Some(OnError::Continue),
+        }),
+        script_end: Some(HookConfig {
+            command: "scripts/end.sh".to_string(),
+            on_error: Some(OnError::Continue),
+        }),
+        ..Default::default()
+    };
+
+    let test_case = create_test_case_with_hooks(Some(hooks));
+    let executor = TestExecutor::new();
+    let script = executor.generate_test_script(&test_case);
+
+    let cleanup_start = script.find("cleanup() {").unwrap();
+    let trap_pos = script.find("trap cleanup EXIT").unwrap();
+    let cleanup_section = &script[cleanup_start..trap_pos];
+
+    // Find positions of both hooks in cleanup
+    let teardown_pos = cleanup_section
+        .find("# Execute teardown_test hook")
+        .unwrap();
+    let script_end_pos = cleanup_section.find("# Execute script_end hook").unwrap();
+
+    // teardown_test should execute before script_end
+    assert!(teardown_pos < script_end_pos);
+
+    // Both should be before the final exit
+    let exit_pos = cleanup_section.rfind("exit $EXIT_CODE").unwrap();
+    assert!(teardown_pos < exit_pos);
+    assert!(script_end_pos < exit_pos);
+}
