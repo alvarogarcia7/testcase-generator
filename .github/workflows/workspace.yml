@@ -1,10 +1,11 @@
-name: Workspace
+name: CI
 
 on:
   push:
     branches: [ "master", "main", "feature/**", "f69c-*" ]
   pull_request:
     branches: [ "master", "main", "feature/**", "f69c-*" ]
+  workflow_dispatch:
 
 env:
   CARGO_INCREMENTAL: 0
@@ -12,52 +13,58 @@ env:
   RUSTDOCFLAGS: "-Dwarnings"
 
 jobs:
-  build:
+  ci:
+    name: Build, Test, Lint & Coverage
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: RustCrypto/actions/cargo-cache@master
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: stable
-      - run: cargo build --all --all-features
 
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: RustCrypto/actions/cargo-cache@master
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: stable
-      - run: cargo test --all --all-features --tests
+          components: clippy,rustfmt,llvm-tools-preview
 
-  clippy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: RustCrypto/actions/cargo-cache@master
-      - uses: dtolnay/rust-toolchain@master
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@v2
         with:
-          toolchain: stable
-          components: clippy
-      - run: cargo clippy --all --all-features --tests -- -D warnings
+          tool: cargo-llvm-cov
 
-  doc:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: stable
-      - run: cargo doc --all-features
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y expect
 
-  rustfmt:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@master
+      - name: Format check
+        run: cargo fmt --all -- --check
+
+      - name: Build
+        run: cargo build --all --all-features
+
+      - name: Clippy lint
+        run: cargo clippy --all --all-features --tests -- -D warnings
+
+      - name: Run tests
+        run: cargo test --all --all-features --tests
+
+      - name: Generate documentation
+        run: cargo doc --all-features --no-deps
+
+      - name: Run coverage
+        run: |
+          mkdir -p target/llvm-cov
+          cargo llvm-cov --all-features --workspace --ignore-filename-regex '(fuzzy\.rs|prompts\.rs|main_editor\.rs)' --fail-under-lines 63 --lcov --output-path target/llvm-cov/lcov.info
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
         with:
-          toolchain: stable
-          components: rustfmt
-      - run: cargo fmt --all -- --check
+          files: target/llvm-cov/lcov.info
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Upload coverage artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: target/llvm-cov/
+          retention-days: 30
