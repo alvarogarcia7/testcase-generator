@@ -238,8 +238,13 @@ install_prebuilt() {
     # Determine installation directory
     local install_dir
     if [ "${CI:-false}" = "true" ]; then
-        # In CI, install to ~/.cargo/bin
-        install_dir="$HOME/.cargo/bin"
+        # In CI, prefer /usr/local/bin (always in PATH) when running as root
+        if [ "$(id -u)" = "0" ] && [ -d "/usr/local/bin" ]; then
+            install_dir="/usr/local/bin"
+        else
+            # Use CARGO_HOME/bin if set, otherwise fall back to ~/.cargo/bin
+            install_dir="${CARGO_HOME:-$HOME/.cargo}/bin"
+        fi
     else
         # For local development, prefer ~/.cargo/bin if it exists
         if [ -d "$HOME/.cargo/bin" ]; then
@@ -272,7 +277,13 @@ install_prebuilt() {
     
     # Clean up temporary directory
     rm -rf "$temp_dir"
-    
+
+    # Ensure install_dir is in PATH for the current process
+    case ":$PATH:" in
+        *":$install_dir:"*) ;;
+        *) export PATH="$install_dir:$PATH" ;;
+    esac
+
     # Verify installation
     if command -v sccache >/dev/null 2>&1; then
         pass "sccache is now available in PATH"
@@ -281,7 +292,7 @@ install_prebuilt() {
         log_info "Add $install_dir to your PATH:"
         log_info "  export PATH=\"$install_dir:\$PATH\""
     fi
-    
+
     return 0
 }
 

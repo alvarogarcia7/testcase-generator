@@ -87,7 +87,7 @@ RUN chmod +x scripts/*.sh && \
 #exec ./scripts/watch-yaml-files.sh "$@"
 #WATCHEOF
 
-RUN chmod +x /usr/local/bin/watch-yaml
+#RUN chmod +x /usr/local/bin/watch-yaml
 
 # Create README guide at ~/README.md
 COPY README_INSTALL_AUTOMATED.md /app

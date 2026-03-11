@@ -504,7 +504,7 @@ impl TestExecutor {
         script.push('\n');
 
         script.push_str("# Prompts user for verification with Y/n input\n");
-        script.push_str("# Returns: 1 for yes, 0 for no\n");
+        script.push_str("# Returns: 0 for yes, 1 for no (standard bash convention)\n");
         script
             .push_str("# Supports both interactive and non-interactive modes with TTY detection\n");
         script.push_str("read_verification() {\n");
@@ -517,9 +517,9 @@ impl TestExecutor {
         );
         script.push_str("        # Non-interactive mode: return default\n");
         script.push_str("        if [[ \"$default\" =~ ^[Yy]$ ]]; then\n");
-        script.push_str("            return 1\n");
-        script.push_str("        else\n");
         script.push_str("            return 0\n");
+        script.push_str("        else\n");
+        script.push_str("            return 1\n");
         script.push_str("        fi\n");
         script.push_str("    fi\n");
         script.push_str("    \n");
@@ -539,10 +539,10 @@ impl TestExecutor {
         script.push_str("        # Validate response\n");
         script.push_str("        case \"$response\" in\n");
         script.push_str("            [Yy]|[Yy][Ee][Ss])\n");
-        script.push_str("                return 1\n");
+        script.push_str("                return 0\n");
         script.push_str("                ;;\n");
         script.push_str("            [Nn]|[Nn][Oo])\n");
-        script.push_str("                return 0\n");
+        script.push_str("                return 1\n");
         script.push_str("                ;;\n");
         script.push_str("            *)\n");
         script.push_str("                echo \"Invalid response. Please enter Y or n.\" >&2\n");
@@ -907,7 +907,7 @@ impl TestExecutor {
                             "if read_true_false \"Have you completed the manual action?\"; then\n",
                         );
                         script
-                            .push_str("    # User confirmed (read_true_false returns 1 for yes)\n");
+                            .push_str("    # User confirmed (read_true_false returns 0 for yes)\n");
                         script.push_str("    :\n");
                         script.push_str("else\n");
                         script.push_str("    echo \"Manual action not completed. Exiting.\" >&2\n");
@@ -996,7 +996,7 @@ impl TestExecutor {
                             "if read_true_false \"Have you completed the manual step?\"; then\n",
                         );
                         script
-                            .push_str("    # User confirmed (read_true_false returns 1 for yes)\n");
+                            .push_str("    # User confirmed (read_true_false returns 0 for yes)\n");
                         script.push_str("    :\n");
                         script.push_str("else\n");
                         script.push_str("    echo \"Manual step not completed. Exiting.\" >&2\n");
@@ -2188,7 +2188,7 @@ mod tests {
             "Script should contain helper function comment"
         );
         assert!(
-            script.contains("# Returns: 1 for yes, 0 for no"),
+            script.contains("# Returns: 0 for yes, 1 for no (standard bash convention)"),
             "Script should contain return value documentation"
         );
         assert!(
