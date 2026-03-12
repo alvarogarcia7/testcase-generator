@@ -36,6 +36,8 @@ docker:build:
     # Push the image to the registry for
     - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
     - docker push $CI_REGISTRY_IMAGE:${COMMIT_SHA}
+    - docker tag ${CI_REGISTRY_IMAGE}:${COMMIT_SHA} ${CI_REGISTRY_IMAGE}:latest
+    - docker push $CI_REGISTRY_IMAGE:latest
     - docker inspect $CI_REGISTRY_IMAGE:test | tee docker_inspect.json
   artifacts:
     name: "docker-verify-$CI_COMMIT_REF_SLUG"
@@ -72,17 +74,32 @@ docker:test:
 docker:push:
   stage: docker
   image: docker:27-cli
+  dependencies:
+    - docker:build
+    - docker:test
   needs:
     - job: docker:test
+      artifacts: true
+    - job: docker:build
+      artifacts: true
   script:
     - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
+    - find . || true
+    - ls -la build.env || true
+    - echo "COMMIT_SHA=$COMMIT_SHA" # Debugging output
+    - echo "Pushing Docker image to registry"
+    - echo "COMMIT_SHA=$COMMIT_SHA" # Debugging output
+    - echo "CI_REGISTRY_IMAGE=$CI_REGISTRY_IMAGE" # Debugging output
+    - echo "Pulling image ${CI_REGISTRY_IMAGE}:${COMMIT_SHA} to verify it exists before pushing latest tag" # Debugging output
+    - docker pull ${CI_REGISTRY_IMAGE}:${COMMIT_SHA} || { echo "Failed to pull image ${CI_REGISTRY_IMAGE}:${COMMIT_SHA}. Check if the build stage pushed the image correctly."; exit 1; }
+  # Variable comes from artifacts->VARIABLE_NAME
     - docker pull ${CI_REGISTRY_IMAGE}:${COMMIT_SHA}
     - docker tag ${CI_REGISTRY_IMAGE}:${COMMIT_SHA} ${CI_REGISTRY_IMAGE}:latest
 #    - docker push $CI_REGISTRY_IMAGE:${COMMIT_SHA} - No need, already pushed
     - docker push $CI_REGISTRY_IMAGE:latest
-  only:
-    - master
-    - main
+#  only:
+#    - master
+#    - main
   tags:
     - dind-amd
 
