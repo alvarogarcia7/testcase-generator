@@ -3,6 +3,17 @@ FROM rust:1.92-bookworm AS builder
 
 WORKDIR /app
 
+RUN apt update && \
+    apt install -y sccache && \
+    rm -rf /var/lib/apt/lists/*
+
+# Set sccache environment variables
+ENV RUSTC_WRAPPER=sccache
+ENV SCCACHE_DIR=/app/.sccache/docker
+
+# Create cache directory and copy host cache if it exists
+RUN mkdir -p /app/.sccache/docker
+
 # Install coverage tools for CI/CD
 RUN rustup component add llvm-tools-preview && \
     cargo install cargo-llvm-cov
@@ -27,12 +38,22 @@ RUN mkdir -p src/bin examples && \
       echo "fn main() {}" > "examples/${example}.rs"; \
     done
 
+RUN mkdir -p ".cargo"; cargo vendor --locked > .cargo/config.toml
+
+# Build the application against cached dependencies
+RUN cargo build --all --all-features --release && \
+    cargo build --all --all-features  # debug build to populate debug cache
+
 # Copy source code
 COPY src ./src
 COPY examples ./examples
 COPY tests ./tests
 COPY data ./data
 COPY testcases ./testcases
+
+# Build the application against cached dependencies
+RUN cargo build --all --all-features --release && \
+    cargo build --all --all-features  # debug build to populate debug cache
 
 WORKDIR /app
 
