@@ -28,23 +28,47 @@ build-image:
   stage: build
   image: docker:27-cli
   script:
+    - export COMMIT_SHA=$(git rev-parse --short HEAD)
+    - echo "COMMIT_SHA=$COMMIT_SHA" >> build.env
     - echo "Building Python + Docker client image"
-    - docker build -t $CI_REGISTRY_IMAGE:latest .
-    - docker build -t $CI_REGISTRY_IMAGE:${CI_COMMIT_SHORT_SHA} .
-    - docker run $CI_REGISTRY_IMAGE:latest ls
-    - docker run $CI_REGISTRY_IMAGE:latest /usr/local/bin/editor --help
+    - docker build -t $CI_REGISTRY_IMAGE:${COMMIT_SHA} .
+    - docker inspect  $CI_REGISTRY_IMAGE:${COMMIT_SHA} | tee docker_inspect.json
+    - docker run      $CI_REGISTRY_IMAGE:${COMMIT_SHA} ls
+    - docker run      $CI_REGISTRY_IMAGE:${COMMIT_SHA} /usr/local/bin/editor --help
     # Verify cargo works offline
-    - docker run --net none $CI_REGISTRY_IMAGE:latest cargo build --all
+    - docker run --net none $CI_REGISTRY_IMAGE:${COMMIT_SHA} cargo --offline build --all --all-features --release
+    - docker run --net none $CI_REGISTRY_IMAGE:${COMMIT_SHA} cargo --offline build --all --all-features
+    # Push the image to the registry for
+    - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
+    - docker push $CI_REGISTRY_IMAGE:${COMMIT_SHA}
+  artifacts:
+    name: "docker-verify-$CI_COMMIT_REF_SLUG"
+    paths:
+      - docker_inspect.json
+    reports:
+      dotenv: build.env
+    expire_in: 1 week
   tags:
     - dind-amd
 
 test-image:
   stage: test
-  image: $CI_REGISTRY_IMAGE:latest
+  # Variable comes from artifacts->VARIABLE_NAME
+  image: ${CI_REGISTRY_IMAGE}:${COMMIT_SHA}
+  # https://gitlab.com/gitlab-org/gitlab-runner/-/work_items/903#:~:text=by%20Koen%20Lekkerkerker-,Problem,%F0%9F%91%8D%2022%20%F0%9F%91%8E%200
   needs:
-    - build-image
+    - job: build-image
+      artifacts: true
+  variables:
+    DOCKER_RUN_FLAGS: "--net none"
   script:
     - uname -a
+#    - cargo --offline build --all --all-features --release
+    #error: no matching package named `chrono` found
+    #location searched: crates.io index
+    #required by package `testcase-manager v0.1.0 (/builds/int/test-case-management-system/tcms-cli)`
+    #As a reminder, you're using offline mode (--offline) which can sometimes cause surprising resolution failures, if this error is too confusing you may wish to retry without `--offline`.
+#    - cargo --offline build --all --all-features
     - /usr/local/bin/editor --help
   tags:
     - dind-amd
@@ -53,11 +77,14 @@ push-image:
   stage: test
   image: docker:27-cli
   needs:
-    - test-image
+    - job: test-image
+      artifacts: true
   script:
     - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
+    - docker pull ${CI_REGISTRY_IMAGE}:${COMMIT_SHA}
+    - docker tag ${CI_REGISTRY_IMAGE}:${COMMIT_SHA} ${CI_REGISTRY_IMAGE}:latest
+#    - docker push $CI_REGISTRY_IMAGE:${COMMIT_SHA} - No need, already pushed
     - docker push $CI_REGISTRY_IMAGE:latest
-    - docker push $CI_REGISTRY_IMAGE:${CI_COMMIT_SHORT_SHA}
   only:
     - master
     - main
@@ -81,9 +108,9 @@ rust:build-test-lint:
     key: "${CI_COMMIT_REF_SLUG}"
     paths:
       # Cache the cargo home directory which contains registries and bins
-      - .cargo
+#      - .cargo
       # Cache the build artifacts directory
-      - target
+#      - target
       # Cache sccache compilation cache
       - .sccache
     # This ensures the cache is available to all jobs in the pipeline
