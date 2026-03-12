@@ -28,8 +28,8 @@ docker:build:
     - echo "Building Python + Docker client image"
     - docker build -t $CI_REGISTRY_IMAGE:${COMMIT_SHA} .
     - docker inspect  $CI_REGISTRY_IMAGE:${COMMIT_SHA} | tee docker_inspect.json
-    - docker run      $CI_REGISTRY_IMAGE:${COMMIT_SHA} ls
-    - docker run      $CI_REGISTRY_IMAGE:${COMMIT_SHA} /usr/local/bin/editor --help
+    - docker run --rm $CI_REGISTRY_IMAGE:${COMMIT_SHA} ls
+    - docker run --rm $CI_REGISTRY_IMAGE:${COMMIT_SHA} /usr/local/bin/editor --help
     # Verify cargo works offline
     - docker run --rm --net none $CI_REGISTRY_IMAGE:${COMMIT_SHA} cargo --offline build --all --all-features --release
     - docker run --rm --net none $CI_REGISTRY_IMAGE:${COMMIT_SHA} cargo --offline build --all --all-features
