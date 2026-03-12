@@ -1,12 +1,7 @@
 
 stages:
-  - build
-  - test
-  - rust
-  - coverage
   - docker
-  - performance
-  - report
+  - rust
 
 variables:
   DOCKER_HOST: "tcp://server-custom-dind.custom-dind:2375"
@@ -24,8 +19,8 @@ variables:
   SCCACHE_DIR: ${CI_PROJECT_DIR}/.sccache
   SCCACHE_CACHE_SIZE: 5G
 
-build-image:
-  stage: build
+docker:build:
+  stage: docker
   image: docker:27-cli
   script:
     - export COMMIT_SHA=$(git rev-parse --short HEAD)
@@ -36,11 +31,12 @@ build-image:
     - docker run      $CI_REGISTRY_IMAGE:${COMMIT_SHA} ls
     - docker run      $CI_REGISTRY_IMAGE:${COMMIT_SHA} /usr/local/bin/editor --help
     # Verify cargo works offline
-    - docker run --net none $CI_REGISTRY_IMAGE:${COMMIT_SHA} cargo --offline build --all --all-features --release
-    - docker run --net none $CI_REGISTRY_IMAGE:${COMMIT_SHA} cargo --offline build --all --all-features
+    - docker run --rm --net none $CI_REGISTRY_IMAGE:${COMMIT_SHA} cargo --offline build --all --all-features --release
+    - docker run --rm --net none $CI_REGISTRY_IMAGE:${COMMIT_SHA} cargo --offline build --all --all-features
     # Push the image to the registry for
     - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
     - docker push $CI_REGISTRY_IMAGE:${COMMIT_SHA}
+    - docker inspect $CI_REGISTRY_IMAGE:test | tee docker_inspect.json
   artifacts:
     name: "docker-verify-$CI_COMMIT_REF_SLUG"
     paths:
@@ -51,13 +47,13 @@ build-image:
   tags:
     - dind-amd
 
-test-image:
-  stage: test
+docker:test:
+  stage: docker
   # Variable comes from artifacts->VARIABLE_NAME
   image: ${CI_REGISTRY_IMAGE}:${COMMIT_SHA}
   # https://gitlab.com/gitlab-org/gitlab-runner/-/work_items/903#:~:text=by%20Koen%20Lekkerkerker-,Problem,%F0%9F%91%8D%2022%20%F0%9F%91%8E%200
   needs:
-    - job: build-image
+    - job: docker:build
       artifacts: true
   variables:
     DOCKER_RUN_FLAGS: "--net none"
@@ -73,12 +69,11 @@ test-image:
   tags:
     - dind-amd
 
-push-image:
-  stage: test
+docker:push:
+  stage: docker
   image: docker:27-cli
   needs:
-    - job: test-image
-      artifacts: true
+    - job: docker:test
   script:
     - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
     - docker pull ${CI_REGISTRY_IMAGE}:${COMMIT_SHA}
@@ -197,28 +192,6 @@ rust:build-test-lint:
     expire_in: 1 week
     when: always
 
-docker:build:
-  stage: docker
-  image: docker:27-cli
-  before_script:
-    - docker info
-  script:
-    - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA .
-    - echo "Built image $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"
-    - docker build -t $CI_REGISTRY_IMAGE:test .
-    - docker images | grep $CI_REGISTRY_IMAGE
-    - docker run --rm $CI_REGISTRY_IMAGE:test validate-yaml --help
-    - docker run --rm $CI_REGISTRY_IMAGE:test validate-json --help
-    - echo "Image verification successful"
-    - docker inspect $CI_REGISTRY_IMAGE:test | tee docker_inspect.json
-  artifacts:
-    name: "docker-verify-$CI_COMMIT_REF_SLUG"
-    paths:
-      - docker_inspect.json
-    expire_in: 1 week
-  tags:
-    - dind-amd
-
 docker:verify:
   stage: docker
   image: python:3.14-slim
@@ -235,30 +208,6 @@ docker:verify:
     paths:
       - docker_scan_results.json
     expire_in: 1 week
-
-docker:push:
-  stage: docker
-  image: docker:27-cli
-  services:
-    - docker:27-dind
-  dependencies:
-    - docker:verify
-  before_script:
-    - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
-  script:
-    - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA .
-    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
-    - |
-      if [ "$CI_COMMIT_BRANCH" == "$CI_DEFAULT_BRANCH" ]; then
-        docker tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA $CI_REGISTRY_IMAGE:latest
-        docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
-        docker push $CI_REGISTRY_IMAGE:latest
-      fi
-  only:
-    - master
-    - main
-  tags:
-    - dind-amd
 #
 #performance:baseline:
 #  image: rust:1.92-bookworm
