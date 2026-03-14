@@ -989,6 +989,65 @@ impl TestExecutor {
                         );
                         script.push_str("    exit 1\n");
                         script.push_str("fi\n\n");
+
+                        // Generate JSON log entry for manual step with verification
+                        script.push_str("# Generate JSON log entry for manual step\n");
+                        script.push_str("COMMAND_OUTPUT=\"\"\n");
+                        script.push_str(&self.generate_json_escaping_code());
+                        script.push('\n');
+
+                        script.push_str("if [ \"$FIRST_ENTRY\" = false ]; then\n");
+                        script.push_str("    echo ',' >> \"$JSON_LOG\"\n");
+                        script.push_str("fi\n");
+                        script.push_str("FIRST_ENTRY=false\n\n");
+
+                        // Escape command for JSON
+                        let escaped_command = step
+                            .command
+                            .replace("\\", "\\\\")
+                            .replace("'", "\"")
+                            .replace("\"", "\\\"")
+                            .replace("\n", "\\n")
+                            .replace("\r", "\\r")
+                            .replace("\t", "\\t")
+                            .replace("\x08", "\\b")
+                            .replace("\x0C", "\\f");
+
+                        script.push_str("# Write JSON entry\n");
+                        script.push_str("{\n");
+                        script.push_str("    echo '  {'\n");
+                        script.push_str(&format!(
+                            "    echo '    \"test_sequence\": {},'\n",
+                            sequence.id
+                        ));
+                        script.push_str(&format!("    echo '    \"step\": {},'\n", step.step));
+                        script.push_str(&format!(
+                            "    echo '    \"command\": \"{}\",'\n",
+                            escaped_command
+                        ));
+                        script.push_str("    echo '    \"exit_code\": 0,'\n");
+                        script.push_str(
+                            "    echo \"    \\\"output\\\": \\\"$OUTPUT_ESCAPED\\\",\"\n",
+                        );
+                        script
+                            .push_str("    echo \"    \\\"timestamp\\\": \\\"$TIMESTAMP\\\",\"\n");
+
+                        // Convert boolean variables to JSON boolean format
+                        script.push_str("    if [ \"$USER_VERIFICATION_RESULT\" = true ]; then\n");
+                        script.push_str("        echo '    \"result_verification_pass\": true,'\n");
+                        script.push_str("    else\n");
+                        script
+                            .push_str("        echo '    \"result_verification_pass\": false,'\n");
+                        script.push_str("    fi\n");
+
+                        script.push_str("    if [ \"$USER_VERIFICATION_OUTPUT\" = true ]; then\n");
+                        script.push_str("        echo '    \"output_verification_pass\": true'\n");
+                        script.push_str("    else\n");
+                        script.push_str("        echo '    \"output_verification_pass\": false'\n");
+                        script.push_str("    fi\n");
+
+                        script.push_str("    echo '  }'\n");
+                        script.push_str("} >> \"$JSON_LOG\"\n\n");
                     } else {
                         // No verification fields - just prompt to continue using read_true_false
                         script.push_str("# Prompt user to confirm they want to continue\n");
@@ -1002,6 +1061,49 @@ impl TestExecutor {
                         script.push_str("    echo \"Manual step not completed. Exiting.\" >&2\n");
                         script.push_str("    exit 1\n");
                         script.push_str("fi\n\n");
+
+                        // Generate JSON log entry for manual step without verification
+                        script.push_str("# Generate JSON log entry for manual step\n");
+                        script.push_str("COMMAND_OUTPUT=\"\"\n");
+                        script.push_str(&self.generate_json_escaping_code());
+                        script.push('\n');
+
+                        script.push_str("if [ \"$FIRST_ENTRY\" = false ]; then\n");
+                        script.push_str("    echo ',' >> \"$JSON_LOG\"\n");
+                        script.push_str("fi\n");
+                        script.push_str("FIRST_ENTRY=false\n\n");
+
+                        // Escape command for JSON
+                        let escaped_command = step
+                            .command
+                            .replace("\\", "\\\\")
+                            .replace("'", "\"")
+                            .replace("\"", "\\\"")
+                            .replace("\n", "\\n")
+                            .replace("\r", "\\r")
+                            .replace("\t", "\\t")
+                            .replace("\x08", "\\b")
+                            .replace("\x0C", "\\f");
+
+                        script.push_str("# Write JSON entry\n");
+                        script.push_str("{\n");
+                        script.push_str("    echo '  {'\n");
+                        script.push_str(&format!(
+                            "    echo '    \"test_sequence\": {},'\n",
+                            sequence.id
+                        ));
+                        script.push_str(&format!("    echo '    \"step\": {},'\n", step.step));
+                        script.push_str(&format!(
+                            "    echo '    \"command\": \"{}\",'\n",
+                            escaped_command
+                        ));
+                        script.push_str("    echo '    \"exit_code\": 0,'\n");
+                        script.push_str(
+                            "    echo \"    \\\"output\\\": \\\"$OUTPUT_ESCAPED\\\",\"\n",
+                        );
+                        script.push_str("    echo \"    \\\"timestamp\\\": \\\"$TIMESTAMP\\\"\"\n");
+                        script.push_str("    echo '  }'\n");
+                        script.push_str("} >> \"$JSON_LOG\"\n\n");
                     }
 
                     // Execute after_step hook for manual step
