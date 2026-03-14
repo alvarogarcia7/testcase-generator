@@ -16,6 +16,7 @@ pub enum MatchStrategy {
     Exact,
     Regex,
     Contains,
+    Precomputed,
 }
 
 /// Result of verifying a single step (struct-based, for backward compatibility with tests)
@@ -1023,6 +1024,55 @@ impl TestVerifier {
     ) -> StepVerificationResultEnum {
         let expected = &step.expected;
 
+        // Precomputed mode: check precomputed verification fields
+        if self.result_strategy == MatchStrategy::Precomputed
+            || self.output_strategy == MatchStrategy::Precomputed
+        {
+            // Check result verification if in Precomputed mode
+            if self.result_strategy == MatchStrategy::Precomputed
+                && log.result_verification_pass != Some(true)
+            {
+                return StepVerificationResultEnum::Fail {
+                    step: step.step,
+                    description: step.description.clone(),
+                    expected: expected.clone(),
+                    actual_result: log.actual_result.clone(),
+                    actual_output: log.actual_output.clone(),
+                    reason: "Result verification failed (precomputed)".to_string(),
+                    requirement: requirement.cloned(),
+                    item,
+                    tc,
+                };
+            }
+
+            // Check output verification if in Precomputed mode
+            if self.output_strategy == MatchStrategy::Precomputed
+                && log.output_verification_pass != Some(true)
+            {
+                return StepVerificationResultEnum::Fail {
+                    step: step.step,
+                    description: step.description.clone(),
+                    expected: expected.clone(),
+                    actual_result: log.actual_result.clone(),
+                    actual_output: log.actual_output.clone(),
+                    reason: "Output verification failed (precomputed)".to_string(),
+                    requirement: requirement.cloned(),
+                    item,
+                    tc,
+                };
+            }
+
+            // In Precomputed mode, skip success field check and pass
+            return StepVerificationResultEnum::Pass {
+                step: step.step,
+                description: step.description.clone(),
+                requirement: requirement.cloned(),
+                item,
+                tc,
+            };
+        }
+
+        // Non-Precomputed mode: standard verification logic
         // Check success field if it's defined
         if let Some(expected_success) = expected.success {
             if let Some(actual_success) = log.success {
@@ -1100,6 +1150,11 @@ impl TestVerifier {
                 } else {
                     false
                 }
+            }
+            MatchStrategy::Precomputed => {
+                // Precomputed strategy should not be used with matches()
+                // This should be handled separately in verify_step_new
+                false
             }
         }
     }
@@ -1180,29 +1235,44 @@ impl TestVerifier {
         step: &Step,
         log: &TestExecutionLog,
     ) -> StepVerificationResult {
-        let result_match = self.matches(
-            &step.expected.result,
-            &log.actual_result,
-            self.result_strategy,
-        );
-        let output_match = self.matches(
-            &step.expected.output,
-            &log.actual_output,
-            self.output_strategy,
-        );
+        // Handle Precomputed strategy
+        let result_match = if self.result_strategy == MatchStrategy::Precomputed {
+            log.result_verification_pass == Some(true)
+        } else {
+            self.matches(
+                &step.expected.result,
+                &log.actual_result,
+                self.result_strategy,
+            )
+        };
+
+        let output_match = if self.output_strategy == MatchStrategy::Precomputed {
+            log.output_verification_pass == Some(true)
+        } else {
+            self.matches(
+                &step.expected.output,
+                &log.actual_output,
+                self.output_strategy,
+            )
+        };
 
         let mut success_match = true;
         let mut success_diff = None;
 
-        if let Some(expected_success) = step.expected.success {
-            if let Some(actual_success) = log.success {
-                success_match = expected_success == actual_success;
-                if !success_match {
-                    success_diff = Some(DiffDetail {
-                        expected: expected_success.to_string(),
-                        actual: actual_success.to_string(),
-                        message: "Success flag mismatch".to_string(),
-                    });
+        // Skip success field check if either strategy is Precomputed
+        if self.result_strategy != MatchStrategy::Precomputed
+            && self.output_strategy != MatchStrategy::Precomputed
+        {
+            if let Some(expected_success) = step.expected.success {
+                if let Some(actual_success) = log.success {
+                    success_match = expected_success == actual_success;
+                    if !success_match {
+                        success_diff = Some(DiffDetail {
+                            expected: expected_success.to_string(),
+                            actual: actual_success.to_string(),
+                            message: "Success flag mismatch".to_string(),
+                        });
+                    }
                 }
             }
         }
@@ -1254,6 +1324,7 @@ impl TestVerifier {
             MatchStrategy::Exact => "Exact",
             MatchStrategy::Regex => "Regex",
             MatchStrategy::Contains => "Contains",
+            MatchStrategy::Precomputed => "Precomputed",
         }
     }
 

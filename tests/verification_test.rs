@@ -54,6 +54,31 @@ fn create_execution_log(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
+fn create_execution_log_with_precomputed(
+    test_case_id: &str,
+    sequence_id: i64,
+    step_number: i64,
+    actual_result: &str,
+    actual_output: &str,
+    success: Option<bool>,
+    result_verification_pass: Option<bool>,
+    output_verification_pass: Option<bool>,
+) -> TestExecutionLog {
+    TestExecutionLog {
+        test_case_id: test_case_id.to_string(),
+        sequence_id,
+        step_number,
+        success,
+        actual_result: actual_result.to_string(),
+        actual_output: actual_output.to_string(),
+        timestamp: Some(Local::now().with_timezone(&Utc)),
+        log_file_path: PathBuf::from("test.json"),
+        result_verification_pass,
+        output_verification_pass,
+    }
+}
+
 // ============================================================================
 // Exact Matching Tests
 // ============================================================================
@@ -1942,4 +1967,311 @@ fn test_step_verification_result_enum_methods() {
 
     assert!(!not_executed.is_pass());
     assert_eq!(not_executed.step_number(), 3);
+}
+
+// ============================================================================
+// Precomputed Match Strategy Tests
+// ============================================================================
+
+#[test]
+fn test_precomputed_both_pass() {
+    let verifier = TestVerifier::new(MatchStrategy::Precomputed, MatchStrategy::Precomputed);
+    let step = create_step(1, "expected_result", "expected_output", Some(true));
+    let log = create_execution_log_with_precomputed(
+        "TC001",
+        1,
+        1,
+        "actual_result",
+        "actual_output",
+        Some(true),
+        Some(true),
+        Some(true),
+    );
+
+    let result = verifier.verify_step_from_log(&step, &log);
+
+    assert!(result.passed);
+    assert!(result.result_match);
+    assert!(result.output_match);
+    // In precomputed mode, success_match should be true since we skip success field check
+    assert!(result.success_match);
+}
+
+#[test]
+fn test_precomputed_result_fail() {
+    let verifier = TestVerifier::new(MatchStrategy::Precomputed, MatchStrategy::Precomputed);
+    let step = create_step(1, "expected_result", "expected_output", Some(true));
+    let log = create_execution_log_with_precomputed(
+        "TC001",
+        1,
+        1,
+        "actual_result",
+        "actual_output",
+        Some(true),
+        Some(false),
+        Some(true),
+    );
+
+    let result = verifier.verify_step_from_log(&step, &log);
+
+    assert!(!result.passed);
+    assert!(!result.result_match);
+}
+
+#[test]
+fn test_precomputed_output_fail() {
+    let verifier = TestVerifier::new(MatchStrategy::Precomputed, MatchStrategy::Precomputed);
+    let step = create_step(1, "expected_result", "expected_output", Some(true));
+    let log = create_execution_log_with_precomputed(
+        "TC001",
+        1,
+        1,
+        "actual_result",
+        "actual_output",
+        Some(true),
+        Some(true),
+        Some(false),
+    );
+
+    let result = verifier.verify_step_from_log(&step, &log);
+
+    assert!(!result.passed);
+    assert!(result.result_match);
+    assert!(!result.output_match);
+}
+
+#[test]
+fn test_precomputed_both_fail() {
+    let verifier = TestVerifier::new(MatchStrategy::Precomputed, MatchStrategy::Precomputed);
+    let step = create_step(1, "expected_result", "expected_output", Some(true));
+    let log = create_execution_log_with_precomputed(
+        "TC001",
+        1,
+        1,
+        "actual_result",
+        "actual_output",
+        Some(true),
+        Some(false),
+        Some(false),
+    );
+
+    let result = verifier.verify_step_from_log(&step, &log);
+
+    assert!(!result.passed);
+    assert!(!result.result_match);
+}
+
+#[test]
+fn test_precomputed_missing_result_verification_pass() {
+    let verifier = TestVerifier::new(MatchStrategy::Precomputed, MatchStrategy::Precomputed);
+    let step = create_step(1, "expected_result", "expected_output", Some(true));
+    let log = create_execution_log_with_precomputed(
+        "TC001",
+        1,
+        1,
+        "actual_result",
+        "actual_output",
+        Some(true),
+        None, // Missing result_verification_pass
+        Some(true),
+    );
+
+    let result = verifier.verify_step_from_log(&step, &log);
+
+    // Missing field should be treated as failure
+    assert!(!result.passed);
+    assert!(!result.result_match);
+}
+
+#[test]
+fn test_precomputed_missing_output_verification_pass() {
+    let verifier = TestVerifier::new(MatchStrategy::Precomputed, MatchStrategy::Precomputed);
+    let step = create_step(1, "expected_result", "expected_output", Some(true));
+    let log = create_execution_log_with_precomputed(
+        "TC001",
+        1,
+        1,
+        "actual_result",
+        "actual_output",
+        Some(true),
+        Some(true),
+        None, // Missing output_verification_pass
+    );
+
+    let result = verifier.verify_step_from_log(&step, &log);
+
+    // Missing field should be treated as failure
+    assert!(!result.passed);
+    assert!(result.result_match);
+    assert!(!result.output_match);
+}
+
+#[test]
+fn test_precomputed_both_missing() {
+    let verifier = TestVerifier::new(MatchStrategy::Precomputed, MatchStrategy::Precomputed);
+    let step = create_step(1, "expected_result", "expected_output", Some(true));
+    let log = create_execution_log_with_precomputed(
+        "TC001",
+        1,
+        1,
+        "actual_result",
+        "actual_output",
+        Some(true),
+        None, // Missing result_verification_pass
+        None, // Missing output_verification_pass
+    );
+
+    let result = verifier.verify_step_from_log(&step, &log);
+
+    // Both missing fields should be treated as failure
+    assert!(!result.passed);
+    assert!(!result.result_match);
+}
+
+#[test]
+fn test_precomputed_ignores_success_field() {
+    let verifier = TestVerifier::new(MatchStrategy::Precomputed, MatchStrategy::Precomputed);
+    let step = create_step(1, "expected_result", "expected_output", Some(true));
+    // success is false, but with precomputed mode this should be ignored
+    let log = create_execution_log_with_precomputed(
+        "TC001",
+        1,
+        1,
+        "actual_result",
+        "actual_output",
+        Some(false), // Different from expected success=true
+        Some(true),
+        Some(true),
+    );
+
+    let result = verifier.verify_step_from_log(&step, &log);
+
+    // Should pass despite success mismatch since precomputed mode skips success check
+    assert!(result.passed);
+    assert!(result.result_match);
+    assert!(result.output_match);
+    assert!(result.success_match);
+}
+
+#[test]
+fn test_precomputed_test_case_integration() {
+    let verifier = TestVerifier::new(MatchStrategy::Precomputed, MatchStrategy::Precomputed);
+
+    let mut test_case = TestCase::new(
+        "REQ001".to_string(),
+        1,
+        1,
+        "TC001".to_string(),
+        "Precomputed test case".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(1, "Sequence 1".to_string(), "Description".to_string());
+    sequence
+        .steps
+        .push(create_step(1, "result1", "output1", Some(true)));
+    sequence
+        .steps
+        .push(create_step(2, "result2", "output2", Some(true)));
+    sequence
+        .steps
+        .push(create_step(3, "result3", "output3", Some(true)));
+
+    test_case.test_sequences.push(sequence);
+
+    let logs = vec![
+        create_execution_log_with_precomputed(
+            "TC001",
+            1,
+            1,
+            "actual1",
+            "actual_out1",
+            Some(true),
+            Some(true),
+            Some(true),
+        ),
+        create_execution_log_with_precomputed(
+            "TC001",
+            1,
+            2,
+            "actual2",
+            "actual_out2",
+            Some(true),
+            Some(false), // result verification fails
+            Some(true),
+        ),
+        create_execution_log_with_precomputed(
+            "TC001",
+            1,
+            3,
+            "actual3",
+            "actual_out3",
+            Some(true),
+            Some(true),
+            Some(true),
+        ),
+    ];
+
+    let result = verifier.verify_test_case(&test_case, &logs);
+
+    assert!(!result.overall_pass);
+    assert_eq!(result.total_steps, 3);
+    assert_eq!(result.passed_steps, 2);
+    assert_eq!(result.failed_steps, 1);
+}
+
+#[test]
+fn test_precomputed_mixed_strategies() {
+    // Result uses precomputed, output uses exact
+    let verifier = TestVerifier::new(MatchStrategy::Precomputed, MatchStrategy::Exact);
+    let step = create_step(1, "expected_result", "expected_output", None);
+    let log = create_execution_log_with_precomputed(
+        "TC001",
+        1,
+        1,
+        "actual_result",
+        "expected_output", // Matches expected
+        Some(true),
+        Some(true), // Result precomputed pass
+        None,       // Output verification not used since strategy is Exact
+    );
+
+    let result = verifier.verify_step_from_log(&step, &log);
+
+    // Should pass: result verified via precomputed, output verified via exact match
+    assert!(result.passed);
+    assert!(result.result_match);
+    assert!(result.output_match);
+}
+
+#[test]
+fn test_precomputed_serialization() {
+    use serde_json;
+
+    let strategy = MatchStrategy::Precomputed;
+    let json = serde_json::to_string(&strategy).unwrap();
+    let deserialized: MatchStrategy = serde_json::from_str(&json).unwrap();
+    assert_eq!(strategy, deserialized);
+}
+
+#[test]
+fn test_precomputed_strategy_name() {
+    let verifier = TestVerifier::new(MatchStrategy::Precomputed, MatchStrategy::Precomputed);
+    let step = create_step(1, "result", "output", None);
+    let log = create_execution_log_with_precomputed(
+        "TC001",
+        1,
+        1,
+        "actual",
+        "actual_out",
+        Some(true),
+        Some(false),
+        Some(true),
+    );
+
+    let result = verifier.verify_step_from_log(&step, &log);
+
+    // Verify strategy name appears in diff
+    if let Some(diff) = result.diff.result_diff.as_ref() {
+        assert!(diff.message.contains("Precomputed"));
+    }
 }
