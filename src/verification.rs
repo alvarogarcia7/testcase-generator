@@ -161,6 +161,14 @@ pub struct TestExecutionLog {
 
     /// Path to the log file
     pub log_file_path: PathBuf,
+
+    /// Whether result verification passed (optional)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub result_verification_pass: Option<bool>,
+
+    /// Whether output verification passed (optional)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub output_verification_pass: Option<bool>,
 }
 
 /// Result of verifying a test case
@@ -693,6 +701,8 @@ impl TestVerifier {
                     actual_output,
                     timestamp,
                     log_file_path: log_path.to_path_buf(),
+                    result_verification_pass: None,
+                    output_verification_pass: None,
                 });
             }
         }
@@ -800,6 +810,8 @@ impl TestVerifier {
                     actual_output,
                     timestamp,
                     log_file_path: log_path.to_path_buf(),
+                    result_verification_pass: None,
+                    output_verification_pass: None,
                 });
             }
         }
@@ -843,6 +855,8 @@ impl TestVerifier {
                 actual_output: entry.output.clone(),
                 timestamp,
                 log_file_path: log_path.to_path_buf(),
+                result_verification_pass: entry.result_verification_pass,
+                output_verification_pass: entry.output_verification_pass,
             });
         }
 
@@ -893,6 +907,8 @@ impl TestVerifier {
                 actual_output: entry.output.clone(),
                 timestamp,
                 log_file_path: log_path.to_path_buf(),
+                result_verification_pass: entry.result_verification_pass,
+                output_verification_pass: entry.output_verification_pass,
             });
         }
 

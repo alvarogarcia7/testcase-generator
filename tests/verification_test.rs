@@ -49,6 +49,8 @@ fn create_execution_log(
         actual_output: actual_output.to_string(),
         timestamp: Some(Local::now().with_timezone(&Utc)),
         log_file_path: PathBuf::from("test.json"),
+        result_verification_pass: None,
+        output_verification_pass: None,
     }
 }
 
