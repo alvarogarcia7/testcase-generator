@@ -1681,15 +1681,31 @@ impl TestExecutor {
                             .trim_end()
                             .to_string();
 
+                        // Perform verification for automated steps
+                        let result_verification_passed = self.evaluate_verification(
+                            &step.verification.result,
+                            exit_code,
+                            &command_output,
+                            &step_vars,
+                        )?;
+                        let output_verification_passed = self.evaluate_verification(
+                            &step.verification.output,
+                            exit_code,
+                            &command_output,
+                            &step_vars,
+                        )?;
+
                         let timestamp = Local::now().to_rfc3339();
-                        let entry = TestStepExecutionEntry::with_timestamp(
+                        let mut entry = TestStepExecutionEntry::with_verification(
                             sequence.id,
                             step.step,
                             step.command.clone(),
                             exit_code,
                             command_output.clone(),
-                            timestamp,
+                            Some(result_verification_passed),
+                            Some(output_verification_passed),
                         );
+                        entry.timestamp = Some(timestamp);
 
                         execution_entries.push(entry);
 
@@ -1811,14 +1827,16 @@ impl TestExecutor {
                         // Store the error but continue to write the log
                         // Create an entry with exit code -1 to indicate execution failure
                         let timestamp = Local::now().to_rfc3339();
-                        let entry = TestStepExecutionEntry::with_timestamp(
+                        let mut entry = TestStepExecutionEntry::with_verification(
                             sequence.id,
                             step.step,
                             step.command.clone(),
                             -1,
                             format!("Failed to execute: {}", e),
-                            timestamp,
+                            Some(false), // Verification fails if command fails to execute
+                            Some(false),
                         );
+                        entry.timestamp = Some(timestamp);
                         execution_entries.push(entry);
 
                         if execution_error.is_none() {

@@ -163,6 +163,22 @@ fn validate_log_matches_testcase(entries: &[TestStepExecutionEntry], test_case: 
                 let _result_pass = entry.result_verification_pass.unwrap();
                 let _output_pass = entry.output_verification_pass.unwrap();
             }
+        } else {
+            // Automated steps should always have verification fields
+            assert!(
+                entry.result_verification_pass.is_some(),
+                "Entry {} (automated step) must have result_verification_pass field",
+                i
+            );
+            assert!(
+                entry.output_verification_pass.is_some(),
+                "Entry {} (automated step) must have output_verification_pass field",
+                i
+            );
+
+            // Verify the fields are booleans
+            let _result_pass = entry.result_verification_pass.unwrap();
+            let _output_pass = entry.output_verification_pass.unwrap();
         }
     }
 }
@@ -234,6 +250,20 @@ fn test_executor_generates_valid_json_log() -> Result<()> {
     let entries: Vec<TestStepExecutionEntry> = serde_json::from_str(&json_content)?;
     validate_log_matches_testcase(&entries, &test_case);
 
+    // All steps in create_simple_test_case are automated, verify they have verification fields
+    for (i, entry) in entries.iter().enumerate() {
+        assert!(
+            entry.result_verification_pass.is_some(),
+            "Automated step {} should have result_verification_pass field",
+            i
+        );
+        assert!(
+            entry.output_verification_pass.is_some(),
+            "Automated step {} should have output_verification_pass field",
+            i
+        );
+    }
+
     Ok(())
 }
 
@@ -265,23 +295,59 @@ fn test_executor_json_log_structure_and_content() -> Result<()> {
     assert_eq!(entries[0].exit_code, 0);
     assert!(entries[0].output.contains("Hello"));
     assert!(entries[0].timestamp.is_some());
+    // Automated steps should have verification fields
+    assert!(
+        entries[0].result_verification_pass.is_some(),
+        "Automated step should have result_verification_pass field"
+    );
+    assert!(
+        entries[0].output_verification_pass.is_some(),
+        "Automated step should have output_verification_pass field"
+    );
 
     assert_eq!(entries[1].test_sequence, 1);
     assert_eq!(entries[1].step, 2);
     assert_eq!(entries[1].command, "true");
     assert_eq!(entries[1].exit_code, 0);
+    // Automated steps should have verification fields
+    assert!(
+        entries[1].result_verification_pass.is_some(),
+        "Automated step should have result_verification_pass field"
+    );
+    assert!(
+        entries[1].output_verification_pass.is_some(),
+        "Automated step should have output_verification_pass field"
+    );
 
     assert_eq!(entries[2].test_sequence, 2);
     assert_eq!(entries[2].step, 1);
     assert_eq!(entries[2].command, "echo 'World'");
     assert_eq!(entries[2].exit_code, 0);
     assert!(entries[2].output.contains("World"));
+    // Automated steps should have verification fields
+    assert!(
+        entries[2].result_verification_pass.is_some(),
+        "Automated step should have result_verification_pass field"
+    );
+    assert!(
+        entries[2].output_verification_pass.is_some(),
+        "Automated step should have output_verification_pass field"
+    );
 
     assert_eq!(entries[3].test_sequence, 2);
     assert_eq!(entries[3].step, 2);
     assert_eq!(entries[3].command, "echo 'Test Complete'");
     assert_eq!(entries[3].exit_code, 0);
     assert!(entries[3].output.contains("Test Complete"));
+    // Automated steps should have verification fields
+    assert!(
+        entries[3].result_verification_pass.is_some(),
+        "Automated step should have result_verification_pass field"
+    );
+    assert!(
+        entries[3].output_verification_pass.is_some(),
+        "Automated step should have output_verification_pass field"
+    );
 
     Ok(())
 }
@@ -310,10 +376,28 @@ fn test_executor_json_log_with_manual_steps() -> Result<()> {
     assert_eq!(entries[0].test_sequence, 1);
     assert_eq!(entries[0].step, 1);
     assert_eq!(entries[0].command, "echo 'Before Manual'");
+    // Automated steps should have verification fields
+    assert!(
+        entries[0].result_verification_pass.is_some(),
+        "Automated step should have result_verification_pass field"
+    );
+    assert!(
+        entries[0].output_verification_pass.is_some(),
+        "Automated step should have output_verification_pass field"
+    );
 
     assert_eq!(entries[1].test_sequence, 1);
     assert_eq!(entries[1].step, 3);
     assert_eq!(entries[1].command, "echo 'After Manual'");
+    // Automated steps should have verification fields
+    assert!(
+        entries[1].result_verification_pass.is_some(),
+        "Automated step should have result_verification_pass field"
+    );
+    assert!(
+        entries[1].output_verification_pass.is_some(),
+        "Automated step should have output_verification_pass field"
+    );
 
     Ok(())
 }
@@ -409,6 +493,17 @@ fn test_executor_with_self_validated_example() -> Result<()> {
                 "Entry {} should have a timestamp",
                 i
             );
+            // All steps in self_validated_example are automated, verify they have verification fields
+            assert!(
+                entry.result_verification_pass.is_some(),
+                "Automated step {} should have result_verification_pass field",
+                i
+            );
+            assert!(
+                entry.output_verification_pass.is_some(),
+                "Automated step {} should have output_verification_pass field",
+                i
+            );
         }
 
         assert!(!entries.is_empty(), "Should have at least one entry");
@@ -443,8 +538,19 @@ fn test_json_log_via_test_executor_binary() -> Result<()> {
         let entries: Vec<TestStepExecutionEntry> = serde_json::from_str(&json_content)?;
         assert!(!entries.is_empty(), "Should have execution entries");
 
-        for entry in &entries {
+        for (i, entry) in entries.iter().enumerate() {
             assert!(entry.timestamp.is_some(), "Should have timestamp");
+            // Test case created by create_simple_test_case has only automated steps
+            assert!(
+                entry.result_verification_pass.is_some(),
+                "Automated step {} should have result_verification_pass field",
+                i
+            );
+            assert!(
+                entry.output_verification_pass.is_some(),
+                "Automated step {} should have output_verification_pass field",
+                i
+            );
         }
     } else if output.status.success() {
         panic!("Expected execution log file was not created");
@@ -477,10 +583,21 @@ fn test_json_log_format_compliance() -> Result<()> {
 
         let entries: Vec<TestStepExecutionEntry> = serde_json::from_str(&json_content)?;
 
-        for entry in &entries {
+        for (i, entry) in entries.iter().enumerate() {
             assert!(!entry.command.is_empty());
             assert!(entry.test_sequence >= 0);
             assert!(entry.step >= 0);
+            // Test case created by create_test_case_with_special_characters has only automated steps
+            assert!(
+                entry.result_verification_pass.is_some(),
+                "Automated step {} should have result_verification_pass field",
+                i
+            );
+            assert!(
+                entry.output_verification_pass.is_some(),
+                "Automated step {} should have output_verification_pass field",
+                i
+            );
         }
     }
 
@@ -570,6 +687,20 @@ fn test_json_log_with_manual_step_verification() -> Result<()> {
             // The fields should be booleans
             let _result_pass = entry.result_verification_pass.unwrap();
             let _output_pass = entry.output_verification_pass.unwrap();
+        } else {
+            // Automated steps (step 1 and step 3) should have verification fields
+            assert!(
+                entry.result_verification_pass.is_some(),
+                "Automated step (seq {}, step {}) should have result_verification_pass field",
+                entry.test_sequence,
+                entry.step
+            );
+            assert!(
+                entry.output_verification_pass.is_some(),
+                "Automated step (seq {}, step {}) should have output_verification_pass field",
+                entry.test_sequence,
+                entry.step
+            );
         }
     }
 
@@ -868,7 +999,9 @@ fn create_test_case_with_manual_step_verification() -> TestCase {
             // Non-trivial result verification (not just "true")
             result: VerificationExpression::Simple("[ 1 -eq 1 ]".to_string()),
             // Non-trivial output verification (not just "true")
-            output: VerificationExpression::Simple("[ -n \"$COMMAND_OUTPUT\" ] || true".to_string()),
+            output: VerificationExpression::Simple(
+                "[ -n \"$COMMAND_OUTPUT\" ] || true".to_string(),
+            ),
             output_file: None,
             general: None,
         },
@@ -1133,8 +1266,19 @@ fn test_generated_script_produces_valid_json_with_special_chars() -> Result<()> 
     assert_eq!(entries[3].command, "echo \"line1\"\necho \"line2\"");
     assert_eq!(entries[4].command, "echo \"text\twith\ttabs\"");
 
-    for entry in &entries {
+    for (i, entry) in entries.iter().enumerate() {
         assert_eq!(entry.exit_code, 0, "All commands should succeed");
+        // All steps are automated, verify they have verification fields
+        assert!(
+            entry.result_verification_pass.is_some(),
+            "Automated step {} should have result_verification_pass field",
+            i
+        );
+        assert!(
+            entry.output_verification_pass.is_some(),
+            "Automated step {} should have output_verification_pass field",
+            i
+        );
     }
 
     Ok(())
@@ -1315,9 +1459,188 @@ fn test_command_json_escaping_edge_cases() -> Result<()> {
         assert!(!entry.command.is_empty(), "Command should not be empty");
         assert_eq!(entry.test_sequence, 1, "Should be in test_sequence 1");
         assert_eq!(entry.step, (i + 1) as i64, "Step should match index");
+        // All steps are automated, verify they have verification fields
+        assert!(
+            entry.result_verification_pass.is_some(),
+            "Automated step {} should have result_verification_pass field",
+            i
+        );
+        assert!(
+            entry.output_verification_pass.is_some(),
+            "Automated step {} should have output_verification_pass field",
+            i
+        );
     }
 
     validate_json_schema(&json_content);
+
+    Ok(())
+}
+
+#[test]
+fn test_verification_pass_fields_correctness() -> Result<()> {
+    use testcase_manager::{Expected, Step, TestSequence, Verification, VerificationExpression};
+
+    let temp_dir = TempDir::new()?;
+
+    let mut test_case = TestCase::new(
+        "REQ001".to_string(),
+        1,
+        1,
+        "VERIFICATION_CORRECTNESS_TC_001".to_string(),
+        "Test case to verify correctness of verification pass fields".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(
+        1,
+        "Sequence1".to_string(),
+        "Test with passing and failing verifications".to_string(),
+    );
+
+    // Step 1: All verifications should pass
+    sequence.steps.push(Step {
+        step: 1,
+        manual: None,
+        description: "Passing step with exit code 0".to_string(),
+        command: "echo 'success'".to_string(),
+        capture_vars: None,
+        expected: Expected {
+            success: Some(true),
+            result: "0".to_string(),
+            output: "success".to_string(),
+        },
+        verification: Verification {
+            result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+            output: VerificationExpression::Simple(
+                "grep -q 'success' <<< \"$COMMAND_OUTPUT\"".to_string(),
+            ),
+            output_file: None,
+            general: None,
+        },
+        reference: None,
+    });
+
+    // Step 2: Result verification should fail (exit code is 0 but we check for 1)
+    sequence.steps.push(Step {
+        step: 2,
+        manual: None,
+        description: "Step with failing result verification".to_string(),
+        command: "echo 'test'".to_string(),
+        capture_vars: None,
+        expected: Expected {
+            success: Some(false),
+            result: "1".to_string(),
+            output: "test".to_string(),
+        },
+        verification: Verification {
+            result: VerificationExpression::Simple("[ $EXIT_CODE -eq 1 ]".to_string()),
+            output: VerificationExpression::Simple(
+                "grep -q 'test' <<< \"$COMMAND_OUTPUT\"".to_string(),
+            ),
+            output_file: None,
+            general: None,
+        },
+        reference: None,
+    });
+
+    // Step 3: Output verification should fail (output doesn't contain 'notfound')
+    sequence.steps.push(Step {
+        step: 3,
+        manual: None,
+        description: "Step with failing output verification".to_string(),
+        command: "echo 'present'".to_string(),
+        capture_vars: None,
+        expected: Expected {
+            success: Some(true),
+            result: "0".to_string(),
+            output: "present".to_string(),
+        },
+        verification: Verification {
+            result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+            output: VerificationExpression::Simple(
+                "grep -q 'notfound' <<< \"$COMMAND_OUTPUT\"".to_string(),
+            ),
+            output_file: None,
+            general: None,
+        },
+        reference: None,
+    });
+
+    test_case.test_sequences.push(sequence);
+
+    let executor = TestExecutor::with_output_dir(temp_dir.path());
+    let _result = executor.execute_test_case(&test_case);
+
+    let log_file = temp_dir
+        .path()
+        .join(format!("{}_execution_log.json", test_case.id));
+
+    assert!(log_file.exists(), "JSON log file should be created");
+
+    let json_content = fs::read_to_string(&log_file)?;
+    let entries: Vec<TestStepExecutionEntry> = serde_json::from_str(&json_content)?;
+
+    assert_eq!(entries.len(), 3, "Should have 3 execution entries");
+
+    // Step 1: Both verifications should pass
+    assert_eq!(entries[0].test_sequence, 1);
+    assert_eq!(entries[0].step, 1);
+    assert!(
+        entries[0].result_verification_pass.is_some(),
+        "Step 1 should have result_verification_pass field"
+    );
+    assert!(
+        entries[0].output_verification_pass.is_some(),
+        "Step 1 should have output_verification_pass field"
+    );
+    assert!(
+        entries[0].result_verification_pass.unwrap(),
+        "Step 1 result verification should pass"
+    );
+    assert!(
+        entries[0].output_verification_pass.unwrap(),
+        "Step 1 output verification should pass"
+    );
+
+    // Step 2: Result verification should fail, output verification should pass
+    assert_eq!(entries[1].test_sequence, 1);
+    assert_eq!(entries[1].step, 2);
+    assert!(
+        entries[1].result_verification_pass.is_some(),
+        "Step 2 should have result_verification_pass field"
+    );
+    assert!(
+        entries[1].output_verification_pass.is_some(),
+        "Step 2 should have output_verification_pass field"
+    );
+    assert!(
+        !entries[1].result_verification_pass.unwrap(),
+        "Step 2 result verification should fail"
+    );
+    assert!(
+        entries[1].output_verification_pass.unwrap(),
+        "Step 2 output verification should pass"
+    );
+
+    // Step 3: Result verification should pass, output verification should fail
+    assert_eq!(entries[2].test_sequence, 1);
+    assert_eq!(entries[2].step, 3);
+    assert!(
+        entries[2].result_verification_pass.is_some(),
+        "Step 3 should have result_verification_pass field"
+    );
+    assert!(
+        entries[2].output_verification_pass.is_some(),
+        "Step 3 should have output_verification_pass field"
+    );
+    assert!(
+        entries[2].result_verification_pass.unwrap(),
+        "Step 3 result verification should pass"
+    );
+    assert!(
+        !entries[2].output_verification_pass.unwrap(),
+        "Step 3 output verification should fail"
+    );
 
     Ok(())
 }
