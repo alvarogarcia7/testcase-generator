@@ -1883,6 +1883,8 @@ fi"#,
                     timestamp: Some(timestamp.to_rfc3339()),
                     hook_type: None,
                     hook_path: None,
+                    result_verification_pass: None,
+                    output_verification_pass: None,
                 };
 
                 template_entries.push(entry);
