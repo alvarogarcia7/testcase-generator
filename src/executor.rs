@@ -1362,6 +1362,8 @@ impl TestExecutor {
                 ));
                 script.push_str("    echo \"    \\\"exit_code\\\": $EXIT_CODE,\"\n");
                 script.push_str("    echo \"    \\\"output\\\": \\\"$OUTPUT_ESCAPED\\\",\"\n");
+                script.push_str("    echo \"    \\\"result_verification_pass\\\": $VERIFICATION_RESULT_PASS,\"\n");
+                script.push_str("    echo \"    \\\"output_verification_pass\\\": $VERIFICATION_OUTPUT_PASS,\"\n");
                 script.push_str("    echo \"    \\\"timestamp\\\": \\\"$TIMESTAMP\\\"\"\n");
                 script.push_str("    echo '  }'\n");
                 script.push_str("} >> \"$JSON_LOG\"\n\n");

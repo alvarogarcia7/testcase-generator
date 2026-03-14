@@ -90,6 +90,9 @@ grcov
 # Python virtual environment (uv)
 /.venv/
 
+# Python build artifacts
+*.egg-info/
+
 # Test execution logs (generated during testing)
 *_execution_log.json
 
