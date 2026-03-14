@@ -14,7 +14,7 @@ fn main() -> Result<()> {
     println!("with sequences and steps, including git commits at each stage.\n");
     println!("Working directory: {}\n", temp_dir.display());
 
-    let mut builder = TestCaseBuilder::new(&temp_dir, Arc::new(TtyCliOracle::default()))?;
+    let mut builder = TestCaseBuilder::new(&temp_dir, Arc::new(TtyCliOracle))?;
 
     println!("Creating a test case with metadata...\n");
 
