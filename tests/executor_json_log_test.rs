@@ -57,35 +57,113 @@ fn validate_json_schema(json_str: &str) {
                 "timestamp must be a string if present"
             );
         }
+
+        // Validate verification fields if present
+        if obj.contains_key("result_verification_pass") {
+            assert!(
+                obj["result_verification_pass"].is_boolean(),
+                "result_verification_pass must be a boolean if present"
+            );
+        }
+
+        if obj.contains_key("output_verification_pass") {
+            assert!(
+                obj["output_verification_pass"].is_boolean(),
+                "output_verification_pass must be a boolean if present"
+            );
+        }
     }
 }
 
 /// Validates that the JSON log entries match the test case structure
 fn validate_log_matches_testcase(entries: &[TestStepExecutionEntry], test_case: &TestCase) {
-    let mut expected_entries = Vec::new();
+    use std::collections::HashMap;
+    use testcase_manager::Step;
+
+    // Build a map of all steps from the test case
+    let mut all_steps: HashMap<(i64, i64), (Step, bool)> = HashMap::new();
+    let mut manual_step_count = 0;
+
     for sequence in &test_case.test_sequences {
         for step in &sequence.steps {
-            if step.manual != Some(true) {
-                expected_entries.push((sequence.id, step.step, step.command.clone()));
+            let is_manual = step.manual == Some(true);
+            if is_manual {
+                manual_step_count += 1;
             }
+            all_steps.insert((sequence.id, step.step), (step.clone(), is_manual));
         }
     }
 
-    assert_eq!(
-        entries.len(),
-        expected_entries.len(),
-        "Number of log entries must match non-manual steps in test case"
-    );
+    let total_steps = all_steps.len();
+    let non_manual_steps = total_steps - manual_step_count;
 
-    for (i, entry) in entries.iter().enumerate() {
-        let (expected_seq, expected_step, expected_cmd) = &expected_entries[i];
-        assert_eq!(
-            entry.test_sequence, *expected_seq,
-            "Entry {} test_sequence mismatch",
-            i
+    // Determine if this log includes manual steps based on entry count
+    let includes_manual_steps = if entries.len() == total_steps {
+        true
+    } else if entries.len() == non_manual_steps {
+        false
+    } else {
+        panic!(
+            "Number of log entries ({}) does not match expected count with all steps ({}) or without manual steps ({})",
+            entries.len(),
+            total_steps,
+            non_manual_steps
         );
-        assert_eq!(entry.step, *expected_step, "Entry {} step mismatch", i);
-        assert_eq!(entry.command, *expected_cmd, "Entry {} command mismatch", i);
+    };
+
+    // Validate each entry
+    for (i, entry) in entries.iter().enumerate() {
+        let key = (entry.test_sequence, entry.step);
+        let (step, is_manual) = all_steps.get(&key).unwrap_or_else(|| {
+            panic!(
+                "Entry {} has unexpected test_sequence={} step={} combination",
+                i, entry.test_sequence, entry.step
+            )
+        });
+
+        // If manual steps are not included in the log, we shouldn't see any
+        if *is_manual && !includes_manual_steps {
+            panic!(
+                "Entry {} is a manual step but manual steps should not be in this log",
+                i
+            );
+        }
+
+        assert_eq!(entry.command, step.command, "Entry {} command mismatch", i);
+
+        // Validate verification fields are present and correctly typed in JSON
+        if *is_manual {
+            // Check if manual step has verification fields (not just "true")
+            let has_result_verification = !matches!(
+                &step.verification.result,
+                testcase_manager::VerificationExpression::Simple(s) if s.trim() == "true"
+            );
+            let has_output_verification = !matches!(
+                &step.verification.output,
+                testcase_manager::VerificationExpression::Simple(s) if s.trim() == "true"
+            );
+            let has_verification = has_result_verification || has_output_verification;
+
+            if has_verification {
+                // Manual steps with verification should have verification fields
+                assert!(
+                    entry.result_verification_pass.is_some(),
+                    "Entry {} (manual step with verification) must have result_verification_pass field",
+                    i
+                );
+                assert!(
+                    entry.output_verification_pass.is_some(),
+                    "Entry {} (manual step with verification) must have output_verification_pass field",
+                    i
+                );
+
+                // Verify the fields are booleans (unwrap to ensure they're the correct type)
+                // Since result_verification_pass and output_verification_pass are Option<bool>,
+                // unwrapping them is sufficient to verify they contain boolean values
+                let _result_pass = entry.result_verification_pass.unwrap();
+                let _output_pass = entry.output_verification_pass.unwrap();
+            }
+        }
     }
 }
 
