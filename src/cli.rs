@@ -4,6 +4,9 @@ use clap::{Parser, Subcommand};
 #[command(name = "testcase-manager")]
 #[command(about = "A tool for managing test cases in YAML format", long_about = None)]
 #[command(version)]
+#[command(
+    after_help = "ENVIRONMENT VARIABLES:\n    RUST_LOG    Set log level (trace, debug, info, warn, error). Overrides --log-level"
+)]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
@@ -12,7 +15,11 @@ pub struct Cli {
     #[arg(short, long, default_value = "./testcases", global = true)]
     pub path: String,
 
-    /// Enable verbose logging
+    /// Set log level (trace, debug, info, warn, error)
+    #[arg(long, value_name = "LEVEL", default_value = "warn", global = true)]
+    pub log_level: String,
+
+    /// Enable verbose output (equivalent to --log-level=info)
     #[arg(short, long, global = true)]
     pub verbose: bool,
 }

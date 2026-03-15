@@ -22,6 +22,9 @@ Features:
   • Integration with test case storage and verification
 "
 )]
+#[command(
+    after_help = "ENVIRONMENT VARIABLES:\n    RUST_LOG    Set log level (trace, debug, info, warn, error). Overrides --log-level"
+)]
 struct Cli {
     /// Base path for test case storage
     #[arg(short, long, default_value = "testcases", global = true)]
@@ -30,6 +33,14 @@ struct Cli {
     /// Output directory for execution logs and reports
     #[arg(short, long, default_value = "test-output", global = true)]
     output: PathBuf,
+
+    /// Set log level (trace, debug, info, warn, error)
+    #[arg(long, value_name = "LEVEL", default_value = "info", global = true)]
+    log_level: String,
+
+    /// Enable verbose output (equivalent to --log-level=debug)
+    #[arg(short, long, global = true)]
+    verbose_logging: bool,
 
     #[command(subcommand)]
     command: Commands,
@@ -146,9 +157,14 @@ enum Commands {
 }
 
 fn main() -> Result<()> {
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
-
     let cli = Cli::parse();
+
+    let log_level = if cli.verbose_logging {
+        "debug"
+    } else {
+        &cli.log_level
+    };
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(log_level)).init();
 
     // Validate run subcommand parameters before proceeding
     if let Commands::Run {

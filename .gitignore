@@ -96,3 +96,5 @@ grcov
 # Docker Compose
 output/
 docker-compose.override.yml
+
+src/testcase_generator.egg-info/

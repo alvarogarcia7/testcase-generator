@@ -5,12 +5,19 @@ use std::io::{self, Read, Write};
 #[derive(Parser)]
 #[command(name = "json-escape")]
 #[command(about = "Read stdin and perform JSON string escaping", version)]
+#[command(
+    after_help = "ENVIRONMENT VARIABLES:\n    RUST_LOG    Set log level (trace, debug, info, warn, error). Overrides --log-level"
+)]
 struct Cli {
     /// Test mode: validate that the escaped output is valid JSON when wrapped in quotes
     #[arg(short, long)]
     test: bool,
 
-    /// Enable verbose logging
+    /// Set log level (trace, debug, info, warn, error)
+    #[arg(long, value_name = "LEVEL", default_value = "warn")]
+    log_level: String,
+
+    /// Enable verbose output (equivalent to --log-level=info)
     #[arg(short, long)]
     verbose: bool,
 }
@@ -40,7 +47,7 @@ fn escape_json_string(input: &str) -> String {
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
-    let log_level = if cli.verbose { "info" } else { "warn" };
+    let log_level = if cli.verbose { "info" } else { &cli.log_level };
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(log_level)).init();
 
     log::info!("Reading from stdin");

@@ -15,7 +15,18 @@ use testcase_manager::VerificationTestExecutionLog;
 #[command(
     about = "Test verification tool for comparing test execution logs against test case definitions"
 )]
+#[command(
+    after_help = "ENVIRONMENT VARIABLES:\n    RUST_LOG    Set log level (trace, debug, info, warn, error). Overrides --log-level"
+)]
 struct Cli {
+    /// Set log level (trace, debug, info, warn, error)
+    #[arg(long, value_name = "LEVEL", default_value = "warn", global = true)]
+    log_level: String,
+
+    /// Enable verbose output (equivalent to --log-level=info)
+    #[arg(short, long, global = true)]
+    verbose_logging: bool,
+
     #[command(subcommand)]
     command: Commands,
 }
@@ -88,8 +99,14 @@ enum Commands {
 }
 
 fn main() -> Result<()> {
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn")).init();
     let cli = Cli::parse();
+
+    let log_level = if cli.verbose_logging {
+        "info"
+    } else {
+        &cli.log_level
+    };
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(log_level)).init();
 
     match cli.command {
         Commands::Clean { log_file } => clean_command(log_file),

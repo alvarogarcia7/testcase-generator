@@ -13,9 +13,20 @@ use testcase_manager::test_run_storage::TestRunStorage;
 #[derive(Parser)]
 #[command(name = "test-run-manager")]
 #[command(about = "Manage test run execution records", version)]
+#[command(
+    after_help = "ENVIRONMENT VARIABLES:\n    RUST_LOG    Set log level (trace, debug, info, warn, error). Overrides --log-level"
+)]
 struct Cli {
     #[arg(short, long, default_value = "testcases", global = true)]
     path: PathBuf,
+
+    /// Set log level (trace, debug, info, warn, error)
+    #[arg(long, value_name = "LEVEL", default_value = "info", global = true)]
+    log_level: String,
+
+    /// Enable verbose output (equivalent to --log-level=debug)
+    #[arg(short, long, global = true)]
+    verbose: bool,
 
     #[command(subcommand)]
     command: Commands,
@@ -28,9 +39,10 @@ enum Commands {
 }
 
 fn main() -> Result<()> {
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
-
     let cli = Cli::parse();
+
+    let log_level = if cli.verbose { "debug" } else { &cli.log_level };
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(log_level)).init();
 
     let test_runs_dir = cli.path.join("test-runs");
     if !test_runs_dir.exists() {

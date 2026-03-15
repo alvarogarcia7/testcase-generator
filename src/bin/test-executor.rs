@@ -14,7 +14,18 @@ use testcase_manager::{
     about = "Generate and execute test scripts from YAML test case files",
     version
 )]
+#[command(
+    after_help = "ENVIRONMENT VARIABLES:\n    RUST_LOG    Set log level (trace, debug, info, warn, error). Overrides --log-level"
+)]
 struct Cli {
+    /// Set log level (trace, debug, info, warn, error)
+    #[arg(long, value_name = "LEVEL", default_value = "warn", global = true)]
+    log_level: String,
+
+    /// Enable verbose output (equivalent to --log-level=info)
+    #[arg(short, long, global = true)]
+    verbose: bool,
+
     #[command(subcommand)]
     command: Commands,
 }
@@ -301,6 +312,9 @@ fn run_shellcheck_validation(script_content: &str, force: bool) -> Result<bool> 
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
+
+    let log_level = if cli.verbose { "info" } else { &cli.log_level };
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(log_level)).init();
 
     match cli.command {
         Commands::Generate {

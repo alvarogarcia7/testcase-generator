@@ -6,6 +6,9 @@ use std::path::PathBuf;
 #[derive(Parser)]
 #[command(name = "validate-json")]
 #[command(about = "Validate a JSON payload against a JSON schema", version)]
+#[command(
+    after_help = "ENVIRONMENT VARIABLES:\n    RUST_LOG    Set log level (trace, debug, info, warn, error). Overrides --log-level"
+)]
 struct Cli {
     /// Path to the JSON payload file
     #[arg(value_name = "JSON_FILE")]
@@ -15,7 +18,11 @@ struct Cli {
     #[arg(value_name = "SCHEMA_FILE")]
     schema_file: PathBuf,
 
-    /// Enable verbose logging
+    /// Set log level (trace, debug, info, warn, error)
+    #[arg(long, value_name = "LEVEL", default_value = "warn")]
+    log_level: String,
+
+    /// Enable verbose output (equivalent to --log-level=info)
     #[arg(short, long)]
     verbose: bool,
 }
@@ -23,7 +30,7 @@ struct Cli {
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
-    let log_level = if cli.verbose { "info" } else { "warn" };
+    let log_level = if cli.verbose { "info" } else { &cli.log_level };
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(log_level)).init();
 
     // Read the JSON file

@@ -10,6 +10,9 @@ use testcase_manager::LogCleaner;
     about = "Clean script capture output by removing ANSI codes, backspaces, and control characters",
     version
 )]
+#[command(
+    after_help = "ENVIRONMENT VARIABLES:\n    RUST_LOG    Set log level (trace, debug, info, warn, error). Overrides --log-level"
+)]
 struct Cli {
     /// Path to the input file to clean
     #[arg(short, long, value_name = "INPUT_FILE")]
@@ -19,7 +22,11 @@ struct Cli {
     #[arg(short, long, value_name = "OUTPUT_FILE")]
     output: Option<PathBuf>,
 
-    /// Enable verbose logging
+    /// Set log level (trace, debug, info, warn, error)
+    #[arg(long, value_name = "LEVEL", default_value = "warn")]
+    log_level: String,
+
+    /// Enable verbose output (equivalent to --log-level=info)
     #[arg(short, long)]
     verbose: bool,
 }
@@ -27,7 +34,7 @@ struct Cli {
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
-    let log_level = if cli.verbose { "info" } else { "warn" };
+    let log_level = if cli.verbose { "info" } else { &cli.log_level };
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(log_level)).init();
 
     log::info!("Reading input file: {}", cli.input.display());

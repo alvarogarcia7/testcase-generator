@@ -8,6 +8,9 @@ use testcase_manager::{BatchVerificationReport, TestCaseStorage, TestVerifier};
 #[command(name = "verifier")]
 #[command(version)]
 #[command(about = "Verify test execution logs against test case definitions")]
+#[command(
+    after_help = "ENVIRONMENT VARIABLES:\n    RUST_LOG    Set log level (trace, debug, info, warn, error). Overrides --log-level"
+)]
 struct Cli {
     /// Single-file mode: path to log file
     #[arg(short, long, value_name = "PATH")]
@@ -32,12 +35,21 @@ struct Cli {
     /// Path to test case storage directory
     #[arg(short = 'd', long, default_value = "testcases", value_name = "DIR")]
     test_case_dir: PathBuf,
+
+    /// Set log level (trace, debug, info, warn, error)
+    #[arg(long, value_name = "LEVEL", default_value = "info")]
+    log_level: String,
+
+    /// Enable verbose output (equivalent to --log-level=debug)
+    #[arg(short, long)]
+    verbose: bool,
 }
 
 fn main() -> Result<()> {
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
-
     let cli = Cli::parse();
+
+    let log_level = if cli.verbose { "debug" } else { &cli.log_level };
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(log_level)).init();
 
     // Validate CLI arguments
     let (mode, log_path, test_case_id, folder_path) = validate_args(&cli)?;
