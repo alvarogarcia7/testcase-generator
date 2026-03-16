@@ -1,0 +1,52 @@
+type: result
+requirement: "XXX300"
+test_case_id: '4.2.2.5 DM_eUICC_Profile_Management'
+description: 'Demonstration of profile download, installation, and lifecycle management operations on a live eUICC device.'
+sequences:
+  - sequence_id: 1
+    name: "Profile Download and Installation"
+    step_results:
+      - Pass:
+          step: 1
+          description: "Power on the device with eUICC installed"
+      - Pass:
+          step: 2
+          description: "Establish secure connection to SM-DP+ server"
+      - Pass:
+          step: 3
+          description: "Initiate profile download using activation code"
+      - Pass:
+          step: 4
+          description: "Monitor profile installation progress"
+      - Pass:
+          step: 5
+          description: "Verify profile is listed in available profiles"
+    all_steps_passed: true
+  - sequence_id: 2
+    name: "Profile Lifecycle Operations"
+    step_results:
+      - Pass:
+          step: 6
+          description: "Enable the newly installed profile"
+      - Pass:
+          step: 7
+          description: "Perform basic connectivity test"
+      - Pass:
+          step: 8
+          description: "Disable profile and switch to another profile"
+    all_steps_passed: true
+  - sequence_id: 3
+    name: "Profile Deletion"
+    step_results:
+      - Pass:
+          step: 9
+          description: "Delete the test profile"
+      - Pass:
+          step: 10
+          description: "Verify profile removal from eUICC"
+    all_steps_passed: true
+total_steps: 10
+passed_steps: 10
+failed_steps: 0
+not_executed_steps: 0
+overall_pass: true
