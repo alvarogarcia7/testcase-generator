@@ -20,7 +20,7 @@ cd "$PROJECT_ROOT"
 echo "=== Quick Smoke Test ==="
 
 # Find the testcase-manager binary
-BINARY=$(find_binary "testcase-manager")
+BINARY=$(find_binary "trm")
 if [[ -z "$BINARY" ]]; then
     echo "✗ Binary not found in target/release or target/debug"
     echo "  Run: cargo build"
