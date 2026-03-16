@@ -1,0 +1,70 @@
+{
+  "test_cases": [
+    {
+      "test_case_id": "TEST_PASSING_001",
+      "description": "Test case with all passing verifications",
+      "sequences": [
+        {
+          "sequence_id": 1,
+          "name": "Passing Sequence",
+          "step_results": [
+            {
+              "status": "pass",
+              "step": 1,
+              "description": "Echo hello",
+              "requirement": "TEST_REQ_001",
+              "item": 1,
+              "tc": 1
+            },
+            {
+              "status": "pass",
+              "step": 2,
+              "description": "True command",
+              "requirement": "TEST_REQ_001",
+              "item": 1,
+              "tc": 1
+            }
+          ],
+          "all_steps_passed": true,
+          "requirement": "TEST_REQ_001",
+          "item": 1,
+          "tc": 1
+        },
+        {
+          "sequence_id": 2,
+          "name": "Second Passing Sequence",
+          "step_results": [
+            {
+              "status": "pass",
+              "step": 1,
+              "description": "Echo world",
+              "requirement": "TEST_REQ_001",
+              "item": 1,
+              "tc": 1
+            }
+          ],
+          "all_steps_passed": true,
+          "requirement": "TEST_REQ_001",
+          "item": 1,
+          "tc": 1
+        }
+      ],
+      "total_steps": 3,
+      "passed_steps": 3,
+      "failed_steps": 0,
+      "not_executed_steps": 0,
+      "overall_pass": true,
+      "requirement": "TEST_REQ_001",
+      "item": 1,
+      "tc": 1
+    }
+  ],
+  "total_test_cases": 1,
+  "passed_test_cases": 1,
+  "failed_test_cases": 0,
+  "total_steps": 3,
+  "passed_steps": 3,
+  "failed_steps": 0,
+  "not_executed_steps": 0,
+  "generated_at": "2026-03-16T14:33:36.192342Z"
+}
