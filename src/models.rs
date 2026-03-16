@@ -973,6 +973,14 @@ pub struct TestStepExecutionEntry {
     /// Path to the hook script if this entry represents a hook execution (optional)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub hook_path: Option<String>,
+
+    /// Whether result verification passed (optional)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub result_verification_pass: Option<bool>,
+
+    /// Whether output verification passed (optional)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub output_verification_pass: Option<bool>,
 }
 
 impl TestStepExecutionEntry {
@@ -993,6 +1001,8 @@ impl TestStepExecutionEntry {
             timestamp: None,
             hook_type: None,
             hook_path: None,
+            result_verification_pass: None,
+            output_verification_pass: None,
         }
     }
 
@@ -1014,6 +1024,8 @@ impl TestStepExecutionEntry {
             timestamp: Some(timestamp),
             hook_type: None,
             hook_path: None,
+            result_verification_pass: None,
+            output_verification_pass: None,
         }
     }
 

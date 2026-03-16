@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use std::fs;
 use std::path::{Path, PathBuf};
-use testcase_manager::{BatchVerificationReport, TestCaseStorage, TestVerifier};
+use testcase_manager::{BatchVerificationReport, MatchStrategy, TestCaseStorage, TestVerifier};
 
 #[derive(Parser)]
 #[command(name = "verifier")]
@@ -43,6 +43,15 @@ struct Cli {
     /// Enable verbose output (equivalent to --log-level=debug)
     #[arg(short, long)]
     verbose: bool,
+
+    /// Match strategy for verification (exact, regex, contains, or precomputed)
+    #[arg(
+        short = 'm',
+        long = "match-strategy",
+        default_value = "exact",
+        value_name = "STRATEGY"
+    )]
+    match_strategy: String,
 }
 
 fn main() -> Result<()> {
@@ -54,10 +63,13 @@ fn main() -> Result<()> {
     // Validate CLI arguments
     let (mode, log_path, test_case_id, folder_path) = validate_args(&cli)?;
 
+    // Parse match strategy
+    let match_strategy = parse_match_strategy(&cli.match_strategy)?;
+
     // Initialize storage and verifier
     let storage = TestCaseStorage::new(&cli.test_case_dir)
         .context("Failed to initialize test case storage")?;
-    let verifier = TestVerifier::from_storage(storage);
+    let verifier = TestVerifier::with_strategies(storage, match_strategy, match_strategy);
 
     // Execute appropriate mode
     let report = match mode {
@@ -379,4 +391,17 @@ fn write_output(content: &str, output_path: Option<&PathBuf>) -> Result<()> {
     }
 
     Ok(())
+}
+
+fn parse_match_strategy(strategy: &str) -> Result<MatchStrategy> {
+    match strategy.to_lowercase().as_str() {
+        "exact" => Ok(MatchStrategy::Exact),
+        "regex" => Ok(MatchStrategy::Regex),
+        "contains" => Ok(MatchStrategy::Contains),
+        "precomputed" => Ok(MatchStrategy::Precomputed),
+        _ => anyhow::bail!(
+            "Invalid match strategy '{}'. Must be one of: exact, regex, contains, precomputed",
+            strategy
+        ),
+    }
 }
