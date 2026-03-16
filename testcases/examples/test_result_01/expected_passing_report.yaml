@@ -1,0 +1,9 @@
+total_test_cases: 1
+passed_test_cases: 1
+failed_test_cases: 0
+test_cases:
+  - test_case_id: TEST_PASSING_001
+    overall_pass: true
+    passed_steps: 3
+    failed_steps: 0
+    total_steps: 3
