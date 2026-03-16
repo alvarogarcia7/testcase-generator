@@ -352,6 +352,25 @@ pub struct ContainerReportMetadata {
     pub failed_test_cases: usize,
 }
 
+/// Configuration for generating container reports
+#[derive(Debug, Clone)]
+pub struct ContainerReportConfig {
+    /// Report title
+    pub title: String,
+
+    /// Project name
+    pub project: String,
+
+    /// Optional environment information
+    pub environment: Option<String>,
+
+    /// Optional platform information
+    pub platform: Option<String>,
+
+    /// Optional executor information
+    pub executor: Option<String>,
+}
+
 /// Container report for batch verification with enhanced metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ContainerReport {
@@ -1550,26 +1569,57 @@ impl TestVerifier {
 
     /// Generate container YAML/JSON report with enhanced metadata
     /// This method creates a ContainerReport with custom title, project, and metadata fields
+    ///
+    /// If multiple reports are provided, calculates execution_duration as the time difference
+    /// between the earliest and latest generated_at timestamps. Otherwise uses 0.0.
     pub fn generate_container_yaml_report(
         &self,
-        report: &BatchVerificationReport,
+        reports: &[BatchVerificationReport],
         format: &str,
-        title: String,
-        project: String,
-        environment: Option<String>,
-        platform: Option<String>,
-        executor: Option<String>,
+        config: ContainerReportConfig,
     ) -> Result<String> {
-        // Calculate execution duration (for now, use 0.0 as we don't track timing)
-        let execution_duration = 0.0;
+        // Merge all reports into a single batch report
+        let mut merged_report = BatchVerificationReport::new();
+
+        // Track timestamps for duration calculation
+        let mut earliest_timestamp: Option<DateTime<Utc>> = None;
+        let mut latest_timestamp: Option<DateTime<Utc>> = None;
+
+        for report in reports {
+            // Update timestamp tracking
+            let timestamp = report.generated_at;
+            earliest_timestamp = match earliest_timestamp {
+                None => Some(timestamp),
+                Some(current) => Some(current.min(timestamp)),
+            };
+            latest_timestamp = match latest_timestamp {
+                None => Some(timestamp),
+                Some(current) => Some(current.max(timestamp)),
+            };
+
+            // Add all test case results from this report
+            for test_case_result in &report.test_cases {
+                merged_report.add_test_case_result(test_case_result.clone());
+            }
+        }
+
+        // Calculate execution duration
+        let execution_duration = match (earliest_timestamp, latest_timestamp) {
+            (Some(earliest), Some(latest)) if reports.len() > 1 => {
+                // Calculate difference in seconds as f64
+                let duration = latest.signed_duration_since(earliest);
+                duration.num_milliseconds() as f64 / 1000.0
+            }
+            _ => 0.0,
+        };
 
         let container_report = ContainerReport::from_batch_report(
-            report.clone(),
-            title,
-            project,
-            environment,
-            platform,
-            executor,
+            merged_report,
+            config.title,
+            config.project,
+            config.environment,
+            config.platform,
+            config.executor,
             execution_duration,
         );
 
@@ -1814,5 +1864,172 @@ mod tests {
             .unwrap_err()
             .to_string()
             .contains("Unsupported format"));
+    }
+
+    #[test]
+    fn test_generate_container_yaml_report_single_report() {
+        let temp_dir = TempDir::new().unwrap();
+        let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
+        let verifier = TestVerifier::from_storage(storage);
+
+        let mut report = BatchVerificationReport::new();
+        report.add_test_case_result(TestCaseVerificationResult {
+            test_case_id: "TC001".to_string(),
+            description: "Test 1".to_string(),
+            sequences: vec![],
+            total_steps: 2,
+            passed_steps: 2,
+            failed_steps: 0,
+            not_executed_steps: 0,
+            overall_pass: true,
+            requirement: Some("REQ001".to_string()),
+            item: Some(1),
+            tc: Some(1),
+        });
+
+        let config = ContainerReportConfig {
+            title: "Test Report".to_string(),
+            project: "Test Project".to_string(),
+            environment: Some("Test Env".to_string()),
+            platform: Some("Test Platform".to_string()),
+            executor: Some("Test Executor".to_string()),
+        };
+        let yaml = verifier
+            .generate_container_yaml_report(&[report], "yaml", config)
+            .unwrap();
+
+        // Verify YAML structure
+        assert!(yaml.contains("title: Test Report"));
+        assert!(yaml.contains("project: Test Project"));
+        assert!(yaml.contains("test_date:"));
+        assert!(yaml.contains("test_results:"));
+        assert!(yaml.contains("metadata:"));
+        assert!(yaml.contains("environment: Test Env"));
+        assert!(yaml.contains("platform: Test Platform"));
+        assert!(yaml.contains("executor: Test Executor"));
+        assert!(yaml.contains("execution_duration: 0"));
+        assert!(yaml.contains("total_test_cases: 1"));
+        assert!(yaml.contains("passed_test_cases: 1"));
+
+        // Verify it can be deserialized
+        let parsed: ContainerReport = serde_yaml::from_str(&yaml).unwrap();
+        assert_eq!(parsed.title, "Test Report");
+        assert_eq!(parsed.project, "Test Project");
+        assert_eq!(parsed.metadata.execution_duration, 0.0);
+        assert_eq!(parsed.metadata.total_test_cases, 1);
+    }
+
+    #[test]
+    fn test_generate_container_yaml_report_multiple_reports() {
+        use chrono::Duration;
+
+        let temp_dir = TempDir::new().unwrap();
+        let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
+        let verifier = TestVerifier::from_storage(storage);
+
+        let base_time = Local::now().with_timezone(&Utc);
+
+        let mut report1 = BatchVerificationReport::new();
+        report1.generated_at = base_time;
+        report1.add_test_case_result(TestCaseVerificationResult {
+            test_case_id: "TC001".to_string(),
+            description: "Test 1".to_string(),
+            sequences: vec![],
+            total_steps: 2,
+            passed_steps: 2,
+            failed_steps: 0,
+            not_executed_steps: 0,
+            overall_pass: true,
+            requirement: Some("REQ001".to_string()),
+            item: Some(1),
+            tc: Some(1),
+        });
+
+        let mut report2 = BatchVerificationReport::new();
+        report2.generated_at = base_time + Duration::seconds(100);
+        report2.add_test_case_result(TestCaseVerificationResult {
+            test_case_id: "TC002".to_string(),
+            description: "Test 2".to_string(),
+            sequences: vec![],
+            total_steps: 3,
+            passed_steps: 3,
+            failed_steps: 0,
+            not_executed_steps: 0,
+            overall_pass: true,
+            requirement: Some("REQ002".to_string()),
+            item: Some(2),
+            tc: Some(2),
+        });
+
+        let config = ContainerReportConfig {
+            title: "Multi-Report Test".to_string(),
+            project: "Test Project".to_string(),
+            environment: None,
+            platform: None,
+            executor: None,
+        };
+        let yaml = verifier
+            .generate_container_yaml_report(&[report1, report2], "yaml", config)
+            .unwrap();
+
+        // Verify execution duration is calculated (100 seconds)
+        assert!(yaml.contains("execution_duration: 100"));
+        assert!(yaml.contains("total_test_cases: 2"));
+        assert!(yaml.contains("passed_test_cases: 2"));
+
+        // Verify it can be deserialized
+        let parsed: ContainerReport = serde_yaml::from_str(&yaml).unwrap();
+        assert_eq!(parsed.title, "Multi-Report Test");
+        assert_eq!(parsed.metadata.execution_duration, 100.0);
+        assert_eq!(parsed.metadata.total_test_cases, 2);
+        assert_eq!(parsed.test_results.len(), 2);
+    }
+
+    #[test]
+    fn test_generate_container_yaml_report_json_format() {
+        let temp_dir = TempDir::new().unwrap();
+        let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
+        let verifier = TestVerifier::from_storage(storage);
+
+        let mut report = BatchVerificationReport::new();
+        report.add_test_case_result(TestCaseVerificationResult {
+            test_case_id: "TC001".to_string(),
+            description: "Test 1".to_string(),
+            sequences: vec![],
+            total_steps: 1,
+            passed_steps: 1,
+            failed_steps: 0,
+            not_executed_steps: 0,
+            overall_pass: true,
+            requirement: None,
+            item: None,
+            tc: None,
+        });
+
+        let config = ContainerReportConfig {
+            title: "JSON Test".to_string(),
+            project: "JSON Project".to_string(),
+            environment: Some("JSON Env".to_string()),
+            platform: None,
+            executor: None,
+        };
+        let json = verifier
+            .generate_container_yaml_report(&[report], "json", config)
+            .unwrap();
+
+        // Verify JSON structure
+        assert!(json.contains("\"title\": \"JSON Test\""));
+        assert!(json.contains("\"project\": \"JSON Project\""));
+        assert!(json.contains("\"test_date\""));
+        assert!(json.contains("\"test_results\""));
+        assert!(json.contains("\"metadata\""));
+        assert!(json.contains("\"environment\": \"JSON Env\""));
+        assert!(json.contains("\"execution_duration\": 0"));
+
+        // Verify it can be deserialized
+        let parsed: ContainerReport = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.title, "JSON Test");
+        assert_eq!(parsed.project, "JSON Project");
+        assert_eq!(parsed.metadata.execution_duration, 0.0);
     }
 }
