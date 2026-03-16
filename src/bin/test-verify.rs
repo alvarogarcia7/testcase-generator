@@ -3,7 +3,6 @@ use clap::{Parser, Subcommand};
 use std::fs;
 use std::path::PathBuf;
 use testcase_manager::BatchVerificationReport;
-use testcase_manager::JUnitTestSuite;
 use testcase_manager::LogCleaner;
 use testcase_manager::TestCaseStorage;
 use testcase_manager::TestVerifier;
@@ -1019,13 +1018,6 @@ fn handle_single_verify(
                 .context("Failed to serialize result to JSON")?;
             println!("{}", json);
         }
-        "junit" => {
-            let mut report = BatchVerificationReport::new();
-            report.add_test_case_result(result);
-            let junit = JUnitTestSuite::from_batch_report(&report, "Single Test Verification");
-            let xml = junit.to_xml().context("Failed to generate JUnit XML")?;
-            println!("{}", xml);
-        }
         _ => {
             if verbose {
                 print_verification_result_verbose(&result, &test_case, &logs);
@@ -1064,10 +1056,6 @@ fn handle_batch_verify(
     let output = match format.as_str() {
         "json" => {
             serde_json::to_string_pretty(&report).context("Failed to serialize report to JSON")?
-        }
-        "junit" => {
-            let junit = JUnitTestSuite::from_batch_report(&report, "Batch Test Verification");
-            junit.to_xml().context("Failed to generate JUnit XML")?
         }
         _ => {
             if verbose {
