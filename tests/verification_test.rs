@@ -4,8 +4,8 @@ use testcase_manager::models::{
     Expected, Step, TestCase, TestSequence, Verification, VerificationExpression,
 };
 use testcase_manager::verification::{
-    DiffDetail, MatchStrategy, StepVerificationResult, TestExecutionLog, TestVerifier,
-    VerificationDiff,
+    DiffDetail, MatchStrategy, StepVerificationResult, TestCaseVerificationResult,
+    TestExecutionLog, TestVerifier, VerificationDiff,
 };
 
 fn create_step(step_num: i64, result: &str, output: &str, success: Option<bool>) -> Step {
@@ -1967,6 +1967,568 @@ fn test_step_verification_result_enum_methods() {
 
     assert!(!not_executed.is_pass());
     assert_eq!(not_executed.step_number(), 3);
+}
+
+// ============================================================================
+// Container Report Integration Tests
+// ============================================================================
+
+#[test]
+fn test_container_report_from_batch_report_constructor() {
+    use chrono::{TimeZone, Utc};
+    use testcase_manager::verification::{BatchVerificationReport, ContainerReport};
+
+    let mut batch_report = BatchVerificationReport::new();
+    let fixed_time = Utc.with_ymd_and_hms(2024, 3, 15, 14, 30, 0).unwrap();
+    batch_report.generated_at = fixed_time;
+
+    batch_report.add_test_case_result(TestCaseVerificationResult {
+        test_case_id: "TC001".to_string(),
+        description: "Test Case 1".to_string(),
+        sequences: vec![],
+        total_steps: 5,
+        passed_steps: 4,
+        failed_steps: 1,
+        not_executed_steps: 0,
+        overall_pass: false,
+        requirement: Some("REQ001".to_string()),
+        item: Some(1),
+        tc: Some(1),
+    });
+
+    batch_report.add_test_case_result(TestCaseVerificationResult {
+        test_case_id: "TC002".to_string(),
+        description: "Test Case 2".to_string(),
+        sequences: vec![],
+        total_steps: 3,
+        passed_steps: 3,
+        failed_steps: 0,
+        not_executed_steps: 0,
+        overall_pass: true,
+        requirement: Some("REQ002".to_string()),
+        item: Some(2),
+        tc: Some(2),
+    });
+
+    let container_report = ContainerReport::from_batch_report(
+        batch_report.clone(),
+        "Test Report Title".to_string(),
+        "Test Project".to_string(),
+        Some("Test Environment".to_string()),
+        Some("Test Platform".to_string()),
+        Some("Test Executor".to_string()),
+        123.45,
+    );
+
+    // Verify all fields are populated correctly
+    assert_eq!(container_report.title, "Test Report Title");
+    assert_eq!(container_report.project, "Test Project");
+    assert_eq!(container_report.test_date, fixed_time);
+    assert_eq!(container_report.test_results.len(), 2);
+    assert_eq!(container_report.test_results[0].test_case_id, "TC001");
+    assert_eq!(container_report.test_results[1].test_case_id, "TC002");
+
+    // Verify metadata is populated correctly
+    assert_eq!(
+        container_report.metadata.environment,
+        Some("Test Environment".to_string())
+    );
+    assert_eq!(
+        container_report.metadata.platform,
+        Some("Test Platform".to_string())
+    );
+    assert_eq!(
+        container_report.metadata.executor,
+        Some("Test Executor".to_string())
+    );
+    assert_eq!(container_report.metadata.execution_duration, 123.45);
+
+    // Verify metadata aggregation from BatchVerificationReport
+    assert_eq!(container_report.metadata.total_test_cases, 2);
+    assert_eq!(container_report.metadata.passed_test_cases, 1);
+    assert_eq!(container_report.metadata.failed_test_cases, 1);
+}
+
+#[test]
+fn test_container_report_yaml_serialization_structure() {
+    use chrono::{TimeZone, Utc};
+    use testcase_manager::verification::{BatchVerificationReport, ContainerReport};
+
+    let mut batch_report = BatchVerificationReport::new();
+    let fixed_time = Utc.with_ymd_and_hms(2024, 3, 15, 14, 30, 0).unwrap();
+    batch_report.generated_at = fixed_time;
+
+    batch_report.add_test_case_result(TestCaseVerificationResult {
+        test_case_id: "TC001".to_string(),
+        description: "First test case".to_string(),
+        sequences: vec![],
+        total_steps: 2,
+        passed_steps: 2,
+        failed_steps: 0,
+        not_executed_steps: 0,
+        overall_pass: true,
+        requirement: Some("REQ001".to_string()),
+        item: Some(1),
+        tc: Some(1),
+    });
+
+    let container_report = ContainerReport::from_batch_report(
+        batch_report,
+        "GSMA eUICC Test Suite Results".to_string(),
+        "GSMA SGP.22 Compliance Testing".to_string(),
+        Some("GSMA Certification Lab - Environment 2".to_string()),
+        Some("eUICC Test Platform v3.2.1".to_string()),
+        Some("Automated Test Framework v2.5.0".to_string()),
+        3845.7,
+    );
+
+    let yaml = serde_yaml::to_string(&container_report).unwrap();
+
+    // Verify YAML contains all required sections in expected structure
+    assert!(yaml.contains("title:"));
+    assert!(yaml.contains("GSMA eUICC Test Suite Results"));
+    assert!(yaml.contains("project:"));
+    assert!(yaml.contains("GSMA SGP.22 Compliance Testing"));
+    assert!(yaml.contains("test_date:"));
+    assert!(yaml.contains("2024-03-15"));
+    assert!(yaml.contains("test_results:"));
+    assert!(yaml.contains("metadata:"));
+    assert!(yaml.contains("environment:"));
+    assert!(yaml.contains("platform:"));
+    assert!(yaml.contains("executor:"));
+    assert!(yaml.contains("execution_duration:"));
+    assert!(yaml.contains("total_test_cases:"));
+    assert!(yaml.contains("passed_test_cases:"));
+    assert!(yaml.contains("failed_test_cases:"));
+
+    // Verify sections appear in correct order
+    let title_pos = yaml.find("title:").unwrap();
+    let project_pos = yaml.find("project:").unwrap();
+    let test_date_pos = yaml.find("test_date:").unwrap();
+    let test_results_pos = yaml.find("test_results:").unwrap();
+    let metadata_pos = yaml.find("metadata:").unwrap();
+
+    assert!(title_pos < project_pos);
+    assert!(project_pos < test_date_pos);
+    assert!(test_date_pos < test_results_pos);
+    assert!(test_results_pos < metadata_pos);
+}
+
+#[test]
+fn test_container_report_metadata_aggregation() {
+    use testcase_manager::verification::{BatchVerificationReport, ContainerReport};
+
+    let mut batch_report = BatchVerificationReport::new();
+
+    // Add multiple test cases with various results
+    batch_report.add_test_case_result(TestCaseVerificationResult {
+        test_case_id: "TC001".to_string(),
+        description: "Test 1".to_string(),
+        sequences: vec![],
+        total_steps: 10,
+        passed_steps: 10,
+        failed_steps: 0,
+        not_executed_steps: 0,
+        overall_pass: true,
+        requirement: None,
+        item: None,
+        tc: None,
+    });
+
+    batch_report.add_test_case_result(TestCaseVerificationResult {
+        test_case_id: "TC002".to_string(),
+        description: "Test 2".to_string(),
+        sequences: vec![],
+        total_steps: 8,
+        passed_steps: 5,
+        failed_steps: 2,
+        not_executed_steps: 1,
+        overall_pass: false,
+        requirement: None,
+        item: None,
+        tc: None,
+    });
+
+    batch_report.add_test_case_result(TestCaseVerificationResult {
+        test_case_id: "TC003".to_string(),
+        description: "Test 3".to_string(),
+        sequences: vec![],
+        total_steps: 5,
+        passed_steps: 5,
+        failed_steps: 0,
+        not_executed_steps: 0,
+        overall_pass: true,
+        requirement: None,
+        item: None,
+        tc: None,
+    });
+
+    batch_report.add_test_case_result(TestCaseVerificationResult {
+        test_case_id: "TC004".to_string(),
+        description: "Test 4".to_string(),
+        sequences: vec![],
+        total_steps: 12,
+        passed_steps: 9,
+        failed_steps: 2,
+        not_executed_steps: 1,
+        overall_pass: false,
+        requirement: None,
+        item: None,
+        tc: None,
+    });
+
+    let container_report = ContainerReport::from_batch_report(
+        batch_report,
+        "Test Report".to_string(),
+        "Test Project".to_string(),
+        None,
+        None,
+        None,
+        500.0,
+    );
+
+    // Verify metadata aggregation calculations are correct
+    assert_eq!(container_report.metadata.total_test_cases, 4);
+    assert_eq!(container_report.metadata.passed_test_cases, 2);
+    assert_eq!(container_report.metadata.failed_test_cases, 2);
+    assert_eq!(container_report.metadata.execution_duration, 500.0);
+
+    // Test cases should be preserved in test_results
+    assert_eq!(container_report.test_results.len(), 4);
+}
+
+#[test]
+fn test_container_report_yaml_deserialization() {
+    use testcase_manager::verification::ContainerReport;
+
+    // YAML matching the container_data.yml structure
+    let yaml = r#"
+title: 'Test Report Title'
+project: 'Test Project Name'
+test_date: '2024-03-15T14:30:00Z'
+test_results:
+  - test_case_id: 'TC001'
+    description: 'Test case description'
+    sequences: []
+    total_steps: 5
+    passed_steps: 4
+    failed_steps: 1
+    not_executed_steps: 0
+    overall_pass: false
+    requirement: 'REQ001'
+    item: 1
+    tc: 1
+metadata:
+  environment: 'Test Environment'
+  platform: 'Test Platform'
+  executor: 'Test Executor'
+  execution_duration: 123.45
+  total_test_cases: 1
+  passed_test_cases: 0
+  failed_test_cases: 1
+"#;
+
+    let deserialized: ContainerReport = serde_yaml::from_str(yaml).unwrap();
+
+    // Verify deserialization works correctly
+    assert_eq!(deserialized.title, "Test Report Title");
+    assert_eq!(deserialized.project, "Test Project Name");
+    assert_eq!(deserialized.test_results.len(), 1);
+    assert_eq!(deserialized.test_results[0].test_case_id, "TC001");
+    assert_eq!(
+        deserialized.metadata.environment,
+        Some("Test Environment".to_string())
+    );
+    assert_eq!(
+        deserialized.metadata.platform,
+        Some("Test Platform".to_string())
+    );
+    assert_eq!(
+        deserialized.metadata.executor,
+        Some("Test Executor".to_string())
+    );
+    assert_eq!(deserialized.metadata.execution_duration, 123.45);
+    assert_eq!(deserialized.metadata.total_test_cases, 1);
+    assert_eq!(deserialized.metadata.passed_test_cases, 0);
+    assert_eq!(deserialized.metadata.failed_test_cases, 1);
+}
+
+#[test]
+fn test_container_report_roundtrip_serialization() {
+    use chrono::{TimeZone, Utc};
+    use testcase_manager::verification::{BatchVerificationReport, ContainerReport};
+
+    let mut batch_report = BatchVerificationReport::new();
+    let fixed_time = Utc.with_ymd_and_hms(2024, 3, 15, 14, 30, 0).unwrap();
+    batch_report.generated_at = fixed_time;
+
+    batch_report.add_test_case_result(TestCaseVerificationResult {
+        test_case_id: "TC_ROUNDTRIP".to_string(),
+        description: "Roundtrip test case".to_string(),
+        sequences: vec![],
+        total_steps: 7,
+        passed_steps: 5,
+        failed_steps: 1,
+        not_executed_steps: 1,
+        overall_pass: false,
+        requirement: Some("REQ_RT".to_string()),
+        item: Some(99),
+        tc: Some(88),
+    });
+
+    let original = ContainerReport::from_batch_report(
+        batch_report,
+        "Roundtrip Test".to_string(),
+        "Roundtrip Project".to_string(),
+        Some("Roundtrip Env".to_string()),
+        Some("Roundtrip Platform".to_string()),
+        Some("Roundtrip Executor".to_string()),
+        999.99,
+    );
+
+    // Serialize to YAML
+    let yaml = serde_yaml::to_string(&original).unwrap();
+
+    // Deserialize back
+    let deserialized: ContainerReport = serde_yaml::from_str(&yaml).unwrap();
+
+    // Verify all fields match
+    assert_eq!(deserialized.title, original.title);
+    assert_eq!(deserialized.project, original.project);
+    assert_eq!(deserialized.test_date, original.test_date);
+    assert_eq!(deserialized.test_results.len(), original.test_results.len());
+    assert_eq!(
+        deserialized.test_results[0].test_case_id,
+        original.test_results[0].test_case_id
+    );
+    assert_eq!(
+        deserialized.test_results[0].total_steps,
+        original.test_results[0].total_steps
+    );
+    assert_eq!(
+        deserialized.metadata.environment,
+        original.metadata.environment
+    );
+    assert_eq!(deserialized.metadata.platform, original.metadata.platform);
+    assert_eq!(deserialized.metadata.executor, original.metadata.executor);
+    assert_eq!(
+        deserialized.metadata.execution_duration,
+        original.metadata.execution_duration
+    );
+    assert_eq!(
+        deserialized.metadata.total_test_cases,
+        original.metadata.total_test_cases
+    );
+    assert_eq!(
+        deserialized.metadata.passed_test_cases,
+        original.metadata.passed_test_cases
+    );
+    assert_eq!(
+        deserialized.metadata.failed_test_cases,
+        original.metadata.failed_test_cases
+    );
+}
+
+#[test]
+fn test_container_report_with_sequences_yaml_structure() {
+    use testcase_manager::models::Expected;
+    use testcase_manager::verification::{
+        BatchVerificationReport, ContainerReport, SequenceVerificationResult,
+        StepVerificationResultEnum,
+    };
+
+    let mut batch_report = BatchVerificationReport::new();
+
+    let sequence = SequenceVerificationResult {
+        sequence_id: 1,
+        name: "Test Sequence 1".to_string(),
+        step_results: vec![
+            StepVerificationResultEnum::Pass {
+                step: 1,
+                description: "Step 1 description".to_string(),
+                requirement: Some("REQ001".to_string()),
+                item: Some(1),
+                tc: Some(1),
+            },
+            StepVerificationResultEnum::Fail {
+                step: 2,
+                description: "Step 2 description".to_string(),
+                expected: Expected {
+                    success: Some(true),
+                    result: "0x9000".to_string(),
+                    output: "Success".to_string(),
+                },
+                actual_result: "0x6985".to_string(),
+                actual_output: "Command not allowed".to_string(),
+                reason: "Status code mismatch".to_string(),
+                requirement: Some("REQ001".to_string()),
+                item: Some(1),
+                tc: Some(1),
+            },
+            StepVerificationResultEnum::NotExecuted {
+                step: 3,
+                description: "Step 3 description".to_string(),
+                requirement: Some("REQ001".to_string()),
+                item: Some(1),
+                tc: Some(1),
+            },
+        ],
+        all_steps_passed: false,
+        requirement: Some("REQ001".to_string()),
+        item: Some(1),
+        tc: Some(1),
+    };
+
+    batch_report.add_test_case_result(TestCaseVerificationResult {
+        test_case_id: "TC_WITH_SEQUENCES".to_string(),
+        description: "Test case with sequences".to_string(),
+        sequences: vec![sequence],
+        total_steps: 3,
+        passed_steps: 1,
+        failed_steps: 1,
+        not_executed_steps: 1,
+        overall_pass: false,
+        requirement: Some("REQ001".to_string()),
+        item: Some(1),
+        tc: Some(1),
+    });
+
+    let container_report = ContainerReport::from_batch_report(
+        batch_report,
+        "Test with Sequences".to_string(),
+        "Test Project".to_string(),
+        None,
+        None,
+        None,
+        100.0,
+    );
+
+    let yaml = serde_yaml::to_string(&container_report).unwrap();
+
+    // Verify sequences and steps are in YAML
+    assert!(yaml.contains("sequences:"));
+    assert!(yaml.contains("sequence_id: 1"));
+    assert!(yaml.contains("Test Sequence 1"));
+    assert!(yaml.contains("step_results:"));
+    assert!(yaml.contains("status: pass"));
+    assert!(yaml.contains("status: fail"));
+    assert!(yaml.contains("status: not_executed"));
+    assert!(yaml.contains("Step 1 description"));
+    assert!(yaml.contains("Step 2 description"));
+    assert!(yaml.contains("Step 3 description"));
+    assert!(yaml.contains("expected:"));
+    assert!(yaml.contains("actual_result:"));
+    assert!(yaml.contains("actual_output:"));
+    assert!(yaml.contains("reason:"));
+
+    // Verify deserialization preserves structure
+    let deserialized: ContainerReport = serde_yaml::from_str(&yaml).unwrap();
+    assert_eq!(deserialized.test_results.len(), 1);
+    assert_eq!(deserialized.test_results[0].sequences.len(), 1);
+    assert_eq!(
+        deserialized.test_results[0].sequences[0].step_results.len(),
+        3
+    );
+}
+
+#[test]
+fn test_container_report_optional_metadata_fields() {
+    use testcase_manager::verification::{BatchVerificationReport, ContainerReport};
+
+    let batch_report = BatchVerificationReport::new();
+
+    // Create report with no optional metadata
+    let container_report_no_optional = ContainerReport::from_batch_report(
+        batch_report.clone(),
+        "Test".to_string(),
+        "Project".to_string(),
+        None,
+        None,
+        None,
+        0.0,
+    );
+
+    assert!(container_report_no_optional.metadata.environment.is_none());
+    assert!(container_report_no_optional.metadata.platform.is_none());
+    assert!(container_report_no_optional.metadata.executor.is_none());
+
+    let yaml_no_optional = serde_yaml::to_string(&container_report_no_optional).unwrap();
+
+    // Optional fields should be omitted when None
+    let lines: Vec<&str> = yaml_no_optional.lines().collect();
+    let has_environment_field = lines
+        .iter()
+        .any(|line| line.trim().starts_with("environment:"));
+    let has_platform_field = lines
+        .iter()
+        .any(|line| line.trim().starts_with("platform:"));
+    let has_executor_field = lines
+        .iter()
+        .any(|line| line.trim().starts_with("executor:"));
+
+    assert!(!has_environment_field);
+    assert!(!has_platform_field);
+    assert!(!has_executor_field);
+
+    // Create report with all optional metadata
+    let container_report_with_optional = ContainerReport::from_batch_report(
+        batch_report,
+        "Test".to_string(),
+        "Project".to_string(),
+        Some("Env".to_string()),
+        Some("Platform".to_string()),
+        Some("Executor".to_string()),
+        100.0,
+    );
+
+    assert_eq!(
+        container_report_with_optional.metadata.environment,
+        Some("Env".to_string())
+    );
+    assert_eq!(
+        container_report_with_optional.metadata.platform,
+        Some("Platform".to_string())
+    );
+    assert_eq!(
+        container_report_with_optional.metadata.executor,
+        Some("Executor".to_string())
+    );
+
+    let yaml_with_optional = serde_yaml::to_string(&container_report_with_optional).unwrap();
+    assert!(yaml_with_optional.contains("environment: Env"));
+    assert!(yaml_with_optional.contains("platform: Platform"));
+    assert!(yaml_with_optional.contains("executor: Executor"));
+}
+
+#[test]
+fn test_container_report_empty_test_results() {
+    use testcase_manager::verification::{BatchVerificationReport, ContainerReport};
+
+    let batch_report = BatchVerificationReport::new();
+
+    let container_report = ContainerReport::from_batch_report(
+        batch_report,
+        "Empty Report".to_string(),
+        "Empty Project".to_string(),
+        None,
+        None,
+        None,
+        0.0,
+    );
+
+    assert_eq!(container_report.test_results.len(), 0);
+    assert_eq!(container_report.metadata.total_test_cases, 0);
+    assert_eq!(container_report.metadata.passed_test_cases, 0);
+    assert_eq!(container_report.metadata.failed_test_cases, 0);
+
+    let yaml = serde_yaml::to_string(&container_report).unwrap();
+    assert!(yaml.contains("test_results: []"));
+    assert!(yaml.contains("total_test_cases: 0"));
+
+    // Verify deserialization works with empty results
+    let deserialized: ContainerReport = serde_yaml::from_str(&yaml).unwrap();
+    assert_eq!(deserialized.test_results.len(), 0);
+    assert_eq!(deserialized.metadata.total_test_cases, 0);
 }
 
 // ============================================================================
