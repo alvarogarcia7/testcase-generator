@@ -98,3 +98,7 @@ output/
 docker-compose.override.yml
 
 src/testcase_generator.egg-info/
+
+# Container config overrides (keep default, ignore environment-specific)
+container_config.*.yml
+!container_config.yml

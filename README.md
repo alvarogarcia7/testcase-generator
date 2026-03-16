@@ -13,7 +13,7 @@ A comprehensive CLI tool for managing test cases in YAML format with interactive
 - **Fuzzy Search**: Search through test cases, sequences, steps, and conditions
 - **TTY Fallback**: Automatic detection of non-TTY environments (e.g., VS Code debug console) with graceful fallback to numbered selection
 - **Recovery Mechanism**: Automatically saves progress after each operation and can resume from saved state if interrupted
-- **Test Verification**: Batch verification mode that processes test execution logs and generates reports with JUnit XML output for CI/CD integration
+- **Test Verification**: Batch verification mode that processes test execution logs and generates reports with JUnit XML output for CI/CD integration. Supports container configuration for rich metadata in reports - see [VERIFIER_CONFIG_GUIDE.md](VERIFIER_CONFIG_GUIDE.md) and [VERIFIER_SCRIPTS_REFERENCE.md](VERIFIER_SCRIPTS_REFERENCE.md)
 - **Watch Mode**: Continuously monitor directories for file changes with automatic validation and instant feedback
 - **Variables and Data Passing**: Capture dynamic values from command output and pass data between test steps using regex patterns and variable substitution. See [Variables and Data Passing Documentation](docs/VARIABLE_PASSING.md) for details
 
@@ -1170,9 +1170,11 @@ Example:
 
 ### Configuration File
 
-The verifier supports a YAML configuration file to define metadata for reports. This allows you to maintain consistent metadata across multiple test runs without repeating command-line flags.
+The verifier supports a YAML configuration file to define metadata for reports. This allows you to maintain consistent metadata across multiple test runs without repeating command-line flags. For comprehensive documentation, see [VERIFIER_CONFIG_GUIDE.md](VERIFIER_CONFIG_GUIDE.md).
 
-**Configuration File Format** (see `verifier-config.example.yaml`):
+The project includes a default `container_config.yml` file at the repository root that is used automatically. You can override this with the `--config` flag or create environment-specific configs like `container_config.staging.yml`.
+
+**Configuration File Format** (see `verifier-config.example.yaml` and `container_config.yml`):
 ```yaml
 title: "Test Execution Results"
 project: "Test Case Manager - Verification Results"
