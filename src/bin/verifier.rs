@@ -44,6 +44,30 @@ struct Cli {
     #[arg(short, long)]
     verbose: bool,
 
+    /// Enable container YAML output format with enhanced metadata
+    #[arg(long)]
+    container_format: bool,
+
+    /// Report title (used with --container-format)
+    #[arg(long, default_value = "Test Execution Results")]
+    title: String,
+
+    /// Project name (used with --container-format)
+    #[arg(long, default_value = "Test Case Manager - Verification Results")]
+    project: String,
+
+    /// Environment information (used with --container-format)
+    #[arg(long)]
+    environment: Option<String>,
+
+    /// Platform information (used with --container-format)
+    #[arg(long)]
+    platform: Option<String>,
+
+    /// Executor information (used with --container-format)
+    #[arg(long)]
+    executor: Option<String>,
+
     /// Match strategy for verification (exact, regex, contains, or precomputed)
     #[arg(
         short = 'm',
@@ -91,7 +115,17 @@ fn main() -> Result<()> {
     log_verification_errors(&report);
 
     // Generate output in requested format
-    let output_content = generate_output(&verifier, &report, &cli.format)?;
+    let output_content = generate_output(
+        &verifier,
+        &report,
+        &cli.format,
+        cli.container_format,
+        &cli.title,
+        &cli.project,
+        cli.environment.as_ref(),
+        cli.platform.as_ref(),
+        cli.executor.as_ref(),
+    )?;
 
     // Write to file or stdout
     write_output(&output_content, cli.output.as_ref())?;
@@ -369,15 +403,37 @@ fn generate_output(
     verifier: &TestVerifier,
     report: &BatchVerificationReport,
     format: &str,
+    container_format: bool,
+    title: &str,
+    project: &str,
+    environment: Option<&String>,
+    platform: Option<&String>,
+    executor: Option<&String>,
 ) -> Result<String> {
-    match format.to_lowercase().as_str() {
-        "yaml" => verifier
-            .generate_container_report(report, "yaml")
-            .context("Failed to generate YAML report"),
-        "json" => verifier
-            .generate_container_report(report, "json")
-            .context("Failed to generate JSON report"),
-        _ => anyhow::bail!("Unsupported format: {}", format),
+    if container_format {
+        // Use container format with metadata
+        verifier
+            .generate_container_yaml_report(
+                report,
+                format,
+                title.to_string(),
+                project.to_string(),
+                environment.cloned(),
+                platform.cloned(),
+                executor.cloned(),
+            )
+            .context("Failed to generate container report")
+    } else {
+        // Use simple batch report format
+        match format.to_lowercase().as_str() {
+            "yaml" => verifier
+                .generate_container_report(report, "yaml")
+                .context("Failed to generate YAML report"),
+            "json" => verifier
+                .generate_container_report(report, "json")
+                .context("Failed to generate JSON report"),
+            _ => anyhow::bail!("Unsupported format: {}", format),
+        }
     }
 }
 
