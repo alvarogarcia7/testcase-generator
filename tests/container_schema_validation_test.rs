@@ -123,7 +123,7 @@ fn test_invalid_step_status_detected() -> Result<()> {
     // Load schema
     let (_schema_json, compiled_schema) = load_schema()?;
 
-    // Create container with invalid step status
+    // Create container with invalid step variant (externally tagged format)
     let invalid_container = serde_json::json!({
         "title": "Test Report",
         "project": "Test Project",
@@ -135,9 +135,10 @@ fn test_invalid_step_status_detected() -> Result<()> {
                 "sequence_id": 1,
                 "name": "Seq1",
                 "step_results": [{
-                    "status": "invalid_status",  // Invalid!
-                    "step": 1,
-                    "description": "Step 1"
+                    "InvalidStatus": {  // Invalid variant!
+                        "step": 1,
+                        "description": "Step 1"
+                    }
                 }],
                 "all_steps_passed": true
             }],
@@ -171,24 +172,38 @@ fn test_valid_step_statuses_accepted() -> Result<()> {
     // Load schema
     let (_schema_json, compiled_schema) = load_schema()?;
 
-    // Test each valid status
-    for status in &["pass", "fail", "not_executed"] {
-        let mut step = serde_json::json!({
-            "status": status,
-            "step": 1,
-            "description": "Test step"
-        });
+    // Test each valid status - externally tagged format
+    for (variant_name, is_pass, is_fail, is_not_executed) in &[
+        ("Pass", true, false, false),
+        ("Fail", false, true, false),
+        ("NotExecuted", false, false, true),
+    ] {
+        // Build step with dynamic variant name
+        let step_data = if *is_fail {
+            // Fail variant requires additional fields
+            serde_json::json!({
+                "step": 1,
+                "description": "Test step",
+                "expected": {
+                    "result": "SUCCESS",
+                    "output": "Expected output"
+                },
+                "actual_result": "FAILURE",
+                "actual_output": "Actual output",
+                "reason": "Test reason"
+            })
+        } else {
+            // Pass and NotExecuted variants
+            serde_json::json!({
+                "step": 1,
+                "description": "Test step"
+            })
+        };
 
-        // Add required fields for "fail" status
-        if *status == "fail" {
-            step["expected"] = serde_json::json!({
-                "result": "SUCCESS",
-                "output": "Expected output"
-            });
-            step["actual_result"] = serde_json::json!("FAILURE");
-            step["actual_output"] = serde_json::json!("Actual output");
-            step["reason"] = serde_json::json!("Test reason");
-        }
+        // Create the externally tagged enum with dynamic key
+        let mut step = serde_json::Map::new();
+        step.insert(variant_name.to_string(), step_data);
+        let step = serde_json::Value::Object(step);
 
         let container = serde_json::json!({
             "title": "Test Report",
@@ -201,28 +216,30 @@ fn test_valid_step_statuses_accepted() -> Result<()> {
                     "sequence_id": 1,
                     "name": "Seq1",
                     "step_results": [step],
-                    "all_steps_passed": *status == "pass"
+                    "all_steps_passed": *is_pass
                 }],
                 "total_steps": 1,
-                "passed_steps": if *status == "pass" { 1 } else { 0 },
-                "failed_steps": if *status == "fail" { 1 } else { 0 },
-                "not_executed_steps": if *status == "not_executed" { 1 } else { 0 },
-                "overall_pass": *status == "pass"
+                "passed_steps": if *is_pass { 1 } else { 0 },
+                "failed_steps": if *is_fail { 1 } else { 0 },
+                "not_executed_steps": if *is_not_executed { 1 } else { 0 },
+                "overall_pass": *is_pass
             }],
             "metadata": {
                 "execution_duration": 0.0,
                 "total_test_cases": 1,
-                "passed_test_cases": if *status == "pass" { 1 } else { 0 },
-                "failed_test_cases": if *status == "pass" { 0 } else { 1 }
+                "passed_test_cases": if *is_pass { 1 } else { 0 },
+                "failed_test_cases": if *is_pass { 0 } else { 1 }
             }
         });
 
         let result = compiled_schema.validate(&container);
-        assert!(
-            result.is_ok(),
-            "Container with status '{}' should pass validation",
-            status
-        );
+        if let Err(errors) = result {
+            let error_messages: Vec<String> = errors.map(|e| format!("{}", e)).collect();
+            panic!(
+                "Container with status '{}' failed validation. Errors: {:?}",
+                variant_name, error_messages
+            );
+        }
     }
 
     Ok(())
