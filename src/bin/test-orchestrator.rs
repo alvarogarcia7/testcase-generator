@@ -38,8 +38,8 @@ struct Cli {
     #[arg(long, value_name = "LEVEL", default_value = "info", global = true)]
     log_level: String,
 
-    /// Enable verbose output (equivalent to --log-level=debug)
-    #[arg(short, long, global = true)]
+    /// Enable verbose logging (equivalent to --log-level=debug)
+    #[arg(long, global = true)]
     verbose_logging: bool,
 
     #[command(subcommand)]
