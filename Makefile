@@ -126,6 +126,7 @@ test-e2e:
 	./tests/integration/test_verifier_container_e2e.sh
 	#./tests/integration/test_verify_e2e.sh
 	BUILD_VARIANT="" ./scripts/run_verifier_and_generate_reports.sh
+	${MAKE} validate-output-schemas
 .PHONY: test-e2e
 
 example_export-demo:
@@ -291,6 +292,11 @@ verify-testcases: build
 		echo "All test case files validated successfully"; \
 	fi
 .PHONY: verify-testcases
+
+validate-output-schemas:
+	@echo "Validating expected output sample files against schemas..."
+	./scripts/validate-output-schemas.sh
+.PHONY: validate-output-schemas
 
 watch: build
 	./scripts/watch-yaml-files.sh
