@@ -1783,6 +1783,40 @@ impl TestVerifier {
 
         result
     }
+
+    /// Generate container YAML/JSON report with enhanced metadata
+    /// This method creates a ContainerReport with custom title, project, and metadata fields
+    pub fn generate_container_yaml_report(
+        &self,
+        report: &BatchVerificationReport,
+        format: &str,
+        title: String,
+        project: String,
+        environment: Option<String>,
+        platform: Option<String>,
+        executor: Option<String>,
+    ) -> Result<String> {
+        // Calculate execution duration (for now, use 0.0 as we don't track timing)
+        let execution_duration = 0.0;
+
+        let container_report = ContainerReport::from_batch_report(
+            report.clone(),
+            title,
+            project,
+            environment,
+            platform,
+            executor,
+            execution_duration,
+        );
+
+        match format.to_lowercase().as_str() {
+            "yaml" => serde_yaml::to_string(&container_report)
+                .context("Failed to serialize container report to YAML"),
+            "json" => serde_json::to_string_pretty(&container_report)
+                .context("Failed to serialize container report to JSON"),
+            _ => anyhow::bail!("Unsupported format: {}. Use 'yaml' or 'json'.", format),
+        }
+    }
 }
 
 #[cfg(test)]
