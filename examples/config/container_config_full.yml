@@ -1,0 +1,43 @@
+# Container Configuration - Full Example
+#
+# This example demonstrates all available configuration fields for the verifier's
+# container format, including all optional metadata fields.
+#
+# Usage:
+#   verifier -f logs/ --format yaml --output report.yaml --config container_config_full.yml
+#
+# CLI Flag Overrides:
+#   Any field in this configuration file can be overridden by CLI flags:
+#     --title      "Custom Title"        (overrides 'title' below)
+#     --project    "Custom Project"      (overrides 'project' below)
+#     --environment "Production"         (overrides 'environment' below)
+#     --platform    "macOS ARM64"        (overrides 'platform' below)
+#     --executor    "GitHub Actions"     (overrides 'executor' below)
+#
+# Precedence: CLI flags > Configuration file > Default values
+#
+# Example with selective overrides:
+#   verifier -f logs/ --format yaml --output report.yaml \
+#     --config container_config_full.yml \
+#     --environment "Production" \
+#     --executor "Manual Execution"
+#
+# Schema: schemas/container_config.schema.json
+
+# Required: Title of the test report (max 200 characters)
+title: "Nightly Integration Test Run"
+
+# Required: Name of the project being tested (max 200 characters)
+project: "E2E Test Suite - API Services"
+
+# Optional: Environment in which the tests were executed (max 100 characters)
+# Common values: Development, Staging, Production, QA, CI/CD, Local
+environment: "Staging"
+
+# Optional: Platform information including OS and architecture (max 150 characters)
+# Examples: Linux x86_64, macOS ARM64, Ubuntu 22.04 LTS, Windows 11 x64
+platform: "Linux x86_64"
+
+# Optional: Information about the executor or CI/CD system (max 150 characters)
+# Examples: Jenkins v3.2, GitHub Actions, GitLab CI, Local execution, CircleCI
+executor: "Jenkins v3.2"
