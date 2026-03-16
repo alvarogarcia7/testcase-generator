@@ -6,8 +6,8 @@
 # 1. Run verifier on execution logs using folder mode
 # 2. Convert verification JSON to result YAML files
 # 3. Build test-plan-doc-gen if needed
-# 4. Generate test results report (AsciiDoc) using result container template
-# 5. Generate test plan report (Markdown) using test case YAML files
+# 4. Generate test results reports (AsciiDoc and Markdown) from result container YAML
+# 5. Generate test plan reports (AsciiDoc and Markdown) from test case YAML files
 # 6. Print paths to all generated reports
 #
 # Usage: ./scripts/generate_documentation_reports.sh [OPTIONS]
@@ -224,10 +224,10 @@ else
 fi
 
 # ============================================================================
-# Step 4: Generate test results report (AsciiDoc) using result container
+# Step 4: Generate test results reports from container YAML
 # ============================================================================
 
-section "Step 4: Generate Test Results Report (AsciiDoc)"
+section "Step 4: Generate Test Results Reports from Container"
 
 if [[ $SKIP_DOC_GEN -eq 1 ]]; then
     log_warning "Skipping test results report generation (test-plan-doc-gen not available)"
@@ -287,14 +287,14 @@ metadata:
   failed_test_cases: 0
 EOF
     
-    # Generate AsciiDoc report
-    ASCIIDOC_OUTPUT="$OUTPUT_DIR/reports/test_results_report.adoc"
-    
-    log_info "Generating AsciiDoc test results report..."
-    log_verbose "Command: invoke_test_plan_doc_gen --container $RESULT_CONTAINER --output $ASCIIDOC_OUTPUT --format asciidoc"
-    
     # Set TEST_PLAN_DOC_GEN environment variable for report_generator.sh
     export TEST_PLAN_DOC_GEN=$(find_test_plan_doc_gen "$TEST_PLAN_DOC_GEN_DIR")
+    
+    # Generate AsciiDoc report from container
+    ASCIIDOC_OUTPUT="$OUTPUT_DIR/reports/test_results_report.adoc"
+    
+    log_info "Generating AsciiDoc test results report from container..."
+    log_verbose "Command: invoke_test_plan_doc_gen --container $RESULT_CONTAINER --output $ASCIIDOC_OUTPUT --format asciidoc"
     
     if invoke_test_plan_doc_gen \
         --container "$RESULT_CONTAINER" \
@@ -302,32 +302,52 @@ EOF
         --format asciidoc 2>&1 | while IFS= read -r line; do
             log_verbose "$line"
         done; then
-        pass "Test results report generated: $ASCIIDOC_OUTPUT"
+        pass "AsciiDoc report generated: $ASCIIDOC_OUTPUT"
         GENERATED_REPORTS+=("$ASCIIDOC_OUTPUT")
     else
-        fail "Failed to generate test results report"
+        fail "Failed to generate AsciiDoc report from container"
+    fi
+    
+    # Generate Markdown report from container
+    MARKDOWN_OUTPUT="$OUTPUT_DIR/reports/test_results_report.md"
+    
+    log_info "Generating Markdown test results report from container..."
+    log_verbose "Command: invoke_test_plan_doc_gen --container $RESULT_CONTAINER --output $MARKDOWN_OUTPUT --format markdown"
+    
+    if invoke_test_plan_doc_gen \
+        --container "$RESULT_CONTAINER" \
+        --output "$MARKDOWN_OUTPUT" \
+        --format markdown 2>&1 | while IFS= read -r line; do
+            log_verbose "$line"
+        done; then
+        pass "Markdown report generated: $MARKDOWN_OUTPUT"
+        GENERATED_REPORTS+=("$MARKDOWN_OUTPUT")
+    else
+        fail "Failed to generate Markdown report from container"
     fi
 fi
 
 # ============================================================================
-# Step 5: Generate test plan report (Markdown) using test case YAML files
+# Step 5: Generate test plan reports from test case YAML files
 # ============================================================================
 
-section "Step 5: Generate Test Plan Report (Markdown)"
+section "Step 5: Generate Test Plan Reports from Test Cases"
 
 if [[ $SKIP_DOC_GEN -eq 1 ]]; then
     log_warning "Skipping test plan report generation (test-plan-doc-gen not available)"
 else
-    # Find all test case YAML files
+    # Find all test case YAML files (excluding container files)
     TEST_CASE_FILES=()
     
     log_info "Discovering test case YAML files in: $TEST_CASE_DIR"
     
     while IFS= read -r -d '' yaml_file; do
         # Skip files in expected_output_reports and other report directories
+        # Also skip result files and container files
         if [[ ! "$yaml_file" =~ expected_output_reports ]] && \
            [[ ! "$yaml_file" =~ /reports/ ]] && \
-           [[ ! "$yaml_file" =~ _result\.ya?ml$ ]]; then
+           [[ ! "$yaml_file" =~ _result\.ya?ml$ ]] && \
+           [[ ! "$yaml_file" =~ _container\.ya?ml$ ]]; then
             TEST_CASE_FILES+=("$yaml_file")
             log_verbose "Found test case: $(basename "$yaml_file")"
         fi
@@ -338,14 +358,33 @@ else
     if [[ ${#TEST_CASE_FILES[@]} -eq 0 ]]; then
         log_warning "No test case files found"
     else
-        # Generate Markdown report for each test case
+        # Generate both AsciiDoc and Markdown reports for each test case
         for test_case_file in "${TEST_CASE_FILES[@]}"; do
             test_case_basename=$(basename "$test_case_file" .yml)
             test_case_basename=$(basename "$test_case_basename" .yaml)
             
+            log_info "Generating reports for test case: $test_case_basename"
+            
+            # Generate AsciiDoc report
+            ASCIIDOC_OUTPUT="$OUTPUT_DIR/reports/${test_case_basename}_test_plan.adoc"
+            
+            log_verbose "Command: invoke_test_plan_doc_gen --test-case $test_case_file --output $ASCIIDOC_OUTPUT --format asciidoc"
+            
+            if invoke_test_plan_doc_gen \
+                --test-case "$test_case_file" \
+                --output "$ASCIIDOC_OUTPUT" \
+                --format asciidoc 2>&1 | while IFS= read -r line; do
+                    log_verbose "$line"
+                done; then
+                pass "AsciiDoc test plan: $ASCIIDOC_OUTPUT"
+                GENERATED_REPORTS+=("$ASCIIDOC_OUTPUT")
+            else
+                log_warning "Failed to generate AsciiDoc test plan for: $test_case_basename"
+            fi
+            
+            # Generate Markdown report
             MARKDOWN_OUTPUT="$OUTPUT_DIR/reports/${test_case_basename}_test_plan.md"
             
-            log_info "Generating test plan for: $test_case_basename"
             log_verbose "Command: invoke_test_plan_doc_gen --test-case $test_case_file --output $MARKDOWN_OUTPUT --format markdown"
             
             if invoke_test_plan_doc_gen \
@@ -354,10 +393,10 @@ else
                 --format markdown 2>&1 | while IFS= read -r line; do
                     log_verbose "$line"
                 done; then
-                pass "Test plan report: $MARKDOWN_OUTPUT"
+                pass "Markdown test plan: $MARKDOWN_OUTPUT"
                 GENERATED_REPORTS+=("$MARKDOWN_OUTPUT")
             else
-                log_warning "Failed to generate test plan for: $test_case_basename"
+                log_warning "Failed to generate Markdown test plan for: $test_case_basename"
             fi
         done
     fi
