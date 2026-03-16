@@ -453,6 +453,28 @@ Validate all YAML files matching a pattern:
     --validator ./scripts/validate-yaml-wrapper.sh
 ```
 
+### Output Schema Validation
+
+Validate expected output sample files against their respective JSON schemas:
+
+```bash
+# Validate all expected output samples
+make validate-output-schemas
+
+# Or run the script directly
+./scripts/validate-output-schemas.sh
+```
+
+**What gets validated:**
+- **Test Case Results** (`testcases/examples/expected_test_results/test_case_result/*.yml`) - Individual test case verification results validated against `test_case_result/schema.json`
+- **Container Files** (`testcases/examples/expected_test_results/container/*.yml`) - Aggregated test results with metadata validated against `container/container_schema.json`
+
+**Requirements:**
+- Python 3 with `pyyaml` and `jsonschema` modules
+- Install with: `pip3 install pyyaml jsonschema`
+
+**Integration:** The `validate-output-schemas` target is automatically included in the `test-e2e` target, ensuring schema compliance is tested in CI.
+
 ### Watch Mode
 
 Monitor directories for file changes and automatically validate modified files:

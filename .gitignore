@@ -95,6 +95,9 @@ grcov
 # Python virtual environment (uv)
 /.venv/
 __pycache__/
+*.pyc
+*.pyo
+__pycache__/
 *.py[cod]
 *$py.class
 *.so
