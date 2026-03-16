@@ -324,6 +324,82 @@ impl Default for BatchVerificationReport {
     }
 }
 
+/// Metadata for container reports
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ContainerReportMetadata {
+    /// Optional environment information
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub environment: Option<String>,
+
+    /// Optional platform information
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub platform: Option<String>,
+
+    /// Optional executor information
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub executor: Option<String>,
+
+    /// Execution duration in seconds
+    pub execution_duration: f64,
+
+    /// Total number of test cases
+    pub total_test_cases: usize,
+
+    /// Number of test cases that passed
+    pub passed_test_cases: usize,
+
+    /// Number of test cases that failed
+    pub failed_test_cases: usize,
+}
+
+/// Container report for batch verification with enhanced metadata
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ContainerReport {
+    /// Report title
+    pub title: String,
+
+    /// Project name
+    pub project: String,
+
+    /// Test execution date
+    pub test_date: DateTime<Utc>,
+
+    /// Test case results
+    pub test_results: Vec<TestCaseVerificationResult>,
+
+    /// Report metadata
+    pub metadata: ContainerReportMetadata,
+}
+
+impl ContainerReport {
+    /// Create a new ContainerReport from a BatchVerificationReport
+    pub fn from_batch_report(
+        batch_report: BatchVerificationReport,
+        title: String,
+        project: String,
+        environment: Option<String>,
+        platform: Option<String>,
+        executor: Option<String>,
+        execution_duration: f64,
+    ) -> Self {
+        Self {
+            title,
+            project,
+            test_date: batch_report.generated_at,
+            test_results: batch_report.test_cases,
+            metadata: ContainerReportMetadata {
+                environment,
+                platform,
+                executor,
+                execution_duration,
+                total_test_cases: batch_report.total_test_cases,
+                passed_test_cases: batch_report.passed_test_cases,
+                failed_test_cases: batch_report.failed_test_cases,
+            },
+        }
+    }
+}
+
 /// JUnit XML test suite representation
 #[derive(Debug, Clone)]
 pub struct JUnitTestSuite {
