@@ -1,6 +1,5 @@
 use testcase_manager::{
-    BatchVerificationReport, Step, TestCase, TestCaseStorage, TestSequence,
-    TestVerifier,
+    BatchVerificationReport, Step, TestCase, TestCaseStorage, TestSequence, TestVerifier,
 };
 
 fn main() -> anyhow::Result<()> {

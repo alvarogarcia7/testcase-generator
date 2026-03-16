@@ -2837,3 +2837,346 @@ fn test_precomputed_strategy_name() {
         assert!(diff.message.contains("Precomputed"));
     }
 }
+
+// ============================================================================
+// Container Report Config Tests
+// ============================================================================
+
+#[test]
+fn test_container_report_config_defaults_only() {
+    use tempfile::TempDir;
+    use testcase_manager::storage::TestCaseStorage;
+    use testcase_manager::verification::{BatchVerificationReport, ContainerReportConfig};
+
+    let temp_dir = TempDir::new().unwrap();
+    let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
+    let verifier = TestVerifier::from_storage(storage);
+
+    let mut report = BatchVerificationReport::new();
+    report.add_test_case_result(TestCaseVerificationResult {
+        test_case_id: "TC_DEFAULT".to_string(),
+        description: "Test with default config".to_string(),
+        requirement: Some("REQ_DEFAULT".to_string()),
+        item: Some(1),
+        tc: Some(1),
+        sequences: vec![],
+        total_steps: 1,
+        passed_steps: 1,
+        failed_steps: 0,
+        not_executed_steps: 0,
+        overall_pass: true,
+    });
+
+    // Test with only required fields (fallback defaults)
+    let config = ContainerReportConfig {
+        title: "Test Execution Results".to_string(),
+        project: "Test Case Manager - Verification Results".to_string(),
+        environment: None,
+        platform: None,
+        executor: None,
+    };
+
+    let yaml = verifier
+        .generate_report(&[report.clone()], "yaml", config.clone())
+        .unwrap();
+
+    // Verify required fields are present
+    assert!(yaml.contains("title: Test Execution Results"));
+    assert!(yaml.contains("project: Test Case Manager - Verification Results"));
+    assert!(yaml.contains("test_date:"));
+    assert!(yaml.contains("test_results:"));
+    assert!(yaml.contains("metadata:"));
+
+    // Verify optional fields are handled correctly when None
+    // They should either not appear or be explicitly null
+    let parsed: testcase_manager::verification::ContainerReport =
+        serde_yaml::from_str(&yaml).expect("Failed to parse YAML");
+    assert_eq!(parsed.title, "Test Execution Results");
+    assert_eq!(parsed.project, "Test Case Manager - Verification Results");
+    assert!(parsed.metadata.environment.is_none());
+    assert!(parsed.metadata.platform.is_none());
+    assert!(parsed.metadata.executor.is_none());
+
+    // Test JSON format as well
+    let json = verifier.generate_report(&[report], "json", config).unwrap();
+    let parsed_json: testcase_manager::verification::ContainerReport =
+        serde_json::from_str(&json).expect("Failed to parse JSON");
+    assert_eq!(parsed_json.title, "Test Execution Results");
+    assert!(parsed_json.metadata.environment.is_none());
+}
+
+#[test]
+fn test_container_report_config_cli_flags_only() {
+    use tempfile::TempDir;
+    use testcase_manager::storage::TestCaseStorage;
+    use testcase_manager::verification::{BatchVerificationReport, ContainerReportConfig};
+
+    let temp_dir = TempDir::new().unwrap();
+    let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
+    let verifier = TestVerifier::from_storage(storage);
+
+    let mut report = BatchVerificationReport::new();
+    report.add_test_case_result(TestCaseVerificationResult {
+        test_case_id: "TC_CLI".to_string(),
+        description: "Test with CLI flags".to_string(),
+        requirement: Some("REQ_CLI".to_string()),
+        item: Some(1),
+        tc: Some(1),
+        sequences: vec![],
+        total_steps: 1,
+        passed_steps: 1,
+        failed_steps: 0,
+        not_executed_steps: 0,
+        overall_pass: true,
+    });
+
+    // Simulate CLI flags being used (all fields provided)
+    let config = ContainerReportConfig {
+        title: "CLI Test Report".to_string(),
+        project: "CLI Test Project".to_string(),
+        environment: Some("CLI Environment".to_string()),
+        platform: Some("CLI Platform".to_string()),
+        executor: Some("CLI Executor".to_string()),
+    };
+
+    let yaml = verifier.generate_report(&[report], "yaml", config).unwrap();
+
+    // Verify all fields from CLI flags are present
+    assert!(yaml.contains("title: CLI Test Report"));
+    assert!(yaml.contains("project: CLI Test Project"));
+    assert!(yaml.contains("environment: CLI Environment"));
+    assert!(yaml.contains("platform: CLI Platform"));
+    assert!(yaml.contains("executor: CLI Executor"));
+
+    let parsed: testcase_manager::verification::ContainerReport =
+        serde_yaml::from_str(&yaml).expect("Failed to parse YAML");
+    assert_eq!(parsed.title, "CLI Test Report");
+    assert_eq!(parsed.project, "CLI Test Project");
+    assert_eq!(
+        parsed.metadata.environment,
+        Some("CLI Environment".to_string())
+    );
+    assert_eq!(parsed.metadata.platform, Some("CLI Platform".to_string()));
+    assert_eq!(parsed.metadata.executor, Some("CLI Executor".to_string()));
+}
+
+#[test]
+fn test_container_report_config_file_only() {
+    use tempfile::TempDir;
+    use testcase_manager::storage::TestCaseStorage;
+    use testcase_manager::verification::{BatchVerificationReport, ContainerReportConfig};
+
+    let temp_dir = TempDir::new().unwrap();
+    let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
+    let verifier = TestVerifier::from_storage(storage);
+
+    let mut report = BatchVerificationReport::new();
+    report.add_test_case_result(TestCaseVerificationResult {
+        test_case_id: "TC_CONFIG".to_string(),
+        description: "Test with config file".to_string(),
+        requirement: Some("REQ_CONFIG".to_string()),
+        item: Some(1),
+        tc: Some(1),
+        sequences: vec![],
+        total_steps: 1,
+        passed_steps: 1,
+        failed_steps: 0,
+        not_executed_steps: 0,
+        overall_pass: true,
+    });
+
+    // Simulate values loaded from config file
+    let config = ContainerReportConfig {
+        title: "Container Config Test Report".to_string(),
+        project: "Container Config Test Project".to_string(),
+        environment: Some("Development".to_string()),
+        platform: Some("Linux x86_64".to_string()),
+        executor: Some("CI Pipeline v1.0".to_string()),
+    };
+
+    let yaml = verifier.generate_report(&[report], "yaml", config).unwrap();
+
+    // Verify all fields from config file are present
+    assert!(yaml.contains("title: Container Config Test Report"));
+    assert!(yaml.contains("project: Container Config Test Project"));
+    assert!(yaml.contains("environment: Development"));
+    assert!(yaml.contains("platform: Linux x86_64"));
+    assert!(yaml.contains("executor: CI Pipeline v1.0"));
+
+    let parsed: testcase_manager::verification::ContainerReport =
+        serde_yaml::from_str(&yaml).expect("Failed to parse YAML");
+    assert_eq!(parsed.title, "Container Config Test Report");
+    assert_eq!(parsed.project, "Container Config Test Project");
+    assert_eq!(parsed.metadata.environment, Some("Development".to_string()));
+    assert_eq!(parsed.metadata.platform, Some("Linux x86_64".to_string()));
+    assert_eq!(
+        parsed.metadata.executor,
+        Some("CI Pipeline v1.0".to_string())
+    );
+}
+
+#[test]
+fn test_container_report_config_file_with_cli_overrides() {
+    use tempfile::TempDir;
+    use testcase_manager::storage::TestCaseStorage;
+    use testcase_manager::verification::{BatchVerificationReport, ContainerReportConfig};
+
+    let temp_dir = TempDir::new().unwrap();
+    let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
+    let verifier = TestVerifier::from_storage(storage);
+
+    let mut report = BatchVerificationReport::new();
+    report.add_test_case_result(TestCaseVerificationResult {
+        test_case_id: "TC_OVERRIDE".to_string(),
+        description: "Test with config overrides".to_string(),
+        requirement: Some("REQ_OVERRIDE".to_string()),
+        item: Some(1),
+        tc: Some(1),
+        sequences: vec![],
+        total_steps: 1,
+        passed_steps: 1,
+        failed_steps: 0,
+        not_executed_steps: 0,
+        overall_pass: true,
+    });
+
+    // Simulate config file values being overridden by CLI flags
+    // Config file had: title="Container Config Test Report", environment="Development"
+    // CLI overrides: title="Overridden Title", environment="Production"
+    let config = ContainerReportConfig {
+        title: "Overridden Title".to_string(), // CLI override
+        project: "Container Config Test Project".to_string(), // From config file
+        environment: Some("Production".to_string()), // CLI override
+        platform: Some("Linux x86_64".to_string()), // From config file
+        executor: Some("CI Pipeline v1.0".to_string()), // From config file
+    };
+
+    let yaml = verifier.generate_report(&[report], "yaml", config).unwrap();
+
+    // Verify overridden fields have CLI values
+    assert!(yaml.contains("title: Overridden Title"));
+    assert!(yaml.contains("environment: Production"));
+
+    // Verify non-overridden fields have config file values
+    assert!(yaml.contains("project: Container Config Test Project"));
+    assert!(yaml.contains("platform: Linux x86_64"));
+    assert!(yaml.contains("executor: CI Pipeline v1.0"));
+
+    let parsed: testcase_manager::verification::ContainerReport =
+        serde_yaml::from_str(&yaml).expect("Failed to parse YAML");
+    assert_eq!(parsed.title, "Overridden Title");
+    assert_eq!(parsed.project, "Container Config Test Project");
+    assert_eq!(parsed.metadata.environment, Some("Production".to_string()));
+    assert_eq!(parsed.metadata.platform, Some("Linux x86_64".to_string()));
+    assert_eq!(
+        parsed.metadata.executor,
+        Some("CI Pipeline v1.0".to_string())
+    );
+}
+
+#[test]
+fn test_container_report_partial_config_with_defaults() {
+    use tempfile::TempDir;
+    use testcase_manager::storage::TestCaseStorage;
+    use testcase_manager::verification::{BatchVerificationReport, ContainerReportConfig};
+
+    let temp_dir = TempDir::new().unwrap();
+    let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
+    let verifier = TestVerifier::from_storage(storage);
+
+    let mut report = BatchVerificationReport::new();
+    report.add_test_case_result(TestCaseVerificationResult {
+        test_case_id: "TC_PARTIAL".to_string(),
+        description: "Test with partial config".to_string(),
+        requirement: Some("REQ_PARTIAL".to_string()),
+        item: Some(1),
+        tc: Some(1),
+        sequences: vec![],
+        total_steps: 1,
+        passed_steps: 1,
+        failed_steps: 0,
+        not_executed_steps: 0,
+        overall_pass: true,
+    });
+
+    // Simulate config file with only some optional fields
+    let config = ContainerReportConfig {
+        title: "Minimal Test Report".to_string(),
+        project: "Minimal Test Project".to_string(),
+        environment: None,                         // Not provided in config
+        platform: Some("macOS ARM64".to_string()), // Provided in config
+        executor: None,                            // Not provided in config
+    };
+
+    let yaml = verifier.generate_report(&[report], "yaml", config).unwrap();
+
+    // Verify required fields are present
+    assert!(yaml.contains("title: Minimal Test Report"));
+    assert!(yaml.contains("project: Minimal Test Project"));
+
+    // Verify provided optional field is present
+    assert!(yaml.contains("platform: macOS ARM64"));
+
+    let parsed: testcase_manager::verification::ContainerReport =
+        serde_yaml::from_str(&yaml).expect("Failed to parse YAML");
+    assert_eq!(parsed.title, "Minimal Test Report");
+    assert_eq!(parsed.project, "Minimal Test Project");
+    assert!(parsed.metadata.environment.is_none());
+    assert_eq!(parsed.metadata.platform, Some("macOS ARM64".to_string()));
+    assert!(parsed.metadata.executor.is_none());
+}
+
+#[test]
+fn test_container_report_config_json_format() {
+    use tempfile::TempDir;
+    use testcase_manager::storage::TestCaseStorage;
+    use testcase_manager::verification::{BatchVerificationReport, ContainerReportConfig};
+
+    let temp_dir = TempDir::new().unwrap();
+    let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
+    let verifier = TestVerifier::from_storage(storage);
+
+    let mut report = BatchVerificationReport::new();
+    report.add_test_case_result(TestCaseVerificationResult {
+        test_case_id: "TC_JSON_CONFIG".to_string(),
+        description: "Test JSON with config".to_string(),
+        requirement: Some("REQ_JSON".to_string()),
+        item: Some(1),
+        tc: Some(1),
+        sequences: vec![],
+        total_steps: 1,
+        passed_steps: 1,
+        failed_steps: 0,
+        not_executed_steps: 0,
+        overall_pass: true,
+    });
+
+    let config = ContainerReportConfig {
+        title: "JSON Config Test".to_string(),
+        project: "JSON Config Project".to_string(),
+        environment: Some("Test Environment".to_string()),
+        platform: Some("Test Platform".to_string()),
+        executor: Some("Test Executor".to_string()),
+    };
+
+    let json = verifier.generate_report(&[report], "json", config).unwrap();
+
+    // Verify JSON structure
+    assert!(json.contains("\"title\": \"JSON Config Test\""));
+    assert!(json.contains("\"project\": \"JSON Config Project\""));
+    assert!(json.contains("\"environment\": \"Test Environment\""));
+    assert!(json.contains("\"platform\": \"Test Platform\""));
+    assert!(json.contains("\"executor\": \"Test Executor\""));
+
+    // Verify it can be deserialized
+    let parsed: testcase_manager::verification::ContainerReport =
+        serde_json::from_str(&json).expect("Failed to parse JSON");
+    assert_eq!(parsed.title, "JSON Config Test");
+    assert_eq!(parsed.project, "JSON Config Project");
+    assert_eq!(
+        parsed.metadata.environment,
+        Some("Test Environment".to_string())
+    );
+    assert_eq!(parsed.metadata.platform, Some("Test Platform".to_string()));
+    assert_eq!(parsed.metadata.executor, Some("Test Executor".to_string()));
+}
