@@ -120,6 +120,7 @@ test-e2e:
 	./tests/integration/test_variable_passing_e2e.sh
 	./tests/integration/test_verifier_e2e.sh
 	#./tests/integration/test_verify_e2e.sh
+	./tests/integration/test_container_yaml_compat_e2e.sh
 	BUILD_VARIANT="" ./scripts/run_verifier_and_generate_reports.sh
 .PHONY: test-e2e
 
@@ -335,4 +336,8 @@ generate-docs: build
 generate-docs-all: build
 	./scripts/generate_documentation_reports.sh --logs-dir testcases --test-case-dir testcases
 .PHONY: generate-docs-all
+
+test-container-compat: build
+	./scripts/test_container_yaml_compatibility.sh
+.PHONY: test-container-compat
 

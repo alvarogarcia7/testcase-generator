@@ -54,6 +54,7 @@ See the [Hooks](#hooks) section for detailed documentation and examples.
 - **Watch Mode**: make watch (monitors testcases/ for changes and auto-validates)
 - **Generate Docs**: make generate-docs (generate documentation reports for verifier scenarios)
 - **Generate Docs All**: make generate-docs-all (generate documentation reports for all test scenarios including verifier_scenarios)
+- **Test Container Compatibility**: make test-container-compat (verify container YAML compatibility with test-plan-doc-gen)
 - **Dev Server**: N/A
 
 You must build, test, lint, and verify coverage before committing
@@ -66,6 +67,13 @@ The project includes several binary utilities:
   - Build: `make build-json-escape`
   - Run: `make run-json-escape` or `cargo run --bin json-escape`
   - Usage: `echo "text" | json-escape`
+
+- **test-plan-documentation-generator-compat**: A compatibility checker that verifies container YAML files are compatible with the test-plan-doc-gen tool. Validates schema compliance, generates compatibility reports, and tests against verifier scenarios.
+  - Build: `cargo build --bin test-plan-documentation-generator-compat`
+  - Run: `cargo run --bin test-plan-documentation-generator-compat -- <command>`
+  - Usage: `test-plan-documentation-generator-compat validate container.yaml`
+  - Commands: `validate`, `batch`, `test-verifier-scenarios`, `report`
+  - Documentation: `docs/TEST_PLAN_DOC_GEN_COMPATIBILITY.md`
 
 ## Shell Script Compatibility
 
