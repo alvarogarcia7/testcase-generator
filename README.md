@@ -1161,6 +1161,23 @@ make coverage-report   # Show coverage summary
 
 See [scripts/README_COVERAGE_TOOLS.md](scripts/README_COVERAGE_TOOLS.md) for detailed coverage tools documentation.
 
+### Report Generation
+
+The project uses **test-plan-documentation-generator** (Rust-based) for all report generation:
+
+```bash
+# Generate documentation reports for verifier scenarios
+make generate-docs
+
+# Generate documentation reports for all test cases
+make generate-docs-all
+```
+
+**Report Formats:**
+- AsciiDoc (.adoc) - Structured documentation format
+- Markdown (.md) - GitHub-compatible documentation
+
+**Note:** Python-based PDF generation has been removed. All report generation now uses the Rust-based test-plan-documentation-generator tool, which provides better performance, maintainability, and integration with the test framework. The only remaining Python dependency is `pyyaml` for the `convert_verification_to_result_yaml.py` script.
 ### Script Verification
 
 Verify the syntax of all shell scripts:

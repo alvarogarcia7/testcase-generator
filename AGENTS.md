@@ -52,10 +52,27 @@ See the [Hooks](#hooks) section for detailed documentation and examples.
 - **sccache Clean**: make sccache-clean (clear sccache compilation cache)
 - **Verify Scripts**: make verify-scripts (verify syntax of all shell scripts)
 - **Watch Mode**: make watch (monitors testcases/ for changes and auto-validates)
-- **Generate Docs**: make generate-docs (generate documentation reports for verifier scenarios)
-- **Generate Docs All**: make generate-docs-all (generate documentation reports for all test scenarios including verifier_scenarios)
+- **Generate Docs**: make generate-docs (generate documentation reports using test-plan-documentation-generator)
+- **Generate Docs All**: make generate-docs-all (generate documentation reports for all test scenarios using test-plan-documentation-generator)
 - **Test Container Compatibility**: make test-container-compat (verify container YAML compatibility with test-plan-doc-gen)
 - **Dev Server**: N/A
+
+### Report Generation
+
+All report generation now uses the Rust-based **test-plan-documentation-generator** tool, which generates AsciiDoc and Markdown reports from test cases and verification results.
+
+**Python PDF Generation Removed**: The legacy Python-based PDF generation (scripts/generate_verifier_reports.py) has been removed. The reportlab dependency has been removed from pyproject.toml. The only remaining Python dependency is pyyaml, which is required for the convert_verification_to_result_yaml.py script.
+
+**Report Formats Supported**:
+- AsciiDoc (.adoc) - Structured documentation format
+- Markdown (.md) - GitHub-compatible documentation
+
+**Benefits of test-plan-documentation-generator**:
+- Better performance and maintainability
+- Native integration with the Rust test framework
+- Consistent report generation across all test scenarios
+- Support for multiple output formats (AsciiDoc, Markdown)
+- No external Python dependencies for report generation
 
 You must build, test, lint, and verify coverage before committing
 

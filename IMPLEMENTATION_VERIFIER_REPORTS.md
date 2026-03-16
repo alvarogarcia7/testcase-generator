@@ -2,240 +2,182 @@
 
 ## Overview
 
-This implementation provides a complete system for generating PDF reports from verifier test scenarios. The system processes 7 test scenarios, runs the verifier on their execution logs, and generates professional PDF or HTML reports.
+This implementation provides a complete system for generating documentation reports from verifier test scenarios using the Rust-based **test-plan-documentation-generator** tool.
 
-## Files Created/Modified
+### Migration from Python PDF Generation
+
+**Important:** This document has been updated to reflect the migration from Python-based PDF generation to the Rust-based test-plan-documentation-generator.
+
+**Removed:**
+- `scripts/generate_verifier_reports.py` - Legacy Python PDF generator
+- `reportlab` dependency from pyproject.toml
+
+**Retained:**
+- `pyyaml` dependency (required for convert_verification_to_result_yaml.py)
+
+## Current Architecture
 
 ### 1. Test Case Files
 
-#### `testcases/verifier_scenarios/successful/TEST_SUCCESS_001_execution_log.json` (NEW)
-- Execution log for the successful test scenario
-- Contains 3 steps that all execute successfully
-- Simulates a complete successful test run
+Test scenarios are located in `testcases/verifier_scenarios/` with the following structure:
 
-#### `testcases/verifier_scenarios/multiple_sequences/TEST_MULTI_SEQ_001_execution_log.json` (NEW)
-- Execution log for the multiple sequences scenario
-- Contains 2 sequences: first succeeds, second fails on step 2
-- Third sequence not executed (as expected)
-- Demonstrates mixed results across sequences
+```
+testcases/verifier_scenarios/
+├── successful/
+│   ├── TEST_SUCCESS_001.yml
+│   └── TEST_SUCCESS_001_execution_log.json
+├── failed_first/
+│   ├── TEST_FAILED_FIRST_001.yml
+│   └── TEST_FAILED_FIRST_001_execution_log.json
+├── failed_intermediate/
+│   ├── TEST_FAILED_INTERMEDIATE_001.yml
+│   └── TEST_FAILED_INTERMEDIATE_001_execution_log.json
+├── failed_last/
+│   ├── TEST_FAILED_LAST_001.yml
+│   └── TEST_FAILED_LAST_001_execution_log.json
+├── interrupted/
+│   ├── TEST_INTERRUPTED_001.yml
+│   └── TEST_INTERRUPTED_001_execution_log.json
+├── multiple_sequences/
+│   ├── TEST_MULTI_SEQ_001.yml
+│   └── TEST_MULTI_SEQ_001_execution_log.json
+└── hooks/
+    ├── TEST_HOOK_SCRIPT_START_001.yml
+    └── TEST_HOOK_SCRIPT_START_001_execution_log.json
+```
 
 ### 2. Report Generation Scripts
 
-#### `scripts/generate_verifier_reports.py` (NEW)
-A comprehensive Python script that:
-- Builds the verifier binary automatically
-- Runs verifier on all 7 test scenarios
-- Generates professional PDF reports using reportlab
-- Falls back to HTML reports if reportlab not installed
-- Provides detailed progress output and error handling
+#### `scripts/run_verifier_and_generate_reports.sh`
 
-**Features:**
-- Automatic binary building
-- JSON verification report generation
-- PDF report generation with:
-  - Professional formatting
-  - Color-coded status indicators
-  - Detailed test summary tables
-  - Step-by-step result tables
-  - Sequence-level reporting
-- HTML fallback for systems without reportlab
-- Error handling for missing execution logs
-- Progress tracking and status messages
-
-#### `scripts/run_verifier_and_generate_reports.sh` (NEW)
-A shell script wrapper that:
+Main orchestration script that:
 - Builds the verifier binary
-- Runs verifier on all 7 scenarios
-- Generates JSON verification reports
-- Checks for reportlab and runs Python PDF generator
-- Provides comprehensive status output
+- Runs verifier on all 7 test scenarios
+- Generates verification JSON files
+- Invokes test-plan-documentation-generator to create reports
+- Outputs AsciiDoc and Markdown reports
 
-**Features:**
-- Bash 3.2+ compatible
-- Cross-platform (macOS/Linux)
-- Automatic dependency checking
-- Exit code handling for expected failures
-- Clear progress messages
-- Summary of generated files
+#### `scripts/generate_documentation_reports.sh`
 
-#### `generate_reports.sh` (NEW - Root Level)
-A convenience script in the project root for easy access:
-- Simplified wrapper for report generation
-- Creates verification JSON files
-- Instructions for PDF generation
-- Quick-start option for users
+Comprehensive report generation script that:
+- Runs verifier in folder mode on execution logs
+- Converts verification JSON to result YAML files
+- Builds test-plan-doc-gen if needed
+- Generates test results reports from container YAML
+- Generates test plan reports from test case YAML files
+- Supports both AsciiDoc and Markdown output formats
 
-### 3. Documentation
+#### `scripts/convert_verification_to_result_yaml.py`
 
-#### `README_REPORT_GENERATION.md` (NEW)
-Comprehensive documentation covering:
-- Overview of the 3-step report generation process
-- Prerequisites and setup instructions
-- Detailed usage examples for all 3 execution methods:
-  1. Automated Python script (recommended)
-  2. Manual step-by-step commands
-  3. Shell script wrapper
-- Complete list of 7 test scenarios
-- Expected output files (JSON and PDF)
-- Report content description
-- Troubleshooting guide
-- CI/CD integration examples
-- Links to additional resources
+Python script that converts verification JSON to YAML result files compatible with test-plan-documentation-generator.
 
-### 4. Configuration Updates
+**Dependencies:** Requires `pyyaml` (specified in pyproject.toml)
 
-#### `.gitignore` (MODIFIED)
-- Removed blanket `*_execution_log.json` ignore rule
-- Added `reports/` directory to ignore generated reports
-- Preserved execution logs in verifier_scenarios as they are test fixtures
+## Report Formats
 
-## Test Scenarios Covered
+### AsciiDoc (.adoc)
 
-The implementation handles these 7 verifier test scenarios:
+Structured documentation format suitable for:
+- Technical documentation
+- PDF conversion via asciidoctor
+- Complex formatting and cross-references
 
-1. **TEST_SUCCESS_001** - All steps pass successfully
-2. **TEST_FAILED_FIRST_001** - First step fails, rest not executed
-3. **TEST_FAILED_INTERMEDIATE_001** - Middle step fails
-4. **TEST_FAILED_LAST_001** - Last step fails due to output mismatch
-5. **TEST_INTERRUPTED_001** - Execution interrupted, incomplete
-6. **TEST_MULTI_SEQ_001** - Multiple sequences with mixed results
-7. **TEST_HOOK_SCRIPT_START_001** - Hook failure at script start
+### Markdown (.md)
 
-## Report Features
-
-### PDF Reports Include:
-- **Title Section**: Test case ID and title
-- **Summary Table**:
-  - Test case ID and description
-  - Overall pass/fail status (color-coded)
-  - Total steps, passed, failed, not executed counts
-  - Report generation timestamp
-- **Sequence Sections**:
-  - Sequence ID and name
-  - Step-by-step results table
-  - Color-coded status column (green/red/grey)
-  - Failure reasons for failed steps
-- **Professional Formatting**:
-  - Clean table layouts
-  - Consistent typography
-  - Color-coded status indicators
-  - Proper spacing and margins
-
-### HTML Reports (Fallback):
-- Modern responsive design
-- Color-coded status badges
-- Styled tables
-- Professional layout
-- Browser-friendly formatting
+GitHub-compatible documentation suitable for:
+- README files
+- Online documentation
+- Version control friendly format
 
 ## Usage
 
-### Quick Start (Recommended)
-```bash
-python3 scripts/generate_verifier_reports.py
-```
+### Quick Start
 
-### Using Shell Script
 ```bash
-./scripts/run_verifier_and_generate_reports.sh
+# Generate reports for verifier scenarios
+make generate-docs
+
+# Generate reports for all test cases
+make generate-docs-all
 ```
 
 ### Manual Execution
+
 ```bash
-# 1. Build verifier
-cargo build --release --bin verifier
+# Run verifier and generate reports
+./scripts/run_verifier_and_generate_reports.sh
 
-# 2. Run verifier for each scenario
-cargo run --release --bin verifier -- \
-    --log testcases/verifier_scenarios/successful/TEST_SUCCESS_001_execution_log.json \
-    --test-case TEST_SUCCESS_001 \
-    --format json \
-    --output reports/verifier_scenarios/TEST_SUCCESS_001_verification.json
-
-# ... repeat for all 7 scenarios ...
-
-# 3. Generate PDF reports
-python3 scripts/generate_verifier_reports.py
+# Full documentation report generation
+./scripts/generate_documentation_reports.sh \
+    --logs-dir testcases/verifier_scenarios \
+    --test-case-dir testcases \
+    --output-dir reports/documentation
 ```
 
-## Output Location
+## Output Structure
 
-All generated files are placed in:
 ```
-reports/verifier_scenarios/
-├── TEST_SUCCESS_001_verification.json
-├── TEST_SUCCESS_001_report.pdf
-├── TEST_FAILED_FIRST_001_verification.json
-├── TEST_FAILED_FIRST_001_report.pdf
-├── TEST_FAILED_INTERMEDIATE_001_verification.json
-├── TEST_FAILED_INTERMEDIATE_001_report.pdf
-├── TEST_FAILED_LAST_001_verification.json
-├── TEST_FAILED_LAST_001_report.pdf
-├── TEST_INTERRUPTED_001_verification.json
-├── TEST_INTERRUPTED_001_report.pdf
-├── TEST_MULTI_SEQ_001_verification.json
-├── TEST_MULTI_SEQ_001_report.pdf
-├── TEST_HOOK_SCRIPT_START_001_verification.json
-└── TEST_HOOK_SCRIPT_START_001_report.pdf
-```
-
-## Dependencies
-
-### Required:
-- Rust/Cargo (for building verifier binary)
-- Python 3 (for report generation)
-
-### Optional:
-- `reportlab` Python package (for PDF generation)
-  - Install: `pip3 install reportlab`
-  - If not installed, HTML reports generated instead
-
-## Technical Details
-
-### Verifier Integration
-- Uses `cargo run --release --bin verifier` to execute verifier
-- Passes execution log and test case ID as parameters
-- Outputs verification results in JSON format
-- Handles exit codes: 0 (pass), 1 (fail - expected for some scenarios)
-
-### Report Generation Flow
-1. **Build Phase**: Compile verifier binary
-2. **Verification Phase**: Run verifier on each execution log
-3. **Report Phase**: Generate PDF from verification JSON
-
-### Error Handling
-- Missing execution logs: Skip with warning
-- Missing reportlab: Fall back to HTML
-- Verifier failures: Continue with other scenarios
-- Build failures: Exit with error message
-
-## Testing
-
-The implementation can be tested by running:
-```bash
-python3 scripts/generate_verifier_reports.py
+reports/
+├── verifier_scenarios/
+│   ├── TEST_SUCCESS_001_verification.json
+│   ├── TEST_SUCCESS_001_test_plan.adoc
+│   ├── TEST_SUCCESS_001_test_plan.md
+│   ├── TEST_FAILED_FIRST_001_verification.json
+│   ├── TEST_FAILED_FIRST_001_test_plan.adoc
+│   ├── TEST_FAILED_FIRST_001_test_plan.md
+│   └── ... (other scenarios)
+└── documentation/
+    ├── verification/
+    │   └── batch_verification.json
+    ├── results/
+    │   ├── TEST_SUCCESS_001_result.yaml
+    │   └── ... (other result files)
+    └── reports/
+        ├── test_results_report.adoc
+        ├── test_results_report.md
+        └── ... (test plan reports)
 ```
 
-Expected output:
-- 7 verification JSON files
-- 7 PDF reports (or HTML if reportlab not available)
-- Progress messages for each scenario
-- Summary of generated files with full paths
+## Benefits
 
-## Future Enhancements
+### Performance
+- Rust-based implementation is significantly faster than Python
+- Native integration with existing Rust test framework
+- Efficient processing of large test suites
 
-Possible improvements for future iterations:
-1. Batch PDF generation with table of contents
-2. Custom styling/branding options
-3. Email delivery of reports
-4. Integration with test management systems
-5. Historical trend analysis
-6. Comparative reports across multiple runs
-7. Screenshot capture integration
-8. Custom report templates
+### Maintainability
+- Single language ecosystem (Rust)
+- No external Python dependencies for report generation
+- Consistent code style and build system
 
-## Related Documentation
+### Functionality
+- Multiple output formats (AsciiDoc, Markdown)
+- Better structured report generation
+- Native support for test case and result YAML formats
 
-- `README_REPORT_GENERATION.md` - User-facing documentation
-- `testcases/verifier_scenarios/README.md` - Verifier scenarios documentation
-- `AGENTS.md` - Project overview and commands
+## Migration Notes
+
+The migration from Python PDF generation to Rust-based report generation involved:
+
+1. **Removed Python PDF Generation:**
+   - Deleted `scripts/generate_verifier_reports.py`
+   - Removed `reportlab` dependency from pyproject.toml
+
+2. **Updated Documentation:**
+   - Updated README.md with new report generation section
+   - Updated AGENTS.md with transition notes
+   - Updated this implementation guide
+
+3. **Updated Build System:**
+   - Makefile targets (`generate-docs`, `generate-docs-all`) now use shell scripts
+   - Shell scripts invoke test-plan-documentation-generator
+
+4. **Preserved Python Tools:**
+   - Kept `convert_verification_to_result_yaml.py` (still needed)
+   - Retained `pyyaml` dependency for YAML conversion
+
+## See Also
+
+- [README_REPORT_GENERATION.md](README_REPORT_GENERATION.md) - User guide
+- [AGENTS.md](AGENTS.md) - Report generation commands
+- [README.md](README.md) - Project documentation
