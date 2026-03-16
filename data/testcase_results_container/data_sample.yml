@@ -8,12 +8,12 @@ test_results:
       - sequence_id: 1
         name: "Initialization Sequence"
         step_results:
-          - status: "pass"
-            step: 1
-            description: "Initialize test environment"
-          - status: "pass"
-            step: 2
-            description: "Load configuration"
+          - Pass:
+              step: 1
+              description: "Initialize test environment"
+          - Pass:
+              step: 2
+              description: "Load configuration"
         all_steps_passed: true
         requirement: "REQ-001"
         item: 1
@@ -21,19 +21,19 @@ test_results:
       - sequence_id: 2
         name: "Execution Sequence"
         step_results:
-          - status: "pass"
-            step: 3
-            description: "Execute main command"
-          - status: "fail"
-            step: 4
-            description: "Verify output"
-            expected:
-              success: true
-              result: "SUCCESS"
-              output: "Expected output message"
-            actual_result: "FAILURE"
-            actual_output: "Actual output message"
-            reason: "Output mismatch: expected 'Expected output message' but got 'Actual output message'"
+          - Pass:
+              step: 3
+              description: "Execute main command"
+          - Fail:
+              step: 4
+              description: "Verify output"
+              expected:
+                success: true
+                result: "SUCCESS"
+                output: "Expected output message"
+              actual_result: "FAILURE"
+              actual_output: "Actual output message"
+              reason: "Output mismatch: expected 'Expected output message' but got 'Actual output message'"
         all_steps_passed: false
         requirement: "REQ-002"
         item: 2
@@ -52,15 +52,15 @@ test_results:
       - sequence_id: 1
         name: "Complete Sequence"
         step_results:
-          - status: "pass"
-            step: 1
-            description: "Step one"
-          - status: "pass"
-            step: 2
-            description: "Step two"
-          - status: "pass"
-            step: 3
-            description: "Step three"
+          - Pass:
+              step: 1
+              description: "Step one"
+          - Pass:
+              step: 2
+              description: "Step two"
+          - Pass:
+              step: 3
+              description: "Step three"
         all_steps_passed: true
     total_steps: 3
     passed_steps: 3
@@ -73,22 +73,22 @@ test_results:
       - sequence_id: 1
         name: "Partial Execution Sequence"
         step_results:
-          - status: "pass"
-            step: 1
-            description: "First step"
-          - status: "fail"
-            step: 2
-            description: "Second step that fails"
-            expected:
-              success: true
-              result: "OK"
-              output: "Success message"
-            actual_result: "ERROR"
-            actual_output: "Error message"
-            reason: "Command failed with error"
-          - status: "not_executed"
-            step: 3
-            description: "Third step (skipped due to failure)"
+          - Pass:
+              step: 1
+              description: "First step"
+          - Fail:
+              step: 2
+              description: "Second step that fails"
+              expected:
+                success: true
+                result: "OK"
+                output: "Success message"
+              actual_result: "ERROR"
+              actual_output: "Error message"
+              reason: "Command failed with error"
+          - NotExecuted:
+              step: 3
+              description: "Third step (skipped due to failure)"
         all_steps_passed: false
     total_steps: 3
     passed_steps: 1
