@@ -42,6 +42,60 @@ echo "verifier End-to-End Integration Test"
 echo "======================================"
 echo ""
 
+# Schema validation helper function
+validate_report_schema() {
+    local report_file="$1"
+    local schema_file="$2"
+    local report_type="$3"
+    
+    if [[ ! -f "$report_file" ]]; then
+        fail "Report file not found: $report_file"
+        return 1
+    fi
+    
+    if [[ ! -f "$schema_file" ]]; then
+        fail "Schema file not found: $schema_file"
+        return 1
+    fi
+    
+    # Try check-jsonschema first (preferred tool)
+    if command -v check-jsonschema > /dev/null 2>&1; then
+        if check-jsonschema --schemafile "$schema_file" "$report_file" > /dev/null 2>&1; then
+            pass "Schema validation passed for $report_type"
+            return 0
+        else
+            fail "Schema validation failed for $report_type"
+            return 1
+        fi
+    # Try python jsonschema CLI
+    elif command -v jsonschema > /dev/null 2>&1; then
+        if jsonschema -i "$report_file" "$schema_file" > /dev/null 2>&1; then
+            pass "Schema validation passed for $report_type"
+            return 0
+        else
+            fail "Schema validation failed for $report_type"
+            return 1
+        fi
+    # Try python with jsonschema module
+    elif command -v python3 > /dev/null 2>&1; then
+        if python3 -c "import jsonschema, yaml, json, sys; schema = json.load(open('$schema_file')); data = yaml.safe_load(open('$report_file')) if '$report_file'.endswith('.yaml') or '$report_file'.endswith('.yml') else json.load(open('$report_file')); jsonschema.validate(data, schema)" 2>/dev/null; then
+            pass "Schema validation passed for $report_type"
+            return 0
+        else
+            # Python jsonschema module not available
+            log_warning "Schema validation tool not available (check-jsonschema, jsonschema CLI, or python jsonschema module)"
+            info "Install with: pip install check-jsonschema (or jsonschema + pyyaml)"
+            info "Skipping schema validation for $report_type"
+            return 0
+        fi
+    else
+        log_warning "No schema validation tool available"
+        info "Install with: pip install check-jsonschema"
+        info "Skipping schema validation for $report_type"
+        return 0
+    fi
+}
+
 # Check prerequisites
 section "Checking Prerequisites"
 
@@ -51,6 +105,28 @@ if [[ ! -f "$VERIFIER_BIN" ]]; then
     exit 1
 fi
 pass "verifier binary found"
+
+# Check for schema validation tools
+SCHEMA_FILE="$PROJECT_ROOT/data/testcase_results_container/schema.json"
+if [[ ! -f "$SCHEMA_FILE" ]]; then
+    log_warning "Schema file not found: $SCHEMA_FILE"
+    log_warning "Schema validation will be skipped"
+else
+    pass "Schema file found"
+    
+    # Check if any validation tool is available
+    if command -v check-jsonschema > /dev/null 2>&1; then
+        pass "check-jsonschema found"
+    elif command -v jsonschema > /dev/null 2>&1; then
+        pass "jsonschema CLI found"
+    elif command -v python3 > /dev/null 2>&1 && python3 -c "import jsonschema, yaml" 2>/dev/null; then
+        pass "Python jsonschema module found"
+    else
+        log_warning "No schema validation tool found"
+        info "Install with: pip install check-jsonschema"
+        info "Schema validation will be skipped"
+    fi
+fi
 
 # Create temporary directory for test files
 TEMP_DIR=$(mktemp -d)
@@ -314,6 +390,9 @@ if [[ -f "$SINGLE_YAML_OUTPUT" ]]; then
     else
         fail "YAML report should show overall pass"
     fi
+    
+    # Schema validation for passing test YAML output
+    validate_report_schema "$SINGLE_YAML_OUTPUT" "$SCHEMA_FILE" "YAML passing test report"
 fi
 
 # Test 4: Single-file mode with failing test (using CLI flags)
@@ -361,6 +440,9 @@ if [[ -f "$SINGLE_YAML_FAIL_OUTPUT" ]]; then
     else
         fail "YAML report missing failed_test_cases count"
     fi
+    
+    # Schema validation for failing test YAML output
+    validate_report_schema "$SINGLE_YAML_FAIL_OUTPUT" "$SCHEMA_FILE" "YAML failing test report"
 fi
 
 # Test 5: JSON output format (combining config file and CLI overrides)
@@ -408,6 +490,9 @@ if [[ -f "$SINGLE_JSON_OUTPUT" ]]; then
     else
         info "jq not available, skipping JSON validation"
     fi
+    
+    # Schema validation for passing test JSON output
+    validate_report_schema "$SINGLE_JSON_OUTPUT" "$SCHEMA_FILE" "JSON passing test report"
 else
     fail "JSON report file not created"
 fi
@@ -467,6 +552,9 @@ if [[ -f "$FOLDER_YAML_OUTPUT" ]]; then
     else
         fail "Folder report has incorrect failed test cases count"
     fi
+    
+    # Schema validation for folder mode YAML output
+    validate_report_schema "$FOLDER_YAML_OUTPUT" "$SCHEMA_FILE" "Folder mode YAML report"
 else
     fail "Folder discovery report not created"
 fi
@@ -516,6 +604,9 @@ if [[ -f "$FOLDER_JSON_OUTPUT" ]]; then
             fail "Folder JSON has incorrect failed count: $FAILED_CASES"
         fi
     fi
+    
+    # Schema validation for folder mode JSON output
+    validate_report_schema "$FOLDER_JSON_OUTPUT" "$SCHEMA_FILE" "Folder mode JSON report"
 else
     fail "Folder discovery JSON report not created"
 fi
@@ -615,6 +706,9 @@ if [[ -f "$ACTUAL_YAML" ]]; then
     else
         fail "Failed test cases mismatch: expected $EXPECTED_FAILED, got $ACTUAL_FAILED"
     fi
+    
+    # Schema validation for Test 11 YAML report
+    validate_report_schema "$ACTUAL_YAML" "$SCHEMA_FILE" "Test 11 YAML report"
 fi
 
 # Test 12: Verify expected report file structure (JSON)
@@ -697,6 +791,9 @@ if command -v jq > /dev/null 2>&1 && [[ -f "$ACTUAL_JSON" ]]; then
     else
         fail "JSON test case overall_pass mismatch: expected $EXPECTED_TC_PASS, got $ACTUAL_TC_PASS"
     fi
+    
+    # Schema validation for Test 12 JSON report
+    validate_report_schema "$ACTUAL_JSON" "$SCHEMA_FILE" "Test 12 JSON report"
 fi
 
 # Test 13: Stdout output (no output file specified)
@@ -721,6 +818,9 @@ if [[ -f "$STDOUT_OUTPUT" ]] && [[ -s "$STDOUT_OUTPUT" ]]; then
     else
         fail "Stdout output missing test case data"
     fi
+    
+    # Schema validation for stdout YAML output
+    validate_report_schema "$STDOUT_OUTPUT" "$SCHEMA_FILE" "Stdout YAML report"
 else
     fail "Stdout output is empty"
 fi
