@@ -363,3 +363,176 @@ fn test_additional_properties_not_allowed() -> Result<()> {
 
     Ok(())
 }
+
+/// Test that ContainerReport with StepVerificationResultEnum instances validates correctly
+#[test]
+fn test_container_report_with_step_verification_enum_validates() -> Result<()> {
+    use chrono::Utc;
+    use testcase_manager::verification::ContainerReportMetadata;
+    use testcase_manager::{
+        ContainerReport, Expected, SequenceVerificationResult, StepVerificationResultEnum,
+        TestCaseVerificationResult,
+    };
+
+    // Load schema
+    let (_schema_json, compiled_schema) = load_schema()?;
+
+    // Create a ContainerReport with all three StepVerificationResultEnum variants
+    let container_report = ContainerReport {
+        title: "Test Execution Results".to_string(),
+        project: "Test Case Manager - Verification Results".to_string(),
+        test_date: Utc::now(),
+        test_results: vec![TestCaseVerificationResult {
+            test_case_id: "TC001".to_string(),
+            description: "Test case with all step result variants".to_string(),
+            sequences: vec![SequenceVerificationResult {
+                sequence_id: 1,
+                name: "Main Test Sequence".to_string(),
+                step_results: vec![
+                    // Pass variant
+                    StepVerificationResultEnum::Pass {
+                        step: 1,
+                        description: "Step that passed".to_string(),
+                        requirement: Some("REQ-001".to_string()),
+                        item: Some(1),
+                        tc: Some(100),
+                    },
+                    // Fail variant
+                    StepVerificationResultEnum::Fail {
+                        step: 2,
+                        description: "Step that failed".to_string(),
+                        expected: Expected {
+                            success: Some(true),
+                            result: "SUCCESS".to_string(),
+                            output: "Expected output".to_string(),
+                        },
+                        actual_result: "FAILURE".to_string(),
+                        actual_output: "Actual output".to_string(),
+                        reason: "Output mismatch".to_string(),
+                        requirement: Some("REQ-002".to_string()),
+                        item: Some(2),
+                        tc: Some(200),
+                    },
+                    // NotExecuted variant
+                    StepVerificationResultEnum::NotExecuted {
+                        step: 3,
+                        description: "Step not executed".to_string(),
+                        requirement: Some("REQ-003".to_string()),
+                        item: Some(3),
+                        tc: Some(300),
+                    },
+                ],
+                all_steps_passed: false,
+                requirement: Some("REQ-SEQ".to_string()),
+                item: Some(10),
+                tc: Some(1000),
+            }],
+            total_steps: 3,
+            passed_steps: 1,
+            failed_steps: 1,
+            not_executed_steps: 1,
+            overall_pass: false,
+            requirement: Some("REQ-TC".to_string()),
+            item: Some(20),
+            tc: Some(2000),
+        }],
+        metadata: ContainerReportMetadata {
+            environment: Some("Test Environment".to_string()),
+            platform: Some("Linux x86_64".to_string()),
+            executor: Some("Test Executor".to_string()),
+            execution_duration: 123.45,
+            total_test_cases: 1,
+            passed_test_cases: 0,
+            failed_test_cases: 1,
+        },
+    };
+
+    // Serialize to JSON Value (this is the canonical representation for validation)
+    // Note: We serialize to JSON Value first, then validate, as YAML tags (!Pass, !Fail, etc.)
+    // are YAML-specific and not part of the JSON schema validation
+    let json_value = serde_json::to_value(&container_report)?;
+
+    // Validate JSON representation
+    let json_result = compiled_schema.validate(&json_value);
+    if let Err(errors) = json_result {
+        let error_messages: Vec<String> = errors
+            .map(|e| format!("  - {} at {}", e, e.instance_path))
+            .collect();
+        panic!("JSON validation failed:\n{}", error_messages.join("\n"));
+    }
+
+    // Verify that we can serialize to both YAML and JSON strings
+    let yaml = serde_yaml::to_string(&container_report)?;
+    assert!(!yaml.is_empty(), "YAML serialization should produce output");
+
+    let json = serde_json::to_string_pretty(&container_report)?;
+    assert!(!json.is_empty(), "JSON serialization should produce output");
+
+    // Verify JSON string can be parsed back and validated
+    let json_value_from_string: Value = serde_json::from_str(&json)?;
+    let json_reparse_result = compiled_schema.validate(&json_value_from_string);
+    if let Err(errors) = json_reparse_result {
+        let error_messages: Vec<String> = errors
+            .map(|e| format!("  - {} at {}", e, e.instance_path))
+            .collect();
+        panic!(
+            "JSON re-parse validation failed:\n{}",
+            error_messages.join("\n")
+        );
+    }
+
+    // Verify externally tagged format for Pass variant
+    let pass_json = serde_json::to_value(&StepVerificationResultEnum::Pass {
+        step: 1,
+        description: "Test".to_string(),
+        requirement: None,
+        item: None,
+        tc: None,
+    })?;
+    assert!(pass_json.is_object(), "Pass variant should be an object");
+    assert!(
+        pass_json.get("Pass").is_some(),
+        "Pass variant should have 'Pass' key"
+    );
+
+    // Verify externally tagged format for Fail variant
+    let fail_json = serde_json::to_value(&StepVerificationResultEnum::Fail {
+        step: 2,
+        description: "Test".to_string(),
+        expected: Expected {
+            success: None,
+            result: "OK".to_string(),
+            output: "Output".to_string(),
+        },
+        actual_result: "FAIL".to_string(),
+        actual_output: "Error".to_string(),
+        reason: "Mismatch".to_string(),
+        requirement: None,
+        item: None,
+        tc: None,
+    })?;
+    assert!(fail_json.is_object(), "Fail variant should be an object");
+    assert!(
+        fail_json.get("Fail").is_some(),
+        "Fail variant should have 'Fail' key"
+    );
+
+    // Verify externally tagged format for NotExecuted variant
+    let not_executed_json = serde_json::to_value(&StepVerificationResultEnum::NotExecuted {
+        step: 3,
+        description: "Test".to_string(),
+        requirement: None,
+        item: None,
+        tc: None,
+    })?;
+    assert!(
+        not_executed_json.is_object(),
+        "NotExecuted variant should be an object"
+    );
+    assert!(
+        not_executed_json.get("NotExecuted").is_some(),
+        "NotExecuted variant should have 'NotExecuted' key"
+    );
+
+    Ok(())
+}
