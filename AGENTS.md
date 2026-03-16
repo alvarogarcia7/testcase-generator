@@ -896,13 +896,14 @@ The project includes several binary utilities:
 - **test-verify** (verifier): Test verification tool for validating test execution logs against test case definitions.
   - Build: `make build` or `cargo build --bin verifier`
   - Run: `cargo run --bin verifier` or `./target/release/verifier`
-  - Features: Batch processing, multiple output formats (text, JSON, JUnit XML, Container YAML), aggregated reports
+  - Features: Batch processing, YAML/JSON output formats with rich metadata, aggregated reports
   - Output Formats:
-    - **yaml**: Container YAML format with rich metadata (title, project, environment, platform, executor)
-    - **json**: Container JSON format with rich metadata
-  - Configuration:
+    - **yaml**: YAML format with rich metadata (title, project, environment, platform, executor)
+    - **json**: JSON format with rich metadata
+  - Configuration File:
     - `--config <PATH>`: Path to YAML configuration file (optional)
-    - Configuration file format:
+    - Schema: `schemas/container_config.schema.json`
+    - Configuration file format (see `verifier-config.example.yaml`):
       ```yaml
       title: "Test Execution Results"
       project: "Test Case Manager - Verification Results"
@@ -910,13 +911,14 @@ The project includes several binary utilities:
       platform: "Linux x86_64"
       executor: "Jenkins v3.2"
       ```
-    - CLI flags override configuration file values
+    - All fields are optional with sensible defaults
   - CLI Flags (override config file):
     - `--title`: Report title (default: "Test Execution Results")
     - `--project`: Project name (default: "Test Case Manager - Verification Results")
     - `--environment`: Environment information (e.g., "Staging", "Production")
     - `--platform`: Platform information (e.g., "Linux x86_64")
     - `--executor`: Executor information (e.g., "CI Pipeline v2.1")
+  - Precedence: CLI flags > Configuration file > Default values
   - Examples:
     - Using defaults:
       ```bash
@@ -926,7 +928,14 @@ The project includes several binary utilities:
       ```bash
       verifier -f logs/ --format yaml --output report.yaml --config verifier-config.yaml
       ```
-    - Overriding config with CLI flags:
+    - Using only CLI flags:
+      ```bash
+      verifier -f logs/ --format yaml --output report.yaml \
+        --title "Nightly Test Run" \
+        --environment "Production" \
+        --platform "Linux x86_64"
+      ```
+    - Combining config file and CLI flags (CLI overrides config):
       ```bash
       verifier -f logs/ --format yaml --output report.yaml \
         --config verifier-config.yaml \
