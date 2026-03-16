@@ -9,20 +9,22 @@
           "name": "Passing Sequence",
           "step_results": [
             {
-              "status": "pass",
-              "step": 1,
-              "description": "Echo hello",
-              "requirement": "TEST_REQ_001",
-              "item": 1,
-              "tc": 1
+              "Pass": {
+                "step": 1,
+                "description": "Echo hello",
+                "requirement": "TEST_REQ_001",
+                "item": 1,
+                "tc": 1
+              }
             },
             {
-              "status": "pass",
-              "step": 2,
-              "description": "True command",
-              "requirement": "TEST_REQ_001",
-              "item": 1,
-              "tc": 1
+              "Pass": {
+                "step": 2,
+                "description": "True command",
+                "requirement": "TEST_REQ_001",
+                "item": 1,
+                "tc": 1
+              }
             }
           ],
           "all_steps_passed": true,
@@ -35,12 +37,13 @@
           "name": "Second Passing Sequence",
           "step_results": [
             {
-              "status": "pass",
-              "step": 1,
-              "description": "Echo world",
-              "requirement": "TEST_REQ_001",
-              "item": 1,
-              "tc": 1
+              "Pass": {
+                "step": 1,
+                "description": "Echo world",
+                "requirement": "TEST_REQ_001",
+                "item": 1,
+                "tc": 1
+              }
             }
           ],
           "all_steps_passed": true,

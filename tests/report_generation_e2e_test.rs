@@ -471,16 +471,17 @@ fn test_e2e_container_format_test_results_structure() {
     );
 
     // Verify step result types (Pass, Fail, NotExecuted)
+    // YAML uses tags for externally tagged enums: !Pass, !Fail, !NotExecuted
     assert!(
-        yaml.contains("status: pass") || yaml.contains("Pass:"),
+        yaml.contains("!Pass") || yaml.contains("Pass:"),
         "Missing Pass status in step results"
     );
     assert!(
-        yaml.contains("status: fail") || yaml.contains("Fail:"),
+        yaml.contains("!Fail") || yaml.contains("Fail:"),
         "Missing Fail status in step results"
     );
     assert!(
-        yaml.contains("status: not_executed") || yaml.contains("NotExecuted:"),
+        yaml.contains("!NotExecuted") || yaml.contains("NotExecuted:"),
         "Missing NotExecuted status in step results"
     );
 

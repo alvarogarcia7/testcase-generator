@@ -9,44 +9,47 @@
           "name": "Mixed Results Sequence",
           "step_results": [
             {
-              "status": "pass",
-              "step": 1,
-              "description": "Echo that passes",
-              "requirement": "TEST_REQ_002",
-              "item": 1,
-              "tc": 2
+              "Pass": {
+                "step": 1,
+                "description": "Echo that passes",
+                "requirement": "TEST_REQ_002",
+                "item": 1,
+                "tc": 2
+              }
             },
             {
-              "status": "fail",
-              "step": 2,
-              "description": "Command that should fail",
-              "expected": {
-                "success": true,
-                "result": "0",
-                "output": "expected"
-              },
-              "actual_result": "0",
-              "actual_output": "wrong",
-              "reason": "Output mismatch: expected 'expected', got 'wrong'",
-              "requirement": "TEST_REQ_002",
-              "item": 1,
-              "tc": 2
+              "Fail": {
+                "step": 2,
+                "description": "Command that should fail",
+                "expected": {
+                  "success": true,
+                  "result": "0",
+                  "output": "expected"
+                },
+                "actual_result": "0",
+                "actual_output": "wrong",
+                "reason": "Output mismatch: expected 'expected', got 'wrong'",
+                "requirement": "TEST_REQ_002",
+                "item": 1,
+                "tc": 2
+              }
             },
             {
-              "status": "fail",
-              "step": 3,
-              "description": "Exit code mismatch",
-              "expected": {
-                "success": true,
-                "result": "0",
-                "output": ""
-              },
-              "actual_result": "1",
-              "actual_output": "",
-              "reason": "Success mismatch: expected true, got false",
-              "requirement": "TEST_REQ_002",
-              "item": 1,
-              "tc": 2
+              "Fail": {
+                "step": 3,
+                "description": "Exit code mismatch",
+                "expected": {
+                  "success": true,
+                  "result": "0",
+                  "output": ""
+                },
+                "actual_result": "1",
+                "actual_output": "",
+                "reason": "Success mismatch: expected true, got false",
+                "requirement": "TEST_REQ_002",
+                "item": 1,
+                "tc": 2
+              }
             }
           ],
           "all_steps_passed": false,
@@ -73,20 +76,22 @@
           "name": "Passing Sequence",
           "step_results": [
             {
-              "status": "pass",
-              "step": 1,
-              "description": "Echo hello",
-              "requirement": "TEST_REQ_001",
-              "item": 1,
-              "tc": 1
+              "Pass": {
+                "step": 1,
+                "description": "Echo hello",
+                "requirement": "TEST_REQ_001",
+                "item": 1,
+                "tc": 1
+              }
             },
             {
-              "status": "pass",
-              "step": 2,
-              "description": "True command",
-              "requirement": "TEST_REQ_001",
-              "item": 1,
-              "tc": 1
+              "Pass": {
+                "step": 2,
+                "description": "True command",
+                "requirement": "TEST_REQ_001",
+                "item": 1,
+                "tc": 1
+              }
             }
           ],
           "all_steps_passed": true,
@@ -99,12 +104,13 @@
           "name": "Second Passing Sequence",
           "step_results": [
             {
-              "status": "pass",
-              "step": 1,
-              "description": "Echo world",
-              "requirement": "TEST_REQ_001",
-              "item": 1,
-              "tc": 1
+              "Pass": {
+                "step": 1,
+                "description": "Echo world",
+                "requirement": "TEST_REQ_001",
+                "item": 1,
+                "tc": 1
+              }
             }
           ],
           "all_steps_passed": true,
