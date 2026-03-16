@@ -3,10 +3,10 @@ use clap::Parser;
 use std::fs;
 use std::path::{Path, PathBuf};
 use testcase_manager::BatchVerificationReport;
+use testcase_manager::ContainerReportConfig;
 use testcase_manager::MatchStrategy;
 use testcase_manager::TestCaseStorage;
 use testcase_manager::TestVerifier;
-use testcase_manager::ContainerReportConfig;
 
 #[derive(Parser)]
 #[command(name = "verifier")]
