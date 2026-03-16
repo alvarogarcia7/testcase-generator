@@ -59,20 +59,41 @@ See the [Hooks](#hooks) section for detailed documentation and examples.
 
 ### Report Generation
 
-All report generation now uses the Rust-based **test-plan-documentation-generator** tool, which generates AsciiDoc and Markdown reports from test cases and verification results.
+All report generation now uses the Rust-based **test-plan-documentation-generator** (tpdg) tool, which generates AsciiDoc, Markdown, and HTML reports from test cases and verification results.
 
 **Python PDF Generation Removed**: The legacy Python-based PDF generation (scripts/generate_verifier_reports.py) has been removed. The reportlab dependency has been removed from pyproject.toml. The only remaining Python dependency is pyyaml, which is required for the convert_verification_to_result_yaml.py script.
 
 **Report Formats Supported**:
 - AsciiDoc (.adoc) - Structured documentation format
 - Markdown (.md) - GitHub-compatible documentation
+- HTML - Generated from AsciiDoc (requires asciidoctor for conversion)
+
+**Installation**:
+```bash
+# Install test-plan-documentation-generator globally
+cargo install test-plan-documentation-generator
+
+# Or use custom path
+export TEST_PLAN_DOC_GEN=/path/to/test-plan-documentation-generator/binary
+```
+
+**Usage**:
+```bash
+# Generate documentation reports
+make generate-docs          # Verifier scenarios only
+make generate-docs-all      # All test cases
+```
 
 **Benefits of test-plan-documentation-generator**:
 - Better performance and maintainability
 - Native integration with the Rust test framework
 - Consistent report generation across all test scenarios
-- Support for multiple output formats (AsciiDoc, Markdown)
+- Support for multiple output formats (AsciiDoc, Markdown, HTML)
 - No external Python dependencies for report generation
+- Schema validation for container YAML compatibility
+
+**Troubleshooting**:
+See [Report Generation Documentation](docs/report_generation.md) for detailed installation, configuration, schema compatibility requirements, and troubleshooting steps.
 
 You must build, test, lint, and verify coverage before committing
 

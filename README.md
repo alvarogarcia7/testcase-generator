@@ -1163,7 +1163,19 @@ See [scripts/README_COVERAGE_TOOLS.md](scripts/README_COVERAGE_TOOLS.md) for det
 
 ### Report Generation
 
-The project uses **test-plan-documentation-generator** (Rust-based) for all report generation:
+The project uses **test-plan-documentation-generator** (tpdg), a Rust-based tool, for all report generation. This tool generates comprehensive test documentation in multiple formats from YAML test cases and verification results.
+
+#### Installation
+
+Install `test-plan-documentation-generator` (tpdg) globally:
+
+```bash
+cargo install test-plan-documentation-generator
+```
+
+Or specify a custom binary path using the `TEST_PLAN_DOC_GEN` environment variable.
+
+#### Generating Reports
 
 ```bash
 # Generate documentation reports for verifier scenarios
@@ -1173,9 +1185,19 @@ make generate-docs
 make generate-docs-all
 ```
 
-**Report Formats:**
-- AsciiDoc (.adoc) - Structured documentation format
-- Markdown (.md) - GitHub-compatible documentation
+#### Supported Output Formats
+
+- **AsciiDoc (.adoc)** - Structured documentation format, convertible to HTML/PDF
+- **Markdown (.md)** - GitHub-compatible documentation
+- **HTML** - Generated from AsciiDoc using asciidoctor (requires asciidoctor installation)
+
+#### Report Types
+
+1. **Test Results Reports** - Comprehensive results from test execution
+2. **Test Plan Documentation** - Detailed test case specifications
+3. **Verification Reports** - Pass/fail analysis with detailed metrics
+
+For complete documentation on report generation, installation, troubleshooting, and customization, see [Report Generation Documentation](docs/report_generation.md).
 
 **Note:** Python-based PDF generation has been removed. All report generation now uses the Rust-based test-plan-documentation-generator tool, which provides better performance, maintainability, and integration with the test framework. The only remaining Python dependency is `pyyaml` for the `convert_verification_to_result_yaml.py` script.
 ### Script Verification
