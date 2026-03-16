@@ -32,6 +32,7 @@ test:
 	${MAKE} test-unit
 	${MAKE} test-e2e
 	#${MAKE} verify-testcases
+	${MAKE} generate-docs-coverage
 .PHONY: test
 
 test-unit: build
@@ -336,6 +337,10 @@ generate-docs: build
 generate-docs-all: build
 	./scripts/generate_documentation_reports.sh --logs-dir testcases --test-case-dir testcases
 .PHONY: generate-docs-all
+
+generate-docs-coverage: build
+	./scripts/generate_documentation_coverage_report.sh
+.PHONY: generate-docs-coverage
 
 test-container-compat: build
 	./scripts/test_container_yaml_compatibility.sh

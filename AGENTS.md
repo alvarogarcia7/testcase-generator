@@ -54,6 +54,7 @@ See the [Hooks](#hooks) section for detailed documentation and examples.
 - **Watch Mode**: make watch (monitors testcases/ for changes and auto-validates)
 - **Generate Docs**: make generate-docs (generate documentation reports using test-plan-documentation-generator)
 - **Generate Docs All**: make generate-docs-all (generate documentation reports for all test scenarios using test-plan-documentation-generator)
+- **Generate Docs Coverage**: make generate-docs-coverage (run documentation generation with tarpaulin coverage analysis)
 - **Test Container Compatibility**: make test-container-compat (verify container YAML compatibility with test-plan-doc-gen)
 - **Dev Server**: N/A
 
@@ -206,6 +207,72 @@ The logger library also provides cleanup management for temporary files and back
 - If tests fail, investigate and fix the failures before proceeding
 - Never commit code with failing tests
 - Update or add tests as needed when modifying functionality
+
+## Documentation Generation Coverage
+
+The project includes a specialized coverage reporting tool for analyzing code coverage of the documentation generation workflow.
+
+### Coverage Report Generation
+
+**Command**: `make generate-docs-coverage`
+
+This command executes cargo-tarpaulin across all document generation code paths exercised by sample test cases, generating:
+- Coverage report showing which functions and branches were executed
+- Total coverage percentage for documentation-related modules
+- Detailed HTML and JSON reports (optional)
+
+### Modules Tracked
+
+The coverage analysis focuses on:
+- `src/lib.rs` - Library exports
+- `src/verification.rs` - Verification and report generation
+- `src/verification_templates.rs` - Template rendering
+- `src/parser.rs` - YAML parsing
+- `src/models.rs` - Data models
+- `src/bin/verifier.rs` - Verifier binary
+- `src/bin/test-plan-documentation-generator-compat.rs` - Documentation generator compatibility
+
+### Usage
+
+**Basic Coverage Report**:
+```bash
+make generate-docs-coverage
+```
+
+**With HTML Report**:
+```bash
+./scripts/generate_documentation_coverage_report.sh --html
+```
+
+**Custom Output Directory**:
+```bash
+./scripts/generate_documentation_coverage_report.sh --output-dir /path/to/reports
+```
+
+### Output Files
+
+Reports are generated in `reports/coverage/documentation/` (default):
+- `tarpaulin-report.json` - Coverage data in JSON format
+- `coverage_summary.txt` - Human-readable coverage summary
+- `coverage_run.log` - Detailed execution log
+- `html/` - HTML coverage report (if `--html` flag used)
+
+### Coverage Workflow
+
+The tool automatically:
+1. Checks for and installs cargo-tarpaulin if needed
+2. Builds verifier and documentation generator binaries
+3. Runs sample test scenarios under coverage instrumentation
+4. Processes verification logs and container YAML files
+5. Generates comprehensive coverage reports
+6. Prints total coverage percentage to stdout
+
+### Sample Scenarios
+
+Coverage analysis runs against these test scenarios:
+- `TEST_SUCCESS_001` - Successful test execution
+- `TEST_FAILED_FIRST_001` - Failed first step scenario
+- `TEST_MULTI_SEQ_001` - Multiple sequences scenario
 
 ## Hooks
 

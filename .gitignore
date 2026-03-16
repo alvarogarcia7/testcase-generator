@@ -60,6 +60,11 @@ bin/cargo-watch
 target/llvm-cov/
 *.profraw
 
+# Coverage artifacts (cargo-tarpaulin)
+tarpaulin-report.*
+cobertura.xml
+*.profdata
+
 # sccache build cache
 .sccache/
 
