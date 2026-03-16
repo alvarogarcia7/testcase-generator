@@ -1256,8 +1256,8 @@ fn test_generate_report_yaml_with_sequences() {
     assert!(yaml.contains("Test Sequence 1"));
     assert!(yaml.contains("Step 1 description"));
     assert!(yaml.contains("Step 2 description"));
-    assert!(yaml.contains("!Pass") || yaml.contains("Pass:"));
-    assert!(yaml.contains("!Fail") || yaml.contains("Fail:"));
+    assert!(yaml.contains("!Pass"));
+    assert!(yaml.contains("!Fail"));
     assert!(yaml.contains("expected_result"));
     assert!(yaml.contains("actual_result"));
 }
@@ -1312,7 +1312,7 @@ fn test_generate_report_yaml_not_executed_steps() {
 
     let yaml = verifier.generate_report_yaml(&result).unwrap();
 
-    assert!(yaml.contains("!NotExecuted") || yaml.contains("NotExecuted:"));
+    assert!(yaml.contains("!NotExecuted"));
     assert!(yaml.contains("Not executed step"));
     assert!(yaml.contains("not_executed_steps: 1"));
 }
@@ -1724,9 +1724,9 @@ fn test_generate_report_yaml_complex_sequences() {
     assert!(yaml.contains("Initialize system"));
     assert!(yaml.contains("Validate output"));
     assert!(yaml.contains("Cleanup resources"));
-    assert!(yaml.contains("!Pass") || yaml.contains("Pass:"));
-    assert!(yaml.contains("!Fail") || yaml.contains("Fail:"));
-    assert!(yaml.contains("!NotExecuted") || yaml.contains("NotExecuted:"));
+    assert!(yaml.contains("!Pass"));
+    assert!(yaml.contains("!Fail"));
+    assert!(yaml.contains("!NotExecuted"));
 }
 
 #[test]
@@ -2410,9 +2410,9 @@ fn test_container_report_with_sequences_yaml_structure() {
     assert!(yaml.contains("sequence_id: 1"));
     assert!(yaml.contains("Test Sequence 1"));
     assert!(yaml.contains("step_results:"));
-    assert!(yaml.contains("!Pass") || yaml.contains("Pass:"));
-    assert!(yaml.contains("!Fail") || yaml.contains("Fail:"));
-    assert!(yaml.contains("!NotExecuted") || yaml.contains("NotExecuted:"));
+    assert!(yaml.contains("!Pass"));
+    assert!(yaml.contains("!Fail"));
+    assert!(yaml.contains("!NotExecuted"));
     assert!(yaml.contains("Step 1 description"));
     assert!(yaml.contains("Step 2 description"));
     assert!(yaml.contains("Step 3 description"));
@@ -3124,6 +3124,334 @@ fn test_container_report_partial_config_with_defaults() {
     assert!(parsed.metadata.environment.is_none());
     assert_eq!(parsed.metadata.platform, Some("macOS ARM64".to_string()));
     assert!(parsed.metadata.executor.is_none());
+}
+
+// ============================================================================
+// StepVerificationResultEnum Externally Tagged Serialization Tests
+// ============================================================================
+
+#[test]
+fn test_step_verification_result_enum_yaml_externally_tagged_pass() {
+    use testcase_manager::verification::StepVerificationResultEnum;
+
+    let pass_variant = StepVerificationResultEnum::Pass {
+        step: 1,
+        description: "Test step".to_string(),
+        requirement: Some("REQ001".to_string()),
+        item: Some(1),
+        tc: Some(1),
+    };
+
+    let yaml = serde_yaml::to_string(&pass_variant).unwrap();
+
+    // Verify externally tagged format: YAML uses tags as variant names
+    // In YAML, externally tagged enums are represented with YAML tags: !Pass
+    assert!(yaml.contains("!Pass"));
+    assert!(yaml.contains("step: 1"));
+    assert!(yaml.contains("description: Test step"));
+    assert!(yaml.contains("requirement: REQ001"));
+
+    // Verify it does NOT use internally tagged or adjacently tagged format
+    assert!(!yaml.contains("type:"));
+    assert!(!yaml.contains("\"Pass\""));
+
+    // Verify roundtrip
+    let deserialized: StepVerificationResultEnum = serde_yaml::from_str(&yaml).unwrap();
+    assert!(deserialized.is_pass());
+    assert_eq!(deserialized.step_number(), 1);
+}
+
+#[test]
+fn test_step_verification_result_enum_yaml_externally_tagged_fail() {
+    use testcase_manager::models::Expected;
+    use testcase_manager::verification::StepVerificationResultEnum;
+
+    let fail_variant = StepVerificationResultEnum::Fail {
+        step: 2,
+        description: "Failed step".to_string(),
+        expected: Expected {
+            success: Some(true),
+            result: "0x9000".to_string(),
+            output: "Success".to_string(),
+        },
+        actual_result: "0x6A82".to_string(),
+        actual_output: "Error".to_string(),
+        reason: "Result mismatch".to_string(),
+        requirement: Some("REQ002".to_string()),
+        item: Some(2),
+        tc: Some(2),
+    };
+
+    let yaml = serde_yaml::to_string(&fail_variant).unwrap();
+
+    // Verify externally tagged format: YAML uses tags as variant names
+    assert!(yaml.contains("!Fail"));
+    assert!(yaml.contains("step: 2"));
+    assert!(yaml.contains("description: Failed step"));
+    assert!(yaml.contains("expected:"));
+    assert!(yaml.contains("actual_result:"));
+    assert!(yaml.contains("actual_output:"));
+    assert!(yaml.contains("reason:"));
+
+    // Verify it does NOT use internally tagged or adjacently tagged format
+    assert!(!yaml.contains("type:"));
+    assert!(!yaml.contains("\"Fail\""));
+
+    // Verify roundtrip
+    let deserialized: StepVerificationResultEnum = serde_yaml::from_str(&yaml).unwrap();
+    assert!(!deserialized.is_pass());
+    assert_eq!(deserialized.step_number(), 2);
+}
+
+#[test]
+fn test_step_verification_result_enum_yaml_externally_tagged_not_executed() {
+    use testcase_manager::verification::StepVerificationResultEnum;
+
+    let not_executed_variant = StepVerificationResultEnum::NotExecuted {
+        step: 3,
+        description: "Not executed step".to_string(),
+        requirement: None,
+        item: None,
+        tc: None,
+    };
+
+    let yaml = serde_yaml::to_string(&not_executed_variant).unwrap();
+
+    // Verify externally tagged format: YAML uses tags as variant names
+    assert!(yaml.contains("!NotExecuted"));
+    assert!(yaml.contains("step: 3"));
+    assert!(yaml.contains("description: Not executed step"));
+
+    // Verify it does NOT use internally tagged or adjacently tagged format
+    assert!(!yaml.contains("type:"));
+    assert!(!yaml.contains("\"NotExecuted\""));
+
+    // Verify roundtrip
+    let deserialized: StepVerificationResultEnum = serde_yaml::from_str(&yaml).unwrap();
+    assert!(!deserialized.is_pass());
+    assert_eq!(deserialized.step_number(), 3);
+}
+
+#[test]
+fn test_step_verification_result_enum_json_externally_tagged_pass() {
+    use testcase_manager::verification::StepVerificationResultEnum;
+
+    let pass_variant = StepVerificationResultEnum::Pass {
+        step: 1,
+        description: "Test step".to_string(),
+        requirement: Some("REQ001".to_string()),
+        item: Some(1),
+        tc: Some(1),
+    };
+
+    let json = serde_json::to_string(&pass_variant).unwrap();
+
+    // Verify externally tagged format: { "Pass": { ... } }
+    assert!(json.contains("\"Pass\""));
+    assert!(json.contains("\"step\":1"));
+    assert!(json.contains("\"description\":\"Test step\""));
+    assert!(json.contains("\"requirement\":\"REQ001\""));
+
+    // Verify it does NOT use other tagging formats
+    assert!(!json.contains("\"type\""));
+    assert!(!json.contains("\"tag\""));
+    assert!(!json.contains("\"content\""));
+
+    // Verify roundtrip
+    let deserialized: StepVerificationResultEnum = serde_json::from_str(&json).unwrap();
+    assert!(deserialized.is_pass());
+    assert_eq!(deserialized.step_number(), 1);
+}
+
+#[test]
+fn test_step_verification_result_enum_json_externally_tagged_fail() {
+    use testcase_manager::models::Expected;
+    use testcase_manager::verification::StepVerificationResultEnum;
+
+    let fail_variant = StepVerificationResultEnum::Fail {
+        step: 2,
+        description: "Failed step".to_string(),
+        expected: Expected {
+            success: Some(false),
+            result: "0x9000".to_string(),
+            output: "Success".to_string(),
+        },
+        actual_result: "0x6A82".to_string(),
+        actual_output: "Error".to_string(),
+        reason: "Result mismatch".to_string(),
+        requirement: None,
+        item: None,
+        tc: None,
+    };
+
+    let json = serde_json::to_string(&fail_variant).unwrap();
+
+    // Verify externally tagged format
+    assert!(json.contains("\"Fail\""));
+    assert!(json.contains("\"step\":2"));
+    assert!(json.contains("\"description\":\"Failed step\""));
+    assert!(json.contains("\"expected\""));
+    assert!(json.contains("\"actual_result\":\"0x6A82\""));
+    assert!(json.contains("\"actual_output\":\"Error\""));
+    assert!(json.contains("\"reason\":\"Result mismatch\""));
+
+    // Verify it does NOT use other tagging formats
+    assert!(!json.contains("\"type\""));
+    assert!(!json.contains("\"tag\""));
+
+    // Verify roundtrip
+    let deserialized: StepVerificationResultEnum = serde_json::from_str(&json).unwrap();
+    assert!(!deserialized.is_pass());
+    assert_eq!(deserialized.step_number(), 2);
+}
+
+#[test]
+fn test_step_verification_result_enum_json_externally_tagged_not_executed() {
+    use testcase_manager::verification::StepVerificationResultEnum;
+
+    let not_executed_variant = StepVerificationResultEnum::NotExecuted {
+        step: 3,
+        description: "Not executed step".to_string(),
+        requirement: Some("REQ003".to_string()),
+        item: Some(3),
+        tc: Some(3),
+    };
+
+    let json = serde_json::to_string(&not_executed_variant).unwrap();
+
+    // Verify externally tagged format
+    assert!(json.contains("\"NotExecuted\""));
+    assert!(json.contains("\"step\":3"));
+    assert!(json.contains("\"description\":\"Not executed step\""));
+    assert!(json.contains("\"requirement\":\"REQ003\""));
+
+    // Verify it does NOT use other tagging formats
+    assert!(!json.contains("\"type\""));
+    assert!(!json.contains("\"tag\""));
+
+    // Verify roundtrip
+    let deserialized: StepVerificationResultEnum = serde_json::from_str(&json).unwrap();
+    assert!(!deserialized.is_pass());
+    assert_eq!(deserialized.step_number(), 3);
+}
+
+#[test]
+fn test_step_verification_result_enum_yaml_all_variants_externally_tagged() {
+    use testcase_manager::models::Expected;
+    use testcase_manager::verification::StepVerificationResultEnum;
+
+    let variants = vec![
+        StepVerificationResultEnum::Pass {
+            step: 1,
+            description: "Pass variant".to_string(),
+            requirement: None,
+            item: None,
+            tc: None,
+        },
+        StepVerificationResultEnum::Fail {
+            step: 2,
+            description: "Fail variant".to_string(),
+            expected: Expected {
+                success: None,
+                result: "expected".to_string(),
+                output: "output".to_string(),
+            },
+            actual_result: "actual".to_string(),
+            actual_output: "actual_out".to_string(),
+            reason: "mismatch".to_string(),
+            requirement: None,
+            item: None,
+            tc: None,
+        },
+        StepVerificationResultEnum::NotExecuted {
+            step: 3,
+            description: "NotExecuted variant".to_string(),
+            requirement: None,
+            item: None,
+            tc: None,
+        },
+    ];
+
+    for variant in variants {
+        let yaml = serde_yaml::to_string(&variant).unwrap();
+
+        // Every variant should have its name as a YAML tag (externally tagged format in YAML)
+        let has_pass = yaml.contains("!Pass");
+        let has_fail = yaml.contains("!Fail");
+        let has_not_executed = yaml.contains("!NotExecuted");
+
+        // Exactly one should be true
+        assert_eq!(
+            (has_pass as u32) + (has_fail as u32) + (has_not_executed as u32),
+            1
+        );
+
+        // Verify it does NOT use internally tagged format
+        assert!(!yaml.contains("type:"));
+
+        // Verify roundtrip works
+        let _deserialized: StepVerificationResultEnum = serde_yaml::from_str(&yaml).unwrap();
+    }
+}
+
+#[test]
+fn test_step_verification_result_enum_json_all_variants_externally_tagged() {
+    use testcase_manager::models::Expected;
+    use testcase_manager::verification::StepVerificationResultEnum;
+
+    let variants = vec![
+        StepVerificationResultEnum::Pass {
+            step: 1,
+            description: "Pass variant".to_string(),
+            requirement: None,
+            item: None,
+            tc: None,
+        },
+        StepVerificationResultEnum::Fail {
+            step: 2,
+            description: "Fail variant".to_string(),
+            expected: Expected {
+                success: None,
+                result: "expected".to_string(),
+                output: "output".to_string(),
+            },
+            actual_result: "actual".to_string(),
+            actual_output: "actual_out".to_string(),
+            reason: "mismatch".to_string(),
+            requirement: None,
+            item: None,
+            tc: None,
+        },
+        StepVerificationResultEnum::NotExecuted {
+            step: 3,
+            description: "NotExecuted variant".to_string(),
+            requirement: None,
+            item: None,
+            tc: None,
+        },
+    ];
+
+    for variant in variants {
+        let json = serde_json::to_string(&variant).unwrap();
+
+        // Every variant should have its name as a top-level key in JSON object
+        let has_pass = json.contains("\"Pass\"");
+        let has_fail = json.contains("\"Fail\"");
+        let has_not_executed = json.contains("\"NotExecuted\"");
+
+        // Exactly one should be true
+        assert_eq!(
+            (has_pass as u32) + (has_fail as u32) + (has_not_executed as u32),
+            1
+        );
+
+        // None should use internal tagging
+        assert!(!json.contains("\"type\""));
+        assert!(!json.contains("\"tag\""));
+
+        // Verify roundtrip works
+        let _deserialized: StepVerificationResultEnum = serde_json::from_str(&json).unwrap();
+    }
 }
 
 #[test]
