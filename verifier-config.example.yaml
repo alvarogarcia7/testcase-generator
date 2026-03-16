@@ -1,0 +1,17 @@
+# Example configuration file for the verifier binary
+# This file demonstrates the available configuration options
+
+# Report title (default: "Test Execution Results")
+title: "Test Execution Results"
+
+# Project name (default: "Test Case Manager - Verification Results")
+project: "Test Case Manager - Verification Results"
+
+# Optional: Environment information (e.g., "Staging", "Production")
+# environment: "Staging"
+
+# Optional: Platform information (e.g., "Linux x86_64", "macOS ARM64")
+# platform: "Linux x86_64"
+
+# Optional: Executor information (e.g., "CI Pipeline v2.1", "Jenkins v3.2")
+# executor: "Jenkins v3.2"
