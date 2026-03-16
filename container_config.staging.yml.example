@@ -1,0 +1,8 @@
+# Example staging environment container configuration
+# Copy this file to container_config.staging.yml and customize for your staging environment
+
+title: "Staging Test Results"
+project: "Test Case Manager - Staging Verification"
+environment: "Staging"
+platform: "AWS EC2 Linux x86_64"
+executor: "Jenkins Staging Pipeline v3.2"

@@ -310,7 +310,7 @@ EOF
 
 pass "Created test files"
 
-# Run verifier in Docker with mounted test files
+# Run verifier in Docker with mounted test files (using CLI flags)
 VERIFIER_OUTPUT="$TEMP_DIR/report.yaml"
 if docker run --rm \
     -v "$TEMP_DIR:/test_data" \
@@ -320,7 +320,12 @@ if docker run --rm \
     --test-case TEST_SIMPLE_001 \
     --test-case-dir /test_data \
     --format yaml \
-    --output /test_data/report.yaml > /dev/null 2>&1; then
+    --output /test_data/report.yaml \
+    --title "Docker Integration Test" \
+    --project "Docker Build Verification" \
+    --environment "Docker Container" \
+    --platform "Docker Image" \
+    --executor "Docker Test Runner" > /dev/null 2>&1; then
     pass "verifier executed successfully in container"
 else
     VERIFY_EXIT=$?

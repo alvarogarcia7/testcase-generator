@@ -255,8 +255,18 @@ EOF
 
 pass "Created failing execution log"
 
-# Test 3: Single-file mode with passing test
-section "Test 3: Single-File Mode - Passing Test"
+# Test 3: Single-file mode with passing test (using default config)
+section "Test 3: Single-File Mode - Passing Test (Default Config)"
+
+# Create a test config file
+TEST_CONFIG="$TEMP_DIR/test_config.yml"
+cat > "$TEST_CONFIG" << 'EOF'
+title: "E2E Integration Test Results"
+project: "Verifier E2E Tests"
+environment: "Testing"
+platform: "CI Environment"
+executor: "Integration Test Suite"
+EOF
 
 SINGLE_YAML_OUTPUT="$TEMP_DIR/single_pass_report.yaml"
 if "$VERIFIER_BIN" \
@@ -264,7 +274,8 @@ if "$VERIFIER_BIN" \
     --test-case "TEST_PASSING_001" \
     --test-case-dir "$TEST_CASE_DIR" \
     --format yaml \
-    --output "$SINGLE_YAML_OUTPUT" > /dev/null 2>&1; then
+    --output "$SINGLE_YAML_OUTPUT" \
+    --config "$TEST_CONFIG" > /dev/null 2>&1; then
     SINGLE_PASS_EXIT=$?
     pass "Single-file mode completed successfully with passing test"
 else
@@ -305,8 +316,8 @@ if [[ -f "$SINGLE_YAML_OUTPUT" ]]; then
     fi
 fi
 
-# Test 4: Single-file mode with failing test
-section "Test 4: Single-File Mode - Failing Test"
+# Test 4: Single-file mode with failing test (using CLI flags)
+section "Test 4: Single-File Mode - Failing Test (CLI Flags)"
 
 SINGLE_YAML_FAIL_OUTPUT="$TEMP_DIR/single_fail_report.yaml"
 if "$VERIFIER_BIN" \
@@ -314,7 +325,10 @@ if "$VERIFIER_BIN" \
     --test-case "TEST_FAILING_002" \
     --test-case-dir "$TEST_CASE_DIR" \
     --format yaml \
-    --output "$SINGLE_YAML_FAIL_OUTPUT" > /dev/null 2>&1; then
+    --output "$SINGLE_YAML_FAIL_OUTPUT" \
+    --title "CLI Override Test" \
+    --project "E2E Test with CLI Flags" \
+    --environment "Development" > /dev/null 2>&1; then
     SINGLE_FAIL_EXIT=$?
     fail "Single-file mode should fail with failing test (got exit code 0)"
 else
@@ -349,8 +363,8 @@ if [[ -f "$SINGLE_YAML_FAIL_OUTPUT" ]]; then
     fi
 fi
 
-# Test 5: JSON output format
-section "Test 5: JSON Output Format"
+# Test 5: JSON output format (combining config file and CLI overrides)
+section "Test 5: JSON Output Format (Config + CLI Overrides)"
 
 SINGLE_JSON_OUTPUT="$TEMP_DIR/single_pass_report.json"
 if "$VERIFIER_BIN" \
@@ -358,7 +372,9 @@ if "$VERIFIER_BIN" \
     --test-case "TEST_PASSING_001" \
     --test-case-dir "$TEST_CASE_DIR" \
     --format json \
-    --output "$SINGLE_JSON_OUTPUT" > /dev/null 2>&1; then
+    --output "$SINGLE_JSON_OUTPUT" \
+    --config "$TEST_CONFIG" \
+    --executor "E2E Test Runner v1.0" > /dev/null 2>&1; then
     pass "JSON format output generated successfully"
 else
     fail "Failed to generate JSON format output"

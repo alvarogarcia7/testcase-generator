@@ -1,0 +1,8 @@
+# Example production environment container configuration
+# Copy this file to container_config.prod.yml and customize for your production environment
+
+title: "Production Test Results"
+project: "Test Case Manager - Production Verification"
+environment: "Production"
+platform: "AWS EC2 Linux x86_64"
+executor: "Jenkins Production Pipeline v3.2"
