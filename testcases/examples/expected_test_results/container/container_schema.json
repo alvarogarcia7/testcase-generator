@@ -1,21 +1,25 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Test Results Container",
-  "description": "Schema for overall test results document containing multiple test case results",
+  "title": "Test Case Results Container Schema",
+  "description": "JSON schema for validating test case result container YAML/JSON output from the verifier",
   "type": "object",
   "properties": {
     "title": {
       "type": "string",
-      "description": "Title of the test results document"
+      "description": "Title of the test report",
+      "minLength": 1,
+      "maxLength": 200
     },
     "project": {
       "type": "string",
-      "description": "Project name or identifier"
+      "description": "Name of the project being tested",
+      "minLength": 1,
+      "maxLength": 200
     },
     "test_date": {
       "type": "string",
-      "format": "date-time",
-      "description": "Date and time when tests were executed"
+      "description": "Test execution date in ISO 8601 format",
+      "format": "date-time"
     },
     "test_results": {
       "type": "array",
@@ -23,87 +27,113 @@
       "items": {
         "type": "object",
         "properties": {
-          "requirement": {
-            "type": "string",
-            "description": "Requirement identifier"
-          },
-          "item": {
-            "type": "integer",
-            "description": "Item number"
-          },
-          "tc": {
-            "type": "integer",
-            "description": "Test case number"
-          },
           "test_case_id": {
             "type": "string",
-            "description": "Test case identifier"
+            "description": "Unique identifier for the test case"
           },
           "description": {
             "type": "string",
-            "description": "Test case description"
+            "description": "Human-readable description of the test case"
           },
           "sequences": {
             "type": "array",
-            "description": "Test sequences executed",
+            "description": "Array of test sequences executed",
             "items": {
               "type": "object",
               "properties": {
                 "sequence_id": {
                   "type": "integer",
-                  "description": "Sequence identifier"
+                  "description": "Unique identifier for the test sequence",
+                  "minimum": 1
                 },
                 "name": {
                   "type": "string",
-                  "description": "Sequence name"
+                  "description": "Name of the test sequence"
                 },
                 "step_results": {
                   "type": "array",
-                  "description": "Results for each step",
+                  "description": "Results for each step in the sequence",
                   "items": {
+                    "description": "Verification result for a single step (externally tagged enum)",
                     "type": "object",
                     "oneOf": [
                       {
+                        "type": "object",
+                        "description": "Step passed verification",
+                        "required": ["Pass"],
                         "properties": {
                           "Pass": {
                             "type": "object",
+                            "required": ["step", "description"],
                             "properties": {
                               "step": {
-                                "type": "integer"
+                                "type": "integer",
+                                "minimum": 1,
+                                "description": "Step number"
                               },
                               "description": {
-                                "type": "string"
+                                "type": "string",
+                                "description": "Step description"
+                              },
+                              "requirement": {
+                                "type": "string",
+                                "description": "Requirement identifier (optional, for reporting)"
+                              },
+                              "item": {
+                                "type": "integer",
+                                "description": "Item number (optional, for reporting)"
+                              },
+                              "tc": {
+                                "type": "integer",
+                                "description": "TC number (optional, for reporting)"
                               }
                             },
-                            "required": [
-                              "step",
-                              "description"
-                            ]
+                            "additionalProperties": false
                           }
                         },
-                        "required": [
-                          "Pass"
+                        "additionalProperties": false,
+                        "examples": [
+                          {
+                            "Pass": {
+                              "step": 1,
+                              "description": "Create test file"
+                            }
+                          },
+                          {
+                            "Pass": {
+                              "step": 2,
+                              "description": "Verify file contents",
+                              "requirement": "REQ-123",
+                              "item": 1,
+                              "tc": 42
+                            }
+                          }
                         ]
                       },
                       {
+                        "type": "object",
+                        "description": "Step failed verification",
+                        "required": ["Fail"],
                         "properties": {
                           "Fail": {
                             "type": "object",
+                            "required": ["step", "description", "expected", "actual_result", "actual_output", "reason"],
                             "properties": {
                               "step": {
-                                "type": "integer"
+                                "type": "integer",
+                                "minimum": 1,
+                                "description": "Step number"
                               },
                               "description": {
-                                "type": "string"
+                                "type": "string",
+                                "description": "Step description"
                               },
                               "expected": {
                                 "type": "object",
+                                "description": "Expected outcome",
                                 "properties": {
                                   "success": {
-                                    "type": [
-                                      "boolean",
-                                      "null"
-                                    ]
+                                    "type": ["boolean", "null"]
                                   },
                                   "result": {
                                     "type": "string"
@@ -112,55 +142,122 @@
                                     "type": "string"
                                   }
                                 },
-                                "required": [
-                                  "result",
-                                  "output"
-                                ]
+                                "required": ["result", "output"]
                               },
                               "actual_result": {
-                                "type": "string"
+                                "type": "string",
+                                "description": "Actual result from execution"
                               },
                               "actual_output": {
-                                "type": "string"
+                                "type": "string",
+                                "description": "Actual output from execution"
                               },
                               "reason": {
-                                "type": "string"
+                                "type": "string",
+                                "description": "Reason for failure"
+                              },
+                              "requirement": {
+                                "type": "string",
+                                "description": "Requirement identifier (optional, for reporting)"
+                              },
+                              "item": {
+                                "type": "integer",
+                                "description": "Item number (optional, for reporting)"
+                              },
+                              "tc": {
+                                "type": "integer",
+                                "description": "TC number (optional, for reporting)"
                               }
                             },
-                            "required": [
-                              "step",
-                              "description",
-                              "expected",
-                              "actual_result",
-                              "actual_output",
-                              "reason"
-                            ]
+                            "additionalProperties": false
                           }
                         },
-                        "required": [
-                          "Fail"
+                        "additionalProperties": false,
+                        "examples": [
+                          {
+                            "Fail": {
+                              "step": 3,
+                              "description": "Check error message",
+                              "expected": {
+                                "success": true,
+                                "result": "PASS",
+                                "output": "Error: file not found"
+                              },
+                              "actual_result": "PASS",
+                              "actual_output": "Error: permission denied",
+                              "reason": "Output mismatch: expected 'Error: file not found' but got 'Error: permission denied'"
+                            }
+                          },
+                          {
+                            "Fail": {
+                              "step": 4,
+                              "description": "Validate exit code",
+                              "expected": {
+                                "success": null,
+                                "result": "0",
+                                "output": "Success"
+                              },
+                              "actual_result": "1",
+                              "actual_output": "Failed: command not found",
+                              "reason": "Exit code mismatch: expected '0' but got '1'",
+                              "requirement": "REQ-456",
+                              "item": 2,
+                              "tc": 99
+                            }
+                          }
                         ]
                       },
                       {
+                        "type": "object",
+                        "description": "Step was not found in execution log",
+                        "required": ["NotExecuted"],
                         "properties": {
                           "NotExecuted": {
                             "type": "object",
+                            "required": ["step", "description"],
                             "properties": {
                               "step": {
-                                "type": "integer"
+                                "type": "integer",
+                                "minimum": 1,
+                                "description": "Step number"
                               },
                               "description": {
-                                "type": "string"
+                                "type": "string",
+                                "description": "Step description"
+                              },
+                              "requirement": {
+                                "type": "string",
+                                "description": "Requirement identifier (optional, for reporting)"
+                              },
+                              "item": {
+                                "type": "integer",
+                                "description": "Item number (optional, for reporting)"
+                              },
+                              "tc": {
+                                "type": "integer",
+                                "description": "TC number (optional, for reporting)"
                               }
                             },
-                            "required": [
-                              "step",
-                              "description"
-                            ]
+                            "additionalProperties": false
                           }
                         },
-                        "required": [
-                          "NotExecuted"
+                        "additionalProperties": false,
+                        "examples": [
+                          {
+                            "NotExecuted": {
+                              "step": 5,
+                              "description": "Cleanup temporary files"
+                            }
+                          },
+                          {
+                            "NotExecuted": {
+                              "step": 6,
+                              "description": "Verify cleanup completed",
+                              "requirement": "REQ-789",
+                              "item": 3,
+                              "tc": 101
+                            }
+                          }
                         ]
                       }
                     ]
@@ -168,20 +265,27 @@
                 },
                 "all_steps_passed": {
                   "type": "boolean",
-                  "description": "Whether all steps in the sequence passed"
+                  "description": "Whether all steps in this sequence passed"
+                },
+                "requirement": {
+                  "type": "string",
+                  "description": "Requirement identifier (optional, for reporting)"
+                },
+                "item": {
+                  "type": "integer",
+                  "description": "Item number (optional, for reporting)"
+                },
+                "tc": {
+                  "type": "integer",
+                  "description": "TC number (optional, for reporting)"
                 }
               },
-              "required": [
-                "sequence_id",
-                "name",
-                "step_results",
-                "all_steps_passed"
-              ]
+              "required": ["sequence_id", "name", "step_results", "all_steps_passed"]
             }
           },
           "total_steps": {
             "type": "integer",
-            "description": "Total number of steps",
+            "description": "Total number of steps across all sequences",
             "minimum": 0
           },
           "passed_steps": {
@@ -196,12 +300,24 @@
           },
           "not_executed_steps": {
             "type": "integer",
-            "description": "Number of steps not executed",
+            "description": "Number of steps that were not executed",
             "minimum": 0
           },
           "overall_pass": {
             "type": "boolean",
-            "description": "Overall pass/fail status for the test case"
+            "description": "Whether the entire test case passed"
+          },
+          "requirement": {
+            "type": "string",
+            "description": "Requirement identifier (optional, for reporting)"
+          },
+          "item": {
+            "type": "integer",
+            "description": "Item number (optional, for reporting)"
+          },
+          "tc": {
+            "type": "integer",
+            "description": "TC number (optional, for reporting)"
           }
         },
         "required": [
@@ -218,28 +334,34 @@
     },
     "metadata": {
       "type": "object",
-      "description": "Execution environment and metadata details",
+      "description": "Container report metadata",
       "properties": {
         "environment": {
           "type": "string",
-          "description": "Test environment name or identifier"
+          "description": "Environment in which the tests were executed (optional)",
+          "minLength": 1,
+          "maxLength": 100
         },
         "platform": {
           "type": "string",
-          "description": "Platform on which tests were executed"
+          "description": "Platform information including OS and architecture (optional)",
+          "minLength": 1,
+          "maxLength": 150
         },
         "executor": {
           "type": "string",
-          "description": "Name or identifier of the test executor"
+          "description": "Information about the executor or CI/CD system running the tests (optional)",
+          "minLength": 1,
+          "maxLength": 150
         },
         "execution_duration": {
           "type": "number",
-          "description": "Total execution time in seconds",
+          "description": "Execution duration in seconds",
           "minimum": 0
         },
         "total_test_cases": {
           "type": "integer",
-          "description": "Total number of test cases executed",
+          "description": "Total number of test cases",
           "minimum": 0
         },
         "passed_test_cases": {
@@ -254,9 +376,10 @@
         }
       },
       "required": [
-        "environment",
-        "platform",
-        "executor"
+        "execution_duration",
+        "total_test_cases",
+        "passed_test_cases",
+        "failed_test_cases"
       ]
     }
   },
@@ -266,5 +389,6 @@
     "test_date",
     "test_results",
     "metadata"
-  ]
+  ],
+  "additionalProperties": false
 }
