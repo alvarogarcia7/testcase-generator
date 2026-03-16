@@ -79,9 +79,12 @@ for SCENARIO_ENTRY in "${SCENARIOS[@]}"; do
     echo ""
     echo "Running verifier..."
     
+    TEST_CASE_DIR="$PROJECT_ROOT/testcases/verifier_scenarios/$SCENARIO_DIR"
+    
     cargo run ${BUILD_VARIANT} --bin verifier -- \
         --log "$EXECUTION_LOG" \
         --test-case "$TEST_CASE_ID" \
+        --test-case-dir "$TEST_CASE_DIR" \
         --format json \
         --output "$VERIFICATION_OUTPUT" 2>&1 | tail -20
     

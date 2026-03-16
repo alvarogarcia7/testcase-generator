@@ -14,7 +14,7 @@
 #
 # Options:
 #   --logs-dir DIR           Directory containing execution logs (default: testcases/verifier_scenarios)
-#   --test-case-dir DIR      Directory containing test case YAML files (default: testcases)
+#   --test-case-dir DIR      Directory containing test case YAML files (default: testcases/verifier_scenarios)
 #   --output-dir DIR         Output directory for reports (default: reports/documentation)
 #   --test-plan-doc-gen DIR  Path to test-plan-doc-gen sibling directory (default: ../test-plan-doc-gen)
 #   --container-template     Path to container template YAML (default: testcases/expected_output_reports/container_data.yml)
@@ -33,7 +33,7 @@ source "$SCRIPT_DIR/lib/report_generator.sh" || exit 1
 
 # Default configuration
 LOGS_DIR="$PROJECT_ROOT/testcases/verifier_scenarios"
-TEST_CASE_DIR="$PROJECT_ROOT/testcases"
+TEST_CASE_DIR="$PROJECT_ROOT/testcases/verifier_scenarios"
 OUTPUT_DIR="$PROJECT_ROOT/reports/documentation"
 TEST_PLAN_DOC_GEN_DIR="../test-plan-doc-gen"
 CONTAINER_TEMPLATE="$PROJECT_ROOT/testcases/expected_output_reports/container_data.yml"
@@ -343,15 +343,16 @@ else
     
     while IFS= read -r -d '' yaml_file; do
         # Skip files in expected_output_reports and other report directories
-        # Also skip result files and container files
+        # Also skip result files, container files, and execution logs
         if [[ ! "$yaml_file" =~ expected_output_reports ]] && \
            [[ ! "$yaml_file" =~ /reports/ ]] && \
            [[ ! "$yaml_file" =~ _result\.ya?ml$ ]] && \
-           [[ ! "$yaml_file" =~ _container\.ya?ml$ ]]; then
+           [[ ! "$yaml_file" =~ _container\.ya?ml$ ]] && \
+           [[ ! "$yaml_file" =~ _execution_log\. ]]; then
             TEST_CASE_FILES+=("$yaml_file")
             log_verbose "Found test case: $(basename "$yaml_file")"
         fi
-    done < <(find "$TEST_CASE_DIR" -name "*.yml" -o -name "*.yaml" -print0 2>/dev/null)
+    done < <(find "$TEST_CASE_DIR" -type f \( -name "*.yml" -o -name "*.yaml" \) -print0 2>/dev/null)
     
     log_info "Found ${#TEST_CASE_FILES[@]} test case file(s)"
     

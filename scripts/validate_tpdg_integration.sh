@@ -249,7 +249,7 @@ for test_case_file in "${TEST_SCENARIOS[@]}"; do
         --test-case "$test_case_name" \
         --format json \
         --output "$verification_json" \
-        --test-case-dir "$SCENARIOS_DIR" 2>&1 | while IFS= read -r line; do
+        --test-case-dir "$test_case_dir" 2>&1 | while IFS= read -r line; do
             log_verbose "$line"
         done; then
         log_verbose "Verifier succeeded for $test_case_name"
