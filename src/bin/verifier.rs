@@ -632,7 +632,7 @@ fn generate_output(
         executor: config.executor.clone(),
     };
     verifier
-        .generate_container_yaml_report(std::slice::from_ref(report), format, container_config)
+        .generate_report(std::slice::from_ref(report), format, container_config)
         .context("Failed to generate container report")
 }
 

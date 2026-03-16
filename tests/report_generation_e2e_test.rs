@@ -217,7 +217,7 @@ fn test_e2e_container_format_yaml_structure() {
     )
     .unwrap();
 
-    // Run verifier binary with --container-format flag (folder mode)
+    // Run verifier binary (folder mode) - now always produces container format
     let output = Command::new("cargo")
         .args([
             "run",
@@ -230,7 +230,6 @@ fn test_e2e_container_format_yaml_structure() {
             "testcases",
             "--format",
             "yaml",
-            "--container-format",
             "--title",
             "E2E Test Report",
             "--project",
@@ -437,7 +436,7 @@ fn test_e2e_container_format_test_results_structure() {
     };
 
     let yaml = verifier
-        .generate_container_yaml_report(&[report.clone()], "yaml", config)
+        .generate_report(&[report.clone()], "yaml", config)
         .unwrap();
 
     // Verify test_results array structure
@@ -642,7 +641,7 @@ fn test_e2e_container_format_metadata_accuracy() {
     };
 
     let yaml = verifier
-        .generate_container_yaml_report(&[report], "yaml", config)
+        .generate_report(&[report], "yaml", config)
         .unwrap();
 
     let parsed: ContainerReport = serde_yaml::from_str(&yaml).expect("Failed to parse YAML");
@@ -715,7 +714,7 @@ fn test_e2e_container_format_json_output() {
     };
 
     let json = verifier
-        .generate_container_yaml_report(&[report], "json", config)
+        .generate_report(&[report], "json", config)
         .unwrap();
 
     // Verify JSON structure
@@ -828,7 +827,7 @@ fn test_e2e_container_format_matches_template_structure() {
     };
 
     let yaml = verifier
-        .generate_container_yaml_report(&[report], "yaml", config)
+        .generate_report(&[report], "yaml", config)
         .unwrap();
 
     let generated: ContainerReport =

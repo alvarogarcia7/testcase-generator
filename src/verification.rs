@@ -1761,54 +1761,12 @@ impl TestVerifier {
             .context("Failed to serialize verification result to JSON")
     }
 
-    /// Generate container report for batch verification (multiple test cases)
-    /// Supports both YAML and JSON formats
-    pub fn generate_container_report(
-        &self,
-        report: &BatchVerificationReport,
-        format: &str,
-    ) -> Result<String> {
-        log::debug!(
-            "Generating container report: format={}, test_cases={}, total_steps={}, passed={}, failed={}, not_executed={}",
-            format,
-            report.total_test_cases,
-            report.total_steps,
-            report.passed_steps,
-            report.failed_steps,
-            report.not_executed_steps
-        );
-
-        let result = match format.to_lowercase().as_str() {
-            "yaml" => {
-                log::debug!("Serializing report to YAML format");
-                serde_yaml::to_string(report).context("Failed to serialize batch report to YAML")
-            }
-            "json" => {
-                log::debug!("Serializing report to JSON format");
-                serde_json::to_string_pretty(report)
-                    .context("Failed to serialize batch report to JSON")
-            }
-            _ => {
-                log::debug!("Unsupported format requested: {}", format);
-                anyhow::bail!("Unsupported format: {}. Use 'yaml' or 'json'.", format)
-            }
-        };
-
-        if let Ok(ref content) = result {
-            log::debug!("Successfully generated report: {} bytes", content.len());
-        } else {
-            log::debug!("Failed to generate report");
-        }
-
-        result
-    }
-
-    /// Generate container YAML/JSON report with enhanced metadata
+    /// Generate container report with enhanced metadata
     /// This method creates a ContainerReport with custom title, project, and metadata fields
     ///
     /// If multiple reports are provided, calculates execution_duration as the time difference
     /// between the earliest and latest generated_at timestamps. Otherwise uses 0.0.
-    pub fn generate_container_yaml_report(
+    pub fn generate_report(
         &self,
         reports: &[BatchVerificationReport],
         format: &str,
@@ -2004,106 +1962,7 @@ mod tests {
     }
 
     #[test]
-    fn test_generate_container_report_json() {
-        let temp_dir = TempDir::new().unwrap();
-        let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
-        let verifier = TestVerifier::from_storage(storage);
-
-        let mut report = BatchVerificationReport::new();
-        report.add_test_case_result(TestCaseVerificationResult {
-            test_case_id: "TC001".to_string(),
-            description: "Test 1".to_string(),
-            sequences: vec![],
-            total_steps: 2,
-            passed_steps: 2,
-            failed_steps: 0,
-            not_executed_steps: 0,
-            overall_pass: true,
-            requirement: None,
-            item: None,
-            tc: None,
-        });
-        report.add_test_case_result(TestCaseVerificationResult {
-            test_case_id: "TC002".to_string(),
-            description: "Test 2".to_string(),
-            sequences: vec![],
-            total_steps: 3,
-            passed_steps: 2,
-            failed_steps: 1,
-            not_executed_steps: 0,
-            overall_pass: false,
-            requirement: None,
-            item: None,
-            tc: None,
-        });
-
-        let json = verifier.generate_container_report(&report, "json").unwrap();
-        assert!(json.contains("\"test_cases\""));
-        assert!(json.contains("\"total_test_cases\": 2"));
-        assert!(json.contains("\"passed_test_cases\": 1"));
-        assert!(json.contains("\"failed_test_cases\": 1"));
-        assert!(json.contains("\"total_steps\": 5"));
-        assert!(json.contains("\"passed_steps\": 4"));
-        assert!(json.contains("\"failed_steps\": 1"));
-
-        // Verify it can be deserialized
-        let parsed: BatchVerificationReport = serde_json::from_str(&json).unwrap();
-        assert_eq!(parsed.total_test_cases, 2);
-        assert_eq!(parsed.passed_test_cases, 1);
-        assert_eq!(parsed.failed_test_cases, 1);
-    }
-
-    #[test]
-    fn test_generate_container_report_yaml() {
-        let temp_dir = TempDir::new().unwrap();
-        let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
-        let verifier = TestVerifier::from_storage(storage);
-
-        let mut report = BatchVerificationReport::new();
-        report.add_test_case_result(TestCaseVerificationResult {
-            test_case_id: "TC001".to_string(),
-            description: "Test 1".to_string(),
-            sequences: vec![],
-            total_steps: 1,
-            passed_steps: 1,
-            failed_steps: 0,
-            not_executed_steps: 0,
-            overall_pass: true,
-            requirement: None,
-            item: None,
-            tc: None,
-        });
-
-        let yaml = verifier.generate_container_report(&report, "yaml").unwrap();
-        assert!(yaml.contains("test_cases:"));
-        assert!(yaml.contains("total_test_cases: 1"));
-        assert!(yaml.contains("passed_test_cases: 1"));
-        assert!(yaml.contains("failed_test_cases: 0"));
-
-        // Verify it can be deserialized
-        let parsed: BatchVerificationReport = serde_yaml::from_str(&yaml).unwrap();
-        assert_eq!(parsed.total_test_cases, 1);
-        assert_eq!(parsed.passed_test_cases, 1);
-    }
-
-    #[test]
-    fn test_generate_container_report_unsupported_format() {
-        let temp_dir = TempDir::new().unwrap();
-        let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
-        let verifier = TestVerifier::from_storage(storage);
-
-        let report = BatchVerificationReport::new();
-
-        let result = verifier.generate_container_report(&report, "xml");
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Unsupported format"));
-    }
-
-    #[test]
-    fn test_generate_container_yaml_report_single_report() {
+    fn test_generate_report_single_report() {
         let temp_dir = TempDir::new().unwrap();
         let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
         let verifier = TestVerifier::from_storage(storage);
@@ -2131,7 +1990,7 @@ mod tests {
             executor: Some("Test Executor".to_string()),
         };
         let yaml = verifier
-            .generate_container_yaml_report(&[report], "yaml", config)
+            .generate_report(&[report], "yaml", config)
             .unwrap();
 
         // Verify YAML structure
@@ -2156,7 +2015,7 @@ mod tests {
     }
 
     #[test]
-    fn test_generate_container_yaml_report_multiple_reports() {
+    fn test_generate_report_multiple_reports() {
         use chrono::Duration;
 
         let temp_dir = TempDir::new().unwrap();
@@ -2205,7 +2064,7 @@ mod tests {
             executor: None,
         };
         let yaml = verifier
-            .generate_container_yaml_report(&[report1, report2], "yaml", config)
+            .generate_report(&[report1, report2], "yaml", config)
             .unwrap();
 
         // Verify execution duration is calculated (100 seconds)
@@ -2222,7 +2081,7 @@ mod tests {
     }
 
     #[test]
-    fn test_generate_container_yaml_report_json_format() {
+    fn test_generate_report_json_format() {
         let temp_dir = TempDir::new().unwrap();
         let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
         let verifier = TestVerifier::from_storage(storage);
@@ -2250,7 +2109,7 @@ mod tests {
             executor: None,
         };
         let json = verifier
-            .generate_container_yaml_report(&[report], "json", config)
+            .generate_report(&[report], "json", config)
             .unwrap();
 
         // Verify JSON structure
