@@ -216,15 +216,99 @@ fn print_summary(results: &[ValidationResult], dependency_errors: Option<&Vec<St
 }
 
 #[cfg(not(target_os = "windows"))]
+fn discover_schema_dependencies(schema_path: &Path) -> Result<HashSet<PathBuf>> {
+    let mut schemas = HashSet::new();
+    let mut to_process = vec![schema_path.to_path_buf()];
+    let mut processed = HashSet::new();
+
+    while let Some(current_schema) = to_process.pop() {
+        let canonical = current_schema.canonicalize().context(format!(
+            "Failed to canonicalize schema path: {}",
+            current_schema.display()
+        ))?;
+
+        if processed.contains(&canonical) {
+            continue;
+        }
+
+        processed.insert(canonical.clone());
+        schemas.insert(canonical.clone());
+
+        // Read schema file and look for $ref references
+        let content = fs::read_to_string(&current_schema).context(format!(
+            "Failed to read schema file: {}",
+            current_schema.display()
+        ))?;
+
+        let schema_value: serde_json::Value = serde_json::from_str(&content).context(format!(
+            "Failed to parse schema JSON: {}",
+            current_schema.display()
+        ))?;
+
+        // Find all $ref values in the schema
+        find_external_refs(&schema_value, &current_schema, &mut to_process)?;
+    }
+
+    Ok(schemas)
+}
+
+#[cfg(not(target_os = "windows"))]
+fn find_external_refs(
+    value: &serde_json::Value,
+    schema_path: &Path,
+    to_process: &mut Vec<PathBuf>,
+) -> Result<()> {
+    match value {
+        serde_json::Value::Object(map) => {
+            for (key, val) in map {
+                if key == "$ref" {
+                    if let serde_json::Value::String(ref_str) = val {
+                        // Only process external references (not internal #/definitions/...)
+                        if !ref_str.starts_with('#') {
+                            // Extract the file path from the reference
+                            let ref_path = ref_str.split('#').next().unwrap_or(ref_str);
+
+                            // Resolve relative to the current schema's directory
+                            if let Some(parent) = schema_path.parent() {
+                                let resolved = parent.join(ref_path);
+                                if resolved.exists() {
+                                    to_process.push(resolved);
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    find_external_refs(val, schema_path, to_process)?;
+                }
+            }
+        }
+        serde_json::Value::Array(arr) => {
+            for item in arr {
+                find_external_refs(item, schema_path, to_process)?;
+            }
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+#[cfg(not(target_os = "windows"))]
 fn run_watch_mode(yaml_files: Vec<PathBuf>, schema_path: PathBuf) -> Result<()> {
     const COLOR_BLUE: &str = "\x1b[34m";
     const COLOR_YELLOW: &str = "\x1b[33m";
+
+    // Discover all schema dependencies
+    let schema_files = discover_schema_dependencies(&schema_path)?;
 
     println!(
         "{}{}Watch mode enabled{}",
         COLOR_BOLD, COLOR_BLUE, COLOR_RESET
     );
-    println!("Monitoring {} files for changes...\n", yaml_files.len());
+    println!(
+        "Monitoring {} YAML file(s) and {} schema file(s) for changes...\n",
+        yaml_files.len(),
+        schema_files.len()
+    );
 
     println!("{}Initial validation:{}", COLOR_BOLD, COLOR_RESET);
     let results = validate_files(&yaml_files, &schema_path);
@@ -246,6 +330,7 @@ fn run_watch_mode(yaml_files: Vec<PathBuf>, schema_path: PathBuf) -> Result<()> 
     )
     .context("Failed to create file watcher")?;
 
+    // Watch YAML files
     for yaml_file in &yaml_files {
         let canonical_path = yaml_file.canonicalize().context(format!(
             "Failed to canonicalize path: {}",
@@ -259,7 +344,18 @@ fn run_watch_mode(yaml_files: Vec<PathBuf>, schema_path: PathBuf) -> Result<()> 
             ))?;
     }
 
+    // Watch all schema files (including transitive dependencies)
+    for schema_file in &schema_files {
+        watcher
+            .watch(schema_file, RecursiveMode::NonRecursive)
+            .context(format!(
+                "Failed to watch schema file: {}",
+                schema_file.display()
+            ))?;
+    }
+
     let mut changed_files = HashSet::new();
+    let mut schema_changed = false;
     let mut last_event_time = std::time::Instant::now();
     let debounce_duration = Duration::from_millis(300);
 
@@ -268,73 +364,103 @@ fn run_watch_mode(yaml_files: Vec<PathBuf>, schema_path: PathBuf) -> Result<()> 
             Ok(event) => {
                 if matches!(event.kind, EventKind::Modify(_)) {
                     for path in event.paths {
-                        if yaml_files.iter().any(|f| {
+                        // Check if it's a YAML file
+                        let is_yaml = yaml_files.iter().any(|f| {
                             f.canonicalize()
                                 .ok()
                                 .as_ref()
                                 .map(|p| p == &path)
                                 .unwrap_or(false)
-                        }) {
+                        });
+
+                        // Check if it's a schema file
+                        let is_schema = schema_files.contains(&path);
+
+                        if is_yaml {
                             changed_files.insert(path.clone());
+                            last_event_time = std::time::Instant::now();
+                        } else if is_schema {
+                            schema_changed = true;
                             last_event_time = std::time::Instant::now();
                         }
                     }
                 }
             }
             Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
-                if !changed_files.is_empty() && last_event_time.elapsed() >= debounce_duration {
+                if (schema_changed || !changed_files.is_empty())
+                    && last_event_time.elapsed() >= debounce_duration
+                {
                     println!(
                         "\n{}{}File changes detected:{}",
                         COLOR_BOLD, COLOR_YELLOW, COLOR_RESET
                     );
+
+                    if schema_changed {
+                        println!("  → Schema file(s) modified");
+                    }
+
                     for changed_file in &changed_files {
                         println!("  → {}", changed_file.display());
                     }
                     println!();
 
-                    let changed_yaml_files: Vec<PathBuf> = yaml_files
-                        .iter()
-                        .filter(|f| {
-                            f.canonicalize()
-                                .ok()
-                                .as_ref()
-                                .map(|p| changed_files.contains(p))
-                                .unwrap_or(false)
-                        })
-                        .cloned()
-                        .collect();
-
-                    println!("{}Validating changed files:{}", COLOR_BOLD, COLOR_RESET);
-                    let changed_results = validate_files(&changed_yaml_files, &schema_path);
-                    print_results(&changed_results);
-
-                    let all_changed_passed = changed_results.iter().all(|r| r.success);
-
-                    if all_changed_passed {
-                        println!();
+                    // If schema changed, re-validate all YAML files
+                    if schema_changed {
                         println!(
-                            "{}All changed files passed! Running full validation...{}",
+                            "{}Schema changed - re-validating all YAML files:{}",
                             COLOR_BOLD, COLOR_RESET
                         );
-                        println!();
-
                         let full_results = validate_files(&yaml_files, &schema_path);
                         print_results(&full_results);
                         let dependency_errors = validate_dependencies(&full_results).err();
                         print_summary(&full_results, dependency_errors.as_ref());
                     } else {
-                        let passed = changed_results.iter().filter(|r| r.success).count();
-                        let failed = changed_results.len() - passed;
-                        println!();
-                        println!("{}Changed files summary:{}", COLOR_BOLD, COLOR_RESET);
-                        println!("  {}Passed: {}{}", COLOR_GREEN, passed, COLOR_RESET);
-                        println!("  {}Failed: {}{}", COLOR_RED, failed, COLOR_RESET);
+                        // Only YAML files changed - validate changed files first
+                        let changed_yaml_files: Vec<PathBuf> = yaml_files
+                            .iter()
+                            .filter(|f| {
+                                f.canonicalize()
+                                    .ok()
+                                    .as_ref()
+                                    .map(|p| changed_files.contains(p))
+                                    .unwrap_or(false)
+                            })
+                            .cloned()
+                            .collect();
+
+                        println!("{}Validating changed files:{}", COLOR_BOLD, COLOR_RESET);
+                        let changed_results = validate_files(&changed_yaml_files, &schema_path);
+                        print_results(&changed_results);
+
+                        let all_changed_passed = changed_results.iter().all(|r| r.success);
+
+                        if all_changed_passed {
+                            println!();
+                            println!(
+                                "{}All changed files passed! Running full validation...{}",
+                                COLOR_BOLD, COLOR_RESET
+                            );
+                            println!();
+
+                            let full_results = validate_files(&yaml_files, &schema_path);
+                            print_results(&full_results);
+                            let dependency_errors = validate_dependencies(&full_results).err();
+                            print_summary(&full_results, dependency_errors.as_ref());
+                        } else {
+                            let passed = changed_results.iter().filter(|r| r.success).count();
+                            let failed = changed_results.len() - passed;
+                            println!();
+                            println!("{}Changed files summary:{}", COLOR_BOLD, COLOR_RESET);
+                            println!("  {}Passed: {}{}", COLOR_GREEN, passed, COLOR_RESET);
+                            println!("  {}Failed: {}{}", COLOR_RED, failed, COLOR_RESET);
+                        }
                     }
 
                     println!();
                     println!("{}Watching for changes...{}", COLOR_BOLD, COLOR_RESET);
 
                     changed_files.clear();
+                    schema_changed = false;
                 }
             }
             Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
