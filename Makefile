@@ -95,6 +95,10 @@ run-verifier: build-verifier
 	./target/debug/verifier
 .PHONY: run-verifier
 
+test-e2e-verifier-container: build
+	./tests/integration/test_verifier_container_e2e.sh
+.PHONY: test-e2e-verifier-container
+
 test-e2e-failing: build
 	./tests/integration/run_e2e_test.sh
 	./tests/integration/test_variable_passing_e2e.sh
@@ -132,6 +136,7 @@ test-e2e:
 	./tests/integration/test_validate_yaml_transitive_schema_watch_e2e.sh
 	./tests/integration/test_variable_passing_e2e.sh
 	./tests/integration/test_verifier_e2e.sh
+	./tests/integration/test_verifier_container_e2e.sh
 	#./tests/integration/test_verify_e2e.sh
 	./tests/integration/test_container_yaml_compat_e2e.sh
 	./tests/integration/test_documentation_generation.sh
