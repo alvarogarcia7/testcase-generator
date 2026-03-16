@@ -142,6 +142,7 @@ test-e2e:
 	./tests/integration/test_documentation_generation.sh
 	BUILD_VARIANT="" ./scripts/run_verifier_and_generate_reports.sh
 	./scripts/validate_tpdg_integration.sh --test-plan-doc-gen ${HOME}/Documents/projects/test-plan-documentation-generator --verbose || true
+	${MAKE} validate-output-schemas
 .PHONY: test-e2e
 
 example_export-demo:
@@ -311,6 +312,11 @@ verify-testcases: build
 validate-testcases-report: build
 	USE_MCP=0 ./scripts/validate_all_testcases.sh
 .PHONY: validate-testcases-report
+
+validate-output-schemas:
+	@echo "Validating expected output sample files against schemas..."
+	./scripts/validate-output-schemas.sh
+.PHONY: validate-output-schemas
 
 watch: build
 	./scripts/watch-yaml-files.sh
