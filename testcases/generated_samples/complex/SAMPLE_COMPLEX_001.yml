@@ -1,0 +1,59 @@
+requirement: "SAMPLE_COMPLEX"
+item: 1
+tc: 1
+id: 'SAMPLE_COMPLEX_001'
+description: 'Complex sample demonstrating variable capture and conditional verification'
+
+general_initial_conditions:
+  system:
+    - "Shell environment is available"
+
+initial_conditions:
+  system:
+    - "Standard commands are accessible"
+
+test_sequences:
+  - id: 1
+    name: "Variable Capture and Conditional Verification"
+    description: |
+                   Demonstrates advanced features like variable capture and conditional verification.
+    steps:
+      - step: 1
+        description: "Generate timestamp and capture it"
+        command: date +%s
+        expected:
+          success: true
+          result: 0
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
+        variables:
+          TIMESTAMP:
+            from_output: "^([0-9]+)$"
+      
+      - step: 2
+        description: "Display captured timestamp"
+        command: echo "Timestamp: $TIMESTAMP"
+        expected:
+          success: true
+          result: 0
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Timestamp: ' <<< \"$COMMAND_OUTPUT\""
+      
+      - step: 3
+        description: "Conditional verification based on platform"
+        command: uname -s
+        expected:
+          success: true
+          result: 0
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: |
+            if [[ "$COMMAND_OUTPUT" == "Darwin" ]]; then
+              grep -q 'Darwin' <<< "$COMMAND_OUTPUT"
+            elif [[ "$COMMAND_OUTPUT" == "Linux" ]]; then
+              grep -q 'Linux' <<< "$COMMAND_OUTPUT"
+            else
+              [[ -n "$COMMAND_OUTPUT" ]]
+            fi

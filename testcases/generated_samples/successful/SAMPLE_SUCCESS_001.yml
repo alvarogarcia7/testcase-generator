@@ -1,0 +1,49 @@
+requirement: "SAMPLE_SUCCESS"
+item: 1
+tc: 1
+id: 'SAMPLE_SUCCESS_001'
+description: 'Sample successful execution with all steps passing'
+
+general_initial_conditions:
+  system:
+    - "Shell environment is available"
+    - "Standard commands are accessible"
+
+initial_conditions:
+  system:
+    - "Working directory is writable"
+
+test_sequences:
+  - id: 1
+    name: "Basic Command Execution"
+    description: |
+                   Sample sequence demonstrating successful command execution.
+    steps:
+      - step: 1
+        description: "Display greeting message"
+        command: echo "Hello World"
+        expected:
+          success: true
+          result: 0
+          output: "Hello World"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Hello World' <<< \"$COMMAND_OUTPUT\""
+      - step: 2
+        description: "Display system date"
+        command: date +%Y-%m-%d
+        expected:
+          success: true
+          result: 0
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ -n \"$COMMAND_OUTPUT\" ]]"
+      - step: 3
+        description: "Display current username"
+        command: whoami
+        expected:
+          success: true
+          result: 0
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ -n \"$COMMAND_OUTPUT\" ]]"

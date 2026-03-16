@@ -1,0 +1,34 @@
+requirement: "SAMPLE_HOOK_SCRIPT_START"
+item: 1
+tc: 1
+id: 'SAMPLE_HOOK_SCRIPT_START_001'
+description: 'Sample demonstrating script_start hook success'
+
+hooks:
+  script_start:
+    command: "scripts/hook_success.sh"
+    on_error: "fail"
+
+general_initial_conditions:
+  system:
+    - "Shell environment is available"
+
+initial_conditions:
+  system:
+    - "Hook scripts are available"
+
+test_sequences:
+  - id: 1
+    name: "Test with Script Start Hook"
+    description: "Hook executes before any test steps"
+    steps:
+      - step: 1
+        description: "Echo message"
+        command: echo "Step 1"
+        expected:
+          success: true
+          result: 0
+          output: "Step 1"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Step 1' <<< \"$COMMAND_OUTPUT\""
