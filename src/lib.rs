@@ -89,7 +89,6 @@ pub use verification::ContainerReport;
 pub use verification::ContainerReportConfig;
 pub use verification::DiffDetail;
 pub use verification::ExecutionVerificationResult;
-pub use verification::JUnitTestSuite;
 pub use verification::MatchStrategy;
 pub use verification::SequenceVerificationResult;
 pub use verification::StepVerificationResult;
