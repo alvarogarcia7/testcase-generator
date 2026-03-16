@@ -67,6 +67,34 @@ The project includes several binary utilities:
   - Run: `make run-json-escape` or `cargo run --bin json-escape`
   - Usage: `echo "text" | json-escape`
 
+- **test-verify** (verifier): Test verification tool for validating test execution logs against test case definitions.
+  - Build: `make build` or `cargo build --bin verifier`
+  - Run: `cargo run --bin verifier` or `./target/release/verifier`
+  - Features: Batch processing, multiple output formats (text, JSON, JUnit XML, Container YAML), aggregated reports
+  - Output Formats:
+    - **text**: Human-readable text format
+    - **json**: Machine-readable JSON format
+    - **junit**: JUnit XML for CI/CD integration
+    - **yaml**: Standard YAML format
+    - **yaml with --container-format**: Enhanced YAML with rich metadata (title, project, environment, platform, executor)
+  - Container Format Flags:
+    - `--container-format`: Enable container YAML output format
+    - `--title`: Report title (default: "Test Execution Results")
+    - `--project`: Project name (default: "Test Case Manager - Verification Results")
+    - `--environment`: Environment information (e.g., "Staging", "Production")
+    - `--platform`: Platform information (e.g., "Linux x86_64")
+    - `--executor`: Executor information (e.g., "CI Pipeline v2.1")
+  - Example with container format:
+    ```bash
+    verifier batch --logs logs/*.log --format yaml --output report.yaml \
+      --container-format \
+      --title "Nightly Test Run" \
+      --project "Production Suite" \
+      --environment "Staging" \
+      --platform "Linux x86_64" \
+      --executor "Jenkins v3.2"
+    ```
+
 ## Shell Script Compatibility
 
 **MANDATORY**: All shell scripts and generated bash scripts must be compatible with both BSD and GNU variants of command-line tools, and must work with bash 3.2+ (the default on macOS).
