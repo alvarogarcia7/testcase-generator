@@ -1,0 +1,6 @@
+# Sample container report configuration file for verifier tests
+title: "Container Config Test Report"
+project: "Container Config Test Project"
+environment: "Development"
+platform: "Linux x86_64"
+executor: "CI Pipeline v1.0"

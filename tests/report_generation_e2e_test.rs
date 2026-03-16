@@ -886,3 +886,428 @@ fn test_e2e_container_format_matches_template_structure() {
         "Sequence should have step_results"
     );
 }
+
+// ============================================================================
+// Container Config E2E Tests
+// ============================================================================
+
+#[test]
+fn test_e2e_verifier_with_config_file_only() {
+    let temp_dir = TempDir::new().unwrap();
+    let logs_folder = temp_dir.path().join("logs");
+    fs::create_dir(&logs_folder).unwrap();
+
+    // Create a simple execution log
+    let log_file = logs_folder.join("test_execution_log.json");
+    fs::write(
+        &log_file,
+        r#"[
+  {
+    "test_sequence": 1,
+    "step": 1,
+    "exit_code": 0,
+    "output": "Success",
+    "timestamp": "2024-01-15T10:30:00Z"
+  }
+]"#,
+    )
+    .unwrap();
+
+    // Use the full container config file
+    let config_path = PathBuf::from("testcases/verifier_scenarios/full_container_config.yml");
+
+    // Run verifier with config file, no CLI overrides
+    let output = Command::new("cargo")
+        .args([
+            "run",
+            "--bin",
+            "verifier",
+            "--",
+            "--folder",
+            logs_folder.to_str().unwrap(),
+            "--test-case-dir",
+            "testcases",
+            "--format",
+            "yaml",
+            "--config",
+            config_path.to_str().unwrap(),
+        ])
+        .output()
+        .expect("Failed to execute verifier");
+
+    assert!(
+        output.status.success(),
+        "Verifier command failed: {}\nStdout: {}",
+        String::from_utf8_lossy(&output.stderr),
+        String::from_utf8_lossy(&output.stdout)
+    );
+
+    let output_yaml = String::from_utf8_lossy(&output.stdout);
+
+    // Verify values from config file are used
+    assert!(output_yaml.contains("title: Full Featured Test Report"));
+    assert!(output_yaml.contains("project: Full Featured Test Project"));
+    assert!(output_yaml.contains("environment: Production"));
+    assert!(output_yaml.contains("platform: macOS ARM64"));
+    assert!(output_yaml.contains("executor: Jenkins v3.2.1"));
+
+    let parsed: ContainerReport = serde_yaml::from_str(&output_yaml).expect("Failed to parse YAML");
+    assert_eq!(parsed.title, "Full Featured Test Report");
+    assert_eq!(parsed.project, "Full Featured Test Project");
+    assert_eq!(parsed.metadata.environment, Some("Production".to_string()));
+    assert_eq!(parsed.metadata.platform, Some("macOS ARM64".to_string()));
+    assert_eq!(parsed.metadata.executor, Some("Jenkins v3.2.1".to_string()));
+}
+
+#[test]
+fn test_e2e_verifier_with_cli_flags_only() {
+    let temp_dir = TempDir::new().unwrap();
+    let logs_folder = temp_dir.path().join("logs");
+    fs::create_dir(&logs_folder).unwrap();
+
+    // Create a simple execution log
+    let log_file = logs_folder.join("test_execution_log.json");
+    fs::write(
+        &log_file,
+        r#"[
+  {
+    "test_sequence": 1,
+    "step": 1,
+    "exit_code": 0,
+    "output": "Success",
+    "timestamp": "2024-01-15T10:30:00Z"
+  }
+]"#,
+    )
+    .unwrap();
+
+    // Run verifier with CLI flags only, no config file
+    let output = Command::new("cargo")
+        .args([
+            "run",
+            "--bin",
+            "verifier",
+            "--",
+            "--folder",
+            logs_folder.to_str().unwrap(),
+            "--test-case-dir",
+            "testcases",
+            "--format",
+            "yaml",
+            "--title",
+            "CLI Only Test Report",
+            "--project",
+            "CLI Only Test Project",
+            "--environment",
+            "CLI Environment",
+            "--platform",
+            "CLI Platform",
+            "--executor",
+            "CLI Executor",
+        ])
+        .output()
+        .expect("Failed to execute verifier");
+
+    assert!(
+        output.status.success(),
+        "Verifier command failed: {}\nStdout: {}",
+        String::from_utf8_lossy(&output.stderr),
+        String::from_utf8_lossy(&output.stdout)
+    );
+
+    let output_yaml = String::from_utf8_lossy(&output.stdout);
+
+    // Verify CLI values are used
+    assert!(output_yaml.contains("title: CLI Only Test Report"));
+    assert!(output_yaml.contains("project: CLI Only Test Project"));
+    assert!(output_yaml.contains("environment: CLI Environment"));
+    assert!(output_yaml.contains("platform: CLI Platform"));
+    assert!(output_yaml.contains("executor: CLI Executor"));
+
+    let parsed: ContainerReport = serde_yaml::from_str(&output_yaml).expect("Failed to parse YAML");
+    assert_eq!(parsed.title, "CLI Only Test Report");
+    assert_eq!(parsed.project, "CLI Only Test Project");
+    assert_eq!(
+        parsed.metadata.environment,
+        Some("CLI Environment".to_string())
+    );
+    assert_eq!(parsed.metadata.platform, Some("CLI Platform".to_string()));
+    assert_eq!(parsed.metadata.executor, Some("CLI Executor".to_string()));
+}
+
+#[test]
+fn test_e2e_verifier_with_config_and_cli_overrides() {
+    let temp_dir = TempDir::new().unwrap();
+    let logs_folder = temp_dir.path().join("logs");
+    fs::create_dir(&logs_folder).unwrap();
+
+    // Create a simple execution log
+    let log_file = logs_folder.join("test_execution_log.json");
+    fs::write(
+        &log_file,
+        r#"[
+  {
+    "test_sequence": 1,
+    "step": 1,
+    "exit_code": 0,
+    "output": "Success",
+    "timestamp": "2024-01-15T10:30:00Z"
+  }
+]"#,
+    )
+    .unwrap();
+
+    let config_path = PathBuf::from("testcases/verifier_scenarios/container_config.yml");
+
+    // Run verifier with config file AND CLI overrides
+    let output = Command::new("cargo")
+        .args([
+            "run",
+            "--bin",
+            "verifier",
+            "--",
+            "--folder",
+            logs_folder.to_str().unwrap(),
+            "--test-case-dir",
+            "testcases",
+            "--format",
+            "yaml",
+            "--config",
+            config_path.to_str().unwrap(),
+            "--title",
+            "CLI Override Title",
+            "--environment",
+            "CLI Override Environment",
+        ])
+        .output()
+        .expect("Failed to execute verifier");
+
+    assert!(
+        output.status.success(),
+        "Verifier command failed: {}\nStdout: {}",
+        String::from_utf8_lossy(&output.stderr),
+        String::from_utf8_lossy(&output.stdout)
+    );
+
+    let output_yaml = String::from_utf8_lossy(&output.stdout);
+
+    // Verify CLI overrides take precedence
+    assert!(output_yaml.contains("title: CLI Override Title"));
+    assert!(output_yaml.contains("environment: CLI Override Environment"));
+
+    // Verify non-overridden values come from config file
+    assert!(output_yaml.contains("project: Container Config Test Project"));
+    assert!(output_yaml.contains("platform: Linux x86_64"));
+    assert!(output_yaml.contains("executor: CI Pipeline v1.0"));
+
+    let parsed: ContainerReport = serde_yaml::from_str(&output_yaml).expect("Failed to parse YAML");
+    assert_eq!(parsed.title, "CLI Override Title");
+    assert_eq!(parsed.project, "Container Config Test Project");
+    assert_eq!(
+        parsed.metadata.environment,
+        Some("CLI Override Environment".to_string())
+    );
+    assert_eq!(parsed.metadata.platform, Some("Linux x86_64".to_string()));
+    assert_eq!(
+        parsed.metadata.executor,
+        Some("CI Pipeline v1.0".to_string())
+    );
+}
+
+#[test]
+fn test_e2e_verifier_with_defaults_fallback() {
+    let temp_dir = TempDir::new().unwrap();
+    let logs_folder = temp_dir.path().join("logs");
+    fs::create_dir(&logs_folder).unwrap();
+
+    // Create a simple execution log
+    let log_file = logs_folder.join("test_execution_log.json");
+    fs::write(
+        &log_file,
+        r#"[
+  {
+    "test_sequence": 1,
+    "step": 1,
+    "exit_code": 0,
+    "output": "Success",
+    "timestamp": "2024-01-15T10:30:00Z"
+  }
+]"#,
+    )
+    .unwrap();
+
+    // Run verifier with NO config file and NO CLI flags (use defaults)
+    let output = Command::new("cargo")
+        .args([
+            "run",
+            "--bin",
+            "verifier",
+            "--",
+            "--folder",
+            logs_folder.to_str().unwrap(),
+            "--test-case-dir",
+            "testcases",
+            "--format",
+            "yaml",
+        ])
+        .output()
+        .expect("Failed to execute verifier");
+
+    assert!(
+        output.status.success(),
+        "Verifier command failed: {}\nStdout: {}",
+        String::from_utf8_lossy(&output.stderr),
+        String::from_utf8_lossy(&output.stdout)
+    );
+
+    let output_yaml = String::from_utf8_lossy(&output.stdout);
+
+    // Verify default values are used
+    assert!(output_yaml.contains("title: Test Execution Results"));
+    assert!(output_yaml.contains("project: Test Case Manager - Verification Results"));
+
+    let parsed: ContainerReport = serde_yaml::from_str(&output_yaml).expect("Failed to parse YAML");
+    assert_eq!(parsed.title, "Test Execution Results");
+    assert_eq!(parsed.project, "Test Case Manager - Verification Results");
+
+    // Optional fields should be None when using defaults
+    assert!(parsed.metadata.environment.is_none());
+    assert!(parsed.metadata.platform.is_none());
+    assert!(parsed.metadata.executor.is_none());
+}
+
+#[test]
+fn test_e2e_verifier_with_minimal_config_file() {
+    let temp_dir = TempDir::new().unwrap();
+    let logs_folder = temp_dir.path().join("logs");
+    fs::create_dir(&logs_folder).unwrap();
+
+    // Create a simple execution log
+    let log_file = logs_folder.join("test_execution_log.json");
+    fs::write(
+        &log_file,
+        r#"[
+  {
+    "test_sequence": 1,
+    "step": 1,
+    "exit_code": 0,
+    "output": "Success",
+    "timestamp": "2024-01-15T10:30:00Z"
+  }
+]"#,
+    )
+    .unwrap();
+
+    let config_path = PathBuf::from("testcases/verifier_scenarios/minimal_container_config.yml");
+
+    // Run verifier with minimal config file (only required fields)
+    let output = Command::new("cargo")
+        .args([
+            "run",
+            "--bin",
+            "verifier",
+            "--",
+            "--folder",
+            logs_folder.to_str().unwrap(),
+            "--test-case-dir",
+            "testcases",
+            "--format",
+            "yaml",
+            "--config",
+            config_path.to_str().unwrap(),
+        ])
+        .output()
+        .expect("Failed to execute verifier");
+
+    assert!(
+        output.status.success(),
+        "Verifier command failed: {}\nStdout: {}",
+        String::from_utf8_lossy(&output.stderr),
+        String::from_utf8_lossy(&output.stdout)
+    );
+
+    let output_yaml = String::from_utf8_lossy(&output.stdout);
+
+    // Verify required fields from minimal config
+    assert!(output_yaml.contains("title: Minimal Test Report"));
+    assert!(output_yaml.contains("project: Minimal Test Project"));
+
+    let parsed: ContainerReport = serde_yaml::from_str(&output_yaml).expect("Failed to parse YAML");
+    assert_eq!(parsed.title, "Minimal Test Report");
+    assert_eq!(parsed.project, "Minimal Test Project");
+
+    // Optional fields should be None in minimal config
+    assert!(parsed.metadata.environment.is_none());
+    assert!(parsed.metadata.platform.is_none());
+    assert!(parsed.metadata.executor.is_none());
+}
+
+#[test]
+fn test_e2e_verifier_json_format_with_config() {
+    let temp_dir = TempDir::new().unwrap();
+    let logs_folder = temp_dir.path().join("logs");
+    fs::create_dir(&logs_folder).unwrap();
+
+    // Create a simple execution log
+    let log_file = logs_folder.join("test_execution_log.json");
+    fs::write(
+        &log_file,
+        r#"[
+  {
+    "test_sequence": 1,
+    "step": 1,
+    "exit_code": 0,
+    "output": "Success",
+    "timestamp": "2024-01-15T10:30:00Z"
+  }
+]"#,
+    )
+    .unwrap();
+
+    let config_path = PathBuf::from("testcases/verifier_scenarios/container_config.yml");
+
+    // Run verifier with JSON format and config file
+    let output = Command::new("cargo")
+        .args([
+            "run",
+            "--bin",
+            "verifier",
+            "--",
+            "--folder",
+            logs_folder.to_str().unwrap(),
+            "--test-case-dir",
+            "testcases",
+            "--format",
+            "json",
+            "--config",
+            config_path.to_str().unwrap(),
+        ])
+        .output()
+        .expect("Failed to execute verifier");
+
+    assert!(
+        output.status.success(),
+        "Verifier command failed: {}\nStdout: {}",
+        String::from_utf8_lossy(&output.stderr),
+        String::from_utf8_lossy(&output.stdout)
+    );
+
+    let output_json = String::from_utf8_lossy(&output.stdout);
+
+    // Verify JSON structure
+    assert!(output_json.contains("\"title\": \"Container Config Test Report\""));
+    assert!(output_json.contains("\"project\": \"Container Config Test Project\""));
+    assert!(output_json.contains("\"environment\": \"Development\""));
+    assert!(output_json.contains("\"platform\": \"Linux x86_64\""));
+    assert!(output_json.contains("\"executor\": \"CI Pipeline v1.0\""));
+
+    let parsed: ContainerReport = serde_json::from_str(&output_json).expect("Failed to parse JSON");
+    assert_eq!(parsed.title, "Container Config Test Report");
+    assert_eq!(parsed.project, "Container Config Test Project");
+    assert_eq!(parsed.metadata.environment, Some("Development".to_string()));
+    assert_eq!(parsed.metadata.platform, Some("Linux x86_64".to_string()));
+    assert_eq!(
+        parsed.metadata.executor,
+        Some("CI Pipeline v1.0".to_string())
+    );
+}
