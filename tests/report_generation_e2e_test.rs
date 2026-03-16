@@ -640,9 +640,7 @@ fn test_e2e_container_format_metadata_accuracy() {
         executor: Some("Test Executor".to_string()),
     };
 
-    let yaml = verifier
-        .generate_report(&[report], "yaml", config)
-        .unwrap();
+    let yaml = verifier.generate_report(&[report], "yaml", config).unwrap();
 
     let parsed: ContainerReport = serde_yaml::from_str(&yaml).expect("Failed to parse YAML");
 
@@ -713,9 +711,7 @@ fn test_e2e_container_format_json_output() {
         executor: None,
     };
 
-    let json = verifier
-        .generate_report(&[report], "json", config)
-        .unwrap();
+    let json = verifier.generate_report(&[report], "json", config).unwrap();
 
     // Verify JSON structure
     assert!(json.contains("\"title\""), "Missing title in JSON");
@@ -826,9 +822,7 @@ fn test_e2e_container_format_matches_template_structure() {
         executor: Some("Test Executor".to_string()),
     };
 
-    let yaml = verifier
-        .generate_report(&[report], "yaml", config)
-        .unwrap();
+    let yaml = verifier.generate_report(&[report], "yaml", config).unwrap();
 
     let generated: ContainerReport =
         serde_yaml::from_str(&yaml).expect("Failed to parse generated YAML");
