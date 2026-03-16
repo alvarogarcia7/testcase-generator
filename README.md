@@ -140,7 +140,7 @@ test-executor execute testcase.yml
 **Purpose**: Verify test execution logs against expected test case definitions.
 
 **Input**: Test execution log files (JSON), test case YAML files  
-**Output**: Verification reports (text, JSON, JUnit XML, Container YAML)
+**Output**: Verification reports in YAML or JSON format with rich metadata
 
 **Subcommands**:
 - `single` - Verify single execution log against test case
@@ -153,17 +153,25 @@ test-executor execute testcase.yml
 # Verify single test
 test-verify single --log exec.log --test-case-id TC001
 
-# Batch verify with JUnit output
-test-verify batch --logs logs/*.log --format junit --output report.xml
+# Batch verify with YAML output
+test-verify batch --logs logs/*.log --format yaml --output report.yaml
 
-# Generate container YAML report with metadata
+# Generate report with metadata using config file
 test-verify batch --logs logs/*.log --format yaml --output report.yaml \
-  --container-format \
+  --config verifier-config.yaml
+
+# Generate report with metadata using CLI flags
+test-verify batch --logs logs/*.log --format yaml --output report.yaml \
   --title "Test Run 2024-01" \
   --project "My Test Suite" \
   --environment "Staging" \
   --platform "Linux x86_64" \
   --executor "CI Pipeline v2.1"
+
+# Combine config file and CLI flags (CLI flags override config values)
+test-verify batch --logs logs/*.log --format yaml --output report.yaml \
+  --config verifier-config.yaml \
+  --environment "Production"
 
 # Parse log file
 test-verify parse-log --log exec.log --format json
@@ -171,6 +179,8 @@ test-verify parse-log --log exec.log --format json
 # Verbose mode - detailed logging for debugging
 test-verify single --log exec.log --test-case-id TC001 --verbose
 test-verify batch --logs logs/*.log --verbose
+
+test-verify parse-log --log exec.log
 ```
 
 **Verbose Mode**: Use the `--verbose` flag to enable detailed logging that shows parser state transitions, match attempts, field extraction, and validation steps. This is helpful for debugging log parsing issues. See [Verifier Verbose Logging Documentation](docs/VERIFIER_VERBOSE_LOGGING.md) for details.
@@ -1102,10 +1112,11 @@ The `test-verify` binary provides batch verification capabilities for comparing 
 - **Batch Processing**: Process multiple test execution logs simultaneously
 - **Auto-locate Test Cases**: Uses TestCaseStorage to automatically find test case definitions
 - **Flexible Matching**: Supports exact matches, wildcards (`*`), and regex patterns (`/pattern/`)
-- **Multiple Output Formats**: Text, JSON, JUnit XML, and Container YAML
-- **Container YAML Reports**: Enhanced YAML format with rich metadata including title, project, environment, platform, and executor information
+- **Multiple Output Formats**: YAML and JSON with rich metadata
+- **Rich Metadata Support**: Include title, project, environment, platform, and executor information
 - **Aggregated Reports**: Pass/fail statistics per test case with detailed failure reasons
-- **CI/CD Integration**: JUnit XML output for seamless integration with CI/CD pipelines
+- **Configuration File Support**: Define metadata in a YAML configuration file
+- **CLI Flag Override**: Override configuration file values with command-line flags
 
 ### Quick Start
 
@@ -1118,18 +1129,24 @@ cargo build --release --bin test-verify
   --log test-execution.log \
   --test-case-id TC001
 
-# Batch verify multiple logs with JUnit output
+# Batch verify multiple logs with YAML output
 ./target/release/test-verify batch \
   --logs logs/*.log \
-  --format junit \
-  --output junit-report.xml
+  --format yaml \
+  --output report.yaml
 
-# Generate container YAML report with metadata
+# Generate report with metadata using config file
 ./target/release/test-verify batch \
   --logs logs/*.log \
   --format yaml \
   --output report.yaml \
-  --container-format \
+  --config verifier-config.yaml
+
+# Generate report with metadata using CLI flags
+./target/release/test-verify batch \
+  --logs logs/*.log \
+  --format yaml \
+  --output report.yaml \
   --title "Test Run 2024-01" \
   --project "My Test Suite" \
   --environment "Staging" \
@@ -1159,32 +1176,73 @@ Example:
 - `batch`: Process multiple logs and generate aggregated reports
 - `parse-log`: Parse and display log contents without verification
 
-### Container YAML Report Format
+### Configuration File
 
-The `--container-format` flag enables an enhanced YAML report format with rich metadata. This format wraps test results in a container structure with contextual information about the test run.
+The verifier supports a YAML configuration file to define metadata for reports. This allows you to maintain consistent metadata across multiple test runs without repeating command-line flags.
 
-**Available Metadata Flags** (used with `--container-format`):
-- `--title`: Report title (default: "Test Execution Results")
-- `--project`: Project name (default: "Test Case Manager - Verification Results")
-- `--environment`: Environment information (e.g., "Production", "Staging", "Development")
-- `--platform`: Platform information (e.g., "Linux x86_64", "macOS ARM64")
-- `--executor`: Executor information (e.g., "CI Pipeline v2.1", "Manual Test Run")
-
-**Example**:
-```bash
-test-verify batch \
-  --logs logs/*.log \
-  --format yaml \
-  --output report.yaml \
-  --container-format \
-  --title "Nightly Test Run 2024-01-15" \
-  --project "Production Verification Suite" \
-  --environment "Production" \
-  --platform "Linux x86_64" \
-  --executor "Jenkins Pipeline v3.2"
+**Configuration File Format** (see `verifier-config.example.yaml`):
+```yaml
+title: "Test Execution Results"
+project: "Test Case Manager - Verification Results"
+environment: "Staging"
+platform: "Linux x86_64"
+executor: "Jenkins v3.2"
 ```
 
-The container format provides a structured report with:
+**Schema**: `schemas/container_config.schema.json`
+
+**All fields are optional with sensible defaults:**
+- `title`: Report title (default: "Test Execution Results")
+- `project`: Project name (default: "Test Case Manager - Verification Results")
+- `environment`: Environment information (e.g., "Production", "Staging", "Development")
+- `platform`: Platform information (e.g., "Linux x86_64", "macOS ARM64")
+- `executor`: Executor information (e.g., "CI Pipeline v2.1", "Manual Test Run")
+
+### CLI Flags
+
+All configuration file fields can be overridden using command-line flags:
+
+- `--config <PATH>`: Path to YAML configuration file (optional)
+- `--title <TITLE>`: Report title (overrides config file)
+- `--project <PROJECT>`: Project name (overrides config file)
+- `--environment <ENV>`: Environment information (overrides config file)
+- `--platform <PLATFORM>`: Platform information (overrides config file)
+- `--executor <EXECUTOR>`: Executor information (overrides config file)
+
+**Precedence**: CLI flags > Configuration file > Default values
+
+### Usage Patterns
+
+**Using defaults (no config, no CLI flags):**
+```bash
+test-verify batch --logs logs/*.log --format yaml --output report.yaml
+```
+
+**Using configuration file:**
+```bash
+test-verify batch --logs logs/*.log --format yaml --output report.yaml \
+  --config verifier-config.yaml
+```
+
+**Using only CLI flags:**
+```bash
+test-verify batch --logs logs/*.log --format yaml --output report.yaml \
+  --title "Nightly Test Run" \
+  --environment "Production" \
+  --platform "Linux x86_64"
+```
+
+**Combining config file and CLI flags (CLI overrides config):**
+```bash
+test-verify batch --logs logs/*.log --format yaml --output report.yaml \
+  --config verifier-config.yaml \
+  --title "Custom Title" \
+  --environment "Production"
+```
+
+### Report Format
+
+Reports provide a structured format with:
 - Test execution metadata (title, project, environment, platform, executor)
 - Timestamp of report generation
 - Summary statistics (total tests, passed, failed, pass rate)
