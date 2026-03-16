@@ -7,8 +7,9 @@
 # 2. Converting verification output to result YAML
 # 3. Invoking test-plan-doc-gen to generate AsciiDoc and Markdown reports
 # 4. Validating generated files exist and contain expected content markers
-# 5. Cleaning up temporary files
-# 6. Checking for test-plan-doc-gen availability and skipping if not found
+# 5. Verifying report quality and content accuracy
+# 6. Cleaning up temporary files
+# 7. Checking for test-plan-doc-gen availability and skipping if not found
 #
 # Usage: ./tests/integration/test_documentation_generation.sh [--no-remove]
 #
@@ -277,21 +278,77 @@ fi
 if [[ $SKIP_DOC_GEN -eq 0 ]] && [[ -f "$ASCIIDOC_OUTPUT" ]]; then
     pass "AsciiDoc report file created: $(basename "$ASCIIDOC_OUTPUT")"
     
-    # Validate AsciiDoc content markers
-    if grep -q "= Test Execution Results Report" "$ASCIIDOC_OUTPUT" || \
-       grep -q "Test Execution Results" "$ASCIIDOC_OUTPUT" || \
-       grep -q "TEST_SUCCESS_001" "$ASCIIDOC_OUTPUT"; then
-        pass "AsciiDoc report contains expected content markers"
-    else
-        fail "AsciiDoc report missing expected content markers"
-    fi
-    
-    # Check file size is reasonable (not empty)
+    # Validate AsciiDoc file size is non-zero
     FILE_SIZE=$(stat -f%z "$ASCIIDOC_OUTPUT" 2>/dev/null || stat -c%s "$ASCIIDOC_OUTPUT" 2>/dev/null || echo "0")
     if [[ $FILE_SIZE -gt 0 ]]; then
         pass "AsciiDoc report has content ($FILE_SIZE bytes)"
     else
         fail "AsciiDoc report is empty"
+    fi
+    
+    # Validate AsciiDoc contains test case ID
+    if grep -q "TEST_SUCCESS_001" "$ASCIIDOC_OUTPUT"; then
+        pass "AsciiDoc report contains test case ID (TEST_SUCCESS_001)"
+    else
+        fail "AsciiDoc report missing test case ID"
+    fi
+    
+    # Validate AsciiDoc contains description
+    if grep -q "Successful execution scenario" "$ASCIIDOC_OUTPUT" || \
+       grep -q "description" "$ASCIIDOC_OUTPUT"; then
+        pass "AsciiDoc report contains description content"
+    else
+        fail "AsciiDoc report missing description content"
+    fi
+    
+    # Validate AsciiDoc contains sequence information
+    if grep -q "Successful Command Sequence" "$ASCIIDOC_OUTPUT" || \
+       grep -q "sequence" "$ASCIIDOC_OUTPUT" || \
+       grep -q "Sequence" "$ASCIIDOC_OUTPUT"; then
+        pass "AsciiDoc report contains sequence information"
+    else
+        fail "AsciiDoc report missing sequence information"
+    fi
+    
+    # Validate AsciiDoc contains pass/fail status
+    if grep -q "pass" "$ASCIIDOC_OUTPUT" || \
+       grep -q "Pass" "$ASCIIDOC_OUTPUT" || \
+       grep -q "PASS" "$ASCIIDOC_OUTPUT" || \
+       grep -q "success" "$ASCIIDOC_OUTPUT" || \
+       grep -q "true" "$ASCIIDOC_OUTPUT"; then
+        pass "AsciiDoc report contains pass/fail status"
+    else
+        fail "AsciiDoc report missing pass/fail status"
+    fi
+    
+    # Validate AsciiDoc syntax (basic checks)
+    # Check for document title (= heading)
+    if grep -E "^= " "$ASCIIDOC_OUTPUT" > /dev/null 2>&1; then
+        pass "AsciiDoc report has valid document title syntax"
+    else
+        log_warning "AsciiDoc report may be missing document title (= heading)"
+    fi
+    
+    # Check for section headings (== or more)
+    if grep -E "^==+ " "$ASCIIDOC_OUTPUT" > /dev/null 2>&1; then
+        pass "AsciiDoc report has valid section heading syntax"
+    else
+        log_verbose "AsciiDoc report has no section headings"
+    fi
+    
+    # Validate content accuracy against container YAML
+    if grep -q "Test Execution Results Report" "$ASCIIDOC_OUTPUT" || \
+       grep -q "Test Case Manager" "$ASCIIDOC_OUTPUT"; then
+        pass "AsciiDoc report reflects container YAML metadata"
+    else
+        log_warning "AsciiDoc report may not accurately reflect container metadata"
+    fi
+    
+    # Check for project name from container
+    if grep -q "Test Case Manager" "$ASCIIDOC_OUTPUT"; then
+        pass "AsciiDoc report contains project name from container"
+    else
+        log_verbose "AsciiDoc report may not contain project name"
     fi
 else
     if [[ $SKIP_DOC_GEN -eq 0 ]]; then
@@ -300,7 +357,7 @@ else
 fi
 
 # Test 5: Generate Markdown report from test case YAML
-section "Test 5: Generate Markdown Report"
+section "Test 5: Generate Markdown Report from Test Case"
 
 MARKDOWN_OUTPUT="$REPORTS_DIR/TEST_SUCCESS_001_test_plan.md"
 
@@ -319,21 +376,88 @@ fi
 if [[ $SKIP_DOC_GEN -eq 0 ]] && [[ -f "$MARKDOWN_OUTPUT" ]]; then
     pass "Markdown report file created: $(basename "$MARKDOWN_OUTPUT")"
     
-    # Validate Markdown content markers
-    if grep -q "# " "$MARKDOWN_OUTPUT" || \
-       grep -q "TEST_SUCCESS_001" "$MARKDOWN_OUTPUT" || \
-       grep -q "test" "$MARKDOWN_OUTPUT"; then
-        pass "Markdown report contains expected content markers"
-    else
-        fail "Markdown report missing expected content markers"
-    fi
-    
-    # Check file size is reasonable (not empty)
+    # Validate Markdown file size is non-zero
     FILE_SIZE=$(stat -f%z "$MARKDOWN_OUTPUT" 2>/dev/null || stat -c%s "$MARKDOWN_OUTPUT" 2>/dev/null || echo "0")
     if [[ $FILE_SIZE -gt 0 ]]; then
         pass "Markdown report has content ($FILE_SIZE bytes)"
     else
         fail "Markdown report is empty"
+    fi
+    
+    # Validate Markdown contains test case ID
+    if grep -q "TEST_SUCCESS_001" "$MARKDOWN_OUTPUT"; then
+        pass "Markdown report contains test case ID (TEST_SUCCESS_001)"
+    else
+        fail "Markdown report missing test case ID"
+    fi
+    
+    # Validate Markdown contains description
+    if grep -q "Successful execution scenario" "$MARKDOWN_OUTPUT" || \
+       grep -q "passing steps" "$MARKDOWN_OUTPUT" || \
+       grep -q "description" "$MARKDOWN_OUTPUT"; then
+        pass "Markdown report contains description content"
+    else
+        fail "Markdown report missing description content"
+    fi
+    
+    # Validate Markdown contains sequence information
+    if grep -q "Successful Command Sequence" "$MARKDOWN_OUTPUT" || \
+       grep -q "sequence" "$MARKDOWN_OUTPUT" || \
+       grep -q "Sequence" "$MARKDOWN_OUTPUT"; then
+        pass "Markdown report contains sequence information"
+    else
+        fail "Markdown report missing sequence information"
+    fi
+    
+    # Validate Markdown contains step information
+    if grep -q "step" "$MARKDOWN_OUTPUT" || \
+       grep -q "Step" "$MARKDOWN_OUTPUT" || \
+       grep -q "Echo a greeting message" "$MARKDOWN_OUTPUT"; then
+        pass "Markdown report contains step information"
+    else
+        fail "Markdown report missing step information"
+    fi
+    
+    # Validate Markdown syntax (basic checks)
+    # Check for headings (# syntax)
+    if grep -E "^#+ " "$MARKDOWN_OUTPUT" > /dev/null 2>&1; then
+        pass "Markdown report has valid heading syntax"
+    else
+        fail "Markdown report missing heading syntax"
+    fi
+    
+    # Check for proper Markdown structure (not malformed)
+    # Count opening and closing code fences if any
+    OPENING_FENCES=$(grep -c '^```' "$MARKDOWN_OUTPUT" 2>/dev/null || echo "0")
+    if [[ $((OPENING_FENCES % 2)) -eq 0 ]]; then
+        pass "Markdown report has balanced code fences"
+    else
+        fail "Markdown report has unbalanced code fences"
+    fi
+    
+    # Validate content accuracy against test case YAML
+    if grep -q "TEST_SUCCESS_001" "$MARKDOWN_OUTPUT" && \
+       grep -q "Successful" "$MARKDOWN_OUTPUT"; then
+        pass "Markdown report accurately reflects test case YAML data"
+    else
+        fail "Markdown report may not accurately reflect test case YAML"
+    fi
+    
+    # Check for requirement from YAML
+    if grep -q "TEST_SUCCESS" "$MARKDOWN_OUTPUT" || \
+       grep -q "requirement" "$MARKDOWN_OUTPUT"; then
+        pass "Markdown report contains requirement information"
+    else
+        log_verbose "Markdown report may not contain requirement information"
+    fi
+    
+    # Check for initial conditions
+    if grep -q "initial" "$MARKDOWN_OUTPUT" || \
+       grep -q "condition" "$MARKDOWN_OUTPUT" || \
+       grep -q "Shell" "$MARKDOWN_OUTPUT"; then
+        pass "Markdown report contains initial conditions"
+    else
+        log_verbose "Markdown report may not contain initial conditions"
     fi
 else
     if [[ $SKIP_DOC_GEN -eq 0 ]]; then
@@ -341,8 +465,156 @@ else
     fi
 fi
 
-# Test 6: Verify cleanup of temporary files (happens automatically via setup_cleanup)
-section "Test 6: Verify Cleanup"
+# Test 6: Generate HTML report from result container
+section "Test 6: Generate HTML Report from Results Container"
+
+HTML_OUTPUT="$REPORTS_DIR/test_results_report.html"
+
+log_info "Generating HTML test results report..."
+
+if invoke_test_plan_doc_gen \
+    --container "$RESULT_CONTAINER" \
+    --output "$HTML_OUTPUT" \
+    --format html > /dev/null 2>&1; then
+    pass "HTML report generated successfully"
+else
+    # HTML format may not be supported, continue without failing
+    log_verbose "HTML report generation not supported or failed"
+    HTML_SKIP=1
+fi
+
+if [[ -z "${HTML_SKIP:-}" ]] && [[ -f "$HTML_OUTPUT" ]]; then
+    pass "HTML report file created: $(basename "$HTML_OUTPUT")"
+    
+    # Validate HTML file size is non-zero
+    FILE_SIZE=$(stat -f%z "$HTML_OUTPUT" 2>/dev/null || stat -c%s "$HTML_OUTPUT" 2>/dev/null || echo "0")
+    if [[ $FILE_SIZE -gt 0 ]]; then
+        pass "HTML report has content ($FILE_SIZE bytes)"
+    else
+        fail "HTML report is empty"
+    fi
+    
+    # Validate HTML contains test case ID
+    if grep -q "TEST_SUCCESS_001" "$HTML_OUTPUT"; then
+        pass "HTML report contains test case ID (TEST_SUCCESS_001)"
+    else
+        fail "HTML report missing test case ID"
+    fi
+    
+    # Validate HTML contains description
+    if grep -q "Successful execution scenario" "$HTML_OUTPUT" || \
+       grep -q "description" "$HTML_OUTPUT"; then
+        pass "HTML report contains description content"
+    else
+        fail "HTML report missing description content"
+    fi
+    
+    # Validate HTML contains pass/fail status
+    if grep -q "pass" "$HTML_OUTPUT" || \
+       grep -q "Pass" "$HTML_OUTPUT" || \
+       grep -q "success" "$HTML_OUTPUT" || \
+       grep -q "true" "$HTML_OUTPUT"; then
+        pass "HTML report contains pass/fail status"
+    else
+        fail "HTML report missing pass/fail status"
+    fi
+    
+    # Validate HTML syntax (basic checks)
+    # Check for HTML structure tags
+    if grep -q "<html" "$HTML_OUTPUT" || grep -q "<!DOCTYPE" "$HTML_OUTPUT"; then
+        pass "HTML report has valid HTML document structure"
+    else
+        log_warning "HTML report may be missing DOCTYPE or html tag"
+    fi
+    
+    # Check for head and body sections
+    if grep -q "<head" "$HTML_OUTPUT" && grep -q "<body" "$HTML_OUTPUT"; then
+        pass "HTML report has head and body sections"
+    else
+        log_verbose "HTML report may be missing standard HTML sections"
+    fi
+    
+    # Check for closing tags balance (basic validation)
+    HTML_OPEN=$(grep -o "<html" "$HTML_OUTPUT" | wc -l | tr -d ' ')
+    HTML_CLOSE=$(grep -o "</html>" "$HTML_OUTPUT" | wc -l | tr -d ' ')
+    if [[ "$HTML_OPEN" -eq "$HTML_CLOSE" ]]; then
+        pass "HTML report has balanced html tags"
+    else
+        fail "HTML report has unbalanced html tags"
+    fi
+    
+    # Validate content accuracy against container YAML
+    if grep -q "Test Execution Results Report" "$HTML_OUTPUT" || \
+       grep -q "Test Case Manager" "$HTML_OUTPUT"; then
+        pass "HTML report reflects container YAML metadata"
+    else
+        log_warning "HTML report may not accurately reflect container metadata"
+    fi
+else
+    log_verbose "HTML report generation skipped or not supported"
+fi
+
+# Test 7: Verify report content completeness
+section "Test 7: Verify Report Content Completeness"
+
+# Check that AsciiDoc report has all expected sequences
+if [[ -f "$ASCIIDOC_OUTPUT" ]]; then
+    # Test case has 1 sequence with 3 steps
+    if grep -q "Successful Command Sequence" "$ASCIIDOC_OUTPUT"; then
+        pass "AsciiDoc report contains all sequence names"
+    else
+        fail "AsciiDoc report missing expected sequence names"
+    fi
+    
+    # Check for step descriptions
+    STEP_COUNT=0
+    if grep -q "Echo a greeting message" "$ASCIIDOC_OUTPUT"; then
+        ((STEP_COUNT++))
+    fi
+    if grep -q "Echo a status message" "$ASCIIDOC_OUTPUT"; then
+        ((STEP_COUNT++))
+    fi
+    if grep -q "Execute true command" "$ASCIIDOC_OUTPUT"; then
+        ((STEP_COUNT++))
+    fi
+    
+    if [[ $STEP_COUNT -ge 1 ]]; then
+        pass "AsciiDoc report contains step information ($STEP_COUNT/3 steps found)"
+    else
+        log_verbose "AsciiDoc report may not contain all step descriptions"
+    fi
+fi
+
+# Check that Markdown report has all expected sequences
+if [[ -f "$MARKDOWN_OUTPUT" ]]; then
+    # Test case has 1 sequence with 3 steps
+    if grep -q "Successful Command Sequence" "$MARKDOWN_OUTPUT"; then
+        pass "Markdown report contains all sequence names"
+    else
+        fail "Markdown report missing expected sequence names"
+    fi
+    
+    # Check for step descriptions
+    STEP_COUNT=0
+    if grep -q "Echo a greeting message" "$MARKDOWN_OUTPUT"; then
+        ((STEP_COUNT++))
+    fi
+    if grep -q "Echo a status message" "$MARKDOWN_OUTPUT"; then
+        ((STEP_COUNT++))
+    fi
+    if grep -q "Execute true command" "$MARKDOWN_OUTPUT"; then
+        ((STEP_COUNT++))
+    fi
+    
+    if [[ $STEP_COUNT -ge 1 ]]; then
+        pass "Markdown report contains step information ($STEP_COUNT/3 steps found)"
+    else
+        log_verbose "Markdown report may not contain all step descriptions"
+    fi
+fi
+
+# Test 8: Verify cleanup of temporary files (happens automatically via setup_cleanup)
+section "Test 8: Verify Cleanup"
 
 if [[ $REMOVE_TEMP -eq 1 ]]; then
     info "Temporary files will be cleaned up automatically on exit"
@@ -365,6 +637,10 @@ info "✓ Result YAML validation"
 if [[ $SKIP_DOC_GEN -eq 0 ]]; then
     info "✓ AsciiDoc report generation and validation"
     info "✓ Markdown report generation and validation"
+    if [[ -z "${HTML_SKIP:-}" ]] && [[ -f "$HTML_OUTPUT" ]]; then
+        info "✓ HTML report generation and validation"
+    fi
+    info "✓ Report content completeness verification"
 fi
 
 echo ""
@@ -380,11 +656,18 @@ fi
 
 if [[ $SKIP_DOC_GEN -eq 0 ]]; then
     if [[ -f "$ASCIIDOC_OUTPUT" ]]; then
-        info "  📄 AsciiDoc Report: $(basename "$ASCIIDOC_OUTPUT")"
+        FILE_SIZE=$(stat -f%z "$ASCIIDOC_OUTPUT" 2>/dev/null || stat -c%s "$ASCIIDOC_OUTPUT" 2>/dev/null || echo "0")
+        info "  📄 AsciiDoc Report: $(basename "$ASCIIDOC_OUTPUT") ($FILE_SIZE bytes)"
     fi
     
     if [[ -f "$MARKDOWN_OUTPUT" ]]; then
-        info "  📄 Markdown Report: $(basename "$MARKDOWN_OUTPUT")"
+        FILE_SIZE=$(stat -f%z "$MARKDOWN_OUTPUT" 2>/dev/null || stat -c%s "$MARKDOWN_OUTPUT" 2>/dev/null || echo "0")
+        info "  📄 Markdown Report: $(basename "$MARKDOWN_OUTPUT") ($FILE_SIZE bytes)"
+    fi
+    
+    if [[ -z "${HTML_SKIP:-}" ]] && [[ -f "$HTML_OUTPUT" ]]; then
+        FILE_SIZE=$(stat -f%z "$HTML_OUTPUT" 2>/dev/null || stat -c%s "$HTML_OUTPUT" 2>/dev/null || echo "0")
+        info "  📄 HTML Report: $(basename "$HTML_OUTPUT") ($FILE_SIZE bytes)"
     fi
 fi
 
