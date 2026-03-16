@@ -98,3 +98,7 @@ output/
 docker-compose.override.yml
 
 src/testcase_generator.egg-info/
+
+# Projector
+.projector/
+.projector-cache/

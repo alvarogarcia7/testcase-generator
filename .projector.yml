@@ -1,0 +1,135 @@
+---
+# Projector configuration for testcase-manager
+# https://github.com/alvarogarcia7/projector
+
+project:
+  name: testcase-manager
+  description: YAML-based test harness with executable bash script generation
+  language: rust
+
+checks:
+  # Code quality checks
+  - name: format
+    description: Check code formatting with rustfmt
+    command: make fmt
+    fix_command: make fmt
+    required: true
+
+  - name: lint
+    description: Run clippy linter
+    command: make lint
+    required: true
+
+  - name: build
+    description: Build all binaries
+    command: make build
+    required: true
+
+  - name: test-unit
+    description: Run unit tests
+    command: make test-unit
+    required: true
+
+  - name: test-e2e
+    description: Run end-to-end integration tests
+    command: make test-e2e
+    required: true
+
+  - name: test-doc
+    description: Run documentation tests
+    command: make test-doc
+    required: false
+
+  - name: coverage
+    description: Run code coverage analysis
+    command: make coverage
+    required: true
+
+  - name: verify-scripts
+    description: Verify shell script syntax
+    command: make verify-scripts
+    required: true
+
+  - name: shellcheck
+    description: Run shellcheck on shell scripts
+    command: make shellcheck
+    required: false
+
+  - name: validate-testcases
+    description: Validate test case YAML files
+    command: make verify-testcases
+    required: false
+
+  # Documentation checks
+  - name: docs
+    description: Generate Rust documentation
+    command: cargo doc --all-features --no-deps
+    required: false
+
+  - name: generate-docs
+    description: Generate documentation reports
+    command: make generate-docs
+    required: false
+
+workflows:
+  # Pre-commit workflow
+  pre-commit:
+    description: Run before committing code
+    checks:
+      - format
+      - lint
+      - build
+      - test-unit
+      - verify-scripts
+
+  # Full CI workflow
+  ci:
+    description: Complete CI pipeline
+    checks:
+      - format
+      - lint
+      - build
+      - test-unit
+      - test-e2e
+      - coverage
+      - verify-scripts
+      - docs
+
+  # Quick check workflow
+  quick:
+    description: Quick validation checks
+    checks:
+      - format
+      - lint
+      - build
+
+  # Pre-push workflow
+  pre-push:
+    description: Run before pushing to remote
+    checks:
+      - format
+      - lint
+      - build
+      - test-unit
+      - test-e2e
+      - verify-scripts
+
+settings:
+  # Fail fast - stop on first error
+  fail_fast: true
+  
+  # Parallel execution where possible
+  parallel: false
+  
+  # Colorized output
+  color: true
+  
+  # Verbose output
+  verbose: false
+
+# Environment variables for checks
+environment:
+  CARGO_INCREMENTAL: "0"
+  RUSTFLAGS: "-Dwarnings"
+  RUSTDOCFLAGS: "-Dwarnings"
+  RUST_BACKTRACE: "1"

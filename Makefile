@@ -336,3 +336,7 @@ generate-docs-all: build
 	./scripts/generate_documentation_reports.sh --logs-dir testcases --test-case-dir testcases
 .PHONY: generate-docs-all
 
+setup-projector-hooks:
+	./scripts/setup-projector-hooks.sh
+.PHONY: setup-projector-hooks
+

@@ -37,6 +37,8 @@ Hooks provide optional extensibility points throughout the test execution lifecy
 See the [Hooks](#hooks) section for detailed documentation and examples.
 
 ## Commands
+
+### Make Commands
 - **Build**: make build
 - **Lint**: make lint
 - **Test**: make test
@@ -54,7 +56,18 @@ See the [Hooks](#hooks) section for detailed documentation and examples.
 - **Watch Mode**: make watch (monitors testcases/ for changes and auto-validates)
 - **Generate Docs**: make generate-docs (generate documentation reports for verifier scenarios)
 - **Generate Docs All**: make generate-docs-all (generate documentation reports for all test scenarios including verifier_scenarios)
+- **Setup Projector Hooks**: make setup-projector-hooks (install git hooks for automatic projector validation)
 - **Dev Server**: N/A
+
+### Projector Workflows
+The project is configured with [Projector](https://github.com/alvarogarcia7/projector) for automated quality checks and workflows.
+
+- **Quick Check**: `projector run quick` (format, lint, build)
+- **Pre-commit**: `projector run pre-commit` (quick + unit tests + script verification)
+- **Pre-push**: `projector run pre-push` (pre-commit + e2e tests)
+- **Full CI**: `projector run ci` (all checks including coverage and docs)
+
+Individual checks can be run with `projector check <check-name>`. See [PROJECTOR_USAGE.md](PROJECTOR_USAGE.md) for details.
 
 You must build, test, lint, and verify coverage before committing
 

@@ -16,6 +16,7 @@ A comprehensive CLI tool for managing test cases in YAML format with interactive
 - **Test Verification**: Batch verification mode that processes test execution logs and generates reports with JUnit XML output for CI/CD integration
 - **Watch Mode**: Continuously monitor directories for file changes with automatic validation and instant feedback
 - **Variables and Data Passing**: Capture dynamic values from command output and pass data between test steps using regex patterns and variable substitution. See [Variables and Data Passing Documentation](docs/VARIABLE_PASSING.md) for details
+- **Projector Integration**: Automated quality checks and workflows via [Projector](https://github.com/alvarogarcia7/projector). See [PROJECTOR_USAGE.md](PROJECTOR_USAGE.md) for details
 
 ## Installation
 
@@ -1142,6 +1143,26 @@ make build
 make test
 make lint
 ```
+
+### Projector Workflows
+
+Use [Projector](https://github.com/alvarogarcia7/projector) for automated quality checks:
+
+```bash
+# Quick validation (format, lint, build)
+projector run quick
+
+# Pre-commit checks (includes unit tests)
+projector run pre-commit
+
+# Full CI pipeline (all checks including e2e tests)
+projector run ci
+
+# Pre-push validation
+projector run pre-push
+```
+
+See [PROJECTOR_USAGE.md](PROJECTOR_USAGE.md) for detailed usage instructions.
 
 ### Coverage Tools
 
