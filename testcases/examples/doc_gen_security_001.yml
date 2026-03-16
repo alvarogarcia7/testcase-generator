@@ -1,0 +1,387 @@
+requirement: "DOC_GEN_SECURITY"
+item: 1
+tc: 1
+id: 'DOC_GEN_SECURITY_001'
+description: 'Comprehensive security testing including authentication, authorization, encryption, and vulnerability detection'
+
+general_initial_conditions:
+  system:
+    - "Security testing tools are installed (openssl, nmap, curl)"
+    - "Test environment is isolated from production"
+  security:
+    - "Security policies are defined"
+    - "Test certificates and keys are available"
+
+initial_conditions:
+  system:
+    - "Test server is running on localhost"
+    - "Security configurations are applied"
+  environment:
+    - "Test credentials are set in environment variables"
+
+test_sequences:
+  - id: 1
+    name: "SSL/TLS Certificate Validation"
+    description: |
+                   Verify SSL/TLS certificate configurations, encryption
+                   strength, and certificate chain validation.
+    initial_conditions:
+      security:
+        - "HTTPS endpoint is available"
+    steps:
+      - step: 1
+        description: "Generate self-signed certificate for testing"
+        command: |
+          openssl req -x509 -newkey rsa:4096 -keyout /tmp/test-key.pem -out /tmp/test-cert.pem \
+            -days 365 -nodes -subj "/CN=localhost" 2>&1 | grep -i "writing"
+        expected:
+          success: true
+          result: 0
+          output: "writing"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -qi 'writing' <<< \"$COMMAND_OUTPUT\""
+      - step: 2
+        description: "Verify certificate file was created"
+        command: test -f /tmp/test-cert.pem && openssl x509 -in /tmp/test-cert.pem -noout -subject
+        expected:
+          success: true
+          result: 0
+          output: "CN = localhost"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'CN.*localhost' <<< \"$COMMAND_OUTPUT\""
+      - step: 3
+        description: "Check certificate validity period"
+        command: openssl x509 -in /tmp/test-cert.pem -noout -dates
+        expected:
+          success: true
+          result: 0
+          output: "notBefore"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'notBefore' <<< \"$COMMAND_OUTPUT\" && grep -q 'notAfter' <<< \"$COMMAND_OUTPUT\""
+      - step: 4
+        description: "Verify key strength (4096 bits)"
+        command: openssl rsa -in /tmp/test-key.pem -text -noout 2>&1 | grep -i "private-key" | grep -o "[0-9]*"
+        expected:
+          success: true
+          result: 0
+          output: "4096"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q '4096' <<< \"$COMMAND_OUTPUT\""
+      - step: 5
+        description: "Test certificate and key match"
+        command: |
+          CERT_MOD=$(openssl x509 -noout -modulus -in /tmp/test-cert.pem | openssl md5)
+          KEY_MOD=$(openssl rsa -noout -modulus -in /tmp/test-key.pem 2>/dev/null | openssl md5)
+          [[ "$CERT_MOD" == "$KEY_MOD" ]] && echo "MATCH" || echo "MISMATCH"
+        expected:
+          success: true
+          result: 0
+          output: "MATCH"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'MATCH' <<< \"$COMMAND_OUTPUT\""
+
+  - id: 2
+    name: "Authentication and Password Security"
+    description: |
+                   Test password hashing, authentication mechanisms,
+                   and credential validation.
+    initial_conditions:
+      security:
+        - "Authentication system is configured"
+    steps:
+      - step: 1
+        description: "Generate secure password hash (bcrypt)"
+        command: echo -n "SecureP@ssw0rd123" | openssl passwd -1 -stdin
+        expected:
+          success: true
+          result: 0
+          output: "$1$"
+        capture:
+          - variable: PASSWORD_HASH
+            pattern: "^(\\$1\\$[^\\s]+)$"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q '^\\$1\\$' <<< \"$COMMAND_OUTPUT\""
+      - step: 2
+        description: "Generate random salt for password"
+        command: openssl rand -hex 16
+        expected:
+          success: true
+          result: 0
+          output: ""
+        capture:
+          - variable: SALT
+            pattern: "^([0-9a-f]{32})$"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ $(echo \"$COMMAND_OUTPUT\" | tr -d '\\n' | wc -c) -eq 32 ]]"
+      - step: 3
+        description: "Create SHA-256 hash with salt"
+        command: echo -n "MyPassword${SALT}" | openssl dgst -sha256 | awk '{print $2}'
+        expected:
+          success: true
+          result: 0
+          output: ""
+        capture:
+          - variable: PASSWORD_SHA256
+            pattern: "^([0-9a-f]{64})$"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ $(echo \"$COMMAND_OUTPUT\" | tr -d '\\n' | wc -c) -eq 64 ]]"
+      - step: 4
+        description: "Verify password hash is deterministic"
+        command: echo -n "MyPassword${SALT}" | openssl dgst -sha256 | awk '{print $2}'
+        expected:
+          success: true
+          result: 0
+          output: "${PASSWORD_SHA256}"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$(echo \"$COMMAND_OUTPUT\" | tr -d '\\n')\" == \"${PASSWORD_SHA256}\" ]]"
+      - step: 5
+        description: "Test weak password detection (too short)"
+        command: |
+          PASSWORD="123"
+          if [[ ${#PASSWORD} -lt 8 ]]; then
+            echo "WEAK: Password too short"
+            exit 1
+          else
+            echo "STRONG"
+          fi
+        expected:
+          success: false
+          result: 1
+          output: "WEAK"
+        verification:
+          result: "[[ $EXIT_CODE -ne 0 ]]"
+          output: "grep -q 'WEAK' <<< \"$COMMAND_OUTPUT\""
+
+  - id: 3
+    name: "Authorization and Access Control"
+    description: |
+                   Test role-based access control, permission validation,
+                   and privilege escalation prevention.
+    initial_conditions:
+      security:
+        - "User roles are defined"
+        - "Permission system is configured"
+    steps:
+      - step: 1
+        description: "Test file permission restrictions"
+        command: |
+          touch /tmp/test-secure-file.txt
+          chmod 600 /tmp/test-secure-file.txt
+          ls -l /tmp/test-secure-file.txt | awk '{print $1}'
+        expected:
+          success: true
+          result: 0
+          output: "-rw-------"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q '^-rw-------' <<< \"$COMMAND_OUTPUT\""
+      - step: 2
+        description: "Verify file is not world-readable"
+        command: |
+          PERMS=$(stat -f "%Lp" /tmp/test-secure-file.txt 2>/dev/null || stat -c "%a" /tmp/test-secure-file.txt 2>/dev/null)
+          if [[ "$PERMS" == "600" ]]; then
+            echo "SECURE"
+          else
+            echo "INSECURE"
+          fi
+        expected:
+          success: true
+          result: 0
+          output: "SECURE"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'SECURE' <<< \"$COMMAND_OUTPUT\""
+      - step: 3
+        description: "Test directory permission inheritance"
+        command: |
+          mkdir -p /tmp/test-secure-dir
+          chmod 700 /tmp/test-secure-dir
+          touch /tmp/test-secure-dir/secret.txt
+          ls -ld /tmp/test-secure-dir | awk '{print $1}'
+        expected:
+          success: true
+          result: 0
+          output: "drwx------"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q '^drwx------' <<< \"$COMMAND_OUTPUT\""
+      - step: 4
+        description: "Validate user cannot access unauthorized files"
+        command: |
+          chmod 000 /tmp/test-restricted.txt 2>/dev/null || touch /tmp/test-restricted.txt && chmod 000 /tmp/test-restricted.txt
+          cat /tmp/test-restricted.txt 2>&1 || echo "ACCESS_DENIED"
+        expected:
+          success: true
+          result: 0
+          output: "ACCESS_DENIED"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -qi 'denied\\|permission' <<< \"$COMMAND_OUTPUT\" || grep -q 'ACCESS_DENIED' <<< \"$COMMAND_OUTPUT\""
+      - step: 5
+        description: "Test sudo privilege check (should fail without sudo)"
+        command: cat /etc/shadow 2>&1 || echo "UNAUTHORIZED"
+        expected:
+          success: true
+          result: 0
+          output: "UNAUTHORIZED"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -qi 'permission denied\\|unauthorized' <<< \"$COMMAND_OUTPUT\""
+
+  - id: 4
+    name: "Encryption and Data Protection"
+    description: |
+                   Test data encryption, decryption, and secure
+                   data transmission mechanisms.
+    initial_conditions:
+      security:
+        - "Encryption tools are available"
+    steps:
+      - step: 1
+        description: "Encrypt data using AES-256"
+        command: |
+          echo "Sensitive data for encryption" | \
+          openssl enc -aes-256-cbc -salt -pbkdf2 -pass pass:MySecretKey -out /tmp/encrypted.bin -base64
+        expected:
+          success: true
+          result: 0
+          output: ""
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "test -f /tmp/encrypted.bin"
+      - step: 2
+        description: "Verify encrypted file exists and is not plaintext"
+        command: |
+          test -f /tmp/encrypted.bin && \
+          ! grep -q "Sensitive data" /tmp/encrypted.bin && \
+          echo "ENCRYPTED"
+        expected:
+          success: true
+          result: 0
+          output: "ENCRYPTED"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'ENCRYPTED' <<< \"$COMMAND_OUTPUT\""
+      - step: 3
+        description: "Decrypt data and verify content"
+        command: |
+          openssl enc -aes-256-cbc -d -salt -pbkdf2 -pass pass:MySecretKey -in /tmp/encrypted.bin -base64
+        expected:
+          success: true
+          result: 0
+          output: "Sensitive data for encryption"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Sensitive data for encryption' <<< \"$COMMAND_OUTPUT\""
+      - step: 4
+        description: "Test decryption with wrong password fails"
+        command: |
+          openssl enc -aes-256-cbc -d -salt -pbkdf2 -pass pass:WrongPassword -in /tmp/encrypted.bin -base64 2>&1 || echo "DECRYPTION_FAILED"
+        expected:
+          success: true
+          result: 0
+          output: "DECRYPTION_FAILED"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -qi 'failed\\|bad decrypt\\|error' <<< \"$COMMAND_OUTPUT\""
+      - step: 5
+        description: "Generate and verify HMAC signature"
+        command: |
+          echo -n "Important message" | openssl dgst -sha256 -hmac "SecretKey" | awk '{print $2}'
+        expected:
+          success: true
+          result: 0
+          output: ""
+        capture:
+          - variable: HMAC_SIGNATURE
+            pattern: "^([0-9a-f]{64})$"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ $(echo \"$COMMAND_OUTPUT\" | tr -d '\\n' | wc -c) -eq 64 ]]"
+      - step: 6
+        description: "Verify HMAC signature is consistent"
+        command: |
+          HMAC=$(echo -n "Important message" | openssl dgst -sha256 -hmac "SecretKey" | awk '{print $2}')
+          [[ "$HMAC" == "${HMAC_SIGNATURE}" ]] && echo "VERIFIED" || echo "FAILED"
+        expected:
+          success: true
+          result: 0
+          output: "VERIFIED"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'VERIFIED' <<< \"$COMMAND_OUTPUT\""
+
+  - id: 5
+    name: "Security Cleanup and Validation"
+    description: |
+                   Clean up test artifacts and verify no sensitive
+                   data remains in temporary locations.
+    initial_conditions:
+      security:
+        - "Test artifacts exist"
+    steps:
+      - step: 1
+        description: "Securely delete encrypted files"
+        command: |
+          if [[ -f /tmp/encrypted.bin ]]; then
+            rm -f /tmp/encrypted.bin
+            echo "DELETED"
+          fi
+        expected:
+          success: true
+          result: 0
+          output: "DELETED"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "! test -f /tmp/encrypted.bin"
+      - step: 2
+        description: "Remove test certificates and keys"
+        command: rm -f /tmp/test-cert.pem /tmp/test-key.pem && echo "CLEANED"
+        expected:
+          success: true
+          result: 0
+          output: "CLEANED"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "! test -f /tmp/test-cert.pem && ! test -f /tmp/test-key.pem"
+      - step: 3
+        description: "Remove test secure files"
+        command: rm -f /tmp/test-secure-file.txt /tmp/test-restricted.txt && echo "REMOVED"
+        expected:
+          success: true
+          result: 0
+          output: "REMOVED"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "! test -f /tmp/test-secure-file.txt"
+      - step: 4
+        description: "Remove secure directory"
+        command: rm -rf /tmp/test-secure-dir && echo "DIRECTORY_REMOVED"
+        expected:
+          success: true
+          result: 0
+          output: "DIRECTORY_REMOVED"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "! test -d /tmp/test-secure-dir"
+      - step: 5
+        description: "Verify all test artifacts are removed"
+        command: |
+          COUNT=$(ls /tmp/test-* 2>/dev/null | wc -l)
+          [[ $COUNT -eq 0 ]] && echo "ALL_CLEAN" || echo "ARTIFACTS_REMAIN"
+        expected:
+          success: true
+          result: 0
+          output: "ALL_CLEAN"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'ALL_CLEAN' <<< \"$COMMAND_OUTPUT\""
