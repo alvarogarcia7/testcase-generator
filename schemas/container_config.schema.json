@@ -1,0 +1,105 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Container Format Configuration",
+  "description": "Schema for container format configuration used to wrap test verification results with rich metadata",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Title of the test report",
+      "minLength": 1,
+      "maxLength": 200,
+      "examples": [
+        "Test Execution Results",
+        "Nightly Test Run",
+        "Integration Test Suite",
+        "Production Smoke Tests"
+      ]
+    },
+    "project": {
+      "type": "string",
+      "description": "Name of the project being tested",
+      "minLength": 1,
+      "maxLength": 200,
+      "examples": [
+        "Test Case Manager - Verification Results",
+        "Production Suite",
+        "API Integration Tests",
+        "E2E Test Suite"
+      ]
+    },
+    "environment": {
+      "type": "string",
+      "description": "Environment in which the tests were executed (optional)",
+      "minLength": 1,
+      "maxLength": 100,
+      "examples": [
+        "Development",
+        "Staging",
+        "Production",
+        "QA",
+        "CI/CD",
+        "Local"
+      ]
+    },
+    "platform": {
+      "type": "string",
+      "description": "Platform information including OS and architecture (optional)",
+      "minLength": 1,
+      "maxLength": 150,
+      "examples": [
+        "Linux x86_64",
+        "macOS ARM64",
+        "Ubuntu 22.04 LTS",
+        "Windows 11 x64",
+        "Docker container (Alpine Linux)"
+      ]
+    },
+    "executor": {
+      "type": "string",
+      "description": "Information about the executor or CI/CD system running the tests (optional)",
+      "minLength": 1,
+      "maxLength": 150,
+      "examples": [
+        "Jenkins v3.2",
+        "GitHub Actions",
+        "GitLab CI Pipeline v2.1",
+        "Local execution",
+        "CircleCI",
+        "Azure DevOps Pipeline"
+      ]
+    }
+  },
+  "required": [
+    "title",
+    "project"
+  ],
+  "additionalProperties": false,
+  "examples": [
+    {
+      "title": "Test Execution Results",
+      "project": "Test Case Manager - Verification Results"
+    },
+    {
+      "title": "Nightly Test Run",
+      "project": "Production Suite",
+      "environment": "Staging",
+      "platform": "Linux x86_64",
+      "executor": "Jenkins v3.2"
+    },
+    {
+      "title": "Integration Test Suite",
+      "project": "API Service Tests",
+      "environment": "QA",
+      "platform": "macOS ARM64",
+      "executor": "GitHub Actions"
+    },
+    {
+      "title": "Production Smoke Tests",
+      "project": "Critical Path Validation",
+      "environment": "Production",
+      "platform": "Ubuntu 22.04 LTS",
+      "executor": "GitLab CI Pipeline v2.1"
+    }
+  ]
+}
