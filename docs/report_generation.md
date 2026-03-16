@@ -37,6 +37,15 @@ asciidoctor-pdf reports/documentation/reports/test_results_report.adoc
 
 ## Table of Contents
 
+1. [Installation and Building test-plan-doc-gen](#installation-and-building-test-plan-doc-gen)
+2. [Directory Structure](#directory-structure)
+3. [Running Report Generation](#running-report-generation)
+4. [Report Output Formats and Locations](#report-output-formats-and-locations)
+5. [Container Format vs. Legacy Format](#container-format-vs-legacy-format)
+6. [Workflow Examples](#workflow-examples)
+7. [Customizing Templates](#customizing-templates)
+8. [Troubleshooting](#troubleshooting)
+
 1. [Installation](#installation)
 2. [Dependencies](#dependencies)
 3. [Directory Structure](#directory-structure)
@@ -377,22 +386,79 @@ This script performs all steps:
 - `--container-template` - Path to container template YAML (default: `testcases/expected_output_reports/container_data.yml`)
 - `--help` - Show help message
 
+### Verifier CLI Options
+
+The verifier binary provides several CLI options for controlling report generation:
+
+#### Basic Options
+
+- `--log PATH, -l PATH` - Single-file mode: path to log file
+- `--test-case ID, -c ID` - Single-file mode: test case ID to verify against
+- `--folder PATH, -f PATH` - Folder discovery mode: path to folder containing log files
+- `--format FORMAT, -F FORMAT` - Output format (yaml or json, default: yaml)
+- `--output PATH, -o PATH` - Output file path (optional, defaults to stdout)
+- `--test-case-dir DIR, -d DIR` - Path to test case storage directory (default: testcases)
+- `--log-level LEVEL` - Set log level (trace, debug, info, warn, error, default: info)
+- `--verbose, -v` - Enable verbose output (equivalent to --log-level=debug)
+
+#### Container Format Options
+
+The `--container-format` flag enables enhanced report output with metadata and statistics. When enabled, the verifier generates a container YAML/JSON with comprehensive test execution information.
+
+- `--container-format` - Enable container YAML output format with enhanced metadata
+- `--title TEXT` - Report title (used with --container-format, default: "Test Execution Results")
+- `--project TEXT` - Project name (used with --container-format, default: "Test Case Manager - Verification Results")
+- `--environment TEXT` - Environment information (used with --container-format, optional)
+- `--platform TEXT` - Platform information (used with --container-format, optional)
+- `--executor TEXT` - Executor information (used with --container-format, optional)
+
+**Note:** The `--title` and `--project` options have default values, while `--environment`, `--platform`, and `--executor` are optional and will only be included in the output if specified.
+
 ### Step-by-Step Manual Generation
 
 You can also run each step individually:
 
 #### Step 1: Run Verifier on Execution Logs
 
+##### Legacy Format (JSON/YAML only)
+
 ```bash
 # Build verifier if needed
 cargo build --release --bin verifier
 
-# Run verifier in folder mode
+# Run verifier in folder mode - legacy format
 ./target/release/verifier \
   --folder testcases/verifier_scenarios \
   --format json \
   --output reports/documentation/verification/batch_verification.json \
   --test-case-dir testcases
+```
+
+##### Container Format (with metadata)
+
+```bash
+# Run verifier with container format - YAML
+./target/release/verifier \
+  --folder testcases/verifier_scenarios \
+  --format yaml \
+  --output reports/documentation/results/container_report.yaml \
+  --test-case-dir testcases \
+  --container-format \
+  --title "Test Execution Results Report" \
+  --project "Test Case Manager - Verification Results" \
+  --environment "Test Environment" \
+  --platform "Test Case Manager" \
+  --executor "Automated Test Framework"
+
+# Run verifier with container format - JSON
+./target/release/verifier \
+  --folder testcases/verifier_scenarios \
+  --format json \
+  --output reports/documentation/results/container_report.json \
+  --test-case-dir testcases \
+  --container-format \
+  --title "Test Execution Results Report" \
+  --project "Test Case Manager - Verification Results"
 ```
 
 #### Step 2: Convert Verification JSON to Result YAML
@@ -1014,6 +1080,697 @@ make test-container-compat
 # 2. Compatibility checks with test-plan-doc-gen
 # 3. Verifier scenario testing
 ```
+
+---
+
+## Container Format vs. Legacy Format
+
+The verifier supports two output formats: **legacy format** and **container format**. Understanding the differences helps you choose the right format for your reporting needs.
+
+### Legacy Format
+
+The legacy format outputs a simple batch verification report without metadata. It's suitable for basic verification needs and backward compatibility.
+
+**Command:**
+```bash
+./target/release/verifier \
+  --folder testcases/verifier_scenarios \
+  --format yaml \
+  --output reports/verification.yaml \
+  --test-case-dir testcases
+```
+
+**Output Structure (YAML):**
+```yaml
+test_cases:
+  - test_case_id: "TC_001"
+    description: "Example test case"
+    sequences:
+      - sequence_id: 1
+        name: "Test Sequence"
+        step_results:
+          - Pass:
+              step: 1
+              description: "Execute command"
+    total_steps: 1
+    passed_steps: 1
+    failed_steps: 0
+    not_executed_steps: 0
+    overall_pass: true
+total_test_cases: 1
+passed_test_cases: 1
+failed_test_cases: 0
+```
+
+**Output Structure (JSON):**
+```json
+{
+  "test_cases": [
+    {
+      "test_case_id": "TC_001",
+      "description": "Example test case",
+      "sequences": [...],
+      "total_steps": 1,
+      "passed_steps": 1,
+      "failed_steps": 0,
+      "not_executed_steps": 0,
+      "overall_pass": true
+    }
+  ],
+  "total_test_cases": 1,
+  "passed_test_cases": 1,
+  "failed_test_cases": 0
+}
+```
+
+### Container Format
+
+The container format provides enhanced output with metadata, execution context, and better integration with documentation tools like `test-plan-doc-gen`. It includes additional fields for title, project, test date, and execution environment.
+
+**Command:**
+```bash
+./target/release/verifier \
+  --folder testcases/verifier_scenarios \
+  --format yaml \
+  --output reports/container_report.yaml \
+  --test-case-dir testcases \
+  --container-format \
+  --title "Q1 2024 Test Results" \
+  --project "Product XYZ Certification" \
+  --environment "Production Test Lab" \
+  --platform "Test Platform v2.0" \
+  --executor "CI/CD Pipeline"
+```
+
+**Output Structure (YAML):**
+```yaml
+title: 'Q1 2024 Test Results'
+project: 'Product XYZ Certification'
+test_date: '2024-01-15T14:30:00Z'
+test_results:
+  - test_case_id: "TC_001"
+    description: "Example test case"
+    requirement: "REQ_001"
+    item: 1
+    tc: 1
+    sequences:
+      - sequence_id: 1
+        name: "Test Sequence"
+        step_results:
+          - Pass:
+              step: 1
+              description: "Execute command"
+        all_steps_passed: true
+    total_steps: 1
+    passed_steps: 1
+    failed_steps: 0
+    not_executed_steps: 0
+    overall_pass: true
+metadata:
+  environment: 'Production Test Lab'
+  platform: 'Test Platform v2.0'
+  executor: 'CI/CD Pipeline'
+  execution_duration: 45.7
+  total_test_cases: 1
+  passed_test_cases: 1
+  failed_test_cases: 0
+```
+
+**Output Structure (JSON):**
+```json
+{
+  "title": "Q1 2024 Test Results",
+  "project": "Product XYZ Certification",
+  "test_date": "2024-01-15T14:30:00Z",
+  "test_results": [
+    {
+      "test_case_id": "TC_001",
+      "description": "Example test case",
+      "requirement": "REQ_001",
+      "item": 1,
+      "tc": 1,
+      "sequences": [...],
+      "total_steps": 1,
+      "passed_steps": 1,
+      "failed_steps": 0,
+      "not_executed_steps": 0,
+      "overall_pass": true
+    }
+  ],
+  "metadata": {
+    "environment": "Production Test Lab",
+    "platform": "Test Platform v2.0",
+    "executor": "CI/CD Pipeline",
+    "execution_duration": 45.7,
+    "total_test_cases": 1,
+    "passed_test_cases": 1,
+    "failed_test_cases": 0
+  }
+}
+```
+
+### Key Differences
+
+| Feature | Legacy Format | Container Format |
+|---------|--------------|------------------|
+| **Title** | Not included | Configurable via `--title` |
+| **Project** | Not included | Configurable via `--project` |
+| **Test Date** | Not included | Auto-generated timestamp |
+| **Environment Info** | Not included | Optional via `--environment` |
+| **Platform Info** | Not included | Optional via `--platform` |
+| **Executor Info** | Not included | Optional via `--executor` |
+| **Execution Duration** | Not included | Auto-calculated in metadata |
+| **Metadata Section** | Not included | Comprehensive metadata object |
+| **Root Structure** | `test_cases` array | `test_results` array with metadata |
+| **Use Case** | Basic verification | Professional reports, documentation |
+| **test-plan-doc-gen** | Requires conversion | Direct compatibility |
+
+### When to Use Each Format
+
+**Use Legacy Format When:**
+- You need simple verification results without metadata
+- You're integrating with existing tools expecting the legacy structure
+- You don't need execution context or environment information
+- You're doing basic CI/CD pass/fail checking
+
+**Use Container Format When:**
+- You're generating professional documentation reports
+- You need execution metadata (environment, platform, executor)
+- You're using `test-plan-doc-gen` for report generation
+- You want comprehensive test execution context
+- You're creating audit trails or compliance documentation
+- You need to track test execution over time with timestamps
+
+### Converting Between Formats
+
+#### Legacy to Container (Manual)
+
+```bash
+# Generate legacy format
+./target/release/verifier \
+  --folder testcases/verifier_scenarios \
+  --format json \
+  --output reports/legacy.json \
+  --test-case-dir testcases
+
+# Use Python script to convert to individual result YAMLs
+python3 scripts/convert_verification_to_result_yaml.py \
+  reports/legacy.json \
+  -o reports/results
+
+# Build container YAML from individual results
+# (See Step 4 in Manual Generation section)
+```
+
+#### Direct Container Generation (Recommended)
+
+```bash
+# Generate container format directly
+./target/release/verifier \
+  --folder testcases/verifier_scenarios \
+  --format yaml \
+  --output reports/container.yaml \
+  --test-case-dir testcases \
+  --container-format \
+  --title "Test Results" \
+  --project "My Project"
+```
+
+### Container Format Examples
+
+#### Minimal Container (Required Fields Only)
+
+```bash
+./target/release/verifier \
+  --folder testcases/verifier_scenarios \
+  --format yaml \
+  --output reports/minimal_container.yaml \
+  --test-case-dir testcases \
+  --container-format
+```
+
+Output uses default title and project:
+```yaml
+title: 'Test Execution Results'
+project: 'Test Case Manager - Verification Results'
+test_date: '2024-01-15T10:00:00Z'
+test_results: [...]
+metadata:
+  execution_duration: 12.3
+  total_test_cases: 5
+  passed_test_cases: 4
+  failed_test_cases: 1
+```
+
+#### Full Container (All Optional Fields)
+
+```bash
+./target/release/verifier \
+  --folder testcases/verifier_scenarios \
+  --format yaml \
+  --output reports/full_container.yaml \
+  --test-case-dir testcases \
+  --container-format \
+  --title "GSMA SGP.22 Compliance Testing Results" \
+  --project "eUICC Test Suite v3.2" \
+  --environment "GSMA Certification Lab - Environment 2" \
+  --platform "eUICC Test Platform v3.2.1" \
+  --executor "Automated Test Framework v2.5.0"
+```
+
+Output includes all metadata:
+```yaml
+title: 'GSMA SGP.22 Compliance Testing Results'
+project: 'eUICC Test Suite v3.2'
+test_date: '2024-03-15T14:30:00Z'
+test_results: [...]
+metadata:
+  environment: 'GSMA Certification Lab - Environment 2'
+  platform: 'eUICC Test Platform v3.2.1'
+  executor: 'Automated Test Framework v2.5.0'
+  execution_duration: 3845.7
+  total_test_cases: 25
+  passed_test_cases: 23
+  failed_test_cases: 2
+```
+
+#### CI/CD Integration Example
+
+```bash
+#!/bin/bash
+# CI/CD pipeline script for test verification
+
+# Extract CI/CD metadata
+BUILD_NUMBER="${CI_BUILD_NUMBER:-unknown}"
+GIT_COMMIT="${CI_COMMIT_SHA:-unknown}"
+ENVIRONMENT="${CI_ENVIRONMENT:-dev}"
+
+./target/release/verifier \
+  --folder testcases/verifier_scenarios \
+  --format json \
+  --output "reports/test_results_build_${BUILD_NUMBER}.json" \
+  --test-case-dir testcases \
+  --container-format \
+  --title "Build ${BUILD_NUMBER} Test Results" \
+  --project "Product XYZ - CI/CD Testing" \
+  --environment "${ENVIRONMENT}" \
+  --platform "CI/CD Runner v${CI_RUNNER_VERSION}" \
+  --executor "GitLab CI Pipeline - Commit ${GIT_COMMIT:0:8}"
+```
+
+---
+
+## Workflow Examples
+
+This section provides complete workflow examples showing both legacy and container-format approaches for common reporting scenarios.
+
+### Workflow 1: Basic Test Verification (Legacy Approach)
+
+This workflow uses the legacy format with manual conversion steps.
+
+**Step 1: Run Verifier (Legacy Format)**
+```bash
+# Build verifier
+cargo build --release --bin verifier
+
+# Run verification in folder mode - outputs simple JSON
+./target/release/verifier \
+  --folder testcases/verifier_scenarios \
+  --format json \
+  --output reports/verification.json \
+  --test-case-dir testcases
+```
+
+**Step 2: Convert to Result YAML**
+```bash
+# Convert JSON to individual result YAML files
+python3 scripts/convert_verification_to_result_yaml.py \
+  reports/verification.json \
+  -o reports/results \
+  -v
+```
+
+**Step 3: Build Container Manually**
+```bash
+# Create container YAML from individual results
+cat > reports/container.yaml << 'EOF'
+title: 'Test Execution Results'
+project: 'Test Case Manager'
+test_date: '2024-01-15T10:00:00Z'
+test_results:
+EOF
+
+# Append result files (without 'type: result' line)
+for result_file in reports/results/*_result.yaml; do
+    sed '/^type: result/d' "$result_file" | sed 's/^/  /' >> reports/container.yaml
+done
+
+# Add metadata
+cat >> reports/container.yaml << 'EOF'
+metadata:
+  execution_duration: 0.0
+  total_test_cases: 5
+  passed_test_cases: 3
+  failed_test_cases: 2
+EOF
+```
+
+**Step 4: Generate Documentation (Optional)**
+```bash
+# Generate AsciiDoc report with test-plan-doc-gen
+../test-plan-doc-gen/target/release/test-plan-doc-gen \
+  --container reports/container.yaml \
+  --output reports/test_results.adoc \
+  --format asciidoc
+```
+
+---
+
+### Workflow 2: Direct Container Generation (Recommended Approach)
+
+This workflow uses the container format to generate reports directly without manual conversion.
+
+**Step 1: Run Verifier with Container Format**
+```bash
+# Build verifier
+cargo build --release --bin verifier
+
+# Run verification with container format - single command
+./target/release/verifier \
+  --folder testcases/verifier_scenarios \
+  --format yaml \
+  --output reports/container_report.yaml \
+  --test-case-dir testcases \
+  --container-format \
+  --title "Test Execution Results Report" \
+  --project "Test Case Manager - Q1 2024" \
+  --environment "Test Environment" \
+  --platform "Test Case Manager v1.0" \
+  --executor "Automated Test Framework"
+```
+
+**Step 2: Generate Documentation (Optional)**
+```bash
+# Generate AsciiDoc report with test-plan-doc-gen
+../test-plan-doc-gen/target/release/test-plan-doc-gen \
+  --container reports/container_report.yaml \
+  --output reports/test_results.adoc \
+  --format asciidoc
+
+# Convert to HTML
+asciidoctor reports/test_results.adoc
+
+# Convert to PDF
+asciidoctor-pdf reports/test_results.adoc
+```
+
+---
+
+### Workflow 3: CI/CD Pipeline Integration
+
+Complete example for automated testing in CI/CD pipelines.
+
+**Legacy Approach (GitLab CI)**
+```yaml
+# .gitlab-ci.yml
+test_verification:
+  stage: test
+  script:
+    # Build verifier
+    - cargo build --release --bin verifier
+    
+    # Run tests and generate execution logs
+    # (your test execution commands here)
+    
+    # Run verifier
+    - ./target/release/verifier
+        --folder testcases/verifier_scenarios
+        --format json
+        --output reports/verification.json
+        --test-case-dir testcases
+    
+    # Convert to result YAML
+    - python3 scripts/convert_verification_to_result_yaml.py
+        reports/verification.json
+        -o reports/results
+    
+    # Generate documentation
+    - ./scripts/generate_documentation_reports.sh
+        --logs-dir testcases/verifier_scenarios
+        --output-dir reports/documentation
+  
+  artifacts:
+    paths:
+      - reports/
+    when: always
+  
+  allow_failure: false
+```
+
+**Container Format Approach (GitLab CI)**
+```yaml
+# .gitlab-ci.yml
+test_verification:
+  stage: test
+  script:
+    # Build verifier
+    - cargo build --release --bin verifier
+    
+    # Run tests and generate execution logs
+    # (your test execution commands here)
+    
+    # Run verifier with container format - single step
+    - |
+      ./target/release/verifier \
+        --folder testcases/verifier_scenarios \
+        --format json \
+        --output "reports/test_results_build_${CI_PIPELINE_ID}.json" \
+        --test-case-dir testcases \
+        --container-format \
+        --title "Build ${CI_PIPELINE_ID} Test Results" \
+        --project "${CI_PROJECT_NAME} - CI/CD Testing" \
+        --environment "${CI_ENVIRONMENT_NAME}" \
+        --platform "GitLab Runner ${CI_RUNNER_VERSION}" \
+        --executor "Pipeline ${CI_PIPELINE_ID} - Commit ${CI_COMMIT_SHORT_SHA}"
+  
+  artifacts:
+    reports:
+      junit: reports/junit.xml
+    paths:
+      - reports/
+    when: always
+  
+  allow_failure: false
+```
+
+---
+
+### Workflow 4: Single Test Case Verification
+
+Verify a single test case execution log.
+
+**Legacy Approach**
+```bash
+# Run verifier on single log file
+./target/release/verifier \
+  --log testcases/logs/TC_001_execution_log.json \
+  --test-case "TC_001" \
+  --format yaml \
+  --output reports/TC_001_result.yaml \
+  --test-case-dir testcases
+
+# View results
+cat reports/TC_001_result.yaml
+```
+
+**Container Format Approach**
+```bash
+# Run verifier with container format for single test
+./target/release/verifier \
+  --log testcases/logs/TC_001_execution_log.json \
+  --test-case "TC_001" \
+  --format yaml \
+  --output reports/TC_001_container.yaml \
+  --test-case-dir testcases \
+  --container-format \
+  --title "TC_001 Verification Result" \
+  --project "Test Case Validation"
+
+# View results
+cat reports/TC_001_container.yaml
+```
+
+---
+
+### Workflow 5: Batch Verification with Custom Metadata
+
+Generate comprehensive reports with detailed execution metadata.
+
+**Step 1: Prepare Execution Logs**
+```bash
+# Ensure all execution logs are in place
+ls -la testcases/verifier_scenarios/*.json
+
+# Expected: *_execution_log.json files
+```
+
+**Step 2: Run Batch Verification**
+```bash
+# Run verifier with full metadata
+./target/release/verifier \
+  --folder testcases/verifier_scenarios \
+  --format yaml \
+  --output reports/batch_verification_$(date +%Y%m%d_%H%M%S).yaml \
+  --test-case-dir testcases \
+  --container-format \
+  --title "$(date +%Y-%m-%d) Test Execution Results" \
+  --project "Product XYZ - Sprint 23 Testing" \
+  --environment "QA Environment - Server cluster-qa-01" \
+  --platform "Test Platform v2.5.0 - Ubuntu 22.04 LTS" \
+  --executor "Test Automation Framework v1.2.3 - User: $USER"
+```
+
+**Step 3: Archive Results**
+```bash
+# Create timestamped archive
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+mkdir -p archives/$TIMESTAMP
+cp reports/batch_verification_*.yaml archives/$TIMESTAMP/
+cp -r testcases/verifier_scenarios/*.json archives/$TIMESTAMP/logs/
+
+# Generate summary report
+echo "Test Execution Summary - $TIMESTAMP" > archives/$TIMESTAMP/SUMMARY.txt
+echo "======================================" >> archives/$TIMESTAMP/SUMMARY.txt
+echo "" >> archives/$TIMESTAMP/SUMMARY.txt
+grep -E "total_test_cases|passed_test_cases|failed_test_cases" \
+  reports/batch_verification_*.yaml >> archives/$TIMESTAMP/SUMMARY.txt
+```
+
+---
+
+### Workflow 6: Multi-Environment Testing
+
+Test across multiple environments with separate reports.
+
+```bash
+#!/bin/bash
+# multi_env_test.sh - Run tests across environments
+
+ENVIRONMENTS=("dev" "staging" "production")
+
+for ENV in "${ENVIRONMENTS[@]}"; do
+  echo "Testing environment: $ENV"
+  
+  # Run tests (your test execution commands)
+  # ./run_tests.sh --environment $ENV
+  
+  # Run verifier with environment-specific metadata
+  ./target/release/verifier \
+    --folder "testcases/verifier_scenarios/$ENV" \
+    --format yaml \
+    --output "reports/${ENV}_test_results.yaml" \
+    --test-case-dir testcases \
+    --container-format \
+    --title "$(date +%Y-%m-%d) $ENV Environment Test Results" \
+    --project "Multi-Environment Validation" \
+    --environment "$ENV Environment" \
+    --platform "Test Platform v2.0 - $ENV cluster" \
+    --executor "Automated Testing Framework"
+  
+  # Check exit status
+  if [ $? -eq 0 ]; then
+    echo "✓ $ENV: All tests passed"
+  else
+    echo "✗ $ENV: Some tests failed"
+  fi
+done
+
+# Generate consolidated report
+echo "Consolidating results..."
+cat reports/*_test_results.yaml > reports/consolidated_results.yaml
+```
+
+---
+
+### Workflow 7: Compliance Documentation
+
+Generate audit-ready compliance documentation.
+
+```bash
+#!/bin/bash
+# compliance_report.sh - Generate compliance documentation
+
+# Set compliance metadata
+COMPLIANCE_STANDARD="ISO 9001:2015"
+AUDIT_DATE=$(date +%Y-%m-%d)
+AUDITOR="Quality Assurance Team"
+VERSION="v1.2.3"
+
+# Run comprehensive verification
+./target/release/verifier \
+  --folder testcases/compliance_scenarios \
+  --format yaml \
+  --output "reports/compliance_report_${AUDIT_DATE}.yaml" \
+  --test-case-dir testcases/compliance \
+  --container-format \
+  --title "Compliance Verification Report - ${COMPLIANCE_STANDARD}" \
+  --project "Product XYZ - Compliance Testing ${VERSION}" \
+  --environment "Compliance Test Lab - Controlled Environment" \
+  --platform "Certified Test Platform ${VERSION}" \
+  --executor "Compliance Testing Framework - Auditor: ${AUDITOR}"
+
+# Generate professional documentation
+if [ -f "../test-plan-doc-gen/target/release/test-plan-doc-gen" ]; then
+  # Generate AsciiDoc
+  ../test-plan-doc-gen/target/release/test-plan-doc-gen \
+    --container "reports/compliance_report_${AUDIT_DATE}.yaml" \
+    --output "reports/compliance_report_${AUDIT_DATE}.adoc" \
+    --format asciidoc
+  
+  # Convert to PDF for archival
+  asciidoctor-pdf "reports/compliance_report_${AUDIT_DATE}.adoc"
+  
+  echo "✓ Compliance report generated: reports/compliance_report_${AUDIT_DATE}.pdf"
+else
+  echo "⚠ test-plan-doc-gen not available, skipping PDF generation"
+fi
+
+# Create audit package
+mkdir -p "audit_packages/audit_${AUDIT_DATE}"
+cp "reports/compliance_report_${AUDIT_DATE}."* "audit_packages/audit_${AUDIT_DATE}/"
+cp -r testcases/compliance_scenarios "audit_packages/audit_${AUDIT_DATE}/logs"
+
+echo "✓ Audit package created: audit_packages/audit_${AUDIT_DATE}/"
+```
+
+---
+
+### Workflow Comparison Summary
+
+| Workflow | Legacy Format Steps | Container Format Steps | Time Saved |
+|----------|---------------------|------------------------|------------|
+| **Basic Verification** | 4 steps | 2 steps | ~40% |
+| **CI/CD Integration** | Multiple commands | Single command | ~60% |
+| **Single Test Case** | 2-3 commands | 1 command | ~50% |
+| **Batch with Metadata** | 4-5 steps + manual editing | 1 command | ~70% |
+
+### Key Takeaways
+
+1. **Legacy Format**: Requires multi-step workflow with manual conversion
+   - Use when you need backward compatibility
+   - Good for existing pipelines
+   - More maintenance overhead
+
+2. **Container Format**: Streamlined single-command workflow
+   - Recommended for new implementations
+   - Native `test-plan-doc-gen` compatibility
+   - Rich metadata out of the box
+   - Better for compliance and audit trails
+
+3. **Migration Path**: Both formats can coexist
+   - Gradually migrate legacy pipelines
+   - Use container format for new test suites
+   - Keep legacy format for backward compatibility
 
 ---
 
@@ -1693,17 +2450,185 @@ If you encounter issues not covered here:
 
 8. **Review Compatibility Documentation:** `docs/TEST_PLAN_DOC_GEN_COMPATIBILITY.md`
 
+#### 9. Container Format Issues
+
+**Problem:**
+```
+Missing metadata in container output
+Container YAML doesn't include environment/platform/executor
+```
+
+**Solutions:**
+
+**Verify Container Format Flag:**
+```bash
+# Make sure --container-format flag is specified
+./target/release/verifier \
+  --folder testcases/verifier_scenarios \
+  --format yaml \
+  --output reports/container.yaml \
+  --test-case-dir testcases \
+  --container-format  # This flag is required!
+```
+
+**Check Optional Metadata:**
+```bash
+# Optional fields are only included if specified
+./target/release/verifier \
+  --folder testcases/verifier_scenarios \
+  --format yaml \
+  --output reports/container.yaml \
+  --test-case-dir testcases \
+  --container-format \
+  --environment "Test Environment"  # Optional
+  --platform "Test Platform"        # Optional
+  --executor "Test Executor"        # Optional
+```
+
+**Verify Output Structure:**
+```bash
+# Check that container has all expected sections
+cat reports/container.yaml | grep -E "^(title:|project:|test_date:|test_results:|metadata:)"
+
+# Expected output:
+# title:
+# project:
+# test_date:
+# test_results:
+# metadata:
+```
+
+#### 10. Title/Project Customization Issues
+
+**Problem:**
+```
+Using default title and project instead of custom values
+```
+
+**Solution:**
+
+```bash
+# Ensure --title and --project are specified correctly
+./target/release/verifier \
+  --folder testcases/verifier_scenarios \
+  --format yaml \
+  --output reports/container.yaml \
+  --test-case-dir testcases \
+  --container-format \
+  --title "My Custom Title" \
+  --project "My Project Name"
+
+# Verify values in output
+grep -A 1 "^title:" reports/container.yaml
+grep -A 1 "^project:" reports/container.yaml
+```
+
 ### Known Limitations
+
+Defect: list is a merge of two versions
 
 1. **test-plan-documentation-generator Dependency:** The report generation system requires `test-plan-documentation-generator` to be installed via cargo or available in PATH.
 
 2. **Container Template Structure:** The container template must follow the exact YAML structure expected by test-plan-documentation-generator. See schema documentation for details.
 
 3. **Result YAML Format:** Result YAML files must include the `type: result` field to be valid. This field is automatically added by the conversion script.
+3. **Result YAML Format:** Legacy workflow result YAML files must include the `type: result` field to be valid.
 
 4. **Execution Log Format:** Verifier expects execution logs in a specific format with TEST_SEQUENCE, STEP, EXIT_CODE, and TIMESTAMP markers.
 
 5. **File Naming:** Result files are named `{test_case_id}_result.yaml`. Test case IDs must be valid filenames (no special characters like `/`, `\`, `:`, etc.).
+
+6. **Container Format Compatibility:** Container format output is designed for `test-plan-doc-gen` v1.0+. Legacy versions may not support all metadata fields.
+
+7. **Metadata Field Limits:** While title, project, environment, platform, and executor fields accept arbitrary strings, extremely long values (>1000 characters) may cause rendering issues in some documentation tools.
+
+---
+
+## Quick Reference
+
+### Container Format Command Templates
+
+**Basic Container (Minimal)**
+```bash
+./target/release/verifier \
+  --folder testcases/verifier_scenarios \
+  --format yaml \
+  --output reports/container.yaml \
+  --test-case-dir testcases \
+  --container-format
+```
+
+**Full Container (All Options)**
+```bash
+./target/release/verifier \
+  --folder testcases/verifier_scenarios \
+  --format yaml \
+  --output reports/container.yaml \
+  --test-case-dir testcases \
+  --container-format \
+  --title "Report Title" \
+  --project "Project Name" \
+  --environment "Environment Info" \
+  --platform "Platform Info" \
+  --executor "Executor Info"
+```
+
+**Single File with Container Format**
+```bash
+./target/release/verifier \
+  --log testcases/logs/TC_001_execution_log.json \
+  --test-case "TC_001" \
+  --format yaml \
+  --output reports/TC_001_container.yaml \
+  --test-case-dir testcases \
+  --container-format \
+  --title "TC_001 Results" \
+  --project "Test Validation"
+```
+
+**Container Format JSON Output**
+```bash
+./target/release/verifier \
+  --folder testcases/verifier_scenarios \
+  --format json \
+  --output reports/container.json \
+  --test-case-dir testcases \
+  --container-format \
+  --title "JSON Report" \
+  --project "My Project"
+```
+
+### CLI Options Summary
+
+| Option | Short | Required | Default | Description |
+|--------|-------|----------|---------|-------------|
+| `--folder` | `-f` | Yes* | - | Path to folder with logs |
+| `--log` | `-l` | Yes* | - | Single log file path |
+| `--test-case` | `-c` | Yes** | - | Test case ID (single-file mode) |
+| `--format` | `-F` | No | yaml | Output format (yaml/json) |
+| `--output` | `-o` | No | stdout | Output file path |
+| `--test-case-dir` | `-d` | No | testcases | Test case directory |
+| `--container-format` | - | No | false | Enable container format |
+| `--title` | - | No | "Test Execution Results" | Report title |
+| `--project` | - | No | "Test Case Manager - Verification Results" | Project name |
+| `--environment` | - | No | - | Environment info (optional) |
+| `--platform` | - | No | - | Platform info (optional) |
+| `--executor` | - | No | - | Executor info (optional) |
+| `--verbose` | `-v` | No | false | Enable verbose logging |
+
+\* Either `--folder` or `--log` is required  
+\** `--test-case` is required when using `--log`
+
+### Format Comparison Cheat Sheet
+
+| Need | Use Format | Command Flag |
+|------|-----------|--------------|
+| Simple verification | Legacy | No `--container-format` |
+| Professional reports | Container | Add `--container-format` |
+| Metadata tracking | Container | Add `--container-format` + metadata flags |
+| CI/CD integration | Container | Add `--container-format` + CI variables |
+| Compliance docs | Container | Add `--container-format` + all metadata |
+| Backward compatibility | Legacy | No `--container-format` |
 
 6. **HTML/PDF Dependencies:** Converting AsciiDoc to HTML or PDF requires asciidoctor or asciidoctor-pdf to be installed separately (via RubyGems).
 
