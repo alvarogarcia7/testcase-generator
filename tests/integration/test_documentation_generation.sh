@@ -97,7 +97,7 @@ REPORTS_DIR="$TEMP_DIR/reports"
 mkdir -p "$RESULT_YAML_DIR"
 mkdir -p "$REPORTS_DIR"
 
-# Test 1: Run verifier on successful test scenario
+# Test 1: Run verifier on successful test scenario (with config file)
 section "Test 1: Run Verifier on Successful Test Scenario"
 
 if [[ ! -f "$TEST_CASE_FILE" ]]; then
@@ -112,13 +112,24 @@ if [[ ! -f "$EXECUTION_LOG" ]]; then
 fi
 pass "Execution log found: $(basename "$EXECUTION_LOG")"
 
+# Create a test config file
+TEST_CONFIG="$TEMP_DIR/doc_gen_config.yml"
+cat > "$TEST_CONFIG" << 'EOF'
+title: "Documentation Generation Test Results"
+project: "Test Case Manager - Documentation Generation"
+environment: "Integration Testing"
+platform: "Test Environment"
+executor: "Documentation Generation Test"
+EOF
+
 log_info "Running verifier on successful test scenario..."
 if "$VERIFIER_BIN" \
     --log "$EXECUTION_LOG" \
     --test-case "TEST_SUCCESS_001" \
     --test-case-dir "$TEST_CASE_DIR" \
     --format json \
-    --output "$VERIFICATION_OUTPUT" > /dev/null 2>&1; then
+    --output "$VERIFICATION_OUTPUT" \
+    --config "$TEST_CONFIG" > /dev/null 2>&1; then
     pass "Verifier completed successfully"
 else
     VERIFIER_EXIT=$?

@@ -1,8 +1,16 @@
 #!/usr/bin/env bash
 #
-# Run verifier on all test scenarios and generate documentation reports
+# Run verifier on all test scenarios and generate PDF reports
 #
-# Usage: ./scripts/run_verifier_and_generate_reports.sh
+# Usage: ./scripts/run_verifier_and_generate_reports.sh [OPTIONS]
+#
+# Options:
+#   --config FILE       Path to container config file (default: container_config.yml)
+#   --title TITLE       Override report title
+#   --project PROJECT   Override project name
+#   --environment ENV   Override environment information
+#   --platform PLATFORM Override platform information
+#   --executor EXECUTOR Override executor information
 #
 
 set -e
@@ -13,9 +21,54 @@ BUILD_VARIANT="${BUILD_VARIANT:---release}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-# Source required libraries
-source "$SCRIPT_DIR/lib/logger.sh" || exit 1
-source "$SCRIPT_DIR/lib/report_generator.sh" || exit 1
+# Default config file
+CONFIG_FILE="$PROJECT_ROOT/container_config.yml"
+
+# CLI overrides
+TITLE=""
+PROJECT=""
+ENVIRONMENT=""
+PLATFORM=""
+EXECUTOR=""
+
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --config)
+            CONFIG_FILE="$2"
+            shift 2
+            ;;
+        --title)
+            TITLE="$2"
+            shift 2
+            ;;
+        --project)
+            PROJECT="$2"
+            shift 2
+            ;;
+        --environment)
+            ENVIRONMENT="$2"
+            shift 2
+            ;;
+        --platform)
+            PLATFORM="$2"
+            shift 2
+            ;;
+        --executor)
+            EXECUTOR="$2"
+            shift 2
+            ;;
+        --help)
+            head -n 15 "$0" | tail -n +2 | sed 's/^# //'
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1"
+            echo "Use --help for usage information"
+            exit 1
+            ;;
+    esac
+done
 
 echo "======================================================================="
 echo "Test Verifier Report Generator"
@@ -32,7 +85,7 @@ echo "Output directory: $OUTPUT_DIR"
 echo ""
 echo "=== Building verifier binary ==="
 cd "$PROJECT_ROOT"
-cargo build "${BUILD_VARIANT}" --bin verifier
+cargo build ${BUILD_VARIANT} --bin verifier
 
 if [ $? -ne 0 ]; then
     echo "✗ Failed to build verifier binary"
@@ -53,6 +106,47 @@ declare -a SCENARIOS=(
 )
 
 declare -a VERIFICATION_FILES=()
+
+# Build verifier command with config file and CLI overrides
+build_verifier_cmd() {
+    local log_file="$1"
+    local test_case_id="$2"
+    local output_file="$3"
+    
+    local cmd="cargo run ${BUILD_VARIANT} --bin verifier --"
+    cmd="$cmd --log \"$log_file\""
+    cmd="$cmd --test-case \"$test_case_id\""
+    cmd="$cmd --format json"
+    cmd="$cmd --output \"$output_file\""
+    
+    # Add config file if it exists
+    if [ -f "$CONFIG_FILE" ]; then
+        cmd="$cmd --config \"$CONFIG_FILE\""
+    fi
+    
+    # Add CLI overrides
+    if [ -n "$TITLE" ]; then
+        cmd="$cmd --title \"$TITLE\""
+    fi
+    
+    if [ -n "$PROJECT" ]; then
+        cmd="$cmd --project \"$PROJECT\""
+    fi
+    
+    if [ -n "$ENVIRONMENT" ]; then
+        cmd="$cmd --environment \"$ENVIRONMENT\""
+    fi
+    
+    if [ -n "$PLATFORM" ]; then
+        cmd="$cmd --platform \"$PLATFORM\""
+    fi
+    
+    if [ -n "$EXECUTOR" ]; then
+        cmd="$cmd --executor \"$EXECUTOR\""
+    fi
+    
+    echo "$cmd"
+}
 
 # Process each scenario
 for SCENARIO_ENTRY in "${SCENARIOS[@]}"; do
@@ -79,14 +173,9 @@ for SCENARIO_ENTRY in "${SCENARIOS[@]}"; do
     echo ""
     echo "Running verifier..."
     
-    TEST_CASE_DIR="$PROJECT_ROOT/testcases/verifier_scenarios/$SCENARIO_DIR"
-    
-    cargo run ${BUILD_VARIANT} --bin verifier -- \
-        --log "$EXECUTION_LOG" \
-        --test-case "$TEST_CASE_ID" \
-        --test-case-dir "$TEST_CASE_DIR" \
-        --format json \
-        --output "$VERIFICATION_OUTPUT" 2>&1 | tail -20
+    # Build and execute command
+    VERIFIER_CMD=$(build_verifier_cmd "$EXECUTION_LOG" "$TEST_CASE_ID" "$VERIFICATION_OUTPUT")
+    eval "$VERIFIER_CMD" 2>&1 | tail -20
     
     VERIFIER_EXIT=$?
     
@@ -115,10 +204,62 @@ for VF in "${VERIFICATION_FILES[@]}"; do
     echo "  • $VF"
 done
 
-# Generate test-plan-doc-gen reports
+# Check for reportlab and generate PDF reports
 echo ""
 echo "======================================================================="
-echo "Test Plan Documentation Report Generation"
+echo "PDF Report Generation"
+echo "======================================================================="
+echo ""
+
+uv sync
+
+source .venv/bin/activate
+
+if command -v python3 >/dev/null 2>&1; then
+    echo "Python 3 found. Checking for reportlab..."
+    
+    if uv run python3 -c "import reportlab" 2>/dev/null; then
+        echo "✓ reportlab is installed"
+        echo ""
+        echo "Generating PDF reports..."
+        
+        cd "$PROJECT_ROOT"
+        uv run python3 scripts/generate_verifier_reports.py
+        
+        if [ $? -eq 0 ]; then
+            echo ""
+            echo "✓ PDF reports generated successfully"
+            echo ""
+            echo "Generated PDF reports:"
+            for VF in "${VERIFICATION_FILES[@]}"; do
+                PDF_REPORT="${VF%.json}_report.pdf"
+                PDF_REPORT="${PDF_REPORT/_verification_report.pdf/_report.pdf}"
+                if [ -f "$PDF_REPORT" ]; then
+                    echo "  • $PDF_REPORT"
+                fi
+            done
+        else
+            echo "✗ PDF report generation failed"
+        fi
+    else
+        echo "⚠ reportlab not installed"
+        echo ""
+        echo "To generate PDF reports, install reportlab:"
+        echo "  pip3 install reportlab"
+        echo ""
+        echo "Then run:"
+        echo "  uv run python3 scripts/generate_verifier_reports.py"
+    fi
+else
+    echo "⚠ Python 3 not found"
+    echo ""
+    echo "PDF report generation requires Python 3 and reportlab."
+fi
+
+# Generate documentation reports
+echo ""
+echo "======================================================================="
+echo "Documentation Report Generation"
 echo "======================================================================="
 echo ""
 
@@ -132,117 +273,41 @@ fi
 
 echo "test-plan-doc-gen directory: $DOC_GEN_DIR"
 
-# Resolve test-plan-doc-gen directory path
-if [[ ! "$DOC_GEN_DIR" = /* ]]; then
-    DOC_GEN_DIR="$PROJECT_ROOT/$DOC_GEN_DIR"
-fi
-
-# Check if test-plan-doc-gen directory exists
-if [[ ! -d "$DOC_GEN_DIR" ]]; then
-    echo "⚠ test-plan-doc-gen directory not found: $DOC_GEN_DIR"
-    echo ""
-    echo "Skipping test-plan-doc-gen report generation"
-    echo ""
-    echo "To enable test-plan-doc-gen reports, clone the repository:"
-    echo "  cd $(dirname "$PROJECT_ROOT")"
-    echo "  git clone <test-plan-doc-gen-repo-url> test-plan-doc-gen"
-    SKIP_DOC_GEN=1
-else
-    SKIP_DOC_GEN=0
-    
-    # Check if binary exists, build if needed
-    if check_test_plan_doc_gen_available "$DOC_GEN_DIR"; then
-        echo "✓ test-plan-doc-gen binary found"
-    else
-        echo "Building test-plan-doc-gen..."
-        if build_test_plan_doc_gen "$DOC_GEN_DIR"; then
-            echo "✓ test-plan-doc-gen built successfully"
-        else
-            echo "✗ Failed to build test-plan-doc-gen"
-            SKIP_DOC_GEN=1
-        fi
-    fi
-fi
-
-# Set TEST_PLAN_DOC_GEN environment variable for report_generator.sh
-if [[ $SKIP_DOC_GEN -eq 0 ]]; then
-    export TEST_PLAN_DOC_GEN=$(find_test_plan_doc_gen "$DOC_GEN_DIR")
-    
-    echo ""
-    echo "Generating reports for all test scenarios..."
-    echo ""
-    
-    declare -a GENERATED_REPORTS=()
-    
-    # Generate reports for each scenario
-    for SCENARIO_ENTRY in "${SCENARIOS[@]}"; do
-        IFS=':' read -r SCENARIO_DIR TEST_CASE_ID <<< "$SCENARIO_ENTRY"
-        
-        TEST_CASE_FILE="$PROJECT_ROOT/testcases/verifier_scenarios/$SCENARIO_DIR/${TEST_CASE_ID}.yml"
-        
-        # Check if test case file exists
-        if [ ! -f "$TEST_CASE_FILE" ]; then
-            echo "⚠ Test case file not found: $TEST_CASE_FILE"
-            echo "  Skipping $TEST_CASE_ID"
-            continue
-        fi
-        
-        echo "Generating reports for: $TEST_CASE_ID"
-        
-        # Generate AsciiDoc report
-        ASCIIDOC_OUTPUT="$OUTPUT_DIR/${TEST_CASE_ID}_test_plan.adoc"
-        
-        if invoke_test_plan_doc_gen \
-            --test-case "$TEST_CASE_FILE" \
-            --output "$ASCIIDOC_OUTPUT" \
-            --format asciidoc >/dev/null 2>&1; then
-            echo "  ✓ AsciiDoc report: $ASCIIDOC_OUTPUT"
-            GENERATED_REPORTS+=("$ASCIIDOC_OUTPUT")
-        else
-            echo "  ✗ Failed to generate AsciiDoc report for $TEST_CASE_ID"
-        fi
-        
-        # Generate Markdown report
-        MARKDOWN_OUTPUT="$OUTPUT_DIR/${TEST_CASE_ID}_test_plan.md"
-        
-        if invoke_test_plan_doc_gen \
-            --test-case "$TEST_CASE_FILE" \
-            --output "$MARKDOWN_OUTPUT" \
-            --format markdown >/dev/null 2>&1; then
-            echo "  ✓ Markdown report: $MARKDOWN_OUTPUT"
-            GENERATED_REPORTS+=("$MARKDOWN_OUTPUT")
-        else
-            echo "  ✗ Failed to generate Markdown report for $TEST_CASE_ID"
-        fi
-        
-        echo ""
-    done
-    
-    if [ ${#GENERATED_REPORTS[@]} -gt 0 ]; then
-        echo "✓ Generated ${#GENERATED_REPORTS[@]} test plan documentation report(s)"
-    else
-        echo "✗ No test plan documentation reports were generated"
-    fi
-fi
-
-# Generate additional documentation reports via generate_documentation_reports.sh
-echo ""
-echo "======================================================================="
-echo "Additional Documentation Report Generation"
-echo "======================================================================="
-echo ""
-
-# Run documentation report generation script (if available)
+# Run documentation report generation
 DOC_SCRIPT="$SCRIPT_DIR/generate_documentation_reports.sh"
 
 if [ -f "$DOC_SCRIPT" ]; then
     echo "Running documentation report generator..."
     echo ""
     
-    "$DOC_SCRIPT" \
-        --output-dir "$OUTPUT_DIR" \
-        --test-case-dir "$PROJECT_ROOT/testcases" \
-        --test-plan-doc-gen "$DOC_GEN_DIR"
+    # Build doc script command with config file and CLI overrides
+    DOC_CMD="\"$DOC_SCRIPT\" --output-dir \"$OUTPUT_DIR\" --test-case-dir \"$PROJECT_ROOT/testcases\" --test-plan-doc-gen \"$DOC_GEN_DIR\""
+    
+    if [ -f "$CONFIG_FILE" ]; then
+        DOC_CMD="$DOC_CMD --config \"$CONFIG_FILE\""
+    fi
+    
+    if [ -n "$TITLE" ]; then
+        DOC_CMD="$DOC_CMD --title \"$TITLE\""
+    fi
+    
+    if [ -n "$PROJECT" ]; then
+        DOC_CMD="$DOC_CMD --project \"$PROJECT\""
+    fi
+    
+    if [ -n "$ENVIRONMENT" ]; then
+        DOC_CMD="$DOC_CMD --environment \"$ENVIRONMENT\""
+    fi
+    
+    if [ -n "$PLATFORM" ]; then
+        DOC_CMD="$DOC_CMD --platform \"$PLATFORM\""
+    fi
+    
+    if [ -n "$EXECUTOR" ]; then
+        DOC_CMD="$DOC_CMD --executor \"$EXECUTOR\""
+    fi
+    
+    eval "$DOC_CMD"
     
     if [ $? -eq 0 ]; then
         echo ""
