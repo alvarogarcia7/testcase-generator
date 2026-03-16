@@ -85,6 +85,7 @@ pub use test_run_storage::TestRunStorage;
 pub use ui::{print_title, TitleStyle};
 pub use validation::SchemaValidator;
 pub use verification::BatchVerificationReport;
+pub use verification::ContainerReportConfig;
 pub use verification::DiffDetail;
 pub use verification::ExecutionVerificationResult;
 pub use verification::JUnitTestSuite;

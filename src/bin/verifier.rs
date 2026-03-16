@@ -2,7 +2,11 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use std::fs;
 use std::path::{Path, PathBuf};
-use testcase_manager::{BatchVerificationReport, MatchStrategy, TestCaseStorage, TestVerifier};
+use testcase_manager::BatchVerificationReport;
+use testcase_manager::MatchStrategy;
+use testcase_manager::TestCaseStorage;
+use testcase_manager::TestVerifier;
+use testcase_manager::ContainerReportConfig;
 
 #[derive(Parser)]
 #[command(name = "verifier")]
@@ -115,17 +119,15 @@ fn main() -> Result<()> {
     log_verification_errors(&report);
 
     // Generate output in requested format
-    let output_content = generate_output(
-        &verifier,
-        &report,
-        &cli.format,
-        cli.container_format,
-        &cli.title,
-        &cli.project,
-        cli.environment.as_ref(),
-        cli.platform.as_ref(),
-        cli.executor.as_ref(),
-    )?;
+    let output_config = OutputConfig {
+        container_format: cli.container_format,
+        title: &cli.title,
+        project: &cli.project,
+        environment: cli.environment.as_ref(),
+        platform: cli.platform.as_ref(),
+        executor: cli.executor.as_ref(),
+    };
+    let output_content = generate_output(&verifier, &report, &cli.format, output_config)?;
 
     // Write to file or stdout
     write_output(&output_content, cli.output.as_ref())?;
@@ -523,29 +525,32 @@ fn log_verification_errors(report: &BatchVerificationReport) {
     }
 }
 
+struct OutputConfig<'a> {
+    container_format: bool,
+    title: &'a str,
+    project: &'a str,
+    environment: Option<&'a String>,
+    platform: Option<&'a String>,
+    executor: Option<&'a String>,
+}
+
 fn generate_output(
     verifier: &TestVerifier,
     report: &BatchVerificationReport,
     format: &str,
-    container_format: bool,
-    title: &str,
-    project: &str,
-    environment: Option<&String>,
-    platform: Option<&String>,
-    executor: Option<&String>,
+    config: OutputConfig,
 ) -> Result<String> {
-    if container_format {
+    if config.container_format {
         // Use container format with metadata
+        let container_config = ContainerReportConfig {
+            title: config.title.to_string(),
+            project: config.project.to_string(),
+            environment: config.environment.cloned(),
+            platform: config.platform.cloned(),
+            executor: config.executor.cloned(),
+        };
         verifier
-            .generate_container_yaml_report(
-                report,
-                format,
-                title.to_string(),
-                project.to_string(),
-                environment.cloned(),
-                platform.cloned(),
-                executor.cloned(),
-            )
+            .generate_container_yaml_report(std::slice::from_ref(report), format, container_config)
             .context("Failed to generate container report")
     } else {
         // Use simple batch report format
@@ -572,7 +577,6 @@ fn write_output(content: &str, output_path: Option<&PathBuf>) -> Result<()> {
 
     Ok(())
 }
-
 fn parse_match_strategy(strategy: &str) -> Result<MatchStrategy> {
     match strategy.to_lowercase().as_str() {
         "exact" => Ok(MatchStrategy::Exact),
