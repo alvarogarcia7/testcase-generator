@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
 use clap::Parser;
+use jsonschema::JSONSchema;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -150,6 +151,14 @@ struct Cli {
         value_name = "STRATEGY"
     )]
     match_strategy: String,
+
+    /// Path to JSON schema file for validating output
+    #[arg(
+        long = "schema",
+        default_value = "data/testcase_results_container/schema.json",
+        value_name = "PATH"
+    )]
+    schema_path: PathBuf,
 }
 
 fn main() -> Result<()> {
@@ -192,7 +201,8 @@ fn main() -> Result<()> {
     log_verification_errors(&report);
 
     // Generate output in requested format
-    let output_content = generate_output(&verifier, &report, &cli.format, &config)?;
+    let output_content =
+        generate_output(&verifier, &report, &cli.format, &config, &cli.schema_path)?;
 
     // Write to file or stdout
     write_output(&output_content, cli.output.as_ref())?;
@@ -498,6 +508,7 @@ fn generate_output(
     report: &BatchVerificationReport,
     format: &str,
     config: &VerifierConfig,
+    schema_path: &PathBuf,
 ) -> Result<String> {
     // Always use container format with metadata
     let container_config = ContainerReportConfig {
@@ -507,9 +518,83 @@ fn generate_output(
         platform: config.platform.clone(),
         executor: config.executor.clone(),
     };
-    verifier
+    let output = verifier
         .generate_report(std::slice::from_ref(report), format, container_config)
-        .context("Failed to generate container report")
+        .context("Failed to generate container report")?;
+
+    // Validate the output against the schema
+    validate_output_against_schema(&output, format, schema_path)?;
+
+    Ok(output)
+}
+
+/// Validate generated output against the JSON schema
+fn validate_output_against_schema(output: &str, format: &str, schema_path: &PathBuf) -> Result<()> {
+    // Check if schema file exists
+    if !schema_path.exists() {
+        anyhow::bail!(
+            "Schema file not found at {}. Please ensure the schema file exists or specify a valid path using --schema",
+            schema_path.display()
+        );
+    }
+
+    log::debug!("Loading schema from {}", schema_path.display());
+    let schema_content = fs::read_to_string(schema_path).context(format!(
+        "Failed to read schema file: {}",
+        schema_path.display()
+    ))?;
+
+    let schema_json: serde_json::Value =
+        serde_json::from_str(&schema_content).context("Failed to parse schema file as JSON")?;
+
+    // Compile the schema
+    let compiled_schema = JSONSchema::options()
+        .compile(&schema_json)
+        .map_err(|e| anyhow::anyhow!("Failed to compile JSON schema: {}", e))?;
+
+    // Parse the output based on format
+    log::debug!("Validating {} output against schema", format);
+    let output_json: serde_json::Value = match format.to_lowercase().as_str() {
+        "yaml" => {
+            // Parse YAML and convert to JSON for validation
+            serde_yaml::from_str(output).context("Failed to parse YAML output for validation")?
+        }
+        "json" => {
+            // Parse JSON directly
+            serde_json::from_str(output).context("Failed to parse JSON output for validation")?
+        }
+        _ => {
+            return Err(anyhow::anyhow!(
+                "Unsupported format for validation: {}",
+                format
+            ));
+        }
+    };
+
+    // Validate against schema
+    let validation_result = compiled_schema.validate(&output_json);
+
+    match validation_result {
+        Ok(_) => {
+            log::info!("✓ Output validation passed: conforms to schema");
+            Ok(())
+        }
+        Err(errors) => {
+            let error_messages: Vec<String> = errors
+                .map(|e| format!("  - {} at {}", e, e.instance_path))
+                .collect();
+
+            log::error!("✗ Output validation failed:");
+            for msg in &error_messages {
+                log::error!("{}", msg);
+            }
+
+            Err(anyhow::anyhow!(
+                "Output does not conform to schema:\n{}",
+                error_messages.join("\n")
+            ))
+        }
+    }
 }
 
 fn write_output(content: &str, output_path: Option<&PathBuf>) -> Result<()> {
