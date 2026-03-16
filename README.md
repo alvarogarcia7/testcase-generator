@@ -140,7 +140,7 @@ test-executor execute testcase.yml
 **Purpose**: Verify test execution logs against expected test case definitions.
 
 **Input**: Test execution log files (JSON), test case YAML files  
-**Output**: Verification reports (text, JSON, JUnit XML)
+**Output**: Verification reports (text, JSON, JUnit XML, Container YAML)
 
 **Subcommands**:
 - `single` - Verify single execution log against test case
@@ -155,6 +155,15 @@ test-verify single --log exec.log --test-case-id TC001
 
 # Batch verify with JUnit output
 test-verify batch --logs logs/*.log --format junit --output report.xml
+
+# Generate container YAML report with metadata
+test-verify batch --logs logs/*.log --format yaml --output report.yaml \
+  --container-format \
+  --title "Test Run 2024-01" \
+  --project "My Test Suite" \
+  --environment "Staging" \
+  --platform "Linux x86_64" \
+  --executor "CI Pipeline v2.1"
 
 # Parse log file
 test-verify parse-log --log exec.log --format json
@@ -1093,7 +1102,8 @@ The `test-verify` binary provides batch verification capabilities for comparing 
 - **Batch Processing**: Process multiple test execution logs simultaneously
 - **Auto-locate Test Cases**: Uses TestCaseStorage to automatically find test case definitions
 - **Flexible Matching**: Supports exact matches, wildcards (`*`), and regex patterns (`/pattern/`)
-- **Multiple Output Formats**: Text, JSON, and JUnit XML
+- **Multiple Output Formats**: Text, JSON, JUnit XML, and Container YAML
+- **Container YAML Reports**: Enhanced YAML format with rich metadata including title, project, environment, platform, and executor information
 - **Aggregated Reports**: Pass/fail statistics per test case with detailed failure reasons
 - **CI/CD Integration**: JUnit XML output for seamless integration with CI/CD pipelines
 
@@ -1108,11 +1118,23 @@ cargo build --release --bin test-verify
   --log test-execution.log \
   --test-case-id TC001
 
-# Batch verify multiple logs
+# Batch verify multiple logs with JUnit output
 ./target/release/test-verify batch \
   --logs logs/*.log \
   --format junit \
   --output junit-report.xml
+
+# Generate container YAML report with metadata
+./target/release/test-verify batch \
+  --logs logs/*.log \
+  --format yaml \
+  --output report.yaml \
+  --container-format \
+  --title "Test Run 2024-01" \
+  --project "My Test Suite" \
+  --environment "Staging" \
+  --platform "Linux x86_64" \
+  --executor "CI Pipeline v2.1"
 
 # Run the demo
 cargo run --example test_verify_demo
@@ -1136,6 +1158,37 @@ Example:
 - `single`: Verify a single test execution log against a specific test case
 - `batch`: Process multiple logs and generate aggregated reports
 - `parse-log`: Parse and display log contents without verification
+
+### Container YAML Report Format
+
+The `--container-format` flag enables an enhanced YAML report format with rich metadata. This format wraps test results in a container structure with contextual information about the test run.
+
+**Available Metadata Flags** (used with `--container-format`):
+- `--title`: Report title (default: "Test Execution Results")
+- `--project`: Project name (default: "Test Case Manager - Verification Results")
+- `--environment`: Environment information (e.g., "Production", "Staging", "Development")
+- `--platform`: Platform information (e.g., "Linux x86_64", "macOS ARM64")
+- `--executor`: Executor information (e.g., "CI Pipeline v2.1", "Manual Test Run")
+
+**Example**:
+```bash
+test-verify batch \
+  --logs logs/*.log \
+  --format yaml \
+  --output report.yaml \
+  --container-format \
+  --title "Nightly Test Run 2024-01-15" \
+  --project "Production Verification Suite" \
+  --environment "Production" \
+  --platform "Linux x86_64" \
+  --executor "Jenkins Pipeline v3.2"
+```
+
+The container format provides a structured report with:
+- Test execution metadata (title, project, environment, platform, executor)
+- Timestamp of report generation
+- Summary statistics (total tests, passed, failed, pass rate)
+- Detailed test results with step-level verification data
 
 For detailed usage, see [docs/TEST_VERIFY_USAGE.md](docs/TEST_VERIFY_USAGE.md)
 
