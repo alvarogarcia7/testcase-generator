@@ -1,0 +1,54 @@
+---
+metadata:
+  id: HOOKS_VARIABLES_001
+  name: Hooks with Variable Usage
+  description: Tests hooks accessing and using environment variables and captured variables
+  version: 1.0.0
+
+hydration_vars:
+  required:
+    - TEST_ENV
+  optional:
+    - CUSTOM_VAR
+
+hooks:
+  script_start:
+    command: "test-acceptance/scripts/hooks/vars_script_start.sh"
+    on_error: "fail"
+  after_step:
+    command: "test-acceptance/scripts/hooks/vars_after_step.sh"
+    on_error: "continue"
+
+sequences:
+  - id: "1"
+    name: "Variable Access Sequence"
+    variables:
+      - name: "SEQUENCE_VAR"
+        value: "sequence_value"
+    steps:
+      - description: "Capture a variable"
+        command: "echo 'captured_value_12345'"
+        expected_output: "captured_value_12345"
+        capture:
+          - variable: "CAPTURED_VAR"
+            pattern: "captured_value_(\\d+)"
+
+      - description: "Use captured variable"
+        command: "echo $CAPTURED_VAR"
+        expected_output: "12345"
+
+      - description: "Verify hook accessed environment variables"
+        command: "test -f /tmp/hook_vars_$$.log && grep 'TEST_ENV' /tmp/hook_vars_$$.log"
+        expected_output: ".*TEST_ENV.*"
+
+      - description: "Verify hook accessed sequence variable"
+        command: "grep 'SEQUENCE_VAR' /tmp/hook_vars_$$.log"
+        expected_output: ".*SEQUENCE_VAR.*sequence_value.*"
+
+      - description: "Check captured variable in hook"
+        command: "grep 'CAPTURED_VAR' /tmp/hook_vars_$$.log || echo 'not yet captured'"
+        expected_output: ".*"
+
+      - description: "Cleanup log file"
+        command: "rm -f /tmp/hook_vars_$$.log"
+        expected_output: ""

@@ -1,0 +1,42 @@
+---
+metadata:
+  id: HOOKS_BEFORE_SEQUENCE_001
+  name: Before Sequence Hook - Logging
+  description: Tests before_sequence hook that logs sequence start with sequence context
+  version: 1.0.0
+
+hydration_vars:
+  required:
+    - TEST_ENV
+
+hooks:
+  before_sequence:
+    command: "test-acceptance/scripts/hooks/before_sequence_log.sh"
+    on_error: "fail"
+
+sequences:
+  - id: "1"
+    name: "First Test Sequence"
+    steps:
+      - description: "Verify before_sequence hook logged sequence 1"
+        command: "test -f /tmp/before_sequence_$$.log && grep 'Sequence 1: First Test Sequence' /tmp/before_sequence_$$.log"
+        expected_output: "Sequence 1: First Test Sequence"
+
+      - description: "Check log count"
+        command: "grep -c 'before_sequence' /tmp/before_sequence_$$.log"
+        expected_output: "1"
+
+  - id: "2"
+    name: "Second Test Sequence"
+    steps:
+      - description: "Verify before_sequence hook logged sequence 2"
+        command: "grep 'Sequence 2: Second Test Sequence' /tmp/before_sequence_$$.log"
+        expected_output: "Sequence 2: Second Test Sequence"
+
+      - description: "Check log count for both sequences"
+        command: "grep -c 'before_sequence' /tmp/before_sequence_$$.log"
+        expected_output: "2"
+
+      - description: "Cleanup log file"
+        command: "rm -f /tmp/before_sequence_$$.log"
+        expected_output: ""

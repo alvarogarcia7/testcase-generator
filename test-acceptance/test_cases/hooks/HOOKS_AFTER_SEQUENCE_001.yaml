@@ -1,0 +1,49 @@
+---
+metadata:
+  id: HOOKS_AFTER_SEQUENCE_001
+  name: After Sequence Hook - Cleanup
+  description: Tests after_sequence hook that performs cleanup after each sequence
+  version: 1.0.0
+
+hydration_vars:
+  required:
+    - TEST_ENV
+
+hooks:
+  before_sequence:
+    command: "test-acceptance/scripts/hooks/before_sequence_create_temp.sh"
+    on_error: "fail"
+  after_sequence:
+    command: "test-acceptance/scripts/hooks/after_sequence_cleanup.sh"
+    on_error: "continue"
+
+sequences:
+  - id: "1"
+    name: "First Sequence with Cleanup"
+    steps:
+      - description: "Create temp file in sequence"
+        command: "echo 'sequence 1 data' > /tmp/sequence_1_$$.tmp && cat /tmp/sequence_1_$$.tmp"
+        expected_output: "sequence 1 data"
+
+      - description: "Verify temp file exists before cleanup"
+        command: "test -f /tmp/sequence_1_$$.tmp && echo 'exists'"
+        expected_output: "exists"
+
+  - id: "2"
+    name: "Second Sequence Verifies Cleanup"
+    steps:
+      - description: "Verify sequence 1 temp file was cleaned up"
+        command: "test ! -f /tmp/sequence_1_$$.tmp && echo 'cleaned up'"
+        expected_output: "cleaned up"
+
+      - description: "Create temp file in sequence 2"
+        command: "echo 'sequence 2 data' > /tmp/sequence_2_$$.tmp && cat /tmp/sequence_2_$$.tmp"
+        expected_output: "sequence 2 data"
+
+      - description: "Verify cleanup log exists"
+        command: "test -f /tmp/after_sequence_cleanup_$$.log && grep -c 'Cleaned up sequence' /tmp/after_sequence_cleanup_$$.log"
+        expected_output: "2"
+
+      - description: "Cleanup all test files"
+        command: "rm -f /tmp/sequence_*_$$.tmp /tmp/after_sequence_cleanup_$$.log /tmp/before_sequence_temp_$$.log"
+        expected_output: ""

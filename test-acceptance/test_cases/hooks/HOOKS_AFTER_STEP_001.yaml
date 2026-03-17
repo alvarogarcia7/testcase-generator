@@ -1,0 +1,39 @@
+---
+metadata:
+  id: HOOKS_AFTER_STEP_001
+  name: After Step Hook - Metric Collection
+  description: Tests after_step hook that collects metrics and logs step results
+  version: 1.0.0
+
+hydration_vars:
+  required:
+    - TEST_ENV
+
+hooks:
+  after_step:
+    command: "test-acceptance/scripts/hooks/after_step_metrics.sh"
+    on_error: "continue"
+
+sequences:
+  - id: "1"
+    name: "Metric Collection Sequence"
+    steps:
+      - description: "Successful step"
+        command: "echo 'success' && exit 0"
+        expected_output: "success"
+
+      - description: "Another successful step"
+        command: "echo 'also success'"
+        expected_output: "also success"
+
+      - description: "Verify metrics collected"
+        command: "test -f /tmp/after_step_metrics_$$.log && cat /tmp/after_step_metrics_$$.log"
+        expected_output: ".*after_step metrics.*"
+
+      - description: "Check exit code logging"
+        command: "grep -c 'Exit code: 0' /tmp/after_step_metrics_$$.log"
+        expected_output: "3"
+
+      - description: "Cleanup metrics file"
+        command: "rm -f /tmp/after_step_metrics_$$.log"
+        expected_output: ""

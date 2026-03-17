@@ -1,0 +1,69 @@
+---
+metadata:
+  id: HOOKS_MULTI_COMBINED_001
+  name: Multiple Hooks Combined
+  description: Tests multiple hook types working together in a single test case
+  version: 1.0.0
+
+hydration_vars:
+  required:
+    - TEST_ENV
+  optional:
+    - LOG_LEVEL
+
+hooks:
+  script_start:
+    command: "test-acceptance/scripts/hooks/multi_script_start.sh"
+    on_error: "fail"
+  setup_test:
+    command: "test-acceptance/scripts/hooks/multi_setup_test.sh"
+    on_error: "fail"
+  before_sequence:
+    command: "test-acceptance/scripts/hooks/multi_before_sequence.sh"
+    on_error: "fail"
+  after_sequence:
+    command: "test-acceptance/scripts/hooks/multi_after_sequence.sh"
+    on_error: "continue"
+  before_step:
+    command: "test-acceptance/scripts/hooks/multi_before_step.sh"
+    on_error: "fail"
+  after_step:
+    command: "test-acceptance/scripts/hooks/multi_after_step.sh"
+    on_error: "continue"
+  teardown_test:
+    command: "test-acceptance/scripts/hooks/multi_teardown_test.sh"
+    on_error: "continue"
+  script_end:
+    command: "test-acceptance/scripts/hooks/multi_script_end.sh"
+    on_error: "continue"
+
+sequences:
+  - id: "1"
+    name: "First Combined Sequence"
+    steps:
+      - description: "Verify script_start hook executed"
+        command: "test -f /tmp/multi_hooks_$$.log && grep 'script_start' /tmp/multi_hooks_$$.log"
+        expected_output: "script_start executed"
+
+      - description: "Verify setup_test hook executed"
+        command: "grep 'setup_test' /tmp/multi_hooks_$$.log"
+        expected_output: "setup_test executed"
+
+      - description: "Verify before_sequence hook executed"
+        command: "grep 'before_sequence.*Sequence 1' /tmp/multi_hooks_$$.log"
+        expected_output: "before_sequence.*Sequence 1.*"
+
+  - id: "2"
+    name: "Second Combined Sequence"
+    steps:
+      - description: "Verify after_sequence hook executed for sequence 1"
+        command: "grep 'after_sequence.*Sequence 1' /tmp/multi_hooks_$$.log"
+        expected_output: "after_sequence.*Sequence 1.*"
+
+      - description: "Verify all hook types are present"
+        command: "grep -c -E '(script_start|setup_test|before_sequence|after_step|before_step)' /tmp/multi_hooks_$$.log"
+        expected_output: "[0-9]+"
+
+      - description: "Count total hook executions"
+        command: "wc -l < /tmp/multi_hooks_$$.log | tr -d ' '"
+        expected_output: "[0-9]+"

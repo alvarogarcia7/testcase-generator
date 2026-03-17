@@ -1,0 +1,50 @@
+---
+metadata:
+  id: HOOKS_STEP_CONTEXT_001
+  name: Hooks with Step Context
+  description: Tests that hooks receive correct step context variables including exit codes
+  version: 1.0.0
+
+hydration_vars:
+  required:
+    - TEST_ENV
+
+hooks:
+  before_step:
+    command: "test-acceptance/scripts/hooks/context_before_step.sh"
+    on_error: "fail"
+  after_step:
+    command: "test-acceptance/scripts/hooks/context_after_step.sh"
+    on_error: "continue"
+
+sequences:
+  - id: "1"
+    name: "Step Context Sequence"
+    steps:
+      - description: "First step with context"
+        command: "echo 'step one output'"
+        expected_output: "step one output"
+
+      - description: "Second step with context"
+        command: "echo 'step two output'"
+        expected_output: "step two output"
+
+      - description: "Verify step context logged"
+        command: "test -f /tmp/step_context_$$.log && cat /tmp/step_context_$$.log"
+        expected_output: ".*"
+
+      - description: "Check step numbers"
+        command: "grep 'TEST_STEP_NUMBER' /tmp/step_context_$$.log | grep -E '[1-4]'"
+        expected_output: ".*TEST_STEP_NUMBER.*[1-4].*"
+
+      - description: "Check step descriptions"
+        command: "grep 'TEST_STEP_DESCRIPTION' /tmp/step_context_$$.log"
+        expected_output: ".*TEST_STEP_DESCRIPTION.*"
+
+      - description: "Verify exit codes in after_step"
+        command: "grep 'STEP_EXIT_CODE' /tmp/step_context_$$.log | grep '0'"
+        expected_output: ".*STEP_EXIT_CODE.*0.*"
+
+      - description: "Cleanup log file"
+        command: "rm -f /tmp/step_context_$$.log"
+        expected_output: ""

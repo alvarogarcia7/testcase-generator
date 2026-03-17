@@ -1,0 +1,23 @@
+---
+metadata:
+  id: HOOKS_ON_ERROR_FAIL_001
+  name: Hook Failure - on_error fail
+  description: Tests that hook with on_error fail stops execution when hook fails
+  version: 1.0.0
+
+hydration_vars:
+  required:
+    - TEST_ENV
+
+hooks:
+  setup_test:
+    command: "test-acceptance/scripts/hooks/fail_hook.sh"
+    on_error: "fail"
+
+sequences:
+  - id: "1"
+    name: "Should Not Execute"
+    steps:
+      - description: "This step should not run due to failed setup hook"
+        command: "echo 'should not execute' > /tmp/should_not_exist_$$.txt"
+        expected_output: "should not execute"

@@ -1,0 +1,31 @@
+---
+metadata:
+  id: HOOKS_ON_ERROR_CONTINUE_001
+  name: Hook Failure - on_error continue
+  description: Tests that hook with on_error continue allows execution to continue after hook failure
+  version: 1.0.0
+
+hydration_vars:
+  required:
+    - TEST_ENV
+
+hooks:
+  before_step:
+    command: "test-acceptance/scripts/hooks/fail_hook_continue.sh"
+    on_error: "continue"
+
+sequences:
+  - id: "1"
+    name: "Continues Despite Hook Failure"
+    steps:
+      - description: "This step should execute despite failed before_step hook"
+        command: "echo 'step executed' > /tmp/hook_continue_$$.txt && cat /tmp/hook_continue_$$.txt"
+        expected_output: "step executed"
+
+      - description: "Another step that should execute"
+        command: "echo 'second step' >> /tmp/hook_continue_$$.txt && grep -c 'step' /tmp/hook_continue_$$.txt"
+        expected_output: "2"
+
+      - description: "Cleanup test file"
+        command: "rm -f /tmp/hook_continue_$$.txt"
+        expected_output: ""

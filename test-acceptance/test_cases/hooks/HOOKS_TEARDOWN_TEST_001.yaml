@@ -1,0 +1,34 @@
+---
+metadata:
+  id: HOOKS_TEARDOWN_TEST_001
+  name: Teardown Test Hook - Resource Cleanup
+  description: Tests teardown_test hook that performs final resource cleanup
+  version: 1.0.0
+
+hydration_vars:
+  required:
+    - TEST_ENV
+
+hooks:
+  setup_test:
+    command: "test-acceptance/scripts/hooks/teardown_setup_resources.sh"
+    on_error: "fail"
+  teardown_test:
+    command: "test-acceptance/scripts/hooks/teardown_test_cleanup.sh"
+    on_error: "continue"
+
+sequences:
+  - id: "1"
+    name: "Create Resources for Teardown"
+    steps:
+      - description: "Verify setup created resources"
+        command: "test -d /tmp/teardown_workspace_$$ && echo 'workspace exists'"
+        expected_output: "workspace exists"
+
+      - description: "Create additional test files"
+        command: "echo 'test data' > /tmp/teardown_workspace_$$/data.txt && cat /tmp/teardown_workspace_$$/data.txt"
+        expected_output: "test data"
+
+      - description: "Write teardown marker"
+        command: "echo 'cleanup needed' > /tmp/teardown_marker_$$.txt && cat /tmp/teardown_marker_$$.txt"
+        expected_output: "cleanup needed"
