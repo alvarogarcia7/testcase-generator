@@ -1,0 +1,74 @@
+requirement: "VARIABLE_CAPTURE"
+item: 1
+tc: 1
+id: 'TC_SUCCESS_VAR_CAPTURE_001'
+description: 'Variable capture and usage - demonstrates capturing values and using them in subsequent steps'
+
+general_initial_conditions:
+  system:
+    - "Bash shell is available"
+    - "Basic utilities available"
+
+initial_conditions:
+  filesystem:
+    - "Temporary directory is writable"
+
+test_sequences:
+  - id: 1
+    name: "Variable Capture and Reuse"
+    description: "Capture variables from command output and use them in later steps"
+    initial_conditions:
+      system:
+        - "Variable capture mechanisms work correctly"
+    steps:
+      - step: 1
+        description: "Generate timestamp and capture it"
+        command: "date +%s"
+        capture_vars:
+          - name: timestamp
+            capture: '([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "timestamp"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
+          general:
+            - name: verify_timestamp_captured
+              condition: "[[ -n \"$timestamp\" ]]"
+            - name: verify_timestamp_numeric
+              condition: "[[ $timestamp =~ ^[0-9]+$ ]]"
+
+      - step: 2
+        description: "Create file with captured timestamp"
+        command: "echo \"Timestamp: ${timestamp}\" > /tmp/timestamp_${timestamp}.txt"
+        expected:
+          success: true
+          result: 0
+          output: ""
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"
+
+      - step: 3
+        description: "Read back the file and verify timestamp"
+        command: "cat /tmp/timestamp_${timestamp}.txt"
+        expected:
+          success: true
+          result: 0
+          output: "Timestamp:"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Timestamp: ${timestamp}' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 4
+        description: "Cleanup file using captured timestamp"
+        command: "rm -f /tmp/timestamp_${timestamp}.txt && echo 'Deleted'"
+        expected:
+          success: true
+          result: 0
+          output: "Deleted"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Deleted' <<< \"$COMMAND_OUTPUT\""
