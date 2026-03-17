@@ -57,6 +57,7 @@ See the [Hooks](#hooks) section for detailed documentation and examples.
 - **Generate Docs Coverage**: make generate-docs-coverage (run documentation generation with tarpaulin coverage analysis)
 - **Test Container Compatibility**: make test-container-compat (verify container YAML compatibility with test-plan-doc-gen)
 - **Acceptance Tests**: make acceptance-test (run full acceptance test suite with validation, generation, execution, verification, and documentation)
+- **Acceptance Suite E2E Tests**: make test-e2e-acceptance (run E2E integration tests for the acceptance suite orchestrator)
 - **Dev Server**: N/A
 
 ### Report Generation
@@ -170,6 +171,30 @@ The `acceptance-test` target is included in the `pre-commit` checks to ensure al
 - Documentation generation
 - Schema compliance
 - End-to-end integration
+
+### Acceptance Suite E2E Tests
+
+**Command**: `make test-e2e-acceptance`
+
+The acceptance suite E2E tests validate that the `run_acceptance_suite.sh` orchestrator works correctly by running it on a subset of test cases and verifying all stages complete successfully.
+
+**Test Coverage**:
+- Validates all 6 stages complete successfully
+- Checks expected files are created at each stage (scripts, logs, containers, documentation)
+- Validates final report is generated with correct statistics
+- Tests all `--skip-*` flags work correctly (generation, execution, verification, documentation)
+- Ensures `--verbose` flag increases logging detail
+- Verifies error handling for missing dependencies (TPDG not available)
+- Tests timeout handling for long-running scripts
+- Confirms cleanup of temporary files after completion
+- Tests combining multiple `--skip-*` flags
+
+**Test Subset**:
+- 5 success scenarios
+- 3 failure scenarios
+- 2 hook scenarios
+
+**Documentation**: See `test-acceptance/tests/README.md` for detailed information on the E2E test implementation and adding new tests.
 
 ## Binaries
 

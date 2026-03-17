@@ -405,6 +405,14 @@ acceptance-test: build-acceptance-binaries
 	fi
 .PHONY: acceptance-test
 
+test-e2e-acceptance: build-acceptance-binaries
+	@echo "========================================="
+	@echo "Running Acceptance Suite E2E Tests"
+	@echo "========================================="
+	@echo ""
+	./test-acceptance/tests/test_acceptance_suite_e2e.sh
+.PHONY: test-e2e-acceptance
+
 build-acceptance-binaries:
 	@echo "Building required binaries for acceptance tests..."
 	@cargo build --bin test-executor
