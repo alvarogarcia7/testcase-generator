@@ -32,7 +32,7 @@ echo "Output directory: $OUTPUT_DIR"
 echo ""
 echo "=== Building verifier binary ==="
 cd "$PROJECT_ROOT"
-cargo build ${BUILD_VARIANT} --bin verifier
+cargo build "${BUILD_VARIANT}" --bin verifier
 
 if [ $? -ne 0 ]; then
     echo "✗ Failed to build verifier binary"
