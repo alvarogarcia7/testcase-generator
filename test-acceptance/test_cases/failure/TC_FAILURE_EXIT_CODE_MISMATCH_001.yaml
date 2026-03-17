@@ -1,0 +1,44 @@
+requirement: "FAILURE_EXIT_CODE_MISMATCH"
+item: 1
+tc: 1
+id: 'TC_FAILURE_EXIT_CODE_MISMATCH_001'
+description: 'Test case where command exit code verification fails - tests exit code validation logic'
+
+general_initial_conditions:
+  system:
+    - "Bash shell is available"
+    - "Basic Unix utilities are installed"
+
+initial_conditions:
+  filesystem:
+    - "Temporary directory /tmp is writable"
+
+test_sequences:
+  - id: 1
+    name: "Exit Code Mismatch Sequence"
+    description: "Execute commands where exit code does not match expected value"
+    initial_conditions:
+      system:
+        - "False command is available"
+    steps:
+      - step: 1
+        description: "Run false command but expect success exit code"
+        command: "false"
+        expected:
+          success: true
+          result: 0
+          output: ""
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"
+
+      - step: 2
+        description: "This step should not execute due to exit code mismatch"
+        command: "echo 'Step 2'"
+        expected:
+          success: true
+          result: 0
+          output: "Step 2"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Step 2' <<< \"$COMMAND_OUTPUT\""
