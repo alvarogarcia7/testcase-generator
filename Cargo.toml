@@ -78,6 +78,10 @@ path = "src/bin/verifier.rs"
 name = "test-plan-documentation-generator-compat"
 path = "src/bin/test-plan-documentation-generator-compat.rs"
 
+[[bin]]
+name = "json-to-yaml"
+path = "src/bin/json-to-yaml.rs"
+
 [[example]]
 name = "tty_fallback_demo"
 path = "examples/tty_fallback_demo.rs"

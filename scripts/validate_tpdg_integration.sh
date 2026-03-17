@@ -300,12 +300,23 @@ for test_case_file in "${TEST_SCENARIOS[@]}"; do
     
     pass "Generated verification JSON: $(basename "$verification_json")"
     
-    # Convert verification JSON to result YAML using fallback converter
+    # Convert verification JSON to result YAML using Rust binary
     log_verbose "Converting to result YAML..."
 
-    if python3 "$SCRIPT_DIR/convert_json_to_yaml_v3.py" \
-        "$verification_json" \
-        -o "$OUTPUT_DIR/results" > /tmp/conversion_output.txt 2>&1; then
+    # Use the compiled Rust binary for better performance
+    JSON_TO_YAML_BIN="$PROJECT_ROOT/target/release/json-to-yaml"
+
+    # Fall back to debug build if release not available
+    if [[ ! -f "$JSON_TO_YAML_BIN" ]]; then
+        JSON_TO_YAML_BIN="$PROJECT_ROOT/target/debug/json-to-yaml"
+    fi
+
+    if [[ ! -f "$JSON_TO_YAML_BIN" ]]; then
+        fail "json-to-yaml binary not found - ensure project is built with: cargo build --release"
+        exit 1
+    fi
+
+    if "$JSON_TO_YAML_BIN" "$verification_json" -o "$OUTPUT_DIR/results" > /tmp/conversion_output.txt 2>&1; then
         cat /tmp/conversion_output.txt | while IFS= read -r line; do
             log_verbose "$line"
         done
