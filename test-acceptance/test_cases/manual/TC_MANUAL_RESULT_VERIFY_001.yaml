@@ -1,0 +1,110 @@
+requirement: "MANUAL_RESULT_VERIFICATION"
+item: 1
+tc: 3
+id: 'TC_MANUAL_RESULT_VERIFY_001'
+description: 'Test case with manual steps requiring result verification - demonstrates validation of operation outcomes'
+
+general_initial_conditions:
+  system:
+    - "Test operator has access to system controls"
+    - "Result verification tools are available"
+
+initial_conditions:
+  environment:
+    - "System is in clean state"
+  monitoring:
+    - "Result monitoring is active"
+
+test_sequences:
+  - id: 1
+    name: "Manual Result Verification Workflow"
+    description: |
+                  This test sequence focuses on manual steps where the result
+                  must be verified against expected outcomes.
+    initial_conditions:
+      system:
+        - "System is ready for result verification testing"
+    steps:
+      - step: 1
+        manual: true
+        description: "Execute hardware diagnostic from device menu"
+        command: "Navigate to Diagnostics > Hardware Test and click Execute"
+        expected:
+          success: true
+          result: 0
+          output: "Diagnostic completes with result code 0 (Success)"
+        verification:
+          result: "Did the diagnostic complete with result code 0? (Y/n)"
+          output: "true"
+      
+      - step: 2
+        manual: true
+        description: "Perform network connectivity test"
+        command: "Open Network Tools and run Connectivity Test"
+        expected:
+          success: true
+          result: 0
+          output: "All network interfaces report 'Connected' status"
+        verification:
+          result: "Do all network interfaces show 'Connected' status? (Y/n)"
+          output: "true"
+      
+      - step: 3
+        manual: true
+        description: "Run memory test utility"
+        command: "Launch Memory Test utility and execute full test"
+        expected:
+          success: true
+          result: 0
+          output: "Memory test passes with 0 errors detected"
+        verification:
+          result: "Did the memory test pass with 0 errors? (Y/n)"
+          output: "true"
+      
+      - step: 4
+        manual: true
+        description: "Verify disk health status"
+        command: "Open Disk Utility and check SMART status for all drives"
+        expected:
+          success: true
+          result: 0
+          output: "All drives report 'Healthy' status with no warnings"
+        verification:
+          result: "Do all drives show 'Healthy' status? (Y/n)"
+          output: "true"
+      
+      - step: 5
+        manual: true
+        description: "Execute performance benchmark"
+        command: "Run System Benchmark from the Tools menu"
+        expected:
+          success: true
+          result: 0
+          output: "Benchmark completes with score above minimum threshold"
+        verification:
+          result: "Did the benchmark complete successfully with passing score? (Y/n)"
+          output: "true"
+      
+      - step: 6
+        manual: true
+        description: "Test backup operation"
+        command: "Initiate a test backup to external storage"
+        expected:
+          success: true
+          result: 0
+          output: "Backup completes successfully with 'OK' status"
+        verification:
+          result: "Did the backup complete with 'OK' status? (Y/n)"
+          output: "true"
+      
+      - step: 7
+        manual: true
+        description: "Verify backup integrity"
+        command: "Run backup verification tool on completed backup"
+        expected:
+          success: true
+          result: 0
+          output: "Verification reports 'All files validated successfully'"
+        verification:
+          result: "Does verification report all files validated successfully? (Y/n)"
+          output: "true"

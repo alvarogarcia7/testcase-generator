@@ -1,0 +1,224 @@
+requirement: "MANUAL_MULTI_SEQUENCE"
+item: 1
+tc: 7
+id: 'TC_MANUAL_MULTI_SEQ_001'
+description: 'Test case with manual steps across multiple sequences - demonstrates multi-phase manual testing'
+
+general_initial_conditions:
+  system:
+    - "Multi-phase testing environment is prepared"
+    - "All test phases are documented"
+  tester:
+    - "Test operator is prepared for multi-sequence testing"
+
+initial_conditions:
+  environment:
+    - "System is in baseline state for multi-phase testing"
+
+test_sequences:
+  - id: 1
+    name: "Phase 1: Initial Setup and Verification"
+    description: |
+                  First phase establishes baseline and verifies initial conditions
+                  through manual verification.
+    initial_conditions:
+      system:
+        - "Phase 1 prerequisites are met"
+    steps:
+      - step: 1
+        manual: true
+        description: "Manually power on all test devices"
+        command: "Press power button on each device in the test rack"
+        expected:
+          success: true
+          result: 0
+          output: "All device power LEDs illuminate"
+        verification:
+          result: "true"
+          output: "Are all device power LEDs illuminated? (Y/n)"
+      
+      - step: 2
+        manual: true
+        description: "Verify network link lights on all devices"
+        command: "Observe network ports on each device"
+        expected:
+          success: true
+          result: 0
+          output: "All network link LEDs show active connection"
+        verification:
+          result: "true"
+          output: "Do all network link LEDs show active connections? (Y/n)"
+      
+      - step: 3
+        description: "Wait for device initialization"
+        command: "sleep 30 && echo 'Initialization period complete'"
+        expected:
+          success: true
+          result: 0
+          output: "Initialization period complete"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'complete' <<< \"$COMMAND_OUTPUT\""
+      
+      - step: 4
+        manual: true
+        description: "Verify all devices show ready status"
+        command: "Check status display or LED indicators on each device"
+        expected:
+          success: true
+          result: 0
+          output: "All devices display 'Ready' or green status LED"
+        verification:
+          result: "true"
+          output: "Do all devices show ready status (Ready or green LED)? (Y/n)"
+
+  - id: 2
+    name: "Phase 2: Configuration and Testing"
+    description: |
+                  Second phase performs configuration changes and tests
+                  system response through manual observation.
+    initial_conditions:
+      system:
+        - "Phase 1 completed successfully"
+        - "All devices are in ready state"
+    steps:
+      - step: 1
+        manual: true
+        description: "Access device configuration interface"
+        command: "Open web browser and navigate to device management URL"
+        expected:
+          success: true
+          result: 0
+          output: "Configuration interface loads and displays main dashboard"
+        verification:
+          result: "true"
+          output: "Did the configuration interface load successfully? (Y/n)"
+      
+      - step: 2
+        manual: true
+        description: "Apply test configuration profile"
+        command: "Select 'Test Profile' from configuration menu and click Apply"
+        expected:
+          success: true
+          result: 0
+          output: "Configuration applied successfully, confirmation message appears"
+        verification:
+          result: "true"
+          output: "Did you see a configuration success confirmation message? (Y/n)"
+      
+      - step: 3
+        description: "Wait for configuration propagation"
+        command: "sleep 15 && echo 'Configuration propagation time elapsed'"
+        expected:
+          success: true
+          result: 0
+          output: "Configuration propagation time elapsed"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'elapsed' <<< \"$COMMAND_OUTPUT\""
+      
+      - step: 4
+        manual: true
+        description: "Verify configuration was applied"
+        command: "Review configuration status page"
+        expected:
+          success: true
+          result: 0
+          output: "Active configuration shows 'Test Profile' is loaded"
+        verification:
+          result: "true"
+          output: "Does the status page show 'Test Profile' as active? (Y/n)"
+      
+      - step: 5
+        manual: true
+        description: "Execute manual functional test"
+        command: "Perform test operation from the UI"
+        expected:
+          success: true
+          result: 0
+          output: "Test operation completes with success indicator"
+        verification:
+          result: "true"
+          output: "Did the test operation complete successfully? (Y/n)"
+
+  - id: 3
+    name: "Phase 3: Stress Testing and Validation"
+    description: |
+                  Final phase performs stress testing and validates system
+                  behavior under load through manual observation.
+    initial_conditions:
+      system:
+        - "Phase 2 completed successfully"
+        - "Test configuration is active"
+    steps:
+      - step: 1
+        manual: true
+        description: "Initiate system stress test"
+        command: "Navigate to Diagnostics > Stress Test and click Start"
+        expected:
+          success: true
+          result: 0
+          output: "Stress test begins, progress indicator shows activity"
+        verification:
+          result: "true"
+          output: "Did the stress test start with progress indicator? (Y/n)"
+      
+      - step: 2
+        manual: true
+        description: "Monitor system during stress test"
+        command: "Observe system metrics and indicators for 5 minutes"
+        expected:
+          success: true
+          result: 0
+          output: "System remains stable, no error indicators appear"
+        verification:
+          result: "true"
+          output: "Did the system remain stable without error indicators? (Y/n)"
+      
+      - step: 3
+        manual: true
+        description: "Verify stress test completion"
+        command: "Wait for stress test to complete"
+        expected:
+          success: true
+          result: 0
+          output: "Stress test completes with 'PASS' status"
+        verification:
+          result: "true"
+          output: "Did the stress test complete with 'PASS' status? (Y/n)"
+      
+      - step: 4
+        manual: true
+        description: "Review stress test results"
+        command: "Open stress test results report"
+        expected:
+          success: true
+          result: 0
+          output: "Results show all subsystems passed stress testing"
+        verification:
+          result: "true"
+          output: "Do results show all subsystems passed? (Y/n)"
+      
+      - step: 5
+        manual: true
+        description: "Return system to baseline configuration"
+        command: "Apply 'Default Profile' from configuration menu"
+        expected:
+          success: true
+          result: 0
+          output: "Baseline configuration restored successfully"
+        verification:
+          result: "true"
+          output: "Was baseline configuration restored successfully? (Y/n)"
+      
+      - step: 6
+        manual: true
+        description: "Final system health check"
+        command: "Review system health dashboard"
+        expected:
+          success: true
+          result: 0
+          output: "All health indicators show green/normal status"
+        verification:
+          result: "true"
+          output: "Do all health indicators show green/normal status? (Y/n)"

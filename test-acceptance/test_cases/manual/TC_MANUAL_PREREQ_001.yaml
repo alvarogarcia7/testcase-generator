@@ -1,0 +1,200 @@
+requirement: "MANUAL_PREREQUISITES"
+item: 1
+tc: 8
+id: 'TC_MANUAL_PREREQ_001'
+description: 'Test case with manual prerequisite and automatic verification - demonstrates prerequisite validation workflow'
+
+prerequisites:
+  - type: manual
+    description: "Ensure physical access to the test device is available"
+  - type: manual
+    description: "Verify that test device serial cable is connected to workstation"
+  - type: manual
+    description: "Confirm test operator has login credentials for the device"
+  - type: automatic
+    description: "Verify test workspace directory exists"
+    verification_command: "test -d /tmp/test_workspace && exit 0 || exit 1"
+  - type: automatic
+    description: "Check that test data file is present"
+    verification_command: "test -f /tmp/test_data.txt && exit 0 || exit 1"
+  - type: automatic
+    description: "Verify sufficient disk space available (minimum 100MB)"
+    verification_command: "df -k /tmp | awk 'NR==2 {if ($4 > 102400) exit 0; else exit 1}'"
+  - type: manual
+    description: "Confirm external test equipment is powered on and ready"
+  - type: automatic
+    description: "Check network connectivity to test device"
+    verification_command: "ping -c 2 -W 2 localhost >/dev/null 2>&1 && exit 0 || exit 1"
+
+general_initial_conditions:
+  system:
+    - "Test prerequisites have been validated"
+    - "Test environment is fully prepared"
+  documentation:
+    - "Test procedure documentation is available"
+
+initial_conditions:
+  workspace:
+    - "Test workspace is initialized"
+  device:
+    - "Device under test is accessible"
+
+test_sequences:
+  - id: 1
+    name: "Post-Prerequisite Testing Workflow"
+    description: |
+                  This test sequence executes after all prerequisites are validated,
+                  demonstrating that manual and automatic prerequisites work together.
+    initial_conditions:
+      system:
+        - "All prerequisites passed validation"
+    steps:
+      - step: 1
+        description: "Verify prerequisite validations"
+        command: "echo 'All prerequisites validated' && test -d /tmp/test_workspace && test -f /tmp/test_data.txt"
+        expected:
+          success: true
+          result: 0
+          output: "All prerequisites validated"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'validated' <<< \"$COMMAND_OUTPUT\""
+      
+      - step: 2
+        manual: true
+        description: "Establish serial connection to device"
+        command: "Open serial terminal application and connect to device"
+        expected:
+          success: true
+          result: 0
+          output: "Serial connection established, login prompt appears"
+        verification:
+          result: "true"
+          output: "Did serial connection establish with login prompt visible? (Y/n)"
+      
+      - step: 3
+        manual: true
+        description: "Login to device via serial console"
+        command: "Enter username and password at serial console prompt"
+        expected:
+          success: true
+          result: 0
+          output: "Login successful, shell prompt appears"
+        verification:
+          result: "true"
+          output: "Did login succeed with shell prompt displayed? (Y/n)"
+      
+      - step: 4
+        description: "Read test data from prerequisite file"
+        command: "cat /tmp/test_data.txt"
+        capture_vars:
+          - name: test_value
+            capture: "test_value=([0-9]+)"
+        expected:
+          success: true
+          result: 0
+          output: "test_value="
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'test_value=' <<< \"$COMMAND_OUTPUT\""
+      
+      - step: 5
+        manual: true
+        description: "Execute command on device using captured value"
+        command: "Type command using test_value at device serial console"
+        expected:
+          success: true
+          result: 0
+          output: "Command executes successfully using test value"
+        verification:
+          result: "true"
+          output: "Did the command execute successfully with the test value? (Y/n)"
+      
+      - step: 6
+        manual: true
+        description: "Verify external equipment response"
+        command: "Observe external test equipment display/indicators"
+        expected:
+          success: true
+          result: 0
+          output: "External equipment shows expected response"
+        verification:
+          result: "true"
+          output: "Does external equipment show expected response? (Y/n)"
+      
+      - step: 7
+        description: "Log test results to workspace"
+        command: "echo 'Test completed successfully' > /tmp/test_workspace/results.txt && cat /tmp/test_workspace/results.txt"
+        expected:
+          success: true
+          result: 0
+          output: "Test completed successfully"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'completed successfully' <<< \"$COMMAND_OUTPUT\""
+      
+      - step: 8
+        manual: true
+        description: "Disconnect serial connection and power off device"
+        command: "Close serial terminal and press device power button"
+        expected:
+          success: true
+          result: 0
+          output: "Device powers off cleanly, LEDs turn off"
+        verification:
+          result: "true"
+          output: "Did device power off cleanly with LEDs off? (Y/n)"
+
+  - id: 2
+    name: "Prerequisite Cleanup Verification"
+    description: |
+                  This sequence verifies that test cleanup maintains proper state
+                  while preserving prerequisite validation results.
+    initial_conditions:
+      system:
+        - "Primary testing sequence completed"
+    steps:
+      - step: 1
+        description: "Verify workspace integrity"
+        command: "test -d /tmp/test_workspace && test -f /tmp/test_workspace/results.txt && echo 'Workspace intact'"
+        expected:
+          success: true
+          result: 0
+          output: "Workspace intact"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'intact' <<< \"$COMMAND_OUTPUT\""
+      
+      - step: 2
+        description: "Archive test results"
+        command: "tar -czf /tmp/test_results_$(date +%Y%m%d_%H%M%S).tar.gz -C /tmp test_workspace 2>&1 | head -1 || echo 'Archive created'"
+        expected:
+          success: true
+          result: 0
+          output: "created"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"
+      
+      - step: 3
+        manual: true
+        description: "Verify archive file was created"
+        command: "Check /tmp directory for .tar.gz archive file"
+        expected:
+          success: true
+          result: 0
+          output: "Archive file test_results_*.tar.gz exists in /tmp"
+        verification:
+          result: "true"
+          output: "Can you see the test_results_*.tar.gz archive in /tmp? (Y/n)"
+      
+      - step: 4
+        description: "Cleanup test workspace"
+        command: "rm -rf /tmp/test_workspace && echo 'Cleanup complete'"
+        expected:
+          success: true
+          result: 0
+          output: "Cleanup complete"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Cleanup complete' <<< \"$COMMAND_OUTPUT\""
