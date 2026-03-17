@@ -32,7 +32,7 @@ test:
 	${MAKE} test-unit
 	${MAKE} test-e2e
 	#${MAKE} verify-testcases
-	${MAKE} generate-docs-coverage
+	#${MAKE} generate-docs-coverage
 .PHONY: test
 
 test-unit: build
@@ -124,7 +124,7 @@ test-e2e:
 	./tests/integration/test_container_yaml_compat_e2e.sh
 	./tests/integration/test_documentation_generation.sh
 	BUILD_VARIANT="" ./scripts/run_verifier_and_generate_reports.sh
-	./scripts/validate_tpdg_integration.sh --test-plan-doc-gen $HOME/Documents/projects/test-plan-documentation-generator || ./scripts/validate_tpdg_integration.sh --test-plan-doc-gen $HOME/Documents/projects/test-plan-documentation-generator --verbose
+	./scripts/validate_tpdg_integration.sh --test-plan-doc-gen ${HOME}/Documents/projects/test-plan-documentation-generator --verbose
 .PHONY: test-e2e
 
 example_export-demo:
