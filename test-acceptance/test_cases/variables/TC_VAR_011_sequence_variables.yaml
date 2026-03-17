@@ -1,0 +1,114 @@
+requirement: "VAR_TEST"
+item: 1
+tc: 11
+id: 'TC_VAR_011'
+description: 'Test sequence-scoped variables declared in test sequence variables section'
+
+general_initial_conditions:
+  system:
+    - "Bash shell is available"
+
+initial_conditions:
+  environment:
+    - "Test execution environment is ready"
+
+test_sequences:
+  - id: 1
+    name: "Sequence-Scoped Variables"
+    description: "Use variables declared at sequence level"
+    variables:
+      BASE_URL: "https://api.example.com"
+      API_VERSION: "v2"
+      TIMEOUT: "30"
+      RETRY_COUNT: "3"
+    initial_conditions:
+      system:
+        - "Sequence variables are initialized"
+    steps:
+      - step: 1
+        description: "Use sequence-level variables in command"
+        command: |
+          echo "Base URL: $BASE_URL"
+          echo "API Version: $API_VERSION"
+          echo "Timeout: $TIMEOUT seconds"
+          echo "Retries: $RETRY_COUNT"
+        expected:
+          success: true
+          result: '0'
+          output: 'Base URL'
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Base URL' <<< \"$COMMAND_OUTPUT\""
+          general:
+            - name: verify_base_url_in_output
+              condition: "grep -q 'https://api.example.com' <<< \"$COMMAND_OUTPUT\""
+            - name: verify_api_version_in_output
+              condition: "grep -q 'API Version: v2' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 2
+        description: "Construct endpoint URL using sequence variables"
+        command: |
+          FULL_URL="$BASE_URL/$API_VERSION/users"
+          echo "Full endpoint: $FULL_URL"
+        capture_vars:
+          - name: endpoint_url
+            capture: 'Full endpoint: (https://[^ ]+)'
+        expected:
+          success: true
+          result: '0'
+          output: 'Full endpoint'
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Full endpoint' <<< \"$COMMAND_OUTPUT\""
+          general:
+            - name: verify_endpoint_constructed
+              condition: "[[ \"$endpoint_url\" = \"https://api.example.com/v2/users\" ]]"
+
+      - step: 3
+        description: "Use numeric sequence variables in calculations"
+        command: |
+          TOTAL_WAIT=$((TIMEOUT * RETRY_COUNT))
+          echo "Maximum wait time: $TOTAL_WAIT seconds"
+        capture_vars:
+          - name: max_wait
+            capture: 'Maximum wait time: ([0-9]+)'
+        expected:
+          success: true
+          result: '0'
+          output: 'Maximum wait time'
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Maximum wait time' <<< \"$COMMAND_OUTPUT\""
+          general:
+            - name: verify_calculation
+              condition: "[[ $max_wait -eq 90 ]]"
+
+  - id: 2
+    name: "Different Sequence Variables"
+    description: "Each sequence can have its own variable scope"
+    variables:
+      BASE_URL: "https://staging.example.com"
+      API_VERSION: "v1"
+      TIMEOUT: "60"
+    initial_conditions:
+      system:
+        - "Second sequence variables are independent"
+    steps:
+      - step: 1
+        description: "Verify second sequence has different variable values"
+        command: |
+          echo "Staging URL: $BASE_URL"
+          echo "Staging Version: $API_VERSION"
+          echo "Staging Timeout: $TIMEOUT"
+        expected:
+          success: true
+          result: '0'
+          output: 'Staging URL'
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Staging URL' <<< \"$COMMAND_OUTPUT\""
+          general:
+            - name: verify_different_base_url
+              condition: "grep -q 'staging.example.com' <<< \"$COMMAND_OUTPUT\""
+            - name: verify_different_version
+              condition: "grep -q 'Staging Version: v1' <<< \"$COMMAND_OUTPUT\""

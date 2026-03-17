@@ -1,0 +1,154 @@
+requirement: "VAR_TEST"
+item: 1
+tc: 8
+id: 'TC_VAR_008'
+description: 'Test complex variable substitution with default values and bash parameter expansion'
+
+general_initial_conditions:
+  system:
+    - "Bash shell is available"
+    - "Bash parameter expansion is supported"
+
+initial_conditions:
+  environment:
+    - "Test execution environment is ready"
+
+hydration_vars:
+  OPTIONAL_CONFIG:
+    name: "OPTIONAL_CONFIG"
+    description: "Optional configuration value"
+    required: false
+  
+  SERVICE_NAME:
+    name: "SERVICE_NAME"
+    description: "Service name with default"
+    default_value: "default-service"
+    required: false
+
+test_sequences:
+  - id: 1
+    name: "Complex Variable Substitution"
+    description: "Test various bash parameter expansion patterns with variables"
+    initial_conditions:
+      system:
+        - "Bash parameter expansion features available"
+    steps:
+      - step: 1
+        description: "Test default value substitution with undefined variable"
+        command: |
+          VALUE1="${#UNDEFINED_VAR:-default_value}"
+          VALUE2="${#OPTIONAL_CONFIG:-fallback_config}"
+          VALUE3="${#SERVICE_NAME:-fallback_service}"
+          echo "Value1: $VALUE1"
+          echo "Value2: $VALUE2"
+          echo "Value3: $VALUE3"
+        capture_vars:
+          - name: captured_value1
+            capture: 'Value1: ([a-z_]+)'
+          - name: captured_value2
+            capture: 'Value2: ([a-z_]+)'
+          - name: captured_value3
+            capture: 'Value3: ([a-z_-]+)'
+        expected:
+          success: true
+          result: '0'
+          output: 'Value1'
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Value1' <<< \"$COMMAND_OUTPUT\""
+          general:
+            - name: verify_all_values_captured
+              condition: "[[ -n \"$captured_value1\" && -n \"$captured_value2\" && -n \"$captured_value3\" ]]"
+
+      - step: 2
+        description: "Test variable with default using colon minus expansion"
+        command: |
+          EMPTY_VAR=""
+          RESULT1="${EMPTY_VAR:-not_empty}"
+          RESULT2="${#OPTIONAL_CONFIG:-default_optional}"
+          echo "Result1 (empty to default): $RESULT1"
+          echo "Result2 (optional to default): $RESULT2"
+        capture_vars:
+          - name: result1
+            capture: 'Result1 \(empty to default\): ([a-z_]+)'
+          - name: result2
+            capture: 'Result2 \(optional to default\): ([a-z_]+)'
+        expected:
+          success: true
+          result: '0'
+          output: 'Result1'
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Result1' <<< \"$COMMAND_OUTPUT\""
+          general:
+            - name: verify_result1_is_default
+              condition: "[[ \"$result1\" = \"not_empty\" ]]"
+            - name: verify_result2_captured
+              condition: "[[ -n \"$result2\" ]]"
+
+      - step: 3
+        description: "Test complex nested variable substitution"
+        command: |
+          BASE_PATH="/opt/app"
+          CONFIG_DIR="${BASE_PATH}/${#SERVICE_NAME:-default}/config"
+          DATA_DIR="${BASE_PATH}/${#SERVICE_NAME:-default}/data"
+          echo "Config directory: $CONFIG_DIR"
+          echo "Data directory: $DATA_DIR"
+        capture_vars:
+          - name: config_dir
+            capture: 'Config directory: ([/a-z-]+)'
+          - name: data_dir
+            capture: 'Data directory: ([/a-z-]+)'
+        expected:
+          success: true
+          result: '0'
+          output: 'Config directory'
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Config directory' <<< \"$COMMAND_OUTPUT\""
+          general:
+            - name: verify_config_dir_format
+              condition: "[[ $config_dir =~ ^/opt/app/[a-z-]+/config$ ]]"
+            - name: verify_data_dir_format
+              condition: "[[ $data_dir =~ ^/opt/app/[a-z-]+/data$ ]]"
+
+      - step: 4
+        description: "Test variable substitution with captured variables"
+        command: |
+          echo "API Response: {status: success, code: 200}"
+        capture_vars:
+          - name: api_status
+            capture: 'status: ([a-z]+)'
+          - name: api_code
+            capture: 'code: ([0-9]+)'
+        expected:
+          success: true
+          result: '0'
+          output: 'API Response'
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'API Response' <<< \"$COMMAND_OUTPUT\""
+          general:
+            - name: verify_api_status
+              condition: "[[ \"$api_status\" = \"success\" ]]"
+            - name: verify_api_code
+              condition: "[[ $api_code -eq 200 ]]"
+
+      - step: 5
+        description: "Use captured variables with default fallbacks in next command"
+        command: |
+          STATUS_MSG="${api_status:-unknown}"
+          CODE_VALUE="${api_code:-0}"
+          echo "Final status: $STATUS_MSG (code: $CODE_VALUE)"
+        expected:
+          success: true
+          result: '0'
+          output: 'Final status: success'
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Final status: success' <<< \"$COMMAND_OUTPUT\""
+          general:
+            - name: verify_final_output_contains_status
+              condition: "grep -q 'success' <<< \"$COMMAND_OUTPUT\""
+            - name: verify_final_output_contains_code
+              condition: "grep -q 'code: 200' <<< \"$COMMAND_OUTPUT\""

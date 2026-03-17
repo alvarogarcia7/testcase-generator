@@ -1,0 +1,128 @@
+requirement: "VAR_TEST"
+item: 1
+tc: 7
+id: 'TC_VAR_007'
+description: 'Test variables captured and used across multiple test sequences'
+
+general_initial_conditions:
+  system:
+    - "Bash shell is available"
+    - "Temporary file storage is available"
+
+initial_conditions:
+  environment:
+    - "Test execution environment is ready"
+
+test_sequences:
+  - id: 1
+    name: "First Sequence - Capture Variables"
+    description: "Capture variables in the first sequence"
+    initial_conditions:
+      system:
+        - "Variable capture is enabled"
+    steps:
+      - step: 1
+        description: "Initialize session and capture token"
+        command: |
+          echo "Authentication successful. Token: AUTH_TOKEN_xyz789abc"
+        capture_vars:
+          - name: auth_token
+            capture: 'Token: ([A-Z_a-z0-9]+)'
+        expected:
+          success: true
+          result: '0'
+          output: 'Authentication successful'
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Authentication successful' <<< \"$COMMAND_OUTPUT\""
+          general:
+            - name: verify_token_captured
+              condition: "[[ -n \"$auth_token\" ]]"
+            - name: verify_token_format
+              condition: "[[ $auth_token =~ ^AUTH_TOKEN_[a-z0-9]+$ ]]"
+
+      - step: 2
+        description: "Capture user ID for the session"
+        command: |
+          echo "User authenticated: user_id=42"
+        capture_vars:
+          - name: user_id
+            capture: 'user_id=([0-9]+)'
+        expected:
+          success: true
+          result: '0'
+          output: 'User authenticated'
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'User authenticated' <<< \"$COMMAND_OUTPUT\""
+          general:
+            - name: verify_user_id_captured
+              condition: "[[ -n \"$user_id\" ]]"
+            - name: verify_user_id_numeric
+              condition: "[[ $user_id =~ ^[0-9]+$ ]]"
+
+  - id: 2
+    name: "Second Sequence - Use Variables from First"
+    description: "Use variables captured in first sequence in second sequence"
+    initial_conditions:
+      system:
+        - "Variables from first sequence are available"
+    steps:
+      - step: 1
+        description: "Make request using token from first sequence"
+        command: |
+          echo "Making request with token: $auth_token"
+          echo "For user ID: $user_id"
+        expected:
+          success: true
+          result: '0'
+          output: 'Making request'
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Making request' <<< \"$COMMAND_OUTPUT\""
+          general:
+            - name: verify_token_used
+              condition: "grep -q 'AUTH_TOKEN_xyz789abc' <<< \"$COMMAND_OUTPUT\""
+            - name: verify_user_id_used
+              condition: "grep -q 'user ID: 42' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 2
+        description: "Perform operation with both variables"
+        command: |
+          echo "Operation for user $user_id with token $auth_token completed"
+        expected:
+          success: true
+          result: '0'
+          output: 'Operation for user'
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Operation for user' <<< \"$COMMAND_OUTPUT\""
+          general:
+            - name: verify_both_variables_present
+              condition: "grep -q '42.*AUTH_TOKEN_xyz789abc' <<< \"$COMMAND_OUTPUT\""
+
+  - id: 3
+    name: "Third Sequence - Verify Persistence"
+    description: "Verify variables persist through all sequences"
+    initial_conditions:
+      system:
+        - "Variables from previous sequences are still available"
+    steps:
+      - step: 1
+        description: "Final verification of captured variables"
+        command: |
+          echo "Final check - Token: $auth_token, User: $user_id"
+        expected:
+          success: true
+          result: '0'
+          output: 'Final check'
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Final check' <<< \"$COMMAND_OUTPUT\""
+          general:
+            - name: verify_variables_still_available
+              condition: "[[ -n \"$auth_token\" && -n \"$user_id\" ]]"
+            - name: verify_token_value_unchanged
+              condition: "[[ \"$auth_token\" = \"AUTH_TOKEN_xyz789abc\" ]]"
+            - name: verify_user_id_value_unchanged
+              condition: "[[ $user_id -eq 42 ]]"
