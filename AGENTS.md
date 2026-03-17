@@ -56,6 +56,7 @@ See the [Hooks](#hooks) section for detailed documentation and examples.
 - **Generate Docs All**: make generate-docs-all (generate documentation reports for all test scenarios using test-plan-documentation-generator)
 - **Generate Docs Coverage**: make generate-docs-coverage (run documentation generation with tarpaulin coverage analysis)
 - **Test Container Compatibility**: make test-container-compat (verify container YAML compatibility with test-plan-doc-gen)
+- **Acceptance Tests**: make acceptance-test (run full acceptance test suite with validation, generation, execution, verification, and documentation)
 - **Dev Server**: N/A
 
 ### Report Generation
@@ -96,7 +97,79 @@ make generate-docs-all      # All test cases
 **Troubleshooting**:
 See [Report Generation Documentation](docs/report_generation.md) for detailed installation, configuration, schema compatibility requirements, and troubleshooting steps.
 
-You must build, test, lint, and verify coverage before committing
+You must build, test, lint, verify coverage, and run acceptance tests before committing
+
+## Acceptance Test Suite
+
+The acceptance test suite provides comprehensive end-to-end testing of the entire test execution workflow, from YAML validation through to documentation generation.
+
+### Running Acceptance Tests
+
+**Command**: `make acceptance-test`
+
+This target executes the full acceptance test suite, which includes:
+1. Building all required binaries (test-executor, verifier, validate-yaml)
+2. Validating TPDG (test-plan-documentation-generator) availability
+3. Running all acceptance test stages
+4. Capturing output to both console and log file
+5. Generating final summary report
+6. Displaying statistics and results
+
+**Exit Codes**:
+- `0` - All tests passed successfully
+- `1` - One or more tests failed
+
+**Prerequisites**:
+- TPDG must be installed and available:
+  - Install globally: `cargo install test-plan-documentation-generator`
+  - Or set environment variable: `export TEST_PLAN_DOC_GEN=/path/to/tpdg`
+
+**Output Files**:
+- Execution log: `test-acceptance/reports/acceptance_suite_execution.log`
+- Summary report: `test-acceptance/reports/acceptance_suite_summary.txt`
+- Test results: `test-acceptance/verification_results/`
+- Documentation: `test-acceptance/reports/asciidoc/` and `test-acceptance/reports/markdown/`
+
+### Acceptance Test Stages
+
+The acceptance test suite runs six stages:
+
+1. **YAML Validation** - Validates all test case YAMLs against schema
+2. **Script Generation** - Generates executable bash scripts from test cases
+3. **Test Execution** - Executes all automated tests (skips manual tests by default)
+4. **Verification** - Runs verifier on execution logs to generate container YAMLs
+5. **Container Validation** - Validates container YAMLs against schema
+6. **Documentation** - Generates AsciiDoc and Markdown documentation using TPDG
+
+### Manual Test Suite Execution
+
+For advanced usage, run the acceptance suite script directly:
+
+```bash
+# Run with default settings
+./test-acceptance/run_acceptance_suite.sh
+
+# Run with verbose output
+./test-acceptance/run_acceptance_suite.sh --verbose
+
+# Include manual tests in execution
+./test-acceptance/run_acceptance_suite.sh --include-manual
+
+# Skip specific stages
+./test-acceptance/run_acceptance_suite.sh --skip-generation
+./test-acceptance/run_acceptance_suite.sh --skip-execution
+./test-acceptance/run_acceptance_suite.sh --skip-verification
+./test-acceptance/run_acceptance_suite.sh --skip-documentation
+```
+
+### CI/CD Integration
+
+The `acceptance-test` target is included in the `pre-commit` checks to ensure all code changes pass the full acceptance test suite before commit. This provides comprehensive validation of:
+- Code functionality
+- Test execution workflow
+- Documentation generation
+- Schema compliance
+- End-to-end integration
 
 ## Binaries
 

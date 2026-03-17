@@ -4,7 +4,25 @@ This directory contains acceptance test cases for the YAML-based test harness pr
 
 ## Quick Start
 
-Run the complete acceptance test suite:
+### Option 1: Using Make (Recommended)
+
+Run from project root:
+
+```bash
+make acceptance-test
+```
+
+This will:
+- Build all required binaries (test-executor, verifier, validate-yaml)
+- Validate TPDG availability
+- Execute the full acceptance test suite
+- Capture output to console and log file
+- Generate summary report
+- Display final statistics
+
+### Option 2: Direct Script Execution
+
+Run the orchestrator script directly:
 
 ```bash
 cd test-acceptance
@@ -70,9 +88,17 @@ See `test_cases/README.md` for detailed documentation of each test case.
 
 ## Automated Test Suite
 
-The master orchestrator script automates the complete testing workflow:
+The master orchestrator script automates the complete testing workflow.
 
 ### Run Complete Suite
+
+**Recommended**: Use the make target from project root:
+
+```bash
+make acceptance-test
+```
+
+**Alternative**: Run the orchestrator script directly:
 
 ```bash
 cd test-acceptance
@@ -86,6 +112,13 @@ This executes all 6 stages:
 4. Verify execution logs
 5. Validate container YAMLs
 6. Generate documentation
+
+**Output Files**:
+- Execution log: `test-acceptance/reports/acceptance_suite_execution.log`
+- Summary report: `test-acceptance/reports/acceptance_suite_summary.txt`
+- Generated scripts: `test-acceptance/scripts/`
+- Test results: `test-acceptance/verification_results/`
+- Documentation: `test-acceptance/reports/asciidoc/` and `test-acceptance/reports/markdown/`
 
 ### Common Options
 
