@@ -352,8 +352,24 @@ for container_yaml in "${CONTAINER_YAMLS[@]}"; do
         --format asciidoc 2>&1 | while IFS= read -r line; do
             log_verbose "$line"
         done; then
+        # Assert that the output file was actually generated
+        if [[ ! -f "$asciidoc_output" ]]; then
+            fail "AsciiDoc output file not generated: $(basename "$asciidoc_output")"
+            FAILED_TESTS+=("$container_name: AsciiDoc file not created")
+            ((FAILED_COUNT++)) || true
+            continue
+        fi
+        
+        # Assert that the output file has content (not empty)
+        if [[ ! -s "$asciidoc_output" ]]; then
+            fail "AsciiDoc output file is empty: $(basename "$asciidoc_output")"
+            FAILED_TESTS+=("$container_name: AsciiDoc file is empty")
+            ((FAILED_COUNT++)) || true
+            continue
+        fi
+        
         pass "Generated AsciiDoc: $(basename "$asciidoc_output")"
-        ls -lah "$asciidoc_output" # must exist
+        log_verbose "File size: $(stat -f%z "$asciidoc_output" 2>/dev/null || stat -c%s "$asciidoc_output" 2>/dev/null) bytes"
     else
         ASCIIDOC_EXIT=$?
         fail "Failed to generate AsciiDoc report (exit code: $ASCIIDOC_EXIT)"
@@ -374,8 +390,24 @@ for container_yaml in "${CONTAINER_YAMLS[@]}"; do
         --format markdown 2>&1 | while IFS= read -r line; do
             log_verbose "$line"
         done; then
+        # Assert that the output file was actually generated
+        if [[ ! -f "$markdown_output" ]]; then
+            fail "Markdown output file not generated: $(basename "$markdown_output")"
+            FAILED_TESTS+=("$container_name: Markdown file not created")
+            ((FAILED_COUNT++)) || true
+            continue
+        fi
+        
+        # Assert that the output file has content (not empty)
+        if [[ ! -s "$markdown_output" ]]; then
+            fail "Markdown output file is empty: $(basename "$markdown_output")"
+            FAILED_TESTS+=("$container_name: Markdown file is empty")
+            ((FAILED_COUNT++)) || true
+            continue
+        fi
+        
         pass "Generated Markdown: $(basename "$markdown_output")"
-        ls -lah "$markdown_output" # must exist
+        log_verbose "File size: $(stat -f%z "$markdown_output" 2>/dev/null || stat -c%s "$markdown_output" 2>/dev/null) bytes"
     else
         MARKDOWN_EXIT=$?
         fail "Failed to generate Markdown report (exit code: $MARKDOWN_EXIT)"
