@@ -5,6 +5,7 @@ use std::path::Path;
 use std::sync::Arc;
 use tempfile::TempDir;
 use testcase_manager::{
+    models::CaptureVarsFormat,
     oracle::{AnswerVariant, HardcodedOracle, Oracle},
     GitManager, Prompts, TestCase, TestCaseBuilder,
 };
@@ -1347,5 +1348,257 @@ fn test_execution_stops_at_first_failure() -> Result<()> {
     println!("✓ Fail-fast behavior verified: execution stopped at first failure");
     println!("✓ Execution log contains only steps up to the failure");
 
+    Ok(())
+}
+
+// ===== Variable Capture Example Test Cases Integration Tests =====
+
+#[test]
+fn test_tc_var_001_example_schema_validation() -> Result<()> {
+    let path = "testcases/examples/variables/1.yaml";
+
+    validate_yaml_schema(path)?;
+
+    println!("✓ TC_VAR_001 passed schema validation");
+    Ok(())
+}
+
+#[test]
+fn test_tc_var_001_example_deserialization() -> Result<()> {
+    let path = "testcases/examples/variables/1.yaml";
+    let test_case = load_test_case_from_file(path)?;
+
+    // Validate metadata
+    assert_eq!(test_case.id, "TC_VAR_001");
+    assert_eq!(test_case.requirement, "VAR_001");
+    assert_eq!(test_case.item, 1);
+    assert_eq!(test_case.tc, 1);
+    assert!(test_case
+        .description
+        .contains("command-based and regex-based variable captures"));
+
+    // Validate test sequences
+    assert_eq!(test_case.test_sequences.len(), 1);
+
+    // Validate Variable Capture Test sequence
+    let seq = &test_case.test_sequences[0];
+    assert_eq!(seq.id, 1);
+    assert_eq!(seq.name, "Variable Capture Test");
+    assert_eq!(seq.steps.len(), 3);
+
+    // Validate step 1 - command-based capture
+    let step1 = &seq.steps[0];
+    assert_eq!(step1.step, 1);
+    assert!(step1.description.contains("command"));
+    assert!(step1.capture_vars.is_some());
+
+    // Validate step 2 - regex-based captures
+    let step2 = &seq.steps[1];
+    assert_eq!(step2.step, 2);
+    assert!(step2.description.contains("JSON"));
+    assert!(step2.capture_vars.is_some());
+
+    // Validate step 3 - mixed captures
+    let step3 = &seq.steps[2];
+    assert_eq!(step3.step, 3);
+    assert!(step3.description.contains("Mix"));
+    assert!(step3.capture_vars.is_some());
+
+    println!("✓ TC_VAR_001 deserialized correctly");
+    Ok(())
+}
+
+#[test]
+fn test_tc_var_001_example_bash_script_generation() -> Result<()> {
+    let path = "testcases/examples/variables/1.yaml";
+    let test_case = load_test_case_from_file(path)?;
+
+    let executor = TestExecutor::new();
+    let script = executor.generate_test_script(&test_case);
+
+    // Verify script contains variable capture logic
+    assert!(
+        script.contains("output_len="),
+        "Script should capture output_len variable"
+    );
+    assert!(
+        script.contains("token="),
+        "Script should capture token variable"
+    );
+    assert!(
+        script.contains("user_id="),
+        "Script should capture user_id variable"
+    );
+    assert!(
+        script.contains("transaction_id="),
+        "Script should capture transaction_id variable"
+    );
+    assert!(
+        script.contains("amount="),
+        "Script should capture amount variable"
+    );
+    assert!(
+        script.contains("status="),
+        "Script should capture status variable"
+    );
+    assert!(
+        script.contains("line_count="),
+        "Script should capture line_count variable"
+    );
+
+    // Verify general verification conditions (using sanitized variable names)
+    assert!(
+        script.contains("GENERAL_VERIFY_PASS_verify_output_len_is_numeric"),
+        "Script should contain output_len numeric verification variable"
+    );
+    assert!(
+        script.contains("GENERAL_VERIFY_PASS_verify_token_format"),
+        "Script should contain token format verification variable"
+    );
+    assert!(
+        script.contains("GENERAL_VERIFY_PASS_verify_user_id_is_numeric"),
+        "Script should contain user_id numeric verification variable"
+    );
+    assert!(
+        script.contains("GENERAL_VERIFY_PASS_verify_transaction_id_format"),
+        "Script should contain transaction_id format verification variable"
+    );
+    assert!(
+        script.contains("GENERAL_VERIFY_PASS_verify_amount_is_numeric"),
+        "Script should contain amount numeric verification variable"
+    );
+    assert!(
+        script.contains("GENERAL_VERIFY_PASS_verify_status_is_completed"),
+        "Script should contain status verification variable"
+    );
+    assert!(
+        script.contains("GENERAL_VERIFY_PASS_verify_line_count"),
+        "Script should contain line_count verification variable"
+    );
+
+    println!("✓ TC_VAR_001 bash script generated correctly");
+    Ok(())
+}
+
+#[test]
+fn test_tc_var_001_capture_vars_format() -> Result<()> {
+    let path = "testcases/examples/variables/1.yaml";
+    let test_case = load_test_case_from_file(path)?;
+
+    let seq = &test_case.test_sequences[0];
+
+    // Step 1: command-based capture
+    let step1 = &seq.steps[0];
+    if let Some(CaptureVarsFormat::New(vars)) = &step1.capture_vars {
+        assert_eq!(vars.len(), 1);
+        assert_eq!(vars[0].name, "output_len");
+        assert!(vars[0].command.is_some());
+        assert!(vars[0].capture.is_none());
+    } else {
+        panic!("Step 1 should use New capture vars format with command");
+    }
+
+    // Step 2: regex-based captures
+    let step2 = &seq.steps[1];
+    if let Some(CaptureVarsFormat::New(vars)) = &step2.capture_vars {
+        assert_eq!(vars.len(), 2);
+        assert_eq!(vars[0].name, "token");
+        assert!(vars[0].capture.is_some());
+        assert!(vars[0].command.is_none());
+        assert_eq!(vars[1].name, "user_id");
+        assert!(vars[1].capture.is_some());
+        assert!(vars[1].command.is_none());
+    } else {
+        panic!("Step 2 should use New capture vars format with regex");
+    }
+
+    // Step 3: mixed captures
+    let step3 = &seq.steps[2];
+    if let Some(CaptureVarsFormat::New(vars)) = &step3.capture_vars {
+        assert_eq!(vars.len(), 4);
+
+        // Check for regex captures
+        assert!(vars
+            .iter()
+            .any(|v| v.name == "transaction_id" && v.capture.is_some()));
+        assert!(vars
+            .iter()
+            .any(|v| v.name == "amount" && v.capture.is_some()));
+        assert!(vars
+            .iter()
+            .any(|v| v.name == "status" && v.capture.is_some()));
+
+        // Check for command capture
+        assert!(vars
+            .iter()
+            .any(|v| v.name == "line_count" && v.command.is_some()));
+    } else {
+        panic!("Step 3 should use New capture vars format with mixed types");
+    }
+
+    println!("✓ TC_VAR_001 capture vars format validated");
+    Ok(())
+}
+
+#[test]
+fn test_tc_var_001_general_verification_conditions() -> Result<()> {
+    let path = "testcases/examples/variables/1.yaml";
+    let test_case = load_test_case_from_file(path)?;
+
+    let seq = &test_case.test_sequences[0];
+
+    // All steps should have general verification conditions
+    for step in &seq.steps {
+        assert!(
+            step.verification.general.is_some(),
+            "Step {} should have general verification conditions",
+            step.step
+        );
+
+        let general = step.verification.general.as_ref().unwrap();
+        assert!(
+            !general.is_empty(),
+            "Step {} should have non-empty general verification conditions",
+            step.step
+        );
+
+        // Verify each condition has a name and condition
+        for condition in general {
+            assert!(
+                !condition.name.is_empty(),
+                "General verification condition should have a name"
+            );
+            assert!(
+                !condition.condition.is_empty(),
+                "General verification condition should have a condition"
+            );
+        }
+    }
+
+    // Step 1 should have 2 general conditions
+    let step1_general = seq.steps[0].verification.general.as_ref().unwrap();
+    assert_eq!(
+        step1_general.len(),
+        2,
+        "Step 1 should have 2 general verification conditions"
+    );
+
+    // Step 2 should have 4 general conditions
+    let step2_general = seq.steps[1].verification.general.as_ref().unwrap();
+    assert_eq!(
+        step2_general.len(),
+        4,
+        "Step 2 should have 4 general verification conditions"
+    );
+
+    // Step 3 should have 5 general conditions
+    let step3_general = seq.steps[2].verification.general.as_ref().unwrap();
+    assert_eq!(
+        step3_general.len(),
+        5,
+        "Step 3 should have 5 general verification conditions"
+    );
+
+    println!("✓ TC_VAR_001 general verification conditions validated");
     Ok(())
 }

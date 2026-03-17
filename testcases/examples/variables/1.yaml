@@ -79,7 +79,7 @@ test_sequences:
           cat /tmp/test_data.txt
         capture_vars:
           - name: transaction_id
-            capture: 'Transaction: (TXN-[0-9]{4}-[0-9]+)'
+            capture: 'Transaction: (TXN-[0-9][0-9][0-9][0-9]-[0-9]+)'
           - name: amount
             capture: 'Amount: ([0-9]+)'
           - name: status
@@ -95,7 +95,7 @@ test_sequences:
           output: "grep -q 'Transaction' <<< \"$COMMAND_OUTPUT\""
           general:
             - name: verify transaction_id format
-              condition: "[[ $transaction_id =~ ^TXN-[0-9]{4}-[0-9]+$ ]]"
+              condition: "[[ $transaction_id =~ ^TXN-[0-9][0-9][0-9][0-9]-[0-9]+$ ]]"
             - name: verify amount is numeric
               condition: "[[ $amount =~ ^[0-9]+$ ]]"
             - name: verify amount range
