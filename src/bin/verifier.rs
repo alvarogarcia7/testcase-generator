@@ -1,8 +1,83 @@
 use anyhow::{Context, Result};
 use clap::Parser;
+use jsonschema::JSONSchema;
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
-use testcase_manager::{BatchVerificationReport, MatchStrategy, TestCaseStorage, TestVerifier};
+use testcase_manager::BatchVerificationReport;
+use testcase_manager::ContainerReportConfig;
+use testcase_manager::MatchStrategy;
+use testcase_manager::TestCaseStorage;
+use testcase_manager::TestVerifier;
+
+/// Configuration for the verifier report output
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+struct VerifierConfig {
+    /// Report title
+    title: String,
+
+    /// Project name
+    project: String,
+
+    /// Environment information
+    environment: Option<String>,
+
+    /// Platform information
+    platform: Option<String>,
+
+    /// Executor information
+    executor: Option<String>,
+}
+
+impl Default for VerifierConfig {
+    fn default() -> Self {
+        Self {
+            title: "Test Execution Results".to_string(),
+            project: "Test Case Manager - Verification Results".to_string(),
+            environment: None,
+            platform: None,
+            executor: None,
+        }
+    }
+}
+
+impl VerifierConfig {
+    /// Load configuration from a YAML file
+    fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
+        let content =
+            fs::read_to_string(path.as_ref()).context("Failed to read configuration file")?;
+        let config: VerifierConfig =
+            serde_yaml::from_str(&content).context("Failed to parse configuration file")?;
+        Ok(config)
+    }
+
+    /// Apply CLI overrides to the configuration
+    fn apply_cli_overrides(
+        &mut self,
+        title: Option<String>,
+        project: Option<String>,
+        environment: Option<String>,
+        platform: Option<String>,
+        executor: Option<String>,
+    ) {
+        if let Some(t) = title {
+            self.title = t;
+        }
+        if let Some(p) = project {
+            self.project = p;
+        }
+        if environment.is_some() {
+            self.environment = environment;
+        }
+        if platform.is_some() {
+            self.platform = platform;
+        }
+        if executor.is_some() {
+            self.executor = executor;
+        }
+    }
+}
 
 #[derive(Parser)]
 #[command(name = "verifier")]
@@ -44,6 +119,30 @@ struct Cli {
     #[arg(short, long)]
     verbose: bool,
 
+    /// Path to configuration file (YAML format)
+    #[arg(long, value_name = "PATH")]
+    config: Option<PathBuf>,
+
+    /// Report title (overrides config file)
+    #[arg(long)]
+    title: Option<String>,
+
+    /// Project name (overrides config file)
+    #[arg(long)]
+    project: Option<String>,
+
+    /// Environment information (overrides config file)
+    #[arg(long)]
+    environment: Option<String>,
+
+    /// Platform information (overrides config file)
+    #[arg(long)]
+    platform: Option<String>,
+
+    /// Executor information (overrides config file)
+    #[arg(long)]
+    executor: Option<String>,
+
     /// Match strategy for verification (exact, regex, contains, or precomputed)
     #[arg(
         short = 'm',
@@ -52,6 +151,14 @@ struct Cli {
         value_name = "STRATEGY"
     )]
     match_strategy: String,
+
+    /// Path to JSON schema file for validating output
+    #[arg(
+        long = "schema",
+        default_value = "data/testcase_results_container/schema.json",
+        value_name = "PATH"
+    )]
+    schema_path: PathBuf,
 }
 
 fn main() -> Result<()> {
@@ -65,6 +172,9 @@ fn main() -> Result<()> {
 
     // Parse match strategy
     let match_strategy = parse_match_strategy(&cli.match_strategy)?;
+
+    // Load configuration
+    let config = load_configuration(&cli)?;
 
     // Initialize storage and verifier
     let storage = TestCaseStorage::new(&cli.test_case_dir)
@@ -91,7 +201,8 @@ fn main() -> Result<()> {
     log_verification_errors(&report);
 
     // Generate output in requested format
-    let output_content = generate_output(&verifier, &report, &cli.format)?;
+    let output_content =
+        generate_output(&verifier, &report, &cli.format, &config, &cli.schema_path)?;
 
     // Write to file or stdout
     write_output(&output_content, cli.output.as_ref())?;
@@ -365,19 +476,124 @@ fn log_verification_errors(report: &BatchVerificationReport) {
     }
 }
 
+fn load_configuration(cli: &Cli) -> Result<VerifierConfig> {
+    // Start with defaults or load from config file if specified
+    let mut config = if let Some(config_path) = &cli.config {
+        log::info!("Loading configuration from: {}", config_path.display());
+        VerifierConfig::load_from_file(config_path)?
+    } else {
+        VerifierConfig::default()
+    };
+
+    // Apply CLI overrides
+    config.apply_cli_overrides(
+        cli.title.clone(),
+        cli.project.clone(),
+        cli.environment.clone(),
+        cli.platform.clone(),
+        cli.executor.clone(),
+    );
+
+    log::debug!(
+        "Final configuration: title='{}', project='{}'",
+        config.title,
+        config.project
+    );
+
+    Ok(config)
+}
+
 fn generate_output(
     verifier: &TestVerifier,
     report: &BatchVerificationReport,
     format: &str,
+    config: &VerifierConfig,
+    schema_path: &PathBuf,
 ) -> Result<String> {
-    match format.to_lowercase().as_str() {
-        "yaml" => verifier
-            .generate_container_report(report, "yaml")
-            .context("Failed to generate YAML report"),
-        "json" => verifier
-            .generate_container_report(report, "json")
-            .context("Failed to generate JSON report"),
-        _ => anyhow::bail!("Unsupported format: {}", format),
+    // Always use container format with metadata
+    let container_config = ContainerReportConfig {
+        title: config.title.clone(),
+        project: config.project.clone(),
+        environment: config.environment.clone(),
+        platform: config.platform.clone(),
+        executor: config.executor.clone(),
+    };
+    let output = verifier
+        .generate_report(std::slice::from_ref(report), format, container_config)
+        .context("Failed to generate container report")?;
+
+    // Validate the output against the schema
+    validate_output_against_schema(&output, format, schema_path)?;
+
+    Ok(output)
+}
+
+/// Validate generated output against the JSON schema
+fn validate_output_against_schema(output: &str, format: &str, schema_path: &PathBuf) -> Result<()> {
+    // Check if schema file exists
+    if !schema_path.exists() {
+        anyhow::bail!(
+            "Schema file not found at {}. Please ensure the schema file exists or specify a valid path using --schema",
+            schema_path.display()
+        );
+    }
+
+    log::debug!("Loading schema from {}", schema_path.display());
+    let schema_content = fs::read_to_string(schema_path).context(format!(
+        "Failed to read schema file: {}",
+        schema_path.display()
+    ))?;
+
+    let schema_json: serde_json::Value =
+        serde_json::from_str(&schema_content).context("Failed to parse schema file as JSON")?;
+
+    // Compile the schema
+    let compiled_schema = JSONSchema::options()
+        .compile(&schema_json)
+        .map_err(|e| anyhow::anyhow!("Failed to compile JSON schema: {}", e))?;
+
+    // Parse the output based on format
+    log::debug!("Validating {} output against schema", format);
+    let output_json: serde_json::Value = match format.to_lowercase().as_str() {
+        "yaml" => {
+            // Parse YAML and convert to JSON for validation
+            serde_yaml::from_str(output).context("Failed to parse YAML output for validation")?
+        }
+        "json" => {
+            // Parse JSON directly
+            serde_json::from_str(output).context("Failed to parse JSON output for validation")?
+        }
+        _ => {
+            return Err(anyhow::anyhow!(
+                "Unsupported format for validation: {}",
+                format
+            ));
+        }
+    };
+
+    // Validate against schema
+    let validation_result = compiled_schema.validate(&output_json);
+
+    match validation_result {
+        Ok(_) => {
+            log::info!("✓ Output validation passed: conforms to schema");
+            Ok(())
+        }
+        Err(errors) => {
+            let error_messages: Vec<String> = errors
+                .map(|e| format!("  - {} at {}", e, e.instance_path))
+                .collect();
+
+            log::error!("✗ Output validation failed:");
+            for msg in &error_messages {
+                log::error!("{}", msg);
+            }
+
+            Err(anyhow::anyhow!(
+                "Output does not conform to schema:\n{}",
+                error_messages.join("\n")
+            ))
+        }
     }
 }
 
@@ -392,7 +608,6 @@ fn write_output(content: &str, output_path: Option<&PathBuf>) -> Result<()> {
 
     Ok(())
 }
-
 fn parse_match_strategy(strategy: &str) -> Result<MatchStrategy> {
     match strategy.to_lowercase().as_str() {
         "exact" => Ok(MatchStrategy::Exact),

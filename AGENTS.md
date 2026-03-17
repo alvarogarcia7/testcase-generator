@@ -51,6 +51,7 @@ See the [Hooks](#hooks) section for detailed documentation and examples.
 - **sccache Stats**: make sccache-stats (display sccache compilation cache statistics)
 - **sccache Clean**: make sccache-clean (clear sccache compilation cache)
 - **Verify Scripts**: make verify-scripts (verify syntax of all shell scripts)
+- **Validate Output Schemas**: make validate-output-schemas (validate expected output samples against schemas)
 - **Watch Mode**: make watch (monitors testcases/ for changes and auto-validates)
 - **Generate Docs**: make generate-docs (generate documentation reports for verifier scenarios)
 - **Generate Docs All**: make generate-docs-all (generate documentation reports for all test scenarios including verifier_scenarios)
@@ -66,6 +67,56 @@ The project includes several binary utilities:
   - Build: `make build-json-escape`
   - Run: `make run-json-escape` or `cargo run --bin json-escape`
   - Usage: `echo "text" | json-escape`
+
+- **test-verify** (verifier): Test verification tool for validating test execution logs against test case definitions.
+  - Build: `make build` or `cargo build --bin verifier`
+  - Run: `cargo run --bin verifier` or `./target/release/verifier`
+  - Features: Batch processing, YAML/JSON output formats with rich metadata, aggregated reports
+  - Output Formats:
+    - **yaml**: YAML format with rich metadata (title, project, environment, platform, executor)
+    - **json**: JSON format with rich metadata
+  - Configuration File:
+    - `--config <PATH>`: Path to YAML configuration file (optional)
+    - Schema: `schemas/container_config.schema.json`
+    - Configuration file format (see `verifier-config.example.yaml`):
+      ```yaml
+      title: "Test Execution Results"
+      project: "Test Case Manager - Verification Results"
+      environment: "Staging"
+      platform: "Linux x86_64"
+      executor: "Jenkins v3.2"
+      ```
+    - All fields are optional with sensible defaults
+  - CLI Flags (override config file):
+    - `--title`: Report title (default: "Test Execution Results")
+    - `--project`: Project name (default: "Test Case Manager - Verification Results")
+    - `--environment`: Environment information (e.g., "Staging", "Production")
+    - `--platform`: Platform information (e.g., "Linux x86_64")
+    - `--executor`: Executor information (e.g., "CI Pipeline v2.1")
+  - Precedence: CLI flags > Configuration file > Default values
+  - Examples:
+    - Using defaults:
+      ```bash
+      verifier -f logs/ --format yaml --output report.yaml
+      ```
+    - Using config file:
+      ```bash
+      verifier -f logs/ --format yaml --output report.yaml --config verifier-config.yaml
+      ```
+    - Using only CLI flags:
+      ```bash
+      verifier -f logs/ --format yaml --output report.yaml \
+        --title "Nightly Test Run" \
+        --environment "Production" \
+        --platform "Linux x86_64"
+      ```
+    - Combining config file and CLI flags (CLI overrides config):
+      ```bash
+      verifier -f logs/ --format yaml --output report.yaml \
+        --config verifier-config.yaml \
+        --title "Nightly Test Run" \
+        --environment "Production"
+      ```
 
 ## Shell Script Compatibility
 
@@ -145,6 +196,49 @@ The logger library also provides cleanup management for temporary files and back
 - Use portable regex patterns that work with both implementations
 - Verify scripts work with bash 3.2 (default on macOS)
 - Verify script syntax using `make verify-scripts`
+
+## Schema Validation
+
+The project includes comprehensive schema validation for both test case inputs and verification outputs.
+
+### Output Schema Validation
+
+Expected output samples in `testcases/examples/expected_test_results/` are validated against their respective JSON schemas to ensure correctness and consistency.
+
+**Command**: `make validate-output-schemas`
+
+**Requirements**:
+- Python 3 with `pyyaml` and `jsonschema` modules
+- Install with: `pip3 install pyyaml jsonschema`
+
+**Validated Files**:
+1. **Test Case Results** (`test_case_result/*.yml`):
+   - Validated against `test_case_result/schema.json`
+   - Individual test case verification results
+   - Contains sequences, steps, pass/fail status, and metadata
+
+2. **Container Files** (`container/*.yml`):
+   - Validated against `container/container_schema.json`
+   - Aggregated test results with rich metadata
+   - Multiple test case results in a single container
+
+**Integration**: The `validate-output-schemas` target is automatically included in the `test-e2e` target, ensuring schema compliance is tested in CI.
+
+**Manual Validation**:
+```bash
+# Validate all expected output samples
+make validate-output-schemas
+
+# Or run the script directly
+./scripts/validate-output-schemas.sh
+```
+
+**Schema Files**:
+- `schemas/verification-result.schema.json` - Individual test case verification result schema
+- `schemas/container_config.schema.json` - Container configuration metadata schema
+- `schemas/verification-output.schema.json` - Complete verification output schema
+- `schemas/execution-log.schema.json` - Test execution log schema
+- `schemas/test-case.schema.json` - Test case definition schema
 
 ## Testing Requirements
 

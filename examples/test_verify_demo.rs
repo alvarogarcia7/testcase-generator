@@ -1,6 +1,5 @@
 use testcase_manager::{
-    BatchVerificationReport, JUnitTestSuite, Step, TestCase, TestCaseStorage, TestSequence,
-    TestVerifier,
+    BatchVerificationReport, Step, TestCase, TestCaseStorage, TestSequence, TestVerifier,
 };
 
 fn main() -> anyhow::Result<()> {
@@ -134,25 +133,6 @@ fn main() -> anyhow::Result<()> {
 
     println!("{}", batch_report.summary());
     println!();
-
-    // Demo 4: JUnit XML generation
-    println!("--- Demo 4: JUnit XML Output ---");
-    let junit = JUnitTestSuite::from_batch_report(&batch_report, "Demo Test Suite");
-    let xml = junit.to_xml()?;
-    println!("Generated JUnit XML ({} bytes)", xml.len());
-    println!(
-        "Tests: {}, Failures: {}, Skipped: {}",
-        junit.tests, junit.failures, junit.skipped
-    );
-    println!();
-
-    // Show sample of XML
-    let lines: Vec<&str> = xml.lines().take(5).collect();
-    println!("Sample XML output:");
-    for line in lines {
-        println!("  {}", line);
-    }
-    println!("  ...");
     println!();
 
     // Demo 5: Wildcard matching

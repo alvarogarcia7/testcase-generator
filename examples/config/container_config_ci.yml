@@ -1,0 +1,102 @@
+# Container Configuration - CI/CD Example
+#
+# This example demonstrates how to use environment variables in a CI/CD pipeline
+# while providing fallback values in the configuration file.
+#
+# CI/CD Integration:
+#   In CI/CD environments, you typically want to provide runtime values via CLI flags
+#   using environment variables, while this config file provides sensible defaults.
+#
+# Usage in CI/CD:
+#   verifier -f logs/ --format yaml --output report.yaml \
+#     --config container_config_ci.yml \
+#     --title "${CI_PIPELINE_NAME:-CI Test Run}" \
+#     --environment "${CI_ENVIRONMENT:-CI/CD}" \
+#     --platform "${CI_PLATFORM:-Linux x86_64}" \
+#     --executor "${CI_EXECUTOR:-CI Pipeline}"
+#
+# Jenkins Example:
+#   verifier -f logs/ --format yaml --output report.yaml \
+#     --config container_config_ci.yml \
+#     --title "Build #${BUILD_NUMBER}" \
+#     --environment "${DEPLOY_ENV}" \
+#     --platform "$(uname -s) $(uname -m)" \
+#     --executor "Jenkins ${JENKINS_VERSION}"
+#
+# GitHub Actions Example:
+#   verifier -f logs/ --format yaml --output report.yaml \
+#     --config container_config_ci.yml \
+#     --title "Workflow: ${GITHUB_WORKFLOW}" \
+#     --environment "${GITHUB_REF_NAME}" \
+#     --platform "${RUNNER_OS} ${RUNNER_ARCH}" \
+#     --executor "GitHub Actions"
+#
+# GitLab CI Example:
+#   verifier -f logs/ --format yaml --output report.yaml \
+#     --config container_config_ci.yml \
+#     --title "Pipeline #${CI_PIPELINE_ID}" \
+#     --environment "${CI_ENVIRONMENT_NAME}" \
+#     --platform "${CI_RUNNER_EXECUTABLE_ARCH}" \
+#     --executor "GitLab CI v${CI_SERVER_VERSION}"
+#
+# Precedence: CLI flags > Configuration file > Default values
+#
+# This allows you to:
+# 1. Use this config file as-is for local testing (provides defaults)
+# 2. Override values in CI/CD using environment variables (dynamic values)
+# 3. Mix static config with dynamic CLI flags as needed
+
+# Required: Title of the test report
+# In CI/CD, override with: --title "Build #${BUILD_NUMBER}"
+title: "CI/CD Test Execution"
+
+# Required: Name of the project being tested
+# This typically stays static in the config file
+project: "Automated Test Suite"
+
+# Optional: Environment (override in CI/CD with deployment target)
+# In CI/CD, override with: --environment "${DEPLOY_ENV}"
+environment: "CI/CD"
+
+# Optional: Platform information (override with actual runner platform)
+# In CI/CD, override with: --platform "$(uname -s) $(uname -m)"
+platform: "Linux x86_64"
+
+# Optional: Executor information (override with CI system details)
+# In CI/CD, override with: --executor "Jenkins ${JENKINS_VERSION}"
+executor: "CI Pipeline"
+
+# Common Environment Variables by CI/CD System:
+#
+# Jenkins:
+#   - BUILD_NUMBER: Build number
+#   - JOB_NAME: Job name
+#   - WORKSPACE: Workspace directory
+#   - JENKINS_VERSION: Jenkins version
+#   - NODE_NAME: Agent/node name
+#
+# GitHub Actions:
+#   - GITHUB_WORKFLOW: Workflow name
+#   - GITHUB_RUN_NUMBER: Run number
+#   - GITHUB_REF_NAME: Branch/tag name
+#   - RUNNER_OS: Runner OS (Linux, Windows, macOS)
+#   - RUNNER_ARCH: Runner architecture
+#
+# GitLab CI:
+#   - CI_PIPELINE_ID: Pipeline ID
+#   - CI_PIPELINE_IID: Pipeline IID
+#   - CI_ENVIRONMENT_NAME: Environment name
+#   - CI_RUNNER_EXECUTABLE_ARCH: Runner architecture
+#   - CI_SERVER_VERSION: GitLab version
+#
+# CircleCI:
+#   - CIRCLE_BUILD_NUM: Build number
+#   - CIRCLE_PROJECT_REPONAME: Repository name
+#   - CIRCLE_BRANCH: Branch name
+#   - CIRCLE_JOB: Job name
+#
+# Azure DevOps:
+#   - BUILD_BUILDNUMBER: Build number
+#   - BUILD_DEFINITIONNAME: Pipeline name
+#   - SYSTEM_STAGENAME: Stage name
+#   - AGENT_OS: Agent OS

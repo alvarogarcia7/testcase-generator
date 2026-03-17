@@ -18,6 +18,12 @@
 #   --output-dir DIR         Output directory for reports (default: reports/documentation)
 #   --test-plan-doc-gen DIR  Path to test-plan-doc-gen sibling directory (default: ../test-plan-doc-gen)
 #   --container-template     Path to container template YAML (default: testcases/expected_output_reports/container_data.yml)
+#   --config FILE            Path to container config file (default: container_config.yml)
+#   --title TITLE            Override report title
+#   --project PROJECT        Override project name
+#   --environment ENV        Override environment information
+#   --platform PLATFORM      Override platform information
+#   --executor EXECUTOR      Override executor information
 #   --help                   Show this help message
 #
 
@@ -37,6 +43,14 @@ TEST_CASE_DIR="$PROJECT_ROOT/testcases"
 OUTPUT_DIR="$PROJECT_ROOT/reports/documentation"
 TEST_PLAN_DOC_GEN_DIR="../test-plan-doc-gen"
 CONTAINER_TEMPLATE="$PROJECT_ROOT/testcases/expected_output_reports/container_data.yml"
+CONFIG_FILE="$PROJECT_ROOT/container_config.yml"
+
+# CLI overrides
+TITLE=""
+PROJECT=""
+ENVIRONMENT=""
+PLATFORM=""
+EXECUTOR=""
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -61,8 +75,32 @@ while [[ $# -gt 0 ]]; do
             CONTAINER_TEMPLATE="$2"
             shift 2
             ;;
+        --config)
+            CONFIG_FILE="$2"
+            shift 2
+            ;;
+        --title)
+            TITLE="$2"
+            shift 2
+            ;;
+        --project)
+            PROJECT="$2"
+            shift 2
+            ;;
+        --environment)
+            ENVIRONMENT="$2"
+            shift 2
+            ;;
+        --platform)
+            PLATFORM="$2"
+            shift 2
+            ;;
+        --executor)
+            EXECUTOR="$2"
+            shift 2
+            ;;
         --help)
-            head -n 23 "$0" | tail -n +2 | sed 's/^# //'
+            head -n 30 "$0" | tail -n +2 | sed 's/^# //'
             exit 0
             ;;
         *)
@@ -81,6 +119,11 @@ log_info "  Test case directory: $TEST_CASE_DIR"
 log_info "  Output directory: $OUTPUT_DIR"
 log_info "  test-plan-doc-gen: $TEST_PLAN_DOC_GEN_DIR"
 log_info "  Container template: $CONTAINER_TEMPLATE"
+if [ -f "$CONFIG_FILE" ]; then
+    log_info "  Config file: $CONFIG_FILE"
+else
+    log_info "  Config file: $CONFIG_FILE (not found, using defaults)"
+fi
 echo ""
 
 # Create output directories
@@ -126,15 +169,41 @@ if [[ ! -d "$LOGS_DIR" ]]; then
 fi
 
 log_info "Running verifier in folder mode..."
-log_verbose "Command: $VERIFIER_BIN --folder $LOGS_DIR --format json --output $VERIFICATION_OUTPUT"
 
-if "$VERIFIER_BIN" \
-    --folder "$LOGS_DIR" \
-    --format json \
-    --output "$VERIFICATION_OUTPUT" \
-    --test-case-dir "$TEST_CASE_DIR" 2>&1 | while IFS= read -r line; do
-        log_verbose "$line"
-    done; then
+# Build verifier command with config file and CLI overrides
+VERIFIER_CMD="\"$VERIFIER_BIN\" --folder \"$LOGS_DIR\" --format json --output \"$VERIFICATION_OUTPUT\" --test-case-dir \"$TEST_CASE_DIR\""
+
+# Add config file if it exists
+if [[ -f "$CONFIG_FILE" ]]; then
+    VERIFIER_CMD="$VERIFIER_CMD --config \"$CONFIG_FILE\""
+fi
+
+# Add CLI overrides
+if [[ -n "$TITLE" ]]; then
+    VERIFIER_CMD="$VERIFIER_CMD --title \"$TITLE\""
+fi
+
+if [[ -n "$PROJECT" ]]; then
+    VERIFIER_CMD="$VERIFIER_CMD --project \"$PROJECT\""
+fi
+
+if [[ -n "$ENVIRONMENT" ]]; then
+    VERIFIER_CMD="$VERIFIER_CMD --environment \"$ENVIRONMENT\""
+fi
+
+if [[ -n "$PLATFORM" ]]; then
+    VERIFIER_CMD="$VERIFIER_CMD --platform \"$PLATFORM\""
+fi
+
+if [[ -n "$EXECUTOR" ]]; then
+    VERIFIER_CMD="$VERIFIER_CMD --executor \"$EXECUTOR\""
+fi
+
+log_verbose "Command: $VERIFIER_CMD"
+
+if eval "$VERIFIER_CMD" 2>&1 | while IFS= read -r line; do
+    log_verbose "$line"
+done; then
     pass "Verifier completed successfully"
     VERIFIER_EXIT=0
 else

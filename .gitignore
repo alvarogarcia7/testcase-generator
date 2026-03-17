@@ -89,6 +89,9 @@ grcov
 
 # Python virtual environment (uv)
 /.venv/
+__pycache__/
+*.pyc
+*.pyo
 
 # Test execution logs (generated during testing)
 *_execution_log.json
@@ -98,3 +101,7 @@ output/
 docker-compose.override.yml
 
 src/testcase_generator.egg-info/
+
+# Container config overrides (keep default, ignore environment-specific)
+container_config.*.yml
+!container_config.yml

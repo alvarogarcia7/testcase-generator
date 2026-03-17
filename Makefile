@@ -82,6 +82,10 @@ run-verifier: build-verifier
 	./target/debug/verifier
 .PHONY: run-verifier
 
+test-e2e-verifier-container: build
+	./tests/integration/test_verifier_container_e2e.sh
+.PHONY: test-e2e-verifier-container
+
 test-e2e-failing: build
 	./tests/integration/run_e2e_test.sh
 	./tests/integration/test_variable_passing_e2e.sh
@@ -119,8 +123,10 @@ test-e2e:
 	./tests/integration/test_validate_yaml_transitive_schema_watch_e2e.sh
 	./tests/integration/test_variable_passing_e2e.sh
 	./tests/integration/test_verifier_e2e.sh
+	./tests/integration/test_verifier_container_e2e.sh
 	#./tests/integration/test_verify_e2e.sh
 	BUILD_VARIANT="" ./scripts/run_verifier_and_generate_reports.sh
+	${MAKE} validate-output-schemas
 .PHONY: test-e2e
 
 example_export-demo:
@@ -286,6 +292,11 @@ verify-testcases: build
 		echo "All test case files validated successfully"; \
 	fi
 .PHONY: verify-testcases
+
+validate-output-schemas:
+	@echo "Validating expected output sample files against schemas..."
+	./scripts/validate-output-schemas.sh
+.PHONY: validate-output-schemas
 
 watch: build
 	./scripts/watch-yaml-files.sh

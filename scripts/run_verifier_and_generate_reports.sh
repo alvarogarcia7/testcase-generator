@@ -2,7 +2,15 @@
 #
 # Run verifier on all test scenarios and generate PDF reports
 #
-# Usage: ./scripts/run_verifier_and_generate_reports.sh
+# Usage: ./scripts/run_verifier_and_generate_reports.sh [OPTIONS]
+#
+# Options:
+#   --config FILE       Path to container config file (default: container_config.yml)
+#   --title TITLE       Override report title
+#   --project PROJECT   Override project name
+#   --environment ENV   Override environment information
+#   --platform PLATFORM Override platform information
+#   --executor EXECUTOR Override executor information
 #
 
 set -e
@@ -12,6 +20,55 @@ BUILD_VARIANT="${BUILD_VARIANT:---release}"
 # Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# Default config file
+CONFIG_FILE="$PROJECT_ROOT/container_config.yml"
+
+# CLI overrides
+TITLE=""
+PROJECT=""
+ENVIRONMENT=""
+PLATFORM=""
+EXECUTOR=""
+
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --config)
+            CONFIG_FILE="$2"
+            shift 2
+            ;;
+        --title)
+            TITLE="$2"
+            shift 2
+            ;;
+        --project)
+            PROJECT="$2"
+            shift 2
+            ;;
+        --environment)
+            ENVIRONMENT="$2"
+            shift 2
+            ;;
+        --platform)
+            PLATFORM="$2"
+            shift 2
+            ;;
+        --executor)
+            EXECUTOR="$2"
+            shift 2
+            ;;
+        --help)
+            head -n 15 "$0" | tail -n +2 | sed 's/^# //'
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1"
+            echo "Use --help for usage information"
+            exit 1
+            ;;
+    esac
+done
 
 echo "======================================================================="
 echo "Test Verifier Report Generator"
@@ -50,6 +107,47 @@ declare -a SCENARIOS=(
 
 declare -a VERIFICATION_FILES=()
 
+# Build verifier command with config file and CLI overrides
+build_verifier_cmd() {
+    local log_file="$1"
+    local test_case_id="$2"
+    local output_file="$3"
+    
+    local cmd="cargo run ${BUILD_VARIANT} --bin verifier --"
+    cmd="$cmd --log \"$log_file\""
+    cmd="$cmd --test-case \"$test_case_id\""
+    cmd="$cmd --format json"
+    cmd="$cmd --output \"$output_file\""
+    
+    # Add config file if it exists
+    if [ -f "$CONFIG_FILE" ]; then
+        cmd="$cmd --config \"$CONFIG_FILE\""
+    fi
+    
+    # Add CLI overrides
+    if [ -n "$TITLE" ]; then
+        cmd="$cmd --title \"$TITLE\""
+    fi
+    
+    if [ -n "$PROJECT" ]; then
+        cmd="$cmd --project \"$PROJECT\""
+    fi
+    
+    if [ -n "$ENVIRONMENT" ]; then
+        cmd="$cmd --environment \"$ENVIRONMENT\""
+    fi
+    
+    if [ -n "$PLATFORM" ]; then
+        cmd="$cmd --platform \"$PLATFORM\""
+    fi
+    
+    if [ -n "$EXECUTOR" ]; then
+        cmd="$cmd --executor \"$EXECUTOR\""
+    fi
+    
+    echo "$cmd"
+}
+
 # Process each scenario
 for SCENARIO_ENTRY in "${SCENARIOS[@]}"; do
     IFS=':' read -r SCENARIO_DIR TEST_CASE_ID <<< "$SCENARIO_ENTRY"
@@ -75,11 +173,9 @@ for SCENARIO_ENTRY in "${SCENARIOS[@]}"; do
     echo ""
     echo "Running verifier..."
     
-    cargo run ${BUILD_VARIANT} --bin verifier -- \
-        --log "$EXECUTION_LOG" \
-        --test-case "$TEST_CASE_ID" \
-        --format json \
-        --output "$VERIFICATION_OUTPUT" 2>&1 | tail -20
+    # Build and execute command
+    VERIFIER_CMD=$(build_verifier_cmd "$EXECUTION_LOG" "$TEST_CASE_ID" "$VERIFICATION_OUTPUT")
+    eval "$VERIFIER_CMD" 2>&1 | tail -20
     
     VERIFIER_EXIT=$?
     
@@ -184,10 +280,34 @@ if [ -f "$DOC_SCRIPT" ]; then
     echo "Running documentation report generator..."
     echo ""
     
-    "$DOC_SCRIPT" \
-        --output-dir "$OUTPUT_DIR" \
-        --test-case-dir "$PROJECT_ROOT/testcases" \
-        --test-plan-doc-gen "$DOC_GEN_DIR"
+    # Build doc script command with config file and CLI overrides
+    DOC_CMD="\"$DOC_SCRIPT\" --output-dir \"$OUTPUT_DIR\" --test-case-dir \"$PROJECT_ROOT/testcases\" --test-plan-doc-gen \"$DOC_GEN_DIR\""
+    
+    if [ -f "$CONFIG_FILE" ]; then
+        DOC_CMD="$DOC_CMD --config \"$CONFIG_FILE\""
+    fi
+    
+    if [ -n "$TITLE" ]; then
+        DOC_CMD="$DOC_CMD --title \"$TITLE\""
+    fi
+    
+    if [ -n "$PROJECT" ]; then
+        DOC_CMD="$DOC_CMD --project \"$PROJECT\""
+    fi
+    
+    if [ -n "$ENVIRONMENT" ]; then
+        DOC_CMD="$DOC_CMD --environment \"$ENVIRONMENT\""
+    fi
+    
+    if [ -n "$PLATFORM" ]; then
+        DOC_CMD="$DOC_CMD --platform \"$PLATFORM\""
+    fi
+    
+    if [ -n "$EXECUTOR" ]; then
+        DOC_CMD="$DOC_CMD --executor \"$EXECUTOR\""
+    fi
+    
+    eval "$DOC_CMD"
     
     if [ $? -eq 0 ]; then
         echo ""

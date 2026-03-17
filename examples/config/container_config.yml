@@ -1,0 +1,28 @@
+# Container Configuration - Minimal Example
+#
+# This is the minimal required configuration for the verifier's container format.
+# Only 'title' and 'project' are required fields.
+#
+# Usage:
+#   verifier -f logs/ --format yaml --output report.yaml --config container_config.yml
+#
+# CLI Flag Overrides:
+#   Any field in this configuration file can be overridden by CLI flags:
+#     --title      "Custom Title"        (overrides 'title')
+#     --project    "Custom Project"      (overrides 'project')
+#     --environment "Staging"            (adds/overrides 'environment')
+#     --platform    "Linux x86_64"       (adds/overrides 'platform')
+#     --executor    "Jenkins v3.2"       (adds/overrides 'executor')
+#
+# Precedence: CLI flags > Configuration file > Default values
+#
+# Example with overrides:
+#   verifier -f logs/ --format yaml --output report.yaml \
+#     --config container_config.yml \
+#     --title "Nightly Test Run"
+
+# Required: Title of the test report
+title: "Test Execution Results"
+
+# Required: Name of the project being tested
+project: "Test Case Manager - Verification Results"

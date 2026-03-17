@@ -1,0 +1,3 @@
+# Minimal container report configuration file - only required fields
+title: "Minimal Test Report"
+project: "Minimal Test Project"

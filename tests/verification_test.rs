@@ -4,8 +4,8 @@ use testcase_manager::models::{
     Expected, Step, TestCase, TestSequence, Verification, VerificationExpression,
 };
 use testcase_manager::verification::{
-    DiffDetail, MatchStrategy, StepVerificationResult, TestExecutionLog, TestVerifier,
-    VerificationDiff,
+    DiffDetail, MatchStrategy, StepVerificationResult, TestCaseVerificationResult,
+    TestExecutionLog, TestVerifier, VerificationDiff,
 };
 
 fn create_step(step_num: i64, result: &str, output: &str, success: Option<bool>) -> Step {
@@ -1256,8 +1256,8 @@ fn test_generate_report_yaml_with_sequences() {
     assert!(yaml.contains("Test Sequence 1"));
     assert!(yaml.contains("Step 1 description"));
     assert!(yaml.contains("Step 2 description"));
-    assert!(yaml.contains("status: pass"));
-    assert!(yaml.contains("status: fail"));
+    assert!(yaml.contains("!Pass"));
+    assert!(yaml.contains("!Fail"));
     assert!(yaml.contains("expected_result"));
     assert!(yaml.contains("actual_result"));
 }
@@ -1312,7 +1312,7 @@ fn test_generate_report_yaml_not_executed_steps() {
 
     let yaml = verifier.generate_report_yaml(&result).unwrap();
 
-    assert!(yaml.contains("status: not_executed"));
+    assert!(yaml.contains("!NotExecuted"));
     assert!(yaml.contains("Not executed step"));
     assert!(yaml.contains("not_executed_steps: 1"));
 }
@@ -1404,7 +1404,7 @@ fn test_generate_report_json_with_sequences() {
 
     let json = verifier.generate_report_json(&result).unwrap();
 
-    assert!(json.contains("\"status\": \"fail\""));
+    assert!(json.contains("\"Fail\""));
     assert!(json.contains("\"expected\""));
     assert!(json.contains("\"0x9000\""));
     assert!(json.contains("\"0x6A82\""));
@@ -1724,9 +1724,9 @@ fn test_generate_report_yaml_complex_sequences() {
     assert!(yaml.contains("Initialize system"));
     assert!(yaml.contains("Validate output"));
     assert!(yaml.contains("Cleanup resources"));
-    assert!(yaml.contains("status: pass"));
-    assert!(yaml.contains("status: fail"));
-    assert!(yaml.contains("status: not_executed"));
+    assert!(yaml.contains("!Pass"));
+    assert!(yaml.contains("!Fail"));
+    assert!(yaml.contains("!NotExecuted"));
 }
 
 #[test]
@@ -1791,8 +1791,8 @@ fn test_generate_report_json_complex_sequences() {
     // Verify JSON contains all expected elements
     assert!(json.contains("\"sequences\""));
     assert!(json.contains("\"sequence_id\": 1"));
-    assert!(json.contains("\"status\": \"pass\""));
-    assert!(json.contains("\"status\": \"fail\""));
+    assert!(json.contains("\"Pass\""));
+    assert!(json.contains("\"Fail\""));
     assert!(json.contains("\"expected\""));
     assert!(json.contains("\"actual_result\""));
 
@@ -1967,6 +1967,568 @@ fn test_step_verification_result_enum_methods() {
 
     assert!(!not_executed.is_pass());
     assert_eq!(not_executed.step_number(), 3);
+}
+
+// ============================================================================
+// Container Report Integration Tests
+// ============================================================================
+
+#[test]
+fn test_container_report_from_batch_report_constructor() {
+    use chrono::{TimeZone, Utc};
+    use testcase_manager::verification::{BatchVerificationReport, ContainerReport};
+
+    let mut batch_report = BatchVerificationReport::new();
+    let fixed_time = Utc.with_ymd_and_hms(2024, 3, 15, 14, 30, 0).unwrap();
+    batch_report.generated_at = fixed_time;
+
+    batch_report.add_test_case_result(TestCaseVerificationResult {
+        test_case_id: "TC001".to_string(),
+        description: "Test Case 1".to_string(),
+        sequences: vec![],
+        total_steps: 5,
+        passed_steps: 4,
+        failed_steps: 1,
+        not_executed_steps: 0,
+        overall_pass: false,
+        requirement: Some("REQ001".to_string()),
+        item: Some(1),
+        tc: Some(1),
+    });
+
+    batch_report.add_test_case_result(TestCaseVerificationResult {
+        test_case_id: "TC002".to_string(),
+        description: "Test Case 2".to_string(),
+        sequences: vec![],
+        total_steps: 3,
+        passed_steps: 3,
+        failed_steps: 0,
+        not_executed_steps: 0,
+        overall_pass: true,
+        requirement: Some("REQ002".to_string()),
+        item: Some(2),
+        tc: Some(2),
+    });
+
+    let container_report = ContainerReport::from_batch_report(
+        batch_report.clone(),
+        "Test Report Title".to_string(),
+        "Test Project".to_string(),
+        Some("Test Environment".to_string()),
+        Some("Test Platform".to_string()),
+        Some("Test Executor".to_string()),
+        123.45,
+    );
+
+    // Verify all fields are populated correctly
+    assert_eq!(container_report.title, "Test Report Title");
+    assert_eq!(container_report.project, "Test Project");
+    assert_eq!(container_report.test_date, fixed_time);
+    assert_eq!(container_report.test_results.len(), 2);
+    assert_eq!(container_report.test_results[0].test_case_id, "TC001");
+    assert_eq!(container_report.test_results[1].test_case_id, "TC002");
+
+    // Verify metadata is populated correctly
+    assert_eq!(
+        container_report.metadata.environment,
+        Some("Test Environment".to_string())
+    );
+    assert_eq!(
+        container_report.metadata.platform,
+        Some("Test Platform".to_string())
+    );
+    assert_eq!(
+        container_report.metadata.executor,
+        Some("Test Executor".to_string())
+    );
+    assert_eq!(container_report.metadata.execution_duration, 123.45);
+
+    // Verify metadata aggregation from BatchVerificationReport
+    assert_eq!(container_report.metadata.total_test_cases, 2);
+    assert_eq!(container_report.metadata.passed_test_cases, 1);
+    assert_eq!(container_report.metadata.failed_test_cases, 1);
+}
+
+#[test]
+fn test_container_report_yaml_serialization_structure() {
+    use chrono::{TimeZone, Utc};
+    use testcase_manager::verification::{BatchVerificationReport, ContainerReport};
+
+    let mut batch_report = BatchVerificationReport::new();
+    let fixed_time = Utc.with_ymd_and_hms(2024, 3, 15, 14, 30, 0).unwrap();
+    batch_report.generated_at = fixed_time;
+
+    batch_report.add_test_case_result(TestCaseVerificationResult {
+        test_case_id: "TC001".to_string(),
+        description: "First test case".to_string(),
+        sequences: vec![],
+        total_steps: 2,
+        passed_steps: 2,
+        failed_steps: 0,
+        not_executed_steps: 0,
+        overall_pass: true,
+        requirement: Some("REQ001".to_string()),
+        item: Some(1),
+        tc: Some(1),
+    });
+
+    let container_report = ContainerReport::from_batch_report(
+        batch_report,
+        "GSMA eUICC Test Suite Results".to_string(),
+        "GSMA SGP.22 Compliance Testing".to_string(),
+        Some("GSMA Certification Lab - Environment 2".to_string()),
+        Some("eUICC Test Platform v3.2.1".to_string()),
+        Some("Automated Test Framework v2.5.0".to_string()),
+        3845.7,
+    );
+
+    let yaml = serde_yaml::to_string(&container_report).unwrap();
+
+    // Verify YAML contains all required sections in expected structure
+    assert!(yaml.contains("title:"));
+    assert!(yaml.contains("GSMA eUICC Test Suite Results"));
+    assert!(yaml.contains("project:"));
+    assert!(yaml.contains("GSMA SGP.22 Compliance Testing"));
+    assert!(yaml.contains("test_date:"));
+    assert!(yaml.contains("2024-03-15"));
+    assert!(yaml.contains("test_results:"));
+    assert!(yaml.contains("metadata:"));
+    assert!(yaml.contains("environment:"));
+    assert!(yaml.contains("platform:"));
+    assert!(yaml.contains("executor:"));
+    assert!(yaml.contains("execution_duration:"));
+    assert!(yaml.contains("total_test_cases:"));
+    assert!(yaml.contains("passed_test_cases:"));
+    assert!(yaml.contains("failed_test_cases:"));
+
+    // Verify sections appear in correct order
+    let title_pos = yaml.find("title:").unwrap();
+    let project_pos = yaml.find("project:").unwrap();
+    let test_date_pos = yaml.find("test_date:").unwrap();
+    let test_results_pos = yaml.find("test_results:").unwrap();
+    let metadata_pos = yaml.find("metadata:").unwrap();
+
+    assert!(title_pos < project_pos);
+    assert!(project_pos < test_date_pos);
+    assert!(test_date_pos < test_results_pos);
+    assert!(test_results_pos < metadata_pos);
+}
+
+#[test]
+fn test_container_report_metadata_aggregation() {
+    use testcase_manager::verification::{BatchVerificationReport, ContainerReport};
+
+    let mut batch_report = BatchVerificationReport::new();
+
+    // Add multiple test cases with various results
+    batch_report.add_test_case_result(TestCaseVerificationResult {
+        test_case_id: "TC001".to_string(),
+        description: "Test 1".to_string(),
+        sequences: vec![],
+        total_steps: 10,
+        passed_steps: 10,
+        failed_steps: 0,
+        not_executed_steps: 0,
+        overall_pass: true,
+        requirement: None,
+        item: None,
+        tc: None,
+    });
+
+    batch_report.add_test_case_result(TestCaseVerificationResult {
+        test_case_id: "TC002".to_string(),
+        description: "Test 2".to_string(),
+        sequences: vec![],
+        total_steps: 8,
+        passed_steps: 5,
+        failed_steps: 2,
+        not_executed_steps: 1,
+        overall_pass: false,
+        requirement: None,
+        item: None,
+        tc: None,
+    });
+
+    batch_report.add_test_case_result(TestCaseVerificationResult {
+        test_case_id: "TC003".to_string(),
+        description: "Test 3".to_string(),
+        sequences: vec![],
+        total_steps: 5,
+        passed_steps: 5,
+        failed_steps: 0,
+        not_executed_steps: 0,
+        overall_pass: true,
+        requirement: None,
+        item: None,
+        tc: None,
+    });
+
+    batch_report.add_test_case_result(TestCaseVerificationResult {
+        test_case_id: "TC004".to_string(),
+        description: "Test 4".to_string(),
+        sequences: vec![],
+        total_steps: 12,
+        passed_steps: 9,
+        failed_steps: 2,
+        not_executed_steps: 1,
+        overall_pass: false,
+        requirement: None,
+        item: None,
+        tc: None,
+    });
+
+    let container_report = ContainerReport::from_batch_report(
+        batch_report,
+        "Test Report".to_string(),
+        "Test Project".to_string(),
+        None,
+        None,
+        None,
+        500.0,
+    );
+
+    // Verify metadata aggregation calculations are correct
+    assert_eq!(container_report.metadata.total_test_cases, 4);
+    assert_eq!(container_report.metadata.passed_test_cases, 2);
+    assert_eq!(container_report.metadata.failed_test_cases, 2);
+    assert_eq!(container_report.metadata.execution_duration, 500.0);
+
+    // Test cases should be preserved in test_results
+    assert_eq!(container_report.test_results.len(), 4);
+}
+
+#[test]
+fn test_container_report_yaml_deserialization() {
+    use testcase_manager::verification::ContainerReport;
+
+    // YAML matching the container_data.yml structure
+    let yaml = r#"
+title: 'Test Report Title'
+project: 'Test Project Name'
+test_date: '2024-03-15T14:30:00Z'
+test_results:
+  - test_case_id: 'TC001'
+    description: 'Test case description'
+    sequences: []
+    total_steps: 5
+    passed_steps: 4
+    failed_steps: 1
+    not_executed_steps: 0
+    overall_pass: false
+    requirement: 'REQ001'
+    item: 1
+    tc: 1
+metadata:
+  environment: 'Test Environment'
+  platform: 'Test Platform'
+  executor: 'Test Executor'
+  execution_duration: 123.45
+  total_test_cases: 1
+  passed_test_cases: 0
+  failed_test_cases: 1
+"#;
+
+    let deserialized: ContainerReport = serde_yaml::from_str(yaml).unwrap();
+
+    // Verify deserialization works correctly
+    assert_eq!(deserialized.title, "Test Report Title");
+    assert_eq!(deserialized.project, "Test Project Name");
+    assert_eq!(deserialized.test_results.len(), 1);
+    assert_eq!(deserialized.test_results[0].test_case_id, "TC001");
+    assert_eq!(
+        deserialized.metadata.environment,
+        Some("Test Environment".to_string())
+    );
+    assert_eq!(
+        deserialized.metadata.platform,
+        Some("Test Platform".to_string())
+    );
+    assert_eq!(
+        deserialized.metadata.executor,
+        Some("Test Executor".to_string())
+    );
+    assert_eq!(deserialized.metadata.execution_duration, 123.45);
+    assert_eq!(deserialized.metadata.total_test_cases, 1);
+    assert_eq!(deserialized.metadata.passed_test_cases, 0);
+    assert_eq!(deserialized.metadata.failed_test_cases, 1);
+}
+
+#[test]
+fn test_container_report_roundtrip_serialization() {
+    use chrono::{TimeZone, Utc};
+    use testcase_manager::verification::{BatchVerificationReport, ContainerReport};
+
+    let mut batch_report = BatchVerificationReport::new();
+    let fixed_time = Utc.with_ymd_and_hms(2024, 3, 15, 14, 30, 0).unwrap();
+    batch_report.generated_at = fixed_time;
+
+    batch_report.add_test_case_result(TestCaseVerificationResult {
+        test_case_id: "TC_ROUNDTRIP".to_string(),
+        description: "Roundtrip test case".to_string(),
+        sequences: vec![],
+        total_steps: 7,
+        passed_steps: 5,
+        failed_steps: 1,
+        not_executed_steps: 1,
+        overall_pass: false,
+        requirement: Some("REQ_RT".to_string()),
+        item: Some(99),
+        tc: Some(88),
+    });
+
+    let original = ContainerReport::from_batch_report(
+        batch_report,
+        "Roundtrip Test".to_string(),
+        "Roundtrip Project".to_string(),
+        Some("Roundtrip Env".to_string()),
+        Some("Roundtrip Platform".to_string()),
+        Some("Roundtrip Executor".to_string()),
+        999.99,
+    );
+
+    // Serialize to YAML
+    let yaml = serde_yaml::to_string(&original).unwrap();
+
+    // Deserialize back
+    let deserialized: ContainerReport = serde_yaml::from_str(&yaml).unwrap();
+
+    // Verify all fields match
+    assert_eq!(deserialized.title, original.title);
+    assert_eq!(deserialized.project, original.project);
+    assert_eq!(deserialized.test_date, original.test_date);
+    assert_eq!(deserialized.test_results.len(), original.test_results.len());
+    assert_eq!(
+        deserialized.test_results[0].test_case_id,
+        original.test_results[0].test_case_id
+    );
+    assert_eq!(
+        deserialized.test_results[0].total_steps,
+        original.test_results[0].total_steps
+    );
+    assert_eq!(
+        deserialized.metadata.environment,
+        original.metadata.environment
+    );
+    assert_eq!(deserialized.metadata.platform, original.metadata.platform);
+    assert_eq!(deserialized.metadata.executor, original.metadata.executor);
+    assert_eq!(
+        deserialized.metadata.execution_duration,
+        original.metadata.execution_duration
+    );
+    assert_eq!(
+        deserialized.metadata.total_test_cases,
+        original.metadata.total_test_cases
+    );
+    assert_eq!(
+        deserialized.metadata.passed_test_cases,
+        original.metadata.passed_test_cases
+    );
+    assert_eq!(
+        deserialized.metadata.failed_test_cases,
+        original.metadata.failed_test_cases
+    );
+}
+
+#[test]
+fn test_container_report_with_sequences_yaml_structure() {
+    use testcase_manager::models::Expected;
+    use testcase_manager::verification::{
+        BatchVerificationReport, ContainerReport, SequenceVerificationResult,
+        StepVerificationResultEnum,
+    };
+
+    let mut batch_report = BatchVerificationReport::new();
+
+    let sequence = SequenceVerificationResult {
+        sequence_id: 1,
+        name: "Test Sequence 1".to_string(),
+        step_results: vec![
+            StepVerificationResultEnum::Pass {
+                step: 1,
+                description: "Step 1 description".to_string(),
+                requirement: Some("REQ001".to_string()),
+                item: Some(1),
+                tc: Some(1),
+            },
+            StepVerificationResultEnum::Fail {
+                step: 2,
+                description: "Step 2 description".to_string(),
+                expected: Expected {
+                    success: Some(true),
+                    result: "0x9000".to_string(),
+                    output: "Success".to_string(),
+                },
+                actual_result: "0x6985".to_string(),
+                actual_output: "Command not allowed".to_string(),
+                reason: "Status code mismatch".to_string(),
+                requirement: Some("REQ001".to_string()),
+                item: Some(1),
+                tc: Some(1),
+            },
+            StepVerificationResultEnum::NotExecuted {
+                step: 3,
+                description: "Step 3 description".to_string(),
+                requirement: Some("REQ001".to_string()),
+                item: Some(1),
+                tc: Some(1),
+            },
+        ],
+        all_steps_passed: false,
+        requirement: Some("REQ001".to_string()),
+        item: Some(1),
+        tc: Some(1),
+    };
+
+    batch_report.add_test_case_result(TestCaseVerificationResult {
+        test_case_id: "TC_WITH_SEQUENCES".to_string(),
+        description: "Test case with sequences".to_string(),
+        sequences: vec![sequence],
+        total_steps: 3,
+        passed_steps: 1,
+        failed_steps: 1,
+        not_executed_steps: 1,
+        overall_pass: false,
+        requirement: Some("REQ001".to_string()),
+        item: Some(1),
+        tc: Some(1),
+    });
+
+    let container_report = ContainerReport::from_batch_report(
+        batch_report,
+        "Test with Sequences".to_string(),
+        "Test Project".to_string(),
+        None,
+        None,
+        None,
+        100.0,
+    );
+
+    let yaml = serde_yaml::to_string(&container_report).unwrap();
+
+    // Verify sequences and steps are in YAML
+    assert!(yaml.contains("sequences:"));
+    assert!(yaml.contains("sequence_id: 1"));
+    assert!(yaml.contains("Test Sequence 1"));
+    assert!(yaml.contains("step_results:"));
+    assert!(yaml.contains("!Pass"));
+    assert!(yaml.contains("!Fail"));
+    assert!(yaml.contains("!NotExecuted"));
+    assert!(yaml.contains("Step 1 description"));
+    assert!(yaml.contains("Step 2 description"));
+    assert!(yaml.contains("Step 3 description"));
+    assert!(yaml.contains("expected:"));
+    assert!(yaml.contains("actual_result:"));
+    assert!(yaml.contains("actual_output:"));
+    assert!(yaml.contains("reason:"));
+
+    // Verify deserialization preserves structure
+    let deserialized: ContainerReport = serde_yaml::from_str(&yaml).unwrap();
+    assert_eq!(deserialized.test_results.len(), 1);
+    assert_eq!(deserialized.test_results[0].sequences.len(), 1);
+    assert_eq!(
+        deserialized.test_results[0].sequences[0].step_results.len(),
+        3
+    );
+}
+
+#[test]
+fn test_container_report_optional_metadata_fields() {
+    use testcase_manager::verification::{BatchVerificationReport, ContainerReport};
+
+    let batch_report = BatchVerificationReport::new();
+
+    // Create report with no optional metadata
+    let container_report_no_optional = ContainerReport::from_batch_report(
+        batch_report.clone(),
+        "Test".to_string(),
+        "Project".to_string(),
+        None,
+        None,
+        None,
+        0.0,
+    );
+
+    assert!(container_report_no_optional.metadata.environment.is_none());
+    assert!(container_report_no_optional.metadata.platform.is_none());
+    assert!(container_report_no_optional.metadata.executor.is_none());
+
+    let yaml_no_optional = serde_yaml::to_string(&container_report_no_optional).unwrap();
+
+    // Optional fields should be omitted when None
+    let lines: Vec<&str> = yaml_no_optional.lines().collect();
+    let has_environment_field = lines
+        .iter()
+        .any(|line| line.trim().starts_with("environment:"));
+    let has_platform_field = lines
+        .iter()
+        .any(|line| line.trim().starts_with("platform:"));
+    let has_executor_field = lines
+        .iter()
+        .any(|line| line.trim().starts_with("executor:"));
+
+    assert!(!has_environment_field);
+    assert!(!has_platform_field);
+    assert!(!has_executor_field);
+
+    // Create report with all optional metadata
+    let container_report_with_optional = ContainerReport::from_batch_report(
+        batch_report,
+        "Test".to_string(),
+        "Project".to_string(),
+        Some("Env".to_string()),
+        Some("Platform".to_string()),
+        Some("Executor".to_string()),
+        100.0,
+    );
+
+    assert_eq!(
+        container_report_with_optional.metadata.environment,
+        Some("Env".to_string())
+    );
+    assert_eq!(
+        container_report_with_optional.metadata.platform,
+        Some("Platform".to_string())
+    );
+    assert_eq!(
+        container_report_with_optional.metadata.executor,
+        Some("Executor".to_string())
+    );
+
+    let yaml_with_optional = serde_yaml::to_string(&container_report_with_optional).unwrap();
+    assert!(yaml_with_optional.contains("environment: Env"));
+    assert!(yaml_with_optional.contains("platform: Platform"));
+    assert!(yaml_with_optional.contains("executor: Executor"));
+}
+
+#[test]
+fn test_container_report_empty_test_results() {
+    use testcase_manager::verification::{BatchVerificationReport, ContainerReport};
+
+    let batch_report = BatchVerificationReport::new();
+
+    let container_report = ContainerReport::from_batch_report(
+        batch_report,
+        "Empty Report".to_string(),
+        "Empty Project".to_string(),
+        None,
+        None,
+        None,
+        0.0,
+    );
+
+    assert_eq!(container_report.test_results.len(), 0);
+    assert_eq!(container_report.metadata.total_test_cases, 0);
+    assert_eq!(container_report.metadata.passed_test_cases, 0);
+    assert_eq!(container_report.metadata.failed_test_cases, 0);
+
+    let yaml = serde_yaml::to_string(&container_report).unwrap();
+    assert!(yaml.contains("test_results: []"));
+    assert!(yaml.contains("total_test_cases: 0"));
+
+    // Verify deserialization works with empty results
+    let deserialized: ContainerReport = serde_yaml::from_str(&yaml).unwrap();
+    assert_eq!(deserialized.test_results.len(), 0);
+    assert_eq!(deserialized.metadata.total_test_cases, 0);
 }
 
 // ============================================================================
@@ -2274,4 +2836,675 @@ fn test_precomputed_strategy_name() {
     if let Some(diff) = result.diff.result_diff.as_ref() {
         assert!(diff.message.contains("Precomputed"));
     }
+}
+
+// ============================================================================
+// Container Report Config Tests
+// ============================================================================
+
+#[test]
+fn test_container_report_config_defaults_only() {
+    use tempfile::TempDir;
+    use testcase_manager::storage::TestCaseStorage;
+    use testcase_manager::verification::{BatchVerificationReport, ContainerReportConfig};
+
+    let temp_dir = TempDir::new().unwrap();
+    let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
+    let verifier = TestVerifier::from_storage(storage);
+
+    let mut report = BatchVerificationReport::new();
+    report.add_test_case_result(TestCaseVerificationResult {
+        test_case_id: "TC_DEFAULT".to_string(),
+        description: "Test with default config".to_string(),
+        requirement: Some("REQ_DEFAULT".to_string()),
+        item: Some(1),
+        tc: Some(1),
+        sequences: vec![],
+        total_steps: 1,
+        passed_steps: 1,
+        failed_steps: 0,
+        not_executed_steps: 0,
+        overall_pass: true,
+    });
+
+    // Test with only required fields (fallback defaults)
+    let config = ContainerReportConfig {
+        title: "Test Execution Results".to_string(),
+        project: "Test Case Manager - Verification Results".to_string(),
+        environment: None,
+        platform: None,
+        executor: None,
+    };
+
+    let yaml = verifier
+        .generate_report(&[report.clone()], "yaml", config.clone())
+        .unwrap();
+
+    // Verify required fields are present
+    assert!(yaml.contains("title: Test Execution Results"));
+    assert!(yaml.contains("project: Test Case Manager - Verification Results"));
+    assert!(yaml.contains("test_date:"));
+    assert!(yaml.contains("test_results:"));
+    assert!(yaml.contains("metadata:"));
+
+    // Verify optional fields are handled correctly when None
+    // They should either not appear or be explicitly null
+    let parsed: testcase_manager::verification::ContainerReport =
+        serde_yaml::from_str(&yaml).expect("Failed to parse YAML");
+    assert_eq!(parsed.title, "Test Execution Results");
+    assert_eq!(parsed.project, "Test Case Manager - Verification Results");
+    assert!(parsed.metadata.environment.is_none());
+    assert!(parsed.metadata.platform.is_none());
+    assert!(parsed.metadata.executor.is_none());
+
+    // Test JSON format as well
+    let json = verifier.generate_report(&[report], "json", config).unwrap();
+    let parsed_json: testcase_manager::verification::ContainerReport =
+        serde_json::from_str(&json).expect("Failed to parse JSON");
+    assert_eq!(parsed_json.title, "Test Execution Results");
+    assert!(parsed_json.metadata.environment.is_none());
+}
+
+#[test]
+fn test_container_report_config_cli_flags_only() {
+    use tempfile::TempDir;
+    use testcase_manager::storage::TestCaseStorage;
+    use testcase_manager::verification::{BatchVerificationReport, ContainerReportConfig};
+
+    let temp_dir = TempDir::new().unwrap();
+    let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
+    let verifier = TestVerifier::from_storage(storage);
+
+    let mut report = BatchVerificationReport::new();
+    report.add_test_case_result(TestCaseVerificationResult {
+        test_case_id: "TC_CLI".to_string(),
+        description: "Test with CLI flags".to_string(),
+        requirement: Some("REQ_CLI".to_string()),
+        item: Some(1),
+        tc: Some(1),
+        sequences: vec![],
+        total_steps: 1,
+        passed_steps: 1,
+        failed_steps: 0,
+        not_executed_steps: 0,
+        overall_pass: true,
+    });
+
+    // Simulate CLI flags being used (all fields provided)
+    let config = ContainerReportConfig {
+        title: "CLI Test Report".to_string(),
+        project: "CLI Test Project".to_string(),
+        environment: Some("CLI Environment".to_string()),
+        platform: Some("CLI Platform".to_string()),
+        executor: Some("CLI Executor".to_string()),
+    };
+
+    let yaml = verifier.generate_report(&[report], "yaml", config).unwrap();
+
+    // Verify all fields from CLI flags are present
+    assert!(yaml.contains("title: CLI Test Report"));
+    assert!(yaml.contains("project: CLI Test Project"));
+    assert!(yaml.contains("environment: CLI Environment"));
+    assert!(yaml.contains("platform: CLI Platform"));
+    assert!(yaml.contains("executor: CLI Executor"));
+
+    let parsed: testcase_manager::verification::ContainerReport =
+        serde_yaml::from_str(&yaml).expect("Failed to parse YAML");
+    assert_eq!(parsed.title, "CLI Test Report");
+    assert_eq!(parsed.project, "CLI Test Project");
+    assert_eq!(
+        parsed.metadata.environment,
+        Some("CLI Environment".to_string())
+    );
+    assert_eq!(parsed.metadata.platform, Some("CLI Platform".to_string()));
+    assert_eq!(parsed.metadata.executor, Some("CLI Executor".to_string()));
+}
+
+#[test]
+fn test_container_report_config_file_only() {
+    use tempfile::TempDir;
+    use testcase_manager::storage::TestCaseStorage;
+    use testcase_manager::verification::{BatchVerificationReport, ContainerReportConfig};
+
+    let temp_dir = TempDir::new().unwrap();
+    let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
+    let verifier = TestVerifier::from_storage(storage);
+
+    let mut report = BatchVerificationReport::new();
+    report.add_test_case_result(TestCaseVerificationResult {
+        test_case_id: "TC_CONFIG".to_string(),
+        description: "Test with config file".to_string(),
+        requirement: Some("REQ_CONFIG".to_string()),
+        item: Some(1),
+        tc: Some(1),
+        sequences: vec![],
+        total_steps: 1,
+        passed_steps: 1,
+        failed_steps: 0,
+        not_executed_steps: 0,
+        overall_pass: true,
+    });
+
+    // Simulate values loaded from config file
+    let config = ContainerReportConfig {
+        title: "Container Config Test Report".to_string(),
+        project: "Container Config Test Project".to_string(),
+        environment: Some("Development".to_string()),
+        platform: Some("Linux x86_64".to_string()),
+        executor: Some("CI Pipeline v1.0".to_string()),
+    };
+
+    let yaml = verifier.generate_report(&[report], "yaml", config).unwrap();
+
+    // Verify all fields from config file are present
+    assert!(yaml.contains("title: Container Config Test Report"));
+    assert!(yaml.contains("project: Container Config Test Project"));
+    assert!(yaml.contains("environment: Development"));
+    assert!(yaml.contains("platform: Linux x86_64"));
+    assert!(yaml.contains("executor: CI Pipeline v1.0"));
+
+    let parsed: testcase_manager::verification::ContainerReport =
+        serde_yaml::from_str(&yaml).expect("Failed to parse YAML");
+    assert_eq!(parsed.title, "Container Config Test Report");
+    assert_eq!(parsed.project, "Container Config Test Project");
+    assert_eq!(parsed.metadata.environment, Some("Development".to_string()));
+    assert_eq!(parsed.metadata.platform, Some("Linux x86_64".to_string()));
+    assert_eq!(
+        parsed.metadata.executor,
+        Some("CI Pipeline v1.0".to_string())
+    );
+}
+
+#[test]
+fn test_container_report_config_file_with_cli_overrides() {
+    use tempfile::TempDir;
+    use testcase_manager::storage::TestCaseStorage;
+    use testcase_manager::verification::{BatchVerificationReport, ContainerReportConfig};
+
+    let temp_dir = TempDir::new().unwrap();
+    let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
+    let verifier = TestVerifier::from_storage(storage);
+
+    let mut report = BatchVerificationReport::new();
+    report.add_test_case_result(TestCaseVerificationResult {
+        test_case_id: "TC_OVERRIDE".to_string(),
+        description: "Test with config overrides".to_string(),
+        requirement: Some("REQ_OVERRIDE".to_string()),
+        item: Some(1),
+        tc: Some(1),
+        sequences: vec![],
+        total_steps: 1,
+        passed_steps: 1,
+        failed_steps: 0,
+        not_executed_steps: 0,
+        overall_pass: true,
+    });
+
+    // Simulate config file values being overridden by CLI flags
+    // Config file had: title="Container Config Test Report", environment="Development"
+    // CLI overrides: title="Overridden Title", environment="Production"
+    let config = ContainerReportConfig {
+        title: "Overridden Title".to_string(), // CLI override
+        project: "Container Config Test Project".to_string(), // From config file
+        environment: Some("Production".to_string()), // CLI override
+        platform: Some("Linux x86_64".to_string()), // From config file
+        executor: Some("CI Pipeline v1.0".to_string()), // From config file
+    };
+
+    let yaml = verifier.generate_report(&[report], "yaml", config).unwrap();
+
+    // Verify overridden fields have CLI values
+    assert!(yaml.contains("title: Overridden Title"));
+    assert!(yaml.contains("environment: Production"));
+
+    // Verify non-overridden fields have config file values
+    assert!(yaml.contains("project: Container Config Test Project"));
+    assert!(yaml.contains("platform: Linux x86_64"));
+    assert!(yaml.contains("executor: CI Pipeline v1.0"));
+
+    let parsed: testcase_manager::verification::ContainerReport =
+        serde_yaml::from_str(&yaml).expect("Failed to parse YAML");
+    assert_eq!(parsed.title, "Overridden Title");
+    assert_eq!(parsed.project, "Container Config Test Project");
+    assert_eq!(parsed.metadata.environment, Some("Production".to_string()));
+    assert_eq!(parsed.metadata.platform, Some("Linux x86_64".to_string()));
+    assert_eq!(
+        parsed.metadata.executor,
+        Some("CI Pipeline v1.0".to_string())
+    );
+}
+
+#[test]
+fn test_container_report_partial_config_with_defaults() {
+    use tempfile::TempDir;
+    use testcase_manager::storage::TestCaseStorage;
+    use testcase_manager::verification::{BatchVerificationReport, ContainerReportConfig};
+
+    let temp_dir = TempDir::new().unwrap();
+    let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
+    let verifier = TestVerifier::from_storage(storage);
+
+    let mut report = BatchVerificationReport::new();
+    report.add_test_case_result(TestCaseVerificationResult {
+        test_case_id: "TC_PARTIAL".to_string(),
+        description: "Test with partial config".to_string(),
+        requirement: Some("REQ_PARTIAL".to_string()),
+        item: Some(1),
+        tc: Some(1),
+        sequences: vec![],
+        total_steps: 1,
+        passed_steps: 1,
+        failed_steps: 0,
+        not_executed_steps: 0,
+        overall_pass: true,
+    });
+
+    // Simulate config file with only some optional fields
+    let config = ContainerReportConfig {
+        title: "Minimal Test Report".to_string(),
+        project: "Minimal Test Project".to_string(),
+        environment: None,                         // Not provided in config
+        platform: Some("macOS ARM64".to_string()), // Provided in config
+        executor: None,                            // Not provided in config
+    };
+
+    let yaml = verifier.generate_report(&[report], "yaml", config).unwrap();
+
+    // Verify required fields are present
+    assert!(yaml.contains("title: Minimal Test Report"));
+    assert!(yaml.contains("project: Minimal Test Project"));
+
+    // Verify provided optional field is present
+    assert!(yaml.contains("platform: macOS ARM64"));
+
+    let parsed: testcase_manager::verification::ContainerReport =
+        serde_yaml::from_str(&yaml).expect("Failed to parse YAML");
+    assert_eq!(parsed.title, "Minimal Test Report");
+    assert_eq!(parsed.project, "Minimal Test Project");
+    assert!(parsed.metadata.environment.is_none());
+    assert_eq!(parsed.metadata.platform, Some("macOS ARM64".to_string()));
+    assert!(parsed.metadata.executor.is_none());
+}
+
+// ============================================================================
+// StepVerificationResultEnum Externally Tagged Serialization Tests
+// ============================================================================
+
+#[test]
+fn test_step_verification_result_enum_yaml_externally_tagged_pass() {
+    use testcase_manager::verification::StepVerificationResultEnum;
+
+    let pass_variant = StepVerificationResultEnum::Pass {
+        step: 1,
+        description: "Test step".to_string(),
+        requirement: Some("REQ001".to_string()),
+        item: Some(1),
+        tc: Some(1),
+    };
+
+    let yaml = serde_yaml::to_string(&pass_variant).unwrap();
+
+    // Verify externally tagged format: YAML uses tags as variant names
+    // In YAML, externally tagged enums are represented with YAML tags: !Pass
+    assert!(yaml.contains("!Pass"));
+    assert!(yaml.contains("step: 1"));
+    assert!(yaml.contains("description: Test step"));
+    assert!(yaml.contains("requirement: REQ001"));
+
+    // Verify it does NOT use internally tagged or adjacently tagged format
+    assert!(!yaml.contains("type:"));
+    assert!(!yaml.contains("\"Pass\""));
+
+    // Verify roundtrip
+    let deserialized: StepVerificationResultEnum = serde_yaml::from_str(&yaml).unwrap();
+    assert!(deserialized.is_pass());
+    assert_eq!(deserialized.step_number(), 1);
+}
+
+#[test]
+fn test_step_verification_result_enum_yaml_externally_tagged_fail() {
+    use testcase_manager::models::Expected;
+    use testcase_manager::verification::StepVerificationResultEnum;
+
+    let fail_variant = StepVerificationResultEnum::Fail {
+        step: 2,
+        description: "Failed step".to_string(),
+        expected: Expected {
+            success: Some(true),
+            result: "0x9000".to_string(),
+            output: "Success".to_string(),
+        },
+        actual_result: "0x6A82".to_string(),
+        actual_output: "Error".to_string(),
+        reason: "Result mismatch".to_string(),
+        requirement: Some("REQ002".to_string()),
+        item: Some(2),
+        tc: Some(2),
+    };
+
+    let yaml = serde_yaml::to_string(&fail_variant).unwrap();
+
+    // Verify externally tagged format: YAML uses tags as variant names
+    assert!(yaml.contains("!Fail"));
+    assert!(yaml.contains("step: 2"));
+    assert!(yaml.contains("description: Failed step"));
+    assert!(yaml.contains("expected:"));
+    assert!(yaml.contains("actual_result:"));
+    assert!(yaml.contains("actual_output:"));
+    assert!(yaml.contains("reason:"));
+
+    // Verify it does NOT use internally tagged or adjacently tagged format
+    assert!(!yaml.contains("type:"));
+    assert!(!yaml.contains("\"Fail\""));
+
+    // Verify roundtrip
+    let deserialized: StepVerificationResultEnum = serde_yaml::from_str(&yaml).unwrap();
+    assert!(!deserialized.is_pass());
+    assert_eq!(deserialized.step_number(), 2);
+}
+
+#[test]
+fn test_step_verification_result_enum_yaml_externally_tagged_not_executed() {
+    use testcase_manager::verification::StepVerificationResultEnum;
+
+    let not_executed_variant = StepVerificationResultEnum::NotExecuted {
+        step: 3,
+        description: "Not executed step".to_string(),
+        requirement: None,
+        item: None,
+        tc: None,
+    };
+
+    let yaml = serde_yaml::to_string(&not_executed_variant).unwrap();
+
+    // Verify externally tagged format: YAML uses tags as variant names
+    assert!(yaml.contains("!NotExecuted"));
+    assert!(yaml.contains("step: 3"));
+    assert!(yaml.contains("description: Not executed step"));
+
+    // Verify it does NOT use internally tagged or adjacently tagged format
+    assert!(!yaml.contains("type:"));
+    assert!(!yaml.contains("\"NotExecuted\""));
+
+    // Verify roundtrip
+    let deserialized: StepVerificationResultEnum = serde_yaml::from_str(&yaml).unwrap();
+    assert!(!deserialized.is_pass());
+    assert_eq!(deserialized.step_number(), 3);
+}
+
+#[test]
+fn test_step_verification_result_enum_json_externally_tagged_pass() {
+    use testcase_manager::verification::StepVerificationResultEnum;
+
+    let pass_variant = StepVerificationResultEnum::Pass {
+        step: 1,
+        description: "Test step".to_string(),
+        requirement: Some("REQ001".to_string()),
+        item: Some(1),
+        tc: Some(1),
+    };
+
+    let json = serde_json::to_string(&pass_variant).unwrap();
+
+    // Verify externally tagged format: { "Pass": { ... } }
+    assert!(json.contains("\"Pass\""));
+    assert!(json.contains("\"step\":1"));
+    assert!(json.contains("\"description\":\"Test step\""));
+    assert!(json.contains("\"requirement\":\"REQ001\""));
+
+    // Verify it does NOT use other tagging formats
+    assert!(!json.contains("\"type\""));
+    assert!(!json.contains("\"tag\""));
+    assert!(!json.contains("\"content\""));
+
+    // Verify roundtrip
+    let deserialized: StepVerificationResultEnum = serde_json::from_str(&json).unwrap();
+    assert!(deserialized.is_pass());
+    assert_eq!(deserialized.step_number(), 1);
+}
+
+#[test]
+fn test_step_verification_result_enum_json_externally_tagged_fail() {
+    use testcase_manager::models::Expected;
+    use testcase_manager::verification::StepVerificationResultEnum;
+
+    let fail_variant = StepVerificationResultEnum::Fail {
+        step: 2,
+        description: "Failed step".to_string(),
+        expected: Expected {
+            success: Some(false),
+            result: "0x9000".to_string(),
+            output: "Success".to_string(),
+        },
+        actual_result: "0x6A82".to_string(),
+        actual_output: "Error".to_string(),
+        reason: "Result mismatch".to_string(),
+        requirement: None,
+        item: None,
+        tc: None,
+    };
+
+    let json = serde_json::to_string(&fail_variant).unwrap();
+
+    // Verify externally tagged format
+    assert!(json.contains("\"Fail\""));
+    assert!(json.contains("\"step\":2"));
+    assert!(json.contains("\"description\":\"Failed step\""));
+    assert!(json.contains("\"expected\""));
+    assert!(json.contains("\"actual_result\":\"0x6A82\""));
+    assert!(json.contains("\"actual_output\":\"Error\""));
+    assert!(json.contains("\"reason\":\"Result mismatch\""));
+
+    // Verify it does NOT use other tagging formats
+    assert!(!json.contains("\"type\""));
+    assert!(!json.contains("\"tag\""));
+
+    // Verify roundtrip
+    let deserialized: StepVerificationResultEnum = serde_json::from_str(&json).unwrap();
+    assert!(!deserialized.is_pass());
+    assert_eq!(deserialized.step_number(), 2);
+}
+
+#[test]
+fn test_step_verification_result_enum_json_externally_tagged_not_executed() {
+    use testcase_manager::verification::StepVerificationResultEnum;
+
+    let not_executed_variant = StepVerificationResultEnum::NotExecuted {
+        step: 3,
+        description: "Not executed step".to_string(),
+        requirement: Some("REQ003".to_string()),
+        item: Some(3),
+        tc: Some(3),
+    };
+
+    let json = serde_json::to_string(&not_executed_variant).unwrap();
+
+    // Verify externally tagged format
+    assert!(json.contains("\"NotExecuted\""));
+    assert!(json.contains("\"step\":3"));
+    assert!(json.contains("\"description\":\"Not executed step\""));
+    assert!(json.contains("\"requirement\":\"REQ003\""));
+
+    // Verify it does NOT use other tagging formats
+    assert!(!json.contains("\"type\""));
+    assert!(!json.contains("\"tag\""));
+
+    // Verify roundtrip
+    let deserialized: StepVerificationResultEnum = serde_json::from_str(&json).unwrap();
+    assert!(!deserialized.is_pass());
+    assert_eq!(deserialized.step_number(), 3);
+}
+
+#[test]
+fn test_step_verification_result_enum_yaml_all_variants_externally_tagged() {
+    use testcase_manager::models::Expected;
+    use testcase_manager::verification::StepVerificationResultEnum;
+
+    let variants = vec![
+        StepVerificationResultEnum::Pass {
+            step: 1,
+            description: "Pass variant".to_string(),
+            requirement: None,
+            item: None,
+            tc: None,
+        },
+        StepVerificationResultEnum::Fail {
+            step: 2,
+            description: "Fail variant".to_string(),
+            expected: Expected {
+                success: None,
+                result: "expected".to_string(),
+                output: "output".to_string(),
+            },
+            actual_result: "actual".to_string(),
+            actual_output: "actual_out".to_string(),
+            reason: "mismatch".to_string(),
+            requirement: None,
+            item: None,
+            tc: None,
+        },
+        StepVerificationResultEnum::NotExecuted {
+            step: 3,
+            description: "NotExecuted variant".to_string(),
+            requirement: None,
+            item: None,
+            tc: None,
+        },
+    ];
+
+    for variant in variants {
+        let yaml = serde_yaml::to_string(&variant).unwrap();
+
+        // Every variant should have its name as a YAML tag (externally tagged format in YAML)
+        let has_pass = yaml.contains("!Pass");
+        let has_fail = yaml.contains("!Fail");
+        let has_not_executed = yaml.contains("!NotExecuted");
+
+        // Exactly one should be true
+        assert_eq!(
+            (has_pass as u32) + (has_fail as u32) + (has_not_executed as u32),
+            1
+        );
+
+        // Verify it does NOT use internally tagged format
+        assert!(!yaml.contains("type:"));
+
+        // Verify roundtrip works
+        let _deserialized: StepVerificationResultEnum = serde_yaml::from_str(&yaml).unwrap();
+    }
+}
+
+#[test]
+fn test_step_verification_result_enum_json_all_variants_externally_tagged() {
+    use testcase_manager::models::Expected;
+    use testcase_manager::verification::StepVerificationResultEnum;
+
+    let variants = vec![
+        StepVerificationResultEnum::Pass {
+            step: 1,
+            description: "Pass variant".to_string(),
+            requirement: None,
+            item: None,
+            tc: None,
+        },
+        StepVerificationResultEnum::Fail {
+            step: 2,
+            description: "Fail variant".to_string(),
+            expected: Expected {
+                success: None,
+                result: "expected".to_string(),
+                output: "output".to_string(),
+            },
+            actual_result: "actual".to_string(),
+            actual_output: "actual_out".to_string(),
+            reason: "mismatch".to_string(),
+            requirement: None,
+            item: None,
+            tc: None,
+        },
+        StepVerificationResultEnum::NotExecuted {
+            step: 3,
+            description: "NotExecuted variant".to_string(),
+            requirement: None,
+            item: None,
+            tc: None,
+        },
+    ];
+
+    for variant in variants {
+        let json = serde_json::to_string(&variant).unwrap();
+
+        // Every variant should have its name as a top-level key in JSON object
+        let has_pass = json.contains("\"Pass\"");
+        let has_fail = json.contains("\"Fail\"");
+        let has_not_executed = json.contains("\"NotExecuted\"");
+
+        // Exactly one should be true
+        assert_eq!(
+            (has_pass as u32) + (has_fail as u32) + (has_not_executed as u32),
+            1
+        );
+
+        // None should use internal tagging
+        assert!(!json.contains("\"type\""));
+        assert!(!json.contains("\"tag\""));
+
+        // Verify roundtrip works
+        let _deserialized: StepVerificationResultEnum = serde_json::from_str(&json).unwrap();
+    }
+}
+
+#[test]
+fn test_container_report_config_json_format() {
+    use tempfile::TempDir;
+    use testcase_manager::storage::TestCaseStorage;
+    use testcase_manager::verification::{BatchVerificationReport, ContainerReportConfig};
+
+    let temp_dir = TempDir::new().unwrap();
+    let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
+    let verifier = TestVerifier::from_storage(storage);
+
+    let mut report = BatchVerificationReport::new();
+    report.add_test_case_result(TestCaseVerificationResult {
+        test_case_id: "TC_JSON_CONFIG".to_string(),
+        description: "Test JSON with config".to_string(),
+        requirement: Some("REQ_JSON".to_string()),
+        item: Some(1),
+        tc: Some(1),
+        sequences: vec![],
+        total_steps: 1,
+        passed_steps: 1,
+        failed_steps: 0,
+        not_executed_steps: 0,
+        overall_pass: true,
+    });
+
+    let config = ContainerReportConfig {
+        title: "JSON Config Test".to_string(),
+        project: "JSON Config Project".to_string(),
+        environment: Some("Test Environment".to_string()),
+        platform: Some("Test Platform".to_string()),
+        executor: Some("Test Executor".to_string()),
+    };
+
+    let json = verifier.generate_report(&[report], "json", config).unwrap();
+
+    // Verify JSON structure
+    assert!(json.contains("\"title\": \"JSON Config Test\""));
+    assert!(json.contains("\"project\": \"JSON Config Project\""));
+    assert!(json.contains("\"environment\": \"Test Environment\""));
+    assert!(json.contains("\"platform\": \"Test Platform\""));
+    assert!(json.contains("\"executor\": \"Test Executor\""));
+
+    // Verify it can be deserialized
+    let parsed: testcase_manager::verification::ContainerReport =
+        serde_json::from_str(&json).expect("Failed to parse JSON");
+    assert_eq!(parsed.title, "JSON Config Test");
+    assert_eq!(parsed.project, "JSON Config Project");
+    assert_eq!(
+        parsed.metadata.environment,
+        Some("Test Environment".to_string())
+    );
+    assert_eq!(parsed.metadata.platform, Some("Test Platform".to_string()));
+    assert_eq!(parsed.metadata.executor, Some("Test Executor".to_string()));
 }
