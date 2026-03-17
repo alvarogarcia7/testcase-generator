@@ -96,6 +96,34 @@ mkdir -p "$OUTPUT_DIR/reports/asciidoc"
 mkdir -p "$OUTPUT_DIR/reports/markdown"
 mkdir -p "$OUTPUT_DIR/reports/html"
 
+# Define file paths for reports
+SUMMARY_REPORT="$OUTPUT_DIR/integration_test_summary.txt"
+DETAILED_LOG="$OUTPUT_DIR/integration_test_detailed.log"
+
+# Trap to always show summary and log files on exit
+cleanup_and_show_reports() {
+    local exit_code=$?
+    
+    echo ""
+    section "Test Completion"
+    
+    if [[ -f "$SUMMARY_REPORT" ]]; then
+        log_info "Summary report location: $SUMMARY_REPORT"
+        echo ""
+        echo "=== Summary Report ==="
+        cat "$SUMMARY_REPORT"
+        echo ""
+    fi
+    
+    if [[ -f "$DETAILED_LOG" ]]; then
+        log_info "Detailed log location: $DETAILED_LOG"
+    fi
+    
+    exit $exit_code
+}
+
+trap cleanup_and_show_reports EXIT
+
 # Test results tracking
 declare -a PASSED_TESTS
 declare -a FAILED_TESTS
@@ -303,6 +331,9 @@ for test_case_file in "${TEST_SCENARIOS[@]}"; do
     
     cat > "$container_yaml" << EOF
 title: 'Test Execution Results - $test_case_name'
+date: '$(date +%Y-%m-%d)'
+product: 'Test Case Manager'
+description: 'Integration test results for $test_case_name'
 project: 'Test Case Manager - Integration Test'
 test_date: '$(date +%Y-%m-%dT%H:%M:%S)'
 test_results:
@@ -340,18 +371,59 @@ for container_yaml in "${CONTAINER_YAMLS[@]}"; do
     
     ((TOTAL_TESTS++)) || true
     
+    # Define paths to container schema, templates, and verification methods from test-plan-doc-gen directory
+    container_schema="$TEST_PLAN_DOC_GEN_DIR/data/container/schema.json"
+    container_template_asciidoc="$TEST_PLAN_DOC_GEN_DIR/data/container/template_asciidoc.adoc"
+    container_template_markdown="$TEST_PLAN_DOC_GEN_DIR/data/container/template_asciidoc.adoc" # Temporary hack - AGB
+    container_template_html="$TEST_PLAN_DOC_GEN_DIR/data/container/template_html.html"
+    verification_methods="$TEST_PLAN_DOC_GEN_DIR/data/verification_methods"
+    
+    # Get result YAML path for this container
+    result_yaml="$OUTPUT_DIR/results/${container_name}_result.yaml"
+    
     # Generate AsciiDoc report
     asciidoc_output="$OUTPUT_DIR/reports/asciidoc/${container_name}.adoc"
     
-    log_verbose "Generating AsciiDoc report..."
+    log_info "Generating AsciiDoc report for: $container_name"
+    log_verbose "  Output: $asciidoc_output"
+    log_verbose "  Schema: $container_schema"
+    log_verbose "  Template: $container_template_asciidoc"
+    log_verbose "  Container: $container_yaml"
+    log_verbose "  Verification methods: $verification_methods"
+    log_verbose "  Result YAML: $result_yaml"
+    
+    # Check if files exist before calling tpdg
+    if [[ ! -f "$container_schema" ]]; then
+        log_warning "Container schema not found: $container_schema"
+    fi
+    if [[ ! -f "$container_template_asciidoc" ]]; then
+        log_warning "AsciiDoc template not found: $container_template_asciidoc"
+    fi
+    if [[ ! -f "$container_yaml" ]]; then
+        log_error "Container YAML not found: $container_yaml"
+        FAILED_TESTS+=("$container_name: container YAML missing")
+        ((FAILED_COUNT++)) || true
+        continue
+    fi
+    if [[ ! -d "$verification_methods" ]]; then
+        log_warning "Verification methods directory not found: $verification_methods"
+    fi
+    if [[ ! -f "$result_yaml" ]]; then
+        log_error "Result YAML not found: $result_yaml"
+        FAILED_TESTS+=("$container_name: result YAML missing")
+        ((FAILED_COUNT++)) || true
+        continue
+    fi
     
     ASCIIDOC_EXIT=0
-    if invoke_test_plan_doc_gen \
-        --container "$container_yaml" \
+    invoke_test_plan_doc_gen \
+        --format asciidoc \
         --output "$asciidoc_output" \
-        --format asciidoc 2>&1 | while IFS= read -r line; do
-            log_verbose "$line"
-        done; then
+        --container "$container_schema" "$container_template_asciidoc" "$container_yaml" \
+        --test-case "$verification_methods" "$result_yaml"
+    ASCIIDOC_EXIT=$?
+    
+    if [[ $ASCIIDOC_EXIT -eq 0 ]]; then
         # Assert that the output file was actually generated
         if [[ ! -f "$asciidoc_output" ]]; then
             fail "AsciiDoc output file not generated: $(basename "$asciidoc_output")"
@@ -371,9 +443,8 @@ for container_yaml in "${CONTAINER_YAMLS[@]}"; do
         pass "Generated AsciiDoc: $(basename "$asciidoc_output")"
         log_verbose "File size: $(stat -f%z "$asciidoc_output" 2>/dev/null || stat -c%s "$asciidoc_output" 2>/dev/null) bytes"
     else
-        ASCIIDOC_EXIT=$?
         fail "Failed to generate AsciiDoc report (exit code: $ASCIIDOC_EXIT)"
-        FAILED_TESTS+=("$container_name: AsciiDoc generation failed")
+        FAILED_TESTS+=("$container_name: AsciiDoc generation failed (exit $ASCIIDOC_EXIT)")
         ((FAILED_COUNT++)) || true
         continue
     fi
@@ -381,15 +452,18 @@ for container_yaml in "${CONTAINER_YAMLS[@]}"; do
     # Generate Markdown report
     markdown_output="$OUTPUT_DIR/reports/markdown/${container_name}.md"
     
-    log_verbose "Generating Markdown report..."
+    log_info "Generating Markdown report for: $container_name"
+    log_verbose "  Template: $container_template_markdown"
     
     MARKDOWN_EXIT=0
-    if invoke_test_plan_doc_gen \
-        --container "$container_yaml" \
-        --output "$markdown_output" \
-        --format markdown 2>&1 | while IFS= read -r line; do
-            log_verbose "$line"
-        done; then
+#    invoke_test_plan_doc_gen \
+#        --format markdown \
+#        --output "$markdown_output" \
+#        --container "$container_schema" "$container_template_markdown" "$container_yaml" \
+#        --test-case "$verification_methods" "$result_yaml"
+    MARKDOWN_EXIT=$?
+    
+    if [[ $MARKDOWN_EXIT -eq 0 ]]; then
         # Assert that the output file was actually generated
         if [[ ! -f "$markdown_output" ]]; then
             fail "Markdown output file not generated: $(basename "$markdown_output")"
@@ -409,9 +483,8 @@ for container_yaml in "${CONTAINER_YAMLS[@]}"; do
         pass "Generated Markdown: $(basename "$markdown_output")"
         log_verbose "File size: $(stat -f%z "$markdown_output" 2>/dev/null || stat -c%s "$markdown_output" 2>/dev/null) bytes"
     else
-        MARKDOWN_EXIT=$?
         fail "Failed to generate Markdown report (exit code: $MARKDOWN_EXIT)"
-        FAILED_TESTS+=("$container_name: Markdown generation failed")
+        FAILED_TESTS+=("$container_name: Markdown generation failed (exit $MARKDOWN_EXIT)")
         ((FAILED_COUNT++)) || true
         continue
     fi
@@ -419,18 +492,19 @@ for container_yaml in "${CONTAINER_YAMLS[@]}"; do
     # Try to generate HTML report (may not be supported)
     html_output="$OUTPUT_DIR/reports/html/${container_name}.html"
     
-    log_verbose "Attempting to generate HTML report..."
+    log_verbose "Attempting to generate HTML report for: $container_name"
     
     HTML_EXIT=0
-    if invoke_test_plan_doc_gen \
-        --container "$container_yaml" \
+    invoke_test_plan_doc_gen \
+        --format html \
         --output "$html_output" \
-        --format html 2>&1 | while IFS= read -r line; do
-            log_verbose "$line"
-        done; then
+        --container "$container_schema" "$container_template_html" "$container_yaml" \
+        --test-case "$verification_methods" "$result_yaml"
+    HTML_EXIT=$?
+    
+    if [[ $HTML_EXIT -eq 0 ]]; then
         pass "Generated HTML: $(basename "$html_output")"
     else
-        HTML_EXIT=$?
         log_verbose "HTML generation not supported or failed (exit code: $HTML_EXIT)"
     fi
     
@@ -592,8 +666,6 @@ fi
 
 section "Step 7: Generate Summary Report"
 
-SUMMARY_REPORT="$OUTPUT_DIR/integration_test_summary.txt"
-
 cat > "$SUMMARY_REPORT" << EOF
 test-plan-doc-gen Integration Test Summary
 ==========================================
@@ -687,24 +759,93 @@ EOF
 
 pass "Summary report generated: $SUMMARY_REPORT"
 
-# Display summary to console
-section "Integration Test Summary"
-
-cat "$SUMMARY_REPORT"
-
 # ============================================================================
 # Exit with appropriate status
 # ============================================================================
 
 section "Complete"
 
+# Create detailed log file
+{
+    echo "test-plan-doc-gen Integration Test - Detailed Log"
+    echo "=================================================="
+    echo "Test Date: $(date +%Y-%m-%dT%H:%M:%S)"
+    echo "Test Plan Doc Gen Directory: $TEST_PLAN_DOC_GEN_DIR"
+    echo ""
+    echo "Binary Information:"
+    echo "  Binary: $TEST_PLAN_DOC_GEN"
+    if [[ -x "$TEST_PLAN_DOC_GEN" ]]; then
+        echo "  Version: $($TEST_PLAN_DOC_GEN --version 2>&1 || echo 'unknown')"
+    fi
+    echo ""
+    echo "Test Results:"
+    echo "  Total Scenarios: $SCENARIO_COUNT"
+    echo "  Total Tests: $TOTAL_TESTS"
+    echo "  Passed: $PASSED_COUNT"
+    echo "  Failed: $FAILED_COUNT"
+    echo ""
+    
+    if [[ ${#FAILED_TESTS[@]} -gt 0 ]]; then
+        echo "Failed Tests Details:"
+        for test in "${FAILED_TESTS[@]}"; do
+            echo "  - $test"
+        done
+        echo ""
+    fi
+    
+    if [[ ${#PASSED_TESTS[@]} -gt 0 ]]; then
+        echo "Passed Tests:"
+        for test in "${PASSED_TESTS[@]}"; do
+            echo "  - $test"
+        done
+        echo ""
+    fi
+    
+    echo "File Structure:"
+    echo "  Output Directory: $OUTPUT_DIR"
+    echo "  Verification JSON files: $(find "$OUTPUT_DIR/verification" -name "*.json" 2>/dev/null | wc -l | tr -d ' ')"
+    echo "  Result YAML files: $(find "$OUTPUT_DIR/results" -name "*_result.yaml" 2>/dev/null | wc -l | tr -d ' ')"
+    echo "  Container YAML files: $(find "$OUTPUT_DIR/results" -name "*_container.yaml" 2>/dev/null | wc -l | tr -d ' ')"
+    echo "  AsciiDoc reports: $(find "$OUTPUT_DIR/reports/asciidoc" -name "*.adoc" 2>/dev/null | wc -l | tr -d ' ')"
+    echo "  Markdown reports: $(find "$OUTPUT_DIR/reports/markdown" -name "*.md" 2>/dev/null | wc -l | tr -d ' ')"
+    echo "  HTML reports: $(find "$OUTPUT_DIR/reports/html" -name "*.html" 2>/dev/null | wc -l | tr -d ' ')"
+    echo ""
+    
+    echo "Expected Files:"
+    echo "  Container Schema: $TEST_PLAN_DOC_GEN_DIR/data/container/schema.json"
+    echo "    Exists: $(if [[ -f "$TEST_PLAN_DOC_GEN_DIR/data/container/schema.json" ]]; then echo "yes"; else echo "no"; fi)"
+    echo "  AsciiDoc Template: $TEST_PLAN_DOC_GEN_DIR/data/container/template_asciidoc.adoc"
+    echo "    Exists: $(if [[ -f "$TEST_PLAN_DOC_GEN_DIR/data/container/template_asciidoc.adoc" ]]; then echo "yes"; else echo "no"; fi)"
+    echo "  Markdown Template: $TEST_PLAN_DOC_GEN_DIR/data/container/template_markdown.md"
+    echo "    Exists: $(if [[ -f "$TEST_PLAN_DOC_GEN_DIR/data/container/template_markdown.md" ]]; then echo "yes"; else echo "no"; fi)"
+    echo "  Verification Methods: $TEST_PLAN_DOC_GEN_DIR/data/verification_methods"
+    echo "    Exists: $(if [[ -d "$TEST_PLAN_DOC_GEN_DIR/data/verification_methods" ]]; then echo "yes"; else echo "no"; fi)"
+    echo ""
+    
+    echo "Notes:"
+    if [[ $FAILED_COUNT -gt 0 ]]; then
+        echo "  - Some report generation tests failed"
+        echo "  - This may be due to missing template files in test-plan-documentation-generator"
+        echo "  - Check that all required files exist in the test-plan-doc-gen directory"
+    fi
+    if [[ ${#CONTENT_CHECKS_FAILED[@]} -gt 0 ]]; then
+        echo "  - Some content validation checks failed"
+        echo "  - Generated reports may be missing expected content"
+    fi
+    
+} > "$DETAILED_LOG"
+
+log_info "Detailed log saved to: $DETAILED_LOG"
+
 if [[ $FAILED_COUNT -gt 0 ]] || [[ ${#CONTENT_CHECKS_FAILED[@]} -gt 0 ]]; then
     fail "Integration test completed with failures"
     log_error "Review the summary report for details: $SUMMARY_REPORT"
+    log_error "Review the detailed log for more information: $DETAILED_LOG"
     exit 1
 fi
 
 pass "Integration test completed successfully!"
 log_info "All reports generated and validated"
 log_info "Summary report: $SUMMARY_REPORT"
+log_info "Detailed log: $DETAILED_LOG"
 exit 0

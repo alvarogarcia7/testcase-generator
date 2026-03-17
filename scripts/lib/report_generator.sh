@@ -233,14 +233,18 @@ build_test_plan_doc_gen() {
     done
     
     if [[ $build_exit -eq 0 ]]; then
-        # Verify the binary was actually created
-        if [[ -f "$sibling_dir/target/release/test-plan-doc-gen" ]]; then
+        # Verify the binary was actually created (check for both tpdg and test-plan-doc-gen)
+        if [[ -f "$sibling_dir/target/release/tpdg" ]]; then
+            pass "test-plan-doc-gen built successfully"
+            log_debug "Binary location: $sibling_dir/target/release/tpdg"
+            return 0
+        elif [[ -f "$sibling_dir/target/release/test-plan-doc-gen" ]]; then
             pass "test-plan-doc-gen built successfully"
             log_debug "Binary location: $sibling_dir/target/release/test-plan-doc-gen"
             return 0
         else
             fail "Build succeeded but binary not found at expected location"
-            log_error "Expected binary at: $sibling_dir/target/release/test-plan-doc-gen"
+            log_error "Expected binary at: $sibling_dir/target/release/tpdg or $sibling_dir/target/release/test-plan-doc-gen"
             return 1
         fi
     else
@@ -278,20 +282,32 @@ find_test_plan_doc_gen() {
     
     # Check sibling directory if provided
     if [[ -n "$sibling_dir" ]]; then
-        # Check release build
+        # Check release build (try both tpdg and test-plan-doc-gen)
+        if [[ -x "$sibling_dir/target/release/tpdg" ]]; then
+            echo "$sibling_dir/target/release/tpdg"
+            return 0
+        fi
         if [[ -x "$sibling_dir/target/release/test-plan-doc-gen" ]]; then
             echo "$sibling_dir/target/release/test-plan-doc-gen"
             return 0
         fi
         
-        # Check debug build
+        # Check debug build (try both tpdg and test-plan-doc-gen)
+        if [[ -x "$sibling_dir/target/debug/tpdg" ]]; then
+            echo "$sibling_dir/target/debug/tpdg"
+            return 0
+        fi
         if [[ -x "$sibling_dir/target/debug/test-plan-doc-gen" ]]; then
             echo "$sibling_dir/target/debug/test-plan-doc-gen"
             return 0
         fi
     fi
     
-    # Check system PATH
+    # Check system PATH (try both tpdg and test-plan-doc-gen)
+    if command -v tpdg >/dev/null 2>&1; then
+        echo "tpdg"
+        return 0
+    fi
     if command -v test-plan-doc-gen >/dev/null 2>&1; then
         echo "test-plan-doc-gen"
         return 0
@@ -412,7 +428,55 @@ invoke_test_plan_doc_gen() {
         return 1
     fi
     
-    log_info "Invoking test-plan-doc-gen: $binary_path $*"
+    log_verbose "Binary path: $binary_path"
+    log_verbose "Full command: $binary_path $*"
+    log_info "Invoking test-plan-doc-gen..."
+    
+    # Validate input files exist before calling tpdg
+    local checking_container=0
+    local checking_testcase=0
+    local container_files=()
+    local testcase_files=()
+    
+    for arg in "$@"; do
+        if [[ "$arg" == "--container" ]]; then
+            checking_container=1
+            checking_testcase=0
+            continue
+        elif [[ "$arg" == "--test-case" ]]; then
+            checking_container=0
+            checking_testcase=1
+            continue
+        elif [[ "$arg" == "--format" ]] || [[ "$arg" == "--output" ]]; then
+            checking_container=0
+            checking_testcase=0
+            continue
+        fi
+        
+        if [[ $checking_container -eq 1 ]] && [[ ! "$arg" =~ ^-- ]]; then
+            container_files+=("$arg")
+        elif [[ $checking_testcase -eq 1 ]] && [[ ! "$arg" =~ ^-- ]]; then
+            testcase_files+=("$arg")
+        fi
+    done
+    
+    # Validate container files
+    for file in "${container_files[@]}"; do
+        if [[ ! -f "$file" ]] && [[ ! -d "$file" ]]; then
+            log_error "Container file/directory does not exist: $file"
+            return 1
+        fi
+        log_verbose "Container input: $file ($(if [[ -f "$file" ]]; then echo "file"; else echo "directory"; fi))"
+    done
+    
+    # Validate test case files
+    for file in "${testcase_files[@]}"; do
+        if [[ ! -f "$file" ]] && [[ ! -d "$file" ]]; then
+            log_error "Test case file/directory does not exist: $file"
+            return 1
+        fi
+        log_verbose "Test case input: $file ($(if [[ -f "$file" ]]; then echo "file"; else echo "directory"; fi))"
+    done
     
     # Capture both stdout and stderr
     local tpdg_output
@@ -421,11 +485,13 @@ invoke_test_plan_doc_gen() {
     tpdg_output=$("$binary_path" "$@" 2>&1)
     tpdg_exit=$?
     
-    # Log the output
+    # Log the output at verbose level
     if [[ -n "$tpdg_output" ]]; then
+        log_verbose "=== tpdg output (exit code: $tpdg_exit) ==="
         echo "$tpdg_output" | while IFS= read -r line; do
             log_verbose "$line"
         done
+        log_verbose "=== end tpdg output ==="
     fi
     
     if [[ $tpdg_exit -eq 0 ]]; then
@@ -504,14 +570,9 @@ invoke_test_plan_doc_gen() {
                 ;;
         esac
         
-        # Show last few lines of output if available
-        if [[ -n "$tpdg_output" ]]; then
-            log_error ""
-            log_error "Last output from test-plan-doc-gen:"
-            echo "$tpdg_output" | tail -10 | while IFS= read -r line; do
-                log_error "  $line"
-            done
-        fi
+        # Error details are in verbose output above
+        log_error ""
+        log_error "Run with --verbose flag to see detailed error output from test-plan-doc-gen"
         
         return $tpdg_exit
     fi
@@ -674,7 +735,7 @@ verify_test_plan_doc_gen_binary() {
     
     if [[ $test_exit -eq 0 ]] || [[ $test_exit -eq 2 ]]; then
         # Exit code 0 or 2 (usage error) is expected for --help
-        if echo "$test_output" | grep -qi "test-plan-doc-gen\|usage\|--help"; then
+        if echo "$test_output" | grep -qi "test-plan-doc-gen\|tpdg\|usage\|--help"; then
             log_debug "Binary verification passed"
             return 0
         else
