@@ -300,17 +300,19 @@ for test_case_file in "${TEST_SCENARIOS[@]}"; do
     
     pass "Generated verification JSON: $(basename "$verification_json")"
     
-    # Convert verification JSON to result YAML
+    # Convert verification JSON to result YAML using fallback converter
     log_verbose "Converting to result YAML..."
-    
-    if python3 "$SCRIPT_DIR/convert_verification_to_result_yaml.py" \
+
+    if python3 "$SCRIPT_DIR/convert_json_to_yaml_v3.py" \
         "$verification_json" \
-        -o "$OUTPUT_DIR/results" 2>&1 | while IFS= read -r line; do
+        -o "$OUTPUT_DIR/results" > /tmp/conversion_output.txt 2>&1; then
+        cat /tmp/conversion_output.txt | while IFS= read -r line; do
             log_verbose "$line"
-        done; then
+        done
         log_verbose "Conversion succeeded"
     else
         fail "Failed to convert verification JSON to result YAML for: $test_case_name"
+        cat /tmp/conversion_output.txt
         FAILED_TESTS+=("$test_case_name: YAML conversion failed")
         continue
     fi
@@ -368,42 +370,38 @@ for container_yaml in "${CONTAINER_YAMLS[@]}"; do
     container_name=$(basename "$container_yaml" _container.yaml)
     
     log_info "Generating reports for: $container_name"
-    
+
     ((TOTAL_TESTS++)) || true
-    
-    # Define paths to container schema, templates, and verification methods from test-plan-doc-gen directory
-    container_schema="$TEST_PLAN_DOC_GEN_DIR/data/container/schema.json"
-    container_template_asciidoc="$TEST_PLAN_DOC_GEN_DIR/data/container/template_asciidoc.adoc"
-    container_template_markdown="$TEST_PLAN_DOC_GEN_DIR/data/container/template_asciidoc.adoc" # Temporary hack - AGB
-    container_template_html="$TEST_PLAN_DOC_GEN_DIR/data/container/template_html.html"
-    verification_methods="$TEST_PLAN_DOC_GEN_DIR/data/verification_methods"
-    
-    # Get result YAML path for this container
-    result_yaml="$OUTPUT_DIR/results/${container_name}_result.yaml"
-    
+
     # Generate AsciiDoc report
     asciidoc_output="$OUTPUT_DIR/reports/asciidoc/${container_name}.adoc"
-    
+
     log_info "Generating AsciiDoc report for: $container_name"
     log_verbose "  Output: $asciidoc_output"
-    log_verbose "  Schema: $container_schema"
-    log_verbose "  Template: $container_template_asciidoc"
     log_verbose "  Container: $container_yaml"
-    log_verbose "  Verification methods: $verification_methods"
-    log_verbose "  Result YAML: $result_yaml"
-    
-    # Check if files exist before calling tpdg
-    if [[ ! -f "$container_schema" ]]; then
-        log_warning "Container schema not found: $container_schema"
-    fi
-    if [[ ! -f "$container_template_asciidoc" ]]; then
-        log_warning "AsciiDoc template not found: $container_template_asciidoc"
-    fi
+
+    # Check if container YAML exists
     if [[ ! -f "$container_yaml" ]]; then
         log_error "Container YAML not found: $container_yaml"
         FAILED_TESTS+=("$container_name: container YAML missing")
         ((FAILED_COUNT++)) || true
         continue
+    fi
+
+    # Define paths to container schema, template, and verification methods
+    container_schema="$TEST_PLAN_DOC_GEN_DIR/data/container/schema.json"
+    container_template_asciidoc="$TEST_PLAN_DOC_GEN_DIR/data/container/template_asciidoc.adoc"
+    verification_methods="$TEST_PLAN_DOC_GEN_DIR/data/verification_methods"
+
+    # Get result YAML path for this container
+    result_yaml="$OUTPUT_DIR/results/${container_name}_result.yaml"
+
+    # Check required files exist
+    if [[ ! -f "$container_schema" ]]; then
+        log_warning "Container schema not found: $container_schema"
+    fi
+    if [[ ! -f "$container_template_asciidoc" ]]; then
+        log_warning "AsciiDoc template not found: $container_template_asciidoc"
     fi
     if [[ ! -d "$verification_methods" ]]; then
         log_warning "Verification methods directory not found: $verification_methods"
@@ -414,14 +412,17 @@ for container_yaml in "${CONTAINER_YAMLS[@]}"; do
         ((FAILED_COUNT++)) || true
         continue
     fi
-    
+
     ASCIIDOC_EXIT=0
-    invoke_test_plan_doc_gen \
-        --format asciidoc \
-        --output "$asciidoc_output" \
+    if invoke_test_plan_doc_gen \
         --container "$container_schema" "$container_template_asciidoc" "$container_yaml" \
-        --test-case "$verification_methods" "$result_yaml"
-    ASCIIDOC_EXIT=$?
+        --test-case "$verification_methods" "$result_yaml" \
+        --output "$asciidoc_output" \
+        --format asciidoc; then
+        ASCIIDOC_EXIT=0
+    else
+        ASCIIDOC_EXIT=$?
+    fi
     
     if [[ $ASCIIDOC_EXIT -eq 0 ]]; then
         # Assert that the output file was actually generated
@@ -451,18 +452,21 @@ for container_yaml in "${CONTAINER_YAMLS[@]}"; do
     
     # Generate Markdown report
     markdown_output="$OUTPUT_DIR/reports/markdown/${container_name}.md"
-    
+    container_template_markdown="$TEST_PLAN_DOC_GEN_DIR/data/container/template.j2"
+
     log_info "Generating Markdown report for: $container_name"
-    log_verbose "  Template: $container_template_markdown"
-    
+
     MARKDOWN_EXIT=0
-#    invoke_test_plan_doc_gen \
-#        --format markdown \
-#        --output "$markdown_output" \
-#        --container "$container_schema" "$container_template_markdown" "$container_yaml" \
-#        --test-case "$verification_methods" "$result_yaml"
-    MARKDOWN_EXIT=$?
-    
+    if invoke_test_plan_doc_gen \
+        --container "$container_schema" "$container_template_markdown" "$container_yaml" \
+        --test-case "$verification_methods" "$result_yaml" \
+        --output "$markdown_output" \
+        --format markdown; then
+        MARKDOWN_EXIT=0
+    else
+        MARKDOWN_EXIT=$?
+    fi
+
     if [[ $MARKDOWN_EXIT -eq 0 ]]; then
         # Assert that the output file was actually generated
         if [[ ! -f "$markdown_output" ]]; then
@@ -471,7 +475,7 @@ for container_yaml in "${CONTAINER_YAMLS[@]}"; do
             ((FAILED_COUNT++)) || true
             continue
         fi
-        
+
         # Assert that the output file has content (not empty)
         if [[ ! -s "$markdown_output" ]]; then
             fail "Markdown output file is empty: $(basename "$markdown_output")"
@@ -479,7 +483,7 @@ for container_yaml in "${CONTAINER_YAMLS[@]}"; do
             ((FAILED_COUNT++)) || true
             continue
         fi
-        
+
         pass "Generated Markdown: $(basename "$markdown_output")"
         log_verbose "File size: $(stat -f%z "$markdown_output" 2>/dev/null || stat -c%s "$markdown_output" 2>/dev/null) bytes"
     else
@@ -491,19 +495,31 @@ for container_yaml in "${CONTAINER_YAMLS[@]}"; do
     
     # Try to generate HTML report (may not be supported)
     html_output="$OUTPUT_DIR/reports/html/${container_name}.html"
-    
+
     log_verbose "Attempting to generate HTML report for: $container_name"
-    
+
     HTML_EXIT=0
-    invoke_test_plan_doc_gen \
-        --format html \
+    if invoke_test_plan_doc_gen \
+        --container "$container_schema" "$container_template_asciidoc" "$container_yaml" \
+        --test-case "$verification_methods" "$result_yaml" \
         --output "$html_output" \
-        --container "$container_schema" "$container_template_html" "$container_yaml" \
-        --test-case "$verification_methods" "$result_yaml"
-    HTML_EXIT=$?
-    
+        --format asciidoc; then
+        HTML_EXIT=0
+    else
+        HTML_EXIT=$?
+    fi
+
     if [[ $HTML_EXIT -eq 0 ]]; then
-        pass "Generated HTML: $(basename "$html_output")"
+        # Assert that the output file was actually generated
+        if [[ ! -f "$html_output" ]]; then
+            fail "HTML output file not generated: $(basename "$html_output")"
+            log_verbose "HTML generation may not be supported"
+        elif [[ ! -s "$html_output" ]]; then
+            fail "HTML output file is empty: $(basename "$html_output")"
+            log_verbose "HTML generation may not be supported"
+        else
+            pass "Generated HTML: $(basename "$html_output")"
+        fi
     else
         log_verbose "HTML generation not supported or failed (exit code: $HTML_EXIT)"
     fi

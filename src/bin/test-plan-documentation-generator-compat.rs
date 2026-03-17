@@ -273,21 +273,22 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     // Handle legacy usage: test-plan-documentation-generator-compat <file>
-    if cli.file.is_some() && cli.command.is_none() {
-        let file = cli.file.unwrap();
-        let result = validate_container_file(&file, cli.verbose)?;
+    if let Some(file) = &cli.file {
+        if cli.command.is_none() {
+            let result = validate_container_file(file, cli.verbose)?;
 
-        if cli.json {
-            println!("{}", serde_json::to_string_pretty(&result)?);
-        } else {
-            print_validation_result(&result, cli.verbose);
+            if cli.json {
+                println!("{}", serde_json::to_string_pretty(&result)?);
+            } else {
+                print_validation_result(&result, cli.verbose);
+            }
+
+            if !result.valid {
+                std::process::exit(1);
+            }
+
+            return Ok(());
         }
-
-        if !result.valid {
-            std::process::exit(1);
-        }
-
-        return Ok(());
     }
 
     match cli.command {
