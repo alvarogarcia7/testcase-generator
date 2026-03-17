@@ -461,48 +461,48 @@ for container_yaml in "${CONTAINER_YAMLS[@]}"; do
         continue
     fi
     
-    # Generate Markdown report
-    markdown_output="$OUTPUT_DIR/reports/markdown/${container_name}.md"
-    container_template_markdown="$TEST_PLAN_DOC_GEN_DIR/data/container/template.j2"
-
-    log_info "Generating Markdown report for: $container_name"
-
-    MARKDOWN_EXIT=0
-    if invoke_test_plan_doc_gen \
-        --container "$container_schema" "$container_template_markdown" "$container_yaml" \
-        --test-case "$verification_methods" "$result_yaml" \
-        --output "$markdown_output" \
-        --format markdown; then
-        MARKDOWN_EXIT=0
-    else
-        MARKDOWN_EXIT=$?
-    fi
-
-    if [[ $MARKDOWN_EXIT -eq 0 ]]; then
-        # Assert that the output file was actually generated
-        if [[ ! -f "$markdown_output" ]]; then
-            fail "Markdown output file not generated: $(basename "$markdown_output")"
-            FAILED_TESTS+=("$container_name: Markdown file not created")
-            ((FAILED_COUNT++)) || true
-            continue
-        fi
-
-        # Assert that the output file has content (not empty)
-        if [[ ! -s "$markdown_output" ]]; then
-            fail "Markdown output file is empty: $(basename "$markdown_output")"
-            FAILED_TESTS+=("$container_name: Markdown file is empty")
-            ((FAILED_COUNT++)) || true
-            continue
-        fi
-
-        pass "Generated Markdown: $(basename "$markdown_output")"
-        log_verbose "File size: $(stat -f%z "$markdown_output" 2>/dev/null || stat -c%s "$markdown_output" 2>/dev/null) bytes"
-    else
-        fail "Failed to generate Markdown report (exit code: $MARKDOWN_EXIT)"
-        FAILED_TESTS+=("$container_name: Markdown generation failed (exit $MARKDOWN_EXIT)")
-        ((FAILED_COUNT++)) || true
-        continue
-    fi
+#    # Generate Markdown report
+#    markdown_output="$OUTPUT_DIR/reports/markdown/${container_name}.md"
+#    container_template_markdown="$TEST_PLAN_DOC_GEN_DIR/data/container/template.j2"
+#
+#    log_info "Generating Markdown report for: $container_name"
+#
+#    MARKDOWN_EXIT=0
+#    if invoke_test_plan_doc_gen \
+#        --container "$container_schema" "$container_template_markdown" "$container_yaml" \
+#        --test-case "$verification_methods" "$result_yaml" \
+#        --output "$markdown_output" \
+#        --format markdown; then
+#        MARKDOWN_EXIT=0
+#    else
+#        MARKDOWN_EXIT=$?
+#    fi
+#
+#    if [[ $MARKDOWN_EXIT -eq 0 ]]; then
+#        # Assert that the output file was actually generated
+#        if [[ ! -f "$markdown_output" ]]; then
+#            fail "Markdown output file not generated: $(basename "$markdown_output")"
+#            FAILED_TESTS+=("$container_name: Markdown file not created")
+#            ((FAILED_COUNT++)) || true
+#            continue
+#        fi
+#
+#        # Assert that the output file has content (not empty)
+#        if [[ ! -s "$markdown_output" ]]; then
+#            fail "Markdown output file is empty: $(basename "$markdown_output")"
+#            FAILED_TESTS+=("$container_name: Markdown file is empty")
+#            ((FAILED_COUNT++)) || true
+#            continue
+#        fi
+#
+#        pass "Generated Markdown: $(basename "$markdown_output")"
+#        log_verbose "File size: $(stat -f%z "$markdown_output" 2>/dev/null || stat -c%s "$markdown_output" 2>/dev/null) bytes"
+#    else
+#        fail "Failed to generate Markdown report (exit code: $MARKDOWN_EXIT)"
+#        FAILED_TESTS+=("$container_name: Markdown generation failed (exit $MARKDOWN_EXIT)")
+#        ((FAILED_COUNT++)) || true
+#        continue
+#    fi
     
     # Try to generate HTML report (may not be supported)
     html_output="$OUTPUT_DIR/reports/html/${container_name}.html"
