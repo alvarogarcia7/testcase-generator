@@ -1,0 +1,48 @@
+requirement: "PREREQ_PARTIAL_FAIL"
+item: 1
+tc: 1
+id: 'PREREQ_PARTIAL_FAIL_001'
+description: 'Test case where some automatic prerequisites pass but at least one fails'
+
+prerequisites:
+  - type: automatic
+    description: "Check that echo command is available (should pass)"
+    verification_command: "which echo > /dev/null 2>&1"
+  - type: automatic
+    description: "Verify /tmp directory exists (should pass)"
+    verification_command: "test -d /tmp"
+  - type: automatic
+    description: "Check for non-existent utility (should fail)"
+    verification_command: "which nonexistent_utility_xyz > /dev/null 2>&1"
+  - type: automatic
+    description: "This check should not be reached"
+    verification_command: "which bash > /dev/null 2>&1"
+
+general_initial_conditions:
+  system:
+    - "Shell environment is available"
+
+initial_conditions:
+  system:
+    - "Some prerequisites will pass, but at least one will fail"
+
+test_sequences:
+  - id: 1
+    name: "Test Sequence That Should Not Execute"
+    description: |
+                   This test sequence should not execute because one of the
+                   automatic prerequisites will fail, even though others pass.
+    initial_conditions:
+      system:
+        - "This should never be reached"
+    steps:
+      - step: 1
+        description: "This step should never execute"
+        command: echo "Test failed to stop at failed prerequisite"
+        expected:
+          success: true
+          result: 0
+          output: "Test failed to stop at failed prerequisite"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Test failed' <<< \"$COMMAND_OUTPUT\""
