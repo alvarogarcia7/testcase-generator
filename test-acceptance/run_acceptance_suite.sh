@@ -1,0 +1,828 @@
+#!/usr/bin/env bash
+# Master orchestrator script for acceptance test suite
+# Validates, generates, executes, verifies, and documents all test cases
+
+set -e
+
+# Get script directory and source logger
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+source "$PROJECT_ROOT/scripts/lib/logger.sh" || exit 1
+
+# Default configuration
+VERBOSE=0
+INCLUDE_MANUAL=0
+SKIP_GENERATION=0
+SKIP_EXECUTION=0
+SKIP_VERIFICATION=0
+SKIP_DOCUMENTATION=0
+
+# Paths
+TEST_CASES_DIR="$SCRIPT_DIR/test_cases"
+EXECUTION_LOGS_DIR="$SCRIPT_DIR/execution_logs"
+VERIFICATION_RESULTS_DIR="$SCRIPT_DIR/verification_results"
+SCRIPTS_DIR="$SCRIPT_DIR/scripts"
+REPORTS_DIR="$SCRIPT_DIR/reports"
+SCHEMA_DIR="$PROJECT_ROOT/schemas"
+CONTAINER_SCHEMA="$PROJECT_ROOT/data/testcase_results_container/schema.json"
+
+# Binaries
+VALIDATE_YAML="${PROJECT_ROOT}/target/debug/validate-yaml"
+TEST_EXECUTOR="${PROJECT_ROOT}/target/debug/test-executor"
+VERIFIER="${PROJECT_ROOT}/target/debug/verifier"
+VALIDATE_JSON="${PROJECT_ROOT}/target/debug/validate-json"
+
+# TPDG binary location
+TPDG_BIN="${TEST_PLAN_DOC_GEN:-test-plan-documentation-generator}"
+
+# Statistics tracking
+declare -i TOTAL_TEST_CASES=0
+declare -i VALIDATION_PASSED=0
+declare -i VALIDATION_FAILED=0
+declare -i GENERATION_PASSED=0
+declare -i GENERATION_FAILED=0
+declare -i EXECUTION_PASSED=0
+declare -i EXECUTION_FAILED=0
+declare -i EXECUTION_SKIPPED=0
+declare -i VERIFICATION_PASSED=0
+declare -i VERIFICATION_FAILED=0
+declare -i CONTAINER_VALIDATION_PASSED=0
+declare -i CONTAINER_VALIDATION_FAILED=0
+declare -i DOCUMENTATION_PASSED=0
+declare -i DOCUMENTATION_FAILED=0
+
+# Temporary files for tracking
+TEMP_DIR=$(mktemp -d)
+setup_cleanup "$TEMP_DIR"
+
+VALIDATION_FAILURES="$TEMP_DIR/validation_failures.txt"
+GENERATION_FAILURES="$TEMP_DIR/generation_failures.txt"
+EXECUTION_FAILURES="$TEMP_DIR/execution_failures.txt"
+VERIFICATION_FAILURES="$TEMP_DIR/verification_failures.txt"
+CONTAINER_VALIDATION_FAILURES="$TEMP_DIR/container_validation_failures.txt"
+DOCUMENTATION_FAILURES="$TEMP_DIR/documentation_failures.txt"
+MANUAL_TESTS="$TEMP_DIR/manual_tests.txt"
+
+touch "$VALIDATION_FAILURES" "$GENERATION_FAILURES" "$EXECUTION_FAILURES" \
+      "$VERIFICATION_FAILURES" "$CONTAINER_VALIDATION_FAILURES" \
+      "$DOCUMENTATION_FAILURES" "$MANUAL_TESTS"
+
+# Parse command line arguments
+usage() {
+    cat <<EOF
+Usage: $0 [OPTIONS]
+
+Master orchestrator script for acceptance test suite. Validates, generates,
+executes, verifies, and documents all test cases.
+
+OPTIONS:
+    --verbose               Enable verbose output
+    --include-manual        Include manual tests in execution
+    --skip-generation       Skip bash script generation stage
+    --skip-execution        Skip test execution stage
+    --skip-verification     Skip verification stage
+    --skip-documentation    Skip documentation generation stage
+    -h, --help             Show this help message
+
+STAGES:
+    1. Validation          Validate all test case YAMLs against schema
+    2. Generation          Generate bash scripts for all test cases
+    3. Execution           Execute all automated test scripts
+    4. Verification        Run verifier on execution logs
+    5. Container Validation Validate container YAMLs against schema
+    6. Documentation       Generate AsciiDoc and Markdown reports
+
+EXIT CODES:
+    0 - All stages completed successfully
+    1 - One or more stages had failures
+
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --verbose)
+            VERBOSE=1
+            shift
+            ;;
+        --include-manual)
+            INCLUDE_MANUAL=1
+            shift
+            ;;
+        --skip-generation)
+            SKIP_GENERATION=1
+            shift
+            ;;
+        --skip-execution)
+            SKIP_EXECUTION=1
+            shift
+            ;;
+        --skip-verification)
+            SKIP_VERIFICATION=1
+            shift
+            ;;
+        --skip-documentation)
+            SKIP_DOCUMENTATION=1
+            shift
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            log_error "Unknown option: $1"
+            usage
+            exit 1
+            ;;
+    esac
+done
+
+# Verify binaries exist
+verify_binaries() {
+    section "Verifying Required Binaries"
+    
+    local all_found=0
+    
+    if [[ ! -x "$VALIDATE_YAML" ]]; then
+        fail "validate-yaml binary not found at: $VALIDATE_YAML"
+        log_info "Run: cargo build --bin validate-yaml"
+        all_found=1
+    else
+        pass "validate-yaml found"
+    fi
+    
+    if [[ ! -x "$TEST_EXECUTOR" ]]; then
+        fail "test-executor binary not found at: $TEST_EXECUTOR"
+        log_info "Run: cargo build --bin test-executor"
+        all_found=1
+    else
+        pass "test-executor found"
+    fi
+    
+    if [[ ! -x "$VERIFIER" ]]; then
+        fail "verifier binary not found at: $VERIFIER"
+        log_info "Run: cargo build --bin verifier"
+        all_found=1
+    else
+        pass "verifier found"
+    fi
+    
+    if [[ ! -x "$VALIDATE_JSON" ]]; then
+        fail "validate-json binary not found at: $VALIDATE_JSON"
+        log_info "Run: cargo build --bin validate-json"
+        all_found=1
+    else
+        pass "validate-json found"
+    fi
+    
+    # Check for TPDG (optional for documentation stage)
+    if ! command -v "$TPDG_BIN" &> /dev/null; then
+        log_warning "test-plan-documentation-generator not found in PATH"
+        log_info "Documentation generation will be skipped unless TPDG is available"
+        log_info "Install: cargo install test-plan-documentation-generator"
+    else
+        pass "test-plan-documentation-generator found"
+    fi
+    
+    if [[ $all_found -ne 0 ]]; then
+        log_error "Missing required binaries. Build them first."
+        exit 1
+    fi
+    
+    echo ""
+}
+
+# Stage 1: Validate all test case YAMLs
+validate_test_cases() {
+    section "Stage 1: Validating Test Case YAMLs"
+    
+    local schema="$SCHEMA_DIR/test-case.schema.json"
+    
+    if [[ ! -f "$schema" ]]; then
+        log_error "Schema file not found: $schema"
+        return 1
+    fi
+    
+    # Find all test case YAML files
+    local yaml_files=()
+    while IFS= read -r -d '' file; do
+        yaml_files+=("$file")
+    done < <(find "$TEST_CASES_DIR" -type f -name "*.yaml" -print0 | sort -z)
+    
+    TOTAL_TEST_CASES=${#yaml_files[@]}
+    log_info "Found $TOTAL_TEST_CASES test case YAML files"
+    echo ""
+    
+    for yaml_file in "${yaml_files[@]}"; do
+        local basename=$(basename "$yaml_file")
+        log_verbose "Validating: $basename"
+        
+        if "$VALIDATE_YAML" --schema "$schema" "$yaml_file" > "$TEMP_DIR/validation_output.txt" 2>&1; then
+            ((VALIDATION_PASSED++))
+            pass "$basename"
+        else
+            ((VALIDATION_FAILED++))
+            fail "$basename"
+            echo "$yaml_file" >> "$VALIDATION_FAILURES"
+            if [[ $VERBOSE -eq 1 ]]; then
+                cat "$TEMP_DIR/validation_output.txt" >&2
+            fi
+        fi
+    done
+    
+    echo ""
+    log_info "Validation: $VALIDATION_PASSED passed, $VALIDATION_FAILED failed"
+    echo ""
+    
+    if [[ $VALIDATION_FAILED -gt 0 ]]; then
+        return 1
+    fi
+    return 0
+}
+
+# Stage 2: Generate bash scripts for all test cases
+generate_test_scripts() {
+    if [[ $SKIP_GENERATION -eq 1 ]]; then
+        section "Stage 2: Script Generation (SKIPPED)"
+        echo ""
+        return 0
+    fi
+    
+    section "Stage 2: Generating Test Scripts"
+    
+    # Create scripts directory if it doesn't exist
+    mkdir -p "$SCRIPTS_DIR"
+    
+    # Find all test case YAML files
+    local yaml_files=()
+    while IFS= read -r -d '' file; do
+        yaml_files+=("$file")
+    done < <(find "$TEST_CASES_DIR" -type f -name "*.yaml" -print0 | sort -z)
+    
+    for yaml_file in "${yaml_files[@]}"; do
+        local basename=$(basename "$yaml_file" .yaml)
+        local script_file="$SCRIPTS_DIR/${basename}.sh"
+        
+        log_verbose "Generating: $basename.sh"
+        
+        # Generate script with --json-log flag
+        if "$TEST_EXECUTOR" generate --json-log --output "$script_file" "$yaml_file" > "$TEMP_DIR/generation_output.txt" 2>&1; then
+            ((GENERATION_PASSED++))
+            pass "$basename.sh"
+            
+            # Make script executable
+            chmod +x "$script_file"
+        else
+            ((GENERATION_FAILED++))
+            fail "$basename.sh"
+            echo "$yaml_file" >> "$GENERATION_FAILURES"
+            if [[ $VERBOSE -eq 1 ]]; then
+                cat "$TEMP_DIR/generation_output.txt" >&2
+            fi
+        fi
+    done
+    
+    echo ""
+    log_info "Generation: $GENERATION_PASSED passed, $GENERATION_FAILED failed"
+    echo ""
+    
+    if [[ $GENERATION_FAILED -gt 0 ]]; then
+        return 1
+    fi
+    return 0
+}
+
+# Helper function to check if a test case is manual
+is_manual_test() {
+    local yaml_file="$1"
+    
+    # Check if YAML contains manual: true in any step
+    if grep -q "manual: true" "$yaml_file" 2>/dev/null; then
+        return 0  # Is manual
+    fi
+    return 1  # Not manual
+}
+
+# Stage 3: Execute all automated test scripts
+execute_test_scripts() {
+    if [[ $SKIP_EXECUTION -eq 1 ]]; then
+        section "Stage 3: Test Execution (SKIPPED)"
+        echo ""
+        return 0
+    fi
+    
+    section "Stage 3: Executing Test Scripts"
+    
+    # Create execution logs directory
+    mkdir -p "$EXECUTION_LOGS_DIR"
+    
+    # Find all generated scripts
+    local script_files=()
+    while IFS= read -r -d '' file; do
+        script_files+=("$file")
+    done < <(find "$SCRIPTS_DIR" -type f -name "*.sh" -print0 | sort -z)
+    
+    if [[ ${#script_files[@]} -eq 0 ]]; then
+        log_warning "No test scripts found in $SCRIPTS_DIR"
+        log_info "Run without --skip-generation first"
+        return 1
+    fi
+    
+    for script_file in "${script_files[@]}"; do
+        local basename=$(basename "$script_file" .sh)
+        local yaml_file="$TEST_CASES_DIR"
+        
+        # Find corresponding YAML file
+        local found_yaml=""
+        while IFS= read -r -d '' yaml; do
+            if [[ $(basename "$yaml" .yaml) == "$basename" ]]; then
+                found_yaml="$yaml"
+                break
+            fi
+        done < <(find "$TEST_CASES_DIR" -type f -name "${basename}.yaml" -print0)
+        
+        # Check if this is a manual test
+        if [[ -n "$found_yaml" ]] && is_manual_test "$found_yaml"; then
+            if [[ $INCLUDE_MANUAL -eq 0 ]]; then
+                ((EXECUTION_SKIPPED++))
+                info "$basename.sh (manual test, skipped)"
+                echo "$script_file" >> "$MANUAL_TESTS"
+                continue
+            fi
+        fi
+        
+        local log_file="$EXECUTION_LOGS_DIR/${basename}.json"
+        
+        log_verbose "Executing: $basename.sh"
+        
+        # Execute script and capture output
+        if "$script_file" > "$log_file" 2>&1; then
+            ((EXECUTION_PASSED++))
+            pass "$basename.sh"
+        else
+            ((EXECUTION_FAILED++))
+            fail "$basename.sh (exit code: $?)"
+            echo "$script_file" >> "$EXECUTION_FAILURES"
+        fi
+        
+        # Verify log file exists and is valid JSON
+        if [[ ! -f "$log_file" ]]; then
+            log_warning "Execution log not created: $log_file"
+            echo "$script_file (no log)" >> "$EXECUTION_FAILURES"
+        elif ! python3 -m json.tool "$log_file" > /dev/null 2>&1; then
+            log_warning "Invalid JSON in execution log: $log_file"
+            echo "$script_file (invalid JSON)" >> "$EXECUTION_FAILURES"
+        fi
+    done
+    
+    echo ""
+    log_info "Execution: $EXECUTION_PASSED passed, $EXECUTION_FAILED failed, $EXECUTION_SKIPPED skipped (manual)"
+    echo ""
+    
+    if [[ $EXECUTION_FAILED -gt 0 ]]; then
+        return 1
+    fi
+    return 0
+}
+
+# Stage 4: Run verifier on all execution logs
+verify_execution_logs() {
+    if [[ $SKIP_VERIFICATION -eq 1 ]]; then
+        section "Stage 4: Verification (SKIPPED)"
+        echo ""
+        return 0
+    fi
+    
+    section "Stage 4: Verifying Execution Logs"
+    
+    # Create verification results directory
+    mkdir -p "$VERIFICATION_RESULTS_DIR"
+    
+    # Find all execution log files
+    local log_files=()
+    while IFS= read -r -d '' file; do
+        log_files+=("$file")
+    done < <(find "$EXECUTION_LOGS_DIR" -type f -name "*.json" -print0 | sort -z)
+    
+    if [[ ${#log_files[@]} -eq 0 ]]; then
+        log_warning "No execution logs found in $EXECUTION_LOGS_DIR"
+        log_info "Run without --skip-execution first"
+        return 1
+    fi
+    
+    # Generate container YAML metadata
+    local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    local hostname=$(hostname)
+    
+    for log_file in "${log_files[@]}"; do
+        local basename=$(basename "$log_file" .json)
+        local container_file="$VERIFICATION_RESULTS_DIR/${basename}_container.yaml"
+        
+        log_verbose "Verifying: $basename.json"
+        
+        # Find corresponding test case YAML
+        local test_case_yaml=""
+        while IFS= read -r -d '' yaml; do
+            if [[ $(basename "$yaml" .yaml) == "$basename" ]]; then
+                test_case_yaml="$yaml"
+                break
+            fi
+        done < <(find "$TEST_CASES_DIR" -type f -name "${basename}.yaml" -print0)
+        
+        if [[ -z "$test_case_yaml" ]]; then
+            log_warning "Test case YAML not found for: $basename"
+            continue
+        fi
+        
+        # Run verifier to generate container YAML
+        if "$VERIFIER" \
+            --title "Acceptance Test Results - $(basename "$test_case_yaml")" \
+            --project "Test Case Manager - Acceptance Suite" \
+            --environment "Automated Test Environment - $hostname" \
+            --test-case "$test_case_yaml" \
+            --execution-log "$log_file" \
+            --output "$container_file" \
+            > "$TEMP_DIR/verifier_output.txt" 2>&1; then
+            
+            ((VERIFICATION_PASSED++))
+            pass "$basename"
+        else
+            ((VERIFICATION_FAILED++))
+            fail "$basename"
+            echo "$log_file" >> "$VERIFICATION_FAILURES"
+            if [[ $VERBOSE -eq 1 ]]; then
+                cat "$TEMP_DIR/verifier_output.txt" >&2
+            fi
+        fi
+    done
+    
+    echo ""
+    log_info "Verification: $VERIFICATION_PASSED passed, $VERIFICATION_FAILED failed"
+    echo ""
+    
+    if [[ $VERIFICATION_FAILED -gt 0 ]]; then
+        return 1
+    fi
+    return 0
+}
+
+# Stage 5: Validate container YAMLs against schema
+validate_container_yamls() {
+    if [[ $SKIP_VERIFICATION -eq 1 ]]; then
+        section "Stage 5: Container Validation (SKIPPED)"
+        echo ""
+        return 0
+    fi
+    
+    section "Stage 5: Validating Container YAMLs"
+    
+    if [[ ! -f "$CONTAINER_SCHEMA" ]]; then
+        log_error "Container schema not found: $CONTAINER_SCHEMA"
+        return 1
+    fi
+    
+    # Find all container YAML files
+    local container_files=()
+    while IFS= read -r -d '' file; do
+        container_files+=("$file")
+    done < <(find "$VERIFICATION_RESULTS_DIR" -type f -name "*_container.yaml" -print0 | sort -z)
+    
+    if [[ ${#container_files[@]} -eq 0 ]]; then
+        log_warning "No container YAML files found in $VERIFICATION_RESULTS_DIR"
+        log_info "Run without --skip-verification first"
+        return 1
+    fi
+    
+    for container_file in "${container_files[@]}"; do
+        local basename=$(basename "$container_file")
+        
+        log_verbose "Validating: $basename"
+        
+        if "$VALIDATE_YAML" --schema "$CONTAINER_SCHEMA" "$container_file" > "$TEMP_DIR/container_validation_output.txt" 2>&1; then
+            ((CONTAINER_VALIDATION_PASSED++))
+            pass "$basename"
+        else
+            ((CONTAINER_VALIDATION_FAILED++))
+            fail "$basename"
+            echo "$container_file" >> "$CONTAINER_VALIDATION_FAILURES"
+            if [[ $VERBOSE -eq 1 ]]; then
+                cat "$TEMP_DIR/container_validation_output.txt" >&2
+            fi
+        fi
+    done
+    
+    echo ""
+    log_info "Container Validation: $CONTAINER_VALIDATION_PASSED passed, $CONTAINER_VALIDATION_FAILED failed"
+    echo ""
+    
+    if [[ $CONTAINER_VALIDATION_FAILED -gt 0 ]]; then
+        return 1
+    fi
+    return 0
+}
+
+# Stage 6: Generate documentation using TPDG
+generate_documentation() {
+    if [[ $SKIP_DOCUMENTATION -eq 1 ]]; then
+        section "Stage 6: Documentation Generation (SKIPPED)"
+        echo ""
+        return 0
+    fi
+    
+    section "Stage 6: Generating Documentation"
+    
+    # Check if TPDG is available
+    if ! command -v "$TPDG_BIN" &> /dev/null; then
+        log_warning "test-plan-documentation-generator not found"
+        log_info "Skipping documentation generation"
+        log_info "Install: cargo install test-plan-documentation-generator"
+        echo ""
+        return 0
+    fi
+    
+    # Create reports directories
+    mkdir -p "$REPORTS_DIR/asciidoc"
+    mkdir -p "$REPORTS_DIR/markdown"
+    
+    # Find all container YAML files
+    local container_files=()
+    while IFS= read -r -d '' file; do
+        container_files+=("$file")
+    done < <(find "$VERIFICATION_RESULTS_DIR" -type f -name "*_container.yaml" -print0 | sort -z)
+    
+    if [[ ${#container_files[@]} -eq 0 ]]; then
+        log_warning "No container YAML files found for documentation"
+        return 1
+    fi
+    
+    for container_file in "${container_files[@]}"; do
+        local basename=$(basename "$container_file" _container.yaml)
+        local asciidoc_file="$REPORTS_DIR/asciidoc/${basename}.adoc"
+        local markdown_file="$REPORTS_DIR/markdown/${basename}.md"
+        
+        log_verbose "Generating docs for: $basename"
+        
+        # Find corresponding test case YAML
+        local test_case_yaml=""
+        while IFS= read -r -d '' yaml; do
+            if [[ $(basename "$yaml" .yaml) == "$basename" ]]; then
+                test_case_yaml="$yaml"
+                break
+            fi
+        done < <(find "$TEST_CASES_DIR" -type f -name "${basename}.yaml" -print0)
+        
+        local doc_success=1
+        
+        # Generate AsciiDoc
+        if "$TPDG_BIN" \
+            --input "$container_file" \
+            --output "$asciidoc_file" \
+            --format asciidoc \
+            ${test_case_yaml:+--test-case "$test_case_yaml"} \
+            > "$TEMP_DIR/tpdg_asciidoc_output.txt" 2>&1; then
+            
+            log_verbose "  AsciiDoc: $basename.adoc"
+        else
+            log_warning "  Failed to generate AsciiDoc for $basename"
+            doc_success=0
+            if [[ $VERBOSE -eq 1 ]]; then
+                cat "$TEMP_DIR/tpdg_asciidoc_output.txt" >&2
+            fi
+        fi
+        
+        # Generate Markdown
+        if "$TPDG_BIN" \
+            --input "$container_file" \
+            --output "$markdown_file" \
+            --format markdown \
+            ${test_case_yaml:+--test-case "$test_case_yaml"} \
+            > "$TEMP_DIR/tpdg_markdown_output.txt" 2>&1; then
+            
+            log_verbose "  Markdown: $basename.md"
+        else
+            log_warning "  Failed to generate Markdown for $basename"
+            doc_success=0
+            if [[ $VERBOSE -eq 1 ]]; then
+                cat "$TEMP_DIR/tpdg_markdown_output.txt" >&2
+            fi
+        fi
+        
+        if [[ $doc_success -eq 1 ]]; then
+            ((DOCUMENTATION_PASSED++))
+            pass "$basename (AsciiDoc + Markdown)"
+        else
+            ((DOCUMENTATION_FAILED++))
+            fail "$basename"
+            echo "$container_file" >> "$DOCUMENTATION_FAILURES"
+        fi
+    done
+    
+    echo ""
+    log_info "Documentation: $DOCUMENTATION_PASSED passed, $DOCUMENTATION_FAILED failed"
+    echo ""
+    
+    if [[ $DOCUMENTATION_FAILED -gt 0 ]]; then
+        return 1
+    fi
+    return 0
+}
+
+# Generate final summary report
+generate_summary_report() {
+    section "Final Summary Report"
+    
+    local report_file="$REPORTS_DIR/acceptance_suite_summary.txt"
+    mkdir -p "$REPORTS_DIR"
+    
+    {
+        echo "========================================="
+        echo "Acceptance Test Suite Execution Summary"
+        echo "========================================="
+        echo ""
+        echo "Execution Date: $(date)"
+        echo "Total Test Cases: $TOTAL_TEST_CASES"
+        echo ""
+        
+        echo "--- Stage 1: YAML Validation ---"
+        echo "Passed:  $VALIDATION_PASSED"
+        echo "Failed:  $VALIDATION_FAILED"
+        if [[ $VALIDATION_FAILED -gt 0 ]]; then
+            echo ""
+            echo "Failed validations:"
+            cat "$VALIDATION_FAILURES"
+        fi
+        echo ""
+        
+        echo "--- Stage 2: Script Generation ---"
+        if [[ $SKIP_GENERATION -eq 1 ]]; then
+            echo "SKIPPED"
+        else
+            echo "Passed:  $GENERATION_PASSED"
+            echo "Failed:  $GENERATION_FAILED"
+            if [[ $GENERATION_FAILED -gt 0 ]]; then
+                echo ""
+                echo "Failed generations:"
+                cat "$GENERATION_FAILURES"
+            fi
+        fi
+        echo ""
+        
+        echo "--- Stage 3: Test Execution ---"
+        if [[ $SKIP_EXECUTION -eq 1 ]]; then
+            echo "SKIPPED"
+        else
+            echo "Passed:  $EXECUTION_PASSED"
+            echo "Failed:  $EXECUTION_FAILED"
+            echo "Skipped: $EXECUTION_SKIPPED (manual tests)"
+            if [[ $EXECUTION_FAILED -gt 0 ]]; then
+                echo ""
+                echo "Failed executions:"
+                cat "$EXECUTION_FAILURES"
+            fi
+            if [[ $EXECUTION_SKIPPED -gt 0 ]]; then
+                echo ""
+                echo "Skipped manual tests:"
+                cat "$MANUAL_TESTS"
+            fi
+        fi
+        echo ""
+        
+        echo "--- Stage 4: Verification ---"
+        if [[ $SKIP_VERIFICATION -eq 1 ]]; then
+            echo "SKIPPED"
+        else
+            echo "Passed:  $VERIFICATION_PASSED"
+            echo "Failed:  $VERIFICATION_FAILED"
+            if [[ $VERIFICATION_FAILED -gt 0 ]]; then
+                echo ""
+                echo "Failed verifications:"
+                cat "$VERIFICATION_FAILURES"
+            fi
+        fi
+        echo ""
+        
+        echo "--- Stage 5: Container Validation ---"
+        if [[ $SKIP_VERIFICATION -eq 1 ]]; then
+            echo "SKIPPED"
+        else
+            echo "Passed:  $CONTAINER_VALIDATION_PASSED"
+            echo "Failed:  $CONTAINER_VALIDATION_FAILED"
+            if [[ $CONTAINER_VALIDATION_FAILED -gt 0 ]]; then
+                echo ""
+                echo "Failed container validations:"
+                cat "$CONTAINER_VALIDATION_FAILURES"
+            fi
+        fi
+        echo ""
+        
+        echo "--- Stage 6: Documentation Generation ---"
+        if [[ $SKIP_DOCUMENTATION -eq 1 ]]; then
+            echo "SKIPPED"
+        else
+            echo "Passed:  $DOCUMENTATION_PASSED"
+            echo "Failed:  $DOCUMENTATION_FAILED"
+            if [[ $DOCUMENTATION_FAILED -gt 0 ]]; then
+                echo ""
+                echo "Failed documentation generations:"
+                cat "$DOCUMENTATION_FAILURES"
+            fi
+        fi
+        echo ""
+        
+        echo "========================================="
+        echo "Overall Result:"
+        
+        local total_failures=$((VALIDATION_FAILED + GENERATION_FAILED + EXECUTION_FAILED + VERIFICATION_FAILED + CONTAINER_VALIDATION_FAILED + DOCUMENTATION_FAILED))
+        
+        if [[ $total_failures -eq 0 ]]; then
+            echo "SUCCESS - All stages completed without errors"
+        else
+            echo "FAILURE - $total_failures total failures across all stages"
+        fi
+        echo "========================================="
+    } | tee "$report_file"
+    
+    echo ""
+    info "Summary report saved to: $report_file"
+    echo ""
+    
+    # Return failure if any stage failed
+    if [[ $total_failures -gt 0 ]]; then
+        return 1
+    fi
+    return 0
+}
+
+# Main execution flow
+main() {
+    section "Acceptance Test Suite Orchestrator"
+    echo ""
+    
+    log_info "Configuration:"
+    log_info "  Verbose: $VERBOSE"
+    log_info "  Include Manual Tests: $INCLUDE_MANUAL"
+    log_info "  Skip Generation: $SKIP_GENERATION"
+    log_info "  Skip Execution: $SKIP_EXECUTION"
+    log_info "  Skip Verification: $SKIP_VERIFICATION"
+    log_info "  Skip Documentation: $SKIP_DOCUMENTATION"
+    echo ""
+    
+    # Verify binaries
+    verify_binaries
+    
+    # Track overall success
+    local overall_success=0
+    
+    # Stage 1: Validate test cases
+    if ! validate_test_cases; then
+        log_error "Stage 1 (Validation) failed"
+        overall_success=1
+    fi
+    
+    # Stage 2: Generate scripts
+    if ! generate_test_scripts; then
+        log_error "Stage 2 (Generation) failed"
+        overall_success=1
+    fi
+    
+    # Stage 3: Execute tests
+    if ! execute_test_scripts; then
+        log_error "Stage 3 (Execution) had failures"
+        overall_success=1
+    fi
+    
+    # Stage 4: Verify execution logs
+    if ! verify_execution_logs; then
+        log_error "Stage 4 (Verification) failed"
+        overall_success=1
+    fi
+    
+    # Stage 5: Validate container YAMLs
+    if ! validate_container_yamls; then
+        log_error "Stage 5 (Container Validation) failed"
+        overall_success=1
+    fi
+    
+    # Stage 6: Generate documentation
+    if ! generate_documentation; then
+        log_error "Stage 6 (Documentation) had failures"
+        overall_success=1
+    fi
+    
+    # Generate final summary
+    if ! generate_summary_report; then
+        overall_success=1
+    fi
+    
+    # Exit with appropriate code
+    if [[ $overall_success -eq 0 ]]; then
+        section "All Stages Completed Successfully"
+        exit 0
+    else
+        section "Acceptance Suite Completed with Failures"
+        exit 1
+    fi
+}
+
+# Run main function
+main

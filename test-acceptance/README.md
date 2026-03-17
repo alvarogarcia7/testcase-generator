@@ -2,6 +2,17 @@
 
 This directory contains acceptance test cases for the YAML-based test harness project.
 
+## Quick Start
+
+Run the complete acceptance test suite:
+
+```bash
+cd test-acceptance
+./run_acceptance_suite.sh
+```
+
+See [ACCEPTANCE_SUITE.md](ACCEPTANCE_SUITE.md) for detailed documentation.
+
 ## Purpose
 
 The test cases in this directory serve multiple purposes:
@@ -17,7 +28,20 @@ The test cases in this directory serve multiple purposes:
 test-acceptance/
 ├── test_cases/              # Test case YAML files
 │   ├── success/            # Success scenario test cases
+│   ├── failure/            # Failure scenario test cases
+│   ├── variables/          # Variable capture and usage tests
+│   ├── hooks/              # Lifecycle hooks tests
+│   ├── dependencies/       # Dependency management tests
+│   ├── bash_commands/      # Bash command tests
+│   ├── complex/            # Complex integration tests
+│   ├── manual/             # Manual test cases
 │   └── README.md           # Test case documentation
+├── scripts/                 # Generated executable bash scripts (gitignored)
+├── execution_logs/          # JSON execution logs (gitignored)
+├── verification_results/    # Container YAMLs (gitignored)
+├── reports/                 # Generated documentation (gitignored)
+├── run_acceptance_suite.sh  # Master orchestrator script
+├── ACCEPTANCE_SUITE.md      # Orchestrator documentation
 ├── IMPLEMENTATION_SUMMARY.md  # Implementation details
 └── README.md               # This file
 ```
@@ -44,7 +68,44 @@ Contains 13 comprehensive test cases that demonstrate successful test execution 
 
 See `test_cases/README.md` for detailed documentation of each test case.
 
-## Quick Start
+## Automated Test Suite
+
+The master orchestrator script automates the complete testing workflow:
+
+### Run Complete Suite
+
+```bash
+cd test-acceptance
+./run_acceptance_suite.sh
+```
+
+This executes all 6 stages:
+1. Validate test case YAMLs
+2. Generate bash scripts
+3. Execute automated tests
+4. Verify execution logs
+5. Validate container YAMLs
+6. Generate documentation
+
+### Common Options
+
+```bash
+# Verbose output for debugging
+./run_acceptance_suite.sh --verbose
+
+# Include manual tests
+./run_acceptance_suite.sh --include-manual
+
+# Skip expensive stages
+./run_acceptance_suite.sh --skip-execution --skip-documentation
+
+# Regenerate documentation only
+./run_acceptance_suite.sh --skip-generation --skip-execution
+```
+
+See [ACCEPTANCE_SUITE.md](ACCEPTANCE_SUITE.md) for complete documentation.
+
+## Manual Testing (Individual Tests)
 
 ### Validate a Test Case
 
@@ -65,16 +126,6 @@ cargo run -- test-acceptance/test_cases/success/TC_SUCCESS_SIMPLE_001.yaml
 ```bash
 # Run the generated test script
 ./test-acceptance/test_cases/success/TC_SUCCESS_SIMPLE_001.sh
-```
-
-### Validate All Test Cases
-
-```bash
-# Validate all success scenarios
-for file in test-acceptance/test_cases/success/*.yaml; do
-  echo "Validating $file"
-  cargo run --bin verifier -- "$file" || echo "FAILED: $file"
-done
 ```
 
 ## Feature Coverage
