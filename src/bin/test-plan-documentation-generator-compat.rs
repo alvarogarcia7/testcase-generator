@@ -54,6 +54,10 @@ enum Commands {
         /// Output detailed validation report
         #[arg(short, long)]
         verbose: bool,
+
+        /// Output report as JSON
+        #[arg(long)]
+        json: bool,
     },
 
     /// Validate multiple container YAML files in a directory
@@ -73,6 +77,10 @@ enum Commands {
         /// Continue on errors
         #[arg(short, long)]
         continue_on_error: bool,
+
+        /// Output report as JSON
+        #[arg(long)]
+        json: bool,
     },
 
     /// Test against verifier scenario outputs
@@ -283,10 +291,14 @@ fn main() -> Result<()> {
     }
 
     match cli.command {
-        Some(Commands::Validate { file, verbose }) => {
+        Some(Commands::Validate {
+            file,
+            verbose,
+            json,
+        }) => {
             let result = validate_container_file(&file, verbose)?;
 
-            if cli.json {
+            if json {
                 println!("{}", serde_json::to_string_pretty(&result)?);
             } else {
                 print_validation_result(&result, verbose);
@@ -302,10 +314,11 @@ fn main() -> Result<()> {
             pattern,
             recursive,
             continue_on_error,
+            json,
         }) => {
             let results = validate_batch(&directory, pattern.as_deref(), recursive)?;
 
-            if cli.json {
+            if json {
                 println!("{}", serde_json::to_string_pretty(&results)?);
             } else {
                 print_batch_results(&results);
