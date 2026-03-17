@@ -1,12 +1,20 @@
 #!/usr/bin/env python3
 """
-Convert JSON to YAML without requiring PyYAML library.
-Properly preserves arrays and objects.
+Convert JSON to YAML with optional PyYAML support.
+
+Tries to use PyYAML for simplicity if available, falls back to pure Python
+implementation for environments without PyYAML.
 """
 
 import json
 import sys
 from pathlib import Path
+
+try:
+    import yaml
+    HAS_PYYAML = True
+except ImportError:
+    HAS_PYYAML = False
 
 
 def to_yaml_lines(obj, indent_level=0):
@@ -164,8 +172,13 @@ def main():
         yaml_data.update(test_case)
 
         # Convert to YAML
-        yaml_lines = to_yaml_lines(yaml_data, 0)
-        yaml_content = "\n".join(yaml_lines) + "\n"
+        if HAS_PYYAML:
+            # Use PyYAML if available (simpler and more reliable)
+            yaml_content = yaml.dump(yaml_data, default_flow_style=False, allow_unicode=True)
+        else:
+            # Fall back to manual YAML generation
+            yaml_lines = to_yaml_lines(yaml_data, 0)
+            yaml_content = "\n".join(yaml_lines) + "\n"
 
         # Write YAML file
         output_file = output_path / f"{test_case_id}_result.yaml"

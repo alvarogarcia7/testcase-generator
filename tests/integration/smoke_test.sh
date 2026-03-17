@@ -19,7 +19,7 @@ cd "$PROJECT_ROOT"
 
 echo "=== Quick Smoke Test ==="
 
-# Find the testcase-manager binary
+# Find the trm (testcase-runner-manager) binary
 BINARY=$(find_binary "trm")
 if [[ -z "$BINARY" ]]; then
     echo "✗ Binary not found in target/release or target/debug"
