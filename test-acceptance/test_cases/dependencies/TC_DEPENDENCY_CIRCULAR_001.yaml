@@ -1,0 +1,49 @@
+requirement: "DEPENDENCY_CIRCULAR"
+item: 1
+tc: 1
+id: 'TC_DEPENDENCY_CIRCULAR_001'
+description: 'Circular dependency detection test - demonstrates detection of circular dependency errors (A includes B, B includes A)'
+
+general_initial_conditions:
+  system:
+    - "Bash shell is available"
+    - "Dependency resolution detects circular references"
+
+initial_conditions:
+  include:
+    - id: 'TC_DEPENDENCY_CIRCULAR_002'
+  filesystem:
+    - "Temporary directory /tmp is writable"
+  system:
+    - "This test should trigger circular dependency detection"
+    - "TC_DEPENDENCY_CIRCULAR_001 -> TC_DEPENDENCY_CIRCULAR_002 -> TC_DEPENDENCY_CIRCULAR_001 (CIRCULAR!)"
+
+test_sequences:
+  - id: 1
+    name: "Circular Dependency Test"
+    description: "This test has a circular dependency with TC_DEPENDENCY_CIRCULAR_002"
+    initial_conditions:
+      system:
+        - "Circular dependency should be detected during validation"
+    steps:
+      - step: 1
+        description: "Attempt to execute with circular dependency"
+        command: "echo 'This should not execute due to circular dependency'"
+        expected:
+          success: false
+          result: 1
+          output: "Circular dependency detected"
+        verification:
+          result: "[[ $EXIT_CODE -ne 0 ]]"
+          output: "grep -q 'Circular dependency' <<< \"$COMMAND_OUTPUT\" || true"
+
+      - step: 2
+        description: "Verify circular dependency error"
+        command: "echo 'Circular dependency error should have been raised'"
+        expected:
+          success: false
+          result: 1
+          output: "Error"
+        verification:
+          result: "[[ $EXIT_CODE -ne 0 ]]"
+          output: "true"

@@ -1,0 +1,101 @@
+requirement: "DEPENDENCY_SEQUENCE"
+item: 1
+tc: 1
+id: 'TC_DEPENDENCY_SEQUENCE_001'
+description: 'Sequence-level dependency test - test sequences reference other test case sequences via include'
+
+general_initial_conditions:
+  system:
+    - "Bash shell is available"
+    - "File system operations are supported"
+
+initial_conditions:
+  filesystem:
+    - "Temporary directory /tmp is writable"
+
+test_sequences:
+  - id: 1
+    name: "Independent Sequence"
+    description: "Sequence with no dependencies"
+    initial_conditions:
+      system:
+        - "No dependencies required"
+    steps:
+      - step: 1
+        description: "Create base data"
+        command: "echo 'Base data created' > /tmp/base_data.txt"
+        expected:
+          success: true
+          result: 0
+          output: ""
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"
+
+      - step: 2
+        description: "Verify base data"
+        command: "cat /tmp/base_data.txt"
+        expected:
+          success: true
+          result: 0
+          output: "Base data created"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Base data created' <<< \"$COMMAND_OUTPUT\""
+
+  - id: 2
+    name: "Dependent Sequence - References TC_SUCCESS_MULTI_SEQ_001"
+    description: "Sequence that depends on another test case's sequence"
+    initial_conditions:
+      include:
+        - id: 'TC_SUCCESS_MULTI_SEQ_001'
+          test_sequence: '1'
+      filesystem:
+        - "Dependencies from TC_SUCCESS_MULTI_SEQ_001 sequence 1 are satisfied"
+    steps:
+      - step: 1
+        description: "Process dependent data"
+        command: "echo 'Processing with dependency on TC_SUCCESS_MULTI_SEQ_001 seq 1'"
+        expected:
+          success: true
+          result: 0
+          output: "Processing"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Processing' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 2
+        description: "Cleanup base data"
+        command: "rm -f /tmp/base_data.txt && echo 'Cleaned'"
+        expected:
+          success: true
+          result: 0
+          output: "Cleaned"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Cleaned' <<< \"$COMMAND_OUTPUT\""
+
+  - id: 3
+    name: "Multiple Sequence Dependencies"
+    description: "Sequence that depends on multiple test sequences"
+    initial_conditions:
+      include:
+        - id: 'TC_SUCCESS_MULTI_SEQ_001'
+          test_sequence: '1'
+        - id: 'TC_SUCCESS_MULTI_SEQ_001'
+          test_sequence: '2'
+        - id: 'TC_SUCCESS_VAR_CAPTURE_001'
+          test_sequence: '1'
+      system:
+        - "All required sequence dependencies are satisfied"
+    steps:
+      - step: 1
+        description: "Execute with multiple dependencies"
+        command: "echo 'All dependencies satisfied'"
+        expected:
+          success: true
+          result: 0
+          output: "All dependencies satisfied"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'All dependencies satisfied' <<< \"$COMMAND_OUTPUT\""
