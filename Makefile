@@ -291,6 +291,10 @@ verify-testcases: build
 	fi
 .PHONY: verify-testcases
 
+validate-testcases-report: build
+	./scripts/validate_all_testcases.sh
+.PHONY: validate-testcases-report
+
 watch: build
 	./scripts/watch-yaml-files.sh
 .PHONY: watch
