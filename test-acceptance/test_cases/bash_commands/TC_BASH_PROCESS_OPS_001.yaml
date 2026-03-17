@@ -1,0 +1,193 @@
+requirement: "BASH_PROCESS_OPERATIONS"
+item: 1
+tc: 1
+id: 'TC_BASH_PROCESS_OPS_001'
+description: 'Bash process operations - exit codes, command success/failure, process information with strict validation'
+
+general_initial_conditions:
+  system:
+    - "Bash shell with process management features is available"
+
+initial_conditions:
+  environment:
+    - "Process operations work correctly"
+
+test_sequences:
+  - id: 1
+    name: "Process and Exit Code Operations"
+    description: "Test exit codes, process information, and command chaining"
+    initial_conditions:
+      system:
+        - "Process operations are supported"
+    steps:
+      - step: 1
+        description: "Test successful command exit code"
+        command: "true; echo $?"
+        capture_vars:
+          - name: exit_code
+            capture: '^([0-9]+)$'
+        expected:
+          success: true
+          result: 0
+          output: "0"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" == '0' ]]"
+          general:
+            - name: success_exit_code
+              condition: "[[ $exit_code -eq 0 ]]"
+
+      - step: 2
+        description: "Test failed command exit code"
+        command: "false; echo $?"
+        capture_vars:
+          - name: fail_exit_code
+            capture: '^([0-9]+)$'
+        expected:
+          success: true
+          result: 0
+          output: "1"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" == '1' ]]"
+          general:
+            - name: failure_exit_code
+              condition: "[[ $fail_exit_code -eq 1 ]]"
+
+      - step: 3
+        description: "Get current process ID"
+        command: "echo $$"
+        capture_vars:
+          - name: pid
+            capture: '^([0-9]+)$'
+        expected:
+          success: true
+          result: 0
+          output: "process id"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
+          general:
+            - name: pid_is_numeric
+              condition: "[[ $pid =~ ^[0-9]+$ ]]"
+            - name: pid_positive
+              condition: "[[ $pid -gt 0 ]]"
+
+      - step: 4
+        description: "Get last background process ID"
+        command: "sleep 0.1 & echo $!"
+        capture_vars:
+          - name: bg_pid
+            capture: '^([0-9]+)$'
+        expected:
+          success: true
+          result: 0
+          output: "background pid"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
+          general:
+            - name: bg_pid_numeric
+              condition: "[[ $bg_pid =~ ^[0-9]+$ ]]"
+            - name: bg_pid_positive
+              condition: "[[ $bg_pid -gt 0 ]]"
+
+      - step: 5
+        description: "Test command success with &&"
+        command: "true && echo 'success'"
+        expected:
+          success: true
+          result: 0
+          output: "success"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" == 'success' ]]"
+          general:
+            - name: and_logic_works
+              condition: "[[ \"$COMMAND_OUTPUT\" == 'success' ]]"
+
+      - step: 6
+        description: "Test command failure with ||"
+        command: "false || echo 'fallback'"
+        expected:
+          success: true
+          result: 0
+          output: "fallback"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" == 'fallback' ]]"
+          general:
+            - name: or_logic_works
+              condition: "[[ \"$COMMAND_OUTPUT\" == 'fallback' ]]"
+
+      - step: 7
+        description: "Count running processes"
+        command: "ps -e | wc -l | awk '{print $1}'"
+        capture_vars:
+          - name: process_count
+            capture: '^([0-9]+)$'
+        expected:
+          success: true
+          result: 0
+          output: "process count"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
+          general:
+            - name: processes_exist
+              condition: "[[ $process_count -gt 10 ]]"
+            - name: count_reasonable
+              condition: "[[ $process_count -le 10000 ]]"
+
+      - step: 8
+        description: "Get shell level"
+        command: "echo $SHLVL"
+        capture_vars:
+          - name: shell_level
+            capture: '^([0-9]+)$'
+        expected:
+          success: true
+          result: 0
+          output: "shell level"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
+          general:
+            - name: shlvl_numeric
+              condition: "[[ $shell_level =~ ^[0-9]+$ ]]"
+            - name: shlvl_positive
+              condition: "[[ $shell_level -gt 0 ]]"
+
+      - step: 9
+        description: "Test exit with specific code in subshell"
+        command: "(exit 42); echo $?"
+        capture_vars:
+          - name: custom_exit
+            capture: '^([0-9]+)$'
+        expected:
+          success: true
+          result: 0
+          output: "42"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" == '42' ]]"
+          general:
+            - name: custom_exit_code
+              condition: "[[ $custom_exit -eq 42 ]]"
+
+      - step: 10
+        description: "Get number of arguments (should be zero)"
+        command: "echo $#"
+        capture_vars:
+          - name: arg_count
+            capture: '^([0-9]+)$'
+        expected:
+          success: true
+          result: 0
+          output: "0"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" == '0' ]]"
+          general:
+            - name: no_args
+              condition: "[[ $arg_count -eq 0 ]]"
