@@ -1,0 +1,524 @@
+requirement: "COMPLEX_SECURITY_AUTHENTICATION_API"
+item: 1
+tc: 8
+id: 'TC_COMPLEX_SECURITY_AUTH_API_001'
+description: 'Security test with authentication token capture and API calls - demonstrates secure credential handling and API testing'
+
+hooks:
+  setup_test:
+    command: "test-acceptance/scripts/hooks/setup_test_workspace.sh"
+    on_error: "fail"
+  before_sequence:
+    command: "test-acceptance/scripts/hooks/before_sequence_log.sh"
+    on_error: "continue"
+  after_sequence:
+    command: "test-acceptance/scripts/hooks/after_sequence_cleanup.sh"
+    on_error: "continue"
+  teardown_test:
+    command: "test-acceptance/scripts/hooks/teardown_test_final.sh"
+    on_error: "continue"
+
+hydration_vars:
+  API_BASE_URL:
+    name: "API_BASE_URL"
+    description: "Base URL for API endpoint (simulated)"
+    default_value: "https://api.example.com/v1"
+    required: true
+  
+  TEST_USERNAME:
+    name: "TEST_USERNAME"
+    description: "Test user username for authentication"
+    default_value: "test_user"
+    required: true
+  
+  TEST_USER_ROLE:
+    name: "TEST_USER_ROLE"
+    description: "Test user role (admin, user, readonly)"
+    default_value: "user"
+    required: true
+  
+  TOKEN_EXPIRY_SECONDS:
+    name: "TOKEN_EXPIRY_SECONDS"
+    description: "Token expiry time in seconds"
+    default_value: "3600"
+    required: false
+
+general_initial_conditions:
+  security:
+    - "Test credentials are isolated from production"
+    - "API endpoints are accessible for testing"
+    - "Authentication mechanism is functional"
+  environment:
+    - "Secure credential storage is available"
+    - "Network connectivity for API simulation"
+
+initial_conditions:
+  security:
+    - "Test user credentials are prepared"
+    - "Authentication tokens can be generated"
+  api:
+    - "API simulation infrastructure is available"
+
+test_sequences:
+  - id: 1
+    name: "Authentication and Token Generation"
+    description: "Authenticate user and capture secure token"
+    initial_conditions:
+      security:
+        - "User credentials are available"
+        - "Authentication endpoint is accessible"
+    steps:
+      - step: 1
+        description: "Generate timestamp for authentication request"
+        command: "date +%s"
+        capture_vars:
+          - name: auth_timestamp
+            capture: '([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "timestamp"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
+          general:
+            - name: verify_auth_timestamp
+              condition: "[[ $auth_timestamp =~ ^[0-9]+$ ]]"
+
+      - step: 2
+        description: "Simulate authentication request and generate secure token"
+        command: "echo 'AUTH_REQUEST: '${#TEST_USERNAME} && echo ${#TEST_USERNAME}_${auth_timestamp}_${#TEST_USER_ROLE} | md5sum 2>/dev/null | cut -d' ' -f1 || echo ${#TEST_USERNAME}_${auth_timestamp}_${#TEST_USER_ROLE} | md5 2>/dev/null | cut -d' ' -f1 || echo 'token_'$RANDOM$RANDOM"
+        capture_vars:
+          - name: auth_token
+            capture: '([a-f0-9]+|token_[0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "token"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" =~ [a-f0-9]+ ]] || [[ \"$COMMAND_OUTPUT\" =~ token_[0-9]+ ]]"
+          general:
+            - name: verify_token_generated
+              condition: "[[ -n \"$auth_token\" ]]"
+            - name: verify_token_format
+              condition: "[[ $auth_token =~ ^[a-f0-9]+$ ]] || [[ $auth_token =~ ^token_[0-9]+$ ]]"
+            - name: verify_token_length
+              condition: "[[ ${#auth_token} -ge 8 ]]"
+
+      - step: 3
+        description: "Calculate token expiry timestamp"
+        command: "echo $((${auth_timestamp} + ${#TOKEN_EXPIRY_SECONDS}))"
+        capture_vars:
+          - name: token_expiry
+            capture: '([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "expiry timestamp"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
+          general:
+            - name: verify_expiry_after_auth
+              condition: "[[ $token_expiry -gt $auth_timestamp ]]"
+
+      - step: 4
+        description: "Store authentication session securely"
+        command: "mkdir -p /tmp/secure_session && cat > /tmp/secure_session/auth_${auth_token:0:8}.sec << EOF
+# Secure Session Data - DO NOT COMMIT
+session_token=${auth_token}
+username=${#TEST_USERNAME}
+role=${#TEST_USER_ROLE}
+authenticated_at=${auth_timestamp}
+expires_at=${token_expiry}
+api_base=${#API_BASE_URL}
+status=ACTIVE
+EOF
+chmod 600 /tmp/secure_session/auth_${auth_token:0:8}.sec && cat /tmp/secure_session/auth_${auth_token:0:8}.sec"
+        expected:
+          success: true
+          result: 0
+          output: "Secure Session Data"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'session_token=${auth_token}' <<< \"$COMMAND_OUTPUT\" && grep -q 'status=ACTIVE' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 5
+        description: "Generate authorization header for API requests"
+        command: "echo 'Authorization: Bearer '${auth_token}"
+        capture_vars:
+          - name: auth_header
+            capture: '(Authorization: Bearer [a-f0-9]+|Authorization: Bearer token_[0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "Authorization: Bearer"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Authorization: Bearer' <<< \"$COMMAND_OUTPUT\""
+          general:
+            - name: verify_auth_header_format
+              condition: "[[ -n \"$auth_header\" ]]"
+
+  - id: 2
+    name: "API Resource Access with Token"
+    description: "Use authenticated token to access API resources"
+    initial_conditions:
+      security:
+        - "Valid authentication token is available"
+        - "Token is not expired"
+      api:
+        - "API endpoints are accessible"
+    steps:
+      - step: 1
+        description: "Simulate GET request to user profile endpoint"
+        command: "echo 'GET ${#API_BASE_URL}/users/${#TEST_USERNAME}' && echo 'Headers: '${auth_header} && cat << EOF
+{
+  \"user_id\": \"$(echo ${#TEST_USERNAME} | md5sum 2>/dev/null | cut -c1-8 || echo $RANDOM)\",
+  \"username\": \"${#TEST_USERNAME}\",
+  \"role\": \"${#TEST_USER_ROLE}\",
+  \"authenticated\": true,
+  \"token_valid\": true
+}
+EOF"
+        capture_vars:
+          - name: user_id
+            capture: '"user_id": "([a-f0-9]+)"'
+          - name: auth_status
+            capture: '"authenticated": (true|false)'
+        expected:
+          success: true
+          result: 0
+          output: "user_id"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q '\"username\": \"${#TEST_USERNAME}\"' <<< \"$COMMAND_OUTPUT\" && grep -q '\"authenticated\": true' <<< \"$COMMAND_OUTPUT\""
+          general:
+            - name: verify_user_id_captured
+              condition: "[[ -n \"$user_id\" ]]"
+            - name: verify_authenticated
+              condition: "[[ \"$auth_status\" == \"true\" ]]"
+
+      - step: 2
+        description: "Simulate GET request to resources based on role"
+        command: "echo 'GET ${#API_BASE_URL}/resources' && echo 'Headers: '${auth_header} && case \"${#TEST_USER_ROLE}\" in
+  admin)
+    echo '{\"resources\": [\"all\", \"users\", \"settings\", \"logs\", \"reports\"], \"access_level\": \"full\"}'
+    ;;
+  user)
+    echo '{\"resources\": [\"profile\", \"documents\", \"reports\"], \"access_level\": \"standard\"}'
+    ;;
+  readonly)
+    echo '{\"resources\": [\"public\", \"help\"], \"access_level\": \"limited\"}'
+    ;;
+  *)
+    echo '{\"resources\": [], \"access_level\": \"none\"}'
+    ;;
+esac"
+        capture_vars:
+          - name: access_level
+            capture: '"access_level": "([a-z]+)"'
+          - name: resource_count
+            capture: '\\[([^]]+)\\]'
+        expected:
+          success: true
+          result: 0
+          output: "resources"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output:
+            condition: "[[ \"${#TEST_USER_ROLE}\" == \"admin\" ]]"
+            if_true:
+              - "grep -q '\"access_level\": \"full\"' <<< \"$COMMAND_OUTPUT\""
+            if_false:
+              - "grep -q '\"resources\":' <<< \"$COMMAND_OUTPUT\""
+            always:
+              - "echo \"Access level: ${access_level}\""
+          general:
+            - name: verify_access_level_captured
+              condition: "[[ -n \"$access_level\" ]]"
+
+      - step: 3
+        description: "Simulate POST request to create resource"
+        command: "echo 'POST ${#API_BASE_URL}/resources' && echo 'Headers: '${auth_header} && echo 'Body: {\"name\": \"test_resource\", \"owner\": \"${#TEST_USERNAME}\"}' && date +%s"
+        capture_vars:
+          - name: request_timestamp
+            capture: '([0-9]+)$'
+        expected:
+          success: true
+          result: 0
+          output: "POST"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'POST' <<< \"$COMMAND_OUTPUT\" && grep -q '${auth_header}' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 4
+        description: "Simulate API response with resource ID"
+        command: "echo 'resource_'$RANDOM$RANDOM | md5sum 2>/dev/null | cut -d' ' -f1 | cut -c1-16 || echo 'resource_'$RANDOM"
+        capture_vars:
+          - name: resource_id
+            capture: '([a-f0-9]+|resource_[0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "resource id"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ -n \"$COMMAND_OUTPUT\" ]]"
+          general:
+            - name: verify_resource_id_captured
+              condition: "[[ -n \"$resource_id\" ]]"
+
+      - step: 5
+        description: "Log API request audit trail"
+        command: "cat >> /tmp/secure_session/api_audit.log << EOF
+[${request_timestamp}] POST /resources - User: ${#TEST_USERNAME} (${user_id}) - Token: ${auth_token:0:8}... - Resource: ${resource_id} - Status: SUCCESS
+EOF
+tail -1 /tmp/secure_session/api_audit.log"
+        expected:
+          success: true
+          result: 0
+          output: "POST /resources"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Status: SUCCESS' <<< \"$COMMAND_OUTPUT\""
+
+  - id: 3
+    name: "Token Validation and Security Checks"
+    description: "Validate token integrity and perform security checks"
+    initial_conditions:
+      security:
+        - "Authentication token is in use"
+        - "Multiple API requests have been made"
+    steps:
+      - step: 1
+        description: "Check token expiry status"
+        command: "current_time=$(date +%s) && if [[ $current_time -lt ${token_expiry} ]]; then
+  echo 'TOKEN_STATUS=VALID'
+  echo 'TIME_REMAINING='$((${token_expiry} - $current_time))'s'
+else
+  echo 'TOKEN_STATUS=EXPIRED'
+  echo 'TIME_REMAINING=0s'
+fi"
+        capture_vars:
+          - name: token_status
+            capture: 'TOKEN_STATUS=([A-Z]+)'
+          - name: time_remaining
+            capture: 'TIME_REMAINING=([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "TOKEN_STATUS="
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output:
+            condition: "[[ \"$token_status\" == \"VALID\" ]]"
+            if_true:
+              - "echo 'Token is still valid'"
+            if_false:
+              - "echo 'Token has expired'"
+            always:
+              - "echo \"Token status: ${token_status}, Remaining: ${time_remaining}s\""
+
+      - step: 2
+        description: "Validate token format and length"
+        command: "echo 'Token: '${auth_token} && echo 'Length: '${#auth_token} && if [[ ${#auth_token} -ge 8 ]]; then
+  echo 'FORMAT_CHECK=PASS'
+else
+  echo 'FORMAT_CHECK=FAIL'
+fi"
+        capture_vars:
+          - name: format_check
+            capture: 'FORMAT_CHECK=([A-Z]+)'
+        expected:
+          success: true
+          result: 0
+          output: "FORMAT_CHECK="
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'FORMAT_CHECK=PASS' <<< \"$COMMAND_OUTPUT\""
+          general:
+            - name: verify_token_format_pass
+              condition: "[[ \"$format_check\" == \"PASS\" ]]"
+
+      - step: 3
+        description: "Count total API requests made with this token"
+        command: "grep -c '${auth_token:0:8}' /tmp/secure_session/api_audit.log 2>/dev/null || echo 0"
+        capture_vars:
+          - name: request_count
+            capture: '([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "count"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
+          general:
+            - name: verify_request_count_numeric
+              condition: "[[ $request_count =~ ^[0-9]+$ ]]"
+            - name: verify_requests_made
+              condition: "[[ $request_count -ge 1 ]]"
+
+      - step: 4
+        description: "Verify session file security permissions"
+        command: "ls -l /tmp/secure_session/auth_${auth_token:0:8}.sec | awk '{print $1}'"
+        capture_vars:
+          - name: file_permissions
+            capture: '([rwx-]+)'
+        expected:
+          success: true
+          result: 0
+          output: "permissions"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output:
+            condition: "[[ \"$file_permissions\" =~ ^-rw------- ]]"
+            if_true:
+              - "echo 'Session file has correct restrictive permissions (600)'"
+            if_false:
+              - "echo 'WARNING: Session file permissions may be too permissive'"
+            always:
+              - "echo \"Permissions: ${file_permissions}\""
+
+  - id: 4
+    name: "Session Termination and Cleanup"
+    description: "Properly terminate authenticated session and cleanup sensitive data"
+    initial_conditions:
+      security:
+        - "Authenticated session is active"
+        - "Sensitive data files exist"
+    steps:
+      - step: 1
+        description: "Simulate logout API request"
+        command: "echo 'POST ${#API_BASE_URL}/auth/logout' && echo 'Headers: '${auth_header} && date +%s"
+        capture_vars:
+          - name: logout_timestamp
+            capture: '([0-9]+)$'
+        expected:
+          success: true
+          result: 0
+          output: "POST"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'logout' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 2
+        description: "Calculate session duration"
+        command: "echo $((${logout_timestamp} - ${auth_timestamp}))"
+        capture_vars:
+          - name: session_duration
+            capture: '([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "duration"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output:
+            condition: "[[ $session_duration -ge 0 ]]"
+            if_true:
+              - "echo 'Session duration calculated successfully'"
+            if_false:
+              - "echo 'Session duration calculation error'"
+            always:
+              - "echo \"Session duration: ${session_duration}s\""
+
+      - step: 3
+        description: "Generate security audit report"
+        command: "cat > /tmp/secure_session/security_report.txt << EOF
+Security Test Audit Report
+==========================
+
+Authentication Details:
+- User: ${#TEST_USERNAME}
+- User ID: ${user_id}
+- Role: ${#TEST_USER_ROLE}
+- Access Level: ${access_level}
+
+Session Information:
+- Token: ${auth_token:0:8}...[REDACTED]
+- Authenticated: ${auth_timestamp}
+- Logout: ${logout_timestamp}
+- Duration: ${session_duration}s
+- Expiry: ${token_expiry}
+- Status at logout: ${token_status}
+
+API Activity:
+- Total Requests: ${request_count}
+- Resources Created: ${resource_id}
+
+Security Checks:
+- Token Format: ${format_check}
+- File Permissions: ${file_permissions}
+- Token Status: ${token_status}
+
+Conclusion:
+- Authentication: SUCCESS
+- API Access: SUCCESS
+- Security Validation: SUCCESS
+- Session Cleanup: PENDING
+EOF
+cat /tmp/secure_session/security_report.txt"
+        expected:
+          success: true
+          result: 0
+          output: "Security Test Audit Report"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Security Test Audit Report' <<< \"$COMMAND_OUTPUT\" && grep -q 'Session Cleanup: PENDING' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 4
+        description: "Securely wipe sensitive session data"
+        command: "if [ -f /tmp/secure_session/auth_${auth_token:0:8}.sec ]; then
+  cat /dev/null > /tmp/secure_session/auth_${auth_token:0:8}.sec
+  rm -f /tmp/secure_session/auth_${auth_token:0:8}.sec
+  echo 'Session file wiped and removed'
+else
+  echo 'Session file not found'
+fi"
+        expected:
+          success: true
+          result: 0
+          output: "wiped"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'wiped' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 5
+        description: "Archive audit logs and remove sensitive data directory"
+        command: "if [ -d /tmp/secure_session ]; then
+  tar -czf /tmp/security_audit_${auth_timestamp}.tar.gz -C /tmp secure_session/api_audit.log secure_session/security_report.txt 2>&1 | head -1 || echo 'Audit archived'
+  rm -rf /tmp/secure_session
+  echo 'Security cleanup complete'
+else
+  echo 'Session directory not found'
+fi"
+        expected:
+          success: true
+          result: 0
+          output: "complete"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'complete' <<< \"$COMMAND_OUTPUT\""
+          general:
+            - name: verify_cleanup_complete
+              condition: "[[ ! -d /tmp/secure_session ]]"
+
+      - step: 6
+        description: "Verify all sensitive data has been removed"
+        command: "if [ ! -d /tmp/secure_session ]; then
+  echo 'CLEANUP_STATUS=SUCCESS'
+  echo 'Sensitive session data removed'
+else
+  echo 'CLEANUP_STATUS=INCOMPLETE'
+  echo 'WARNING: Session directory still exists'
+fi && echo 'Audit archive: /tmp/security_audit_'${auth_timestamp}'.tar.gz'"
+        expected:
+          success: true
+          result: 0
+          output: "CLEANUP_STATUS=SUCCESS"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'CLEANUP_STATUS=SUCCESS' <<< \"$COMMAND_OUTPUT\" && grep -q 'Sensitive session data removed' <<< \"$COMMAND_OUTPUT\""
