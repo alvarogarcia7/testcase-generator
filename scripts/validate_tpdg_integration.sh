@@ -304,7 +304,7 @@ for test_case_file in "${TEST_SCENARIOS[@]}"; do
     cat > "$container_yaml" << EOF
 title: 'Test Execution Results - $test_case_name'
 project: 'Test Case Manager - Integration Test'
-test_date: '$(date -u +%Y-%m-%dT%H:%M:%SZ)'
+test_date: '$(date +%Y-%m-%dT%H:%M:%S)'
 test_results:
 EOF
     
@@ -353,6 +353,7 @@ for container_yaml in "${CONTAINER_YAMLS[@]}"; do
             log_verbose "$line"
         done; then
         pass "Generated AsciiDoc: $(basename "$asciidoc_output")"
+        ls -lah "$asciidoc_output" # must exist
     else
         ASCIIDOC_EXIT=$?
         fail "Failed to generate AsciiDoc report (exit code: $ASCIIDOC_EXIT)"
@@ -374,6 +375,7 @@ for container_yaml in "${CONTAINER_YAMLS[@]}"; do
             log_verbose "$line"
         done; then
         pass "Generated Markdown: $(basename "$markdown_output")"
+        ls -lah "$markdown_output" # must exist
     else
         MARKDOWN_EXIT=$?
         fail "Failed to generate Markdown report (exit code: $MARKDOWN_EXIT)"
@@ -564,7 +566,7 @@ cat > "$SUMMARY_REPORT" << EOF
 test-plan-doc-gen Integration Test Summary
 ==========================================
 
-Test Date: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+Test Date: $(date +%Y-%m-%dT%H:%M:%S)
 Scenarios Directory: $SCENARIOS_DIR
 Output Directory: $OUTPUT_DIR
 
