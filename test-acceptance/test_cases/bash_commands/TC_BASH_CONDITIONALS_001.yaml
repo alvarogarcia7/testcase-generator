@@ -28,7 +28,7 @@ test_sequences:
           result: 0
           output: "equal"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == 'equal' ]]"
           general:
             - name: comparison_correct
@@ -42,7 +42,7 @@ test_sequences:
           result: 0
           output: "greater"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == 'greater' ]]"
           general:
             - name: gt_works
@@ -56,7 +56,7 @@ test_sequences:
           result: 0
           output: "match"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == 'match' ]]"
           general:
             - name: string_match
@@ -70,7 +70,7 @@ test_sequences:
           result: 0
           output: "valid"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == 'valid' ]]"
           general:
             - name: regex_matched
@@ -84,7 +84,7 @@ test_sequences:
           result: 0
           output: "exists"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == 'exists' ]]"
           general:
             - name: file_exists
@@ -100,7 +100,7 @@ test_sequences:
           result: 0
           output: "is directory"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == 'is directory' ]]"
           general:
             - name: dir_exists
@@ -114,7 +114,7 @@ test_sequences:
           result: 0
           output: "in range"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == 'in range' ]]"
           general:
             - name: and_logic_works
@@ -128,7 +128,7 @@ test_sequences:
           result: 0
           output: "condition met"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == 'condition met' ]]"
           general:
             - name: or_logic_works
@@ -142,7 +142,7 @@ test_sequences:
           result: 0
           output: "has content"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == 'has content' ]]"
           general:
             - name: string_not_empty
@@ -156,7 +156,7 @@ test_sequences:
           result: 0
           output: "between 5 and 10"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == 'between 5 and 10' ]]"
           general:
             - name: nested_works
@@ -170,7 +170,7 @@ test_sequences:
           result: 0
           output: "cleaned"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == 'cleaned' ]]"
           general:
             - name: files_removed

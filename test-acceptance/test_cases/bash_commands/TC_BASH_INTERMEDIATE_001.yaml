@@ -29,7 +29,7 @@ test_sequences:
           result: 0
           output: "line2"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == 'line2' ]]"
           general:
             - name: output_exact_match
@@ -48,7 +48,7 @@ test_sequences:
           result: 0
           output: "Hello Bash"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == 'Hello Bash' ]]"
           general:
             - name: substitution_successful
@@ -69,7 +69,7 @@ test_sequences:
           result: 0
           output: "1000"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == '1000' ]]"
           general:
             - name: uid_is_numeric
@@ -92,7 +92,7 @@ test_sequences:
           result: 0
           output: "word count output"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" =~ [0-9] ]]"
           general:
             - name: line_count_correct
@@ -110,7 +110,7 @@ test_sequences:
           result: 0
           output: "email addresses"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" =~ @ ]]"
           general:
             - name: contains_at_symbol
@@ -131,7 +131,7 @@ test_sequences:
           result: 0
           output: "keep lines"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" =~ keep ]]"
           general:
             - name: three_lines_remain
