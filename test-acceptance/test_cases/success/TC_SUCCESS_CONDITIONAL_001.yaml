@@ -28,10 +28,10 @@ test_sequences:
             capture: '([0-9]+)'
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "75"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output:
             condition: "[[ $score -ge 70 ]]"
             if_true:
@@ -52,10 +52,10 @@ test_sequences:
             capture: 'STATUS: ([A-Z]+)'
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "STATUS: ACTIVE"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output:
             condition: "[[ \"$status\" == \"ACTIVE\" ]]"
             if_true:
@@ -79,10 +79,10 @@ test_sequences:
             capture: 'count=([0-9]+)'
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "count=5"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output:
             condition: "[[ $item_count -gt 3 ]]"
             if_true:
@@ -116,10 +116,10 @@ test_sequences:
             capture: 'DISK: ([0-9]+)'
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "CPU:"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output:
             condition: "[[ $cpu_percent -lt 80 && $mem_percent -lt 80 ]]"
             if_true:
@@ -147,10 +147,10 @@ test_sequences:
             capture: 'Environment: ([a-z]+)'
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "Environment:"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output:
             condition: "[[ \"$environment\" == \"production\" ]]"
             if_true:

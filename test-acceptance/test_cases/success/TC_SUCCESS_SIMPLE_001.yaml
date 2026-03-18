@@ -26,10 +26,10 @@ test_sequences:
         command: "echo 'Hello World'"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "Hello World"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "grep -q 'Hello World' <<< \"$COMMAND_OUTPUT\""
 
       - step: 2
@@ -37,10 +37,10 @@ test_sequences:
         command: "date +%Y-%m-%d"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "date format YYYY-MM-DD"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]"
 
       - step: 3
@@ -48,8 +48,8 @@ test_sequences:
         command: "ls -d /tmp"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "/tmp"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "grep -q '/tmp' <<< \"$COMMAND_OUTPUT\""

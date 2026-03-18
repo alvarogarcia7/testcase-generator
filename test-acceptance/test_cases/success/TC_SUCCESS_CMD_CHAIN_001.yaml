@@ -25,10 +25,10 @@ test_sequences:
         command: "mkdir -p /tmp/chain_test && echo 'chained' > /tmp/chain_test/file.txt && cat /tmp/chain_test/file.txt"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "chained"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "grep -q 'chained' <<< \"$COMMAND_OUTPUT\""
 
       - step: 2
@@ -36,10 +36,10 @@ test_sequences:
         command: "echo 'line1' > /tmp/chain_test/multi.txt && echo 'line2' >> /tmp/chain_test/multi.txt && echo 'line3' >> /tmp/chain_test/multi.txt && wc -l /tmp/chain_test/multi.txt"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "3"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "grep -q '3' <<< \"$COMMAND_OUTPUT\""
 
       - step: 3
@@ -50,10 +50,10 @@ test_sequences:
             capture: '^([0-9]+)$'
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "12345"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "grep -q '12345' <<< \"$COMMAND_OUTPUT\""
           general:
             - name: verify_extracted_value
@@ -64,10 +64,10 @@ test_sequences:
         command: "cd /tmp/chain_test && pwd && ls -1 | wc -l"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "3"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "grep -q '3' <<< \"$COMMAND_OUTPUT\""
 
       - step: 5
@@ -75,8 +75,8 @@ test_sequences:
         command: "rm -f /tmp/chain_test/*.txt && rmdir /tmp/chain_test && echo 'cleanup complete'"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "cleanup complete"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "grep -q 'cleanup complete' <<< \"$COMMAND_OUTPUT\""

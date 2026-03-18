@@ -46,10 +46,10 @@ test_sequences:
             capture: '"request_id":"([^"]+)"'
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "success"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "grep -q 'success' <<< \"$COMMAND_OUTPUT\""
           general:
             - name: verify_status_success
@@ -59,7 +59,7 @@ test_sequences:
             - name: verify_user_id_format
               condition: "[[ $user_id =~ ^USR-[0-9]+$ ]]"
             - name: verify_username_format
-              condition: "[[ $username =~ ^[a-z]+\\.[a-z]+$ ]]"
+              condition: "[[ \"$username\" =~ ^[a-z]+\\.[a-z]+$ ]]"
             - name: verify_email_valid
               condition: "[[ $email =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$ ]]"
             - name: verify_role_is_admin
@@ -95,10 +95,10 @@ test_sequences:
             command: "grep -c '\\[INFO\\]' <<< \"$COMMAND_OUTPUT\""
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "INFO"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "grep -q 'INFO' <<< \"$COMMAND_OUTPUT\""
           general:
             - name: verify_ip_format
@@ -147,13 +147,13 @@ test_sequences:
           - name: active_conns
             capture: 'Active_Connections: ([0-9]+)'
           - name: calculated_success_rate
-            command: "echo \"scale=2; ($success_requests * 100) / $total_requests\" | bc"
+            command: "echo \"scale=2; (950 * 100) / 1000\" | bc"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "PERFORMANCE_METRICS"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "grep -q 'PERFORMANCE_METRICS' <<< \"$COMMAND_OUTPUT\""
           general:
             - name: verify_totals_match

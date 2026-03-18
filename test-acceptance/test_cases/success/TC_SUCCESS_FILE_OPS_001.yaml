@@ -30,10 +30,10 @@ test_sequences:
             capture: '(/tmp/fileops_test)'
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "/tmp/fileops_test"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "grep -q '/tmp/fileops_test' <<< \"$COMMAND_OUTPUT\""
 
       - step: 2
@@ -44,10 +44,10 @@ test_sequences:
             capture: '^([0-9]+)$'
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "bytes"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
           general:
             - name: verify_file_size_captured
@@ -57,17 +57,17 @@ test_sequences:
 
       - step: 3
         description: "Set file permissions and verify"
-        command: "chmod 644 ${test_dir}/test.txt && stat -c '%a' ${test_dir}/test.txt 2>/dev/null || stat -f '%p' ${test_dir}/test.txt | tail -c 4"
+        command: "chmod 644 ${test_dir}/test.txt && ls -l ${test_dir}/test.txt | awk '{print $1}'"
         capture_vars:
           - name: file_perms
-            capture: '([0-9]{3,4})'
+            capture: '(-rw-r--r--)'
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "permissions"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" =~ [0-9]+ ]]"
+          result: "[[ $? -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" =~ rw-r--r-- ]]"
           general:
             - name: verify_permissions_captured
               condition: "[[ -n \"$file_perms\" ]]"
@@ -80,10 +80,10 @@ test_sequences:
             command: "ls ${test_dir}/*.txt | wc -l"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "4"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" -eq 4 ]]"
           general:
             - name: verify_file_count
@@ -106,10 +106,10 @@ test_sequences:
             capture: '^([0-9]+)$'
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "3"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" -eq 3 ]]"
           general:
             - name: verify_line_count
@@ -123,10 +123,10 @@ test_sequences:
             capture: '^([0-9]+)$'
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "2"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" -eq 2 ]]"
           general:
             - name: verify_matches_found
@@ -137,10 +137,10 @@ test_sequences:
         command: "cp ${test_dir}/test.txt ${test_dir}/test_copy.txt && diff ${test_dir}/test.txt ${test_dir}/test_copy.txt && echo 'Files are identical'"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "Files are identical"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "grep -q 'Files are identical' <<< \"$COMMAND_OUTPUT\""
 
   - id: 3
@@ -160,10 +160,10 @@ test_sequences:
             capture: '^([0-9]+)$'
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "files"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
           general:
             - name: verify_files_exist
@@ -174,10 +174,10 @@ test_sequences:
         command: "rm -f ${test_dir}/*.txt && echo 'Files removed'"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "Files removed"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "grep -q 'Files removed' <<< \"$COMMAND_OUTPUT\""
 
       - step: 3
@@ -188,10 +188,10 @@ test_sequences:
             capture: '^([0-9]+)$'
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "0"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" -eq 0 ]]"
           general:
             - name: verify_all_files_removed
@@ -202,8 +202,8 @@ test_sequences:
         command: "rmdir ${test_dir} && echo 'Directory removed'"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "Directory removed"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "grep -q 'Directory removed' <<< \"$COMMAND_OUTPUT\""

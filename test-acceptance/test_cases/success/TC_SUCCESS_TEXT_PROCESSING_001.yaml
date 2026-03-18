@@ -34,10 +34,10 @@ test_sequences:
             capture: 'Role: ([a-z]+)'
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "First:"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "grep -q 'First:' <<< \"$COMMAND_OUTPUT\""
           general:
             - name: verify_first_name
@@ -58,16 +58,16 @@ test_sequences:
             capture: '([0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2})'
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "WARNING:"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "grep -q 'WARNING:' <<< \"$COMMAND_OUTPUT\""
           general:
             - name: verify_message_type_changed
               condition: "[[ \"$message_type\" == \"WARNING\" ]]"
             - name: verify_timestamp_format
-              condition: "[[ $timestamp =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}' '[0-9]{2}:[0-9]{2}:[0-9]{2}$ ]]"
+              condition: "[[ \"$timestamp\" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}' '[0-9]{2}:[0-9]{2}:[0-9]{2}$ ]]"
 
       - step: 3
         description: "Count occurrences with grep"
@@ -84,10 +84,10 @@ test_sequences:
             capture: '^([0-9]+)$'
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "3"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" -eq 3 ]]"
           general:
             - name: verify_error_count
@@ -106,10 +106,10 @@ test_sequences:
             capture: '^([0-9]+)$'
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "500"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" -eq 500 ]]"
           general:
             - name: verify_sum_calculated
@@ -137,10 +137,10 @@ test_sequences:
             capture: '^([0-9]+\.[0-9]+)$'
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "average"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+\\.[0-9]+$ ]]"
           general:
             - name: verify_average_in_range
@@ -165,10 +165,10 @@ test_sequences:
           EOF"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: ":"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "grep -q ':' <<< \"$COMMAND_OUTPUT\""
           general:
             - name: verify_error_count
@@ -191,10 +191,10 @@ test_sequences:
             capture: 'Total: ([0-9]+)'
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "Count:"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "grep -q 'Count:' <<< \"$COMMAND_OUTPUT\""
           general:
             - name: verify_filtered_count

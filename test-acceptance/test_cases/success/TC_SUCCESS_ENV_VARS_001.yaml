@@ -42,55 +42,55 @@ test_sequences:
     steps:
       - step: 1
         description: "Display test user environment variable"
-        command: "echo \"User: ${#TEST_USER}\""
+        command: "echo \"User: ${TEST_USER}\""
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "User:"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "grep -q 'User: ' <<< \"$COMMAND_OUTPUT\""
 
       - step: 2
         description: "Create home directory using environment variable"
-        command: "mkdir -p ${#TEST_HOME} && echo 'Created: '${#TEST_HOME}"
+        command: "mkdir -p ${TEST_HOME} && echo 'Created: '${TEST_HOME}"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "Created:"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "grep -q 'Created:' <<< \"$COMMAND_OUTPUT\""
 
       - step: 3
         description: "Verify port is numeric"
-        command: "echo ${#TEST_PORT}"
+        command: "echo ${TEST_PORT}"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "port number"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
 
       - step: 4
         description: "Create config file with environment variables"
-        command: "echo \"user=${#TEST_USER}\" > ${#TEST_HOME}/config.txt && echo \"port=${#TEST_PORT}\" >> ${#TEST_HOME}/config.txt && cat ${#TEST_HOME}/config.txt"
+        command: "echo \"user=${TEST_USER}\" > ${TEST_HOME}/config.txt && echo \"port=${TEST_PORT}\" >> ${TEST_HOME}/config.txt && cat ${TEST_HOME}/config.txt"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "user="
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "grep -q 'user=' <<< \"$COMMAND_OUTPUT\" && grep -q 'port=' <<< \"$COMMAND_OUTPUT\""
 
       - step: 5
         description: "Cleanup test directory"
-        command: "rm -rf ${#TEST_HOME}"
+        command: "rm -rf ${TEST_HOME}"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: ""
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "true"
