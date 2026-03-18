@@ -93,7 +93,7 @@ def main():
     inspect_file = sys.argv[1]
     
     try:
-        with open(inspect_file, 'r') as f:
+        with open(inspect_file, 'r', encoding='utf-8') as f:
             inspect_data = json.load(f)
     except (FileNotFoundError, json.JSONDecodeError) as e:
         print(f"Error reading inspect file: {e}", file=sys.stderr)

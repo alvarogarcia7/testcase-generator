@@ -47,7 +47,7 @@ def main():
     summary_file = sys.argv[1]
     
     try:
-        with open(summary_file, 'r') as f:
+        with open(summary_file, 'r', encoding='utf-8') as f:
             comment = f.read()
     except FileNotFoundError as e:
         print(f"Error reading summary file: {e}", file=sys.stderr)

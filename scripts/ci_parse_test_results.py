@@ -6,13 +6,13 @@ Parse Rust test output and generate JSON results for CI/CD reporting.
 import sys
 import re
 import json
-from typing import Dict, List, Any
+from typing import Any
 
 
-def parse_test_output(output_file: str) -> Dict[str, Any]:
+def parse_test_output(output_file: str) -> dict[str, Any]:
     """Parse cargo test output and extract test results."""
     
-    with open(output_file, 'r') as f:
+    with open(output_file, 'r', encoding='utf-8') as f:
         content = f.read()
     
     results = {
@@ -50,7 +50,7 @@ def parse_test_output(output_file: str) -> Dict[str, Any]:
     return results
 
 
-def generate_junit_xml(results: Dict[str, Any], output_file: str = 'test_results.xml'):
+def generate_junit_xml(results: dict[str, Any], output_file: str = 'test_results.xml'):
     """Generate JUnit XML format for GitLab CI/CD integration."""
     
     xml_lines = ['<?xml version="1.0" encoding="UTF-8"?>']
@@ -68,7 +68,7 @@ def generate_junit_xml(results: Dict[str, Any], output_file: str = 'test_results
     xml_lines.append('  </testsuite>')
     xml_lines.append('</testsuites>')
     
-    with open(output_file, 'w') as f:
+    with open(output_file, 'w', encoding='utf-8') as f:
         f.write('\n'.join(xml_lines))
 
 

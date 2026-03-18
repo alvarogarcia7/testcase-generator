@@ -3,7 +3,7 @@
 Create example script capture files with actual control characters.
 """
 
-def create_cleanup_txt():
+def create_cleanup_txt() -> None:
     """Create cleanup.txt with backspaces, bell characters, and ANSI codes."""
     content = b'''Script started on 2024-01-22 14:30:45-0800
 $ # Cleaning up old log files
@@ -53,7 +53,7 @@ Script done on 2024-01-22 14:32:18-0800
     print("Created cleanup.txt")
 
 
-def create_errors_txt():
+def create_errors_txt() -> None:
     """Create errors.txt with backspaces, bell characters, and ANSI codes."""
     content = b'''Script started on 2024-01-22 15:45:22-0800
 $ # Running test suite

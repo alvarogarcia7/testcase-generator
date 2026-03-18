@@ -9,7 +9,7 @@ This adds:
 - Both visible caret notation (^H, ^G) and actual binary bytes
 """
 
-def create_cleanup_file():
+def create_cleanup_file() -> None:
     """Create cleanup.txt with embedded control characters."""
     content = """Script started on 2024-01-22 14:30:45-0800
 $ # Cleaning up old log files
@@ -54,11 +54,11 @@ Archive created successfully
 $ exit
 Script done on 2024-01-22 14:32:18-0800
 """
-    with open('cleanup.txt', 'w') as f:
+    with open('cleanup.txt', 'w', encoding='utf-8') as f:
         f.write(content)
     print("Created cleanup.txt with binary control characters")
 
-def create_errors_file():
+def create_errors_file() -> None:
     """Create errors.txt with embedded control characters."""
     content = """Script started on 2024-01-22 15:45:22-0800
 $ # Running test suite
@@ -141,11 +141,11 @@ $ kill %1
 $ exit
 Script done on 2024-01-22 15:52:03-0800
 """
-    with open('errors.txt', 'w') as f:
+    with open('errors.txt', 'w', encoding='utf-8') as f:
         f.write(content)
     print("Created errors.txt with binary control characters")
 
-def main():
+def main() -> None:
     print("Creating example script capture files with realistic terminal output...")
     print()
     
