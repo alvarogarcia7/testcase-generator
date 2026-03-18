@@ -58,6 +58,12 @@ See the [Hooks](#hooks) section for detailed documentation and examples.
 - **Test Container Compatibility**: make test-container-compat (verify container YAML compatibility with test-plan-doc-gen)
 - **Acceptance Tests**: make acceptance-test (run full acceptance test suite with validation, generation, execution, verification, and documentation)
 - **Acceptance Suite E2E Tests**: make test-e2e-acceptance (run E2E integration tests for the acceptance suite orchestrator)
+- **Install LOC**: make install-loc (install tokei/loc lines of code counter)
+- **LOC Statistics**: make loc (compute lines of code statistics for Rust, Python, Shell, and documentation)
+- **LOC Verbose**: make loc-verbose (compute lines of code statistics with verbose output)
+- **LOC JSON**: make loc-json (compute lines of code statistics in JSON format)
+- **LOC YAML**: make loc-yaml (compute lines of code statistics in YAML format)
+- **LOC Report**: make loc-report (generate lines of code statistics report to reports/loc/loc_statistics.txt)
 - **Dev Server**: N/A
 
 ### Report Generation

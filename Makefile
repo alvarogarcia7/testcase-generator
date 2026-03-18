@@ -422,3 +422,28 @@ build-acceptance-binaries:
 	@echo ""
 .PHONY: build-acceptance-binaries
 
+install-loc:
+	./scripts/install-loc.sh --local
+.PHONY: install-loc
+
+loc:
+	./scripts/compute-loc.sh
+.PHONY: loc
+
+loc-verbose:
+	./scripts/compute-loc.sh --verbose
+.PHONY: loc-verbose
+
+loc-json:
+	./scripts/compute-loc.sh --format json
+.PHONY: loc-json
+
+loc-yaml:
+	./scripts/compute-loc.sh --format yaml
+.PHONY: loc-yaml
+
+loc-report:
+	@mkdir -p reports/loc
+	./scripts/compute-loc.sh --output reports/loc/loc_statistics.txt
+.PHONY: loc-report
+
