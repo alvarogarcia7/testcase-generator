@@ -22,11 +22,11 @@ test_sequences:
         - "Bash shell with syntax checking"
     steps:
       - step: 1
-        description: "Execute command with unclosed quote"
-        command: "echo 'unclosed quote"
+        description: "Execute command with invalid brace expansion"
+        command: "bash -c 'echo {a..'"
         expected:
           success: false
-          result: 2
+          result: '2'
           output: "syntax error"
         verification:
           result: "[[ $EXIT_CODE -ne 0 ]]"
@@ -37,7 +37,7 @@ test_sequences:
         command: "echo 'Step 2'"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "Step 2"
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"

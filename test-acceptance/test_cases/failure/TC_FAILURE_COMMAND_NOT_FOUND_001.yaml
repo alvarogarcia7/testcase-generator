@@ -26,7 +26,7 @@ test_sequences:
         command: "nonexistent_command_xyz_12345"
         expected:
           success: false
-          result: 127
+          result: '127'
           output: "command not found"
         verification:
           result: "[[ $EXIT_CODE -eq 127 ]]"
@@ -37,7 +37,7 @@ test_sequences:
         command: "echo 'Step 2'"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "Step 2"
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"

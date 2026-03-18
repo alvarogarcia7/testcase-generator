@@ -26,7 +26,7 @@ test_sequences:
         command: "echo 'Step 1 success'"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "Step 1 success"
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
@@ -37,7 +37,7 @@ test_sequences:
         command: "echo 'Step 2 success'"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "Step 2 success"
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
@@ -48,7 +48,7 @@ test_sequences:
         command: "echo 'Step 3 success'"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "Step 3 success"
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
@@ -59,7 +59,7 @@ test_sequences:
         command: "cat /tmp/nonexistent_file_xyz_123.txt"
         expected:
           success: false
-          result: 1
+          result: '1'
           output: "No such file or directory"
         verification:
           result: "[[ $EXIT_CODE -ne 0 ]]"

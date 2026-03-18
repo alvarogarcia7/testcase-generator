@@ -23,10 +23,10 @@ test_sequences:
     steps:
       - step: 1
         description: "Execute command that uses undefined variable"
-        command: "bash -u -c 'echo $UNDEFINED_VARIABLE_XYZ'"
+        command: "bash -u -c 'echo $UNDEFINED_VARIABLE_XYZ' 2>&1"
         expected:
           success: false
-          result: 1
+          result: '1'
           output: "unbound variable"
         verification:
           result: "[[ $EXIT_CODE -ne 0 ]]"
@@ -37,7 +37,7 @@ test_sequences:
         command: "echo 'Step 2'"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "Step 2"
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"

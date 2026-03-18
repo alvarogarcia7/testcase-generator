@@ -12,6 +12,7 @@ general_initial_conditions:
 initial_conditions:
   filesystem:
     - "Temporary directory /tmp is writable"
+    - "/dev/full device is available (Linux only)"
 
 test_sequences:
   - id: 1
@@ -19,14 +20,14 @@ test_sequences:
     description: "Simulate disk full by writing to /dev/full"
     initial_conditions:
       filesystem:
-        - "/dev/full device is available (Linux only)"
+        - "/dev/full device exists"
     steps:
       - step: 1
         description: "Attempt to write to /dev/full device"
-        command: "echo 'test data' > /dev/full"
+        command: "echo 'test data' > /dev/full 2>&1"
         expected:
           success: false
-          result: 1
+          result: '1'
           output: "No space left on device"
         verification:
           result: "[[ $EXIT_CODE -ne 0 ]]"
@@ -37,7 +38,7 @@ test_sequences:
         command: "echo 'Step 2'"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "Step 2"
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"

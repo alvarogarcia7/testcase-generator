@@ -26,7 +26,7 @@ test_sequences:
         command: "grep 'NONEXISTENT_PATTERN_XYZ123' /etc/passwd"
         expected:
           success: false
-          result: 1
+          result: '1'
           output: ""
         verification:
           result: "[[ $EXIT_CODE -eq 1 ]]"
@@ -37,7 +37,7 @@ test_sequences:
         command: "echo 'This should not run'"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "This should not run"
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
@@ -48,7 +48,7 @@ test_sequences:
         command: "date"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "current date"
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"

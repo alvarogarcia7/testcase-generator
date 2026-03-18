@@ -25,8 +25,8 @@ test_sequences:
         description: "Run false command but expect success exit code"
         command: "false"
         expected:
-          success: true
-          result: 0
+          success: false
+          result: '1'
           output: ""
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
@@ -37,7 +37,7 @@ test_sequences:
         command: "echo 'Step 2'"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "Step 2"
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"

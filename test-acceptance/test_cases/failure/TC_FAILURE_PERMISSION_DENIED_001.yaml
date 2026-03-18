@@ -27,7 +27,7 @@ test_sequences:
         command: "echo 'test' > /etc/test_file.txt"
         expected:
           success: false
-          result: 1
+          result: '1'
           output: "Permission denied"
         verification:
           result: "[[ $EXIT_CODE -ne 0 ]]"
@@ -38,7 +38,7 @@ test_sequences:
         command: "echo 'Step 2'"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "Step 2"
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"

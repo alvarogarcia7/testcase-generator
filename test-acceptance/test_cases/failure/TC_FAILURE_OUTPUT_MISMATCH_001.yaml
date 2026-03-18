@@ -25,8 +25,8 @@ test_sequences:
         description: "Print message that differs from expected output"
         command: "echo 'Actual output message'"
         expected:
-          success: true
-          result: 0
+          success: false
+          result: '0'
           output: "Expected output message"
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
@@ -37,7 +37,7 @@ test_sequences:
         command: "echo 'Step 2'"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "Step 2"
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
