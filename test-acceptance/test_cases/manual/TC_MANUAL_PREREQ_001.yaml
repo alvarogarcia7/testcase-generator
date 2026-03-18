@@ -13,10 +13,10 @@ prerequisites:
     description: "Confirm test operator has login credentials for the device"
   - type: automatic
     description: "Verify test workspace directory exists"
-    verification_command: "test -d /tmp/test_workspace && exit 0 || exit 1"
+    verification_command: "mkdir -p /tmp/test_workspace && test -d /tmp/test_workspace && exit 0 || exit 1"
   - type: automatic
     description: "Check that test data file is present"
-    verification_command: "test -f /tmp/test_data.txt && exit 0 || exit 1"
+    verification_command: "echo 'test_value=12345' > /tmp/test_data.txt && test -f /tmp/test_data.txt && exit 0 || exit 1"
   - type: automatic
     description: "Verify sufficient disk space available (minimum 100MB)"
     verification_command: "df -k /tmp | awk 'NR==2 {if ($4 > 102400) exit 0; else exit 1}'"
@@ -24,7 +24,7 @@ prerequisites:
     description: "Confirm external test equipment is powered on and ready"
   - type: automatic
     description: "Check network connectivity to test device"
-    verification_command: "ping -c 2 -W 2 localhost >/dev/null 2>&1 && exit 0 || exit 1"
+    verification_command: "ping -c 2 -W 2 127.0.0.1 >/dev/null 2>&1 && exit 0 || exit 1"
 
 general_initial_conditions:
   system:
@@ -190,7 +190,7 @@ test_sequences:
       
       - step: 4
         description: "Cleanup test workspace"
-        command: "rm -rf /tmp/test_workspace && echo 'Cleanup complete'"
+        command: "rm -rf /tmp/test_workspace && rm -f /tmp/test_data.txt && echo 'Cleanup complete'"
         expected:
           success: true
           result: 0
