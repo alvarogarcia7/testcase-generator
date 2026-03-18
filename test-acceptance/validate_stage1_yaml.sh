@@ -166,7 +166,10 @@ parse_yaml_field() {
     local yaml_file="$1"
     local field="$2"
     
-    python3 -c "
+    local python_cmd
+    python_cmd=$(find_python)
+    
+    $python_cmd -c "
 import yaml
 import sys
 try:
@@ -188,7 +191,10 @@ yaml_field_exists() {
     local yaml_file="$1"
     local field="$2"
     
-    python3 -c "
+    local python_cmd
+    python_cmd=$(find_python)
+    
+    $python_cmd -c "
 import yaml
 import sys
 try:
@@ -207,7 +213,10 @@ except Exception:
 get_test_sequences_count() {
     local yaml_file="$1"
     
-    python3 -c "
+    local python_cmd
+    python_cmd=$(find_python)
+    
+    $python_cmd -c "
 import yaml
 import sys
 try:
@@ -225,7 +234,10 @@ except Exception:
 validate_sequence_steps() {
     local yaml_file="$1"
     
-    python3 -c "
+    local python_cmd
+    python_cmd=$(find_python)
+    
+    $python_cmd -c "
 import yaml
 import sys
 try:
@@ -293,7 +305,10 @@ validate_hooks() {
         return 0
     fi
     
-    python3 -c "
+    local python_cmd
+    python_cmd=$(find_python)
+    
+    $python_cmd -c "
 import yaml
 import sys
 try:
@@ -360,7 +375,10 @@ validate_hydration_vars() {
         return 0
     fi
     
-    python3 -c "
+    local python_cmd
+    python_cmd=$(find_python)
+    
+    $python_cmd -c "
 import yaml
 import sys
 try:
@@ -405,7 +423,10 @@ validate_prerequisites() {
         return 0
     fi
     
-    python3 -c "
+    local python_cmd
+    python_cmd=$(find_python)
+    
+    $python_cmd -c "
 import yaml
 import sys
 try:

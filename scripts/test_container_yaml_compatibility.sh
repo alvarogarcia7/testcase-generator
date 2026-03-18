@@ -17,6 +17,7 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # Source logger library
 source "$SCRIPT_DIR/lib/logger.sh" || exit 1
+source "$SCRIPT_DIR/lib/find-binary.sh" || exit 1
 
 section "Container YAML Compatibility Test"
 
@@ -114,7 +115,14 @@ for TEST_CASE_FILE in $TEST_CASES; do
         
         log_verbose "Converting to result YAML..."
         
-        if python3 "$SCRIPT_DIR/convert_verification_to_result_yaml.py" \
+        # Find Python interpreter
+        PYTHON_CMD=$(find_python)
+        if [[ -z "$PYTHON_CMD" ]]; then
+            log_error "Python interpreter not found"
+            exit 1
+        fi
+        
+        if $PYTHON_CMD "$SCRIPT_DIR/convert_verification_to_result_yaml.py" \
             "$VERIFICATION_JSON" \
             -o "$OUTPUT_DIR" > /dev/null 2>&1; then
             log_verbose "Converted to result YAML"

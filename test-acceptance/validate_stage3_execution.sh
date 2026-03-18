@@ -344,7 +344,10 @@ validate_json_structure() {
 get_yaml_step_count() {
     local yaml_file="$1"
     
-    python3 -c "
+    local python_cmd
+    python_cmd=$(find_python)
+    
+    $python_cmd -c "
 import yaml
 import sys
 try:
@@ -378,7 +381,10 @@ get_json_step_count() {
 yaml_has_variable_capture() {
     local yaml_file="$1"
     
-    python3 -c "
+    local python_cmd
+    python_cmd=$(find_python)
+    
+    $python_cmd -c "
 import yaml
 import sys
 try:

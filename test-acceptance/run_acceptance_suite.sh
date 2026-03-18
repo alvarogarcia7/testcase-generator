@@ -369,9 +369,19 @@ execute_test_scripts() {
         if [[ ! -f "$log_file" ]]; then
             log_warning "Execution log not created: $log_file"
             echo "$script_file (no log)" >> "$EXECUTION_FAILURES"
-        elif ! python3 -m json.tool "$log_file" > /dev/null 2>&1; then
-            log_warning "Invalid JSON in execution log: $log_file"
-            echo "$script_file (invalid JSON)" >> "$EXECUTION_FAILURES"
+        else
+            # Try to validate JSON using available Python
+            local json_valid=0
+            if command -v python3.14 > /dev/null 2>&1; then
+                python3.14 -m json.tool "$log_file" > /dev/null 2>&1 && json_valid=1
+            elif command -v python3 > /dev/null 2>&1; then
+                python3 -m json.tool "$log_file" > /dev/null 2>&1 && json_valid=1
+            fi
+            
+            if [[ $json_valid -eq 0 ]]; then
+                log_warning "Invalid JSON in execution log: $log_file"
+                echo "$script_file (invalid JSON)" >> "$EXECUTION_FAILURES"
+            fi
         fi
     done
     
