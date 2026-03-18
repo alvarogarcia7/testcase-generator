@@ -302,7 +302,28 @@ if [[ -f "$COVERAGE_OUTPUT" ]]; then
         if [[ "$COVERAGE_PCT" != "N/A" ]]; then
             COVERAGE_PCT=$(printf "%.2f" "$COVERAGE_PCT")
         fi
+    elif command -v uv >/dev/null 2>&1; then
+        # Use Python 3.14 via uv if available
+        COVERAGE_PCT=$(uv run python3.14 -c "
+import json
+import sys
+try:
+    with open('$COVERAGE_OUTPUT') as f:
+        data = json.load(f)
+    if 'files' in data:
+        files = data['files']
+        if files:
+            total_coverage = sum(f.get('coverage', 0) for f in files.values() if isinstance(files, dict)) / len(files)
+            print(f'{total_coverage:.2f}')
+        else:
+            print('N/A')
+    else:
+        print('N/A')
+except Exception as e:
+    print('N/A')
+" 2>/dev/null || echo "N/A")
     elif command -v python3 >/dev/null 2>&1; then
+        # Fallback to system python3 if uv is not available
         COVERAGE_PCT=$(python3 -c "
 import json
 import sys
