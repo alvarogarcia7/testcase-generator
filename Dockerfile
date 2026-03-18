@@ -118,7 +118,6 @@ RUN cat README_INSTALL.md README_INSTALL_AUTOMATED.md >> README_INSTALL_2.md && 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 COPY pyproject.toml uv.lock ./
-RUN uv pip install --no-cache-dir
 RUN uv sync
 RUN uv run python3.14 --version
 
