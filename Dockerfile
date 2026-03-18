@@ -31,7 +31,7 @@ COPY schemas ./schemas
 RUN mkdir -p src/bin examples && \
     echo "fn main() {}" > src/main.rs && \
     echo "fn main() {}" > src/main_editor.rs && \
-    for bin in validate-yaml validate-json test-run-manager test-verify test-executor json-escape verifier test-orchestrator script-cleanup; do \
+    for bin in validate-yaml validate-json test-run-manager test-verify test-executor json-escape verifier test-orchestrator script-cleanup test-plan-documentation-generator-compat json-to-yaml; do \
       echo "fn main() {}" > "src/bin/${bin}.rs"; \
     done && \
     for example in tty_fallback_demo test_verify_demo test_verify_integration junit_export_example; do \
