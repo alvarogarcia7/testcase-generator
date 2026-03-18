@@ -94,7 +94,7 @@ test_sequences:
 
       - step: 2
         description: "Initialize workspace structure with environment variable"
-        command: "mkdir -p ${#TEST_WORKSPACE}/run_${test_start_time} && echo ${#TEST_WORKSPACE}/run_${test_start_time}"
+        command: "mkdir -p ${TEST_WORKSPACE}/run_${test_start_time} && echo ${TEST_WORKSPACE}/run_${test_start_time}"
         capture_vars:
           - name: run_directory
             capture: '(/tmp/[^\s]+)'
@@ -114,10 +114,10 @@ test_sequences:
       - step: 3
         description: "Generate test configuration file"
         command: "cat > ${run_directory}/config.txt << EOF
-environment=${#TEST_ENVIRONMENT}
-workspace=${#TEST_WORKSPACE}
+environment=${TEST_ENVIRONMENT}
+workspace=${TEST_WORKSPACE}
 start_time=${test_start_time}
-max_retries=${#MAX_RETRIES}
+max_retries=${MAX_RETRIES}
 EOF
 cat ${run_directory}/config.txt"
         expected:
@@ -264,7 +264,7 @@ Start Time: ${test_start_time}
 End Time: ${test_end_time}
 Duration: ${test_duration} seconds
 Total Lines: ${total_lines}
-Environment: ${#TEST_ENVIRONMENT}
+Environment: ${TEST_ENVIRONMENT}
 Retries Configured: ${configured_retries}
 Status: COMPLETE
 EOF
@@ -291,7 +291,7 @@ cat ${run_directory}/summary.txt"
 
       - step: 5
         description: "Archive test results"
-        command: "tar -czf ${#TEST_WORKSPACE}/test_results_${test_start_time}.tar.gz -C ${#TEST_WORKSPACE} run_${test_start_time} 2>&1 | head -1 || echo 'Archive created'"
+        command: "tar -czf ${TEST_WORKSPACE}/test_results_${test_start_time}.tar.gz -C ${TEST_WORKSPACE} run_${test_start_time} 2>&1 | head -1 || echo 'Archive created'"
         expected:
           success: true
           result: 0
@@ -302,7 +302,7 @@ cat ${run_directory}/summary.txt"
 
       - step: 6
         description: "Verify archive and cleanup workspace"
-        command: "test -f ${#TEST_WORKSPACE}/test_results_${test_start_time}.tar.gz && echo 'Archive verified' && rm -rf ${run_directory} && echo 'Cleanup complete'"
+        command: "test -f ${TEST_WORKSPACE}/test_results_${test_start_time}.tar.gz && echo 'Archive verified' && rm -rf ${run_directory} && echo 'Cleanup complete'"
         expected:
           success: true
           result: 0

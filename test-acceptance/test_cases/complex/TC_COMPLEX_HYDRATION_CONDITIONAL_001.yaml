@@ -77,7 +77,7 @@ test_sequences:
     steps:
       - step: 1
         description: "Verify environment type and capture for conditional logic"
-        command: "echo ${#ENVIRONMENT}"
+        command: "echo ${ENVIRONMENT}"
         capture_vars:
           - name: env_type
             capture: '([a-z]+)'
@@ -105,23 +105,23 @@ test_sequences:
         description: "Generate environment-specific configuration file"
         command: "cat > /tmp/config_${env_type}.ini << EOF
 [environment]
-name=${#ENVIRONMENT}
+name=${ENVIRONMENT}
 type=${env_type}
 
 [database]
-host=${#DATABASE_HOST}
-port=${#DATABASE_PORT}
+host=${DATABASE_HOST}
+port=${DATABASE_PORT}
 
 [api]
-timeout=${#API_TIMEOUT}
+timeout=${API_TIMEOUT}
 
 [features]
-cache_enabled=${#CACHE_ENABLED}
-debug_mode=${#DEBUG_MODE}
+cache_enabled=${CACHE_ENABLED}
+debug_mode=${DEBUG_MODE}
 
 [performance]
-max_connections=${#MAX_CONNECTIONS}
-retry_count=${#RETRY_COUNT}
+max_connections=${MAX_CONNECTIONS}
+retry_count=${RETRY_COUNT}
 EOF
 cat /tmp/config_${env_type}.ini"
         expected:
@@ -134,7 +134,7 @@ cat /tmp/config_${env_type}.ini"
 
       - step: 3
         description: "Validate database connection string format"
-        command: "echo '${#DATABASE_HOST}:${#DATABASE_PORT}'"
+        command: "echo '${DATABASE_HOST}:${DATABASE_PORT}'"
         capture_vars:
           - name: db_connection
             capture: '([^:]+:[0-9]+)'
@@ -153,7 +153,7 @@ cat /tmp/config_${env_type}.ini"
 
       - step: 4
         description: "Check database port is numeric and in valid range"
-        command: "echo ${#DATABASE_PORT}"
+        command: "echo ${DATABASE_PORT}"
         capture_vars:
           - name: db_port_value
             capture: '([0-9]+)'
@@ -221,10 +221,10 @@ esac"
         description: "Configure connection pool based on environment"
         command: "case \"${env_type}\" in
   production)
-    echo 'POOL_SIZE='${#MAX_CONNECTIONS}
+    echo 'POOL_SIZE='${MAX_CONNECTIONS}
     ;;
   staging)
-    echo 'POOL_SIZE='$((${#MAX_CONNECTIONS} / 2))
+    echo 'POOL_SIZE='$((${MAX_CONNECTIONS} / 2))
     ;;
   development)
     echo 'POOL_SIZE=10'
@@ -251,7 +251,7 @@ esac"
 
       - step: 3
         description: "Determine logging verbosity based on debug mode"
-        command: "if [[ \"${#DEBUG_MODE}\" == \"true\" ]]; then
+        command: "if [[ \"${DEBUG_MODE}\" == \"true\" ]]; then
   echo 'LOG_LEVEL=DEBUG'
 elif [[ \"${env_type}\" == \"production\" ]]; then
   echo 'LOG_LEVEL=ERROR'
@@ -268,7 +268,7 @@ fi"
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
           output:
-            condition: "[[ \"${#DEBUG_MODE}\" == \"true\" ]]"
+            condition: "[[ \"${DEBUG_MODE}\" == \"true\" ]]"
             if_true:
               - "grep -q 'LOG_LEVEL=DEBUG' <<< \"$COMMAND_OUTPUT\""
             if_false:
@@ -278,7 +278,7 @@ fi"
 
       - step: 4
         description: "Configure caching strategy"
-        command: "if [[ \"${#CACHE_ENABLED}\" == \"true\" ]]; then
+        command: "if [[ \"${CACHE_ENABLED}\" == \"true\" ]]; then
   echo 'CACHE_STRATEGY=redis'
   echo 'CACHE_TTL=3600'
 else
@@ -297,7 +297,7 @@ fi"
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
           output:
-            condition: "[[ \"${#CACHE_ENABLED}\" == \"true\" ]]"
+            condition: "[[ \"${CACHE_ENABLED}\" == \"true\" ]]"
             if_true:
               - "grep -q 'CACHE_STRATEGY=redis' <<< \"$COMMAND_OUTPUT\""
               - "grep -q 'CACHE_TTL=3600' <<< \"$COMMAND_OUTPUT\""
@@ -321,12 +321,12 @@ Runtime Configuration Summary
 ============================
 Environment: ${env_type}
 Database: ${db_connection}
-API Timeout: ${#API_TIMEOUT}s (multiplier: ${timeout_multiplier})
+API Timeout: ${API_TIMEOUT}s (multiplier: ${timeout_multiplier})
 Connection Pool: ${pool_size}
 Caching: ${cache_strategy} (TTL: ${cache_ttl}s)
 Logging: ${log_level}
-Retry Attempts: ${#RETRY_COUNT}
-Debug Mode: ${#DEBUG_MODE}
+Retry Attempts: ${RETRY_COUNT}
+Debug Mode: ${DEBUG_MODE}
 
 Conditional Settings:
 - Timeout adjusted for ${env_type} environment
@@ -368,11 +368,11 @@ cat /tmp/runtime_config_${env_type}.txt"
         description: "Verify numeric configuration values are valid"
         command: "cat << EOF
 Database port: ${db_port_value}
-API timeout: ${#API_TIMEOUT}
+API timeout: ${API_TIMEOUT}
 Pool size: ${pool_size}
 Cache TTL: ${cache_ttl}
-Retry count: ${#RETRY_COUNT}
-Max connections: ${#MAX_CONNECTIONS}
+Retry count: ${RETRY_COUNT}
+Max connections: ${MAX_CONNECTIONS}
 EOF"
         expected:
           success: true
@@ -426,16 +426,16 @@ Environment Type: ${env_type}
 Hydration Status: COMPLETE
 
 Required Variables:
-- ENVIRONMENT: ${#ENVIRONMENT} ✓
-- DATABASE_HOST: ${#DATABASE_HOST} ✓
-- DATABASE_PORT: ${#DATABASE_PORT} ✓
-- API_TIMEOUT: ${#API_TIMEOUT} ✓
+- ENVIRONMENT: ${ENVIRONMENT} ✓
+- DATABASE_HOST: ${DATABASE_HOST} ✓
+- DATABASE_PORT: ${DATABASE_PORT} ✓
+- API_TIMEOUT: ${API_TIMEOUT} ✓
 
 Optional Variables:
-- CACHE_ENABLED: ${#CACHE_ENABLED}
-- DEBUG_MODE: ${#DEBUG_MODE}
-- MAX_CONNECTIONS: ${#MAX_CONNECTIONS}
-- RETRY_COUNT: ${#RETRY_COUNT}
+- CACHE_ENABLED: ${CACHE_ENABLED}
+- DEBUG_MODE: ${DEBUG_MODE}
+- MAX_CONNECTIONS: ${MAX_CONNECTIONS}
+- RETRY_COUNT: ${RETRY_COUNT}
 
 Derived Configuration:
 - Connection: ${db_connection}
