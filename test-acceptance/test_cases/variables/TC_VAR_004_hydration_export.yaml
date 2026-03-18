@@ -54,6 +54,13 @@ test_sequences:
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
           output: "grep -q 'API URL' <<< \"$COMMAND_OUTPUT\""
+          general:
+            - name: verify_api_url_set
+              condition: "grep -q 'https://api.example.com' <<< \"$COMMAND_OUTPUT\""
+            - name: verify_api_key_set
+              condition: "grep -q 'default_test_key_12345' <<< \"$COMMAND_OUTPUT\""
+            - name: verify_timeout_set
+              condition: "grep -q 'Timeout: 30' <<< \"$COMMAND_OUTPUT\""
 
       - step: 2
         description: "Use hydrated variables in mock API call"
@@ -75,3 +82,5 @@ test_sequences:
               condition: "[[ -n \"$configured_timeout\" ]]"
             - name: verify_timeout_numeric
               condition: "[[ $configured_timeout =~ ^[0-9]+$ ]]"
+            - name: verify_timeout_value
+              condition: "[[ $configured_timeout -eq 30 ]]"

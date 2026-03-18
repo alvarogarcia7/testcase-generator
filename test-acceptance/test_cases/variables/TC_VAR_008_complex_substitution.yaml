@@ -36,7 +36,7 @@ test_sequences:
       - step: 1
         description: "Test default value substitution with undefined variable"
         command: |
-          VALUE1="${#UNDEFINED_VAR:-default_value}"
+          VALUE1="${UNDEFINED_VAR:-default_value}"
           VALUE2="${#OPTIONAL_CONFIG:-fallback_config}"
           VALUE3="${#SERVICE_NAME:-fallback_service}"
           echo "Value1: $VALUE1"
@@ -59,6 +59,10 @@ test_sequences:
           general:
             - name: verify_all_values_captured
               condition: "[[ -n \"$captured_value1\" && -n \"$captured_value2\" && -n \"$captured_value3\" ]]"
+            - name: verify_value1_is_default
+              condition: "[[ \"$captured_value1\" = \"default_value\" ]]"
+            - name: verify_value3_is_service_name
+              condition: "[[ \"$captured_value3\" = \"default-service\" ]]"
 
       - step: 2
         description: "Test variable with default using colon minus expansion"
