@@ -42,7 +42,7 @@ test_sequences:
           output: "grep -q '\"status\":\"healthy\"' <<< \"$COMMAND_OUTPUT\""
       - step: 2
         description: "Verify authentication endpoint"
-        command: curl -s -H "Authorization: Bearer ${API_TOKEN}" http://localhost:8080/api/auth/verify
+        command: 'curl -s -H "Authorization: Bearer ${API_TOKEN}" http://localhost:8080/api/auth/verify'
         expected:
           success: true
           result: 0
@@ -104,7 +104,7 @@ test_sequences:
           output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
       - step: 3
         description: "Read created user by ID"
-        command: curl -s -H "Authorization: Bearer ${API_TOKEN}" http://localhost:8080/api/users/$USER_ID
+        command: 'curl -s -H "Authorization: Bearer ${API_TOKEN}" http://localhost:8080/api/users/$USER_ID'
         expected:
           success: true
           result: 0
@@ -114,7 +114,7 @@ test_sequences:
           output: "grep -q '\"email\":\"jane@example.com\"' <<< \"$COMMAND_OUTPUT\""
       - step: 4
         description: "List all users"
-        command: curl -s -H "Authorization: Bearer ${API_TOKEN}" http://localhost:8080/api/users | jq -r 'length'
+        command: 'curl -s -H "Authorization: Bearer ${API_TOKEN}" http://localhost:8080/api/users | jq -r ''length'''
         expected:
           success: true
           result: 0
@@ -148,7 +148,7 @@ test_sequences:
           output: "grep -q '\"success\":true' <<< \"$COMMAND_OUTPUT\""
       - step: 2
         description: "Verify update was applied"
-        command: curl -s -H "Authorization: Bearer ${API_TOKEN}" http://localhost:8080/api/users/$USER_ID | jq -r '.name'
+        command: 'curl -s -H "Authorization: Bearer ${API_TOKEN}" http://localhost:8080/api/users/$USER_ID | jq -r ''.name'''
         expected:
           success: true
           result: 0
@@ -172,7 +172,7 @@ test_sequences:
           output: "grep -q '\"success\":true' <<< \"$COMMAND_OUTPUT\""
       - step: 4
         description: "Delete user"
-        command: curl -s -X DELETE -H "Authorization: Bearer ${API_TOKEN}" http://localhost:8080/api/users/$USER_ID
+        command: 'curl -s -X DELETE -H "Authorization: Bearer ${API_TOKEN}" http://localhost:8080/api/users/$USER_ID'
         expected:
           success: true
           result: 0
@@ -182,7 +182,7 @@ test_sequences:
           output: "grep -q '\"success\":true' <<< \"$COMMAND_OUTPUT\""
       - step: 5
         description: "Verify user no longer exists (404)"
-        command: curl -s -w '\n%{http_code}' -H "Authorization: Bearer ${API_TOKEN}" http://localhost:8080/api/users/$USER_ID | tail -1
+        command: 'curl -s -w ''\n%{http_code}'' -H "Authorization: Bearer ${API_TOKEN}" http://localhost:8080/api/users/$USER_ID | tail -1'
         expected:
           success: true
           result: 0
@@ -259,7 +259,7 @@ test_sequences:
           output: "grep -q '409' <<< \"$COMMAND_OUTPUT\""
       - step: 5
         description: "Test non-existent endpoint (404)"
-        command: curl -s -w '\n%{http_code}' -H "Authorization: Bearer ${API_TOKEN}" http://localhost:8080/api/nonexistent | tail -1
+        command: 'curl -s -w ''\n%{http_code}'' -H "Authorization: Bearer ${API_TOKEN}" http://localhost:8080/api/nonexistent | tail -1'
         expected:
           success: true
           result: 0

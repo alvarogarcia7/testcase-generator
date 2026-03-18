@@ -16,7 +16,7 @@ test_sequences:
     his test case verifies that the eUICC correctly processes an ES6.UpdateMetadata command to unset PPR1
                        when the profile is in the operational state and PPR1 is currently set.
   initial_conditions:
-  - eUICC:
+    eUICC:
     - The PROFILE_OPERATIONAL3 is Enabled.
   steps:
   - step: 1

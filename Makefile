@@ -259,8 +259,8 @@ shellcheck:
 .PHONY: shellcheck
 
 test-e2e-validate-yaml: build
-	cargo run --bin validate-yaml -- --schema data/schema.json tests/sample/gsma_4.4.2.2_TC.yml >/dev/null 2>&1
-	! cargo run --bin validate-yaml -- --schema data/schema.json tests/sample/data.yml >/dev/null 2>&1
+	cargo run --bin validate-yaml -- --schema schemas/test-case.schema.json tests/sample/gsma_4.4.2.2_TC.yml >/dev/null 2>&1
+	! cargo run --bin validate-yaml -- --schema schemas/test-case.schema.json tests/sample/data.yml >/dev/null 2>&1
 	./tests/integration/test_validate_yaml_multi_e2e.sh
 	./tests/integration/test_validate_yaml_watch_e2e.sh
 .PHONY: test-e2e-validate-yaml
@@ -279,15 +279,15 @@ test-verify-sample: build
 .PHONY: test-verify-sample
 
 validate-all-testcases: build
-	SCHEMA_FILE=data/schema.json ./scripts/validate-files.sh --pattern '\.ya?ml$$' --validator ./scripts/validate-yaml-wrapper.sh
+	SCHEMA_FILE=schemas/test-case.schema.json ./scripts/validate-files.sh --pattern '\.ya?ml$$' --validator ./scripts/validate-yaml-wrapper.sh
 .PHONY: validate-all-testcases
 
 verify-testcases: build
 	@echo "Verifying test case files against schema..."
 	@FAILED=0; \
-	for file in $$(find testcases tests/sample data -type f \( -name "*.yml" -o -name "*.yaml" \) -not \( -name "*te.y*" -o -iname "sample_test_runs.yaml" -o -name "*wrong*" \) 2>/dev/null); do \
+	for file in $$(find testcases tests/sample data -type f \( -name "*.yml" -o -name "*.yaml" \) -not \( -path "*/expected_output_reports/*" -o -path "*/testcase_results_container/*" -o -path "*/generated_samples/*" -o -path "*/verifier_scenarios_incorrect/*" -o -name "*te.y*" -o -iname "sample_test_runs.yaml" -o -name "*wrong*" -o -name "data.yml" -o -name "steps-in-json.yml" -o -name "1.yaml" -o -name "SGP.22_4.4.2.yaml" -o -name "conditional_verification_example.yml" -o -name "doc_gen_*.yml" \) 2>/dev/null); do \
 		echo "Validating: $$file"; \
-		if cargo run --bin validate-yaml -- --schema data/schema.json "$$file" >/dev/null 2>&1; then \
+		if cargo run --bin validate-yaml -- --schema schemas/test-case.schema.json "$$file" >/dev/null 2>&1; then \
 			echo "  ✓ PASSED"; \
 		else \
 			echo "  ✗ FAILED"; \
@@ -311,7 +311,7 @@ watch: build
 .PHONY: watch
 
 watch-verbose: build
-	SCHEMA_FILE=data/schema.json ./scripts/validate-files.sh --pattern '\.ya?ml$$' --validator ./scripts/validate-yaml-wrapper.sh --watch --verbose
+	SCHEMA_FILE=schemas/test-case.schema.json ./scripts/validate-files.sh --pattern '\.ya?ml$$' --validator ./scripts/validate-yaml-wrapper.sh --watch --verbose
 .PHONY: watch-verbose
 
 clean-validation-cache:

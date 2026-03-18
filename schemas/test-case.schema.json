@@ -216,42 +216,140 @@
       "description": "Optional hooks for custom script execution at various points in the test lifecycle. Hook paths are relative to the test case YAML file location or absolute paths.",
       "properties": {
         "script_start": {
-          "type": "string",
-          "description": "Path to script executed once at the very beginning of the test case script, before any other processing. Path is relative to test case YAML location or absolute."
+          "type": "object",
+          "description": "Hook executed once at the very beginning of the test case script, before any other processing.",
+          "properties": {
+            "command": {
+              "type": "string",
+              "description": "Path to script to execute. Path is relative to test case YAML location or absolute."
+            },
+            "on_error": {
+              "type": "string",
+              "enum": ["fail", "continue"],
+              "default": "fail",
+              "description": "Behavior when hook fails: 'fail' stops test execution (default), 'continue' logs error but continues."
+            }
+          },
+          "required": ["command"]
         },
         "setup_test": {
-          "type": "string",
-          "description": "Path to script executed once at test case setup, after script_start but before any test sequences. Path is relative to test case YAML location or absolute."
+          "type": "object",
+          "description": "Hook executed once at test case setup, after script_start but before any test sequences.",
+          "properties": {
+            "command": {
+              "type": "string",
+              "description": "Path to script to execute. Path is relative to test case YAML location or absolute."
+            },
+            "on_error": {
+              "type": "string",
+              "enum": ["fail", "continue"],
+              "default": "fail",
+              "description": "Behavior when hook fails: 'fail' stops test execution (default), 'continue' logs error but continues."
+            }
+          },
+          "required": ["command"]
         },
         "before_sequence": {
-          "type": "string",
-          "description": "Path to script executed before each test sequence starts. Path is relative to test case YAML location or absolute."
+          "type": "object",
+          "description": "Hook executed before each test sequence starts.",
+          "properties": {
+            "command": {
+              "type": "string",
+              "description": "Path to script to execute. Path is relative to test case YAML location or absolute."
+            },
+            "on_error": {
+              "type": "string",
+              "enum": ["fail", "continue"],
+              "default": "fail",
+              "description": "Behavior when hook fails: 'fail' stops test execution (default), 'continue' logs error but continues."
+            }
+          },
+          "required": ["command"]
         },
         "after_sequence": {
-          "type": "string",
-          "description": "Path to script executed after each test sequence completes. Path is relative to test case YAML location or absolute."
+          "type": "object",
+          "description": "Hook executed after each test sequence completes.",
+          "properties": {
+            "command": {
+              "type": "string",
+              "description": "Path to script to execute. Path is relative to test case YAML location or absolute."
+            },
+            "on_error": {
+              "type": "string",
+              "enum": ["fail", "continue"],
+              "default": "fail",
+              "description": "Behavior when hook fails: 'fail' stops test execution (default), 'continue' logs error but continues."
+            }
+          },
+          "required": ["command"]
         },
         "before_step": {
-          "type": "string",
-          "description": "Path to script executed before each test step. Path is relative to test case YAML location or absolute."
+          "type": "object",
+          "description": "Hook executed before each test step.",
+          "properties": {
+            "command": {
+              "type": "string",
+              "description": "Path to script to execute. Path is relative to test case YAML location or absolute."
+            },
+            "on_error": {
+              "type": "string",
+              "enum": ["fail", "continue"],
+              "default": "fail",
+              "description": "Behavior when hook fails: 'fail' stops test execution (default), 'continue' logs error but continues."
+            }
+          },
+          "required": ["command"]
         },
         "after_step": {
-          "type": "string",
-          "description": "Path to script executed after each test step. Path is relative to test case YAML location or absolute."
+          "type": "object",
+          "description": "Hook executed after each test step.",
+          "properties": {
+            "command": {
+              "type": "string",
+              "description": "Path to script to execute. Path is relative to test case YAML location or absolute."
+            },
+            "on_error": {
+              "type": "string",
+              "enum": ["fail", "continue"],
+              "default": "fail",
+              "description": "Behavior when hook fails: 'fail' stops test execution (default), 'continue' logs error but continues."
+            }
+          },
+          "required": ["command"]
         },
         "teardown_test": {
-          "type": "string",
-          "description": "Path to script executed once at test case teardown, after all test sequences complete but before script_end. Path is relative to test case YAML location or absolute."
+          "type": "object",
+          "description": "Hook executed once at test case teardown, after all test sequences complete but before script_end.",
+          "properties": {
+            "command": {
+              "type": "string",
+              "description": "Path to script to execute. Path is relative to test case YAML location or absolute."
+            },
+            "on_error": {
+              "type": "string",
+              "enum": ["fail", "continue"],
+              "default": "fail",
+              "description": "Behavior when hook fails: 'fail' stops test execution (default), 'continue' logs error but continues."
+            }
+          },
+          "required": ["command"]
         },
         "script_end": {
-          "type": "string",
-          "description": "Path to script executed once at the very end of the test case script, after all other processing. Path is relative to test case YAML location or absolute."
-        },
-        "on_error": {
-          "type": "string",
-          "enum": ["fail", "continue"],
-          "default": "fail",
-          "description": "Behavior when a hook script fails: 'fail' stops test execution (default), 'continue' logs the error but continues test execution."
+          "type": "object",
+          "description": "Hook executed once at the very end of the test case script, after all other processing.",
+          "properties": {
+            "command": {
+              "type": "string",
+              "description": "Path to script to execute. Path is relative to test case YAML location or absolute."
+            },
+            "on_error": {
+              "type": "string",
+              "enum": ["fail", "continue"],
+              "default": "fail",
+              "description": "Behavior when hook fails: 'fail' stops test execution (default), 'continue' logs error but continues."
+            }
+          },
+          "required": ["command"]
         }
       }
     },
@@ -442,6 +540,9 @@
                           "type": "string"
                         },
                         {
+                          "type": "boolean"
+                        },
+                        {
                           "type": "object",
                           "properties": {
                             "condition": {
@@ -476,6 +577,9 @@
                           "type": "string"
                         },
                         {
+                          "type": "boolean"
+                        },
+                        {
                           "type": "object",
                           "properties": {
                             "condition": {
@@ -508,6 +612,9 @@
                       "oneOf": [
                         {
                           "type": "string"
+                        },
+                        {
+                          "type": "boolean"
                         },
                         {
                           "type": "object",
