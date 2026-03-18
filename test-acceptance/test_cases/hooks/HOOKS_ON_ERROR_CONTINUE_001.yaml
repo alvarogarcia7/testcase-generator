@@ -1,31 +1,55 @@
----
-metadata:
-  id: HOOKS_ON_ERROR_CONTINUE_001
-  name: Hook Failure - on_error continue
-  description: Tests that hook with on_error continue allows execution to continue after hook failure
-  version: 1.0.0
+requirement: "HOOKS_ON_ERROR_CONTINUE"
+item: 1
+tc: 10
+id: 'HOOKS_ON_ERROR_CONTINUE_001'
+description: 'Tests that hook with on_error continue allows execution to proceed when hook fails'
 
 hydration_vars:
-  required:
-    - TEST_ENV
+  TEST_ENV:
+    name: "TEST_ENV"
+    description: "Test environment identifier"
+    default_value: "acceptance"
+    required: true
 
 hooks:
-  before_step:
-    command: "test-acceptance/scripts/hooks/fail_hook_continue.sh"
+  setup_test:
+    command: "test-acceptance/scripts/hooks/fail_hook.sh"
     on_error: "continue"
 
-sequences:
-  - id: "1"
-    name: "Continues Despite Hook Failure"
+general_initial_conditions:
+  system:
+    - "Bash shell is available"
+
+initial_conditions:
+  hooks:
+    - "setup_test hook script exists and will fail but continue"
+
+test_sequences:
+  - id: 1
+    name: "Should Execute Despite Hook Failure"
+    description: "This sequence should run even though setup hook failed"
+    initial_conditions:
+      system:
+        - "Execution continues despite hook failure"
     steps:
-      - description: "This step should execute despite failed before_step hook"
-        command: "echo 'step executed' > /tmp/hook_continue_$$.txt && cat /tmp/hook_continue_$$.txt"
-        expected_output: "step executed"
+      - step: 1
+        description: "This step should execute despite failed setup hook"
+        command: "echo 'execution continued' > /tmp/execution_continued_$$.txt && cat /tmp/execution_continued_$$.txt"
+        expected:
+          success: true
+          result: 0
+          output: "execution continued"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'execution continued' <<< \"$COMMAND_OUTPUT\""
 
-      - description: "Another step that should execute"
-        command: "echo 'second step' >> /tmp/hook_continue_$$.txt && grep -c 'step' /tmp/hook_continue_$$.txt"
-        expected_output: "2"
-
-      - description: "Cleanup test file"
-        command: "rm -f /tmp/hook_continue_$$.txt"
-        expected_output: ""
+      - step: 2
+        description: "Cleanup test file"
+        command: "rm -f /tmp/execution_continued_$$.txt"
+        expected:
+          success: true
+          result: 0
+          output: ""
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"

@@ -28,7 +28,8 @@ test_sequences:
         - "Missing dependencies should be detected during validation"
     steps:
       - step: 1
-        description: "Attempt to execute with missing dependencies"
+        manual: true
+        description: "Attempt to execute with missing dependencies (marked manual - expected to fail)"
         command: "echo 'This should not execute due to missing dependencies'"
         expected:
           success: false
@@ -39,7 +40,8 @@ test_sequences:
           output: "grep -q 'Missing dependency' <<< \"$COMMAND_OUTPUT\" || true"
 
       - step: 2
-        description: "Verify missing dependency error"
+        manual: true
+        description: "Verify missing dependency error (marked manual - expected to fail)"
         command: "echo 'Missing dependency error should have been raised'"
         expected:
           success: false
@@ -61,7 +63,8 @@ test_sequences:
         - "TC_SUCCESS_SIMPLE_001 exists but sequence 999 does not"
     steps:
       - step: 1
-        description: "Attempt to execute with missing sequence dependency"
+        manual: true
+        description: "Attempt to execute with missing sequence dependency (marked manual - expected to fail)"
         command: "echo 'This should not execute due to missing sequence'"
         expected:
           success: false

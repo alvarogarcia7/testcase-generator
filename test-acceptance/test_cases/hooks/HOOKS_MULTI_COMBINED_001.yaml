@@ -1,15 +1,20 @@
----
-metadata:
-  id: HOOKS_MULTI_COMBINED_001
-  name: Multiple Hooks Combined
-  description: Tests multiple hook types working together in a single test case
-  version: 1.0.0
+requirement: "HOOKS_MULTI_COMBINED"
+item: 1
+tc: 14
+id: 'HOOKS_MULTI_COMBINED_001'
+description: 'Tests multiple hook types working together in a single test case'
 
 hydration_vars:
-  required:
-    - TEST_ENV
-  optional:
-    - LOG_LEVEL
+  TEST_ENV:
+    name: "TEST_ENV"
+    description: "Test environment identifier"
+    default_value: "acceptance"
+    required: true
+  LOG_LEVEL:
+    name: "LOG_LEVEL"
+    description: "Logging level"
+    default_value: "INFO"
+    required: false
 
 hooks:
   script_start:
@@ -37,33 +42,93 @@ hooks:
     command: "test-acceptance/scripts/hooks/multi_script_end.sh"
     on_error: "continue"
 
-sequences:
-  - id: "1"
+general_initial_conditions:
+  system:
+    - "All hook scripts are available and executable"
+
+initial_conditions:
+  filesystem:
+    - "Temporary directory /tmp is writable"
+  hooks:
+    - "All 8 hook types are configured"
+
+test_sequences:
+  - id: 1
     name: "First Combined Sequence"
+    description: "First test sequence with multiple hooks"
+    initial_conditions:
+      system:
+        - "script_start and setup_test hooks have executed"
     steps:
-      - description: "Verify script_start hook executed"
+      - step: 1
+        description: "Verify script_start hook executed"
         command: "test -f /tmp/multi_hooks_$$.log && grep 'script_start' /tmp/multi_hooks_$$.log"
-        expected_output: "script_start executed"
+        expected:
+          success: true
+          result: 0
+          output: "script_start executed"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'script_start' <<< \"$COMMAND_OUTPUT\""
 
-      - description: "Verify setup_test hook executed"
+      - step: 2
+        description: "Verify setup_test hook executed"
         command: "grep 'setup_test' /tmp/multi_hooks_$$.log"
-        expected_output: "setup_test executed"
+        expected:
+          success: true
+          result: 0
+          output: "setup_test executed"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'setup_test' <<< \"$COMMAND_OUTPUT\""
 
-      - description: "Verify before_sequence hook executed"
+      - step: 3
+        description: "Verify before_sequence hook executed"
         command: "grep 'before_sequence.*Sequence 1' /tmp/multi_hooks_$$.log"
-        expected_output: "before_sequence.*Sequence 1.*"
+        expected:
+          success: true
+          result: 0
+          output: "before_sequence"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'before_sequence' <<< \"$COMMAND_OUTPUT\""
 
-  - id: "2"
+  - id: 2
     name: "Second Combined Sequence"
+    description: "Second test sequence to verify hook transitions"
+    initial_conditions:
+      system:
+        - "after_sequence hook for sequence 1 has executed"
     steps:
-      - description: "Verify after_sequence hook executed for sequence 1"
+      - step: 1
+        description: "Verify after_sequence hook executed for sequence 1"
         command: "grep 'after_sequence.*Sequence 1' /tmp/multi_hooks_$$.log"
-        expected_output: "after_sequence.*Sequence 1.*"
+        expected:
+          success: true
+          result: 0
+          output: "after_sequence"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'after_sequence' <<< \"$COMMAND_OUTPUT\""
 
-      - description: "Verify all hook types are present"
+      - step: 2
+        description: "Verify all hook types are present"
         command: "grep -c -E '(script_start|setup_test|before_sequence|after_step|before_step)' /tmp/multi_hooks_$$.log"
-        expected_output: "[0-9]+"
+        expected:
+          success: true
+          result: 0
+          output: "number"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
 
-      - description: "Count total hook executions"
+      - step: 3
+        description: "Count total hook executions"
         command: "wc -l < /tmp/multi_hooks_$$.log | tr -d ' '"
-        expected_output: "[0-9]+"
+        expected:
+          success: true
+          result: 0
+          output: "number"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"

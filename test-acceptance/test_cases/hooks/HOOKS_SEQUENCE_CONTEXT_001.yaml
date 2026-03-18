@@ -1,56 +1,78 @@
----
-metadata:
-  id: HOOKS_SEQUENCE_CONTEXT_001
-  name: Hooks with Sequence Context
-  description: Tests that hooks receive correct sequence context variables
-  version: 1.0.0
+requirement: "HOOKS_SEQUENCE_CONTEXT"
+item: 1
+tc: 11
+id: 'HOOKS_SEQUENCE_CONTEXT_001'
+description: 'Tests that sequence hooks receive proper context (sequence ID and name)'
 
 hydration_vars:
-  required:
-    - TEST_ENV
+  TEST_ENV:
+    name: "TEST_ENV"
+    description: "Test environment identifier"
+    default_value: "acceptance"
+    required: true
 
 hooks:
   before_sequence:
-    command: "test-acceptance/scripts/hooks/context_before_sequence.sh"
+    command: "test-acceptance/scripts/hooks/before_sequence_context.sh"
     on_error: "fail"
   after_sequence:
-    command: "test-acceptance/scripts/hooks/context_after_sequence.sh"
+    command: "test-acceptance/scripts/hooks/after_sequence_context.sh"
     on_error: "continue"
 
-sequences:
-  - id: "1"
-    name: "Alpha Sequence"
+general_initial_conditions:
+  system:
+    - "Bash shell is available"
+
+initial_conditions:
+  filesystem:
+    - "Temporary directory /tmp is writable"
+  hooks:
+    - "Sequence context hook scripts exist and are executable"
+
+test_sequences:
+  - id: 1
+    name: "First Context Sequence"
+    description: "First test sequence to verify context passing"
+    initial_conditions:
+      system:
+        - "before_sequence hook has received sequence context"
     steps:
-      - description: "First step in alpha"
-        command: "echo 'alpha step 1'"
-        expected_output: "alpha step 1"
+      - step: 1
+        description: "Verify sequence context was captured"
+        command: "test -f /tmp/sequence_context_$$.log && grep 'sequence_id=1' /tmp/sequence_context_$$.log"
+        expected:
+          success: true
+          result: 0
+          output: "sequence_id=1"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'sequence_id=1' <<< \"$COMMAND_OUTPUT\""
 
-  - id: "2"
-    name: "Beta Sequence"
+  - id: 2
+    name: "Second Context Sequence"
+    description: "Second test sequence to verify different context"
+    initial_conditions:
+      system:
+        - "after_sequence hook for sequence 1 has executed"
     steps:
-      - description: "First step in beta"
-        command: "echo 'beta step 1'"
-        expected_output: "beta step 1"
+      - step: 1
+        description: "Verify second sequence context"
+        command: "grep 'sequence_id=2' /tmp/sequence_context_$$.log"
+        expected:
+          success: true
+          result: 0
+          output: "sequence_id=2"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'sequence_id=2' <<< \"$COMMAND_OUTPUT\""
 
-  - id: "3"
-    name: "Gamma Sequence"
-    steps:
-      - description: "Verify sequence context logged correctly"
-        command: "test -f /tmp/sequence_context_$$.log && cat /tmp/sequence_context_$$.log"
-        expected_output: ".*"
-
-      - description: "Check sequence IDs"
-        command: "grep 'TEST_SEQUENCE_ID' /tmp/sequence_context_$$.log | grep -E '(1|2|3)'"
-        expected_output: ".*TEST_SEQUENCE_ID.*(1|2|3).*"
-
-      - description: "Check sequence names"
-        command: "grep -E '(Alpha|Beta|Gamma) Sequence' /tmp/sequence_context_$$.log"
-        expected_output: ".*(Alpha|Beta|Gamma) Sequence.*"
-
-      - description: "Verify both before and after hooks logged"
-        command: "grep -c -E '(before_sequence|after_sequence)' /tmp/sequence_context_$$.log"
-        expected_output: "[456789]"
-
-      - description: "Cleanup log file"
+      - step: 2
+        description: "Cleanup context log"
         command: "rm -f /tmp/sequence_context_$$.log"
-        expected_output: ""
+        expected:
+          success: true
+          result: 0
+          output: ""
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"

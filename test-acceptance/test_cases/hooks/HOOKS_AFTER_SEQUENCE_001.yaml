@@ -1,49 +1,64 @@
----
-metadata:
-  id: HOOKS_AFTER_SEQUENCE_001
-  name: After Sequence Hook - Cleanup
-  description: Tests after_sequence hook that performs cleanup after each sequence
-  version: 1.0.0
+requirement: "HOOKS_AFTER_SEQUENCE"
+item: 1
+tc: 6
+id: 'HOOKS_AFTER_SEQUENCE_001'
+description: 'Tests after_sequence hook that executes after each test sequence'
 
 hydration_vars:
-  required:
-    - TEST_ENV
+  TEST_ENV:
+    name: "TEST_ENV"
+    description: "Test environment identifier"
+    default_value: "acceptance"
+    required: true
 
 hooks:
-  before_sequence:
-    command: "test-acceptance/scripts/hooks/before_sequence_create_temp.sh"
-    on_error: "fail"
   after_sequence:
     command: "test-acceptance/scripts/hooks/after_sequence_cleanup.sh"
     on_error: "continue"
 
-sequences:
-  - id: "1"
-    name: "First Sequence with Cleanup"
+general_initial_conditions:
+  system:
+    - "Bash shell is available"
+
+initial_conditions:
+  filesystem:
+    - "Temporary directory /tmp is writable"
+  hooks:
+    - "after_sequence hook script exists and is executable"
+
+test_sequences:
+  - id: 1
+    name: "First Sequence"
+    description: "First test sequence with after_sequence hook"
+    initial_conditions:
+      system:
+        - "Test sequence 1 is executing"
     steps:
-      - description: "Create temp file in sequence"
-        command: "echo 'sequence 1 data' > /tmp/sequence_1_$$.tmp && cat /tmp/sequence_1_$$.tmp"
-        expected_output: "sequence 1 data"
+      - step: 1
+        description: "Create marker for after_sequence verification"
+        command: "echo 'sequence 1 complete' > /tmp/after_sequence_marker_1_$$.txt && cat /tmp/after_sequence_marker_1_$$.txt"
+        expected:
+          success: true
+          result: 0
+          output: "sequence 1 complete"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'sequence 1 complete' <<< \"$COMMAND_OUTPUT\""
 
-      - description: "Verify temp file exists before cleanup"
-        command: "test -f /tmp/sequence_1_$$.tmp && echo 'exists'"
-        expected_output: "exists"
-
-  - id: "2"
-    name: "Second Sequence Verifies Cleanup"
+  - id: 2
+    name: "Second Sequence"
+    description: "Second test sequence to verify after_sequence hook ran"
+    initial_conditions:
+      system:
+        - "after_sequence hook has executed for sequence 1"
     steps:
-      - description: "Verify sequence 1 temp file was cleaned up"
-        command: "test ! -f /tmp/sequence_1_$$.tmp && echo 'cleaned up'"
-        expected_output: "cleaned up"
-
-      - description: "Create temp file in sequence 2"
-        command: "echo 'sequence 2 data' > /tmp/sequence_2_$$.tmp && cat /tmp/sequence_2_$$.tmp"
-        expected_output: "sequence 2 data"
-
-      - description: "Verify cleanup log exists"
-        command: "test -f /tmp/after_sequence_cleanup_$$.log && grep -c 'Cleaned up sequence' /tmp/after_sequence_cleanup_$$.log"
-        expected_output: "2"
-
-      - description: "Cleanup all test files"
-        command: "rm -f /tmp/sequence_*_$$.tmp /tmp/after_sequence_cleanup_$$.log /tmp/before_sequence_temp_$$.log"
-        expected_output: ""
+      - step: 1
+        description: "Verify after_sequence cleaned up sequence 1 marker"
+        command: "if [ -f /tmp/after_sequence_marker_1_$$.txt ]; then echo 'marker still exists'; else echo 'marker cleaned up'; fi"
+        expected:
+          success: true
+          result: 0
+          output: "marker cleaned up"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'marker cleaned up' <<< \"$COMMAND_OUTPUT\""

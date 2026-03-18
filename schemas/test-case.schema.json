@@ -25,7 +25,10 @@
         "properties": {
           "type": {
             "type": "string",
-            "enum": ["manual", "automatic"],
+            "enum": [
+              "manual",
+              "automatic"
+            ],
             "description": "Type of prerequisite: 'manual' requires human verification, 'automatic' can be verified programmatically."
           },
           "description": {
@@ -37,7 +40,10 @@
             "description": "Command to verify the prerequisite (required for automatic type)."
           }
         },
-        "required": ["type", "description"],
+        "required": [
+          "type",
+          "description"
+        ],
         "allOf": [
           {
             "if": {
@@ -48,7 +54,9 @@
               }
             },
             "then": {
-              "required": ["verification_command"]
+              "required": [
+                "verification_command"
+              ]
             }
           }
         ]
@@ -73,7 +81,9 @@
                 "description": "Optional test sequence ID to include conditions from a specific sequence."
               }
             },
-            "required": ["id"]
+            "required": [
+              "id"
+            ]
           }
         }
       },
@@ -93,7 +103,9 @@
                   "description": "Reference to a condition defined elsewhere."
                 }
               },
-              "required": ["ref"]
+              "required": [
+                "ref"
+              ]
             },
             {
               "type": "object",
@@ -110,10 +122,15 @@
                       "description": "Step identifier within the test sequence."
                     }
                   },
-                  "required": ["id", "step"]
+                  "required": [
+                    "id",
+                    "step"
+                  ]
                 }
               },
-              "required": ["test_sequence"]
+              "required": [
+                "test_sequence"
+              ]
             }
           ]
         }
@@ -138,7 +155,9 @@
                 "description": "Optional test sequence ID to include conditions from a specific sequence."
               }
             },
-            "required": ["id"]
+            "required": [
+              "id"
+            ]
           }
         }
       },
@@ -158,7 +177,9 @@
                   "description": "Reference to a condition defined elsewhere."
                 }
               },
-              "required": ["ref"]
+              "required": [
+                "ref"
+              ]
             },
             {
               "type": "object",
@@ -175,10 +196,15 @@
                       "description": "Step identifier within the test sequence."
                     }
                   },
-                  "required": ["id", "step"]
+                  "required": [
+                    "id",
+                    "step"
+                  ]
                 }
               },
-              "required": ["test_sequence"]
+              "required": [
+                "test_sequence"
+              ]
             }
           ]
         }
@@ -208,7 +234,9 @@
             "default": false
           }
         },
-        "required": ["name"]
+        "required": [
+          "name"
+        ]
       }
     },
     "hooks": {
@@ -216,140 +244,251 @@
       "description": "Optional hooks for custom script execution at various points in the test lifecycle. Hook paths are relative to the test case YAML file location or absolute paths.",
       "properties": {
         "script_start": {
-          "type": "object",
-          "description": "Hook executed once at the very beginning of the test case script, before any other processing.",
-          "properties": {
-            "command": {
+          "oneOf": [
+            {
               "type": "string",
-              "description": "Path to script to execute. Path is relative to test case YAML location or absolute."
+              "description": "Path to script executed once at the very beginning of the test case script."
             },
-            "on_error": {
-              "type": "string",
-              "enum": ["fail", "continue"],
-              "default": "fail",
-              "description": "Behavior when hook fails: 'fail' stops test execution (default), 'continue' logs error but continues."
+            {
+              "type": "object",
+              "properties": {
+                "command": {
+                  "type": "string",
+                  "description": "Path to script executed once at the very beginning of the test case script."
+                },
+                "on_error": {
+                  "type": "string",
+                  "enum": [
+                    "fail",
+                    "continue"
+                  ],
+                  "default": "fail",
+                  "description": "Behavior when this hook fails."
+                }
+              },
+              "required": [
+                "command"
+              ]
             }
-          },
-          "required": ["command"]
+          ]
         },
         "setup_test": {
-          "type": "object",
-          "description": "Hook executed once at test case setup, after script_start but before any test sequences.",
-          "properties": {
-            "command": {
+          "oneOf": [
+            {
               "type": "string",
-              "description": "Path to script to execute. Path is relative to test case YAML location or absolute."
+              "description": "Path to script executed once at test case setup."
             },
-            "on_error": {
-              "type": "string",
-              "enum": ["fail", "continue"],
-              "default": "fail",
-              "description": "Behavior when hook fails: 'fail' stops test execution (default), 'continue' logs error but continues."
+            {
+              "type": "object",
+              "properties": {
+                "command": {
+                  "type": "string",
+                  "description": "Path to script executed once at test case setup."
+                },
+                "on_error": {
+                  "type": "string",
+                  "enum": [
+                    "fail",
+                    "continue"
+                  ],
+                  "default": "fail",
+                  "description": "Behavior when this hook fails."
+                }
+              },
+              "required": [
+                "command"
+              ]
             }
-          },
-          "required": ["command"]
+          ]
         },
         "before_sequence": {
-          "type": "object",
-          "description": "Hook executed before each test sequence starts.",
-          "properties": {
-            "command": {
+          "oneOf": [
+            {
               "type": "string",
-              "description": "Path to script to execute. Path is relative to test case YAML location or absolute."
+              "description": "Path to script executed before each test sequence starts."
             },
-            "on_error": {
-              "type": "string",
-              "enum": ["fail", "continue"],
-              "default": "fail",
-              "description": "Behavior when hook fails: 'fail' stops test execution (default), 'continue' logs error but continues."
+            {
+              "type": "object",
+              "description": "Hook executed before each test sequence starts.",
+              "properties": {
+                "command": {
+                  "type": "string",
+                  "description": "Path to script executed before each test sequence starts."
+                },
+                "on_error": {
+                  "type": "string",
+                  "enum": [
+                    "fail",
+                    "continue"
+                  ],
+                  "default": "fail",
+                  "description": "Behavior when this hook fails."
+                }
+              },
+              "required": [
+                "command"
+              ]
             }
-          },
-          "required": ["command"]
+          ]
         },
         "after_sequence": {
-          "type": "object",
-          "description": "Hook executed after each test sequence completes.",
-          "properties": {
-            "command": {
+          "oneOf": [
+            {
               "type": "string",
-              "description": "Path to script to execute. Path is relative to test case YAML location or absolute."
+              "description": "Path to script executed after each test sequence completes."
             },
-            "on_error": {
-              "type": "string",
-              "enum": ["fail", "continue"],
-              "default": "fail",
-              "description": "Behavior when hook fails: 'fail' stops test execution (default), 'continue' logs error but continues."
+            {
+              "type": "object",
+              "description": "Hook executed after each test sequence completes.",
+              "properties": {
+                "command": {
+                  "type": "string",
+                  "description": "Path to script executed after each test sequence completes."
+                },
+                "on_error": {
+                  "type": "string",
+                  "enum": [
+                    "fail",
+                    "continue"
+                  ],
+                  "default": "fail",
+                  "description": "Behavior when this hook fails."
+                }
+              },
+              "required": [
+                "command"
+              ]
             }
-          },
-          "required": ["command"]
+          ]
         },
         "before_step": {
-          "type": "object",
-          "description": "Hook executed before each test step.",
-          "properties": {
-            "command": {
+          "oneOf": [
+            {
               "type": "string",
-              "description": "Path to script to execute. Path is relative to test case YAML location or absolute."
+              "description": "Path to script executed before each test step."
             },
-            "on_error": {
-              "type": "string",
-              "enum": ["fail", "continue"],
-              "default": "fail",
-              "description": "Behavior when hook fails: 'fail' stops test execution (default), 'continue' logs error but continues."
+            {
+              "type": "object",
+              "description": "Hook executed before each test step.",
+              "properties": {
+                "command": {
+                  "type": "string",
+                  "description": "Path to script executed before each test step."
+                },
+                "on_error": {
+                  "type": "string",
+                  "enum": [
+                    "fail",
+                    "continue"
+                  ],
+                  "default": "fail",
+                  "description": "Behavior when this hook fails."
+                }
+              },
+              "required": [
+                "command"
+              ]
             }
-          },
-          "required": ["command"]
+          ]
         },
         "after_step": {
-          "type": "object",
-          "description": "Hook executed after each test step.",
-          "properties": {
-            "command": {
+          "oneOf": [
+            {
               "type": "string",
-              "description": "Path to script to execute. Path is relative to test case YAML location or absolute."
+              "description": "Path to script executed after each test step."
             },
-            "on_error": {
-              "type": "string",
-              "enum": ["fail", "continue"],
-              "default": "fail",
-              "description": "Behavior when hook fails: 'fail' stops test execution (default), 'continue' logs error but continues."
+            {
+              "type": "object",
+              "description": "Hook executed after each test step.",
+              "properties": {
+                "command": {
+                  "type": "string",
+                  "description": "Path to script executed after each test step."
+                },
+                "on_error": {
+                  "type": "string",
+                  "enum": [
+                    "fail",
+                    "continue"
+                  ],
+                  "default": "fail",
+                  "description": "Behavior when this hook fails."
+                }
+              },
+              "required": [
+                "command"
+              ]
             }
-          },
-          "required": ["command"]
+          ]
         },
         "teardown_test": {
-          "type": "object",
-          "description": "Hook executed once at test case teardown, after all test sequences complete but before script_end.",
-          "properties": {
-            "command": {
+          "oneOf": [
+            {
               "type": "string",
-              "description": "Path to script to execute. Path is relative to test case YAML location or absolute."
+              "description": "Path to script executed once at test case teardown."
             },
-            "on_error": {
-              "type": "string",
-              "enum": ["fail", "continue"],
-              "default": "fail",
-              "description": "Behavior when hook fails: 'fail' stops test execution (default), 'continue' logs error but continues."
+            {
+              "type": "object",
+              "description": "Hook executed once at test case teardown, after all test sequences complete but before script_end.",
+              "properties": {
+                "command": {
+                  "type": "string",
+                  "description": "Path to script executed once at test case teardown."
+                },
+                "on_error": {
+                  "type": "string",
+                  "enum": [
+                    "fail",
+                    "continue"
+                  ],
+                  "default": "fail",
+                  "description": "Behavior when this hook fails."
+                }
+              },
+              "required": [
+                "command"
+              ]
             }
-          },
-          "required": ["command"]
+          ]
         },
         "script_end": {
-          "type": "object",
-          "description": "Hook executed once at the very end of the test case script, after all other processing.",
-          "properties": {
-            "command": {
+          "oneOf": [
+            {
               "type": "string",
-              "description": "Path to script to execute. Path is relative to test case YAML location or absolute."
+              "description": "Path to script executed once at the very end of the test case script."
             },
-            "on_error": {
-              "type": "string",
-              "enum": ["fail", "continue"],
-              "default": "fail",
-              "description": "Behavior when hook fails: 'fail' stops test execution (default), 'continue' logs error but continues."
+            {
+              "type": "object",
+              "description": "Hook executed once at the very end of the test case script, after all other processing.",
+              "properties": {
+                "command": {
+                  "type": "string",
+                  "description": "Path to script executed once at the very end of the test case script."
+                },
+                "on_error": {
+                  "type": "string",
+                  "enum": [
+                    "fail",
+                    "continue"
+                  ],
+                  "default": "fail",
+                  "description": "Behavior when this hook fails."
+                }
+              },
+              "required": [
+                "command"
+              ]
             }
-          },
-          "required": ["command"]
+          ]
+        },
+        "on_error": {
+          "type": "string",
+          "enum": [
+            "fail",
+            "continue"
+          ],
+          "default": "fail",
+          "description": "Global default behavior when a hook script fails (can be overridden per-hook)."
         }
       }
     },
@@ -397,7 +536,9 @@
                       "description": "Optional test sequence ID to include conditions from a specific sequence."
                     }
                   },
-                  "required": ["id"]
+                  "required": [
+                    "id"
+                  ]
                 }
               }
             },
@@ -417,7 +558,9 @@
                         "description": "Reference to a condition defined elsewhere."
                       }
                     },
-                    "required": ["ref"]
+                    "required": [
+                      "ref"
+                    ]
                   },
                   {
                     "type": "object",
@@ -434,10 +577,15 @@
                             "description": "Step identifier within the test sequence."
                           }
                         },
-                        "required": ["id", "step"]
+                        "required": [
+                          "id",
+                          "step"
+                        ]
                       }
                     },
-                    "required": ["test_sequence"]
+                    "required": [
+                      "test_sequence"
+                    ]
                   }
                 ]
               }
@@ -464,7 +612,10 @@
                   "type": "string"
                 },
                 "command": {
-                  "type": ["string", "boolean"]
+                  "type": [
+                    "string",
+                    "boolean"
+                  ]
                 },
                 "capture_vars": {
                   "oneOf": [
@@ -487,18 +638,28 @@
                             "description": "Command to execute to obtain the variable value."
                           }
                         },
-                        "required": ["name"],
+                        "required": [
+                          "name"
+                        ],
                         "oneOf": [
                           {
-                            "required": ["capture"],
+                            "required": [
+                              "capture"
+                            ],
                             "not": {
-                              "required": ["command"]
+                              "required": [
+                                "command"
+                              ]
                             }
                           },
                           {
-                            "required": ["command"],
+                            "required": [
+                              "command"
+                            ],
                             "not": {
-                              "required": ["capture"]
+                              "required": [
+                                "capture"
+                              ]
                             }
                           }
                         ]
@@ -520,7 +681,10 @@
                       "type": "boolean"
                     },
                     "result": {
-                      "type": ["string", "integer"]
+                      "type": [
+                        "string",
+                        "integer"
+                      ]
                     },
                     "output": {
                       "type": "string"
@@ -567,7 +731,9 @@
                               }
                             }
                           },
-                          "required": ["condition"]
+                          "required": [
+                            "condition"
+                          ]
                         }
                       ]
                     },
@@ -604,7 +770,9 @@
                               }
                             }
                           },
-                          "required": ["condition"]
+                          "required": [
+                            "condition"
+                          ]
                         }
                       ]
                     },
@@ -641,7 +809,9 @@
                               }
                             }
                           },
-                          "required": ["condition"]
+                          "required": [
+                            "condition"
+                          ]
                         }
                       ]
                     },
@@ -660,7 +830,10 @@
                             "description": "Condition expression to evaluate for this verification."
                           }
                         },
-                        "required": ["name", "condition"]
+                        "required": [
+                          "name",
+                          "condition"
+                        ]
                       }
                     }
                   },

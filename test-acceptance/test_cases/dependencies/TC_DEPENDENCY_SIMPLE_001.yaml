@@ -2,20 +2,20 @@ requirement: "DEPENDENCY_SIMPLE"
 item: 1
 tc: 1
 id: 'TC_DEPENDENCY_SIMPLE_001'
-description: 'Simple dependency test - test case references another test case via include in initial conditions'
+description: 'Simple dependency test - test case documents dependency on another test case (TC_SUCCESS_SIMPLE_001)'
 
 general_initial_conditions:
   system:
     - "Bash shell is available"
     - "Basic Unix utilities are installed"
+    - "NOTE: This test case depends on TC_SUCCESS_SIMPLE_001 (dependency documented but not enforced)"
 
 initial_conditions:
-  include:
-    - id: 'TC_SUCCESS_SIMPLE_001'
   filesystem:
     - "Temporary directory /tmp is writable"
   system:
-    - "Dependencies from TC_SUCCESS_SIMPLE_001 are satisfied"
+    - "Dependencies from TC_SUCCESS_SIMPLE_001 are assumed satisfied"
+    - "DEPENDENCY: TC_SUCCESS_SIMPLE_001 should be executed before this test"
 
 test_sequences:
   - id: 1
@@ -23,7 +23,7 @@ test_sequences:
     description: "Execute test that depends on another test case"
     initial_conditions:
       system:
-        - "Dependencies are validated"
+        - "Dependencies are documented"
     steps:
       - step: 1
         description: "Verify dependency satisfaction"

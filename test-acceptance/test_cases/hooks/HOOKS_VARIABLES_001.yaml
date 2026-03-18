@@ -1,54 +1,60 @@
----
-metadata:
-  id: HOOKS_VARIABLES_001
-  name: Hooks with Variable Usage
-  description: Tests hooks accessing and using environment variables and captured variables
-  version: 1.0.0
+requirement: "HOOKS_VARIABLES"
+item: 1
+tc: 13
+id: 'HOOKS_VARIABLES_001'
+description: 'Tests that hooks can access and set environment variables'
 
 hydration_vars:
-  required:
-    - TEST_ENV
-  optional:
-    - CUSTOM_VAR
+  TEST_ENV:
+    name: "TEST_ENV"
+    description: "Test environment identifier"
+    default_value: "acceptance"
+    required: true
+  HOOK_VAR:
+    name: "HOOK_VAR"
+    description: "Variable set by hooks"
+    default_value: "default_value"
+    required: false
 
 hooks:
-  script_start:
-    command: "test-acceptance/scripts/hooks/vars_script_start.sh"
+  setup_test:
+    command: "test-acceptance/scripts/hooks/setup_test_vars.sh"
     on_error: "fail"
-  after_step:
-    command: "test-acceptance/scripts/hooks/vars_after_step.sh"
-    on_error: "continue"
 
-sequences:
-  - id: "1"
-    name: "Variable Access Sequence"
-    variables:
-      - name: "SEQUENCE_VAR"
-        value: "sequence_value"
+general_initial_conditions:
+  system:
+    - "Bash shell is available"
+
+initial_conditions:
+  hooks:
+    - "setup_test hook can set environment variables"
+
+test_sequences:
+  - id: 1
+    name: "Variable Access Verification"
+    description: "Verify hooks can access and set variables"
+    initial_conditions:
+      system:
+        - "setup_test hook has set variables"
     steps:
-      - description: "Capture a variable"
-        command: "echo 'captured_value_12345'"
-        expected_output: "captured_value_12345"
-        capture:
-          - variable: "CAPTURED_VAR"
-            pattern: "captured_value_(\\d+)"
+      - step: 1
+        description: "Verify hook set environment variable"
+        command: "echo ${HOOK_WORKSPACE:-not_set}"
+        expected:
+          success: true
+          result: 0
+          output: "/tmp/hook_workspace"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q '/tmp/hook_workspace' <<< \"$COMMAND_OUTPUT\""
 
-      - description: "Use captured variable"
-        command: "echo $CAPTURED_VAR"
-        expected_output: "12345"
-
-      - description: "Verify hook accessed environment variables"
-        command: "test -f /tmp/hook_vars_$$.log && grep 'TEST_ENV' /tmp/hook_vars_$$.log"
-        expected_output: ".*TEST_ENV.*"
-
-      - description: "Verify hook accessed sequence variable"
-        command: "grep 'SEQUENCE_VAR' /tmp/hook_vars_$$.log"
-        expected_output: ".*SEQUENCE_VAR.*sequence_value.*"
-
-      - description: "Check captured variable in hook"
-        command: "grep 'CAPTURED_VAR' /tmp/hook_vars_$$.log || echo 'not yet captured'"
-        expected_output: ".*"
-
-      - description: "Cleanup log file"
-        command: "rm -f /tmp/hook_vars_$$.log"
-        expected_output: ""
+      - step: 2
+        description: "Verify hook can read hydration variables"
+        command: "echo ${TEST_ENV}"
+        expected:
+          success: true
+          result: 0
+          output: "acceptance"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'acceptance' <<< \"$COMMAND_OUTPUT\""

@@ -1,36 +1,77 @@
----
-metadata:
-  id: HOOKS_SCRIPT_START_001
-  name: Script Start Hook - Environment Setup
-  description: Tests script_start hook that sets up environment variables and creates initial workspace
-  version: 1.0.0
+requirement: "HOOKS_SCRIPT_START"
+item: 1
+tc: 1
+id: 'HOOKS_SCRIPT_START_001'
+description: 'Tests script_start hook that sets up environment variables and creates initial workspace'
 
 hydration_vars:
-  required:
-    - TEST_ENV
-  optional:
-    - LOG_LEVEL
+  TEST_ENV:
+    name: "TEST_ENV"
+    description: "Test environment identifier"
+    default_value: "acceptance"
+    required: true
+  LOG_LEVEL:
+    name: "LOG_LEVEL"
+    description: "Logging level"
+    default_value: "INFO"
+    required: false
 
 hooks:
   script_start:
     command: "test-acceptance/scripts/hooks/script_start_setup.sh"
     on_error: "fail"
 
-sequences:
-  - id: "1"
+general_initial_conditions:
+  system:
+    - "Bash shell is available"
+    - "Hook scripts are executable"
+
+initial_conditions:
+  filesystem:
+    - "Temporary directory /tmp is writable"
+  hooks:
+    - "script_start hook script exists and is executable"
+
+test_sequences:
+  - id: 1
     name: "Verify Environment Setup"
+    description: "Verify that script_start hook executed and set up environment"
+    initial_conditions:
+      system:
+        - "script_start hook has executed"
     steps:
-      - description: "Check that script_start hook set up environment"
+      - step: 1
+        description: "Check that script_start hook set up environment"
         command: "test -f /tmp/hook_script_start_$$.txt && cat /tmp/hook_script_start_$$.txt"
-        expected_output: "script_start executed"
-        capture:
-          - variable: "hook_output"
-            pattern: "^(.*)$"
+        capture_vars:
+          - name: hook_output
+            capture: '^(.*)$'
+        expected:
+          success: true
+          result: 0
+          output: "script_start executed"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'script_start executed' <<< \"$COMMAND_OUTPUT\""
 
-      - description: "Verify environment variable from hook"
+      - step: 2
+        description: "Verify environment variable from hook"
         command: "echo ${HOOK_WORKSPACE:-not_set}"
-        expected_output: "/tmp/hook_workspace"
+        expected:
+          success: true
+          result: 0
+          output: "/tmp/hook_workspace"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q '/tmp/hook_workspace' <<< \"$COMMAND_OUTPUT\""
 
-      - description: "Cleanup test file"
+      - step: 3
+        description: "Cleanup test file"
         command: "rm -f /tmp/hook_script_start_$$.txt"
-        expected_output: ""
+        expected:
+          success: true
+          result: 0
+          output: ""
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"

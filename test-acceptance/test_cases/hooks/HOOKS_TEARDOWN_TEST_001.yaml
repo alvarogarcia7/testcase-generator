@@ -1,34 +1,60 @@
----
-metadata:
-  id: HOOKS_TEARDOWN_TEST_001
-  name: Teardown Test Hook - Resource Cleanup
-  description: Tests teardown_test hook that performs final resource cleanup
-  version: 1.0.0
+requirement: "HOOKS_TEARDOWN_TEST"
+item: 1
+tc: 3
+id: 'HOOKS_TEARDOWN_TEST_001'
+description: 'Tests teardown_test hook that cleans up test resources'
 
 hydration_vars:
-  required:
-    - TEST_ENV
+  TEST_ENV:
+    name: "TEST_ENV"
+    description: "Test environment identifier"
+    default_value: "acceptance"
+    required: true
 
 hooks:
   setup_test:
-    command: "test-acceptance/scripts/hooks/teardown_setup_resources.sh"
+    command: "test-acceptance/scripts/hooks/setup_test_resources.sh"
     on_error: "fail"
   teardown_test:
     command: "test-acceptance/scripts/hooks/teardown_test_cleanup.sh"
-    on_error: "continue"
+    on_error: "fail"
 
-sequences:
-  - id: "1"
+general_initial_conditions:
+  system:
+    - "Bash shell is available"
+
+initial_conditions:
+  filesystem:
+    - "Temporary directory /tmp is writable"
+  hooks:
+    - "setup_test and teardown_test hook scripts exist and are executable"
+
+test_sequences:
+  - id: 1
     name: "Create Resources for Teardown"
+    description: "Create test resources that teardown hook will clean up"
+    initial_conditions:
+      system:
+        - "setup_test hook has created resources"
     steps:
-      - description: "Verify setup created resources"
-        command: "test -d /tmp/teardown_workspace_$$ && echo 'workspace exists'"
-        expected_output: "workspace exists"
+      - step: 1
+        description: "Verify workspace exists before teardown"
+        command: "test -d /tmp/test_workspace_$$ && echo 'workspace exists'"
+        expected:
+          success: true
+          result: 0
+          output: "workspace exists"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'workspace exists' <<< \"$COMMAND_OUTPUT\""
 
-      - description: "Create additional test files"
-        command: "echo 'test data' > /tmp/teardown_workspace_$$/data.txt && cat /tmp/teardown_workspace_$$/data.txt"
-        expected_output: "test data"
-
-      - description: "Write teardown marker"
-        command: "echo 'cleanup needed' > /tmp/teardown_marker_$$.txt && cat /tmp/teardown_marker_$$.txt"
-        expected_output: "cleanup needed"
+      - step: 2
+        description: "Create marker file for teardown verification"
+        command: "echo 'cleanup_marker' > /tmp/teardown_marker_$$.txt && cat /tmp/teardown_marker_$$.txt"
+        expected:
+          success: true
+          result: 0
+          output: "cleanup_marker"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'cleanup_marker' <<< \"$COMMAND_OUTPUT\""
