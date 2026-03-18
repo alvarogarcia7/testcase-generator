@@ -28,7 +28,18 @@ build-debug:
 	cargo build --all
 .PHONY: build-debug
 
-test:
+setup-python-for-test:
+	@if command -v uv > /dev/null 2>&1; then \
+		echo "Setting up Python environment for tests..."; \
+		uv sync > /dev/null 2>&1 || true; \
+		uv python install 3.14 > /dev/null 2>&1 || true; \
+		echo "✓ Python environment ready"; \
+	else \
+		echo "Warning: uv not installed, skipping Python setup"; \
+	fi
+.PHONY: setup-python-for-test
+
+test: setup-python-for-test
 	${MAKE} test-unit
 	${MAKE} test-e2e
 	#${MAKE} verify-testcases
