@@ -382,6 +382,8 @@ else
             else
                 log_warning "Failed to generate AsciiDoc test plan for: $test_case_basename"
             fi
+
+            ls -lah "$ASCIIDOC_OUTPUT"
             
             # Generate Markdown report
             MARKDOWN_OUTPUT="$OUTPUT_DIR/reports/${test_case_basename}_test_plan.md"
