@@ -132,3 +132,14 @@ test_sequences:
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
+
+      - step: 4
+        description: "Cleanup hook log file"
+        command: "rm -f /tmp/multi_hooks_$$.log"
+        expected:
+          success: true
+          result: 0
+          output: ""
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"

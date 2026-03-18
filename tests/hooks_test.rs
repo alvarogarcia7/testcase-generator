@@ -583,10 +583,10 @@ fn test_hook_environment_variables_sequence_level() {
     let hook_pos = script.find("# Execute before_sequence hook").unwrap();
     let before_hook = &script[..hook_pos];
 
-    // Should set SEQUENCE_ID and SEQUENCE_NAME before hook execution
-    assert!(before_hook.contains("SEQUENCE_ID=1"));
-    assert!(before_hook.contains("SEQUENCE_NAME="));
-    assert!(before_hook.contains("export SEQUENCE_ID SEQUENCE_NAME"));
+    // Should set TEST_SEQUENCE_ID and TEST_SEQUENCE_NAME before hook execution
+    assert!(before_hook.contains("TEST_SEQUENCE_ID=1"));
+    assert!(before_hook.contains("TEST_SEQUENCE_NAME="));
+    assert!(before_hook.contains("export TEST_SEQUENCE_ID TEST_SEQUENCE_NAME"));
 }
 
 #[test]
@@ -607,10 +607,10 @@ fn test_hook_environment_variables_step_level() {
     let hook_pos = script.find("# Execute before_step hook").unwrap();
     let before_hook = &script[..hook_pos];
 
-    // Should set STEP_NUMBER and STEP_DESC before hook execution
-    assert!(before_hook.contains("STEP_NUMBER=1"));
-    assert!(before_hook.contains("STEP_DESC="));
-    assert!(before_hook.contains("export STEP_NUMBER STEP_DESC"));
+    // Should set TEST_STEP_NUMBER and TEST_STEP_DESCRIPTION before hook execution
+    assert!(before_hook.contains("TEST_STEP_NUMBER=1"));
+    assert!(before_hook.contains("TEST_STEP_DESCRIPTION="));
+    assert!(before_hook.contains("export TEST_STEP_NUMBER TEST_STEP_DESCRIPTION"));
 }
 
 #[test]

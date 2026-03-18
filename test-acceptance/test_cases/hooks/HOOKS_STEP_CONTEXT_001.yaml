@@ -65,7 +65,7 @@ test_sequences:
         expected:
           success: true
           result: 0
-          output: "2"
+          output: "3"
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
