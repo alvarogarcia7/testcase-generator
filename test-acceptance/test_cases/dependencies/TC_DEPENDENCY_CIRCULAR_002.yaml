@@ -5,13 +5,13 @@ id: 'TC_DEPENDENCY_CIRCULAR_002'
 description: 'Circular dependency companion test - creates circular reference by including TC_DEPENDENCY_CIRCULAR_001'
 
 general_initial_conditions:
+  include:
+    - id: 'TC_DEPENDENCY_CIRCULAR_001'
   system:
     - "Bash shell is available"
     - "Part of circular dependency test scenario"
 
 initial_conditions:
-  include:
-    - id: 'TC_DEPENDENCY_CIRCULAR_001'
   filesystem:
     - "Temporary directory /tmp is writable"
   system:
@@ -31,7 +31,7 @@ test_sequences:
         command: "echo 'This should not execute due to circular dependency'"
         expected:
           success: false
-          result: 1
+          result: '1'
           output: "Circular dependency detected"
         verification:
           result: "[[ $EXIT_CODE -ne 0 ]]"

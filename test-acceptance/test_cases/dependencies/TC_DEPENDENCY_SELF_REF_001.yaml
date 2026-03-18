@@ -5,13 +5,13 @@ id: 'TC_DEPENDENCY_SELF_REF_001'
 description: 'Self-reference dependency test - detects when a test case includes itself (direct circular dependency)'
 
 general_initial_conditions:
+  include:
+    - id: 'TC_DEPENDENCY_SELF_REF_001'
   system:
     - "Bash shell is available"
     - "Self-reference detection is enabled"
 
 initial_conditions:
-  include:
-    - id: 'TC_DEPENDENCY_SELF_REF_001'
   filesystem:
     - "Temporary directory /tmp is writable"
   system:
@@ -31,7 +31,7 @@ test_sequences:
         command: "echo 'This should not execute due to self-reference'"
         expected:
           success: false
-          result: 1
+          result: '1'
           output: "Self-reference detected"
         verification:
           result: "[[ $EXIT_CODE -ne 0 ]]"
@@ -52,7 +52,7 @@ test_sequences:
         command: "echo 'This should not execute due to sequence self-reference'"
         expected:
           success: false
-          result: 1
+          result: '1'
           output: "Self-reference detected"
         verification:
           result: "[[ $EXIT_CODE -ne 0 ]]"

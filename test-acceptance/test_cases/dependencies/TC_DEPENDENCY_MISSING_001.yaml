@@ -5,18 +5,18 @@ id: 'TC_DEPENDENCY_MISSING_001'
 description: 'Missing dependency error handling test - references non-existent test case IDs to test error handling'
 
 general_initial_conditions:
+  include:
+    - id: 'TC_NONEXISTENT_999'
+    - id: 'TC_DOES_NOT_EXIST_001'
   system:
     - "Bash shell is available"
     - "Dependency validation detects missing test cases"
 
 initial_conditions:
-  include:
-    - id: 'TC_NONEXISTENT_999'
-    - id: 'TC_DOES_NOT_EXIST_001'
   filesystem:
     - "Temporary directory /tmp is writable"
   system:
-    - "This test should trigger missing dependency detection"
+    - "This test references non-existent test cases"
     - "Referenced test cases TC_NONEXISTENT_999 and TC_DOES_NOT_EXIST_001 do not exist"
 
 test_sequences:
@@ -33,7 +33,7 @@ test_sequences:
         command: "echo 'This should not execute due to missing dependencies'"
         expected:
           success: false
-          result: 1
+          result: '1'
           output: "Missing dependency"
         verification:
           result: "[[ $EXIT_CODE -ne 0 ]]"
@@ -45,7 +45,7 @@ test_sequences:
         command: "echo 'Missing dependency error should have been raised'"
         expected:
           success: false
-          result: 1
+          result: '1'
           output: "Error"
         verification:
           result: "[[ $EXIT_CODE -ne 0 ]]"
@@ -68,7 +68,7 @@ test_sequences:
         command: "echo 'This should not execute due to missing sequence'"
         expected:
           success: false
-          result: 1
+          result: '1'
           output: "Missing sequence"
         verification:
           result: "[[ $EXIT_CODE -ne 0 ]]"
