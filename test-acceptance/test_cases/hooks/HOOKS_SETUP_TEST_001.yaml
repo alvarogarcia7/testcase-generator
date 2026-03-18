@@ -1,0 +1,37 @@
+---
+metadata:
+  id: HOOKS_SETUP_TEST_001
+  name: Setup Test Hook - Resource Creation
+  description: Tests setup_test hook that creates test resources and directories
+  version: 1.0.0
+
+hydration_vars:
+  required:
+    - TEST_ENV
+  optional:
+    - WORKSPACE_DIR
+
+hooks:
+  setup_test:
+    command: "test-acceptance/scripts/hooks/setup_test_resources.sh"
+    on_error: "fail"
+
+sequences:
+  - id: "1"
+    name: "Verify Resource Creation"
+    steps:
+      - description: "Check workspace directory exists"
+        command: "test -d /tmp/test_workspace_$$ && echo 'workspace exists'"
+        expected_output: "workspace exists"
+
+      - description: "Check test database file exists"
+        command: "test -f /tmp/test_workspace_$$/test.db && echo 'database exists'"
+        expected_output: "database exists"
+
+      - description: "Verify database initialization"
+        command: "sqlite3 /tmp/test_workspace_$$/test.db 'SELECT name FROM sqlite_master WHERE type=\"table\";'"
+        expected_output: "tests"
+
+      - description: "Cleanup workspace"
+        command: "rm -rf /tmp/test_workspace_$$"
+        expected_output: ""

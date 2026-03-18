@@ -1,0 +1,84 @@
+requirement: "VAR_TEST"
+item: 1
+tc: 9
+id: 'TC_VAR_009'
+description: 'Test mixing regex-based and command-based variable captures in same step'
+
+general_initial_conditions:
+  system:
+    - "Bash shell is available"
+    - "Standard Unix utilities are available"
+
+initial_conditions:
+  environment:
+    - "Test execution environment is ready"
+
+test_sequences:
+  - id: 1
+    name: "Mixed Capture Methods"
+    description: "Combine regex-based and command-based captures in single step"
+    initial_conditions:
+      system:
+        - "Both capture methods are functional"
+    steps:
+      - step: 1
+        description: "Capture variables using both regex and command methods"
+        command: |
+          cat << 'EOF'
+          Server Status Report
+          Uptime: 72 hours
+          Active Users: 25
+          CPU Load: 45%
+          Memory: 8192 MB
+          EOF
+        capture_vars:
+          - name: uptime_hours
+            capture: 'Uptime: ([0-9]+) hours'
+          - name: active_users
+            capture: 'Active Users: ([0-9]+)'
+          - name: cpu_load
+            capture: 'CPU Load: ([0-9]+)%'
+          - name: memory_mb
+            capture: 'Memory: ([0-9]+) MB'
+          - name: timestamp
+            command: "date +%s"
+          - name: report_line_count
+            command: "echo 'Server Status Report\nUptime: 72 hours\nActive Users: 25\nCPU Load: 45%\nMemory: 8192 MB' | wc -l | awk '{print $1}'"
+        expected:
+          success: true
+          result: '0'
+          output: 'Server Status Report'
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Server Status Report' <<< \"$COMMAND_OUTPUT\""
+          general:
+            - name: verify_regex_captures
+              condition: "[[ -n \"$uptime_hours\" && -n \"$active_users\" && -n \"$cpu_load\" && -n \"$memory_mb\" ]]"
+            - name: verify_command_captures
+              condition: "[[ -n \"$timestamp\" && -n \"$report_line_count\" ]]"
+            - name: verify_uptime_value
+              condition: "[[ $uptime_hours -eq 72 ]]"
+            - name: verify_active_users_value
+              condition: "[[ $active_users -eq 25 ]]"
+            - name: verify_timestamp_numeric
+              condition: "[[ $timestamp =~ ^[0-9]+$ ]]"
+
+      - step: 2
+        description: "Use all captured variables in summary"
+        command: |
+          echo "=== System Summary (captured at $timestamp) ==="
+          echo "Uptime: $uptime_hours hours"
+          echo "Users: $active_users active"
+          echo "CPU: $cpu_load% load"
+          echo "RAM: $memory_mb MB"
+          echo "Report had $report_line_count lines"
+        expected:
+          success: true
+          result: '0'
+          output: 'System Summary'
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'System Summary' <<< \"$COMMAND_OUTPUT\""
+          general:
+            - name: verify_all_vars_in_output
+              condition: "grep -q '72 hours' <<< \"$COMMAND_OUTPUT\" && grep -q '25 active' <<< \"$COMMAND_OUTPUT\""

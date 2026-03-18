@@ -1,0 +1,102 @@
+requirement: "FAILURE_MULTI_SEQ_MIXED"
+item: 1
+tc: 1
+id: 'TC_FAILURE_MULTI_SEQ_MIXED_001'
+description: 'Multi-sequence test with mixed pass/fail results - verifies handling of failures across multiple sequences'
+
+general_initial_conditions:
+  system:
+    - "Bash shell is available"
+    - "Basic Unix utilities are installed"
+
+initial_conditions:
+  filesystem:
+    - "Temporary directory /tmp is writable"
+
+test_sequences:
+  - id: 1
+    name: "Successful Sequence"
+    description: "First sequence that completes successfully"
+    initial_conditions:
+      system:
+        - "Echo command is available"
+    steps:
+      - step: 1
+        description: "Print first message"
+        command: "echo 'Sequence 1, Step 1'"
+        expected:
+          success: true
+          result: 0
+          output: "Sequence 1, Step 1"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Sequence 1, Step 1' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 2
+        description: "Print second message"
+        command: "echo 'Sequence 1, Step 2'"
+        expected:
+          success: true
+          result: 0
+          output: "Sequence 1, Step 2"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Sequence 1, Step 2' <<< \"$COMMAND_OUTPUT\""
+
+  - id: 2
+    name: "Failing Sequence"
+    description: "Second sequence that fails in the middle"
+    initial_conditions:
+      system:
+        - "Echo and ls commands are available"
+    steps:
+      - step: 1
+        description: "Print message before failure"
+        command: "echo 'Sequence 2, Step 1'"
+        expected:
+          success: true
+          result: 0
+          output: "Sequence 2, Step 1"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Sequence 2, Step 1' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 2
+        description: "Fail by listing non-existent directory"
+        command: "ls /nonexistent/path/xyz/abc"
+        expected:
+          success: false
+          result: 1
+          output: "No such file or directory"
+        verification:
+          result: "[[ $EXIT_CODE -ne 0 ]]"
+          output: "grep -q 'No such file or directory' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 3
+        description: "This step should not execute"
+        command: "echo 'Sequence 2, Step 3'"
+        expected:
+          success: true
+          result: 0
+          output: "Sequence 2, Step 3"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Sequence 2, Step 3' <<< \"$COMMAND_OUTPUT\""
+
+  - id: 3
+    name: "Unreachable Sequence"
+    description: "Third sequence that should not execute due to earlier failure"
+    initial_conditions:
+      system:
+        - "Echo command is available"
+    steps:
+      - step: 1
+        description: "This step should not execute"
+        command: "echo 'Sequence 3, Step 1'"
+        expected:
+          success: true
+          result: 0
+          output: "Sequence 3, Step 1"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Sequence 3, Step 1' <<< \"$COMMAND_OUTPUT\""

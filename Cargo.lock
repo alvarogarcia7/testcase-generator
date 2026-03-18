@@ -2152,6 +2152,7 @@ dependencies = [
  "strip-ansi-escapes",
  "tempfile",
  "toml",
+ "walkdir",
 ]
 
 [[package]]

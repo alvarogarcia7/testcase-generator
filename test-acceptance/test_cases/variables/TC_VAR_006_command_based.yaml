@@ -1,0 +1,101 @@
+requirement: "VAR_TEST"
+item: 1
+tc: 6
+id: 'TC_VAR_006'
+description: 'Test command-based variable capture using command execution'
+
+general_initial_conditions:
+  system:
+    - "Bash shell is available"
+    - "Standard Unix utilities (date, hostname, wc) are available"
+
+initial_conditions:
+  environment:
+    - "System commands are executable"
+
+test_sequences:
+  - id: 1
+    name: "Command-Based Variable Capture"
+    description: "Capture variables by executing commands rather than regex extraction"
+    initial_conditions:
+      system:
+        - "System information commands are available"
+    steps:
+      - step: 1
+        description: "Capture system information using command-based capture"
+        command: |
+          echo "Gathering system information..."
+        capture_vars:
+          - name: current_timestamp
+            command: "date +%s"
+          - name: current_hostname
+            command: "hostname"
+          - name: current_user
+            command: "whoami"
+        expected:
+          success: true
+          result: '0'
+          output: 'Gathering system information'
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Gathering system information' <<< \"$COMMAND_OUTPUT\""
+          general:
+            - name: verify_timestamp_captured
+              condition: "[[ -n \"$current_timestamp\" ]]"
+            - name: verify_timestamp_numeric
+              condition: "[[ $current_timestamp =~ ^[0-9]+$ ]]"
+            - name: verify_hostname_captured
+              condition: "[[ -n \"$current_hostname\" ]]"
+            - name: verify_user_captured
+              condition: "[[ -n \"$current_user\" ]]"
+
+      - step: 2
+        description: "Capture file statistics using command execution"
+        command: |
+          echo "Test content for counting" > /tmp/test_var_006.txt
+          echo "Line 2" >> /tmp/test_var_006.txt
+          echo "Line 3" >> /tmp/test_var_006.txt
+          cat /tmp/test_var_006.txt
+        capture_vars:
+          - name: file_line_count
+            command: "wc -l /tmp/test_var_006.txt | awk '{print $1}'"
+          - name: file_word_count
+            command: "wc -w /tmp/test_var_006.txt | awk '{print $1}'"
+          - name: file_byte_count
+            command: "wc -c /tmp/test_var_006.txt | awk '{print $1}'"
+        expected:
+          success: true
+          result: '0'
+          output: 'Test content'
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Test content' <<< \"$COMMAND_OUTPUT\""
+          general:
+            - name: verify_line_count
+              condition: "[[ $file_line_count -eq 3 ]]"
+            - name: verify_word_count
+              condition: "[[ $file_word_count -ge 5 ]]"
+            - name: verify_byte_count_positive
+              condition: "[[ $file_byte_count -gt 0 ]]"
+
+      - step: 3
+        description: "Use captured command-based variables in subsequent command"
+        command: |
+          echo "System Report:"
+          echo "  Timestamp: $current_timestamp"
+          echo "  Hostname: $current_hostname"
+          echo "  User: $current_user"
+          echo "  File Lines: $file_line_count"
+          rm -f /tmp/test_var_006.txt
+        expected:
+          success: true
+          result: '0'
+          output: 'System Report'
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'System Report' <<< \"$COMMAND_OUTPUT\""
+          general:
+            - name: verify_timestamp_in_output
+              condition: "grep -q \"Timestamp: $current_timestamp\" <<< \"$COMMAND_OUTPUT\""
+            - name: verify_hostname_in_output
+              condition: "grep -q \"Hostname: $current_hostname\" <<< \"$COMMAND_OUTPUT\""

@@ -1,0 +1,55 @@
+requirement: "FAILURE_PIPE_BROKEN"
+item: 1
+tc: 1
+id: 'TC_FAILURE_PIPE_BROKEN_001'
+description: 'Test case with broken pipe scenario - verifies handling of pipeline failures'
+
+general_initial_conditions:
+  system:
+    - "Bash shell is available"
+    - "Basic Unix utilities are installed"
+
+initial_conditions:
+  system:
+    - "Pipeline commands are available"
+
+test_sequences:
+  - id: 1
+    name: "Broken Pipe Sequence"
+    description: "Create scenario where pipe consumer fails"
+    initial_conditions:
+      system:
+        - "Head and echo commands are available"
+    steps:
+      - step: 1
+        description: "Create pipeline where consumer exits early"
+        command: "yes | head -n 1 > /dev/null && echo 'Pipeline completed'"
+        expected:
+          success: true
+          result: 0
+          output: "Pipeline completed"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Pipeline completed' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 2
+        description: "Create failing pipeline with non-existent command"
+        command: "echo 'test' | nonexistent_command_xyz"
+        expected:
+          success: false
+          result: 127
+          output: "command not found"
+        verification:
+          result: "[[ $EXIT_CODE -eq 127 ]]"
+          output: "grep -qi 'command not found' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 3
+        description: "This step should not execute"
+        command: "echo 'Step 3'"
+        expected:
+          success: true
+          result: 0
+          output: "Step 3"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Step 3' <<< \"$COMMAND_OUTPUT\""

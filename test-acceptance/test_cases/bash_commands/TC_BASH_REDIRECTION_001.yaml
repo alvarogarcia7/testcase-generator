@@ -1,0 +1,182 @@
+requirement: "BASH_REDIRECTION_OPERATIONS"
+item: 1
+tc: 1
+id: 'TC_BASH_REDIRECTION_001'
+description: 'Bash redirection operations - stdin, stdout, stderr redirection and pipes with comprehensive validation'
+
+general_initial_conditions:
+  system:
+    - "Bash shell with I/O redirection support is available"
+
+initial_conditions:
+  filesystem:
+    - "Temporary directory /tmp is writable"
+
+test_sequences:
+  - id: 1
+    name: "Input/Output Redirection"
+    description: "Test various redirection operators and pipe operations"
+    initial_conditions:
+      system:
+        - "Redirection works correctly"
+    steps:
+      - step: 1
+        description: "Redirect stdout to file"
+        command: "echo 'output to file' > /tmp/redirect_test.txt && cat /tmp/redirect_test.txt"
+        expected:
+          success: true
+          result: 0
+          output: "output to file"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" == 'output to file' ]]"
+          general:
+            - name: file_created
+              condition: "[[ -f /tmp/redirect_test.txt ]]"
+            - name: content_correct
+              condition: "[[ $(cat /tmp/redirect_test.txt) == 'output to file' ]]"
+
+      - step: 2
+        description: "Append stdout to file"
+        command: "echo 'second line' >> /tmp/redirect_test.txt && wc -l /tmp/redirect_test.txt | awk '{print $1}'"
+        capture_vars:
+          - name: line_count
+            capture: '^([0-9]+)$'
+        expected:
+          success: true
+          result: 0
+          output: "2"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" == '2' ]]"
+          general:
+            - name: two_lines
+              condition: "[[ $line_count -eq 2 ]]"
+
+      - step: 3
+        description: "Redirect stderr to file"
+        command: "ls /nonexistent 2> /tmp/stderr_test.txt; cat /tmp/stderr_test.txt | wc -l | awk '{print $1}'"
+        capture_vars:
+          - name: stderr_lines
+            capture: '^([0-9]+)$'
+        expected:
+          success: true
+          result: 0
+          output: "error lines"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
+          general:
+            - name: stderr_captured
+              condition: "[[ $stderr_lines -gt 0 ]]"
+            - name: stderr_file_exists
+              condition: "[[ -f /tmp/stderr_test.txt ]]"
+
+      - step: 4
+        description: "Redirect both stdout and stderr"
+        command: "echo 'test' > /tmp/both_test.txt 2>&1 && cat /tmp/both_test.txt"
+        expected:
+          success: true
+          result: 0
+          output: "test"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" == 'test' ]]"
+          general:
+            - name: stdout_captured
+              condition: "[[ $(cat /tmp/both_test.txt) == 'test' ]]"
+
+      - step: 5
+        description: "Redirect stdin from file"
+        command: "echo -e 'line1\nline2\nline3' > /tmp/input_test.txt && wc -l < /tmp/input_test.txt | awk '{print $1}'"
+        capture_vars:
+          - name: input_lines
+            capture: '^([0-9]+)$'
+        expected:
+          success: true
+          result: 0
+          output: "3"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" == '3' ]]"
+          general:
+            - name: three_lines_read
+              condition: "[[ $input_lines -eq 3 ]]"
+
+      - step: 6
+        description: "Pipe between multiple commands"
+        command: "echo -e '5\n2\n8\n1\n9' | sort -n | head -3 | tail -1"
+        capture_vars:
+          - name: middle_value
+            capture: '^([0-9]+)$'
+        expected:
+          success: true
+          result: 0
+          output: "5"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" == '5' ]]"
+          general:
+            - name: third_smallest
+              condition: "[[ $middle_value -eq 5 ]]"
+
+      - step: 7
+        description: "Discard output to /dev/null"
+        command: "echo 'discarded' > /dev/null && echo 'visible'"
+        expected:
+          success: true
+          result: 0
+          output: "visible"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" == 'visible' ]]"
+          general:
+            - name: only_visible_shown
+              condition: "[[ \"$COMMAND_OUTPUT\" == 'visible' ]]"
+
+      - step: 8
+        description: "Here string redirection"
+        command: "wc -w <<< 'one two three four' | awk '{print $1}'"
+        capture_vars:
+          - name: word_count
+            capture: '^([0-9]+)$'
+        expected:
+          success: true
+          result: 0
+          output: "4"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" == '4' ]]"
+          general:
+            - name: four_words
+              condition: "[[ $word_count -eq 4 ]]"
+
+      - step: 9
+        description: "Tee to file and stdout"
+        command: "echo 'tee test' | tee /tmp/tee_test.txt"
+        expected:
+          success: true
+          result: 0
+          output: "tee test"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" == 'tee test' ]]"
+          general:
+            - name: tee_output_correct
+              condition: "[[ \"$COMMAND_OUTPUT\" == 'tee test' ]]"
+            - name: tee_file_created
+              condition: "[[ -f /tmp/tee_test.txt && $(cat /tmp/tee_test.txt) == 'tee test' ]]"
+
+      - step: 10
+        description: "Cleanup redirection test files"
+        command: "rm -f /tmp/redirect_test.txt /tmp/stderr_test.txt /tmp/both_test.txt /tmp/input_test.txt /tmp/tee_test.txt && echo 'cleaned'"
+        expected:
+          success: true
+          result: 0
+          output: "cleaned"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" == 'cleaned' ]]"
+          general:
+            - name: all_files_removed
+              condition: "[[ ! -f /tmp/redirect_test.txt && ! -f /tmp/stderr_test.txt && ! -f /tmp/both_test.txt && ! -f /tmp/input_test.txt && ! -f /tmp/tee_test.txt ]]"

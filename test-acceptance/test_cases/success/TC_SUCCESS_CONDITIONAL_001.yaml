@@ -1,0 +1,172 @@
+requirement: "CONDITIONAL_VERIFICATION"
+item: 1
+tc: 1
+id: 'TC_SUCCESS_CONDITIONAL_001'
+description: 'Complex conditional verification logic - demonstrates if/then/else verification with captured variables'
+
+general_initial_conditions:
+  system:
+    - "Bash shell with conditional support is available"
+
+initial_conditions:
+  system:
+    - "Conditional logic evaluation works correctly"
+
+test_sequences:
+  - id: 1
+    name: "Conditional Verification"
+    description: "Use conditional logic in verification expressions"
+    initial_conditions:
+      system:
+        - "Condition evaluation is supported"
+    steps:
+      - step: 1
+        description: "Generate number and conditionally verify range"
+        command: "echo 75"
+        capture_vars:
+          - name: score
+            capture: '([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "75"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output:
+            condition: "[[ $score -ge 70 ]]"
+            if_true:
+              - "echo 'Score is passing (>= 70)'"
+            if_false:
+              - "echo 'Score is failing (< 70)'"
+          general:
+            - name: verify_score_numeric
+              condition: "[[ $score =~ ^[0-9]+$ ]]"
+            - name: verify_score_range
+              condition: "[[ $score -ge 0 && $score -le 100 ]]"
+
+      - step: 2
+        description: "Check status and conditionally handle"
+        command: "echo 'STATUS: ACTIVE'"
+        capture_vars:
+          - name: status
+            capture: 'STATUS: ([A-Z]+)'
+        expected:
+          success: true
+          result: 0
+          output: "STATUS: ACTIVE"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output:
+            condition: "[[ \"$status\" == \"ACTIVE\" ]]"
+            if_true:
+              - "echo 'Service is running'"
+              - "echo 'Status verified: ACTIVE'"
+            if_false:
+              - "echo 'Service is not active'"
+            always:
+              - "echo 'Status check completed'"
+          general:
+            - name: verify_status_captured
+              condition: "[[ -n \"$status\" ]]"
+            - name: verify_status_uppercase
+              condition: "[[ $status =~ ^[A-Z]+$ ]]"
+
+      - step: 3
+        description: "Evaluate multiple conditions with nested logic"
+        command: "echo 'count=5'"
+        capture_vars:
+          - name: item_count
+            capture: 'count=([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "count=5"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output:
+            condition: "[[ $item_count -gt 3 ]]"
+            if_true:
+              - "echo 'Count is greater than 3'"
+              - "[[ $item_count -lt 10 ]] && echo 'Count is in medium range (4-9)'"
+            if_false:
+              - "echo 'Count is 3 or less'"
+              - "echo 'Count is in low range (0-3)'"
+            always:
+              - "echo \"Total items: $item_count\""
+          general:
+            - name: verify_count_numeric
+              condition: "[[ $item_count =~ ^[0-9]+$ ]]"
+            - name: verify_count_positive
+              condition: "[[ $item_count -gt 0 ]]"
+
+      - step: 4
+        description: "Complex conditional with multiple variables"
+        command: |
+          cat << 'EOF'
+          CPU: 45
+          MEM: 72
+          DISK: 88
+          EOF
+        capture_vars:
+          - name: cpu_percent
+            capture: 'CPU: ([0-9]+)'
+          - name: mem_percent
+            capture: 'MEM: ([0-9]+)'
+          - name: disk_percent
+            capture: 'DISK: ([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "CPU:"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output:
+            condition: "[[ $cpu_percent -lt 80 && $mem_percent -lt 80 ]]"
+            if_true:
+              - "echo 'System resources are healthy'"
+              - "[[ $disk_percent -gt 80 ]] && echo 'Warning: Disk usage high'"
+            if_false:
+              - "echo 'Alert: CPU or Memory usage high'"
+            always:
+              - "echo \"CPU: $cpu_percent%, MEM: $mem_percent%, DISK: $disk_percent%\""
+          general:
+            - name: verify_cpu_captured
+              condition: "[[ -n \"$cpu_percent\" ]]"
+            - name: verify_mem_captured
+              condition: "[[ -n \"$mem_percent\" ]]"
+            - name: verify_disk_captured
+              condition: "[[ -n \"$disk_percent\" ]]"
+            - name: verify_all_numeric
+              condition: "[[ $cpu_percent =~ ^[0-9]+$ && $mem_percent =~ ^[0-9]+$ && $disk_percent =~ ^[0-9]+$ ]]"
+
+      - step: 5
+        description: "Conditional verification with string comparison"
+        command: "echo 'Environment: production'"
+        capture_vars:
+          - name: environment
+            capture: 'Environment: ([a-z]+)'
+        expected:
+          success: true
+          result: 0
+          output: "Environment:"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output:
+            condition: "[[ \"$environment\" == \"production\" ]]"
+            if_true:
+              - "echo 'Production environment detected'"
+              - "echo 'Using production configuration'"
+              - "echo 'Strict validation enabled'"
+            if_false:
+              - "echo 'Non-production environment'"
+              - "[[ \"$environment\" == \"staging\" ]] && echo 'Staging environment'"
+              - "[[ \"$environment\" == \"development\" ]] && echo 'Development environment'"
+            always:
+              - "echo \"Current environment: $environment\""
+          general:
+            - name: verify_environment_captured
+              condition: "[[ -n \"$environment\" ]]"
+            - name: verify_environment_lowercase
+              condition: "[[ $environment =~ ^[a-z]+$ ]]"
+            - name: verify_valid_environment
+              condition: "[[ \"$environment\" =~ ^(production|staging|development)$ ]]"

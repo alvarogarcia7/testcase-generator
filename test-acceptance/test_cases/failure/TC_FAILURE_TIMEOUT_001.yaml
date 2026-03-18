@@ -1,0 +1,44 @@
+requirement: "FAILURE_TIMEOUT"
+item: 1
+tc: 1
+id: 'TC_FAILURE_TIMEOUT_001'
+description: 'Test case with timeout scenario - verifies handling of long-running commands'
+
+general_initial_conditions:
+  system:
+    - "Bash shell is available"
+    - "Sleep command is available"
+
+initial_conditions:
+  system:
+    - "Test can execute time-consuming operations"
+
+test_sequences:
+  - id: 1
+    name: "Timeout Scenario Sequence"
+    description: "Execute command that takes longer than expected"
+    initial_conditions:
+      system:
+        - "Sleep command is available"
+    steps:
+      - step: 1
+        description: "Sleep for extended period (simulates timeout)"
+        command: "sleep 300"
+        expected:
+          success: false
+          result: 124
+          output: ""
+        verification:
+          result: "[[ $EXIT_CODE -eq 124 || $EXIT_CODE -eq 143 ]]"
+          output: "true"
+
+      - step: 2
+        description: "This step should not execute"
+        command: "echo 'Step 2'"
+        expected:
+          success: true
+          result: 0
+          output: "Step 2"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Step 2' <<< \"$COMMAND_OUTPUT\""

@@ -1,0 +1,44 @@
+requirement: "VAR_TEST"
+item: 1
+tc: 1
+id: 'TC_VAR_001'
+description: 'Test capturing a single variable from command output using regex pattern'
+
+general_initial_conditions:
+  system:
+    - "Bash shell is available"
+    - "Standard Unix utilities are available"
+
+initial_conditions:
+  environment:
+    - "Test execution environment is ready"
+
+test_sequences:
+  - id: 1
+    name: "Single Variable Capture Using Regex"
+    description: "Capture a single variable from command output and verify it was captured correctly"
+    initial_conditions:
+      system:
+        - "Command will generate output with extractable data"
+    steps:
+      - step: 1
+        description: "Generate output and capture user ID using regex pattern"
+        command: |
+          echo "User ID: 12345"
+        capture_vars:
+          - name: user_id
+            capture: 'User ID: ([0-9]+)'
+        expected:
+          success: true
+          result: '0'
+          output: 'User ID'
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'User ID' <<< \"$COMMAND_OUTPUT\""
+          general:
+            - name: verify_user_id_captured
+              condition: "[[ -n \"$user_id\" ]]"
+            - name: verify_user_id_numeric
+              condition: "[[ $user_id =~ ^[0-9]+$ ]]"
+            - name: verify_user_id_value
+              condition: "[[ $user_id -eq 12345 ]]"

@@ -1,0 +1,356 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://example.com/testcase-results-container.schema.json",
+  "title": "Test Case Results Container",
+  "description": "Schema for container YAML files accepted by test-plan-doc-gen tool. This format is used to aggregate multiple test case results with metadata for generating comprehensive test reports in AsciiDoc, Markdown, and PDF formats.",
+  "type": "object",
+  "required": [
+    "test_results"
+  ],
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Title of the test report (recommended)",
+      "examples": [
+        "GSMA eUICC Test Suite Results - Q1 2024",
+        "Test Execution Results Report"
+      ]
+    },
+    "project": {
+      "type": "string",
+      "description": "Project name (recommended)",
+      "examples": [
+        "GSMA SGP.22 Compliance Testing",
+        "Test Case Manager - Verification Results"
+      ]
+    },
+    "test_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Test execution date in ISO 8601 format (recommended)",
+      "examples": [
+        "2024-03-15T14:30:00Z"
+      ]
+    },
+    "test_results": {
+      "type": "array",
+      "description": "Array of test case results (required, must not be empty)",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/TestResult"
+      }
+    },
+    "metadata": {
+      "$ref": "#/definitions/Metadata",
+      "description": "Metadata about the test execution (recommended)"
+    }
+  },
+  "additionalProperties": true,
+  "definitions": {
+    "TestResult": {
+      "type": "object",
+      "description": "Individual test case result with sequences and step outcomes",
+      "required": [
+        "test_case_id",
+        "sequences",
+        "total_steps",
+        "passed_steps",
+        "failed_steps",
+        "not_executed_steps",
+        "overall_pass"
+      ],
+      "properties": {
+        "test_case_id": {
+          "type": "string",
+          "description": "Unique identifier for the test case",
+          "minLength": 1,
+          "examples": [
+            "TC_001",
+            "4.2.2.2.1 TC_eUICC_ES6.UpdateMetadata"
+          ]
+        },
+        "description": {
+          "type": "string",
+          "description": "Test case description"
+        },
+        "requirement": {
+          "type": "string",
+          "description": "Requirement identifier (optional)"
+        },
+        "item": {
+          "type": "integer",
+          "description": "Item number (optional)",
+          "minimum": 0
+        },
+        "tc": {
+          "type": "integer",
+          "description": "Test case number (optional)",
+          "minimum": 0
+        },
+        "sequences": {
+          "type": "array",
+          "description": "Array of test sequences",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/Sequence"
+          }
+        },
+        "total_steps": {
+          "type": "integer",
+          "description": "Total number of steps across all sequences",
+          "minimum": 0
+        },
+        "passed_steps": {
+          "type": "integer",
+          "description": "Number of steps that passed",
+          "minimum": 0
+        },
+        "failed_steps": {
+          "type": "integer",
+          "description": "Number of steps that failed",
+          "minimum": 0
+        },
+        "not_executed_steps": {
+          "type": "integer",
+          "description": "Number of steps that were not executed",
+          "minimum": 0
+        },
+        "overall_pass": {
+          "type": "boolean",
+          "description": "Overall pass/fail status for the test case"
+        }
+      },
+      "additionalProperties": true
+    },
+    "Sequence": {
+      "type": "object",
+      "description": "Test sequence containing multiple test steps",
+      "required": [
+        "sequence_id",
+        "name",
+        "step_results",
+        "all_steps_passed"
+      ],
+      "properties": {
+        "sequence_id": {
+          "type": "integer",
+          "description": "Sequence identifier",
+          "minimum": 1
+        },
+        "name": {
+          "type": "string",
+          "description": "Sequence name",
+          "minLength": 1
+        },
+        "requirement": {
+          "type": "string",
+          "description": "Sequence-level requirement identifier (optional)"
+        },
+        "item": {
+          "type": "integer",
+          "description": "Sequence-level item number (optional)",
+          "minimum": 0
+        },
+        "tc": {
+          "type": "integer",
+          "description": "Sequence-level test case number (optional)",
+          "minimum": 0
+        },
+        "step_results": {
+          "type": "array",
+          "description": "Array of step results using enum variants (Pass/Fail/NotExecuted)",
+          "items": {
+            "$ref": "#/definitions/StepResult"
+          }
+        },
+        "all_steps_passed": {
+          "type": "boolean",
+          "description": "Flag indicating if all steps in the sequence passed"
+        }
+      },
+      "additionalProperties": true
+    },
+    "StepResult": {
+      "type": "object",
+      "description": "Step result using enum variants: Pass, Fail, or NotExecuted",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["Pass"],
+          "properties": {
+            "Pass": {
+              "$ref": "#/definitions/PassStep"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["Fail"],
+          "properties": {
+            "Fail": {
+              "$ref": "#/definitions/FailStep"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["NotExecuted"],
+          "properties": {
+            "NotExecuted": {
+              "$ref": "#/definitions/NotExecutedStep"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "PassStep": {
+      "type": "object",
+      "description": "Successful step execution",
+      "required": [
+        "step",
+        "description"
+      ],
+      "properties": {
+        "step": {
+          "type": "integer",
+          "description": "Step number",
+          "minimum": 1
+        },
+        "description": {
+          "type": "string",
+          "description": "Step description"
+        }
+      },
+      "additionalProperties": true
+    },
+    "FailStep": {
+      "type": "object",
+      "description": "Failed step execution with details",
+      "required": [
+        "step",
+        "description"
+      ],
+      "properties": {
+        "step": {
+          "type": "integer",
+          "description": "Step number",
+          "minimum": 1
+        },
+        "description": {
+          "type": "string",
+          "description": "Step description"
+        },
+        "expected": {
+          "$ref": "#/definitions/ExpectedResult",
+          "description": "Expected result (recommended for Fail variant)"
+        },
+        "actual_result": {
+          "type": "string",
+          "description": "Actual result value (recommended for Fail variant)"
+        },
+        "actual_output": {
+          "type": "string",
+          "description": "Actual output (recommended for Fail variant)"
+        },
+        "reason": {
+          "type": "string",
+          "description": "Reason for failure (recommended for Fail variant)"
+        }
+      },
+      "additionalProperties": true
+    },
+    "NotExecutedStep": {
+      "type": "object",
+      "description": "Step that was not executed",
+      "required": [
+        "step",
+        "description"
+      ],
+      "properties": {
+        "step": {
+          "type": "integer",
+          "description": "Step number",
+          "minimum": 1
+        },
+        "description": {
+          "type": "string",
+          "description": "Step description"
+        }
+      },
+      "additionalProperties": true
+    },
+    "ExpectedResult": {
+      "type": "object",
+      "description": "Expected result for a test step",
+      "properties": {
+        "success": {
+          "type": ["boolean", "null"],
+          "description": "Expected success status"
+        },
+        "result": {
+          "type": ["string", "integer", "null"],
+          "description": "Expected result value (exit code, status, etc.)"
+        },
+        "output": {
+          "type": ["string", "null"],
+          "description": "Expected output"
+        }
+      },
+      "additionalProperties": true
+    },
+    "Metadata": {
+      "type": "object",
+      "description": "Metadata about the test execution",
+      "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Test environment",
+          "examples": [
+            "GSMA Certification Lab - Environment 2",
+            "Production-like Test Environment"
+          ]
+        },
+        "platform": {
+          "type": "string",
+          "description": "Test platform",
+          "examples": [
+            "eUICC Test Platform v3.2.1",
+            "Test Case Manager"
+          ]
+        },
+        "executor": {
+          "type": "string",
+          "description": "Test executor",
+          "examples": [
+            "Automated Test Framework v2.5.0",
+            "CI/CD Pipeline"
+          ]
+        },
+        "execution_duration": {
+          "type": "number",
+          "description": "Execution duration in seconds",
+          "minimum": 0
+        },
+        "total_test_cases": {
+          "type": "integer",
+          "description": "Total number of test cases",
+          "minimum": 0
+        },
+        "passed_test_cases": {
+          "type": "integer",
+          "description": "Number of test cases that passed",
+          "minimum": 0
+        },
+        "failed_test_cases": {
+          "type": "integer",
+          "description": "Number of test cases that failed",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

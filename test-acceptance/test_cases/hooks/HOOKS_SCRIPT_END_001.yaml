@@ -1,0 +1,41 @@
+---
+metadata:
+  id: HOOKS_SCRIPT_END_001
+  name: Script End Hook - Summary Generation
+  description: Tests script_end hook that generates execution summary
+  version: 1.0.0
+
+hydration_vars:
+  required:
+    - TEST_ENV
+
+hooks:
+  script_start:
+    command: "test-acceptance/scripts/hooks/script_end_init.sh"
+    on_error: "fail"
+  script_end:
+    command: "test-acceptance/scripts/hooks/script_end_summary.sh"
+    on_error: "continue"
+
+sequences:
+  - id: "1"
+    name: "Execution Tracking"
+    steps:
+      - description: "First tracked step"
+        command: "echo 'step 1' >> /tmp/script_end_tracking_$$.log && echo 'executed step 1'"
+        expected_output: "executed step 1"
+
+      - description: "Second tracked step"
+        command: "echo 'step 2' >> /tmp/script_end_tracking_$$.log && echo 'executed step 2'"
+        expected_output: "executed step 2"
+
+  - id: "2"
+    name: "More Tracking"
+    steps:
+      - description: "Third tracked step"
+        command: "echo 'step 3' >> /tmp/script_end_tracking_$$.log && echo 'executed step 3'"
+        expected_output: "executed step 3"
+
+      - description: "Verify tracking file exists"
+        command: "test -f /tmp/script_end_tracking_$$.log && wc -l < /tmp/script_end_tracking_$$.log | tr -d ' '"
+        expected_output: "3"

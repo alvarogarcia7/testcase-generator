@@ -27,6 +27,7 @@ quick-xml = "0.39.0"
 roxmltree = "0.20"
 strip-ansi-escapes = "0.2"
 notify = "8.2"
+walkdir = "2.4"
 
 [dev-dependencies]
 tempfile = "3.8"
@@ -72,6 +73,14 @@ path = "src/bin/json-escape.rs"
 [[bin]]
 name = "verifier"
 path = "src/bin/verifier.rs"
+
+[[bin]]
+name = "test-plan-documentation-generator-compat"
+path = "src/bin/test-plan-documentation-generator-compat.rs"
+
+[[bin]]
+name = "json-to-yaml"
+path = "src/bin/json-to-yaml.rs"
 
 [[example]]
 name = "tty_fallback_demo"

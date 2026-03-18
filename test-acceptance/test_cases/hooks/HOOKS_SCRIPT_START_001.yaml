@@ -1,0 +1,36 @@
+---
+metadata:
+  id: HOOKS_SCRIPT_START_001
+  name: Script Start Hook - Environment Setup
+  description: Tests script_start hook that sets up environment variables and creates initial workspace
+  version: 1.0.0
+
+hydration_vars:
+  required:
+    - TEST_ENV
+  optional:
+    - LOG_LEVEL
+
+hooks:
+  script_start:
+    command: "test-acceptance/scripts/hooks/script_start_setup.sh"
+    on_error: "fail"
+
+sequences:
+  - id: "1"
+    name: "Verify Environment Setup"
+    steps:
+      - description: "Check that script_start hook set up environment"
+        command: "test -f /tmp/hook_script_start_$$.txt && cat /tmp/hook_script_start_$$.txt"
+        expected_output: "script_start executed"
+        capture:
+          - variable: "hook_output"
+            pattern: "^(.*)$"
+
+      - description: "Verify environment variable from hook"
+        command: "echo ${HOOK_WORKSPACE:-not_set}"
+        expected_output: "/tmp/hook_workspace"
+
+      - description: "Cleanup test file"
+        command: "rm -f /tmp/hook_script_start_$$.txt"
+        expected_output: ""

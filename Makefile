@@ -1,4 +1,4 @@
-pre-commit: test clippy coverage README_INSTALL_AUTOMATED.md
+pre-commit: test clippy coverage acceptance-test README_INSTALL_AUTOMATED.md
 .PHONY: pre-commit
 
 README_INSTALL_AUTOMATED.md:
@@ -32,6 +32,7 @@ test:
 	${MAKE} test-unit
 	${MAKE} test-e2e
 	#${MAKE} verify-testcases
+	#${MAKE} generate-docs-coverage
 .PHONY: test
 
 test-unit: build
@@ -120,7 +121,10 @@ test-e2e:
 	./tests/integration/test_variable_passing_e2e.sh
 	./tests/integration/test_verifier_e2e.sh
 	#./tests/integration/test_verify_e2e.sh
+	./tests/integration/test_container_yaml_compat_e2e.sh
+	./tests/integration/test_documentation_generation.sh
 	BUILD_VARIANT="" ./scripts/run_verifier_and_generate_reports.sh
+	./scripts/validate_tpdg_integration.sh --test-plan-doc-gen ${HOME}/Documents/projects/test-plan-documentation-generator --verbose
 .PHONY: test-e2e
 
 example_export-demo:
@@ -287,6 +291,10 @@ verify-testcases: build
 	fi
 .PHONY: verify-testcases
 
+validate-testcases-report: build
+	./scripts/validate_all_testcases.sh
+.PHONY: validate-testcases-report
+
 watch: build
 	./scripts/watch-yaml-files.sh
 .PHONY: watch
@@ -335,4 +343,82 @@ generate-docs: build
 generate-docs-all: build
 	./scripts/generate_documentation_reports.sh --logs-dir testcases --test-case-dir testcases
 .PHONY: generate-docs-all
+
+generate-docs-coverage: build
+	./scripts/generate_documentation_coverage_report.sh
+.PHONY: generate-docs-coverage
+
+test-container-compat: build
+	./scripts/test_container_yaml_compatibility.sh
+.PHONY: test-container-compat
+
+acceptance-test: build-acceptance-binaries
+	@echo "========================================="
+	@echo "Running Acceptance Test Suite"
+	@echo "========================================="
+	@echo ""
+	@mkdir -p test-acceptance/reports
+	@LOG_FILE="test-acceptance/reports/acceptance_suite_execution.log"; \
+	echo "Execution log: $$LOG_FILE"; \
+	echo ""; \
+	if ! command -v test-plan-documentation-generator > /dev/null 2>&1 && [ -z "$$TEST_PLAN_DOC_GEN" ]; then \
+		echo "ERROR: test-plan-documentation-generator (TPDG) not found"; \
+		echo ""; \
+		echo "TPDG is required for acceptance tests."; \
+		echo ""; \
+		echo "Install options:"; \
+		echo "  1. Install globally:"; \
+		echo "     cargo install test-plan-documentation-generator"; \
+		echo ""; \
+		echo "  2. Set TEST_PLAN_DOC_GEN environment variable:"; \
+		echo "     export TEST_PLAN_DOC_GEN=/path/to/test-plan-documentation-generator"; \
+		echo ""; \
+		exit 1; \
+	fi; \
+	if [ -n "$$TEST_PLAN_DOC_GEN" ]; then \
+		echo "Using TPDG from: $$TEST_PLAN_DOC_GEN"; \
+	else \
+		echo "Using TPDG from PATH: $$(which test-plan-documentation-generator)"; \
+	fi; \
+	echo ""; \
+	if ./test-acceptance/run_acceptance_suite.sh 2>&1 | tee "$$LOG_FILE"; then \
+		echo ""; \
+		echo "=========================================" | tee -a "$$LOG_FILE"; \
+		echo "Acceptance Test Suite: SUCCESS" | tee -a "$$LOG_FILE"; \
+		echo "=========================================" | tee -a "$$LOG_FILE"; \
+		echo "" | tee -a "$$LOG_FILE"; \
+		echo "Full execution log: $$LOG_FILE" | tee -a "$$LOG_FILE"; \
+		echo "Summary report: test-acceptance/reports/acceptance_suite_summary.txt" | tee -a "$$LOG_FILE"; \
+		exit 0; \
+	else \
+		EXIT_CODE=$$?; \
+		echo ""; \
+		echo "=========================================" | tee -a "$$LOG_FILE"; \
+		echo "Acceptance Test Suite: FAILED" | tee -a "$$LOG_FILE"; \
+		echo "=========================================" | tee -a "$$LOG_FILE"; \
+		echo "" | tee -a "$$LOG_FILE"; \
+		echo "Full execution log: $$LOG_FILE" | tee -a "$$LOG_FILE"; \
+		echo "Summary report: test-acceptance/reports/acceptance_suite_summary.txt" | tee -a "$$LOG_FILE"; \
+		echo "" | tee -a "$$LOG_FILE"; \
+		echo "Review the logs above for details on failures." | tee -a "$$LOG_FILE"; \
+		exit 1; \
+	fi
+.PHONY: acceptance-test
+
+test-e2e-acceptance: build-acceptance-binaries
+	@echo "========================================="
+	@echo "Running Acceptance Suite E2E Tests"
+	@echo "========================================="
+	@echo ""
+	./test-acceptance/tests/test_acceptance_suite_e2e.sh
+.PHONY: test-e2e-acceptance
+
+build-acceptance-binaries:
+	@echo "Building required binaries for acceptance tests..."
+	@cargo build --bin test-executor
+	@cargo build --bin verifier
+	@cargo build --bin validate-yaml
+	@echo "✓ All required binaries built successfully"
+	@echo ""
+.PHONY: build-acceptance-binaries
 

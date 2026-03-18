@@ -1,0 +1,55 @@
+requirement: "SIMPLE_SUCCESS"
+item: 1
+tc: 1
+id: 'TC_SUCCESS_SIMPLE_001'
+description: 'Simple single-sequence test with 3 basic steps - verifies basic command execution and output validation'
+
+general_initial_conditions:
+  system:
+    - "Bash shell is available"
+    - "Basic Unix utilities are installed"
+
+initial_conditions:
+  filesystem:
+    - "Temporary directory /tmp is writable"
+
+test_sequences:
+  - id: 1
+    name: "Basic Command Execution"
+    description: "Execute simple commands and verify their output"
+    initial_conditions:
+      system:
+        - "Echo command is available"
+    steps:
+      - step: 1
+        description: "Print hello world message"
+        command: "echo 'Hello World'"
+        expected:
+          success: true
+          result: 0
+          output: "Hello World"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Hello World' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 2
+        description: "Display current date"
+        command: "date +%Y-%m-%d"
+        expected:
+          success: true
+          result: 0
+          output: "date format YYYY-MM-DD"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]"
+
+      - step: 3
+        description: "List temporary directory"
+        command: "ls -d /tmp"
+        expected:
+          success: true
+          result: 0
+          output: "/tmp"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q '/tmp' <<< \"$COMMAND_OUTPUT\""

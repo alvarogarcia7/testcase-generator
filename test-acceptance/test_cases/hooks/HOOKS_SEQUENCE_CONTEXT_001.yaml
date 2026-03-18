@@ -1,0 +1,56 @@
+---
+metadata:
+  id: HOOKS_SEQUENCE_CONTEXT_001
+  name: Hooks with Sequence Context
+  description: Tests that hooks receive correct sequence context variables
+  version: 1.0.0
+
+hydration_vars:
+  required:
+    - TEST_ENV
+
+hooks:
+  before_sequence:
+    command: "test-acceptance/scripts/hooks/context_before_sequence.sh"
+    on_error: "fail"
+  after_sequence:
+    command: "test-acceptance/scripts/hooks/context_after_sequence.sh"
+    on_error: "continue"
+
+sequences:
+  - id: "1"
+    name: "Alpha Sequence"
+    steps:
+      - description: "First step in alpha"
+        command: "echo 'alpha step 1'"
+        expected_output: "alpha step 1"
+
+  - id: "2"
+    name: "Beta Sequence"
+    steps:
+      - description: "First step in beta"
+        command: "echo 'beta step 1'"
+        expected_output: "beta step 1"
+
+  - id: "3"
+    name: "Gamma Sequence"
+    steps:
+      - description: "Verify sequence context logged correctly"
+        command: "test -f /tmp/sequence_context_$$.log && cat /tmp/sequence_context_$$.log"
+        expected_output: ".*"
+
+      - description: "Check sequence IDs"
+        command: "grep 'TEST_SEQUENCE_ID' /tmp/sequence_context_$$.log | grep -E '(1|2|3)'"
+        expected_output: ".*TEST_SEQUENCE_ID.*(1|2|3).*"
+
+      - description: "Check sequence names"
+        command: "grep -E '(Alpha|Beta|Gamma) Sequence' /tmp/sequence_context_$$.log"
+        expected_output: ".*(Alpha|Beta|Gamma) Sequence.*"
+
+      - description: "Verify both before and after hooks logged"
+        command: "grep -c -E '(before_sequence|after_sequence)' /tmp/sequence_context_$$.log"
+        expected_output: "[456789]"
+
+      - description: "Cleanup log file"
+        command: "rm -f /tmp/sequence_context_$$.log"
+        expected_output: ""

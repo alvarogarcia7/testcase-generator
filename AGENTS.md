@@ -52,11 +52,149 @@ See the [Hooks](#hooks) section for detailed documentation and examples.
 - **sccache Clean**: make sccache-clean (clear sccache compilation cache)
 - **Verify Scripts**: make verify-scripts (verify syntax of all shell scripts)
 - **Watch Mode**: make watch (monitors testcases/ for changes and auto-validates)
-- **Generate Docs**: make generate-docs (generate documentation reports for verifier scenarios)
-- **Generate Docs All**: make generate-docs-all (generate documentation reports for all test scenarios including verifier_scenarios)
+- **Generate Docs**: make generate-docs (generate documentation reports using test-plan-documentation-generator)
+- **Generate Docs All**: make generate-docs-all (generate documentation reports for all test scenarios using test-plan-documentation-generator)
+- **Generate Docs Coverage**: make generate-docs-coverage (run documentation generation with tarpaulin coverage analysis)
+- **Test Container Compatibility**: make test-container-compat (verify container YAML compatibility with test-plan-doc-gen)
+- **Acceptance Tests**: make acceptance-test (run full acceptance test suite with validation, generation, execution, verification, and documentation)
+- **Acceptance Suite E2E Tests**: make test-e2e-acceptance (run E2E integration tests for the acceptance suite orchestrator)
 - **Dev Server**: N/A
 
-You must build, test, lint, and verify coverage before committing
+### Report Generation
+
+All report generation now uses the Rust-based **test-plan-documentation-generator** (tpdg) tool, which generates AsciiDoc, Markdown, and HTML reports from test cases and verification results.
+
+**Python PDF Generation Removed**: The legacy Python-based PDF generation (scripts/generate_verifier_reports.py) has been removed. The reportlab dependency has been removed from pyproject.toml. The only remaining Python dependency is pyyaml, which is required for the convert_verification_to_result_yaml.py script.
+
+**Report Formats Supported**:
+- AsciiDoc (.adoc) - Structured documentation format
+- Markdown (.md) - GitHub-compatible documentation
+- HTML - Generated from AsciiDoc (requires asciidoctor for conversion)
+
+**Installation**:
+```bash
+# Install test-plan-documentation-generator globally
+cargo install test-plan-documentation-generator
+
+# Or use custom path
+export TEST_PLAN_DOC_GEN=/path/to/test-plan-documentation-generator/binary
+```
+
+**Usage**:
+```bash
+# Generate documentation reports
+make generate-docs          # Verifier scenarios only
+make generate-docs-all      # All test cases
+```
+
+**Benefits of test-plan-documentation-generator**:
+- Better performance and maintainability
+- Native integration with the Rust test framework
+- Consistent report generation across all test scenarios
+- Support for multiple output formats (AsciiDoc, Markdown, HTML)
+- No external Python dependencies for report generation
+- Schema validation for container YAML compatibility
+
+**Troubleshooting**:
+See [Report Generation Documentation](docs/report_generation.md) for detailed installation, configuration, schema compatibility requirements, and troubleshooting steps.
+
+You must build, test, lint, verify coverage, and run acceptance tests before committing
+
+## Acceptance Test Suite
+
+The acceptance test suite provides comprehensive end-to-end testing of the entire test execution workflow, from YAML validation through to documentation generation.
+
+### Running Acceptance Tests
+
+**Command**: `make acceptance-test`
+
+This target executes the full acceptance test suite, which includes:
+1. Building all required binaries (test-executor, verifier, validate-yaml)
+2. Validating TPDG (test-plan-documentation-generator) availability
+3. Running all acceptance test stages
+4. Capturing output to both console and log file
+5. Generating final summary report
+6. Displaying statistics and results
+
+**Exit Codes**:
+- `0` - All tests passed successfully
+- `1` - One or more tests failed
+
+**Prerequisites**:
+- TPDG must be installed and available:
+  - Install globally: `cargo install test-plan-documentation-generator`
+  - Or set environment variable: `export TEST_PLAN_DOC_GEN=/path/to/tpdg`
+
+**Output Files**:
+- Execution log: `test-acceptance/reports/acceptance_suite_execution.log`
+- Summary report: `test-acceptance/reports/acceptance_suite_summary.txt`
+- Test results: `test-acceptance/verification_results/`
+- Documentation: `test-acceptance/reports/asciidoc/` and `test-acceptance/reports/markdown/`
+
+### Acceptance Test Stages
+
+The acceptance test suite runs six stages:
+
+1. **YAML Validation** - Validates all test case YAMLs against schema
+2. **Script Generation** - Generates executable bash scripts from test cases
+3. **Test Execution** - Executes all automated tests (skips manual tests by default)
+4. **Verification** - Runs verifier on execution logs to generate container YAMLs
+5. **Container Validation** - Validates container YAMLs against schema
+6. **Documentation** - Generates AsciiDoc and Markdown documentation using TPDG
+
+### Manual Test Suite Execution
+
+For advanced usage, run the acceptance suite script directly:
+
+```bash
+# Run with default settings
+./test-acceptance/run_acceptance_suite.sh
+
+# Run with verbose output
+./test-acceptance/run_acceptance_suite.sh --verbose
+
+# Include manual tests in execution
+./test-acceptance/run_acceptance_suite.sh --include-manual
+
+# Skip specific stages
+./test-acceptance/run_acceptance_suite.sh --skip-generation
+./test-acceptance/run_acceptance_suite.sh --skip-execution
+./test-acceptance/run_acceptance_suite.sh --skip-verification
+./test-acceptance/run_acceptance_suite.sh --skip-documentation
+```
+
+### CI/CD Integration
+
+The `acceptance-test` target is included in the `pre-commit` checks to ensure all code changes pass the full acceptance test suite before commit. This provides comprehensive validation of:
+- Code functionality
+- Test execution workflow
+- Documentation generation
+- Schema compliance
+- End-to-end integration
+
+### Acceptance Suite E2E Tests
+
+**Command**: `make test-e2e-acceptance`
+
+The acceptance suite E2E tests validate that the `run_acceptance_suite.sh` orchestrator works correctly by running it on a subset of test cases and verifying all stages complete successfully.
+
+**Test Coverage**:
+- Validates all 6 stages complete successfully
+- Checks expected files are created at each stage (scripts, logs, containers, documentation)
+- Validates final report is generated with correct statistics
+- Tests all `--skip-*` flags work correctly (generation, execution, verification, documentation)
+- Ensures `--verbose` flag increases logging detail
+- Verifies error handling for missing dependencies (TPDG not available)
+- Tests timeout handling for long-running scripts
+- Confirms cleanup of temporary files after completion
+- Tests combining multiple `--skip-*` flags
+
+**Test Subset**:
+- 5 success scenarios
+- 3 failure scenarios
+- 2 hook scenarios
+
+**Documentation**: See `test-acceptance/tests/README.md` for detailed information on the E2E test implementation and adding new tests.
 
 ## Binaries
 
@@ -66,6 +204,13 @@ The project includes several binary utilities:
   - Build: `make build-json-escape`
   - Run: `make run-json-escape` or `cargo run --bin json-escape`
   - Usage: `echo "text" | json-escape`
+
+- **test-plan-documentation-generator-compat**: A compatibility checker that verifies container YAML files are compatible with the test-plan-doc-gen tool. Validates schema compliance, generates compatibility reports, and tests against verifier scenarios.
+  - Build: `cargo build --bin test-plan-documentation-generator-compat`
+  - Run: `cargo run --bin test-plan-documentation-generator-compat -- <command>`
+  - Usage: `test-plan-documentation-generator-compat validate container.yaml`
+  - Commands: `validate`, `batch`, `test-verifier-scenarios`, `report`
+  - Documentation: `docs/TEST_PLAN_DOC_GEN_COMPATIBILITY.md`
 
 ## Shell Script Compatibility
 
@@ -160,6 +305,72 @@ The logger library also provides cleanup management for temporary files and back
 - If tests fail, investigate and fix the failures before proceeding
 - Never commit code with failing tests
 - Update or add tests as needed when modifying functionality
+
+## Documentation Generation Coverage
+
+The project includes a specialized coverage reporting tool for analyzing code coverage of the documentation generation workflow.
+
+### Coverage Report Generation
+
+**Command**: `make generate-docs-coverage`
+
+This command executes cargo-tarpaulin across all document generation code paths exercised by sample test cases, generating:
+- Coverage report showing which functions and branches were executed
+- Total coverage percentage for documentation-related modules
+- Detailed HTML and JSON reports (optional)
+
+### Modules Tracked
+
+The coverage analysis focuses on:
+- `src/lib.rs` - Library exports
+- `src/verification.rs` - Verification and report generation
+- `src/verification_templates.rs` - Template rendering
+- `src/parser.rs` - YAML parsing
+- `src/models.rs` - Data models
+- `src/bin/verifier.rs` - Verifier binary
+- `src/bin/test-plan-documentation-generator-compat.rs` - Documentation generator compatibility
+
+### Usage
+
+**Basic Coverage Report**:
+```bash
+make generate-docs-coverage
+```
+
+**With HTML Report**:
+```bash
+./scripts/generate_documentation_coverage_report.sh --html
+```
+
+**Custom Output Directory**:
+```bash
+./scripts/generate_documentation_coverage_report.sh --output-dir /path/to/reports
+```
+
+### Output Files
+
+Reports are generated in `reports/coverage/documentation/` (default):
+- `tarpaulin-report.json` - Coverage data in JSON format
+- `coverage_summary.txt` - Human-readable coverage summary
+- `coverage_run.log` - Detailed execution log
+- `html/` - HTML coverage report (if `--html` flag used)
+
+### Coverage Workflow
+
+The tool automatically:
+1. Checks for and installs cargo-tarpaulin if needed
+2. Builds verifier and documentation generator binaries
+3. Runs sample test scenarios under coverage instrumentation
+4. Processes verification logs and container YAML files
+5. Generates comprehensive coverage reports
+6. Prints total coverage percentage to stdout
+
+### Sample Scenarios
+
+Coverage analysis runs against these test scenarios:
+- `TEST_SUCCESS_001` - Successful test execution
+- `TEST_FAILED_FIRST_001` - Failed first step scenario
+- `TEST_MULTI_SEQ_001` - Multiple sequences scenario
 
 ## Hooks
 

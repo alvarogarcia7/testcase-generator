@@ -1,0 +1,42 @@
+requirement: "PREREQ_AUTO_FAIL"
+item: 1
+tc: 1
+id: 'PREREQ_AUTO_FAIL_001'
+description: 'Test case with automatic prerequisite that fails verification'
+
+prerequisites:
+  - type: automatic
+    description: "Check for a non-existent command"
+    verification_command: "which nonexistent_command_xyz_123 > /dev/null 2>&1"
+  - type: automatic
+    description: "Verify a non-existent directory"
+    verification_command: "test -d /nonexistent/directory/path/xyz"
+
+general_initial_conditions:
+  system:
+    - "Shell environment is available"
+
+initial_conditions:
+  system:
+    - "Prerequisites are expected to fail"
+
+test_sequences:
+  - id: 1
+    name: "Test Sequence That Should Not Execute"
+    description: |
+                   This test sequence should not execute because
+                   automatic prerequisites will fail.
+    initial_conditions:
+      system:
+        - "This should never be reached"
+    steps:
+      - step: 1
+        description: "This step should never execute"
+        command: echo "This should not appear"
+        expected:
+          success: true
+          result: 0
+          output: "This should not appear"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'This should not appear' <<< \"$COMMAND_OUTPUT\""

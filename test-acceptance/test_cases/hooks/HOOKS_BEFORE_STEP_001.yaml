@@ -1,0 +1,39 @@
+---
+metadata:
+  id: HOOKS_BEFORE_STEP_001
+  name: Before Step Hook - Validation
+  description: Tests before_step hook that performs pre-step validation and setup
+  version: 1.0.0
+
+hydration_vars:
+  required:
+    - TEST_ENV
+
+hooks:
+  before_step:
+    command: "test-acceptance/scripts/hooks/before_step_validate.sh"
+    on_error: "fail"
+
+sequences:
+  - id: "1"
+    name: "Step Validation Sequence"
+    steps:
+      - description: "First step with validation"
+        command: "echo 'step 1 executed'"
+        expected_output: "step 1 executed"
+
+      - description: "Second step with validation"
+        command: "echo 'step 2 executed'"
+        expected_output: "step 2 executed"
+
+      - description: "Verify before_step hook ran for each step"
+        command: "test -f /tmp/before_step_$$.log && grep -c 'before_step validated' /tmp/before_step_$$.log"
+        expected_output: "3"
+
+      - description: "Check step numbers in log"
+        command: "grep 'Step number:' /tmp/before_step_$$.log | wc -l | tr -d ' '"
+        expected_output: "3"
+
+      - description: "Cleanup log file"
+        command: "rm -f /tmp/before_step_$$.log"
+        expected_output: ""

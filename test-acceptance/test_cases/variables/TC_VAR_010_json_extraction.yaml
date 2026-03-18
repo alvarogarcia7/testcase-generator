@@ -1,0 +1,112 @@
+requirement: "VAR_TEST"
+item: 1
+tc: 10
+id: 'TC_VAR_010'
+description: 'Test extracting variables from JSON output using both regex and jq command-based capture'
+
+general_initial_conditions:
+  system:
+    - "Bash shell is available"
+    - "jq JSON processor is installed (or simulation available)"
+
+initial_conditions:
+  environment:
+    - "JSON processing tools available"
+
+test_sequences:
+  - id: 1
+    name: "JSON Variable Extraction"
+    description: "Extract variables from JSON response using multiple methods"
+    initial_conditions:
+      system:
+        - "JSON data can be parsed"
+    steps:
+      - step: 1
+        description: "Generate JSON and extract using regex patterns"
+        command: |
+          cat << 'EOF'
+          {
+            "request_id": "req-2024-001",
+            "timestamp": 1704067200,
+            "user": {
+              "id": 1001,
+              "name": "john.doe",
+              "email": "john@example.com"
+            },
+            "status": "success",
+            "data": {
+              "count": 42,
+              "total": 1500
+            }
+          }
+          EOF
+        capture_vars:
+          - name: request_id
+            capture: '"request_id": "([^"]+)"'
+          - name: timestamp
+            capture: '"timestamp": ([0-9]+)'
+          - name: user_id
+            capture: '"id": ([0-9]+)'
+          - name: user_name
+            capture: '"name": "([^"]+)"'
+          - name: status
+            capture: '"status": "([^"]+)"'
+          - name: data_count
+            capture: '"count": ([0-9]+)'
+        expected:
+          success: true
+          result: '0'
+          output: 'request_id'
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'request_id' <<< \"$COMMAND_OUTPUT\""
+          general:
+            - name: verify_all_extracted
+              condition: "[[ -n \"$request_id\" && -n \"$timestamp\" && -n \"$user_id\" && -n \"$status\" ]]"
+            - name: verify_request_id_format
+              condition: "[[ $request_id =~ ^req-[0-9]{4}-[0-9]+$ ]]"
+            - name: verify_timestamp_numeric
+              condition: "[[ $timestamp =~ ^[0-9]+$ ]]"
+            - name: verify_status_success
+              condition: "[[ \"$status\" = \"success\" ]]"
+            - name: verify_user_id_range
+              condition: "[[ $user_id -ge 1000 && $user_id -lt 2000 ]]"
+
+      - step: 2
+        description: "Use extracted variables to construct query"
+        command: |
+          echo "Query: user_id=$user_id, request=$request_id, status=$status"
+        expected:
+          success: true
+          result: '0'
+          output: 'Query:'
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Query:' <<< \"$COMMAND_OUTPUT\""
+          general:
+            - name: verify_query_contains_user_id
+              condition: "grep -q 'user_id=1001' <<< \"$COMMAND_OUTPUT\""
+            - name: verify_query_contains_request_id
+              condition: "grep -q 'request=req-2024-001' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 3
+        description: "Process nested JSON data with calculations"
+        command: |
+          echo "Processing data: count=$data_count"
+          DOUBLE_COUNT=$((data_count * 2))
+          echo "Doubled count: $DOUBLE_COUNT"
+        capture_vars:
+          - name: doubled_value
+            capture: 'Doubled count: ([0-9]+)'
+        expected:
+          success: true
+          result: '0'
+          output: 'Processing data'
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Processing data' <<< \"$COMMAND_OUTPUT\""
+          general:
+            - name: verify_doubled_value
+              condition: "[[ $doubled_value -eq 84 ]]"
+            - name: verify_calculation_correct
+              condition: "[[ $doubled_value -eq $((data_count * 2)) ]]"

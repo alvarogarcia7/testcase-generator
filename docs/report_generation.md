@@ -2,83 +2,229 @@
 
 ## Overview
 
-The Test Case Manager includes a comprehensive report generation system that converts test execution logs into professional documentation reports. The system integrates with `test-plan-doc-gen`, an external Rust-based tool that generates reports in multiple formats (AsciiDoc, Markdown, PDF) from test case YAML files and verification results.
+The Test Case Manager includes a comprehensive report generation system that converts test execution logs into professional documentation reports. The system uses **test-plan-documentation-generator** (tpdg), a Rust-based tool that generates reports in multiple formats (AsciiDoc, Markdown, HTML) from test case YAML files and verification results.
+
+**Migration from Python to Rust**: The legacy Python-based PDF generation has been completely removed in favor of test-plan-documentation-generator, which provides better performance, maintainability, and native integration with the Rust test framework.
+
+## Quick Reference
+
+**Install Dependencies:**
+```bash
+cargo install test-plan-documentation-generator
+pip3 install pyyaml
+```
+
+**Generate Reports:**
+```bash
+make generate-docs          # Verifier scenarios only
+make generate-docs-all      # All test cases
+```
+
+**Convert to HTML/PDF:**
+```bash
+# HTML (requires asciidoctor)
+asciidoctor reports/documentation/reports/test_results_report.adoc
+
+# PDF (requires asciidoctor-pdf)
+asciidoctor-pdf reports/documentation/reports/test_results_report.adoc
+```
+
+**Output Formats:**
+- AsciiDoc (.adoc) - Primary format from tpdg
+- Markdown (.md) - Primary format from tpdg
+- HTML - Converted from AsciiDoc/Markdown
+- PDF - Converted from AsciiDoc
 
 ## Table of Contents
 
-1. [Installation and Building test-plan-doc-gen](#installation-and-building-test-plan-doc-gen)
-2. [Directory Structure](#directory-structure)
-3. [Running Report Generation](#running-report-generation)
-4. [Report Output Formats and Locations](#report-output-formats-and-locations)
-5. [Customizing Templates](#customizing-templates)
-6. [Troubleshooting](#troubleshooting)
+1. [Installation](#installation)
+2. [Dependencies](#dependencies)
+3. [Directory Structure](#directory-structure)
+4. [Running Report Generation](#running-report-generation)
+5. [Report Output Formats and Locations](#report-output-formats-and-locations)
+6. [Schema Compatibility](#schema-compatibility)
+7. [Customizing Templates](#customizing-templates)
+8. [Troubleshooting](#troubleshooting)
 
 ---
 
-## Installation and Building test-plan-doc-gen
+## Installation
 
-### Prerequisites
+### Method 1: Install from crates.io (Recommended)
 
-- Rust toolchain (1.70.0 or later)
-- Cargo package manager
-- Git
-
-### Installation Steps
-
-#### 1. Clone the test-plan-doc-gen Repository
-
-The `test-plan-doc-gen` tool should be cloned as a sibling directory to the Test Case Manager project:
+The simplest way to install test-plan-documentation-generator is via cargo:
 
 ```bash
-# Navigate to the parent directory
-cd /path/to/parent-directory
+# Install globally from crates.io
+cargo install test-plan-documentation-generator
 
-# Clone test-plan-doc-gen (replace with actual repository URL)
-git clone <test-plan-doc-gen-repo-url> test-plan-doc-gen
-
-# Verify directory structure
-ls -la
-# Expected output:
-#   testcase-manager/
-#   test-plan-doc-gen/
+# Verify installation
+which test-plan-documentation-generator
+test-plan-documentation-generator --version
 ```
 
-#### 2. Build test-plan-doc-gen
+After installation, the binary will be available in your PATH (typically `~/.cargo/bin/test-plan-documentation-generator`).
+
+### Method 2: Build from Source
+
+If you need to build from source or use a development version:
 
 ```bash
-# Navigate to test-plan-doc-gen directory
-cd test-plan-doc-gen
+# Clone the repository
+git clone <test-plan-documentation-generator-repo-url>
+cd test-plan-documentation-generator
 
 # Build release binary
 cargo build --release
 
-# Verify binary was created
-ls -la target/release/test-plan-doc-gen
-```
-
-The binary will be located at: `test-plan-doc-gen/target/release/test-plan-doc-gen`
-
-#### 3. Alternative: Install to System PATH
-
-```bash
-# Install test-plan-doc-gen globally
-cd test-plan-doc-gen
+# Install to cargo bin directory
 cargo install --path .
 
-# Verify installation
-which test-plan-doc-gen
-test-plan-doc-gen --version
+# Or use the binary directly
+./target/release/test-plan-documentation-generator --version
 ```
 
-### Automated Building
+### Method 3: Custom Binary Path
 
-The report generation scripts automatically build `test-plan-doc-gen` if the binary is not found:
+If you prefer not to install globally, you can specify a custom binary path:
 
 ```bash
-# The script will check for and build test-plan-doc-gen automatically
-cd testcase-manager
-./scripts/generate_documentation_reports.sh
+# Set environment variable
+export TEST_PLAN_DOC_GEN=/path/to/test-plan-documentation-generator
+
+# Or use with report generation scripts
+./scripts/generate_documentation_reports.sh \
+  --test-plan-doc-gen /path/to/test-plan-documentation-generator
 ```
+
+### Verification
+
+Verify that test-plan-documentation-generator is correctly installed:
+
+```bash
+# Check version
+test-plan-documentation-generator --version
+
+# Display help
+test-plan-documentation-generator --help
+
+# Test basic functionality
+test-plan-documentation-generator \
+  --test-case testcases/example.yml \
+  --output /tmp/test_report.md \
+  --format markdown
+```
+
+---
+
+## Dependencies
+
+### Required Dependencies
+
+#### 1. test-plan-documentation-generator (tpdg)
+
+**Installation:**
+```bash
+cargo install test-plan-documentation-generator
+```
+
+**Purpose:** Primary report generation tool (Rust-based)
+
+**Formats:** AsciiDoc, Markdown
+
+#### 2. Python 3 with PyYAML
+
+**Installation:**
+```bash
+# Ubuntu/Debian
+sudo apt-get install python3 python3-pip
+pip3 install pyyaml
+
+# macOS
+brew install python3
+pip3 install pyyaml
+
+# Or use virtual environment (recommended)
+python3 -m venv venv
+source venv/bin/activate
+pip install pyyaml
+```
+
+**Purpose:** Used by `convert_verification_to_result_yaml.py` script for JSON to YAML conversion
+
+**Note:** This is the only remaining Python dependency. The legacy reportlab dependency has been removed.
+
+### Optional Dependencies (for HTML/PDF conversion)
+
+#### 3. asciidoctor (for HTML conversion)
+
+**Installation:**
+```bash
+# Ubuntu/Debian
+sudo apt-get install asciidoctor
+
+# macOS
+brew install asciidoctor
+gem install asciidoctor
+
+# Or via RubyGems
+gem install asciidoctor
+```
+
+**Purpose:** Convert AsciiDoc reports to HTML
+
+**Usage:**
+```bash
+asciidoctor reports/documentation/reports/test_results_report.adoc
+```
+
+#### 4. asciidoctor-pdf (for PDF conversion)
+
+**Installation:**
+```bash
+# Via RubyGems
+gem install asciidoctor-pdf
+
+# Or with bundler
+bundle add asciidoctor-pdf
+```
+
+**Purpose:** Convert AsciiDoc reports to PDF
+
+**Usage:**
+```bash
+asciidoctor-pdf reports/documentation/reports/test_results_report.adoc
+```
+
+#### 5. pandoc (for Markdown to HTML conversion)
+
+**Installation:**
+```bash
+# Ubuntu/Debian
+sudo apt-get install pandoc
+
+# macOS
+brew install pandoc
+```
+
+**Purpose:** Convert Markdown test plans to HTML
+
+**Usage:**
+```bash
+pandoc reports/documentation/reports/TC_001_test_plan.md \
+  -o TC_001_test_plan.html \
+  --standalone
+```
+
+### Dependency Summary
+
+| Dependency | Required | Purpose | Installation |
+|------------|----------|---------|--------------|
+| test-plan-documentation-generator | Yes | Report generation | `cargo install test-plan-documentation-generator` |
+| Python 3 + PyYAML | Yes | JSON to YAML conversion | `pip3 install pyyaml` |
+| asciidoctor | No | AsciiDoc to HTML | `gem install asciidoctor` |
+| asciidoctor-pdf | No | AsciiDoc to PDF | `gem install asciidoctor-pdf` |
+| pandoc | No | Markdown to HTML | `brew install pandoc` or `apt-get install pandoc` |
 
 ---
 
@@ -162,17 +308,28 @@ Default output directory for all generated reports. Organized into subdirectorie
 
 ## Running Report Generation
 
-### Using the Makefile (Recommended)
+### Quick Start
 
 The simplest way to generate reports is using the Makefile targets:
 
 ```bash
-# Generate documentation reports for verifier_scenarios
+# Generate documentation reports for verifier_scenarios only
 make generate-docs
 
 # Generate documentation reports for all testcases
 make generate-docs-all
 ```
+
+**What these commands do:**
+1. Run the `verifier` tool on execution logs
+2. Convert verification JSON to result YAML files
+3. Create a combined results container YAML
+4. Generate AsciiDoc test results report using test-plan-documentation-generator
+5. Generate Markdown test plan reports using test-plan-documentation-generator
+
+**Output location:** `reports/documentation/`
+
+**Note:** HTML and PDF generation requires additional conversion steps (see [Converting to HTML/PDF](#converting-and-viewing-htmlpdf))
 
 ### Manual Execution
 
@@ -300,10 +457,14 @@ EOF
 #### Step 4: Generate Test Results Report (AsciiDoc)
 
 ```bash
-# Set binary path
-export TEST_PLAN_DOC_GEN=../test-plan-doc-gen/target/release/test-plan-doc-gen
+# Generate AsciiDoc report using test-plan-documentation-generator
+test-plan-documentation-generator \
+  --container reports/documentation/results/results_container.yaml \
+  --output reports/documentation/reports/test_results_report.adoc \
+  --format asciidoc
 
-# Generate AsciiDoc report
+# Or use environment variable for custom binary path
+export TEST_PLAN_DOC_GEN=/path/to/test-plan-documentation-generator
 $TEST_PLAN_DOC_GEN \
   --container reports/documentation/results/results_container.yaml \
   --output reports/documentation/reports/test_results_report.adoc \
@@ -316,16 +477,31 @@ $TEST_PLAN_DOC_GEN \
 # Generate test plan for each test case
 for test_case in testcases/*.yml; do
     basename=$(basename "$test_case" .yml)
-    $TEST_PLAN_DOC_GEN \
+    test-plan-documentation-generator \
       --test-case "$test_case" \
       --output "reports/documentation/reports/${basename}_test_plan.md" \
       --format markdown
 done
 ```
 
+#### Step 6 (Optional): Convert to HTML or PDF
+
+```bash
+# Convert AsciiDoc to HTML (requires asciidoctor)
+asciidoctor reports/documentation/reports/test_results_report.adoc
+
+# Convert AsciiDoc to PDF (requires asciidoctor-pdf)
+asciidoctor-pdf reports/documentation/reports/test_results_report.adoc
+
+# Convert Markdown to HTML (requires pandoc)
+for md in reports/documentation/reports/*_test_plan.md; do
+    pandoc "$md" -o "${md%.md}.html" --standalone
+done
+```
+
 ### Using the Report Generator Library
 
-For custom scripts, use the `report_generator.sh` library:
+For custom scripts, use the `report_generator.sh` library which provides helper functions for working with test-plan-documentation-generator:
 
 ```bash
 #!/usr/bin/env bash
@@ -335,12 +511,12 @@ set -e
 source scripts/lib/logger.sh
 source scripts/lib/report_generator.sh
 
-# Build test-plan-doc-gen
-build_test_plan_doc_gen "../test-plan-doc-gen"
-
-# Check if available
-if check_test_plan_doc_gen_available "../test-plan-doc-gen"; then
-    log_info "test-plan-doc-gen is available"
+# Check if test-plan-documentation-generator is available
+if check_test_plan_doc_gen_available; then
+    log_info "test-plan-documentation-generator is available"
+else
+    log_error "test-plan-documentation-generator not found"
+    exit 1
 fi
 
 # Generate report
@@ -353,18 +529,47 @@ invoke_test_plan_doc_gen \
 validate_report_output "reports" "example_report.md"
 ```
 
+**Available Library Functions:**
+
+- `check_test_plan_doc_gen_available` - Check if binary is available in PATH
+- `invoke_test_plan_doc_gen` - Call test-plan-documentation-generator with arguments
+- `validate_report_output` - Verify report file was created successfully
+
+**Setting Custom Binary Path:**
+
+```bash
+# Use environment variable
+export TEST_PLAN_DOC_GEN=/path/to/test-plan-documentation-generator
+
+# Or specify in script
+TEST_PLAN_DOC_GEN=/custom/path invoke_test_plan_doc_gen \
+    --test-case "testcases/example.yml" \
+    --output "reports/example_report.md" \
+    --format markdown
+```
+
 ---
 
 ## Report Output Formats and Locations
 
 ### Output Formats
 
-The report generation system produces multiple output formats:
+The report generation system produces multiple output formats through a multi-stage pipeline:
+
+**Primary Formats (Generated by test-plan-documentation-generator):**
+- AsciiDoc (.adoc) - Structured documentation format
+- Markdown (.md) - GitHub-compatible documentation
+
+**Secondary Formats (Converted from AsciiDoc):**
+- HTML - Converted using asciidoctor (requires asciidoctor installation)
+- PDF - Converted using asciidoctor-pdf (requires asciidoctor-pdf installation)
 
 #### 1. Verification JSON
 **Location:** `reports/documentation/verification/batch_verification.json`
 
 Raw verification results from the verifier tool in JSON format. Contains detailed pass/fail information for all test cases.
+
+**Generated by:** `verifier` binary
 
 **Schema:** `schemas/verification-output.schema.json`
 
@@ -459,26 +664,97 @@ metadata:
 #### 4. AsciiDoc Report
 **Location:** `reports/documentation/reports/test_results_report.adoc`
 
-Professional test results report in AsciiDoc format, generated from the results container. Can be converted to HTML or PDF using AsciiDoctor.
+Professional test results report in AsciiDoc format, generated from the results container by test-plan-documentation-generator.
 
-**Example Usage:**
+**Generated by:** `test-plan-documentation-generator` with `--format asciidoc`
+
+**Conversion to HTML:**
 ```bash
-# Convert AsciiDoc to HTML
+# Convert AsciiDoc to HTML (requires asciidoctor)
 asciidoctor reports/documentation/reports/test_results_report.adoc
 
-# Convert AsciiDoc to PDF
+# Output: reports/documentation/reports/test_results_report.html
+```
+
+**Conversion to PDF:**
+```bash
+# Convert AsciiDoc to PDF (requires asciidoctor-pdf)
 asciidoctor-pdf reports/documentation/reports/test_results_report.adoc
+
+# Output: reports/documentation/reports/test_results_report.pdf
+```
+
+**Custom Styling:**
+```bash
+# HTML with custom CSS
+asciidoctor \
+  -a stylesheet=custom-style.css \
+  reports/documentation/reports/test_results_report.adoc
+
+# PDF with custom theme
+asciidoctor-pdf \
+  -a pdf-theme=custom-theme.yml \
+  reports/documentation/reports/test_results_report.adoc
 ```
 
 #### 5. Markdown Test Plans
 **Location:** `reports/documentation/reports/*_test_plan.md`
 
-Individual test plan documentation in Markdown format, generated from test case YAML files. Each file documents:
+Individual test plan documentation in Markdown format, generated from test case YAML files by test-plan-documentation-generator.
+
+**Generated by:** `test-plan-documentation-generator` with `--format markdown`
+
+**Content includes:**
 - Test case metadata (requirement, item, tc, id)
 - Description and prerequisites
 - Initial conditions (general and device-specific)
 - Test sequences and steps
 - Expected results and verification expressions
+
+**Conversion to HTML:**
+```bash
+# Convert Markdown to HTML (requires pandoc)
+pandoc reports/documentation/reports/TC_001_test_plan.md \
+  -o TC_001_test_plan.html \
+  --standalone
+
+# With custom CSS
+pandoc reports/documentation/reports/TC_001_test_plan.md \
+  -o TC_001_test_plan.html \
+  --css=custom-style.css \
+  --standalone
+```
+
+#### 6. HTML Reports (Converted)
+**Location:** `reports/documentation/reports/*.html`
+
+HTML versions of AsciiDoc and Markdown reports, generated via asciidoctor or pandoc.
+
+**Not directly generated by test-plan-documentation-generator** - these are created by converting AsciiDoc or Markdown outputs.
+
+**Generation methods:**
+```bash
+# From AsciiDoc (test results report)
+asciidoctor reports/documentation/reports/test_results_report.adoc
+
+# From Markdown (test plans)
+pandoc reports/documentation/reports/TC_001_test_plan.md \
+  -o TC_001_test_plan.html \
+  --standalone
+```
+
+#### 7. PDF Reports (Converted)
+**Location:** `reports/documentation/reports/*.pdf`
+
+PDF versions of AsciiDoc reports, generated via asciidoctor-pdf.
+
+**Not directly generated by test-plan-documentation-generator** - these are created by converting AsciiDoc outputs.
+
+**Generation method:**
+```bash
+# From AsciiDoc (test results report)
+asciidoctor-pdf reports/documentation/reports/test_results_report.adoc
+```
 
 ### Default Output Structure
 
@@ -502,22 +778,241 @@ reports/documentation/
 
 ### Accessing Reports
 
+#### Viewing Raw Reports
+
 ```bash
-# View verification JSON
+# View verification JSON (with pretty printing)
 cat reports/documentation/verification/batch_verification.json | jq .
 
 # View result YAML
 cat reports/documentation/results/TC_001_result.yaml
 
-# View AsciiDoc report (raw)
+# View container YAML
+cat reports/documentation/results/results_container.yaml
+
+# View AsciiDoc report (raw source)
 less reports/documentation/reports/test_results_report.adoc
 
-# View Markdown test plan
+# View Markdown test plan (raw source)
 cat reports/documentation/reports/TC_001_test_plan.md
+```
 
-# Convert AsciiDoc to HTML and open in browser
+#### Converting and Viewing HTML/PDF
+
+```bash
+# Convert AsciiDoc to HTML
 asciidoctor reports/documentation/reports/test_results_report.adoc
+
+# Open HTML in browser (macOS)
 open reports/documentation/reports/test_results_report.html
+
+# Open HTML in browser (Linux)
+xdg-open reports/documentation/reports/test_results_report.html
+
+# Convert AsciiDoc to PDF
+asciidoctor-pdf reports/documentation/reports/test_results_report.adoc
+
+# Open PDF in viewer
+open reports/documentation/reports/test_results_report.pdf
+
+# Convert Markdown to HTML
+pandoc reports/documentation/reports/TC_001_test_plan.md \
+  -o TC_001_test_plan.html \
+  --standalone
+
+# Open Markdown HTML in browser
+open TC_001_test_plan.html
+```
+
+#### Batch Conversion
+
+```bash
+# Convert all AsciiDoc reports to HTML
+for adoc in reports/documentation/reports/*.adoc; do
+    asciidoctor "$adoc"
+done
+
+# Convert all Markdown test plans to HTML
+for md in reports/documentation/reports/*_test_plan.md; do
+    basename=$(basename "$md" .md)
+    pandoc "$md" -o "reports/documentation/reports/${basename}.html" --standalone
+done
+
+# Convert all AsciiDoc reports to PDF
+for adoc in reports/documentation/reports/*.adoc; do
+    asciidoctor-pdf "$adoc"
+done
+```
+
+---
+
+## Schema Compatibility
+
+### Overview
+
+The test-plan-documentation-generator requires YAML files to conform to specific schemas for proper report generation. The Test Case Manager includes schema validation tools to ensure compatibility.
+
+### Container YAML Schema
+
+Container YAML files must include:
+
+**Required Fields:**
+- `title`: Report title
+- `project`: Project name
+- `test_date`: Test execution date (ISO 8601 format)
+- `test_results`: Array of test result objects
+- `metadata`: Execution metadata
+
+**Example:**
+```yaml
+title: 'Test Execution Results Report'
+project: 'My Project'
+test_date: '2024-01-15T10:00:00Z'
+test_results:
+  - test_case_id: "TC_001"
+    description: "Test description"
+    # ... test results ...
+metadata:
+  environment: 'Test Environment'
+  platform: 'Test Platform'
+  executor: 'Test Framework'
+  execution_duration: 123.45
+  total_test_cases: 10
+  passed_test_cases: 8
+  failed_test_cases: 2
+```
+
+### Test Result Schema
+
+Individual test result YAML files must include:
+
+**Required Fields:**
+- `type`: Must be set to `"result"`
+- `test_case_id`: Unique test case identifier
+- `description`: Test case description
+- `sequences`: Array of test sequence results
+- `total_steps`: Total number of steps
+- `passed_steps`: Number of passed steps
+- `failed_steps`: Number of failed steps
+- `not_executed_steps`: Number of not executed steps
+- `overall_pass`: Boolean indicating overall pass/fail
+
+**Example:**
+```yaml
+type: result
+test_case_id: "TC_001"
+description: "Example test case"
+sequences:
+  - sequence_id: 1
+    name: "Test Sequence"
+    step_results:
+      - Pass:
+          step: 1
+          description: "Step description"
+total_steps: 1
+passed_steps: 1
+failed_steps: 0
+not_executed_steps: 0
+overall_pass: true
+```
+
+### Validating Compatibility
+
+The project includes a compatibility checker tool:
+
+```bash
+# Build the compatibility checker
+cargo build --bin test-plan-documentation-generator-compat
+
+# Validate a single container file
+cargo run --bin test-plan-documentation-generator-compat -- \
+  validate container.yaml
+
+# Batch validate multiple files
+cargo run --bin test-plan-documentation-generator-compat -- \
+  batch testcases/expected_output_reports/*.yml
+
+# Test against verifier scenarios
+cargo run --bin test-plan-documentation-generator-compat -- \
+  test-verifier-scenarios
+
+# Generate compatibility report
+cargo run --bin test-plan-documentation-generator-compat -- \
+  report --output compatibility_report.md
+```
+
+### Common Schema Issues
+
+#### 1. Missing Required Fields
+
+**Problem:**
+```yaml
+# Missing 'type' field
+test_case_id: "TC_001"
+description: "Test"
+```
+
+**Solution:**
+```yaml
+type: result  # Add required 'type' field
+test_case_id: "TC_001"
+description: "Test"
+```
+
+#### 2. Invalid Date Format
+
+**Problem:**
+```yaml
+test_date: '2024-01-15'  # Missing time component
+```
+
+**Solution:**
+```yaml
+test_date: '2024-01-15T10:00:00Z'  # Use ISO 8601 format
+```
+
+#### 3. Missing Metadata Fields
+
+**Problem:**
+```yaml
+metadata:
+  environment: 'Test'
+  # Missing other required fields
+```
+
+**Solution:**
+```yaml
+metadata:
+  environment: 'Test Environment'
+  platform: 'Test Platform'
+  executor: 'Test Framework'
+  execution_duration: 0.0
+  total_test_cases: 0
+  passed_test_cases: 0
+  failed_test_cases: 0
+```
+
+### Schema Documentation
+
+For detailed schema specifications, see:
+- Test Case Schema: `schemas/test-case.schema.json`
+- Execution Log Schema: `schemas/execution-log.schema.json`
+- Verification Result Schema: `schemas/verification-result.schema.json`
+- Verification Output Schema: `schemas/verification-output.schema.json`
+- Schema Documentation: `schemas/README.md`
+
+### Compatibility Testing
+
+Run the compatibility test suite:
+
+```bash
+# Test container YAML compatibility
+make test-container-compat
+
+# This runs:
+# 1. Schema validation
+# 2. Compatibility checks with test-plan-doc-gen
+# 3. Verifier scenario testing
 ```
 
 ---
@@ -708,35 +1203,54 @@ pandoc \
 
 ### Common Issues and Solutions
 
-#### 1. Missing test-plan-doc-gen Binary
+#### 1. Missing test-plan-documentation-generator Binary
 
 **Problem:**
 ```
-✗ Error: test-plan-doc-gen binary not found
-Please build it first using build_test_plan_doc_gen()
+✗ Error: test-plan-documentation-generator binary not found
+Command not found: test-plan-documentation-generator
 ```
 
 **Solutions:**
 
-**Option A: Clone and Build test-plan-doc-gen**
+**Option A: Install from crates.io (Recommended)**
 ```bash
-cd /path/to/parent-directory
-git clone <test-plan-doc-gen-repo-url> test-plan-doc-gen
-cd test-plan-doc-gen
+# Install globally
+cargo install test-plan-documentation-generator
+
+# Verify installation
+which test-plan-documentation-generator
+test-plan-documentation-generator --version
+```
+
+**Option B: Build from Source**
+```bash
+# Clone repository
+git clone <test-plan-documentation-generator-repo-url>
+cd test-plan-documentation-generator
+
+# Build and install
 cargo build --release
-```
-
-**Option B: Specify Custom Path**
-```bash
-./scripts/generate_documentation_reports.sh \
-  --test-plan-doc-gen /custom/path/to/test-plan-doc-gen
-```
-
-**Option C: Install to System PATH**
-```bash
-cd test-plan-doc-gen
 cargo install --path .
-export TEST_PLAN_DOC_GEN=test-plan-doc-gen
+```
+
+**Option C: Specify Custom Path**
+```bash
+# Set environment variable
+export TEST_PLAN_DOC_GEN=/path/to/test-plan-documentation-generator
+
+# Or use with script
+./scripts/generate_documentation_reports.sh \
+  --test-plan-doc-gen /path/to/test-plan-documentation-generator
+```
+
+**Option D: Use PATH Binary**
+```bash
+# Add to PATH if installed elsewhere
+export PATH=$PATH:/path/to/binary/directory
+
+# Verify
+which test-plan-documentation-generator
 ```
 
 #### 2. Schema Validation Failures
@@ -992,45 +1506,297 @@ The report generation system uses the centralized logging library (`scripts/lib/
 ./scripts/generate_documentation_reports.sh 2>&1 | grep "✗"
 ```
 
+#### 9. HTML/PDF Conversion Issues
+
+**Problem:**
+```
+asciidoctor: command not found
+```
+
+**Solution:**
+```bash
+# Install asciidoctor (for HTML)
+gem install asciidoctor
+
+# Or via package manager
+# Ubuntu/Debian
+sudo apt-get install asciidoctor
+
+# macOS
+brew install asciidoctor
+```
+
+**Problem:**
+```
+asciidoctor-pdf: command not found
+```
+
+**Solution:**
+```bash
+# Install asciidoctor-pdf (for PDF)
+gem install asciidoctor-pdf
+
+# Verify installation
+which asciidoctor-pdf
+asciidoctor-pdf --version
+```
+
+#### 10. Report Generation Workflow Issues
+
+**Problem:**
+```
+No valid container YAML found
+```
+
+**Solution:**
+```bash
+# Check container file structure
+cat testcases/expected_output_reports/container_data.yml
+
+# Validate against schema
+cargo run --bin test-plan-documentation-generator-compat -- \
+  validate testcases/expected_output_reports/container_data.yml
+
+# Use custom container template
+./scripts/generate_documentation_reports.sh \
+  --container-template /path/to/custom_container.yml
+```
+
+**Problem:**
+```
+test-plan-documentation-generator failed with exit code 1
+```
+
+**Solution:**
+```bash
+# Enable verbose mode for detailed error messages
+export VERBOSE=1
+./scripts/generate_documentation_reports.sh
+
+# Run test-plan-documentation-generator directly to see errors
+test-plan-documentation-generator \
+  --container container.yaml \
+  --output report.adoc \
+  --format asciidoc \
+  --verbose
+
+# Check input file format
+cat container.yaml | less
+
+# Validate YAML syntax
+yamllint container.yaml
+```
+
+### Workflow Troubleshooting
+
+#### Complete Report Generation Pipeline
+
+If reports are not generating correctly, follow this diagnostic workflow:
+
+**Step 1: Verify Dependencies**
+```bash
+# Check all required tools are installed
+which test-plan-documentation-generator
+which python3
+python3 -c "import yaml; print('PyYAML installed')"
+
+# Optional tools
+which asciidoctor
+which pandoc
+```
+
+**Step 2: Verify Input Files**
+```bash
+# Check execution logs exist
+ls -la testcases/verifier_scenarios/*.log
+
+# Check test case files exist
+ls -la testcases/*.yml
+
+# Validate test case schema
+cargo run --bin validate-yaml -- \
+  --schema schemas/test-case.schema.json \
+  testcases/TC_001.yml
+```
+
+**Step 3: Run Pipeline Step by Step**
+```bash
+# 1. Run verifier
+cargo run --bin verifier -- \
+  --folder testcases/verifier_scenarios \
+  --format json \
+  --output /tmp/verification.json \
+  --test-case-dir testcases \
+  --verbose
+
+# 2. Convert to YAML
+python3 scripts/convert_verification_to_result_yaml.py \
+  /tmp/verification.json \
+  -o /tmp/results \
+  -v
+
+# 3. Create container (manual check)
+cat /tmp/results/*_result.yaml
+
+# 4. Generate report
+test-plan-documentation-generator \
+  --container /tmp/container.yaml \
+  --output /tmp/report.adoc \
+  --format asciidoc
+```
+
+**Step 4: Check Output**
+```bash
+# Verify report files were created
+ls -la reports/documentation/reports/
+
+# Check file content
+head -20 reports/documentation/reports/test_results_report.adoc
+
+# Validate AsciiDoc syntax
+asciidoctor --safe -o /dev/null \
+  reports/documentation/reports/test_results_report.adoc
+```
+
 ### Getting Help
 
 If you encounter issues not covered here:
 
-1. **Check Schema Documentation:** `schemas/README.md`
-2. **Review Script Help:** `./scripts/generate_documentation_reports.sh --help`
-3. **Examine Examples:** `testcases/expected_output_reports/`
-4. **Run Tests:** `make test` to ensure system is working correctly
-5. **Check AGENTS.md:** For build, lint, and test commands
+1. **Check Installation:** Verify test-plan-documentation-generator is properly installed
+   ```bash
+   test-plan-documentation-generator --version
+   test-plan-documentation-generator --help
+   ```
+
+2. **Check Schema Documentation:** `schemas/README.md`
+
+3. **Review Script Help:** 
+   ```bash
+   ./scripts/generate_documentation_reports.sh --help
+   ```
+
+4. **Examine Examples:** `testcases/expected_output_reports/`
+
+5. **Run Tests:** 
+   ```bash
+   make test
+   make test-container-compat
+   ```
+
+6. **Check AGENTS.md:** For build, lint, and test commands
+
+7. **Enable Verbose Mode:**
+   ```bash
+   export VERBOSE=1
+   ./scripts/generate_documentation_reports.sh
+   ```
+
+8. **Review Compatibility Documentation:** `docs/TEST_PLAN_DOC_GEN_COMPATIBILITY.md`
 
 ### Known Limitations
 
-1. **test-plan-doc-gen Dependency:** The report generation system requires `test-plan-doc-gen` to be available as a sibling directory or in PATH.
+1. **test-plan-documentation-generator Dependency:** The report generation system requires `test-plan-documentation-generator` to be installed via cargo or available in PATH.
 
-2. **Container Template Structure:** The container template must follow the exact YAML structure expected by `test-plan-doc-gen`.
+2. **Container Template Structure:** The container template must follow the exact YAML structure expected by test-plan-documentation-generator. See schema documentation for details.
 
-3. **Result YAML Format:** Result YAML files must include the `type: result` field to be valid.
+3. **Result YAML Format:** Result YAML files must include the `type: result` field to be valid. This field is automatically added by the conversion script.
 
 4. **Execution Log Format:** Verifier expects execution logs in a specific format with TEST_SEQUENCE, STEP, EXIT_CODE, and TIMESTAMP markers.
 
 5. **File Naming:** Result files are named `{test_case_id}_result.yaml`. Test case IDs must be valid filenames (no special characters like `/`, `\`, `:`, etc.).
 
+6. **HTML/PDF Dependencies:** Converting AsciiDoc to HTML or PDF requires asciidoctor or asciidoctor-pdf to be installed separately (via RubyGems).
+
+7. **Markdown to HTML:** Converting Markdown test plans to HTML requires pandoc to be installed separately.
+
+8. **Python Dependency:** PyYAML is required for JSON to YAML conversion. This is the only remaining Python dependency after removal of reportlab.
+
+### Migration from Python-based PDF Generation
+
+If you were previously using Python-based PDF generation:
+
+1. **Removed Dependencies:**
+   - `reportlab` - No longer required
+   - `scripts/generate_verifier_reports.py` - Removed
+
+2. **New Dependencies:**
+   - `test-plan-documentation-generator` - Required (Rust-based)
+   - `asciidoctor` or `asciidoctor-pdf` - Optional (for HTML/PDF conversion)
+
+3. **Workflow Changes:**
+   - Reports are generated in AsciiDoc/Markdown format by default
+   - Use asciidoctor to convert to HTML/PDF if needed
+   - No Python code runs for report generation (only for JSON to YAML conversion)
+
+4. **Benefits:**
+   - Faster report generation
+   - Better maintainability
+   - Native Rust integration
+   - More output format options
+   - No Python packaging issues
+
 ---
 
 ## Additional Resources
 
-- **Schema Documentation:** `schemas/README.md`
-- **Verifier Usage:** `docs/TEST_VERIFY_USAGE.md`
-- **Test Verification Workflow:** `docs/TEST_VERIFY_WORKFLOW.md`
-- **Validation Quick Reference:** `docs/VALIDATE_YAML_QUICK_REF.md`
-- **GitLab CI Examples:** `docs/GITLAB_CI_EXAMPLES.md`
-- **Test Case Structure:** `schemas/test-case.schema.json`
+### Documentation
+
+- **Schema Documentation:** `schemas/README.md` - Detailed schema specifications
+- **Verifier Usage:** `docs/TEST_VERIFY_USAGE.md` - Test verification tool documentation
+- **Test Verification Workflow:** `docs/TEST_VERIFY_WORKFLOW.md` - Verification workflow guide
+- **Validation Quick Reference:** `docs/VALIDATE_YAML_QUICK_REF.md` - YAML validation guide
+- **Compatibility Documentation:** `docs/TEST_PLAN_DOC_GEN_COMPATIBILITY.md` - Container YAML compatibility
+- **GitLab CI Examples:** `docs/GITLAB_CI_EXAMPLES.md` - CI/CD integration examples
+- **AGENTS.md:** Build, lint, and test commands
+
+### Schema Files
+
+- **Test Case Schema:** `schemas/test-case.schema.json` - Test case YAML structure
+- **Execution Log Schema:** `schemas/execution-log.schema.json` - Execution log JSON structure
+- **Verification Result Schema:** `schemas/verification-result.schema.json` - Verification result structure
+- **Verification Output Schema:** `schemas/verification-output.schema.json` - Verifier output structure
+
+### Example Files
+
+- **Container Template:** `testcases/expected_output_reports/container_data.yml`
+- **Test Case Examples:** `testcases/expected_output_reports/sample_gsma_*.yml`
+- **Verifier Scenarios:** `testcases/verifier_scenarios/*.log`
+
+### External Tools
+
+- **test-plan-documentation-generator:** `cargo install test-plan-documentation-generator`
+- **asciidoctor:** `gem install asciidoctor` or `brew install asciidoctor`
+- **asciidoctor-pdf:** `gem install asciidoctor-pdf`
+- **pandoc:** `brew install pandoc` or `apt-get install pandoc`
 
 ## Related Makefile Targets
 
 ```bash
-make build                  # Build all binaries including verifier
-make generate-docs          # Generate docs for verifier_scenarios
-make generate-docs-all      # Generate docs for all testcases
-make test                   # Run full test suite
-make verify-scripts         # Verify shell script syntax
+# Building
+make build                     # Build all binaries including verifier
+
+# Report Generation
+make generate-docs             # Generate docs for verifier_scenarios
+make generate-docs-all         # Generate docs for all testcases
+
+# Validation and Testing
+make test                      # Run full test suite
+make test-container-compat     # Test container YAML compatibility
+make verify-scripts            # Verify shell script syntax
+
+# Linting
+make lint                      # Run linter on Rust code
 ```
+
+## Summary
+
+The test-plan-documentation-generator (tpdg) provides a comprehensive, high-performance solution for generating professional test documentation from YAML test cases and verification results. Key benefits include:
+
+✅ **Performance** - Rust-based implementation is significantly faster than Python  
+✅ **Maintainability** - Single codebase for all report generation  
+✅ **Multiple Formats** - AsciiDoc, Markdown, and conversion to HTML/PDF  
+✅ **Schema Validation** - Built-in compatibility checking  
+✅ **CI/CD Integration** - Easy integration with automated pipelines  
+✅ **No Python Dependencies** - Only PyYAML for conversion script  
+
+For questions or issues, refer to the [Troubleshooting](#troubleshooting) section or check the compatibility documentation at `docs/TEST_PLAN_DOC_GEN_COMPATIBILITY.md`.

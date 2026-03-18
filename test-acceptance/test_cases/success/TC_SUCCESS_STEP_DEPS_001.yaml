@@ -1,0 +1,114 @@
+requirement: "STEP_DEPENDENCIES"
+item: 1
+tc: 1
+id: 'TC_SUCCESS_STEP_DEPS_001'
+description: 'Step dependencies using captured variables - demonstrates using variables from earlier steps in later steps'
+
+general_initial_conditions:
+  system:
+    - "Bash shell is available"
+    - "Variable capture and reuse is supported"
+
+initial_conditions:
+  filesystem:
+    - "Temporary directory is writable"
+
+test_sequences:
+  - id: 1
+    name: "Dependent Step Execution"
+    description: "Execute steps that depend on variables captured in previous steps"
+    initial_conditions:
+      system:
+        - "Step dependencies work correctly"
+    steps:
+      - step: 1
+        description: "Generate unique ID and capture it"
+        command: "echo \"ID_$(date +%s)_$$\""
+        capture_vars:
+          - name: unique_id
+            capture: '(ID_[0-9]+_[0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "ID_"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'ID_' <<< \"$COMMAND_OUTPUT\""
+          general:
+            - name: verify_unique_id_captured
+              condition: "[[ -n \"$unique_id\" ]]"
+            - name: verify_unique_id_format
+              condition: "[[ $unique_id =~ ^ID_[0-9]+_[0-9]+$ ]]"
+
+      - step: 2
+        description: "Create directory using captured ID"
+        command: "mkdir -p /tmp/${unique_id} && echo \"Created: /tmp/${unique_id}\""
+        expected:
+          success: true
+          result: 0
+          output: "Created:"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Created:' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 3
+        description: "Create file in directory and capture file count"
+        command: "echo 'test data' > /tmp/${unique_id}/data.txt && ls /tmp/${unique_id} | wc -l"
+        capture_vars:
+          - name: file_count
+            command: "ls /tmp/${unique_id} | wc -l"
+        expected:
+          success: true
+          result: 0
+          output: "1"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" -eq 1 ]]"
+          general:
+            - name: verify_file_count
+              condition: "[[ $file_count -eq 1 ]]"
+
+      - step: 4
+        description: "Read file and capture content"
+        command: "cat /tmp/${unique_id}/data.txt"
+        capture_vars:
+          - name: file_content
+            capture: '(test data)'
+        expected:
+          success: true
+          result: 0
+          output: "test data"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'test data' <<< \"$COMMAND_OUTPUT\""
+          general:
+            - name: verify_content_captured
+              condition: "[[ \"$file_content\" = \"test data\" ]]"
+
+      - step: 5
+        description: "Calculate directory size and capture it"
+        command: "du -sb /tmp/${unique_id}"
+        capture_vars:
+          - name: dir_size
+            capture: '^([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "bytes"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+ ]]"
+          general:
+            - name: verify_size_captured
+              condition: "[[ $dir_size -gt 0 ]]"
+
+      - step: 6
+        description: "Cleanup directory using captured ID"
+        command: "rm -rf /tmp/${unique_id} && echo \"Removed: ${unique_id}, Size: ${dir_size} bytes, Files: ${file_count}\""
+        expected:
+          success: true
+          result: 0
+          output: "Removed:"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Removed:' <<< \"$COMMAND_OUTPUT\" && grep -q 'Size:' <<< \"$COMMAND_OUTPUT\" && grep -q 'Files:' <<< \"$COMMAND_OUTPUT\""

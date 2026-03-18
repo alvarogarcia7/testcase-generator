@@ -1,0 +1,94 @@
+requirement: "VAR_TEST"
+item: 1
+tc: 5
+id: 'TC_VAR_005'
+description: 'Test optional vs required hydration variables with default values'
+
+general_initial_conditions:
+  system:
+    - "Bash shell is available"
+
+initial_conditions:
+  environment:
+    - "Test execution environment is ready"
+
+hydration_vars:
+  REQUIRED_VAR:
+    name: "REQUIRED_VAR"
+    description: "This variable is required and must be provided"
+    required: true
+  
+  REQUIRED_WITH_DEFAULT:
+    name: "REQUIRED_WITH_DEFAULT"
+    description: "Required variable with a default fallback value"
+    default_value: "default_value"
+    required: true
+  
+  OPTIONAL_VAR:
+    name: "OPTIONAL_VAR"
+    description: "This variable is optional"
+    default_value: "optional_default"
+    required: false
+  
+  OPTIONAL_NO_DEFAULT:
+    name: "OPTIONAL_NO_DEFAULT"
+    description: "Optional variable without a default value"
+    required: false
+
+test_sequences:
+  - id: 1
+    name: "Required and Optional Variable Testing"
+    description: "Test behavior of required and optional hydration variables"
+    initial_conditions:
+      system:
+        - "Hydration mechanism is functional"
+    steps:
+      - step: 1
+        description: "Display all hydration variables (required and optional)"
+        command: |
+          echo "Required variable: ${#REQUIRED_VAR}"
+          echo "Required with default: ${#REQUIRED_WITH_DEFAULT}"
+          echo "Optional variable: ${#OPTIONAL_VAR}"
+          echo "Optional no default: ${#OPTIONAL_NO_DEFAULT:-not_set}"
+        expected:
+          success: true
+          result: '0'
+          output: 'Required variable'
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Required variable' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 2
+        description: "Verify required variables are not empty"
+        command: |
+          if [ -z "${#REQUIRED_VAR}" ]; then
+            echo "ERROR: REQUIRED_VAR is not set"
+            exit 1
+          fi
+          echo "All required variables are set"
+        expected:
+          success: true
+          result: '0'
+          output: 'All required variables are set'
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'All required variables are set' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 3
+        description: "Use optional variables with default fallback"
+        command: |
+          OPTIONAL_VALUE="${#OPTIONAL_VAR:-fallback_value}"
+          echo "Optional value used: $OPTIONAL_VALUE"
+        capture_vars:
+          - name: used_optional_value
+            capture: 'Optional value used: ([a-z_]+)'
+        expected:
+          success: true
+          result: '0'
+          output: 'Optional value used'
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Optional value used' <<< \"$COMMAND_OUTPUT\""
+          general:
+            - name: verify_optional_value_set
+              condition: "[[ -n \"$used_optional_value\" ]]"

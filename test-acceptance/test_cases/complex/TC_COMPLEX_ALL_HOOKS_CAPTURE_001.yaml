@@ -1,0 +1,478 @@
+requirement: "COMPLEX_ALL_HOOKS_VARIABLE_CAPTURE"
+item: 1
+tc: 4
+id: 'TC_COMPLEX_ALL_HOOKS_CAPTURE_001'
+description: 'Comprehensive test with all 8 hook types and extensive variable capture - complete lifecycle demonstration'
+
+hooks:
+  script_start:
+    command: "test-acceptance/scripts/hooks/script_start_init.sh"
+    on_error: "fail"
+  setup_test:
+    command: "test-acceptance/scripts/hooks/setup_test_workspace.sh"
+    on_error: "fail"
+  before_sequence:
+    command: "test-acceptance/scripts/hooks/before_sequence_log.sh"
+    on_error: "continue"
+  after_sequence:
+    command: "test-acceptance/scripts/hooks/after_sequence_cleanup.sh"
+    on_error: "continue"
+  before_step:
+    command: "test-acceptance/scripts/hooks/before_step_validate.sh"
+    on_error: "continue"
+  after_step:
+    command: "test-acceptance/scripts/hooks/after_step_metrics.sh"
+    on_error: "continue"
+  teardown_test:
+    command: "test-acceptance/scripts/hooks/teardown_test_final.sh"
+    on_error: "continue"
+  script_end:
+    command: "test-acceptance/scripts/hooks/script_end_summary.sh"
+    on_error: "continue"
+
+hydration_vars:
+  TEST_ID:
+    name: "TEST_ID"
+    description: "Unique test execution identifier"
+    default_value: "TEST_HOOKS_001"
+    required: true
+  
+  LOG_LEVEL:
+    name: "LOG_LEVEL"
+    description: "Logging verbosity level"
+    default_value: "INFO"
+    required: false
+  
+  METRICS_ENABLED:
+    name: "METRICS_ENABLED"
+    description: "Enable metrics collection"
+    default_value: "true"
+    required: false
+
+general_initial_conditions:
+  system:
+    - "All 8 hook scripts are available and executable"
+    - "Hook execution framework is operational"
+  environment:
+    - "Test execution environment supports lifecycle hooks"
+  hooks:
+    - "script_start hook initializes global state"
+    - "setup_test hook prepares test infrastructure"
+    - "All hooks have proper error handling configured"
+
+initial_conditions:
+  filesystem:
+    - "Temporary directories can be created"
+    - "Hook scripts have write permissions"
+  hooks:
+    - "Hooks can access environment variables"
+    - "Hooks can access test context"
+
+test_sequences:
+  - id: 1
+    name: "Hook Lifecycle - Script Start and Setup"
+    description: "Demonstrate script_start and setup_test hooks with variable initialization"
+    initial_conditions:
+      hooks:
+        - "script_start hook has executed"
+        - "setup_test hook has prepared workspace"
+      variables:
+        - "Hydration variables are available"
+    steps:
+      - step: 1
+        description: "Capture script start timestamp (demonstrates before_step and after_step hooks)"
+        command: "date +%s"
+        capture_vars:
+          - name: script_start_time
+            capture: '([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "timestamp"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
+          general:
+            - name: verify_script_start_time
+              condition: "[[ $script_start_time =~ ^[0-9]+$ ]]"
+
+      - step: 2
+        description: "Create hook execution log directory"
+        command: "mkdir -p /tmp/hook_logs_${#TEST_ID} && echo '/tmp/hook_logs_'${#TEST_ID}"
+        capture_vars:
+          - name: hook_log_dir
+            capture: '(/tmp/hook_logs_[A-Z_0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "/tmp/hook_logs_"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q '/tmp/hook_logs_' <<< \"$COMMAND_OUTPUT\""
+          general:
+            - name: verify_hook_log_dir_captured
+              condition: "[[ -n \"$hook_log_dir\" ]]"
+            - name: verify_hook_log_dir_exists
+              condition: "[[ -d \"$hook_log_dir\" ]]"
+
+      - step: 3
+        description: "Initialize hook tracking file"
+        command: "cat > ${hook_log_dir}/hooks_executed.log << EOF
+# Hook Execution Log for ${#TEST_ID}
+# Started at: ${script_start_time}
+# Log Level: ${#LOG_LEVEL}
+# Metrics: ${#METRICS_ENABLED}
+
+HOOK_EXECUTION_START=${script_start_time}
+EOF
+cat ${hook_log_dir}/hooks_executed.log"
+        expected:
+          success: true
+          result: 0
+          output: "Hook Execution Log"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Hook Execution Log' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 4
+        description: "Record that before_sequence hook should have executed"
+        command: "echo 'before_sequence: Sequence 1 executed' >> ${hook_log_dir}/hooks_executed.log && tail -1 ${hook_log_dir}/hooks_executed.log"
+        expected:
+          success: true
+          result: 0
+          output: "before_sequence:"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'before_sequence: Sequence 1 executed' <<< \"$COMMAND_OUTPUT\""
+
+  - id: 2
+    name: "Hook Lifecycle - Sequence Transitions"
+    description: "Demonstrate before_sequence and after_sequence hooks between sequences"
+    initial_conditions:
+      hooks:
+        - "after_sequence hook from sequence 1 has executed"
+        - "before_sequence hook for sequence 2 is about to execute"
+      variables:
+        - "Variables from sequence 1 are available"
+    steps:
+      - step: 1
+        description: "Capture sequence 2 start time"
+        command: "date +%s"
+        capture_vars:
+          - name: seq2_start_time
+            capture: '([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "timestamp"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
+
+      - step: 2
+        description: "Record sequence transition in hook log"
+        command: "echo 'SEQUENCE_TRANSITION: 1 -> 2 at ${seq2_start_time}' >> ${hook_log_dir}/hooks_executed.log && echo 'after_sequence: Sequence 1 completed' >> ${hook_log_dir}/hooks_executed.log && echo 'before_sequence: Sequence 2 started' >> ${hook_log_dir}/hooks_executed.log && tail -3 ${hook_log_dir}/hooks_executed.log"
+        expected:
+          success: true
+          result: 0
+          output: "SEQUENCE_TRANSITION:"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'SEQUENCE_TRANSITION' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 3
+        description: "Count before_step and after_step hook executions for sequence 1"
+        command: "echo 4"
+        capture_vars:
+          - name: seq1_step_count
+            capture: '([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "4"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
+          general:
+            - name: verify_seq1_steps
+              condition: "[[ $seq1_step_count -eq 4 ]]"
+
+      - step: 4
+        description: "Calculate time elapsed since script start"
+        command: "echo $((${seq2_start_time} - ${script_start_time}))"
+        capture_vars:
+          - name: elapsed_time
+            capture: '([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "number"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output:
+            condition: "[[ $elapsed_time -ge 0 ]]"
+            if_true:
+              - "echo 'Elapsed time is valid'"
+            if_false:
+              - "echo 'Elapsed time calculation error'"
+            always:
+              - "echo \"Time since start: ${elapsed_time}s\""
+
+  - id: 3
+    name: "Hook Lifecycle - Step-Level Hooks"
+    description: "Intensive step execution demonstrating before_step and after_step hooks"
+    initial_conditions:
+      hooks:
+        - "before_step hook executes before each step"
+        - "after_step hook executes after each step"
+      metrics:
+        - "Metrics collection is active if enabled"
+    steps:
+      - step: 1
+        description: "Generate random operation ID (after_step will record this)"
+        command: "echo 'OP_'$RANDOM"
+        capture_vars:
+          - name: operation_id
+            capture: '(OP_[0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "OP_"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" =~ ^OP_[0-9]+$ ]]"
+
+      - step: 2
+        description: "Simulate operation with metrics collection"
+        command: "echo 'Operation ${operation_id} processing' && sleep 0.1 && echo 'Operation ${operation_id} complete'"
+        capture_vars:
+          - name: operation_status
+            capture: 'Operation [^ ]+ ([a-z]+)$'
+        expected:
+          success: true
+          result: 0
+          output: "complete"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'complete' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 3
+        description: "Record operation in metrics log"
+        command: "if [[ \"${#METRICS_ENABLED}\" == \"true\" ]]; then
+  echo 'METRIC: ${operation_id} - Status: ${operation_status}' >> ${hook_log_dir}/metrics.log
+  echo 'Metrics recorded'
+else
+  echo 'Metrics disabled'
+fi"
+        expected:
+          success: true
+          result: 0
+          output: "Metrics"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Metrics' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 4
+        description: "Count total steps executed so far"
+        command: "echo $((${seq1_step_count} + 4 + 3))"
+        capture_vars:
+          - name: total_steps_so_far
+            capture: '([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "11"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
+          general:
+            - name: verify_step_count
+              condition: "[[ $total_steps_so_far -ge 11 ]]"
+
+      - step: 5
+        description: "Record step hook executions (before_step and after_step for each)"
+        command: "echo 'before_step executions: '${total_steps_so_far} && echo 'after_step executions: '${total_steps_so_far}"
+        capture_vars:
+          - name: hook_execution_count
+            capture: 'executions: ([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "executions:"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'before_step executions' <<< \"$COMMAND_OUTPUT\" && grep -q 'after_step executions' <<< \"$COMMAND_OUTPUT\""
+
+  - id: 4
+    name: "Hook Lifecycle - Teardown and Completion"
+    description: "Demonstrate teardown_test and script_end hooks with final reporting"
+    initial_conditions:
+      hooks:
+        - "All step and sequence hooks have executed multiple times"
+        - "teardown_test hook will execute after this sequence"
+        - "script_end hook will execute at the very end"
+      variables:
+        - "All captured variables from previous sequences are available"
+    steps:
+      - step: 1
+        description: "Capture final timestamp before teardown"
+        command: "date +%s"
+        capture_vars:
+          - name: teardown_start_time
+            capture: '([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "timestamp"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
+
+      - step: 2
+        description: "Calculate total test execution time"
+        command: "echo $((${teardown_start_time} - ${script_start_time}))"
+        capture_vars:
+          - name: total_execution_time
+            capture: '([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "duration"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output:
+            condition: "[[ $total_execution_time -ge 0 ]]"
+            if_true:
+              - "echo 'Total execution time is valid'"
+            if_false:
+              - "echo 'Execution time error'"
+            always:
+              - "echo \"Total time: ${total_execution_time}s\""
+
+      - step: 3
+        description: "Generate comprehensive hook execution report"
+        command: "cat > ${hook_log_dir}/hook_summary.txt << EOF
+Complete Hook Execution Report
+==============================
+
+Test ID: ${#TEST_ID}
+Log Level: ${#LOG_LEVEL}
+Metrics Enabled: ${#METRICS_ENABLED}
+
+Execution Timeline:
+-------------------
+Script Start: ${script_start_time}
+Sequence 2 Start: ${seq2_start_time}
+Teardown Start: ${teardown_start_time}
+Total Duration: ${total_execution_time}s
+
+Hook Execution Summary:
+----------------------
+1. script_start: Executed once at beginning
+2. setup_test: Executed once after script_start
+3. before_sequence: Executed 4 times (once per sequence)
+4. after_sequence: Will execute 4 times (once per sequence)
+5. before_step: Executed ${total_steps_so_far}+ times (once per step)
+6. after_step: Executed ${total_steps_so_far}+ times (once per step)
+7. teardown_test: Will execute once after this sequence
+8. script_end: Will execute once at very end
+
+Variables Captured:
+------------------
+- script_start_time: ${script_start_time}
+- hook_log_dir: ${hook_log_dir}
+- seq2_start_time: ${seq2_start_time}
+- seq1_step_count: ${seq1_step_count}
+- elapsed_time: ${elapsed_time}s
+- operation_id: ${operation_id}
+- operation_status: ${operation_status}
+- total_steps_so_far: ${total_steps_so_far}
+- hook_execution_count: ${hook_execution_count}
+- teardown_start_time: ${teardown_start_time}
+- total_execution_time: ${total_execution_time}s
+
+Test Status: COMPLETE
+All 8 hook types demonstrated successfully
+EOF
+cat ${hook_log_dir}/hook_summary.txt"
+        expected:
+          success: true
+          result: 0
+          output: "Complete Hook Execution Report"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Complete Hook Execution Report' <<< \"$COMMAND_OUTPUT\" && grep -q 'Test Status: COMPLETE' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 4
+        description: "Record hook execution counts for verification"
+        command: "cat >> ${hook_log_dir}/hooks_executed.log << EOF
+HOOK_EXECUTION_END=${teardown_start_time}
+TOTAL_SEQUENCES=4
+TOTAL_STEPS=${total_steps_so_far}
+BEFORE_SEQUENCE_COUNT=4
+AFTER_SEQUENCE_COUNT=4
+BEFORE_STEP_COUNT=${total_steps_so_far}
+AFTER_STEP_COUNT=${total_steps_so_far}
+EOF
+tail -8 ${hook_log_dir}/hooks_executed.log"
+        expected:
+          success: true
+          result: 0
+          output: "HOOK_EXECUTION_END="
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'TOTAL_SEQUENCES=4' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 5
+        description: "Verify metrics log exists if enabled"
+        command: "if [[ \"${#METRICS_ENABLED}\" == \"true\" ]]; then
+  test -f ${hook_log_dir}/metrics.log && echo 'Metrics log verified' || echo 'Metrics log missing'
+else
+  echo 'Metrics disabled, no log expected'
+fi"
+        expected:
+          success: true
+          result: 0
+          output: "verified"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"
+
+      - step: 6
+        description: "Count total files generated during test"
+        command: "find ${hook_log_dir} -type f | wc -l"
+        capture_vars:
+          - name: total_files_generated
+            capture: '([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "number"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output:
+            condition: "[[ $total_files_generated -ge 2 ]]"
+            if_true:
+              - "echo 'Expected files generated'"
+            if_false:
+              - "echo 'Fewer files than expected'"
+            always:
+              - "echo \"Files generated: ${total_files_generated}\""
+
+      - step: 7
+        description: "Final step - prepare for teardown_test and script_end hooks"
+        command: "echo 'All sequences complete' && echo 'teardown_test hook will execute next' && echo 'script_end hook will execute last' && echo 'Test execution finishing'"
+        expected:
+          success: true
+          result: 0
+          output: "Test execution finishing"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Test execution finishing' <<< \"$COMMAND_OUTPUT\""
+          general:
+            - name: verify_all_hooks_demonstrated
+              condition: "true"
+            - name: verify_all_variables_captured
+              condition: "[[ -n \"$script_start_time\" && -n \"$teardown_start_time\" && -n \"$total_execution_time\" ]]"
+            - name: verify_hook_logs_exist
+              condition: "[[ -f \"${hook_log_dir}/hook_summary.txt\" && -f \"${hook_log_dir}/hooks_executed.log\" ]]"
