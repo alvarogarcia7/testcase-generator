@@ -119,6 +119,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 COPY pyproject.toml uv.lock ./
 RUN uv sync
+RUN uv python install --default 3.14
 RUN uv run python3.14 --version
 
 # Set default command
