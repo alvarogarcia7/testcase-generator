@@ -24,6 +24,10 @@ VERIFIER_BIN="$PROJECT_ROOT/target/debug/verifier"
 source "$SCRIPT_DIR/../../scripts/lib/logger.sh" || exit 1
 source "$SCRIPT_DIR/../../scripts/lib/report_generator.sh" || exit 1
 
+uv sync
+
+source .venv/bin/activate
+
 # Handle --no-remove flag
 REMOVE_TEMP=1
 while [[ $# -gt 0 ]]; do
@@ -62,7 +66,6 @@ pass "python3 available"
 uv sync > /dev/null 2>&1
 
 source .venv/bin/activate
-
 
 # Check if PyYAML is available
 if uv run python3 -c "import yaml" 2>/dev/null; then
