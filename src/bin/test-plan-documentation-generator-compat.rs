@@ -5,8 +5,8 @@
 //! are compatible with the test-plan-doc-gen tool's expected input format.
 //!
 //! Usage:
-//!   test-plan-documentation-generator-compat <container.yaml>
-//!   test-plan-documentation-generator-compat --batch <directory>
+//!   test-plan-documentation-generator-compat $container.yaml
+//!   test-plan-documentation-generator-compat --batch $directory
 //!   test-plan-documentation-generator-compat --test-verifier-scenarios
 
 use anyhow::{Context, Result};
