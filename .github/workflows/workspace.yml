@@ -11,6 +11,8 @@ env:
   CARGO_INCREMENTAL: 0
   RUSTFLAGS: "-Dwarnings"
   RUSTDOCFLAGS: "-Dwarnings"
+  # Python 3.14 is managed via uv package manager
+  # All Python scripts should be run with: uv run python3.14 script.py
 
 jobs:
   ci:
@@ -33,6 +35,26 @@ jobs:
 
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y expect
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Cache uv and Python
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/uv
+            ~/.local/share/uv
+            .venv
+          key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml', '**/uv.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
+
+      - name: Setup Python 3.14 with uv
+        run: |
+          export PATH="$HOME/.cargo/bin:$PATH"
+          uv python install 3.14
+          uv sync --python 3.14
 
       - name: Format check
         run: cargo fmt --all -- --check
@@ -69,8 +91,7 @@ jobs:
 #          path: target/llvm-cov/
 #          retention-days: 30
 
-      - name: Install uv
-        run: curl -LsSf https://astral.sh/uv/install.sh | sh
-
       - name: Run E2E tests
-        run: make test-e2e
+        run: |
+          export PATH="$HOME/.cargo/bin:$PATH"
+          make test-e2e
