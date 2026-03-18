@@ -824,6 +824,16 @@ main() {
         overall_success=1
     fi
     
+    # Ensure all *_FAILED variables are zero
+    if [[ $VALIDATION_FAILED -ne 0 ]] || \
+       [[ $GENERATION_FAILED -ne 0 ]] || \
+       [[ $EXECUTION_FAILED -ne 0 ]] || \
+       [[ $VERIFICATION_FAILED -ne 0 ]] || \
+       [[ $CONTAINER_VALIDATION_FAILED -ne 0 ]] || \
+       [[ $DOCUMENTATION_FAILED -ne 0 ]]; then
+        overall_success=1
+    fi
+    
     # Exit with appropriate code
     if [[ $overall_success -eq 0 ]]; then
         section "All Stages Completed Successfully"
