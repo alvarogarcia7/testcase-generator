@@ -59,8 +59,13 @@ if ! command -v python3 > /dev/null 2>&1; then
 fi
 pass "python3 available"
 
+uv sync > /dev/null 2>&1
+
+source .venv/bin/activate
+
+
 # Check if PyYAML is available
-if python3 -c "import yaml" 2>/dev/null; then
+if uv run python3 -c "import yaml" 2>/dev/null; then
     pass "PyYAML available"
 else
     fail "PyYAML not available. Install with: pip3 install pyyaml"
@@ -188,7 +193,7 @@ fi
 # Test 3: Check for test-plan-doc-gen availability
 section "Test 3: Check test-plan-doc-gen Availability"
 
-TEST_PLAN_DOC_GEN_DIR="$PROJECT_ROOT/../test-plan-doc-gen"
+TEST_PLAN_DOC_GEN_DIR=${TEST_PLAN_DOC_GEN_DIR:-"$PROJECT_ROOT/../../test-plan-documentation-generator"}
 SKIP_DOC_GEN=0
 
 if [[ ! -d "$TEST_PLAN_DOC_GEN_DIR" ]]; then
@@ -222,7 +227,7 @@ if [[ $SKIP_DOC_GEN -eq 1 ]]; then
     info "✓ Conversion of verification output to result YAML"
     info "✓ Result YAML validation"
     echo ""
-    pass "All available tests passed (test-plan-doc-gen not available)"
+    pass "All available tests passed (test-plan-doc-gen not available. Perhaps override the TEST_PLAN_DOC_GEN_DIR variable to point to a valid test-plan-doc-gen directory?)"
     exit 0
 fi
 

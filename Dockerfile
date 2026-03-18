@@ -115,5 +115,12 @@ COPY README_INSTALL_AUTOMATED.md /app
 COPY README_INSTALL.md /app
 RUN cat README_INSTALL.md README_INSTALL_AUTOMATED.md >> README_INSTALL_2.md && mv README_INSTALL_2.md README_INSTALL.md && cp README_INSTALL.md /app/README.md && cp README_INSTALL.md /root/README.md
 
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+
+COPY pyproject.toml uv.lock ./
+RUN uv pip install --no-cache-dir
+RUN uv sync
+RUN uv run python3.14 --version
+
 # Set default command
 CMD ["tcm"]
