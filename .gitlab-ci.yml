@@ -2,6 +2,7 @@
 stages:
   - docker
   - rust
+  - e2e
 
 variables:
   DOCKER_HOST: "tcp://server-custom-dind.custom-dind:2375"
@@ -158,15 +159,13 @@ rust:build-test-lint:
     - cargo test --all --all-features --tests --no-fail-fast -- --test-threads=1 2>&1 | tee test_output.txt
     - python3 scripts/ci_parse_test_results.py test_output.txt > test_results.json
 
-    # Test - e2e tests
-    - echo "===== Running E2E Tests ====="
-    - make test-e2e 2>&1 | tee e2e_output.txt || true
-
     # Test - doc tests
     - echo "===== Running Doc Tests ====="
     - cargo test --doc 2>&1 | tee doc_test_output.txt || true
     - echo "===== sccache Statistics After Tests ====="
     - sccache --show-stats
+
+    # Coverage
     - export CARGO_INCREMENTAL=0
     - export RUSTFLAGS="-Cinstrument-coverage"
     - export LLVM_PROFILE_FILE="coverage-%p-%m.profraw"
@@ -225,6 +224,38 @@ docker:verify:
     paths:
       - docker_scan_results.json
     expire_in: 1 week
+
+rust:e2e-tests:
+  stage: e2e
+  image: rust:latest
+  needs:
+    - job: rust:build-test-lint
+      artifacts: false
+  before_script:
+    - rustc --version
+    - cargo --version
+    - apt-get update -qq
+    - apt-get install -y -qq curl expect
+    - ./scripts/install-sccache.sh --ci
+  cache:
+    key: "${CI_COMMIT_REF_SLUG}"
+    paths:
+      - .sccache
+    policy: pull
+  script:
+    - echo "===== Running E2E Tests ====="
+    - cargo build --all --all-features --release
+    - make test-e2e 2>&1 | tee e2e_output.txt || true
+    - echo "===== sccache Statistics After E2E Tests ====="
+    - sccache --show-stats
+  artifacts:
+    name: "e2e-artifacts-$CI_COMMIT_REF_SLUG"
+    paths:
+      - e2e_output.txt
+    expire_in: 1 week
+    when: always
+  tags:
+    - dind-amd
 #
 #performance:baseline:
 #  image: rust:1.92-bookworm
