@@ -64,6 +64,8 @@ See the [Hooks](#hooks) section for detailed documentation and examples.
 - **LOC JSON**: make loc-json (compute lines of code statistics in JSON format)
 - **LOC YAML**: make loc-yaml (compute lines of code statistics in YAML format)
 - **LOC Report**: make loc-report (generate lines of code statistics report to reports/loc/loc_statistics.txt)
+- **Setup Python**: make setup-python (install and configure Python 3.14 with uv package manager)
+- **Verify Python**: make verify-python (verify Python 3.14 environment is properly configured)
 - **Dev Server**: N/A
 
 ### Report Generation
@@ -103,6 +105,54 @@ make generate-docs-all      # All test cases
 
 **Troubleshooting**:
 See [Report Generation Documentation](docs/report_generation.md) for detailed installation, configuration, schema compatibility requirements, and troubleshooting steps.
+
+### Python 3.14 Environment Setup
+
+The project requires Python 3.14 for various utility scripts and CI/CD tools. Python 3.14 is managed using the `uv` package manager.
+
+**Local Setup**:
+```bash
+# Install and configure Python 3.14 environment
+make setup-python
+
+# Verify Python 3.14 is properly configured
+make verify-python
+```
+
+**Docker Setup**:
+The Docker image automatically installs and configures Python 3.14 during build. The setup process:
+1. Installs `uv` package manager from official image
+2. Syncs Python dependencies from `pyproject.toml` and `uv.lock`
+3. Installs Python 3.14 and sets it as default
+4. Creates global symlinks for `python3.14`, `python3`, and `python`
+5. Re-syncs dependencies to ensure compatibility with Python 3.14
+
+**Verification**:
+Both Docker and local environments support the following Python commands:
+- `python3.14 --version` - Direct Python 3.14 invocation
+- `python3 --version` - Should point to Python 3.14
+- `python --version` - Should point to Python 3.14
+- `uv run python3.14 --version` - Run via uv (local environment)
+
+**Python Dependencies**:
+The project uses minimal Python dependencies defined in `pyproject.toml`:
+- `pyyaml>=6.0.3` - YAML parsing (required for convert_verification_to_result_yaml.py)
+- `jsonschema>=4.26.0` - JSON schema validation
+- `mypy>=1.19.1` - Type checking
+- `ruff>=0.15.6` - Linting and formatting
+
+**Manual Setup**:
+If you need to set up Python 3.14 manually:
+```bash
+# Install uv package manager (if not already installed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Run the setup script
+./scripts/setup_python_env.sh
+
+# Verify the installation
+./scripts/verify_python_env.sh
+```
 
 You must build, test, lint, verify coverage, and run acceptance tests before committing
 

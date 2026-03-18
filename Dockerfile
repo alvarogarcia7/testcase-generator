@@ -115,12 +115,31 @@ COPY README_INSTALL_AUTOMATED.md /app
 COPY README_INSTALL.md /app
 RUN cat README_INSTALL.md README_INSTALL_AUTOMATED.md >> README_INSTALL_2.md && mv README_INSTALL_2.md README_INSTALL.md && cp README_INSTALL.md /app/README.md && cp README_INSTALL.md /root/README.md
 
+# Install uv package manager
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
+# Copy Python project files
 COPY pyproject.toml uv.lock ./
+
+# First, sync dependencies (this may use system Python initially)
 RUN uv sync
+
+# Then install Python 3.14 and set as default
 RUN uv python install --default 3.14
+
+# Verify Python 3.14 is available and working
 RUN uv run python3.14 --version
+
+# Create symlinks to make python3.14 available globally
+RUN ln -sf $(uv python find 3.14) /usr/local/bin/python3.14 && \
+    ln -sf /usr/local/bin/python3.14 /usr/local/bin/python3 && \
+    ln -sf /usr/local/bin/python3.14 /usr/local/bin/python
+
+# Verify global Python 3.14 is available
+RUN python3.14 --version && python3 --version && python --version
+
+# Re-sync to ensure all dependencies are installed with Python 3.14
+RUN uv sync --python 3.14
 
 # Set default command
 CMD ["tcm"]

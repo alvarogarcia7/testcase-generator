@@ -447,3 +447,11 @@ loc-report:
 	./scripts/compute-loc.sh --output reports/loc/loc_statistics.txt
 .PHONY: loc-report
 
+setup-python:
+	./scripts/setup_python_env.sh
+.PHONY: setup-python
+
+verify-python:
+	./scripts/verify_python_env.sh
+.PHONY: verify-python
+
