@@ -17,6 +17,9 @@ test_sequences:
     name: "Intermediate Step Failure"
     description: |
                    Sample where step 3 fails after successful steps 1-2.
+    initial_conditions:
+      system:
+        - "Test sequence ready"
     steps:
       - step: 1
         description: "First successful step"
@@ -44,6 +47,7 @@ test_sequences:
         expected:
           success: true
           result: 0
+          output: ""
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
           output: "true"

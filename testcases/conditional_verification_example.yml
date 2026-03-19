@@ -287,7 +287,7 @@ test_sequences:
               - "echo 'INFO: All verifications completed'"
       - step: 5
         description: "Complex conditional with environment checks"
-        command: echo "Environment check: $SHELL"
+        command: 'echo "Environment check: $SHELL"'
         expected:
           result: 0
           output: "Environment check"

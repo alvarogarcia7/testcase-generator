@@ -18,6 +18,9 @@ test_sequences:
     name: "Basic Command Execution"
     description: |
                    Sample sequence demonstrating successful command execution.
+    initial_conditions:
+      system:
+        - "Test sequence ready"
     steps:
       - step: 1
         description: "Display greeting message"
@@ -35,6 +38,7 @@ test_sequences:
         expected:
           success: true
           result: 0
+          output: ""
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
           output: "[[ -n \"$COMMAND_OUTPUT\" ]]"
@@ -44,6 +48,7 @@ test_sequences:
         expected:
           success: true
           result: 0
+          output: ""
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
           output: "[[ -n \"$COMMAND_OUTPUT\" ]]"

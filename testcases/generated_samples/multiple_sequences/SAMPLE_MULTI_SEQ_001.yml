@@ -16,6 +16,9 @@ test_sequences:
   - id: 1
     name: "First Sequence - Success"
     description: "All steps pass in first sequence"
+    initial_conditions:
+      system:
+        - "Test sequence ready"
     steps:
       - step: 1
         description: "Echo message"
@@ -41,6 +44,9 @@ test_sequences:
   - id: 2
     name: "Second Sequence - Fails"
     description: "Step 2 fails with output mismatch"
+    initial_conditions:
+      system:
+        - "Test sequence ready"
     steps:
       - step: 1
         description: "First step passes"
@@ -66,6 +72,9 @@ test_sequences:
   - id: 3
     name: "Third Sequence - Not Executed"
     description: "This sequence won't execute due to previous failure"
+    initial_conditions:
+      system:
+        - "Test sequence ready"
     steps:
       - step: 1
         description: "This won't execute"

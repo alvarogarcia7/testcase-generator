@@ -17,6 +17,9 @@ test_sequences:
     name: "Variable Capture and Conditional Verification"
     description: |
                    Demonstrates advanced features like variable capture and conditional verification.
+    initial_conditions:
+      system:
+        - "Test environment ready"
     steps:
       - step: 1
         description: "Generate timestamp and capture it"
@@ -24,6 +27,7 @@ test_sequences:
         expected:
           success: true
           result: 0
+          output: ""
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
@@ -33,10 +37,11 @@ test_sequences:
       
       - step: 2
         description: "Display captured timestamp"
-        command: echo "Timestamp: $TIMESTAMP"
+        command: 'echo "Timestamp: $TIMESTAMP"'
         expected:
           success: true
           result: 0
+          output: ""
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
           output: "grep -q 'Timestamp: ' <<< \"$COMMAND_OUTPUT\""
@@ -47,6 +52,7 @@ test_sequences:
         expected:
           success: true
           result: 0
+          output: ""
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
           output: |

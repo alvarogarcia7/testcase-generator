@@ -21,6 +21,9 @@ test_sequences:
     description: |
                    Test integration between file system, processes,
                    and data transformation components.
+    initial_conditions:
+      system:
+        - "Integration environment ready"
     steps:
       - step: 1
         description: "Create integration test workspace"
@@ -48,7 +51,8 @@ test_sequences:
           output: "test -f /tmp/integration_test/data.json"
       - step: 3
         description: "Process data and extract count"
-        command: grep -o '"count":[0-9]*' /tmp/integration_test/data.json | cut -d: -f2
+        command: |
+          grep -o '"count":[0-9]*' /tmp/integration_test/data.json | cut -d: -f2
         expected:
           success: true
           result: 0

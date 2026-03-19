@@ -20,6 +20,9 @@ test_sequences:
     description: |
                    Test basic network operations including
                    ping, DNS resolution, and HTTP requests.
+    initial_conditions:
+      network:
+        - "Network interface is up"
     steps:
       - step: 1
         description: "Test localhost ping"

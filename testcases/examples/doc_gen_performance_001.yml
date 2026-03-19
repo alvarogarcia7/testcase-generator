@@ -21,6 +21,9 @@ test_sequences:
     description: |
                    Measure CPU performance, memory usage,
                    and I/O operations under load.
+    initial_conditions:
+      system:
+        - "Performance testing environment ready"
     steps:
       - step: 1
         description: "Measure CPU count"

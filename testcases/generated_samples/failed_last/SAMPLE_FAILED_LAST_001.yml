@@ -17,6 +17,9 @@ test_sequences:
     name: "Last Step Failure"
     description: |
                    Sample where all steps execute but last step fails output verification.
+    initial_conditions:
+      system:
+        - "Test sequence ready"
     steps:
       - step: 1
         description: "First successful step"

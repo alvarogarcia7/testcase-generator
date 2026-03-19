@@ -17,6 +17,9 @@ test_sequences:
     name: "First Step Failure"
     description: |
                    Sample where first step fails, preventing execution of remaining steps.
+    initial_conditions:
+      system:
+        - "Test sequence ready"
     steps:
       - step: 1
         description: "Attempt invalid operation"
@@ -24,6 +27,7 @@ test_sequences:
         expected:
           success: true
           result: 0
+          output: ""
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
           output: "true"

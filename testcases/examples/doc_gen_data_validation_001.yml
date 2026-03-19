@@ -18,6 +18,9 @@ test_sequences:
     description: |
                    Validate data formats, types, and structure
                    against expected schemas.
+    initial_conditions:
+      system:
+        - "Validation environment ready"
     steps:
       - step: 1
         description: "Validate email format - valid case"
@@ -104,6 +107,9 @@ test_sequences:
     description: |
                    Test boundary conditions, edge cases,
                    and limit scenarios.
+    initial_conditions:
+      system:
+        - "Test environment configured"
     steps:
       - step: 1
         description: "Test minimum boundary (0)"

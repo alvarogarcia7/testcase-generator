@@ -19,6 +19,9 @@ test_sequences:
     description: |
                    Test file creation, reading, writing,
                    and content manipulation operations.
+    initial_conditions:
+      filesystem:
+        - "Working directory accessible"
     steps:
       - step: 1
         description: "Create test directory"
@@ -75,6 +78,9 @@ test_sequences:
     description: |
                    Test file permission management, ownership,
                    and attribute modifications.
+    initial_conditions:
+      filesystem:
+        - "Files created in sequence 1"
     steps:
       - step: 1
         description: "Set file permissions to read-write"
@@ -131,6 +137,9 @@ test_sequences:
     description: |
                    Clean up test files and directories,
                    verify proper deletion.
+    initial_conditions:
+      filesystem:
+        - "Files from previous sequences exist"
     steps:
       - step: 1
         description: "Delete individual file"

@@ -21,6 +21,9 @@ test_sequences:
   - id: 1
     name: "Test with Before Sequence Hook"
     description: "Hook executes before each sequence starts"
+    initial_conditions:
+      system:
+        - "Test sequence ready"
     steps:
       - step: 1
         description: "Echo message"

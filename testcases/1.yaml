@@ -12,6 +12,10 @@ initial_conditions:
 test_sequences:
 - id: 1
   name: sea1
+  description: Test sequence for sea1
+  initial_conditions:
+    eUICC:
+    - Condition ready for testing
   steps:
   - step: 1
     manual: true
