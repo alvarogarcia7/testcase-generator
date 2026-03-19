@@ -160,6 +160,10 @@ struct Cli {
         value_name = "PATH"
     )]
     schema_path: PathBuf,
+
+    /// Exit with 0 even if test cases failed (useful for acceptance testing)
+    #[arg(long = "success-on-completion")]
+    success_on_completion: bool,
 }
 
 fn main() -> Result<()> {
@@ -208,8 +212,8 @@ fn main() -> Result<()> {
     // Write to file or stdout
     write_output(&output_content, cli.output.as_ref())?;
 
-    // Exit with non-zero code if any tests failed
-    if report.failed_test_cases > 0 {
+    // Exit with non-zero code if any tests failed (unless --success-on-completion is set)
+    if !cli.success_on_completion && report.failed_test_cases > 0 {
         std::process::exit(1);
     }
 

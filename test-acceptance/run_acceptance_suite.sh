@@ -467,6 +467,8 @@ verify_execution_logs() {
         # Extract test case ID from YAML file (using basename without extension)
         local test_case_id=$(basename "$test_case_yaml" .yaml)
         
+        # Use --success-on-completion flag to ensure verifier exits 0 even if test cases failed
+        # This is important for acceptance testing where we expect some test cases to fail
         if "$VERIFIER" \
             --title "Acceptance Test Results - $(basename "$test_case_yaml")" \
             --project "Test Case Manager - Acceptance Suite" \
@@ -475,6 +477,7 @@ verify_execution_logs() {
             --log "$log_file" \
             --test-case-dir "$TEST_CASES_DIR" \
             --output "$container_file" \
+            --success-on-completion \
             > "$TEMP_DIR/verifier_output.txt" 2>&1; then
             
             ((VERIFICATION_PASSED++))
@@ -703,12 +706,14 @@ generate_consolidated_documentation() {
     log_info "Generating unified container YAML from all execution logs..."
     
     # Generate consolidated container YAML using verifier --folder mode
+    # Use --success-on-completion flag to ensure verifier exits 0 even if test cases failed
     if "$VERIFIER" \
         --folder "$EXECUTION_LOGS_DIR" \
         --title "Acceptance Test Suite - All Test Cases" \
         --project "Test Case Manager - Acceptance Suite" \
         --environment "Automated Test Environment - $(hostname)" \
         --output "$consolidated_container" \
+        --success-on-completion \
         > "$TEMP_DIR/verifier_consolidated_output.txt" 2>&1; then
         
         pass "Unified container YAML generated"

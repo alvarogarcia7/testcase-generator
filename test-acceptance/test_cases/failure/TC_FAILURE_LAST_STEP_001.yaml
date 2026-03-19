@@ -1,0 +1,66 @@
+requirement: "FAILURE_LAST_STEP"
+item: 1
+tc: 1
+id: 'TC_FAILURE_LAST_STEP_001'
+description: 'Test case where the last step fails - verifies that all previous steps execute successfully before final failure'
+
+general_initial_conditions:
+  system:
+    - "Bash shell is available"
+    - "Basic Unix utilities are installed"
+
+initial_conditions:
+  filesystem:
+    - "Temporary directory /tmp is writable"
+
+test_sequences:
+  - id: 1
+    name: "Last Step Failure Sequence"
+    description: "Execute commands where only the final step fails verification"
+    initial_conditions:
+      system:
+        - "Echo, date, and cat commands are available"
+    steps:
+      - step: 1
+        description: "Print first success message"
+        command: "echo 'Step 1 success'"
+        expected:
+          success: true
+          result: '0'
+          output: "Step 1 success"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Step 1 success' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 2
+        description: "Print second success message"
+        command: "echo 'Step 2 success'"
+        expected:
+          success: true
+          result: '0'
+          output: "Step 2 success"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Step 2 success' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 3
+        description: "Print third success message"
+        command: "echo 'Step 3 success'"
+        expected:
+          success: true
+          result: '0'
+          output: "Step 3 success"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Step 3 success' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 4
+        description: "Attempt to read non-existent file but expect success (verification fails)"
+        command: "cat /tmp/nonexistent_file_xyz_123.txt"
+        expected:
+          success: true
+          result: '0'
+          output: "file contents"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"
