@@ -39,6 +39,11 @@ CONTAINER_SCHEMA="$CONTAINER_DIR/container_schema.json"
 # Check for required Python modules
 check_python_requirements() {
     log_info "Checking Python requirements..."
+
+    if ! command -v uv >/dev/null 2>&1; then
+        log_error "UV is required but not found"
+        return 1
+    fi
     
     if ! command -v python3 >/dev/null 2>&1; then
         log_error "Python 3 is required but not found"
@@ -46,14 +51,14 @@ check_python_requirements() {
     fi
     
     # Check for yaml module
-    if ! python3 -c 'import yaml' 2>/dev/null; then
+    if ! uv run python3 -c 'import yaml' 2>/dev/null; then
         log_error "Python yaml module is required but not found"
         log_info "Install with: pip3 install pyyaml"
         return 1
     fi
     
     # Check for jsonschema module
-    if ! python3 -c 'import jsonschema' 2>/dev/null; then
+    if ! uv python3 -c 'import jsonschema' 2>/dev/null; then
         log_error "Python jsonschema module is required but not found"
         log_info "Install with: pip3 install jsonschema"
         return 1
