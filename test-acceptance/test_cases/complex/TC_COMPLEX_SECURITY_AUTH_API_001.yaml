@@ -87,7 +87,7 @@ test_sequences:
 
       - step: 2
         description: "Simulate authentication request and generate secure token"
-        command: "echo 'AUTH_REQUEST: '${#TEST_USERNAME} && echo ${#TEST_USERNAME}_${auth_timestamp}_${#TEST_USER_ROLE} | md5sum 2>/dev/null | cut -d' ' -f1 || echo ${#TEST_USERNAME}_${auth_timestamp}_${#TEST_USER_ROLE} | md5 2>/dev/null | cut -d' ' -f1 || echo 'token_'$RANDOM$RANDOM"
+        command: "echo 'AUTH_REQUEST: '${TEST_USERNAME} && echo ${TEST_USERNAME}_${auth_timestamp}_${TEST_USER_ROLE} | md5sum 2>/dev/null | cut -d' ' -f1 || echo ${TEST_USERNAME}_${auth_timestamp}_${TEST_USER_ROLE} | md5 2>/dev/null | cut -d' ' -f1 || echo 'token_'$RANDOM$RANDOM"
         capture_vars:
           - name: auth_token
             capture: '([a-f0-9]+|token_[0-9]+)'
@@ -108,7 +108,7 @@ test_sequences:
 
       - step: 3
         description: "Calculate token expiry timestamp"
-        command: "echo $((${auth_timestamp} + ${#TOKEN_EXPIRY_SECONDS}))"
+        command: "echo $((${auth_timestamp} + ${TOKEN_EXPIRY_SECONDS}))"
         capture_vars:
           - name: token_expiry
             capture: '([0-9]+)'
@@ -128,11 +128,11 @@ test_sequences:
         command: "mkdir -p /tmp/secure_session && cat > /tmp/secure_session/auth_${auth_token:0:8}.sec << EOF
 # Secure Session Data - DO NOT COMMIT
 session_token=${auth_token}
-username=${#TEST_USERNAME}
-role=${#TEST_USER_ROLE}
+username=${TEST_USERNAME}
+role=${TEST_USER_ROLE}
 authenticated_at=${auth_timestamp}
 expires_at=${token_expiry}
-api_base=${#API_BASE_URL}
+api_base=${API_BASE_URL}
 status=ACTIVE
 EOF
 chmod 600 /tmp/secure_session/auth_${auth_token:0:8}.sec && cat /tmp/secure_session/auth_${auth_token:0:8}.sec"
@@ -173,11 +173,11 @@ chmod 600 /tmp/secure_session/auth_${auth_token:0:8}.sec && cat /tmp/secure_sess
     steps:
       - step: 1
         description: "Simulate GET request to user profile endpoint"
-        command: "echo 'GET ${#API_BASE_URL}/users/${#TEST_USERNAME}' && echo 'Headers: '${auth_header} && cat << EOF
+        command: "echo 'GET ${API_BASE_URL}/users/${TEST_USERNAME}' && echo 'Headers: '${auth_header} && cat << EOF
 {
-  \"user_id\": \"$(echo ${#TEST_USERNAME} | md5sum 2>/dev/null | cut -c1-8 || echo $RANDOM)\",
-  \"username\": \"${#TEST_USERNAME}\",
-  \"role\": \"${#TEST_USER_ROLE}\",
+  \"user_id\": \"$(echo ${TEST_USERNAME} | md5sum 2>/dev/null | cut -c1-8 || echo $RANDOM)\",
+  \"username\": \"${TEST_USERNAME}\",
+  \"role\": \"${TEST_USER_ROLE}\",
   \"authenticated\": true,
   \"token_valid\": true
 }
@@ -193,7 +193,7 @@ EOF"
           output: "user_id"
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q '\"username\": \"${#TEST_USERNAME}\"' <<< \"$COMMAND_OUTPUT\" && grep -q '\"authenticated\": true' <<< \"$COMMAND_OUTPUT\""
+          output: "grep -q '\"username\": \"${TEST_USERNAME}\"' <<< \"$COMMAND_OUTPUT\" && grep -q '\"authenticated\": true' <<< \"$COMMAND_OUTPUT\""
           general:
             - name: verify_user_id_captured
               condition: "[[ -n \"$user_id\" ]]"
@@ -202,7 +202,7 @@ EOF"
 
       - step: 2
         description: "Simulate GET request to resources based on role"
-        command: "echo 'GET ${#API_BASE_URL}/resources' && echo 'Headers: '${auth_header} && case \"${#TEST_USER_ROLE}\" in
+        command: "echo 'GET ${API_BASE_URL}/resources' && echo 'Headers: '${auth_header} && case \"${TEST_USER_ROLE}\" in
   admin)
     echo '{\"resources\": [\"all\", \"users\", \"settings\", \"logs\", \"reports\"], \"access_level\": \"full\"}'
     ;;
@@ -228,7 +228,7 @@ esac"
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
           output:
-            condition: "[[ \"${#TEST_USER_ROLE}\" == \"admin\" ]]"
+            condition: "[[ \"${TEST_USER_ROLE}\" == \"admin\" ]]"
             if_true:
               - "grep -q '\"access_level\": \"full\"' <<< \"$COMMAND_OUTPUT\""
             if_false:
@@ -241,7 +241,7 @@ esac"
 
       - step: 3
         description: "Simulate POST request to create resource"
-        command: "echo 'POST ${#API_BASE_URL}/resources' && echo 'Headers: '${auth_header} && echo 'Body: {\"name\": \"test_resource\", \"owner\": \"${#TEST_USERNAME}\"}' && date +%s"
+        command: "echo 'POST ${API_BASE_URL}/resources' && echo 'Headers: '${auth_header} && echo 'Body: {\"name\": \"test_resource\", \"owner\": \"${TEST_USERNAME}\"}' && date +%s"
         capture_vars:
           - name: request_timestamp
             capture: '([0-9]+)$'
@@ -273,7 +273,7 @@ esac"
       - step: 5
         description: "Log API request audit trail"
         command: "cat >> /tmp/secure_session/api_audit.log << EOF
-[${request_timestamp}] POST /resources - User: ${#TEST_USERNAME} (${user_id}) - Token: ${auth_token:0:8}... - Resource: ${resource_id} - Status: SUCCESS
+[${request_timestamp}] POST /resources - User: ${TEST_USERNAME} (${user_id}) - Token: ${auth_token:0:8}... - Resource: ${resource_id} - Status: SUCCESS
 EOF
 tail -1 /tmp/secure_session/api_audit.log"
         expected:
@@ -392,7 +392,7 @@ fi"
     steps:
       - step: 1
         description: "Simulate logout API request"
-        command: "echo 'POST ${#API_BASE_URL}/auth/logout' && echo 'Headers: '${auth_header} && date +%s"
+        command: "echo 'POST ${API_BASE_URL}/auth/logout' && echo 'Headers: '${auth_header} && date +%s"
         capture_vars:
           - name: logout_timestamp
             capture: '([0-9]+)$'
@@ -432,9 +432,9 @@ Security Test Audit Report
 ==========================
 
 Authentication Details:
-- User: ${#TEST_USERNAME}
+- User: ${TEST_USERNAME}
 - User ID: ${user_id}
-- Role: ${#TEST_USER_ROLE}
+- Role: ${TEST_USER_ROLE}
 - Access Level: ${access_level}
 
 Session Information:

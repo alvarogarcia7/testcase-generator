@@ -68,7 +68,7 @@ test_sequences:
     steps:
       - step: 1
         description: "Create test data directory structure"
-        command: "mkdir -p ${#TEST_DATA_DIR}/{input,output,results} && echo 'Created: '${#TEST_DATA_DIR}"
+        command: "mkdir -p ${TEST_DATA_DIR}/{input,output,results} && echo 'Created: '${TEST_DATA_DIR}"
         capture_vars:
           - name: data_dir
             capture: 'Created: (/tmp/[^\s]+)'
@@ -119,9 +119,9 @@ cat ${data_dir}/results/test_results_${test_run_id}.csv"
 Test Run Manifest
 =================
 Run ID: ${test_run_id}
-Iterations: ${#ITERATION_COUNT}
-Data Set Size: ${#DATA_SET_SIZE}
-Failure Threshold: ${#FAILURE_THRESHOLD}%
+Iterations: ${ITERATION_COUNT}
+Data Set Size: ${DATA_SET_SIZE}
+Failure Threshold: ${FAILURE_THRESHOLD}%
 Data Directory: ${data_dir}
 Status: INITIALIZED
 EOF
@@ -144,7 +144,7 @@ cat ${data_dir}/test_manifest.txt"
     steps:
       - step: 1
         description: "Generate input data for iteration 1"
-        command: "for i in $(seq 1 ${#DATA_SET_SIZE}); do echo \"DATA_ITEM_1_$i\" >> ${data_dir}/input/iteration_1.txt; done && wc -l ${data_dir}/input/iteration_1.txt | awk '{print $1}'"
+        command: "for i in $(seq 1 ${DATA_SET_SIZE}); do echo \"DATA_ITEM_1_$i\" >> ${data_dir}/input/iteration_1.txt; done && wc -l ${data_dir}/input/iteration_1.txt | awk '{print $1}'"
         capture_vars:
           - name: iter1_input_count
             capture: '([0-9]+)'
@@ -154,7 +154,7 @@ cat ${data_dir}/test_manifest.txt"
           output: "count"
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" -eq ${#DATA_SET_SIZE} ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" -eq ${DATA_SET_SIZE} ]]"
 
       - step: 2
         description: "Capture iteration 1 start time"
@@ -182,7 +182,7 @@ cat ${data_dir}/test_manifest.txt"
           output: "count"
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" -eq ${#DATA_SET_SIZE} ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" -eq ${DATA_SET_SIZE} ]]"
 
       - step: 4
         description: "Capture iteration 1 end time and calculate duration"
@@ -224,7 +224,7 @@ cat ${data_dir}/test_manifest.txt"
     steps:
       - step: 1
         description: "Generate input data for iteration 2"
-        command: "for i in $(seq 1 ${#DATA_SET_SIZE}); do echo \"DATA_ITEM_2_$i\" >> ${data_dir}/input/iteration_2.txt; done && wc -l ${data_dir}/input/iteration_2.txt | awk '{print $1}'"
+        command: "for i in $(seq 1 ${DATA_SET_SIZE}); do echo \"DATA_ITEM_2_$i\" >> ${data_dir}/input/iteration_2.txt; done && wc -l ${data_dir}/input/iteration_2.txt | awk '{print $1}'"
         capture_vars:
           - name: iter2_input_count
             capture: '([0-9]+)'
@@ -234,7 +234,7 @@ cat ${data_dir}/test_manifest.txt"
           output: "count"
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" -eq ${#DATA_SET_SIZE} ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" -eq ${DATA_SET_SIZE} ]]"
 
       - step: 2
         description: "Capture iteration 2 start time"
@@ -262,7 +262,7 @@ cat ${data_dir}/test_manifest.txt"
           output: "count"
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" -eq ${#DATA_SET_SIZE} ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" -eq ${DATA_SET_SIZE} ]]"
 
       - step: 4
         description: "Capture iteration 2 end time and calculate duration"
@@ -301,7 +301,7 @@ cat ${data_dir}/test_manifest.txt"
     steps:
       - step: 1
         description: "Generate input data for iteration 3"
-        command: "for i in $(seq 1 ${#DATA_SET_SIZE}); do echo \"DATA_ITEM_3_$i\" >> ${data_dir}/input/iteration_3.txt; done && wc -l ${data_dir}/input/iteration_3.txt | awk '{print $1}'"
+        command: "for i in $(seq 1 ${DATA_SET_SIZE}); do echo \"DATA_ITEM_3_$i\" >> ${data_dir}/input/iteration_3.txt; done && wc -l ${data_dir}/input/iteration_3.txt | awk '{print $1}'"
         capture_vars:
           - name: iter3_input_count
             capture: '([0-9]+)'
@@ -311,7 +311,7 @@ cat ${data_dir}/test_manifest.txt"
           output: "count"
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" -eq ${#DATA_SET_SIZE} ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" -eq ${DATA_SET_SIZE} ]]"
 
       - step: 2
         description: "Capture iteration 3 start time"
@@ -339,7 +339,7 @@ cat ${data_dir}/test_manifest.txt"
           output: "count"
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" -eq ${#DATA_SET_SIZE} ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" -eq ${DATA_SET_SIZE} ]]"
 
       - step: 4
         description: "Capture iteration 3 end time and calculate duration"
@@ -486,10 +486,10 @@ Data-Driven Test Analysis Report
 
 Test Configuration:
 - Run ID: ${test_run_id}
-- Iterations Configured: ${#ITERATION_COUNT}
+- Iterations Configured: ${ITERATION_COUNT}
 - Iterations Completed: ${total_iterations}
-- Data Set Size: ${#DATA_SET_SIZE} items per iteration
-- Failure Threshold: ${#FAILURE_THRESHOLD}%
+- Data Set Size: ${DATA_SET_SIZE} items per iteration
+- Failure Threshold: ${FAILURE_THRESHOLD}%
 
 Performance Metrics:
 -------------------

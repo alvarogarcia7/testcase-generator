@@ -2,20 +2,21 @@ requirement: "DEPENDENCY_SIMPLE"
 item: 1
 tc: 1
 id: 'TC_DEPENDENCY_SIMPLE_001'
-description: 'Simple dependency test - test case references another test case via include in initial conditions'
+description: 'Simple dependency test - test case has dependency on another test case (TC_SUCCESS_SIMPLE_001)'
 
 general_initial_conditions:
+  include:
+    - id: 'TC_SUCCESS_SIMPLE_001'
   system:
     - "Bash shell is available"
     - "Basic Unix utilities are installed"
+    - "Depends on TC_SUCCESS_SIMPLE_001"
 
 initial_conditions:
-  include:
-    - id: 'TC_SUCCESS_SIMPLE_001'
   filesystem:
     - "Temporary directory /tmp is writable"
   system:
-    - "Dependencies from TC_SUCCESS_SIMPLE_001 are satisfied"
+    - "Dependencies from TC_SUCCESS_SIMPLE_001 must be satisfied"
 
 test_sequences:
   - id: 1
@@ -23,14 +24,14 @@ test_sequences:
     description: "Execute test that depends on another test case"
     initial_conditions:
       system:
-        - "Dependencies are validated"
+        - "Dependencies are established via include reference"
     steps:
       - step: 1
         description: "Verify dependency satisfaction"
         command: "echo 'Dependencies satisfied from TC_SUCCESS_SIMPLE_001'"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "Dependencies satisfied"
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
@@ -41,7 +42,7 @@ test_sequences:
         command: "echo 'Executing dependent test' && date +%Y-%m-%d"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "Executing dependent test"
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
@@ -52,7 +53,7 @@ test_sequences:
         command: "echo 'Test completed successfully'"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "Test completed successfully"
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"

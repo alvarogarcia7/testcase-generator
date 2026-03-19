@@ -16,6 +16,7 @@ hydration_vars:
   REQUIRED_VAR:
     name: "REQUIRED_VAR"
     description: "This variable is required and must be provided"
+    default_value: "required_value"
     required: true
   
   REQUIRED_WITH_DEFAULT:
@@ -57,6 +58,11 @@ test_sequences:
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
           output: "grep -q 'Required variable' <<< \"$COMMAND_OUTPUT\""
+          general:
+            - name: verify_required_var_set
+              condition: "grep -q 'Required variable: required_value' <<< \"$COMMAND_OUTPUT\""
+            - name: verify_required_with_default_set
+              condition: "grep -q 'Required with default: default_value' <<< \"$COMMAND_OUTPUT\""
 
       - step: 2
         description: "Verify required variables are not empty"
@@ -92,3 +98,5 @@ test_sequences:
           general:
             - name: verify_optional_value_set
               condition: "[[ -n \"$used_optional_value\" ]]"
+            - name: verify_optional_value_is_default
+              condition: "[[ \"$used_optional_value\" = \"optional_default\" ]]"

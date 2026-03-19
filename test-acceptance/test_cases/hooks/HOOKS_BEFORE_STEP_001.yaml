@@ -1,39 +1,79 @@
----
-metadata:
-  id: HOOKS_BEFORE_STEP_001
-  name: Before Step Hook - Validation
-  description: Tests before_step hook that performs pre-step validation and setup
-  version: 1.0.0
+requirement: "HOOKS_BEFORE_STEP"
+item: 1
+tc: 7
+id: 'HOOKS_BEFORE_STEP_001'
+description: 'Tests before_step hook that executes before each test step'
 
 hydration_vars:
-  required:
-    - TEST_ENV
+  TEST_ENV:
+    name: "TEST_ENV"
+    description: "Test environment identifier"
+    default_value: "acceptance"
+    required: true
 
 hooks:
   before_step:
-    command: "test-acceptance/scripts/hooks/before_step_validate.sh"
+    command: "test-acceptance/scripts/hooks/before_step_log.sh"
     on_error: "fail"
 
-sequences:
-  - id: "1"
-    name: "Step Validation Sequence"
+general_initial_conditions:
+  system:
+    - "Bash shell is available"
+
+initial_conditions:
+  filesystem:
+    - "Temporary directory /tmp is writable"
+  hooks:
+    - "before_step hook script exists and is executable"
+
+test_sequences:
+  - id: 1
+    name: "Step Hook Execution"
+    description: "Test sequence with before_step hook for each step"
+    initial_conditions:
+      system:
+        - "before_step hook is active"
     steps:
-      - description: "First step with validation"
-        command: "echo 'step 1 executed'"
-        expected_output: "step 1 executed"
+      - step: 1
+        description: "First step with before_step hook"
+        command: "test -f /tmp/before_step_1_$$.txt && cat /tmp/before_step_1_$$.txt"
+        expected:
+          success: true
+          result: 0
+          output: "before_step 1"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'before_step 1' <<< \"$COMMAND_OUTPUT\""
 
-      - description: "Second step with validation"
-        command: "echo 'step 2 executed'"
-        expected_output: "step 2 executed"
+      - step: 2
+        description: "Second step with before_step hook"
+        command: "test -f /tmp/before_step_2_$$.txt && cat /tmp/before_step_2_$$.txt"
+        expected:
+          success: true
+          result: 0
+          output: "before_step 2"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'before_step 2' <<< \"$COMMAND_OUTPUT\""
 
-      - description: "Verify before_step hook ran for each step"
-        command: "test -f /tmp/before_step_$$.log && grep -c 'before_step validated' /tmp/before_step_$$.log"
-        expected_output: "3"
+      - step: 3
+        description: "Third step with before_step hook"
+        command: "test -f /tmp/before_step_3_$$.txt && cat /tmp/before_step_3_$$.txt"
+        expected:
+          success: true
+          result: 0
+          output: "before_step 3"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'before_step 3' <<< \"$COMMAND_OUTPUT\""
 
-      - description: "Check step numbers in log"
-        command: "grep 'Step number:' /tmp/before_step_$$.log | wc -l | tr -d ' '"
-        expected_output: "3"
-
-      - description: "Cleanup log file"
-        command: "rm -f /tmp/before_step_$$.log"
-        expected_output: ""
+      - step: 4
+        description: "Cleanup marker files"
+        command: "rm -f /tmp/before_step_*_$$.txt"
+        expected:
+          success: true
+          result: 0
+          output: ""
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"

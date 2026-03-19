@@ -187,7 +187,10 @@ find_yaml_files() {
 yaml_has_hooks() {
     local yaml_file="$1"
     
-    python3 -c "
+    local python_cmd
+    python_cmd=$(find_python)
+    
+    $python_cmd -c "
 import yaml
 import sys
 try:
@@ -206,7 +209,10 @@ except Exception:
 yaml_has_variables() {
     local yaml_file="$1"
     
-    python3 -c "
+    local python_cmd
+    python_cmd=$(find_python)
+    
+    $python_cmd -c "
 import yaml
 import sys
 try:
@@ -235,7 +241,10 @@ except Exception:
 yaml_has_manual_steps() {
     local yaml_file="$1"
     
-    python3 -c "
+    local python_cmd
+    python_cmd=$(find_python)
+    
+    $python_cmd -c "
 import yaml
 import sys
 try:

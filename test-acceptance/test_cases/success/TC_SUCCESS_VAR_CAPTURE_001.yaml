@@ -29,10 +29,10 @@ test_sequences:
             capture: '([0-9]+)'
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "timestamp"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
           general:
             - name: verify_timestamp_captured
@@ -45,10 +45,10 @@ test_sequences:
         command: "echo \"Timestamp: ${timestamp}\" > /tmp/timestamp_${timestamp}.txt"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: ""
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "true"
 
       - step: 3
@@ -56,10 +56,10 @@ test_sequences:
         command: "cat /tmp/timestamp_${timestamp}.txt"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "Timestamp:"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "grep -q 'Timestamp: ${timestamp}' <<< \"$COMMAND_OUTPUT\""
 
       - step: 4
@@ -67,8 +67,8 @@ test_sequences:
         command: "rm -f /tmp/timestamp_${timestamp}.txt && echo 'Deleted'"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "Deleted"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "grep -q 'Deleted' <<< \"$COMMAND_OUTPUT\""

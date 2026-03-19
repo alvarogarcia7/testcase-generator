@@ -1,37 +1,85 @@
----
-metadata:
-  id: HOOKS_SETUP_TEST_001
-  name: Setup Test Hook - Resource Creation
-  description: Tests setup_test hook that creates test resources and directories
-  version: 1.0.0
+requirement: "HOOKS_SETUP_TEST"
+item: 1
+tc: 2
+id: 'HOOKS_SETUP_TEST_001'
+description: 'Tests setup_test hook that creates test resources and directories'
 
 hydration_vars:
-  required:
-    - TEST_ENV
-  optional:
-    - WORKSPACE_DIR
+  TEST_ENV:
+    name: "TEST_ENV"
+    description: "Test environment identifier"
+    default_value: "acceptance"
+    required: true
+  WORKSPACE_DIR:
+    name: "WORKSPACE_DIR"
+    description: "Workspace directory path"
+    default_value: "/tmp/test_workspace"
+    required: false
 
 hooks:
   setup_test:
     command: "test-acceptance/scripts/hooks/setup_test_resources.sh"
     on_error: "fail"
 
-sequences:
-  - id: "1"
+general_initial_conditions:
+  system:
+    - "Bash shell is available"
+    - "SQLite3 is installed"
+
+initial_conditions:
+  filesystem:
+    - "Temporary directory /tmp is writable"
+  hooks:
+    - "setup_test hook script exists and is executable"
+
+test_sequences:
+  - id: 1
     name: "Verify Resource Creation"
+    description: "Verify that setup_test hook created required resources"
+    initial_conditions:
+      system:
+        - "setup_test hook has executed"
     steps:
-      - description: "Check workspace directory exists"
+      - step: 1
+        description: "Check workspace directory exists"
         command: "test -d /tmp/test_workspace_$$ && echo 'workspace exists'"
-        expected_output: "workspace exists"
+        expected:
+          success: true
+          result: 0
+          output: "workspace exists"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'workspace exists' <<< \"$COMMAND_OUTPUT\""
 
-      - description: "Check test database file exists"
+      - step: 2
+        description: "Check test database file exists"
         command: "test -f /tmp/test_workspace_$$/test.db && echo 'database exists'"
-        expected_output: "database exists"
+        expected:
+          success: true
+          result: 0
+          output: "database exists"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'database exists' <<< \"$COMMAND_OUTPUT\""
 
-      - description: "Verify database initialization"
+      - step: 3
+        description: "Verify database initialization"
         command: "sqlite3 /tmp/test_workspace_$$/test.db 'SELECT name FROM sqlite_master WHERE type=\"table\";'"
-        expected_output: "tests"
+        expected:
+          success: true
+          result: 0
+          output: "tests"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'tests' <<< \"$COMMAND_OUTPUT\""
 
-      - description: "Cleanup workspace"
+      - step: 4
+        description: "Cleanup workspace"
         command: "rm -rf /tmp/test_workspace_$$"
-        expected_output: ""
+        expected:
+          success: true
+          result: 0
+          output: ""
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"

@@ -30,6 +30,7 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # Source required libraries
 source "$SCRIPT_DIR/lib/logger.sh" || exit 1
+source "$SCRIPT_DIR/lib/find-binary.sh" || exit 1
 
 # Default configuration
 SAMPLES_DIR="$PROJECT_ROOT/testcases/generated_samples"
@@ -310,21 +311,30 @@ else
     SKIP_RESULT_CONVERSION=0
     
     log_info "Converting verification JSON to result YAML files..."
-    log_verbose "Command: python3 $CONVERT_SCRIPT $VERIFICATION_OUTPUT_JSON -o $REPORTS_DIR/results"
     
-    if python3 "$CONVERT_SCRIPT" \
-        "$VERIFICATION_OUTPUT_JSON" \
-        -o "$REPORTS_DIR/results" 2>&1 | while IFS= read -r line; do
-            log_verbose "$line"
-        done; then
-        pass "Conversion completed successfully"
+    # Find Python interpreter
+    PYTHON_CMD=$(find_python)
+    if [[ -z "$PYTHON_CMD" ]]; then
+        log_warning "Python interpreter not found"
+        log_warning "Skipping result YAML generation"
+        SKIP_RESULT_CONVERSION=1
     else
-        log_warning "Conversion failed - result YAML files may not be generated"
+        log_verbose "Command: $PYTHON_CMD $CONVERT_SCRIPT $VERIFICATION_OUTPUT_JSON -o $REPORTS_DIR/results"
+        
+        if $PYTHON_CMD "$CONVERT_SCRIPT" \
+            "$VERIFICATION_OUTPUT_JSON" \
+            -o "$REPORTS_DIR/results" 2>&1 | while IFS= read -r line; do
+                log_verbose "$line"
+            done; then
+            pass "Conversion completed successfully"
+        else
+            log_warning "Conversion failed - result YAML files may not be generated"
+        fi
+        
+        # Count generated result files
+        RESULT_COUNT=$(find "$REPORTS_DIR/results" -name "*_result.yaml" -type f 2>/dev/null | wc -l | tr -d ' ')
+        log_info "Generated $RESULT_COUNT result YAML file(s)"
     fi
-    
-    # Count generated result files
-    RESULT_COUNT=$(find "$REPORTS_DIR/results" -name "*_result.yaml" -type f 2>/dev/null | wc -l | tr -d ' ')
-    log_info "Generated $RESULT_COUNT result YAML file(s)"
 fi
 
 # ============================================================================

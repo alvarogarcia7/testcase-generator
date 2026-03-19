@@ -26,10 +26,10 @@ test_sequences:
         command: "sleep 2 && echo 'Completed after 2 seconds'"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "Completed after 2 seconds"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "grep -q 'Completed after 2 seconds' <<< \"$COMMAND_OUTPUT\""
 
       - step: 2
@@ -40,10 +40,10 @@ test_sequences:
             capture: 'Duration: ([0-9]+) seconds'
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "Duration:"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "grep -q 'Duration:' <<< \"$COMMAND_OUTPUT\""
           general:
             - name: verify_duration_captured
@@ -54,10 +54,10 @@ test_sequences:
         command: "echo 'Start' && sleep 1 && echo 'Progress: 33%' && sleep 1 && echo 'Progress: 66%' && sleep 1 && echo 'Complete: 100%'"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "Complete: 100%"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "grep -q 'Start' <<< \"$COMMAND_OUTPUT\" && grep -q 'Progress: 33%' <<< \"$COMMAND_OUTPUT\" && grep -q 'Complete: 100%' <<< \"$COMMAND_OUTPUT\""
 
       - step: 4
@@ -72,10 +72,10 @@ test_sequences:
             command: "echo 3"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "Batch"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "grep -q 'Batch 1:' <<< \"$COMMAND_OUTPUT\" && grep -q 'Batch 2:' <<< \"$COMMAND_OUTPUT\" && grep -q 'Batch 3:' <<< \"$COMMAND_OUTPUT\""
           general:
             - name: verify_batch_count

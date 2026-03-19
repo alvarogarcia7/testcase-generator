@@ -9,11 +9,11 @@ import os
 import requests
 
 
-def load_performance_data(filepath: str) -> dict:
+def load_performance_data(filepath: str) -> dict | None:
     """Load performance data from a JSON file."""
     
     try:
-        with open(filepath, 'r') as f:
+        with open(filepath, 'r', encoding='utf-8') as f:
             return json.load(f)
     except FileNotFoundError:
         return None
@@ -22,7 +22,7 @@ def load_performance_data(filepath: str) -> dict:
         return None
 
 
-def get_baseline_performance() -> dict:
+def get_baseline_performance() -> dict | None:
     """Fetch baseline performance from master branch artifacts."""
     
     gitlab_token = os.getenv('GITLAB_TOKEN') or os.getenv('CI_JOB_TOKEN')

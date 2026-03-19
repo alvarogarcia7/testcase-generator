@@ -1,41 +1,57 @@
----
-metadata:
-  id: HOOKS_SCRIPT_END_001
-  name: Script End Hook - Summary Generation
-  description: Tests script_end hook that generates execution summary
-  version: 1.0.0
+requirement: "HOOKS_SCRIPT_END"
+item: 1
+tc: 4
+id: 'HOOKS_SCRIPT_END_001'
+description: 'Tests script_end hook that performs final cleanup and logging'
 
 hydration_vars:
-  required:
-    - TEST_ENV
+  TEST_ENV:
+    name: "TEST_ENV"
+    description: "Test environment identifier"
+    default_value: "acceptance"
+    required: true
 
 hooks:
-  script_start:
-    command: "test-acceptance/scripts/hooks/script_end_init.sh"
-    on_error: "fail"
   script_end:
-    command: "test-acceptance/scripts/hooks/script_end_summary.sh"
+    command: "test-acceptance/scripts/hooks/script_end_final.sh"
     on_error: "continue"
 
-sequences:
-  - id: "1"
-    name: "Execution Tracking"
+general_initial_conditions:
+  system:
+    - "Bash shell is available"
+
+initial_conditions:
+  filesystem:
+    - "Temporary directory /tmp is writable"
+  hooks:
+    - "script_end hook script exists and is executable"
+
+test_sequences:
+  - id: 1
+    name: "Prepare for Script End"
+    description: "Execute steps before script_end hook"
+    initial_conditions:
+      system:
+        - "Test execution is active"
     steps:
-      - description: "First tracked step"
-        command: "echo 'step 1' >> /tmp/script_end_tracking_$$.log && echo 'executed step 1'"
-        expected_output: "executed step 1"
+      - step: 1
+        description: "Create marker file for script_end hook"
+        command: "echo 'script_end_marker' > /tmp/script_end_marker_$$.txt && cat /tmp/script_end_marker_$$.txt"
+        expected:
+          success: true
+          result: 0
+          output: "script_end_marker"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'script_end_marker' <<< \"$COMMAND_OUTPUT\""
 
-      - description: "Second tracked step"
-        command: "echo 'step 2' >> /tmp/script_end_tracking_$$.log && echo 'executed step 2'"
-        expected_output: "executed step 2"
-
-  - id: "2"
-    name: "More Tracking"
-    steps:
-      - description: "Third tracked step"
-        command: "echo 'step 3' >> /tmp/script_end_tracking_$$.log && echo 'executed step 3'"
-        expected_output: "executed step 3"
-
-      - description: "Verify tracking file exists"
-        command: "test -f /tmp/script_end_tracking_$$.log && wc -l < /tmp/script_end_tracking_$$.log | tr -d ' '"
-        expected_output: "3"
+      - step: 2
+        description: "Final test step before script_end"
+        command: "echo 'Test complete, script_end hook will execute next'"
+        expected:
+          success: true
+          result: 0
+          output: "Test complete"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Test complete' <<< \"$COMMAND_OUTPUT\""

@@ -25,6 +25,8 @@ test_sequences:
     variables:
       device_type: "unknown"
       has_display: "false"
+      init_system: "other"
+      network_status: "offline"
     steps:
       - step: 1
         description: "Initialize test environment"
@@ -99,7 +101,7 @@ test_sequences:
       
       - step: 6
         description: "Check network availability"
-        command: "ping -c 1 -W 2 8.8.8.8 >/dev/null 2>&1 && echo 'online' || echo 'offline'"
+        command: "ping -c 1 -W 2 127.0.0.1 >/dev/null 2>&1 && echo 'online' || echo 'offline'"
         capture_vars:
           - name: network_status
             capture: "(online|offline)"

@@ -34,8 +34,8 @@ test_sequences:
           result: 0
           output: "Diagnostic completes with result code 0 (Success)"
         verification:
-          result: "Did the diagnostic complete with result code 0? (Y/n)"
-          output: "true"
+          result: "true"
+          output: "Did the diagnostic complete with result code 0? (Y/n)"
       
       - step: 2
         manual: true
@@ -46,8 +46,8 @@ test_sequences:
           result: 0
           output: "All network interfaces report 'Connected' status"
         verification:
-          result: "Do all network interfaces show 'Connected' status? (Y/n)"
-          output: "true"
+          result: "true"
+          output: "Do all network interfaces show 'Connected' status? (Y/n)"
       
       - step: 3
         manual: true
@@ -58,8 +58,8 @@ test_sequences:
           result: 0
           output: "Memory test passes with 0 errors detected"
         verification:
-          result: "Did the memory test pass with 0 errors? (Y/n)"
-          output: "true"
+          result: "true"
+          output: "Did the memory test pass with 0 errors? (Y/n)"
       
       - step: 4
         manual: true
@@ -70,8 +70,8 @@ test_sequences:
           result: 0
           output: "All drives report 'Healthy' status with no warnings"
         verification:
-          result: "Do all drives show 'Healthy' status? (Y/n)"
-          output: "true"
+          result: "true"
+          output: "Do all drives show 'Healthy' status? (Y/n)"
       
       - step: 5
         manual: true
@@ -82,8 +82,8 @@ test_sequences:
           result: 0
           output: "Benchmark completes with score above minimum threshold"
         verification:
-          result: "Did the benchmark complete successfully with passing score? (Y/n)"
-          output: "true"
+          result: "true"
+          output: "Did the benchmark complete successfully with passing score? (Y/n)"
       
       - step: 6
         manual: true
@@ -94,8 +94,8 @@ test_sequences:
           result: 0
           output: "Backup completes successfully with 'OK' status"
         verification:
-          result: "Did the backup complete with 'OK' status? (Y/n)"
-          output: "true"
+          result: "true"
+          output: "Did the backup complete with 'OK' status? (Y/n)"
       
       - step: 7
         manual: true
@@ -106,5 +106,5 @@ test_sequences:
           result: 0
           output: "Verification reports 'All files validated successfully'"
         verification:
-          result: "Does verification report all files validated successfully? (Y/n)"
-          output: "true"
+          result: "true"
+          output: "Does verification report all files validated successfully? (Y/n)"

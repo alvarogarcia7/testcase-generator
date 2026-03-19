@@ -2,21 +2,20 @@ requirement: "DEPENDENCY_NESTED"
 item: 1
 tc: 1
 id: 'TC_DEPENDENCY_NESTED_001'
-description: 'Nested dependency test - demonstrates transitive dependencies (A includes B, B includes C)'
+description: 'Nested dependency test - demonstrates transitive dependency chain (A depends on B, B depends on C)'
 
 general_initial_conditions:
-  system:
-    - "Bash shell is available"
-    - "Dependency resolution supports nested includes"
-
-initial_conditions:
   include:
     - id: 'TC_DEPENDENCY_SIMPLE_001'
+  system:
+    - "Bash shell is available"
+    - "Dependency chain: TC_DEPENDENCY_NESTED_001 -> TC_DEPENDENCY_SIMPLE_001 -> TC_SUCCESS_SIMPLE_001"
+
+initial_conditions:
   filesystem:
     - "Temporary directory /tmp is writable"
   system:
-    - "Nested dependencies are resolved transitively"
-    - "TC_DEPENDENCY_NESTED_001 -> TC_DEPENDENCY_SIMPLE_001 -> TC_SUCCESS_SIMPLE_001"
+    - "Transitive dependencies through TC_DEPENDENCY_SIMPLE_001"
 
 test_sequences:
   - id: 1
@@ -24,14 +23,14 @@ test_sequences:
     description: "Direct dependency on another dependent test"
     initial_conditions:
       system:
-        - "First level dependencies validated"
+        - "First level dependencies established"
     steps:
       - step: 1
         description: "Verify nested dependency chain"
         command: "echo 'Nested dependency: TC_DEPENDENCY_NESTED_001 -> TC_DEPENDENCY_SIMPLE_001 -> TC_SUCCESS_SIMPLE_001'"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "Nested dependency"
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
@@ -42,7 +41,7 @@ test_sequences:
         command: "echo 'All nested dependencies resolved' && echo 'Depth: 3 levels'"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "All nested dependencies resolved"
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
@@ -56,26 +55,27 @@ test_sequences:
         - id: 'TC_DEPENDENCY_SEQUENCE_001'
           test_sequence: '2'
       system:
-        - "Second level dependencies validated"
+        - "Dependency on TC_DEPENDENCY_SEQUENCE_001 sequence 2"
+        - "Second level dependencies established"
         - "Transitive closure includes TC_SUCCESS_MULTI_SEQ_001"
     steps:
       - step: 1
-        description: "Verify multi-level dependency resolution"
-        command: "echo 'Multi-level dependency graph validated'"
+        description: "Verify multi-level dependency"
+        command: "echo 'Multi-level dependency graph established'"
         expected:
           success: true
-          result: 0
-          output: "Multi-level dependency graph validated"
+          result: '0'
+          output: "Multi-level dependency graph established"
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Multi-level dependency graph validated' <<< \"$COMMAND_OUTPUT\""
+          output: "grep -q 'Multi-level dependency graph established' <<< \"$COMMAND_OUTPUT\""
 
       - step: 2
         description: "Complete nested test execution"
         command: "echo 'Nested test execution complete'"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "Nested test execution complete"
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
@@ -91,14 +91,15 @@ test_sequences:
           test_sequence: '1'
         - id: 'TC_SUCCESS_VAR_CAPTURE_001'
       system:
-        - "Complex dependency graph resolved"
+        - "Multiple dependencies at sequence level"
+        - "Complex dependency graph with transitive dependencies"
     steps:
       - step: 1
         description: "Execute with complex nested dependencies"
         command: "echo 'Complex nested dependencies: 6+ transitive dependencies'"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "Complex nested dependencies"
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"

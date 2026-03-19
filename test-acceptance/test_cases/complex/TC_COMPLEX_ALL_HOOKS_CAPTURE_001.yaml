@@ -98,7 +98,7 @@ test_sequences:
 
       - step: 2
         description: "Create hook execution log directory"
-        command: "mkdir -p /tmp/hook_logs_${#TEST_ID} && echo '/tmp/hook_logs_'${#TEST_ID}"
+        command: "mkdir -p /tmp/hook_logs_${TEST_ID} && echo '/tmp/hook_logs_'${TEST_ID}"
         capture_vars:
           - name: hook_log_dir
             capture: '(/tmp/hook_logs_[A-Z_0-9]+)'
@@ -118,10 +118,10 @@ test_sequences:
       - step: 3
         description: "Initialize hook tracking file"
         command: "cat > ${hook_log_dir}/hooks_executed.log << EOF
-# Hook Execution Log for ${#TEST_ID}
+# Hook Execution Log for ${TEST_ID}
 # Started at: ${script_start_time}
-# Log Level: ${#LOG_LEVEL}
-# Metrics: ${#METRICS_ENABLED}
+# Log Level: ${LOG_LEVEL}
+# Metrics: ${METRICS_ENABLED}
 
 HOOK_EXECUTION_START=${script_start_time}
 EOF
@@ -258,7 +258,7 @@ cat ${hook_log_dir}/hooks_executed.log"
 
       - step: 3
         description: "Record operation in metrics log"
-        command: "if [[ \"${#METRICS_ENABLED}\" == \"true\" ]]; then
+        command: "if [[ \"${METRICS_ENABLED}\" == \"true\" ]]; then
   echo 'METRIC: ${operation_id} - Status: ${operation_status}' >> ${hook_log_dir}/metrics.log
   echo 'Metrics recorded'
 else
@@ -355,9 +355,9 @@ fi"
 Complete Hook Execution Report
 ==============================
 
-Test ID: ${#TEST_ID}
-Log Level: ${#LOG_LEVEL}
-Metrics Enabled: ${#METRICS_ENABLED}
+Test ID: ${TEST_ID}
+Log Level: ${LOG_LEVEL}
+Metrics Enabled: ${METRICS_ENABLED}
 
 Execution Timeline:
 -------------------
@@ -425,7 +425,7 @@ tail -8 ${hook_log_dir}/hooks_executed.log"
 
       - step: 5
         description: "Verify metrics log exists if enabled"
-        command: "if [[ \"${#METRICS_ENABLED}\" == \"true\" ]]; then
+        command: "if [[ \"${METRICS_ENABLED}\" == \"true\" ]]; then
   test -f ${hook_log_dir}/metrics.log && echo 'Metrics log verified' || echo 'Metrics log missing'
 else
   echo 'Metrics disabled, no log expected'

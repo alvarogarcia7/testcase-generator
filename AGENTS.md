@@ -64,6 +64,8 @@ See the [Hooks](#hooks) section for detailed documentation and examples.
 - **LOC JSON**: make loc-json (compute lines of code statistics in JSON format)
 - **LOC YAML**: make loc-yaml (compute lines of code statistics in YAML format)
 - **LOC Report**: make loc-report (generate lines of code statistics report to reports/loc/loc_statistics.txt)
+- **Setup Python**: make setup-python (install and configure Python 3.14 with uv package manager)
+- **Verify Python**: make verify-python (verify Python 3.14 environment is properly configured)
 - **Dev Server**: N/A
 
 ### Report Generation
@@ -103,6 +105,679 @@ make generate-docs-all      # All test cases
 
 **Troubleshooting**:
 See [Report Generation Documentation](docs/report_generation.md) for detailed installation, configuration, schema compatibility requirements, and troubleshooting steps.
+
+### Python 3.14 Environment Setup
+
+The project requires Python 3.14 for various utility scripts and CI/CD tools. Python 3.14 is managed using the **`uv`** package manager, which provides fast, reliable Python environment management.
+
+#### Quick Start
+
+**Local Setup**:
+```bash
+# Install and configure Python 3.14 environment
+make setup-python
+
+# Verify Python 3.14 is properly configured
+make verify-python
+```
+
+**Docker Setup**:
+The Docker image automatically installs and configures Python 3.14 during build. No manual setup required.
+
+#### Understanding uv Package Manager
+
+**What is uv?**
+- Modern, fast Python package and project manager written in Rust
+- Replaces pip, pip-tools, virtualenv, and pyenv functionality
+- Provides deterministic dependency resolution with lock files
+- Handles Python version management (installation and switching)
+
+**Key Benefits**:
+- **Speed**: 10-100x faster than pip for dependency resolution and installation
+- **Reliability**: Lock files ensure reproducible environments across machines
+- **Simplicity**: Single tool for all Python environment needs
+- **Version Management**: Automatically downloads and manages Python versions
+
+**Installation**:
+```bash
+# Install uv package manager
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Add uv to PATH (add to ~/.bashrc or ~/.zshrc)
+export PATH="$HOME/.cargo/bin:$PATH"
+```
+
+**Official Documentation**: https://docs.astral.sh/uv/
+
+#### Environment Setup Process
+
+The setup process performs the following steps:
+
+1. **Verify uv Installation**: Checks that `uv` is available in PATH
+2. **Sync Dependencies**: Reads `pyproject.toml` and `uv.lock` to install dependencies
+3. **Install Python 3.14**: Downloads and installs Python 3.14 if not already present
+4. **Set Default Version**: Configures Python 3.14 as the default version for the project
+5. **Create Virtual Environment**: Sets up `.venv/` directory with Python 3.14
+6. **Re-sync Dependencies**: Ensures all dependencies are installed for Python 3.14
+7. **Verify Installation**: Confirms Python 3.14 is working correctly
+
+**Setup Script Location**: `scripts/setup_python_env.sh`
+
+**What Gets Created**:
+- `.venv/` - Virtual environment directory containing Python 3.14 and packages
+- `uv.lock` - Lock file with pinned dependency versions (if not already present)
+- Python binaries available via `uv run` or by activating virtual environment
+
+#### Available Python Commands
+
+After setup, you can use Python 3.14 in several ways:
+
+**1. Via uv run (Recommended)**:
+```bash
+# Run Python scripts with uv
+uv run python3.14 script.py
+uv run python3.14 -c "import yaml; print(yaml.__version__)"
+
+# uv automatically uses the project's virtual environment
+uv run python script.py  # Uses Python 3.14 from .venv
+```
+
+**2. Activate Virtual Environment**:
+```bash
+# Activate the virtual environment
+source .venv/bin/activate
+
+# Now python3.14 points to the virtual environment
+python3.14 --version
+python3 --version  # Also points to 3.14 in activated venv
+
+# Deactivate when done
+deactivate
+```
+
+**3. Direct Invocation (Docker Only)**:
+```bash
+# In Docker, global symlinks are created
+python3.14 --version
+python3 --version
+python --version  # All point to Python 3.14
+```
+
+**4. Check Python Version**:
+```bash
+# Verify Python 3.14 is active
+uv run python3.14 --version  # Python 3.14.x
+uv python find 3.14          # Shows path to Python 3.14
+```
+
+#### Python Dependencies
+
+The project uses minimal Python dependencies defined in `pyproject.toml`:
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `pyyaml` | >=6.0.3 | YAML parsing (convert_verification_to_result_yaml.py) |
+| `jsonschema` | >=4.26.0 | JSON schema validation |
+| `mypy` | >=1.19.1 | Static type checking for Python scripts |
+| `ruff` | >=0.15.6 | Fast Python linting and code formatting |
+
+**Note**: The project previously used `reportlab` for PDF generation, but this has been removed in favor of the Rust-based `test-plan-documentation-generator` tool.
+
+#### Adding New Dependencies
+
+To add a new Python dependency to the project:
+
+**1. Add to pyproject.toml**:
+```bash
+# Add a new dependency with version constraint
+uv add "package-name>=1.0.0"
+
+# Add a development dependency
+uv add --dev "pytest>=7.0.0"
+
+# Add with specific version
+uv add "requests==2.31.0"
+```
+
+**2. Manual Edit (Alternative)**:
+```toml
+# Edit pyproject.toml manually
+[project]
+dependencies = [
+    "jsonschema>=4.26.0",
+    "mypy>=1.19.1",
+    "pyyaml>=6.0.3",
+    "ruff>=0.15.6",
+    "requests>=2.31.0",  # Add your new dependency
+]
+```
+
+Then sync:
+```bash
+uv sync
+```
+
+**3. Update Lock File**:
+```bash
+# Regenerate uv.lock with new dependencies
+uv lock
+
+# Or sync (which also updates lock file if needed)
+uv sync
+```
+
+**4. Verify Installation**:
+```bash
+# Check that the new package is available
+uv run python3.14 -c "import requests; print(requests.__version__)"
+```
+
+**5. Update Docker Image**:
+After adding dependencies, rebuild the Docker image to include them:
+```bash
+docker build -t your-image-name .
+```
+
+**Best Practices**:
+- Use version constraints (`>=`, `~=`) rather than exact versions for flexibility
+- Run `uv lock` after adding dependencies to update the lock file
+- Commit both `pyproject.toml` and `uv.lock` to version control
+- Test that dependencies work in both local and Docker environments
+
+#### Removing Dependencies
+
+**1. Remove from pyproject.toml**:
+```bash
+# Remove a dependency
+uv remove package-name
+```
+
+**2. Manual Edit (Alternative)**:
+```toml
+# Edit pyproject.toml and remove the dependency line
+[project]
+dependencies = [
+    "jsonschema>=4.26.0",
+    "mypy>=1.19.1",
+    "pyyaml>=6.0.3",
+    # "removed-package>=1.0.0",  # Remove this line
+]
+```
+
+Then sync:
+```bash
+uv sync
+```
+
+**3. Clean Virtual Environment (Optional)**:
+```bash
+# Remove and recreate virtual environment
+rm -rf .venv
+uv sync
+```
+
+#### Upgrading Dependencies
+
+**Update All Dependencies**:
+```bash
+# Update all dependencies to latest compatible versions
+uv lock --upgrade
+
+# Sync to apply updates
+uv sync
+```
+
+**Update Specific Package**:
+```bash
+# Update specific package to latest compatible version
+uv lock --upgrade-package pyyaml
+
+# Sync to apply
+uv sync
+```
+
+**Update to Specific Version**:
+```bash
+# Edit pyproject.toml to change version constraint
+# Then sync
+uv sync
+```
+
+#### Docker Environment
+
+The Docker image automatically sets up Python 3.14 during build:
+
+**Dockerfile Setup Process**:
+1. Copies `uv` binary from official `ghcr.io/astral-sh/uv` image
+2. Copies `pyproject.toml` and `uv.lock` to container
+3. Runs `uv sync --frozen` to install exact locked versions
+4. Installs Python 3.14 and sets as default: `uv python install --default 3.14`
+5. Creates global symlinks for `python3.14`, `python3`, and `python`
+6. Re-syncs dependencies with Python 3.14: `uv sync --frozen --python 3.14`
+
+**Docker Verification**:
+```bash
+# Verify Python 3.14 is available in container
+docker run your-image python3.14 --version
+docker run your-image python3 --version
+docker run your-image python --version
+
+# All should output: Python 3.14.x
+```
+
+**Rebuild After Dependency Changes**:
+```bash
+# After modifying pyproject.toml or uv.lock
+docker build -t your-image-name .
+```
+
+#### Verification Process
+
+The verification script (`scripts/verify_python_env.sh`) performs comprehensive checks:
+
+**Local Environment Tests**:
+1. ✓ `python3.14` is available in PATH
+2. ✓ `python3.14 --version` returns Python 3.14.x
+3. ✓ `python3` points to Python 3.14 (optional)
+4. ✓ `uv` package manager is available
+5. ✓ `uv python find 3.14` locates Python 3.14
+6. ✓ `uv run python3.14 --version` works
+7. ✓ Required Python packages (pyyaml, jsonschema) are importable
+
+**Docker Environment Tests**:
+1. ✓ `python3.14` is available globally
+2. ✓ `python3.14 --version` returns Python 3.14.x
+3. ✓ `python3` symlink points to Python 3.14
+4. ✓ `python` symlink points to Python 3.14
+5. ✓ Required Python packages are importable
+
+**Run Verification**:
+```bash
+# Local environment
+make verify-python
+
+# Or run script directly
+./scripts/verify_python_env.sh
+
+# Docker environment
+docker run your-image make verify-python
+```
+
+#### Troubleshooting Python 3.14 Migration
+
+##### Issue: uv not found
+
+**Symptoms**:
+```
+Error: uv is not installed
+```
+
+**Solution**:
+```bash
+# Install uv package manager
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Add to PATH (add to ~/.bashrc or ~/.zshrc)
+export PATH="$HOME/.cargo/bin:$PATH"
+
+# Reload shell configuration
+source ~/.bashrc  # or source ~/.zshrc
+```
+
+##### Issue: Python 3.14 not found after setup
+
+**Symptoms**:
+```
+Error: Failed to find Python 3.14 after installation
+```
+
+**Solution**:
+```bash
+# Manually install Python 3.14
+uv python install 3.14
+
+# Verify installation
+uv python find 3.14
+
+# Re-run setup
+make setup-python
+```
+
+##### Issue: Module import errors in Python 3.14
+
+**Symptoms**:
+```python
+ModuleNotFoundError: No module named 'yaml'
+```
+
+**Solution**:
+```bash
+# Re-sync dependencies
+uv sync
+
+# Verify packages are installed
+uv run python3.14 -c "import yaml; print('OK')"
+
+# If still failing, recreate virtual environment
+rm -rf .venv
+uv sync
+```
+
+##### Issue: Different Python version in virtual environment
+
+**Symptoms**:
+```bash
+$ source .venv/bin/activate
+$ python --version
+Python 3.12.0  # Wrong version!
+```
+
+**Solution**:
+```bash
+# Deactivate current environment
+deactivate
+
+# Remove virtual environment
+rm -rf .venv
+
+# Reinstall with Python 3.14 explicitly
+uv sync --python 3.14
+
+# Verify
+source .venv/bin/activate
+python --version  # Should show Python 3.14.x
+```
+
+##### Issue: uv.lock conflicts after git merge
+
+**Symptoms**:
+```
+Error: Failed to parse uv.lock
+Git merge conflict in uv.lock
+```
+
+**Solution**:
+```bash
+# Resolve git conflicts in uv.lock manually, or:
+
+# Regenerate lock file from pyproject.toml
+rm uv.lock
+uv lock
+
+# Sync to install dependencies
+uv sync
+```
+
+##### Issue: Dependency resolution conflicts
+
+**Symptoms**:
+```
+Error: dependency resolution failed
+```
+
+**Solution 1 - Check version constraints**:
+```bash
+# Review pyproject.toml for conflicting version constraints
+cat pyproject.toml
+
+# Try loosening version constraints
+# Change: package>=2.0.0,<2.1.0
+# To:     package>=2.0.0
+```
+
+**Solution 2 - Update dependencies**:
+```bash
+# Update all dependencies to latest compatible versions
+uv lock --upgrade
+uv sync
+```
+
+**Solution 3 - Fresh install**:
+```bash
+# Remove lock file and virtual environment
+rm uv.lock
+rm -rf .venv
+
+# Regenerate from scratch
+uv lock
+uv sync
+```
+
+##### Issue: Docker build fails with Python errors
+
+**Symptoms**:
+```
+ERROR: Failed to sync Python dependencies in Docker
+```
+
+**Solution 1 - Verify lock file is committed**:
+```bash
+# Ensure uv.lock is in git
+git add uv.lock
+git commit -m "Add uv.lock"
+
+# Rebuild Docker image
+docker build -t your-image-name .
+```
+
+**Solution 2 - Update Docker base image**:
+```bash
+# Check Dockerfile uses recent uv version
+# Ensure this line is present:
+# COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+```
+
+**Solution 3 - Clean Docker build**:
+```bash
+# Build without cache
+docker build --no-cache -t your-image-name .
+```
+
+##### Issue: Permission denied when running uv
+
+**Symptoms**:
+```
+Permission denied: cannot create .venv
+```
+
+**Solution**:
+```bash
+# Check directory permissions
+ls -la .venv
+
+# Remove and recreate with correct permissions
+rm -rf .venv
+uv sync
+
+# For Docker, ensure correct user/permissions in Dockerfile
+```
+
+##### Issue: Old Python version still active
+
+**Symptoms**:
+```bash
+$ python3 --version
+Python 3.12.0  # Old version
+```
+
+**Solution 1 - Use uv run**:
+```bash
+# Use uv run to ensure correct version
+uv run python3.14 --version
+```
+
+**Solution 2 - Activate virtual environment**:
+```bash
+source .venv/bin/activate
+python3.14 --version
+```
+
+**Solution 3 - Update PATH (local development)**:
+```bash
+# Find Python 3.14 path
+PYTHON_314_PATH=$(uv python find 3.14)
+
+# Add to PATH temporarily
+export PATH="$(dirname $PYTHON_314_PATH):$PATH"
+
+# Or add to ~/.bashrc for permanent change
+```
+
+##### Issue: Scripts fail with Python syntax errors
+
+**Symptoms**:
+```python
+SyntaxError: invalid syntax
+# Using Python 3.14+ features in older Python
+```
+
+**Solution**:
+```bash
+# Verify script is running with Python 3.14
+uv run python3.14 script.py
+
+# Check shebang in script
+# Should be: #!/usr/bin/env python3.14
+# Or use:    #!/usr/bin/env python3
+```
+
+##### Issue: Missing dependencies after migration
+
+**Symptoms**:
+```
+ImportError: cannot import name 'X' from 'package'
+```
+
+**Solution**:
+```bash
+# Check if package version is compatible with Python 3.14
+uv tree | grep package-name
+
+# Update to compatible version
+uv add "package-name>=compatible-version"
+uv sync
+
+# Or update all dependencies
+uv lock --upgrade
+uv sync
+```
+
+##### Issue: CI/CD fails with Python errors
+
+**Symptoms**:
+```
+CI Error: Python 3.14 not found in CI environment
+```
+
+**Solution**:
+```bash
+# Ensure CI uses proper setup commands
+# Add to CI configuration:
+
+# For local CI:
+make setup-python
+make verify-python
+
+# For Docker-based CI:
+# Ensure Docker image is built with Python 3.14 support
+```
+
+#### Advanced uv Commands
+
+**Check Installed Packages**:
+```bash
+# List all installed packages
+uv pip list
+
+# Show dependency tree
+uv tree
+
+# Show package information
+uv pip show pyyaml
+```
+
+**Python Version Management**:
+```bash
+# List installed Python versions
+uv python list
+
+# Install specific Python version
+uv python install 3.14.1
+
+# Set default Python version for project
+uv python pin 3.14
+```
+
+**Virtual Environment Management**:
+```bash
+# Create virtual environment manually
+uv venv --python 3.14
+
+# Remove virtual environment
+rm -rf .venv
+
+# Recreate from pyproject.toml
+uv sync
+```
+
+**Lock File Operations**:
+```bash
+# Generate lock file without installing
+uv lock
+
+# Update lock file with latest compatible versions
+uv lock --upgrade
+
+# Update specific packages
+uv lock --upgrade-package pyyaml --upgrade-package jsonschema
+
+# Check if lock file is up to date
+uv lock --check
+```
+
+**Debugging**:
+```bash
+# Verbose output for debugging
+uv sync --verbose
+
+# Very verbose output
+uv sync -vv
+
+# Show what would be installed without installing
+uv sync --dry-run
+```
+
+#### Migration Checklist
+
+When migrating existing Python scripts to Python 3.14:
+
+- [ ] Install uv package manager (`curl -LsSf https://astral.sh/uv/install.sh | sh`)
+- [ ] Run `make setup-python` to set up Python 3.14
+- [ ] Run `make verify-python` to confirm setup
+- [ ] Update scripts to use `uv run python3.14` or activate virtual environment
+- [ ] Test all Python scripts with Python 3.14
+- [ ] Check for deprecated Python features (if migrating from much older versions)
+- [ ] Update CI/CD configuration to use Python 3.14
+- [ ] Rebuild Docker images with Python 3.14
+- [ ] Update documentation to reflect Python 3.14 requirement
+- [ ] Commit `pyproject.toml` and `uv.lock` to version control
+
+#### Additional Resources
+
+- **uv Documentation**: https://docs.astral.sh/uv/
+- **uv GitHub Repository**: https://github.com/astral-sh/uv
+- **Python 3.14 Release Notes**: https://docs.python.org/3.14/whatsnew/3.14.html
+- **pyproject.toml Specification**: https://packaging.python.org/en/latest/specifications/pyproject-toml/
+
+#### Getting Help
+
+If you encounter issues not covered in this documentation:
+
+1. Run `make verify-python` to diagnose the problem
+2. Check `uv sync --verbose` output for detailed error messages
+3. Review `uv.lock` for dependency conflicts
+4. Consult uv documentation: https://docs.astral.sh/uv/
+5. Check project-specific scripts: `scripts/setup_python_env.sh` and `scripts/verify_python_env.sh`
 
 You must build, test, lint, verify coverage, and run acceptance tests before committing
 

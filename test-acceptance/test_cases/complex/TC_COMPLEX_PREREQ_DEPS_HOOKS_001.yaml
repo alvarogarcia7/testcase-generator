@@ -86,7 +86,7 @@ test_sequences:
     steps:
       - step: 1
         description: "Create base directory structure"
-        command: "mkdir -p ${#BASE_DIR}/{data,logs,config,temp} && echo 'Created directories' && ls -d ${#BASE_DIR}/*"
+        command: "mkdir -p ${BASE_DIR}/{data,logs,config,temp} && echo 'Created directories' && ls -d ${BASE_DIR}/*"
         expected:
           success: true
           result: 0
@@ -116,14 +116,14 @@ test_sequences:
 
       - step: 3
         description: "Create session configuration file (dependency for sequence 2)"
-        command: "cat > ${#BASE_DIR}/config/session.conf << EOF
+        command: "cat > ${BASE_DIR}/config/session.conf << EOF
 session_id=${session_id}
-service_name=${#SERVICE_NAME}
-timeout=${#TIMEOUT_SECONDS}
-base_dir=${#BASE_DIR}
+service_name=${SERVICE_NAME}
+timeout=${TIMEOUT_SECONDS}
+base_dir=${BASE_DIR}
 created_at=$(date +%Y-%m-%d_%H:%M:%S)
 EOF
-cat ${#BASE_DIR}/config/session.conf"
+cat ${BASE_DIR}/config/session.conf"
         capture_vars:
           - name: config_file
             capture: 'session_id='
@@ -137,7 +137,7 @@ cat ${#BASE_DIR}/config/session.conf"
 
       - step: 4
         description: "Initialize log file (dependency for all sequences)"
-        command: "echo '[INFO] Test session ${session_id} started' > ${#BASE_DIR}/logs/test.log && echo '[INFO] Service: ${#SERVICE_NAME}' >> ${#BASE_DIR}/logs/test.log && cat ${#BASE_DIR}/logs/test.log"
+        command: "echo '[INFO] Test session ${session_id} started' > ${BASE_DIR}/logs/test.log && echo '[INFO] Service: ${SERVICE_NAME}' >> ${BASE_DIR}/logs/test.log && cat ${BASE_DIR}/logs/test.log"
         expected:
           success: true
           result: 0
@@ -157,7 +157,7 @@ cat ${#BASE_DIR}/config/session.conf"
     steps:
       - step: 1
         description: "Verify sequence 1 dependencies are met"
-        command: "test -f ${#BASE_DIR}/config/session.conf && test -f ${#BASE_DIR}/logs/test.log && echo 'Dependencies verified'"
+        command: "test -f ${BASE_DIR}/config/session.conf && test -f ${BASE_DIR}/logs/test.log && echo 'Dependencies verified'"
         expected:
           success: true
           result: 0
@@ -168,7 +168,7 @@ cat ${#BASE_DIR}/config/session.conf"
 
       - step: 2
         description: "Create service data file using session ID"
-        command: "echo 'Service: ${#SERVICE_NAME}' > ${#BASE_DIR}/data/service_${session_id}.dat && echo 'Status: INITIALIZED' >> ${#BASE_DIR}/data/service_${session_id}.dat && echo 'Timeout: ${#TIMEOUT_SECONDS}' >> ${#BASE_DIR}/data/service_${session_id}.dat && cat ${#BASE_DIR}/data/service_${session_id}.dat"
+        command: "echo 'Service: ${SERVICE_NAME}' > ${BASE_DIR}/data/service_${session_id}.dat && echo 'Status: INITIALIZED' >> ${BASE_DIR}/data/service_${session_id}.dat && echo 'Timeout: ${TIMEOUT_SECONDS}' >> ${BASE_DIR}/data/service_${session_id}.dat && cat ${BASE_DIR}/data/service_${session_id}.dat"
         expected:
           success: true
           result: 0
@@ -179,7 +179,7 @@ cat ${#BASE_DIR}/config/session.conf"
 
       - step: 3
         description: "Log service initialization"
-        command: "echo '[INFO] Service ${#SERVICE_NAME} initialized with session ${session_id}' >> ${#BASE_DIR}/logs/test.log && tail -1 ${#BASE_DIR}/logs/test.log"
+        command: "echo '[INFO] Service ${SERVICE_NAME} initialized with session ${session_id}' >> ${BASE_DIR}/logs/test.log && tail -1 ${BASE_DIR}/logs/test.log"
         expected:
           success: true
           result: 0
@@ -216,7 +216,7 @@ cat ${#BASE_DIR}/config/session.conf"
     steps:
       - step: 1
         description: "Verify all dependencies from sequences 1 and 2"
-        command: "test -d ${#BASE_DIR}/data && test -f ${#BASE_DIR}/data/service_${session_id}.dat && test -f ${#BASE_DIR}/config/session.conf && echo 'All dependencies satisfied'"
+        command: "test -d ${BASE_DIR}/data && test -f ${BASE_DIR}/data/service_${session_id}.dat && test -f ${BASE_DIR}/config/session.conf && echo 'All dependencies satisfied'"
         expected:
           success: true
           result: 0
@@ -227,7 +227,7 @@ cat ${#BASE_DIR}/config/session.conf"
 
       - step: 2
         description: "Simulate service operation with captured variables"
-        command: "echo 'Processing request for session: '${session_id} > ${#BASE_DIR}/temp/operation.tmp && echo 'Initialized at: '${init_timestamp} >> ${#BASE_DIR}/temp/operation.tmp && cat ${#BASE_DIR}/temp/operation.tmp"
+        command: "echo 'Processing request for session: '${session_id} > ${BASE_DIR}/temp/operation.tmp && echo 'Initialized at: '${init_timestamp} >> ${BASE_DIR}/temp/operation.tmp && cat ${BASE_DIR}/temp/operation.tmp"
         expected:
           success: true
           result: 0
@@ -238,7 +238,7 @@ cat ${#BASE_DIR}/config/session.conf"
 
       - step: 3
         description: "Count total files created across all sequences"
-        command: "find ${#BASE_DIR} -type f | wc -l"
+        command: "find ${BASE_DIR} -type f | wc -l"
         capture_vars:
           - name: file_count
             capture: '([0-9]+)'
@@ -264,7 +264,7 @@ cat ${#BASE_DIR}/config/session.conf"
 
       - step: 4
         description: "Update service status"
-        command: "echo 'Status: RUNNING' >> ${#BASE_DIR}/data/service_${session_id}.dat && grep 'Status:' ${#BASE_DIR}/data/service_${session_id}.dat | tail -1"
+        command: "echo 'Status: RUNNING' >> ${BASE_DIR}/data/service_${session_id}.dat && grep 'Status:' ${BASE_DIR}/data/service_${session_id}.dat | tail -1"
         expected:
           success: true
           result: 0
@@ -283,7 +283,7 @@ cat ${#BASE_DIR}/config/session.conf"
     steps:
       - step: 1
         description: "Final status update"
-        command: "echo 'Status: COMPLETED' >> ${#BASE_DIR}/data/service_${session_id}.dat && cat ${#BASE_DIR}/data/service_${session_id}.dat"
+        command: "echo 'Status: COMPLETED' >> ${BASE_DIR}/data/service_${session_id}.dat && cat ${BASE_DIR}/data/service_${session_id}.dat"
         expected:
           success: true
           result: 0
@@ -294,16 +294,16 @@ cat ${#BASE_DIR}/config/session.conf"
 
       - step: 2
         description: "Generate final test report"
-        command: "cat > ${#BASE_DIR}/test_report.txt << EOF
+        command: "cat > ${BASE_DIR}/test_report.txt << EOF
 Test Execution Report
 ====================
 Session ID: ${session_id}
-Service: ${#SERVICE_NAME}
+Service: ${SERVICE_NAME}
 Initialization: ${init_timestamp}
 Files Created: ${file_count}
 Status: SUCCESS
 EOF
-cat ${#BASE_DIR}/test_report.txt"
+cat ${BASE_DIR}/test_report.txt"
         expected:
           success: true
           result: 0
@@ -314,7 +314,7 @@ cat ${#BASE_DIR}/test_report.txt"
 
       - step: 3
         description: "Archive all test artifacts"
-        command: "cd ${#BASE_DIR} && tar -czf test_archive_${session_id}.tar.gz config/ data/ logs/ temp/ test_report.txt 2>&1 | head -1 || echo 'Archive created successfully'"
+        command: "cd ${BASE_DIR} && tar -czf test_archive_${session_id}.tar.gz config/ data/ logs/ temp/ test_report.txt 2>&1 | head -1 || echo 'Archive created successfully'"
         expected:
           success: true
           result: 0
@@ -325,7 +325,7 @@ cat ${#BASE_DIR}/test_report.txt"
 
       - step: 4
         description: "Verify archive integrity"
-        command: "test -f ${#BASE_DIR}/test_archive_${session_id}.tar.gz && tar -tzf ${#BASE_DIR}/test_archive_${session_id}.tar.gz | wc -l"
+        command: "test -f ${BASE_DIR}/test_archive_${session_id}.tar.gz && tar -tzf ${BASE_DIR}/test_archive_${session_id}.tar.gz | wc -l"
         capture_vars:
           - name: archived_files
             capture: '([0-9]+)'
@@ -346,7 +346,7 @@ cat ${#BASE_DIR}/test_report.txt"
 
       - step: 5
         description: "Cleanup temporary files (preserve archive)"
-        command: "rm -rf ${#BASE_DIR}/temp ${#BASE_DIR}/config ${#BASE_DIR}/data ${#BASE_DIR}/logs && test -f ${#BASE_DIR}/test_archive_${session_id}.tar.gz && echo 'Cleanup complete, archive preserved'"
+        command: "rm -rf ${BASE_DIR}/temp ${BASE_DIR}/config ${BASE_DIR}/data ${BASE_DIR}/logs && test -f ${BASE_DIR}/test_archive_${session_id}.tar.gz && echo 'Cleanup complete, archive preserved'"
         expected:
           success: true
           result: 0

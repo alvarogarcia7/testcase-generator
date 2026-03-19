@@ -77,7 +77,7 @@ def main():
     results_file = sys.argv[1]
     
     try:
-        with open(results_file, 'r') as f:
+        with open(results_file, 'r', encoding='utf-8') as f:
             results = json.load(f)
     except (FileNotFoundError, json.JSONDecodeError) as e:
         print(f"Error reading results file: {e}", file=sys.stderr)

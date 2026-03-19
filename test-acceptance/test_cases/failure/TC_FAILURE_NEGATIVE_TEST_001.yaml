@@ -26,7 +26,7 @@ test_sequences:
         command: "echo 'Starting negative test'"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "Starting negative test"
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
@@ -37,7 +37,7 @@ test_sequences:
         command: "grep 'SHOULD_NOT_EXIST_XYZ' /etc/passwd"
         expected:
           success: false
-          result: 1
+          result: '1'
           output: ""
         verification:
           result: "[[ $EXIT_CODE -eq 1 ]]"
@@ -48,7 +48,7 @@ test_sequences:
         command: "echo 'Negative test completed'"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "Negative test completed"
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
@@ -59,7 +59,7 @@ test_sequences:
         command: "mkdir /root/should_fail_directory"
         expected:
           success: false
-          result: 1
+          result: '1'
           output: "Permission denied"
         verification:
           result: "[[ $EXIT_CODE -ne 0 ]]"

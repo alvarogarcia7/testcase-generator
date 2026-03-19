@@ -30,6 +30,7 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 # Source required libraries
 source "$SCRIPT_DIR/lib/logger.sh" || exit 1
 source "$SCRIPT_DIR/lib/report_generator.sh" || exit 1
+source "$SCRIPT_DIR/lib/find-binary.sh" || exit 1
 
 # Default configuration
 LOGS_DIR="$PROJECT_ROOT/testcases/verifier_scenarios"
@@ -170,9 +171,17 @@ if [[ ! -f "$CONVERT_SCRIPT" ]]; then
 fi
 
 log_info "Converting verification JSON to result YAML files..."
-log_verbose "Command: python3 $CONVERT_SCRIPT $VERIFICATION_OUTPUT -o $OUTPUT_DIR/results"
 
-if python3 "$CONVERT_SCRIPT" \
+# Find Python interpreter
+PYTHON_CMD=$(find_python)
+if [[ -z "$PYTHON_CMD" ]]; then
+    fail "Python interpreter not found"
+    exit 1
+fi
+
+log_verbose "Command: $PYTHON_CMD $CONVERT_SCRIPT $VERIFICATION_OUTPUT -o $OUTPUT_DIR/results"
+
+if $PYTHON_CMD "$CONVERT_SCRIPT" \
     "$VERIFICATION_OUTPUT" \
     -o "$OUTPUT_DIR/results" 2>&1 | while IFS= read -r line; do
         log_verbose "$line"

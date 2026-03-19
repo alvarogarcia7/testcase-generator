@@ -28,7 +28,7 @@ test_sequences:
           result: 0
           output: "output to file"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == 'output to file' ]]"
           general:
             - name: file_created
@@ -47,7 +47,7 @@ test_sequences:
           result: 0
           output: "2"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == '2' ]]"
           general:
             - name: two_lines
@@ -64,7 +64,7 @@ test_sequences:
           result: 0
           output: "error lines"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
           general:
             - name: stderr_captured
@@ -80,7 +80,7 @@ test_sequences:
           result: 0
           output: "test"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == 'test' ]]"
           general:
             - name: stdout_captured
@@ -97,7 +97,7 @@ test_sequences:
           result: 0
           output: "3"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == '3' ]]"
           general:
             - name: three_lines_read
@@ -114,7 +114,7 @@ test_sequences:
           result: 0
           output: "5"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == '5' ]]"
           general:
             - name: third_smallest
@@ -128,7 +128,7 @@ test_sequences:
           result: 0
           output: "visible"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == 'visible' ]]"
           general:
             - name: only_visible_shown
@@ -145,7 +145,7 @@ test_sequences:
           result: 0
           output: "4"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == '4' ]]"
           general:
             - name: four_words
@@ -159,7 +159,7 @@ test_sequences:
           result: 0
           output: "tee test"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == 'tee test' ]]"
           general:
             - name: tee_output_correct
@@ -175,7 +175,7 @@ test_sequences:
           result: 0
           output: "cleaned"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == 'cleaned' ]]"
           general:
             - name: all_files_removed

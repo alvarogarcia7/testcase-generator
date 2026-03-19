@@ -1,50 +1,82 @@
----
-metadata:
-  id: HOOKS_STEP_CONTEXT_001
-  name: Hooks with Step Context
-  description: Tests that hooks receive correct step context variables including exit codes
-  version: 1.0.0
+requirement: "HOOKS_STEP_CONTEXT"
+item: 1
+tc: 12
+id: 'HOOKS_STEP_CONTEXT_001'
+description: 'Tests that step hooks receive proper context (step number, description, and captured variables)'
 
 hydration_vars:
-  required:
-    - TEST_ENV
+  TEST_ENV:
+    name: "TEST_ENV"
+    description: "Test environment identifier"
+    default_value: "acceptance"
+    required: true
 
 hooks:
   before_step:
-    command: "test-acceptance/scripts/hooks/context_before_step.sh"
+    command: "test-acceptance/scripts/hooks/before_step_context.sh"
     on_error: "fail"
   after_step:
-    command: "test-acceptance/scripts/hooks/context_after_step.sh"
+    command: "test-acceptance/scripts/hooks/after_step_context.sh"
     on_error: "continue"
 
-sequences:
-  - id: "1"
-    name: "Step Context Sequence"
+general_initial_conditions:
+  system:
+    - "Bash shell is available"
+
+initial_conditions:
+  filesystem:
+    - "Temporary directory /tmp is writable"
+  hooks:
+    - "Step context hook scripts exist and are executable"
+
+test_sequences:
+  - id: 1
+    name: "Step Context Verification"
+    description: "Verify step hooks receive proper context"
+    initial_conditions:
+      system:
+        - "Step context hooks are active"
     steps:
-      - description: "First step with context"
-        command: "echo 'step one output'"
-        expected_output: "step one output"
+      - step: 1
+        description: "First step with context"
+        command: "echo 'step 1 execution'"
+        expected:
+          success: true
+          result: 0
+          output: "step 1 execution"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'step 1 execution' <<< \"$COMMAND_OUTPUT\""
 
-      - description: "Second step with context"
-        command: "echo 'step two output'"
-        expected_output: "step two output"
+      - step: 2
+        description: "Verify step context was captured"
+        command: "test -f /tmp/step_context_$$.log && grep 'step_number=1' /tmp/step_context_$$.log"
+        expected:
+          success: true
+          result: 0
+          output: "step_number=1"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'step_number=1' <<< \"$COMMAND_OUTPUT\""
 
-      - description: "Verify step context logged"
-        command: "test -f /tmp/step_context_$$.log && cat /tmp/step_context_$$.log"
-        expected_output: ".*"
+      - step: 3
+        description: "Verify multiple step contexts logged"
+        command: "grep -c 'step_number=' /tmp/step_context_$$.log"
+        expected:
+          success: true
+          result: 0
+          output: "3"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
 
-      - description: "Check step numbers"
-        command: "grep 'TEST_STEP_NUMBER' /tmp/step_context_$$.log | grep -E '[1-4]'"
-        expected_output: ".*TEST_STEP_NUMBER.*[1-4].*"
-
-      - description: "Check step descriptions"
-        command: "grep 'TEST_STEP_DESCRIPTION' /tmp/step_context_$$.log"
-        expected_output: ".*TEST_STEP_DESCRIPTION.*"
-
-      - description: "Verify exit codes in after_step"
-        command: "grep 'STEP_EXIT_CODE' /tmp/step_context_$$.log | grep '0'"
-        expected_output: ".*STEP_EXIT_CODE.*0.*"
-
-      - description: "Cleanup log file"
+      - step: 4
+        description: "Cleanup context log"
         command: "rm -f /tmp/step_context_$$.log"
-        expected_output: ""
+        expected:
+          success: true
+          result: 0
+          output: ""
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"

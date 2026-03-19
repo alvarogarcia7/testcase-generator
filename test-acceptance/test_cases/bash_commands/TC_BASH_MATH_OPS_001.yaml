@@ -31,7 +31,7 @@ test_sequences:
           result: 0
           output: "8"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == '8' ]]"
           general:
             - name: sum_correct
@@ -48,7 +48,7 @@ test_sequences:
           result: 0
           output: "13"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == '13' ]]"
           general:
             - name: difference_correct
@@ -65,7 +65,7 @@ test_sequences:
           result: 0
           output: "42"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == '42' ]]"
           general:
             - name: product_correct
@@ -82,7 +82,7 @@ test_sequences:
           result: 0
           output: "25"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == '25' ]]"
           general:
             - name: quotient_correct
@@ -99,7 +99,7 @@ test_sequences:
           result: 0
           output: "2"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == '2' ]]"
           general:
             - name: remainder_correct
@@ -116,7 +116,7 @@ test_sequences:
           result: 0
           output: "14"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == '14' ]]"
           general:
             - name: order_correct
@@ -135,7 +135,7 @@ test_sequences:
           result: 0
           output: "20"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == '20' ]]"
           general:
             - name: precedence_correct
@@ -152,7 +152,7 @@ test_sequences:
           result: 0
           output: "6"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == '6' ]]"
           general:
             - name: increment_correct
@@ -169,7 +169,7 @@ test_sequences:
           result: 0
           output: "9"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == '9' ]]"
           general:
             - name: decrement_correct
@@ -186,7 +186,7 @@ test_sequences:
           result: 0
           output: "10"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == '10' ]]"
           general:
             - name: complex_correct
@@ -203,7 +203,7 @@ test_sequences:
           result: 0
           output: "1024"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == '1024' ]]"
           general:
             - name: power_correct

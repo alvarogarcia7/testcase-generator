@@ -13,7 +13,7 @@ import requests
 def parse_lcov(lcov_file: str) -> dict:
     """Parse LCOV coverage file and extract metrics."""
     
-    with open(lcov_file, 'r') as f:
+    with open(lcov_file, 'r', encoding='utf-8') as f:
         content = f.read()
     
     total_lines = 0
@@ -44,7 +44,7 @@ def parse_lcov(lcov_file: str) -> dict:
     }
 
 
-def get_baseline_coverage() -> dict:
+def get_baseline_coverage() -> dict | None:
     """Fetch baseline coverage from master branch artifacts."""
     
     gitlab_token = os.getenv('GITLAB_TOKEN') or os.getenv('CI_JOB_TOKEN')

@@ -43,7 +43,7 @@ test_sequences:
           - name: timestamp
             command: "date +%s"
           - name: report_line_count
-            command: "echo 'Server Status Report\nUptime: 72 hours\nActive Users: 25\nCPU Load: 45%\nMemory: 8192 MB' | wc -l | awk '{print $1}'"
+            command: "printf 'Server Status Report\\nUptime: 72 hours\\nActive Users: 25\\nCPU Load: 45%%\\nMemory: 8192 MB\\n' | wc -l | awk '{print $1}'"
         expected:
           success: true
           result: '0'

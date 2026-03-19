@@ -25,10 +25,10 @@ test_sequences:
         command: "echo '550e8400-e29b-41d4-a716-446655440000'"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "UUID format"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ ]]"
 
       - step: 2
@@ -36,10 +36,10 @@ test_sequences:
         command: "echo 'user.name+tag@example.co.uk'"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "email"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$ ]]"
 
       - step: 3
@@ -47,10 +47,10 @@ test_sequences:
         command: "echo '192.168.1.100'"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "IP address"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}$ ]]"
 
       - step: 4
@@ -58,10 +58,10 @@ test_sequences:
         command: "echo 'https://api.example.com:8443/v1/users?id=123&active=true'"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "URL"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" =~ ^https?://[a-zA-Z0-9.-]+(:[0-9]+)?(/[^?]*)?(\\?.*)?$ ]]"
 
       - step: 5
@@ -69,8 +69,8 @@ test_sequences:
         command: "echo 'v2.15.3-beta.1+build.456'"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "version"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" =~ ^v?[0-9]+\\.[0-9]+\\.[0-9]+(-[a-zA-Z0-9.]+)?(\\+[a-zA-Z0-9.]+)?$ ]]"

@@ -1,42 +1,75 @@
----
-metadata:
-  id: HOOKS_BEFORE_SEQUENCE_001
-  name: Before Sequence Hook - Logging
-  description: Tests before_sequence hook that logs sequence start with sequence context
-  version: 1.0.0
+requirement: "HOOKS_BEFORE_SEQUENCE"
+item: 1
+tc: 5
+id: 'HOOKS_BEFORE_SEQUENCE_001'
+description: 'Tests before_sequence hook that executes before each test sequence'
 
 hydration_vars:
-  required:
-    - TEST_ENV
+  TEST_ENV:
+    name: "TEST_ENV"
+    description: "Test environment identifier"
+    default_value: "acceptance"
+    required: true
 
 hooks:
   before_sequence:
-    command: "test-acceptance/scripts/hooks/before_sequence_log.sh"
+    command: "test-acceptance/scripts/hooks/before_sequence_init.sh"
     on_error: "fail"
 
-sequences:
-  - id: "1"
-    name: "First Test Sequence"
+general_initial_conditions:
+  system:
+    - "Bash shell is available"
+
+initial_conditions:
+  filesystem:
+    - "Temporary directory /tmp is writable"
+  hooks:
+    - "before_sequence hook script exists and is executable"
+
+test_sequences:
+  - id: 1
+    name: "First Sequence"
+    description: "First test sequence with before_sequence hook"
+    initial_conditions:
+      system:
+        - "before_sequence hook has executed for sequence 1"
     steps:
-      - description: "Verify before_sequence hook logged sequence 1"
-        command: "test -f /tmp/before_sequence_$$.log && grep 'Sequence 1: First Test Sequence' /tmp/before_sequence_$$.log"
-        expected_output: "Sequence 1: First Test Sequence"
+      - step: 1
+        description: "Verify before_sequence hook executed for sequence 1"
+        command: "test -f /tmp/before_sequence_1_$$.txt && cat /tmp/before_sequence_1_$$.txt"
+        expected:
+          success: true
+          result: 0
+          output: "before_sequence 1"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'before_sequence 1' <<< \"$COMMAND_OUTPUT\""
 
-      - description: "Check log count"
-        command: "grep -c 'before_sequence' /tmp/before_sequence_$$.log"
-        expected_output: "1"
-
-  - id: "2"
-    name: "Second Test Sequence"
+  - id: 2
+    name: "Second Sequence"
+    description: "Second test sequence with before_sequence hook"
+    initial_conditions:
+      system:
+        - "before_sequence hook has executed for sequence 2"
     steps:
-      - description: "Verify before_sequence hook logged sequence 2"
-        command: "grep 'Sequence 2: Second Test Sequence' /tmp/before_sequence_$$.log"
-        expected_output: "Sequence 2: Second Test Sequence"
+      - step: 1
+        description: "Verify before_sequence hook executed for sequence 2"
+        command: "test -f /tmp/before_sequence_2_$$.txt && cat /tmp/before_sequence_2_$$.txt"
+        expected:
+          success: true
+          result: 0
+          output: "before_sequence 2"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'before_sequence 2' <<< \"$COMMAND_OUTPUT\""
 
-      - description: "Check log count for both sequences"
-        command: "grep -c 'before_sequence' /tmp/before_sequence_$$.log"
-        expected_output: "2"
-
-      - description: "Cleanup log file"
-        command: "rm -f /tmp/before_sequence_$$.log"
-        expected_output: ""
+      - step: 2
+        description: "Cleanup marker files"
+        command: "rm -f /tmp/before_sequence_*_$$.txt"
+        expected:
+          success: true
+          result: 0
+          output: ""
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"

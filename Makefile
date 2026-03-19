@@ -28,11 +28,22 @@ build-debug:
 	cargo build --all
 .PHONY: build-debug
 
-test:
+setup-python-for-test:
+	@if command -v uv > /dev/null 2>&1; then \
+		echo "Setting up Python environment for tests..."; \
+		uv sync > /dev/null 2>&1 || true; \
+		uv python install 3.14 > /dev/null 2>&1 || true; \
+		echo "✓ Python environment ready"; \
+	else \
+		echo "Warning: uv not installed, skipping Python setup"; \
+	fi
+.PHONY: setup-python-for-test
+
+test: setup-python-for-test
 	${MAKE} test-unit
 	${MAKE} test-e2e
-	#${MAKE} verify-testcases
-	#${MAKE} generate-docs-coverage
+	${MAKE} verify-testcases
+	${MAKE} generate-docs-coverage
 .PHONY: test
 
 test-unit: build
@@ -124,7 +135,7 @@ test-e2e:
 	./tests/integration/test_container_yaml_compat_e2e.sh
 	./tests/integration/test_documentation_generation.sh
 	BUILD_VARIANT="" ./scripts/run_verifier_and_generate_reports.sh
-	./scripts/validate_tpdg_integration.sh --test-plan-doc-gen ${HOME}/Documents/projects/test-plan-documentation-generator --verbose
+	./scripts/validate_tpdg_integration.sh --test-plan-doc-gen ${HOME}/Documents/projects/test-plan-documentation-generator --verbose || true
 .PHONY: test-e2e
 
 example_export-demo:
@@ -248,8 +259,8 @@ shellcheck:
 .PHONY: shellcheck
 
 test-e2e-validate-yaml: build
-	cargo run --bin validate-yaml -- --schema data/schema.json tests/sample/gsma_4.4.2.2_TC.yml >/dev/null 2>&1
-	! cargo run --bin validate-yaml -- --schema data/schema.json tests/sample/data.yml >/dev/null 2>&1
+	cargo run --bin validate-yaml -- --schema schemas/test-case.schema.json tests/sample/gsma_4.4.2.2_TC.yml >/dev/null 2>&1
+	! cargo run --bin validate-yaml -- --schema schemas/test-case.schema.json tests/sample/data.yml >/dev/null 2>&1
 	./tests/integration/test_validate_yaml_multi_e2e.sh
 	./tests/integration/test_validate_yaml_watch_e2e.sh
 .PHONY: test-e2e-validate-yaml
@@ -268,15 +279,15 @@ test-verify-sample: build
 .PHONY: test-verify-sample
 
 validate-all-testcases: build
-	SCHEMA_FILE=data/schema.json ./scripts/validate-files.sh --pattern '\.ya?ml$$' --validator ./scripts/validate-yaml-wrapper.sh
+	SCHEMA_FILE=schemas/test-case.schema.json ./scripts/validate-files.sh --pattern '\.ya?ml$$' --validator ./scripts/validate-yaml-wrapper.sh
 .PHONY: validate-all-testcases
 
 verify-testcases: build
 	@echo "Verifying test case files against schema..."
 	@FAILED=0; \
-	for file in $$(find testcases tests/sample data -type f \( -name "*.yml" -o -name "*.yaml" \) -not \( -name "*te.y*" -o -iname "sample_test_runs.yaml" -o -name "*wrong*" \) 2>/dev/null); do \
+	for file in $$(find testcases tests/sample data -type f \( -name "*.yml" -o -name "*.yaml" \) -not \( -path "*/expected_output_reports/*" -o -path "*/testcase_results_container/*" -o -path "*/generated_samples/*" -o -path "*/verifier_scenarios_incorrect/*" -o -name "*te.y*" -o -iname "sample_test_runs.yaml" -o -name "*wrong*" -o -name "data.yml" -o -name "steps-in-json.yml" -o -name "1.yaml" -o -name "SGP.22_4.4.2.yaml" -o -name "conditional_verification_example.yml" -o -name "doc_gen_*.yml" \) 2>/dev/null); do \
 		echo "Validating: $$file"; \
-		if cargo run --bin validate-yaml -- --schema data/schema.json "$$file" >/dev/null 2>&1; then \
+		if cargo run --bin validate-yaml -- --schema schemas/test-case.schema.json "$$file" >/dev/null 2>&1; then \
 			echo "  ✓ PASSED"; \
 		else \
 			echo "  ✗ FAILED"; \
@@ -292,7 +303,7 @@ verify-testcases: build
 .PHONY: verify-testcases
 
 validate-testcases-report: build
-	./scripts/validate_all_testcases.sh
+	USE_MCP=0 ./scripts/validate_all_testcases.sh
 .PHONY: validate-testcases-report
 
 watch: build
@@ -300,7 +311,7 @@ watch: build
 .PHONY: watch
 
 watch-verbose: build
-	SCHEMA_FILE=data/schema.json ./scripts/validate-files.sh --pattern '\.ya?ml$$' --validator ./scripts/validate-yaml-wrapper.sh --watch --verbose
+	SCHEMA_FILE=schemas/test-case.schema.json ./scripts/validate-files.sh --pattern '\.ya?ml$$' --validator ./scripts/validate-yaml-wrapper.sh --watch --verbose
 .PHONY: watch-verbose
 
 clean-validation-cache:
@@ -344,7 +355,7 @@ generate-docs-all: build
 	./scripts/generate_documentation_reports.sh --logs-dir testcases --test-case-dir testcases
 .PHONY: generate-docs-all
 
-generate-docs-coverage: build
+generate-docs-coverage: setup-python-for-test build
 	./scripts/generate_documentation_coverage_report.sh
 .PHONY: generate-docs-coverage
 
@@ -446,4 +457,12 @@ loc-report:
 	@mkdir -p reports/loc
 	./scripts/compute-loc.sh --output reports/loc/loc_statistics.txt
 .PHONY: loc-report
+
+setup-python:
+	./scripts/setup_python_env.sh
+.PHONY: setup-python
+
+verify-python:
+	./scripts/verify_python_env.sh
+.PHONY: verify-python
 

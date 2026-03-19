@@ -132,7 +132,7 @@ def main():
     
     benchmarks = collect_benchmarks()
     
-    with open(args.output, 'w') as f:
+    with open(args.output, 'w', encoding='utf-8') as f:
         json.dump(benchmarks, f, indent=2)
     
     print(f"Benchmarks saved to {args.output}", file=sys.stderr)

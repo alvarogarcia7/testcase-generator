@@ -12,7 +12,7 @@ import requests
 def parse_clippy_output(output_file: str) -> dict:
     """Parse Clippy output and extract warnings/errors."""
     
-    with open(output_file, 'r') as f:
+    with open(output_file, 'r', encoding='utf-8') as f:
         content = f.read()
     
     warnings = []

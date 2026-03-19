@@ -31,7 +31,7 @@ test_sequences:
           result: 0
           output: "0"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == '0' ]]"
           general:
             - name: success_exit_code
@@ -48,7 +48,7 @@ test_sequences:
           result: 0
           output: "1"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == '1' ]]"
           general:
             - name: failure_exit_code
@@ -65,7 +65,7 @@ test_sequences:
           result: 0
           output: "process id"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
           general:
             - name: pid_is_numeric
@@ -84,7 +84,7 @@ test_sequences:
           result: 0
           output: "background pid"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
           general:
             - name: bg_pid_numeric
@@ -100,7 +100,7 @@ test_sequences:
           result: 0
           output: "success"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == 'success' ]]"
           general:
             - name: and_logic_works
@@ -114,7 +114,7 @@ test_sequences:
           result: 0
           output: "fallback"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == 'fallback' ]]"
           general:
             - name: or_logic_works
@@ -131,7 +131,7 @@ test_sequences:
           result: 0
           output: "process count"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
           general:
             - name: processes_exist
@@ -150,7 +150,7 @@ test_sequences:
           result: 0
           output: "shell level"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
           general:
             - name: shlvl_numeric
@@ -169,7 +169,7 @@ test_sequences:
           result: 0
           output: "42"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == '42' ]]"
           general:
             - name: custom_exit_code
@@ -186,7 +186,7 @@ test_sequences:
           result: 0
           output: "0"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == '0' ]]"
           general:
             - name: no_args

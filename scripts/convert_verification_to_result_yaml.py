@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.14
 """
 Convert verifier JSON output to individual YAML result files.
 
@@ -21,7 +21,7 @@ import sys
 import json
 import argparse
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Any
 
 try:
     import yaml
@@ -32,7 +32,7 @@ except ImportError:
     sys.exit(1)
 
 
-def parse_step_result(step_result: Dict[str, Any]) -> Dict[str, Any]:
+def parse_step_result(step_result: dict[str, Any]) -> dict[str, Any]:
     """
     Parse a step result from the JSON format.
     
@@ -59,7 +59,7 @@ def parse_step_result(step_result: Dict[str, Any]) -> Dict[str, Any]:
         return step_result
 
 
-def convert_test_case_to_result(test_case: Dict[str, Any]) -> Dict[str, Any]:
+def convert_test_case_to_result(test_case: dict[str, Any]) -> dict[str, Any]:
     """
     Convert a TestCaseVerificationResult to a result YAML structure.
     
@@ -116,7 +116,7 @@ def convert_test_case_to_result(test_case: Dict[str, Any]) -> Dict[str, Any]:
     return result
 
 
-def write_result_yaml(result: Dict[str, Any], output_path: Path) -> None:
+def write_result_yaml(result: dict[str, Any], output_path: Path) -> None:
     """
     Write a result dictionary to a YAML file.
     
@@ -127,7 +127,7 @@ def write_result_yaml(result: Dict[str, Any], output_path: Path) -> None:
     # Ensure parent directory exists
     output_path.parent.mkdir(parents=True, exist_ok=True)
     
-    with open(output_path, 'w') as f:
+    with open(output_path, 'w', encoding='utf-8') as f:
         yaml.dump(result, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
     
     print(f"✓ Wrote: {output_path}")
@@ -150,7 +150,7 @@ def process_verification_json(input_path: Path, output_dir: Path, verbose: bool 
     
     # Read input JSON
     try:
-        with open(input_path, 'r') as f:
+        with open(input_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
     except json.JSONDecodeError as e:
         print(f"✗ Error: Failed to parse JSON: {e}")
@@ -258,7 +258,7 @@ Output YAML format:
         import tempfile
         try:
             stdin_content = sys.stdin.read()
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as tmp:
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False, encoding='utf-8') as tmp:
                 tmp.write(stdin_content)
                 tmp_path = Path(tmp.name)
             

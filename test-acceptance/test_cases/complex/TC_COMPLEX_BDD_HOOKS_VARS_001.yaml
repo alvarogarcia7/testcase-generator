@@ -106,11 +106,11 @@ test_sequences:
       - step: 2
         description: "GIVEN: User profile is created with role"
         command: "cat > /tmp/user_profile_${session_token}.txt << EOF
-username=${#USER_NAME}
-role=${#USER_ROLE}
+username=${USER_NAME}
+role=${USER_ROLE}
 session=${session_token}
 authenticated=true
-feature_access=${#FEATURE_FLAG_ENABLED}
+feature_access=${FEATURE_FLAG_ENABLED}
 EOF
 cat /tmp/user_profile_${session_token}.txt"
         expected:
@@ -119,7 +119,7 @@ cat /tmp/user_profile_${session_token}.txt"
           output: "username="
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'username=${#USER_NAME}' <<< \"$COMMAND_OUTPUT\" && grep -q 'authenticated=true' <<< \"$COMMAND_OUTPUT\""
+          output: "grep -q 'username=${USER_NAME}' <<< \"$COMMAND_OUTPUT\" && grep -q 'authenticated=true' <<< \"$COMMAND_OUTPUT\""
 
       - step: 3
         description: "GIVEN: System records user login timestamp"
@@ -140,7 +140,7 @@ cat /tmp/user_profile_${session_token}.txt"
 
       - step: 4
         description: "GIVEN: Authentication log entry is created"
-        command: "mkdir -p /tmp/bdd_test_logs && echo '[${login_timestamp}] User ${#USER_NAME} authenticated with session ${session_token}' >> /tmp/bdd_test_logs/auth.log && tail -1 /tmp/bdd_test_logs/auth.log"
+        command: "mkdir -p /tmp/bdd_test_logs && echo '[${login_timestamp}] User ${USER_NAME} authenticated with session ${session_token}' >> /tmp/bdd_test_logs/auth.log && tail -1 /tmp/bdd_test_logs/auth.log"
         expected:
           success: true
           result: 0
@@ -161,7 +161,7 @@ cat /tmp/user_profile_${session_token}.txt"
     steps:
       - step: 1
         description: "WHEN: User requests resource list based on role"
-        command: "case ${#USER_ROLE} in
+        command: "case ${USER_ROLE} in
   admin)
     echo 'resources: [all, users, settings, logs]'
     ;;
@@ -185,21 +185,21 @@ esac"
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
           output:
-            condition: "[[ \"${#USER_ROLE}\" == \"admin\" ]]"
+            condition: "[[ \"${USER_ROLE}\" == \"admin\" ]]"
             if_true:
               - "grep -q 'all' <<< \"$COMMAND_OUTPUT\""
               - "grep -q 'users' <<< \"$COMMAND_OUTPUT\""
             if_false:
               - "grep -q 'resources:' <<< \"$COMMAND_OUTPUT\""
             always:
-              - "echo 'Resources granted based on role: ${#USER_ROLE}'"
+              - "echo 'Resources granted based on role: ${USER_ROLE}'"
           general:
             - name: verify_resource_list_captured
               condition: "[[ -n \"$resource_list\" ]]"
 
       - step: 2
         description: "WHEN: User attempts to access a resource"
-        command: "echo 'Access request: documents for ${#USER_NAME}'"
+        command: "echo 'Access request: documents for ${USER_NAME}'"
         capture_vars:
           - name: resource_requested
             capture: 'Access request: ([a-z]+)'
@@ -213,8 +213,8 @@ esac"
 
       - step: 3
         description: "WHEN: System validates access based on role and feature flag"
-        command: "if [[ \"${#USER_ROLE}\" == \"admin\" ]] || [[ \"${#USER_ROLE}\" == \"user\" ]]; then
-  if [[ \"${#FEATURE_FLAG_ENABLED}\" == \"true\" ]]; then
+        command: "if [[ \"${USER_ROLE}\" == \"admin\" ]] || [[ \"${USER_ROLE}\" == \"user\" ]]; then
+  if [[ \"${FEATURE_FLAG_ENABLED}\" == \"true\" ]]; then
     echo 'ACCESS_GRANTED: Enhanced features enabled'
   else
     echo 'ACCESS_GRANTED: Standard features only'
@@ -261,7 +261,7 @@ fi"
 
       - step: 5
         description: "WHEN: Access log entry is recorded"
-        command: "echo '[${access_timestamp}] ${session_token} - ${#USER_NAME} (${#USER_ROLE}) - Resource: ${resource_requested} - ${access_decision}' >> /tmp/bdd_test_logs/access.log && tail -1 /tmp/bdd_test_logs/access.log"
+        command: "echo '[${access_timestamp}] ${session_token} - ${USER_NAME} (${USER_ROLE}) - Resource: ${resource_requested} - ${access_decision}' >> /tmp/bdd_test_logs/access.log && tail -1 /tmp/bdd_test_logs/access.log"
         expected:
           success: true
           result: 0
@@ -347,8 +347,8 @@ BDD Test Execution Report
 =========================
 
 GIVEN (Initial Context):
-- User: ${#USER_NAME}
-- Role: ${#USER_ROLE}
+- User: ${USER_NAME}
+- Role: ${USER_ROLE}
 - Session: ${session_token}
 - Login Time: ${login_timestamp}
 
@@ -359,7 +359,7 @@ WHEN (Actions):
 
 THEN (Verification):
 - Session Duration: ${session_duration} seconds
-- Feature Flag: ${#FEATURE_FLAG_ENABLED}
+- Feature Flag: ${FEATURE_FLAG_ENABLED}
 - Test Status: PASSED
 
 Summary:

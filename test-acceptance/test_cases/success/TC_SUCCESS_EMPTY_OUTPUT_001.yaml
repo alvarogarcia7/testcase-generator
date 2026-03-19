@@ -25,10 +25,10 @@ test_sequences:
         command: "touch /tmp/empty_test.txt"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: ""
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "true"
 
       - step: 2
@@ -36,10 +36,10 @@ test_sequences:
         command: "rm -f /tmp/empty_test.txt"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: ""
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "true"
 
       - step: 3
@@ -47,10 +47,10 @@ test_sequences:
         command: "mkdir -p /tmp/empty_dir_test"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: ""
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "true"
 
       - step: 4
@@ -58,10 +58,10 @@ test_sequences:
         command: "ls /tmp/empty_dir_test | wc -l"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "0"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" -eq 0 ]]"
 
       - step: 5
@@ -69,10 +69,10 @@ test_sequences:
         command: "touch /tmp/empty_file.txt && cat /tmp/empty_file.txt"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: ""
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ -z \"$COMMAND_OUTPUT\" ]]"
 
       - step: 6
@@ -80,8 +80,8 @@ test_sequences:
         command: "rm -rf /tmp/empty_dir_test /tmp/empty_file.txt"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: ""
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "true"

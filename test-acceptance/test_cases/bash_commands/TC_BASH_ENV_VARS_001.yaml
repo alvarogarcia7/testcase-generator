@@ -31,7 +31,7 @@ test_sequences:
           result: 0
           output: "test_value"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == 'test_value' ]]"
           general:
             - name: value_matches
@@ -48,7 +48,7 @@ test_sequences:
           result: 0
           output: "84"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == '84' ]]"
           general:
             - name: calculation_correct
@@ -62,7 +62,7 @@ test_sequences:
           result: 0
           output: "exported"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == 'exported' ]]"
           general:
             - name: export_works
@@ -76,7 +76,7 @@ test_sequences:
           result: 0
           output: "path string"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ -n \"$COMMAND_OUTPUT\" && \"$COMMAND_OUTPUT\" =~ : ]]"
           general:
             - name: path_not_empty
@@ -92,7 +92,7 @@ test_sequences:
           result: 0
           output: "home directory"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == /* ]]"
           general:
             - name: home_is_absolute
@@ -108,7 +108,7 @@ test_sequences:
           result: 0
           output: "default_value"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == 'default_value' ]]"
           general:
             - name: default_used
@@ -125,7 +125,7 @@ test_sequences:
           result: 0
           output: "Hello World"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == 'Hello World' ]]"
           general:
             - name: substitution_works
@@ -139,7 +139,7 @@ test_sequences:
           result: 0
           output: "one-two-three"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == 'one-two-three' ]]"
           general:
             - name: all_vars_set
@@ -153,7 +153,7 @@ test_sequences:
           result: 0
           output: "username"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ -n \"$COMMAND_OUTPUT\" ]]"
           general:
             - name: user_not_empty
@@ -169,7 +169,7 @@ test_sequences:
           result: 0
           output: "cannot_change"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == 'cannot_change' ]]"
           general:
             - name: readonly_set

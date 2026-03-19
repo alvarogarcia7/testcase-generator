@@ -127,3 +127,36 @@ ensure_binary_built() {
         return 1
     fi
 }
+
+# Find the best available Python interpreter (Python 3.14 preferred)
+# Returns:
+#   Path to python interpreter on stdout, or empty string if not found
+# Priority:
+#   1. python3.14 (explicit version)
+#   2. uv run python3.14 (via uv)
+#   3. python3 (system default)
+find_python() {
+    # Check for python3.14 directly
+    if command -v python3.14 >/dev/null 2>&1; then
+        echo "python3.14"
+        return 0
+    fi
+    
+    # Check if uv is available and can run python3.14
+    if command -v uv >/dev/null 2>&1; then
+        if uv run python3.14 --version >/dev/null 2>&1; then
+            echo "uv run python3.14"
+            return 0
+        fi
+    fi
+    
+    # Fall back to system python3
+    if command -v python3 >/dev/null 2>&1; then
+        echo "python3"
+        return 0
+    fi
+    
+    # No Python found
+    echo ""
+    return 1
+}

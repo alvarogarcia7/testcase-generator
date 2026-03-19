@@ -28,7 +28,7 @@ test_sequences:
           result: 0
           output: "one two three"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == 'one two three' ]]"
           general:
             - name: output_has_three_words
@@ -49,7 +49,7 @@ test_sequences:
           result: 0
           output: "5"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == '5' ]]"
           general:
             - name: length_is_five
@@ -66,7 +66,7 @@ test_sequences:
           result: 0
           output: "15"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == '15' ]]"
           general:
             - name: sum_correct
@@ -82,7 +82,7 @@ test_sequences:
           result: 0
           output: "c d e"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == 'c d e' ]]"
           general:
             - name: slice_has_three_elements
@@ -103,7 +103,7 @@ test_sequences:
           result: 0
           output: "4 blue yellow"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" =~ ^4 ]]"
           general:
             - name: count_is_four
@@ -121,7 +121,7 @@ test_sequences:
           result: 0
           output: "found"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == 'found' ]]"
           general:
             - name: found_banana

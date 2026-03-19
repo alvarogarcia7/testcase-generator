@@ -51,7 +51,7 @@ test_sequences:
       
       - step: 3
         description: "Wait for device initialization"
-        command: "sleep 30 && echo 'Initialization period complete'"
+        command: "sleep 5 && echo 'Initialization period complete'"
         expected:
           success: true
           result: 0
@@ -108,7 +108,7 @@ test_sequences:
       
       - step: 3
         description: "Wait for configuration propagation"
-        command: "sleep 15 && echo 'Configuration propagation time elapsed'"
+        command: "sleep 5 && echo 'Configuration propagation time elapsed'"
         expected:
           success: true
           result: 0

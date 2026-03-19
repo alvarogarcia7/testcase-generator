@@ -66,7 +66,7 @@ test_sequences:
     steps:
       - step: 1
         description: "Create cleanup test directory structure"
-        command: "mkdir -p ${#CLEANUP_DIR}/{tmp,data,logs,locks} && echo 'Directories created' && ls -d ${#CLEANUP_DIR}/*"
+        command: "mkdir -p ${CLEANUP_DIR}/{tmp,data,logs,locks} && echo 'Directories created' && ls -d ${CLEANUP_DIR}/*"
         expected:
           success: true
           result: 0
@@ -94,7 +94,7 @@ test_sequences:
 
       - step: 3
         description: "Allocate multiple test files"
-        command: "for i in 1 2 3 4 5; do echo \"Test data $i\" > ${#CLEANUP_DIR}/data/test_file_$i.txt; done && ls ${#CLEANUP_DIR}/data/ | wc -l"
+        command: "for i in 1 2 3 4 5; do echo \"Test data $i\" > ${CLEANUP_DIR}/data/test_file_$i.txt; done && ls ${CLEANUP_DIR}/data/ | wc -l"
         capture_vars:
           - name: allocated_files
             capture: '([0-9]+)'
@@ -111,7 +111,7 @@ test_sequences:
 
       - step: 4
         description: "Create lock file that must be cleaned up"
-        command: "echo $$ > ${#CLEANUP_DIR}/locks/test.lock && cat ${#CLEANUP_DIR}/locks/test.lock"
+        command: "echo $$ > ${CLEANUP_DIR}/locks/test.lock && cat ${CLEANUP_DIR}/locks/test.lock"
         capture_vars:
           - name: lock_pid
             capture: '([0-9]+)'
@@ -125,7 +125,7 @@ test_sequences:
 
       - step: 5
         description: "Create cleanup manifest"
-        command: "cat > ${#CLEANUP_DIR}/cleanup_manifest.txt << EOF
+        command: "cat > ${CLEANUP_DIR}/cleanup_manifest.txt << EOF
 # Cleanup Manifest - Created at ${resource_timestamp}
 # Resources that must be cleaned up:
 DIRECTORIES: tmp data logs locks
@@ -133,7 +133,7 @@ FILES: ${allocated_files} files in data/
 LOCKS: test.lock (PID: ${lock_pid})
 STATUS: Resources allocated, cleanup required
 EOF
-cat ${#CLEANUP_DIR}/cleanup_manifest.txt"
+cat ${CLEANUP_DIR}/cleanup_manifest.txt"
         expected:
           success: true
           result: 0
@@ -164,7 +164,7 @@ cat ${#CLEANUP_DIR}/cleanup_manifest.txt"
 
       - step: 2
         description: "Create temporary processing files"
-        command: "for i in 1 2 3; do echo 'Processing $i' > ${#CLEANUP_DIR}/tmp/process_$i.tmp; done && ls ${#CLEANUP_DIR}/tmp/ | wc -l"
+        command: "for i in 1 2 3; do echo 'Processing $i' > ${CLEANUP_DIR}/tmp/process_$i.tmp; done && ls ${CLEANUP_DIR}/tmp/ | wc -l"
         capture_vars:
           - name: temp_files_created
             capture: '([0-9]+)'
@@ -208,7 +208,7 @@ cat ${#CLEANUP_DIR}/cleanup_manifest.txt"
     steps:
       - step: 1
         description: "Verify cleanup directory still exists for inspection"
-        command: "test -d ${#CLEANUP_DIR} && echo 'Cleanup directory exists' || echo 'Cleanup directory removed'"
+        command: "test -d ${CLEANUP_DIR} && echo 'Cleanup directory exists' || echo 'Cleanup directory removed'"
         expected:
           success: true
           result: 0
@@ -219,7 +219,7 @@ cat ${#CLEANUP_DIR}/cleanup_manifest.txt"
 
       - step: 2
         description: "Check if cleanup manifest is still present"
-        command: "test -f ${#CLEANUP_DIR}/cleanup_manifest.txt && cat ${#CLEANUP_DIR}/cleanup_manifest.txt || echo 'Manifest not found'"
+        command: "test -f ${CLEANUP_DIR}/cleanup_manifest.txt && cat ${CLEANUP_DIR}/cleanup_manifest.txt || echo 'Manifest not found'"
         expected:
           success: true
           result: 0

@@ -34,7 +34,7 @@ test_sequences:
           result: 0
           output: "400"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == '400' ]]"
           general:
             - name: sum_is_correct
@@ -55,7 +55,7 @@ test_sequences:
           result: 0
           output: "25"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == '25' ]]"
           general:
             - name: calculation_correct
@@ -74,7 +74,7 @@ test_sequences:
           result: 0
           output: "3"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == '3' ]]"
           general:
             - name: count_is_three
@@ -93,7 +93,7 @@ test_sequences:
           result: 0
           output: "prefix-hello-suffix"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == 'prefix-hello-suffix' ]]"
           general:
             - name: has_prefix
@@ -120,7 +120,7 @@ test_sequences:
           result: 0
           output: "sums"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" =~ [0-9] ]]"
           general:
             - name: first_sum_correct
@@ -143,7 +143,7 @@ test_sequences:
           result: 0
           output: "difference count"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
           general:
             - name: diff_detected
@@ -162,7 +162,7 @@ test_sequences:
           result: 0
           output: "5"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == '5' ]]"
           general:
             - name: count_is_five
@@ -178,7 +178,7 @@ test_sequences:
           result: 0
           output: "cleaned"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == 'cleaned' ]]"
           general:
             - name: directory_removed

@@ -29,10 +29,10 @@ test_sequences:
             capture: '(ID_[0-9]+_[0-9]+)'
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "ID_"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "grep -q 'ID_' <<< \"$COMMAND_OUTPUT\""
           general:
             - name: verify_unique_id_captured
@@ -45,10 +45,10 @@ test_sequences:
         command: "mkdir -p /tmp/${unique_id} && echo \"Created: /tmp/${unique_id}\""
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "Created:"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "grep -q 'Created:' <<< \"$COMMAND_OUTPUT\""
 
       - step: 3
@@ -59,10 +59,10 @@ test_sequences:
             command: "ls /tmp/${unique_id} | wc -l"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "1"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" -eq 1 ]]"
           general:
             - name: verify_file_count
@@ -76,10 +76,10 @@ test_sequences:
             capture: '(test data)'
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "test data"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "grep -q 'test data' <<< \"$COMMAND_OUTPUT\""
           general:
             - name: verify_content_captured
@@ -93,10 +93,10 @@ test_sequences:
             capture: '^([0-9]+)'
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "bytes"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+ ]]"
           general:
             - name: verify_size_captured
@@ -107,8 +107,8 @@ test_sequences:
         command: "rm -rf /tmp/${unique_id} && echo \"Removed: ${unique_id}, Size: ${dir_size} bytes, Files: ${file_count}\""
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "Removed:"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "grep -q 'Removed:' <<< \"$COMMAND_OUTPUT\" && grep -q 'Size:' <<< \"$COMMAND_OUTPUT\" && grep -q 'Files:' <<< \"$COMMAND_OUTPUT\""

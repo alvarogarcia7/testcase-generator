@@ -31,7 +31,7 @@ test_sequences:
           result: 0
           output: "11"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == '11' ]]"
           general:
             - name: length_exact
@@ -48,13 +48,13 @@ test_sequences:
           result: 0
           output: "defg"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == 'defg' ]]"
           general:
             - name: substring_correct
               condition: "[[ \"$substring\" == 'defg' ]]"
             - name: length_is_four
-              condition: "[[ ${#substring} -eq 4 ]]"
+              condition: "[[ $(echo -n \"$substring\" | wc -c | awk '{print $1}') -eq 4 ]]"
 
       - step: 3
         description: "String replacement - first occurrence"
@@ -67,7 +67,7 @@ test_sequences:
           result: 0
           output: "FOO bar foo baz"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == 'FOO bar foo baz' ]]"
           general:
             - name: first_replaced
@@ -88,7 +88,7 @@ test_sequences:
           result: 0
           output: "FOO bar FOO baz FOO"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == 'FOO bar FOO baz FOO' ]]"
           general:
             - name: all_replaced
@@ -109,7 +109,7 @@ test_sequences:
           result: 0
           output: "home/user/docs/file.txt"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == 'home/user/docs/file.txt' ]]"
           general:
             - name: no_leading_slash_check
@@ -128,7 +128,7 @@ test_sequences:
           result: 0
           output: "file.txt"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == 'file.txt' ]]"
           general:
             - name: only_filename
@@ -147,7 +147,7 @@ test_sequences:
           result: 0
           output: "document.tar"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == 'document.tar' ]]"
           general:
             - name: removed_last_ext
@@ -166,7 +166,7 @@ test_sequences:
           result: 0
           output: "document"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == 'document' ]]"
           general:
             - name: all_extensions_removed
@@ -175,18 +175,18 @@ test_sequences:
               condition: "[[ ! \"$base_name\" =~ \\. ]]"
 
       - step: 9
-        description: "String uppercase conversion"
-        command: "lower='hello world'; upper=${lower^^}; echo $upper"
+        description: "String uppercase conversion using tr"
+        command: "lower='hello world'; upper=$(echo \"$lower\" | tr '[:lower:]' '[:upper:]'); echo $upper"
         expected:
           success: true
           result: 0
           output: "HELLO WORLD"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" == 'HELLO WORLD' || $(echo 'hello world' | tr '[:lower:]' '[:upper:]') == 'HELLO WORLD' ]]"
+          result: "[[ $? -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" == 'HELLO WORLD' ]]"
           general:
             - name: is_uppercase
-              condition: "[[ \"$COMMAND_OUTPUT\" =~ ^[A-Z[:space:]]+$ || $(echo 'hello world' | tr '[:lower:]' '[:upper:]') == 'HELLO WORLD' ]]"
+              condition: "[[ \"$COMMAND_OUTPUT\" =~ ^[A-Z[:space:]]+$ ]]"
 
       - step: 10
         description: "Default value if variable is unset"
@@ -199,7 +199,7 @@ test_sequences:
           result: 0
           output: "default_value"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == 'default_value' ]]"
           general:
             - name: default_applied

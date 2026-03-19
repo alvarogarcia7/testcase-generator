@@ -12,7 +12,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Any
 
 
 class MCPClient:
@@ -20,7 +20,7 @@ class MCPClient:
     
     def __init__(self, project_root: Path):
         self.project_root = project_root
-        self.process: Optional[subprocess.Popen] = None
+        self.process: subprocess.Popen[str] | None = None
         self.request_id = 0
     
     def start_server(self) -> None:
@@ -37,7 +37,7 @@ class MCPClient:
         )
         print("✓ MCP server process started")
     
-    def send_request(self, method: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def send_request(self, method: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         """Send a JSON-RPC request to the MCP server."""
         if not self.process or not self.process.stdin:
             raise RuntimeError("Server not started")

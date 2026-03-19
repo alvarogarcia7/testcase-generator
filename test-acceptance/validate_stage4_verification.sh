@@ -306,8 +306,11 @@ transform_to_container_yaml() {
     local test_id="$3"
     local title="${4:-Test Execution Results}"
     
+    local python_cmd
+    python_cmd=$(find_python)
+    
     # Use Python to transform the YAML structure
-    python3 - "$verifier_output" "$container_output" "$test_id" "$title" "$PROJECT" "$ENVIRONMENT" << 'PYTHON_SCRIPT'
+    $python_cmd - "$verifier_output" "$container_output" "$test_id" "$title" "$PROJECT" "$ENVIRONMENT" << 'PYTHON_SCRIPT'
 import sys
 import yaml
 from datetime import datetime
@@ -395,14 +398,16 @@ validate_container_schema() {
 validate_container_structure() {
     local container_file="$1"
     
-    # Check if Python and PyYAML are available
-    if ! command -v python3 >/dev/null 2>&1; then
-        log_verbose "  Python3 not available, skipping structure validation"
+    local python_cmd
+    python_cmd=$(find_python)
+    
+    if [[ -z "$python_cmd" ]]; then
+        log_verbose "  Python not available, skipping structure validation"
         return 0
     fi
     
     # Validate structure using Python
-    python3 - "$container_file" << 'PYTHON_SCRIPT'
+    $python_cmd - "$container_file" << 'PYTHON_SCRIPT'
 import sys
 import yaml
 
@@ -460,14 +465,16 @@ PYTHON_SCRIPT
 validate_enum_format() {
     local container_file="$1"
     
-    # Check if Python and PyYAML are available
-    if ! command -v python3 >/dev/null 2>&1; then
-        log_verbose "  Python3 not available, skipping enum format validation"
+    local python_cmd
+    python_cmd=$(find_python)
+    
+    if [[ -z "$python_cmd" ]]; then
+        log_verbose "  Python not available, skipping enum format validation"
         return 0
     fi
     
     # Validate enum format using Python
-    python3 - "$container_file" << 'PYTHON_SCRIPT'
+    $python_cmd - "$container_file" << 'PYTHON_SCRIPT'
 import sys
 import yaml
 
@@ -522,14 +529,16 @@ PYTHON_SCRIPT
 validate_metadata() {
     local container_file="$1"
     
-    # Check if Python and PyYAML are available
-    if ! command -v python3 >/dev/null 2>&1; then
-        log_verbose "  Python3 not available, skipping metadata validation"
+    local python_cmd
+    python_cmd=$(find_python)
+    
+    if [[ -z "$python_cmd" ]]; then
+        log_verbose "  Python not available, skipping metadata validation"
         return 0
     fi
     
     # Validate metadata using Python
-    python3 - "$container_file" << 'PYTHON_SCRIPT'
+    $python_cmd - "$container_file" << 'PYTHON_SCRIPT'
 import sys
 import yaml
 
@@ -584,14 +593,16 @@ PYTHON_SCRIPT
 validate_overall_pass() {
     local container_file="$1"
     
-    # Check if Python and PyYAML are available
-    if ! command -v python3 >/dev/null 2>&1; then
-        log_verbose "  Python3 not available, skipping overall_pass validation"
+    local python_cmd
+    python_cmd=$(find_python)
+    
+    if [[ -z "$python_cmd" ]]; then
+        log_verbose "  Python not available, skipping overall_pass validation"
         return 0
     fi
     
     # Validate overall_pass using Python
-    python3 - "$container_file" << 'PYTHON_SCRIPT'
+    $python_cmd - "$container_file" << 'PYTHON_SCRIPT'
 import sys
 import yaml
 

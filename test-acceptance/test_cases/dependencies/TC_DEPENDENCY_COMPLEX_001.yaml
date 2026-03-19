@@ -2,20 +2,21 @@ requirement: "DEPENDENCY_COMPLEX"
 item: 1
 tc: 1
 id: 'TC_DEPENDENCY_COMPLEX_001'
-description: 'Complex dependency scenario - demonstrates multiple dependencies at both test case and sequence levels with mixed resolution'
+description: 'Complex dependency scenario - demonstrates multiple dependencies at both test case and sequence levels'
 
 general_initial_conditions:
-  system:
-    - "Bash shell is available"
-    - "Complex dependency resolution is supported"
-
-initial_conditions:
   include:
     - id: 'TC_SUCCESS_SIMPLE_001'
     - id: 'TC_SUCCESS_VAR_CAPTURE_001'
+  system:
+    - "Bash shell is available"
+    - "Multiple dependencies at root level"
+
+initial_conditions:
   filesystem:
     - "Temporary directory /tmp is writable"
   system:
+    - "Root-level dependencies: TC_SUCCESS_SIMPLE_001 and TC_SUCCESS_VAR_CAPTURE_001"
     - "Multiple test case dependencies at root level"
 
 test_sequences:
@@ -24,14 +25,14 @@ test_sequences:
     description: "Sequence inherits only root-level dependencies"
     initial_conditions:
       system:
-        - "Inherits TC_SUCCESS_SIMPLE_001 and TC_SUCCESS_VAR_CAPTURE_001"
+        - "Inherits dependencies: TC_SUCCESS_SIMPLE_001 and TC_SUCCESS_VAR_CAPTURE_001"
     steps:
       - step: 1
         description: "Execute with inherited dependencies"
         command: "echo 'Using root-level dependencies'"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "Using root-level dependencies"
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
@@ -47,34 +48,35 @@ test_sequences:
         - id: 'TC_SUCCESS_MULTI_SEQ_001'
           test_sequence: '2'
       system:
+        - "Sequence-specific dependencies added"
         - "Inherits root dependencies plus sequence-specific ones"
-        - "Total dependencies: TC_SUCCESS_SIMPLE_001, TC_SUCCESS_VAR_CAPTURE_001, TC_SUCCESS_MULTI_SEQ_001 seq 1, TC_SUCCESS_MULTI_SEQ_001 seq 2"
+        - "Total: TC_SUCCESS_SIMPLE_001, TC_SUCCESS_VAR_CAPTURE_001, TC_SUCCESS_MULTI_SEQ_001 seq 1&2"
     steps:
       - step: 1
         description: "Execute with combined dependencies"
         command: "echo 'Combined: 2 root + 2 sequence = 4 dependencies'"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "Combined"
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
           output: "grep -q 'Combined' <<< \"$COMMAND_OUTPUT\""
 
       - step: 2
-        description: "Verify dependency resolution order"
-        command: "echo 'Resolution: Root deps resolved first, then sequence deps'"
+        description: "Verify dependency order"
+        command: "echo 'Order: Root deps listed first, then sequence deps'"
         expected:
           success: true
-          result: 0
-          output: "Resolution"
+          result: '0'
+          output: "Order"
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Resolution' <<< \"$COMMAND_OUTPUT\""
+          output: "grep -q 'Order' <<< \"$COMMAND_OUTPUT\""
 
   - id: 3
     name: "Sequence Override Dependencies"
-    description: "Sequence with dependencies that may override or extend root dependencies"
+    description: "Sequence with dependencies that may extend root dependencies"
     initial_conditions:
       include:
         - id: 'TC_SUCCESS_SIMPLE_001'
@@ -82,47 +84,49 @@ test_sequences:
         - id: 'TC_SUCCESS_ENV_VARS_001'
       system:
         - "Sequence-level includes may duplicate root includes"
-        - "Dependency resolution should deduplicate"
+        - "TC_SUCCESS_SIMPLE_001 appears in both root and sequence"
+        - "Dependency system should handle duplication"
     steps:
       - step: 1
         description: "Execute with potentially duplicate dependencies"
-        command: "echo 'Deduplication test: TC_SUCCESS_SIMPLE_001 appears in both root and sequence'"
+        command: "echo 'Duplication test: TC_SUCCESS_SIMPLE_001 appears in both root and sequence'"
         expected:
           success: true
-          result: 0
-          output: "Deduplication test"
+          result: '0'
+          output: "Duplication test"
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Deduplication test' <<< \"$COMMAND_OUTPUT\""
+          output: "grep -q 'Duplication test' <<< \"$COMMAND_OUTPUT\""
 
       - step: 2
-        description: "Verify dependency count after deduplication"
-        command: "echo 'Unique dependencies should be resolved once'"
+        description: "Document dependency handling"
+        command: "echo 'Unique dependencies with duplicates noted'"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "Unique dependencies"
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
           output: "grep -q 'Unique dependencies' <<< \"$COMMAND_OUTPUT\""
 
   - id: 4
-    name: "Transitive Dependency Resolution"
+    name: "Transitive Dependency"
     description: "Sequence with dependencies that have their own dependencies"
     initial_conditions:
       include:
         - id: 'TC_DEPENDENCY_NESTED_001'
           test_sequence: '1'
       system:
-        - "Transitive dependencies should be resolved"
-        - "TC_DEPENDENCY_NESTED_001 -> TC_DEPENDENCY_SIMPLE_001 -> TC_SUCCESS_SIMPLE_001"
+        - "Dependency on TC_DEPENDENCY_NESTED_001 sequence 1"
+        - "Transitive dependencies through dependency chain"
+        - "Chain: TC_DEPENDENCY_NESTED_001 -> TC_DEPENDENCY_SIMPLE_001 -> TC_SUCCESS_SIMPLE_001"
     steps:
       - step: 1
         description: "Execute with transitive dependencies"
-        command: "echo 'Transitive closure computed for all dependencies'"
+        command: "echo 'Transitive closure for all dependencies'"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "Transitive closure"
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"
@@ -133,7 +137,7 @@ test_sequences:
         command: "echo 'Full graph includes root + sequence + transitive dependencies'"
         expected:
           success: true
-          result: 0
+          result: '0'
           output: "Full graph"
         verification:
           result: "[[ $EXIT_CODE -eq 0 ]]"

@@ -28,7 +28,7 @@ test_sequences:
           result: 0
           output: "SUCCESS"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ $(echo \"$COMMAND_OUTPUT\" | grep -c 'SUCCESS') -eq 1 ]]"
           general:
             - name: grep_finds_success
@@ -47,7 +47,7 @@ test_sequences:
           result: 0
           output: "42"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 && $(echo \"$COMMAND_OUTPUT\" | grep -E '^[0-9]+$' | wc -l | awk '{print $1}') -eq 1 ]]"
+          result: "[[ $? -eq 0 && $(echo \"$COMMAND_OUTPUT\" | grep -E '^[0-9]+$' | wc -l | awk '{print $1}') -eq 1 ]]"
           output: "[[ $(echo \"$COMMAND_OUTPUT\") -eq 42 ]]"
           general:
             - name: is_even_number
@@ -65,7 +65,7 @@ test_sequences:
           result: 0
           output: "test content"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 && -f /tmp/verify_test.txt ]]"
+          result: "[[ $? -eq 0 && -f /tmp/verify_test.txt ]]"
           output: "[[ $(cat /tmp/verify_test.txt) == 'test content' ]]"
           general:
             - name: file_exists
@@ -88,7 +88,7 @@ test_sequences:
           result: 0
           output: "unix timestamp"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
           general:
             - name: timestamp_recent
@@ -109,7 +109,7 @@ test_sequences:
           result: 0
           output: "version string"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ $(echo \"$COMMAND_OUTPUT\" | sed -n 's/.*version: //p') == '1.2.3-beta' ]]"
           general:
             - name: version_extracted
@@ -129,7 +129,7 @@ test_sequences:
           result: 0
           output: "removed"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == 'removed' ]]"
           general:
             - name: file_deleted

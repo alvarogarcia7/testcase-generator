@@ -19,6 +19,8 @@ variables:
   RUSTC_WRAPPER: sccache
   SCCACHE_DIR: ${CI_PROJECT_DIR}/.sccache
   SCCACHE_CACHE_SIZE: 5G
+  # Python 3.14 is managed via uv package manager
+  # All Python scripts should be run with: uv run python3.14 script.py
 
 docker:build:
   stage: docker
@@ -31,6 +33,10 @@ docker:build:
     - docker inspect  $CI_REGISTRY_IMAGE:${COMMIT_SHA} | tee docker_inspect.json
     - docker run --rm $CI_REGISTRY_IMAGE:${COMMIT_SHA} ls
     - docker run --rm $CI_REGISTRY_IMAGE:${COMMIT_SHA} /usr/local/bin/editor --help
+    # Verify Python 3.14 is available in the image
+    - docker run --rm $CI_REGISTRY_IMAGE:${COMMIT_SHA} python3.14 --version
+    - docker run --rm $CI_REGISTRY_IMAGE:${COMMIT_SHA} python3 --version
+    - docker run --rm $CI_REGISTRY_IMAGE:${COMMIT_SHA} uv --version
     # Verify cargo works offline
     - docker run --rm --net none $CI_REGISTRY_IMAGE:${COMMIT_SHA} cargo --offline build --all --all-features --release
     - docker run --rm --net none $CI_REGISTRY_IMAGE:${COMMIT_SHA} cargo --offline build --all --all-features
@@ -112,6 +118,13 @@ rust:build-test-lint:
     - cargo --version
     - apt-get update -qq
     - apt-get install -y -qq curl
+    # Install uv package manager
+    - curl -LsSf https://astral.sh/uv/install.sh | sh
+    - export PATH="$HOME/.cargo/bin:$PATH"
+    # Install Python 3.14 using uv
+    - uv python install 3.14
+    # Sync Python dependencies
+    - uv sync --python 3.14
     # Install sccache using the installation script
     - ./scripts/install-sccache.sh --ci
     # Install coverage tools using the installation script
@@ -126,6 +139,10 @@ rust:build-test-lint:
 #      - target
       # Cache sccache compilation cache
       - .sccache
+      # Cache uv and Python environments
+      - .venv
+      - $HOME/.cargo/bin/uv
+      - $HOME/.local/share/uv
     # This ensures the cache is available to all jobs in the pipeline
     policy: pull-push
   stage: rust
@@ -157,7 +174,7 @@ rust:build-test-lint:
     # Test - unit tests
     - echo "===== Running Unit Tests ====="
     - cargo test --all --all-features --tests --no-fail-fast -- --test-threads=1 2>&1 | tee test_output.txt
-    - python3 scripts/ci_parse_test_results.py test_output.txt > test_results.json
+    - uv run python3.14 scripts/ci_parse_test_results.py test_output.txt > test_results.json
 
     # Test - doc tests
     - echo "===== Running Doc Tests ====="
@@ -174,19 +191,20 @@ rust:build-test-lint:
     - ./grcov . --binary-path ./target/debug/ -s . -t html --branch --ignore-not-existing --ignore "/*" -o coverage/html
     - |
       if [ -n "$CI_MERGE_REQUEST_IID" ]; then
-        python3 scripts/ci_compare_coverage.py lcov.info > coverage_report.json
-        python3 scripts/ci_post_coverage_comment.py coverage_report.json
+        uv run python3.14 scripts/ci_compare_coverage.py lcov.info > coverage_report.json
+        uv run python3.14 scripts/ci_post_coverage_comment.py coverage_report.json
       fi
     - echo "===== Final sccache Statistics ====="
     - sccache --show-stats
   after_script:
+    - export PATH="$HOME/.cargo/bin:$PATH"
     - |
       if [ -f test_results.json ]; then
-        python3 scripts/ci_post_mr_comment.py test_results.json || true
+        uv run python3.14 scripts/ci_post_mr_comment.py test_results.json || true
       fi
     - |
       if [ -f clippy_output.txt ] && grep -q "warning:" clippy_output.txt; then
-        python3 scripts/ci_post_clippy_comment.py clippy_output.txt || true
+        uv run python3.14 scripts/ci_post_clippy_comment.py clippy_output.txt || true
       fi
   coverage: '/lines\.*: \d+\.\d+%/'
   artifacts:
@@ -215,10 +233,18 @@ docker:verify:
     - docker:build
   needs:
     - docker:build
+  before_script:
+    - apt-get update -qq
+    - apt-get install -y -qq curl
+    # Install uv package manager
+    - curl -LsSf https://astral.sh/uv/install.sh | sh
+    - export PATH="$HOME/.cargo/bin:$PATH"
+    # Sync Python dependencies
+    - uv sync --python 3.14
   script:
     - find . || true
     - ls -la docker_inspect.json || true
-    - python3 scripts/ci_docker_security_scan.py docker_inspect.json > docker_scan_results.json
+    - uv run python3.14 scripts/ci_docker_security_scan.py docker_inspect.json > docker_scan_results.json
   artifacts:
     name: "docker-verify-$CI_COMMIT_REF_SLUG"
     paths:
@@ -266,10 +292,17 @@ rust:e2e-tests:
 #    - rustc --version
 #    - cargo --version
 #    - apt-get update -qq
+#    - apt-get install -y -qq curl
+#    # Install uv package manager
+#    - curl -LsSf https://astral.sh/uv/install.sh | sh
+#    - export PATH="$HOME/.cargo/bin:$PATH"
+#    # Install Python 3.14 and dependencies
+#    - uv python install 3.14
+#    - uv sync --python 3.14
+#    # Install psutil for performance monitoring
+#    - uv pip install psutil
 #  script:
-#    - apt-get install -y -qq python3 python3-pip
-#    - pip3 install --break-system-packages psutil
-#    - python3 scripts/ci_benchmark.py --output baseline_perf.json
+#    - uv run python3.14 scripts/ci_benchmark.py --output baseline_perf.json
 #  artifacts:
 #    name: "performance-baseline-$CI_COMMIT_REF_SLUG"
 #    paths:
@@ -288,14 +321,21 @@ rust:e2e-tests:
 #    - rustc --version
 #    - cargo --version
 #    - apt-get update -qq
+#    - apt-get install -y -qq curl git
+#    # Install uv package manager
+#    - curl -LsSf https://astral.sh/uv/install.sh | sh
+#    - export PATH="$HOME/.cargo/bin:$PATH"
+#    # Install Python 3.14 and dependencies
+#    - uv python install 3.14
+#    - uv sync --python 3.14
+#    # Install psutil for performance monitoring
+#    - uv pip install psutil
 #  script:
-#    - apt-get install -y -qq python3 python3-pip git
-#    - pip3 install --break-system-packages psutil
-#    - python3 scripts/ci_benchmark.py --output current_perf.json
+#    - uv run python3.14 scripts/ci_benchmark.py --output current_perf.json
 #    - |
 #      if [ -n "$CI_MERGE_REQUEST_IID" ]; then
-#        python3 scripts/ci_compare_performance.py baseline_perf.json current_perf.json > perf_comparison.json
-#        python3 scripts/ci_post_performance_comment.py perf_comparison.json
+#        uv run python3.14 scripts/ci_compare_performance.py baseline_perf.json current_perf.json > perf_comparison.json
+#        uv run python3.14 scripts/ci_post_performance_comment.py perf_comparison.json
 #      fi
 #  artifacts:
 #    name: "performance-comparison-$CI_COMMIT_REF_SLUG"
@@ -319,9 +359,16 @@ rust:e2e-tests:
 #    - rustc --version
 #    - cargo --version
 #    - apt-get update -qq
+#    - apt-get install -y -qq curl
+#    # Install uv package manager
+#    - curl -LsSf https://astral.sh/uv/install.sh | sh
+#    - export PATH="$HOME/.cargo/bin:$PATH"
+#    # Install Python 3.14 and dependencies
+#    - uv python install 3.14
+#    - uv sync --python 3.14
 #  script:
-#    - python3 scripts/ci_generate_summary_report.py > pipeline_summary.md
-#    - python3 scripts/ci_post_summary_comment.py pipeline_summary.md
+#    - uv run python3.14 scripts/ci_generate_summary_report.py > pipeline_summary.md
+#    - uv run python3.14 scripts/ci_post_summary_comment.py pipeline_summary.md
 #  artifacts:
 #    name: "pipeline-summary-$CI_COMMIT_REF_SLUG"
 #    paths:

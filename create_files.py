@@ -117,16 +117,22 @@ $ exit
 Script done on 2024-01-22 15:52:03-0800
 '''
 
-# Write files
-with open('cleanup.txt', 'wb') as f:
-    f.write(cleanup_content)
+def main():
+    """Create script capture files with control characters."""
+    # Write files
+    with open('cleanup.txt', 'wb') as f:
+        f.write(cleanup_content)
 
-with open('errors.txt', 'wb') as f:
-    f.write(errors_content)
+    with open('errors.txt', 'wb') as f:
+        f.write(errors_content)
 
-print("✓ Created cleanup.txt and errors.txt with actual binary control characters")
-print("  • Backspace characters (0x08)")
-print("  • Bell characters (0x07)")
-print("  • ANSI escape sequences")
-print("  • UTF-8 symbols (✓, ✗, ⚠)")
-print("  • User typos and corrections")
+    print("✓ Created cleanup.txt and errors.txt with actual binary control characters")
+    print("  • Backspace characters (0x08)")
+    print("  • Bell characters (0x07)")
+    print("  • ANSI escape sequences")
+    print("  • UTF-8 symbols (✓, ✗, ⚠)")
+    print("  • User typos and corrections")
+
+
+if __name__ == '__main__':
+    main()

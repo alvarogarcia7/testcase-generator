@@ -29,7 +29,7 @@ test_sequences:
           result: 0
           output: "initial content"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 && -f /tmp/bash_file_test.txt ]]"
+          result: "[[ $? -eq 0 && -f /tmp/bash_file_test.txt ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == 'initial content' ]]"
           general:
             - name: file_exists
@@ -50,7 +50,7 @@ test_sequences:
           result: 0
           output: "2"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == '2' ]]"
           general:
             - name: two_lines
@@ -69,7 +69,7 @@ test_sequences:
           result: 0
           output: "byte count"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
           general:
             - name: size_positive
@@ -88,7 +88,7 @@ test_sequences:
           result: 0
           output: "0"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == '0' ]]"
           general:
             - name: copy_exists
@@ -104,7 +104,7 @@ test_sequences:
           result: 0
           output: "renamed"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == 'renamed' ]]"
           general:
             - name: new_name_exists
@@ -123,7 +123,7 @@ test_sequences:
           result: 0
           output: "appended line"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == 'appended line' ]]"
           general:
             - name: line_correct
@@ -137,7 +137,7 @@ test_sequences:
           result: 0
           output: "644"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == '644' ]]"
           general:
             - name: permissions_set
@@ -151,7 +151,7 @@ test_sequences:
           result: 0
           output: "created"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == 'created' ]]"
           general:
             - name: empty_file_exists
@@ -167,7 +167,7 @@ test_sequences:
           result: 0
           output: "deleted"
         verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
+          result: "[[ $? -eq 0 ]]"
           output: "[[ \"$COMMAND_OUTPUT\" == 'deleted' ]]"
           general:
             - name: all_files_deleted

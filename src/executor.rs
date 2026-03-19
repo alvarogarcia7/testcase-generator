@@ -798,12 +798,15 @@ impl TestExecutor {
                 script.push_str(&format!("# {}\n", line));
             }
 
-            // Execute before_sequence hook with SEQUENCE_ID and SEQUENCE_NAME
+            // Execute before_sequence hook with TEST_SEQUENCE_ID and TEST_SEQUENCE_NAME
             if let Some(ref hooks) = test_case.hooks {
                 if let Some(ref hook) = hooks.before_sequence {
-                    script.push_str(&format!("SEQUENCE_ID={}\n", sequence.id));
-                    script.push_str(&format!("SEQUENCE_NAME={}\n", bash_escape(&sequence.name)));
-                    script.push_str("export SEQUENCE_ID SEQUENCE_NAME\n");
+                    script.push_str(&format!("TEST_SEQUENCE_ID={}\n", sequence.id));
+                    script.push_str(&format!(
+                        "TEST_SEQUENCE_NAME={}\n",
+                        bash_escape(&sequence.name)
+                    ));
+                    script.push_str("export TEST_SEQUENCE_ID TEST_SEQUENCE_NAME\n");
                     script.push_str(&Self::generate_hook_execution("before_sequence", hook));
                 }
             }
@@ -872,12 +875,15 @@ impl TestExecutor {
             for step in &sequence.steps {
                 script.push_str(&format!("# Step {}: {}\n", step.step, step.description));
 
-                // Execute before_step hook with STEP_NUMBER and STEP_DESC
+                // Execute before_step hook with TEST_STEP_NUMBER and TEST_STEP_DESCRIPTION
                 if let Some(ref hooks) = test_case.hooks {
                     if let Some(ref hook) = hooks.before_step {
-                        script.push_str(&format!("STEP_NUMBER={}\n", step.step));
-                        script.push_str(&format!("STEP_DESC={}\n", bash_escape(&step.description)));
-                        script.push_str("export STEP_NUMBER STEP_DESC\n");
+                        script.push_str(&format!("TEST_STEP_NUMBER={}\n", step.step));
+                        script.push_str(&format!(
+                            "TEST_STEP_DESCRIPTION={}\n",
+                            bash_escape(&step.description)
+                        ));
+                        script.push_str("export TEST_STEP_NUMBER TEST_STEP_DESCRIPTION\n");
                         script.push_str(&Self::generate_hook_execution("before_step", hook));
                     }
                 }
@@ -1007,6 +1013,10 @@ impl TestExecutor {
                     // Execute after_step hook for manual step
                     if let Some(ref hooks) = test_case.hooks {
                         if let Some(ref hook) = hooks.after_step {
+                            // Set step context variables for after_step hook (manual steps don't have real exit code/output)
+                            script.push_str("STEP_EXIT_CODE=0\n");
+                            script.push_str("COMMAND_OUTPUT=\"\"\n");
+                            script.push_str("export STEP_EXIT_CODE COMMAND_OUTPUT\n");
                             script.push_str(&Self::generate_hook_execution("after_step", hook));
                         }
                     }
@@ -1269,6 +1279,9 @@ impl TestExecutor {
                 // Execute after_step hook for automated step
                 if let Some(ref hooks) = test_case.hooks {
                     if let Some(ref hook) = hooks.after_step {
+                        // Set step context variables for after_step hook
+                        script.push_str("STEP_EXIT_CODE=$EXIT_CODE\n");
+                        script.push_str("export STEP_EXIT_CODE COMMAND_OUTPUT\n");
                         script.push_str(&Self::generate_hook_execution("after_step", hook));
                     }
                 }

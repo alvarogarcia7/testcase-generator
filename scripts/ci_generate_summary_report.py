@@ -9,11 +9,11 @@ import json
 from pathlib import Path
 
 
-def load_json_file(filepath: str) -> dict:
+def load_json_file(filepath: str) -> dict | None:
     """Safely load a JSON file."""
     try:
         if Path(filepath).exists():
-            with open(filepath, 'r') as f:
+            with open(filepath, 'r', encoding='utf-8') as f:
                 return json.load(f)
     except Exception:
         pass
