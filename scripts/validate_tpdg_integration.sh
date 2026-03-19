@@ -139,6 +139,8 @@ FAILED_COUNT=0
 # Step 1: Build required binaries
 # ============================================================================
 
+source .venv/bin/activate
+
 section "Step 1: Build Required Binaries"
 
 if [[ $SKIP_BUILD -eq 0 ]]; then

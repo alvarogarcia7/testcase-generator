@@ -338,8 +338,8 @@ impl TestExecutor {
             }
             JsonEscapingMethod::ShellFallback => {
                 // Use sed/awk fallback directly
-                script.push_str("# Shell fallback: escape backslashes, quotes, tabs, carriage returns, and convert newlines to \\n\n");
-                script.push_str("OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g; s/\\t/\\\\t/g; s/\\r/\\\\r/g' | awk '{printf \"%s%s\", (NR>1?\"\\\\n\":\"\"), $0}')\n");
+                script.push_str("# Shell fallback: escape backslashes, quotes, tabs, and convert newlines to \\n\n");
+                script.push_str("OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g; s/\\t/\\\\t/g' | awk '{printf \"%s%s\", (NR>1?\"\\\\n\":\"\"), $0}')\n");
             }
             JsonEscapingMethod::Auto => {
                 // Try json-escape binary first, fallback to sed/awk
@@ -356,8 +356,8 @@ impl TestExecutor {
                     bin_path
                 ));
                 script.push_str("else\n");
-                script.push_str("    # Shell fallback: escape backslashes, quotes, tabs, carriage returns, and convert newlines to \\n\n");
-                script.push_str("    OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g; s/\\t/\\\\t/g; s/\\r/\\\\r/g' | awk '{printf \"%s%s\", (NR>1?\"\\\\n\":\"\"), $0}')\n");
+                script.push_str("    # Shell fallback: escape backslashes, quotes, tabs, and convert newlines to \\n\n");
+                script.push_str("    OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g; s/\\t/\\\\t/g' | awk '{printf \"%s%s\", (NR>1?\"\\\\n\":\"\"), $0}')\n");
                 script.push_str("fi\n");
             }
         }
