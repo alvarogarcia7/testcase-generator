@@ -58,7 +58,7 @@ See the [Hooks](#hooks) section for detailed documentation and examples.
 - **Generate Docs All**: make generate-docs-all (generate documentation reports for all test scenarios using test-plan-documentation-generator)
 - **Generate Docs Coverage**: make generate-docs-coverage (run documentation generation with tarpaulin coverage analysis)
 - **Test Container Compatibility**: make test-container-compat (verify container YAML compatibility with test-plan-doc-gen)
-- **Acceptance Tests**: make acceptance-test (run full acceptance test suite with validation, generation, execution, verification, and documentation)
+- **Acceptance Tests**: make acceptance-test (run full acceptance test suite with 7 stages: validation, generation, execution, verification, container validation, per-test documentation, and consolidated documentation)
 - **Acceptance Suite E2E Tests**: make test-e2e-acceptance (run E2E integration tests for the acceptance suite orchestrator)
 - **Install LOC**: make install-loc (install tokei/loc lines of code counter)
 - **LOC Statistics**: make loc (compute lines of code statistics for Rust, Python, Shell, and documentation)
@@ -816,14 +816,15 @@ This target executes the full acceptance test suite, which includes:
 
 ### Acceptance Test Stages
 
-The acceptance test suite runs six stages:
+The acceptance test suite runs seven stages:
 
 1. **YAML Validation** - Validates all test case YAMLs against schema
 2. **Script Generation** - Generates executable bash scripts from test cases
 3. **Test Execution** - Executes all automated tests (skips manual tests by default)
 4. **Verification** - Runs verifier on execution logs to generate container YAMLs
 5. **Container Validation** - Validates container YAMLs against schema
-6. **Documentation** - Generates AsciiDoc and Markdown documentation using TPDG
+6. **Per-Test Documentation** - Generates individual AsciiDoc and Markdown documentation for each test using TPDG
+7. **Consolidated Documentation** - Generates unified AsciiDoc and Markdown documentation combining all test results using TPDG
 
 ### Manual Test Suite Execution
 
@@ -844,6 +845,7 @@ For advanced usage, run the acceptance suite script directly:
 ./test-acceptance/run_acceptance_suite.sh --skip-execution
 ./test-acceptance/run_acceptance_suite.sh --skip-verification
 ./test-acceptance/run_acceptance_suite.sh --skip-documentation
+./test-acceptance/run_acceptance_suite.sh --skip-consolidated-docs
 ```
 
 ### CI/CD Integration
@@ -862,10 +864,10 @@ The `acceptance-test` target is included in the `pre-commit` checks to ensure al
 The acceptance suite E2E tests validate that the `run_acceptance_suite.sh` orchestrator works correctly by running it on a subset of test cases and verifying all stages complete successfully.
 
 **Test Coverage**:
-- Validates all 6 stages complete successfully
-- Checks expected files are created at each stage (scripts, logs, containers, documentation)
+- Validates all 7 stages complete successfully
+- Checks expected files are created at each stage (scripts, logs, containers, per-test documentation, consolidated documentation)
 - Validates final report is generated with correct statistics
-- Tests all `--skip-*` flags work correctly (generation, execution, verification, documentation)
+- Tests all `--skip-*` flags work correctly (generation, execution, verification, documentation, consolidated-docs)
 - Ensures `--verbose` flag increases logging detail
 - Verifies error handling for missing dependencies (TPDG not available)
 - Tests timeout handling for long-running scripts
