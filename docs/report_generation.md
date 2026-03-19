@@ -2,229 +2,85 @@
 
 ## Overview
 
-The Test Case Manager includes a comprehensive report generation system that converts test execution logs into professional documentation reports. The system uses **test-plan-documentation-generator** (tpdg), a Rust-based tool that generates reports in multiple formats (AsciiDoc, Markdown, HTML) from test case YAML files and verification results.
-
-**Migration from Python to Rust**: The legacy Python-based PDF generation has been completely removed in favor of test-plan-documentation-generator, which provides better performance, maintainability, and native integration with the Rust test framework.
-
-## Quick Reference
-
-**Install Dependencies:**
-```bash
-cargo install test-plan-documentation-generator
-pip3 install pyyaml
-```
-
-**Generate Reports:**
-```bash
-make generate-docs          # Verifier scenarios only
-make generate-docs-all      # All test cases
-```
-
-**Convert to HTML/PDF:**
-```bash
-# HTML (requires asciidoctor)
-asciidoctor reports/documentation/reports/test_results_report.adoc
-
-# PDF (requires asciidoctor-pdf)
-asciidoctor-pdf reports/documentation/reports/test_results_report.adoc
-```
-
-**Output Formats:**
-- AsciiDoc (.adoc) - Primary format from tpdg
-- Markdown (.md) - Primary format from tpdg
-- HTML - Converted from AsciiDoc/Markdown
-- PDF - Converted from AsciiDoc
+The Test Case Manager includes a comprehensive report generation system that converts test execution logs into professional documentation reports. The system integrates with `test-plan-doc-gen`, an external Rust-based tool that generates reports in multiple formats (AsciiDoc, Markdown, PDF) from test case YAML files and verification results.
 
 ## Table of Contents
 
-1. [Installation](#installation)
-2. [Dependencies](#dependencies)
-3. [Directory Structure](#directory-structure)
-4. [Running Report Generation](#running-report-generation)
-5. [Report Output Formats and Locations](#report-output-formats-and-locations)
-6. [Schema Compatibility](#schema-compatibility)
+1. [Installation and Building test-plan-doc-gen](#installation-and-building-test-plan-doc-gen)
+2. [Directory Structure](#directory-structure)
+3. [Running Report Generation](#running-report-generation)
+4. [Report Output Formats and Locations](#report-output-formats-and-locations)
+5. [Verifier Configuration](#verifier-configuration)
+6. [Workflow Examples](#workflow-examples)
 7. [Customizing Templates](#customizing-templates)
 8. [Troubleshooting](#troubleshooting)
 
 ---
 
-## Installation
+## Installation and Building test-plan-doc-gen
 
-### Method 1: Install from crates.io (Recommended)
+### Prerequisites
 
-The simplest way to install test-plan-documentation-generator is via cargo:
+- Rust toolchain (1.70.0 or later)
+- Cargo package manager
+- Git
+
+### Installation Steps
+
+#### 1. Clone the test-plan-doc-gen Repository
+
+The `test-plan-doc-gen` tool should be cloned as a sibling directory to the Test Case Manager project:
 
 ```bash
-# Install globally from crates.io
-cargo install test-plan-documentation-generator
+# Navigate to the parent directory
+cd /path/to/parent-directory
 
-# Verify installation
-which test-plan-documentation-generator
-test-plan-documentation-generator --version
+# Clone test-plan-doc-gen (replace with actual repository URL)
+git clone <test-plan-doc-gen-repo-url> test-plan-doc-gen
+
+# Verify directory structure
+ls -la
+# Expected output:
+#   testcase-manager/
+#   test-plan-doc-gen/
 ```
 
-After installation, the binary will be available in your PATH (typically `~/.cargo/bin/test-plan-documentation-generator`).
-
-### Method 2: Build from Source
-
-If you need to build from source or use a development version:
+#### 2. Build test-plan-doc-gen
 
 ```bash
-# Clone the repository
-git clone <test-plan-documentation-generator-repo-url>
-cd test-plan-documentation-generator
+# Navigate to test-plan-doc-gen directory
+cd test-plan-doc-gen
 
 # Build release binary
 cargo build --release
 
-# Install to cargo bin directory
+# Verify binary was created
+ls -la target/release/test-plan-doc-gen
+```
+
+The binary will be located at: `test-plan-doc-gen/target/release/test-plan-doc-gen`
+
+#### 3. Alternative: Install to System PATH
+
+```bash
+# Install test-plan-doc-gen globally
+cd test-plan-doc-gen
 cargo install --path .
 
-# Or use the binary directly
-./target/release/test-plan-documentation-generator --version
+# Verify installation
+which test-plan-doc-gen
+test-plan-doc-gen --version
 ```
 
-### Method 3: Custom Binary Path
+### Automated Building
 
-If you prefer not to install globally, you can specify a custom binary path:
+The report generation scripts automatically build `test-plan-doc-gen` if the binary is not found:
 
 ```bash
-# Set environment variable
-export TEST_PLAN_DOC_GEN=/path/to/test-plan-documentation-generator
-
-# Or use with report generation scripts
-./scripts/generate_documentation_reports.sh \
-  --test-plan-doc-gen /path/to/test-plan-documentation-generator
+# The script will check for and build test-plan-doc-gen automatically
+cd testcase-manager
+./scripts/generate_documentation_reports.sh
 ```
-
-### Verification
-
-Verify that test-plan-documentation-generator is correctly installed:
-
-```bash
-# Check version
-test-plan-documentation-generator --version
-
-# Display help
-test-plan-documentation-generator --help
-
-# Test basic functionality
-test-plan-documentation-generator \
-  --test-case testcases/example.yml \
-  --output /tmp/test_report.md \
-  --format markdown
-```
-
----
-
-## Dependencies
-
-### Required Dependencies
-
-#### 1. test-plan-documentation-generator (tpdg)
-
-**Installation:**
-```bash
-cargo install test-plan-documentation-generator
-```
-
-**Purpose:** Primary report generation tool (Rust-based)
-
-**Formats:** AsciiDoc, Markdown
-
-#### 2. Python 3 with PyYAML
-
-**Installation:**
-```bash
-# Ubuntu/Debian
-sudo apt-get install python3 python3-pip
-pip3 install pyyaml
-
-# macOS
-brew install python3
-pip3 install pyyaml
-
-# Or use virtual environment (recommended)
-python3 -m venv venv
-source venv/bin/activate
-pip install pyyaml
-```
-
-**Purpose:** Used by `convert_verification_to_result_yaml.py` script for JSON to YAML conversion
-
-**Note:** This is the only remaining Python dependency. The legacy reportlab dependency has been removed.
-
-### Optional Dependencies (for HTML/PDF conversion)
-
-#### 3. asciidoctor (for HTML conversion)
-
-**Installation:**
-```bash
-# Ubuntu/Debian
-sudo apt-get install asciidoctor
-
-# macOS
-brew install asciidoctor
-gem install asciidoctor
-
-# Or via RubyGems
-gem install asciidoctor
-```
-
-**Purpose:** Convert AsciiDoc reports to HTML
-
-**Usage:**
-```bash
-asciidoctor reports/documentation/reports/test_results_report.adoc
-```
-
-#### 4. asciidoctor-pdf (for PDF conversion)
-
-**Installation:**
-```bash
-# Via RubyGems
-gem install asciidoctor-pdf
-
-# Or with bundler
-bundle add asciidoctor-pdf
-```
-
-**Purpose:** Convert AsciiDoc reports to PDF
-
-**Usage:**
-```bash
-asciidoctor-pdf reports/documentation/reports/test_results_report.adoc
-```
-
-#### 5. pandoc (for Markdown to HTML conversion)
-
-**Installation:**
-```bash
-# Ubuntu/Debian
-sudo apt-get install pandoc
-
-# macOS
-brew install pandoc
-```
-
-**Purpose:** Convert Markdown test plans to HTML
-
-**Usage:**
-```bash
-pandoc reports/documentation/reports/TC_001_test_plan.md \
-  -o TC_001_test_plan.html \
-  --standalone
-```
-
-### Dependency Summary
-
-| Dependency | Required | Purpose | Installation |
-|------------|----------|---------|--------------|
-| test-plan-documentation-generator | Yes | Report generation | `cargo install test-plan-documentation-generator` |
-| Python 3 + PyYAML | Yes | JSON to YAML conversion | `pip3 install pyyaml` |
-| asciidoctor | No | AsciiDoc to HTML | `gem install asciidoctor` |
-| asciidoctor-pdf | No | AsciiDoc to PDF | `gem install asciidoctor-pdf` |
-| pandoc | No | Markdown to HTML | `brew install pandoc` or `apt-get install pandoc` |
 
 ---
 
@@ -308,28 +164,17 @@ Default output directory for all generated reports. Organized into subdirectorie
 
 ## Running Report Generation
 
-### Quick Start
+### Using the Makefile (Recommended)
 
 The simplest way to generate reports is using the Makefile targets:
 
 ```bash
-# Generate documentation reports for verifier_scenarios only
+# Generate documentation reports for verifier_scenarios
 make generate-docs
 
 # Generate documentation reports for all testcases
 make generate-docs-all
 ```
-
-**What these commands do:**
-1. Run the `verifier` tool on execution logs
-2. Convert verification JSON to result YAML files
-3. Create a combined results container YAML
-4. Generate AsciiDoc test results report using test-plan-documentation-generator
-5. Generate Markdown test plan reports using test-plan-documentation-generator
-
-**Output location:** `reports/documentation/`
-
-**Note:** HTML and PDF generation requires additional conversion steps (see [Converting to HTML/PDF](#converting-and-viewing-htmlpdf))
 
 ### Manual Execution
 
@@ -377,131 +222,316 @@ This script performs all steps:
 - `--container-template` - Path to container template YAML (default: `testcases/expected_output_reports/container_data.yml`)
 - `--help` - Show help message
 
+---
+
+## Verifier Configuration
+
+The verifier binary provides comprehensive configuration options for generating reports with rich metadata. Reports can be configured using either a YAML configuration file, individual CLI flags, or a combination of both.
+
+### Basic Verifier Options
+
+- `--log PATH, -l PATH` - Single-file mode: path to log file
+- `--test-case ID, -c ID` - Single-file mode: test case ID to verify against
+- `--folder PATH, -f PATH` - Folder discovery mode: path to folder containing log files
+- `--format FORMAT, -F FORMAT` - Output format (yaml or json, default: yaml)
+- `--output PATH, -o PATH` - Output file path (optional, defaults to stdout)
+- `--test-case-dir DIR, -d DIR` - Path to test case storage directory (default: testcases)
+- `--log-level LEVEL` - Set log level (trace, debug, info, warn, error, default: info)
+- `--verbose, -v` - Enable verbose output (equivalent to --log-level=debug)
+
+### Report Metadata Configuration
+
+The verifier generates container-format output with enhanced metadata and statistics. Metadata can be configured using two methods:
+
+#### Method 1: Configuration File (Recommended)
+
+Use a YAML configuration file to define report metadata:
+
+**Configuration File Format:**
+```yaml
+# verifier-config.yaml
+title: "Test Execution Results"
+project: "Test Case Manager - Verification Results"
+environment: "Staging"
+platform: "Linux x86_64"
+executor: "Jenkins v3.2"
+```
+
+**Usage:**
+```bash
+verifier -f logs/ --format yaml --output report.yaml --config verifier-config.yaml
+```
+
+**Configuration File Option:**
+- `--config PATH` - Path to YAML configuration file (optional)
+
+#### Method 2: Individual CLI Flags
+
+Configure metadata using individual command-line flags:
+
+**Metadata CLI Flags:**
+- `--title TEXT` - Report title (default: "Test Execution Results")
+- `--project TEXT` - Project name (default: "Test Case Manager - Verification Results")
+- `--environment TEXT` - Environment information (e.g., "Staging", "Production")
+- `--platform TEXT` - Platform information (e.g., "Linux x86_64")
+- `--executor TEXT` - Executor information (e.g., "CI Pipeline v2.1")
+
+**Usage:**
+```bash
+./target/release/verifier \
+  --folder testcases/verifier_scenarios \
+  --format yaml \
+  --output reports/container.yaml \
+  --test-case-dir testcases \
+  --title "Q1 2024 Test Results" \
+  --project "Product XYZ Certification" \
+  --environment "Production Test Lab" \
+  --platform "Test Platform v2.0" \
+  --executor "CI/CD Pipeline"
+```
+
+#### Method 3: Hybrid Approach (Configuration File + CLI Overrides)
+
+Combine both methods by using a configuration file as the base and overriding specific values with CLI flags:
+
+**Configuration File (`base-config.yaml`):**
+```yaml
+title: "Default Test Report"
+project: "My Project"
+environment: "Development"
+platform: "Test Platform v1.0"
+executor: "Manual Execution"
+```
+
+**Usage with Overrides:**
+```bash
+verifier -f logs/ --format yaml --output report.yaml \
+  --config base-config.yaml \
+  --title "Nightly Test Run" \
+  --environment "Production"
+```
+
+This will use:
+- `title`: "Nightly Test Run" (CLI override)
+- `project`: "My Project" (from config file)
+- `environment`: "Production" (CLI override)
+- `platform`: "Test Platform v1.0" (from config file)
+- `executor`: "Manual Execution" (from config file)
+
+### Configuration Precedence Rules
+
+When both a configuration file and CLI flags are provided, the following precedence rules apply:
+
+1. **CLI flags have highest priority** - Any metadata specified via CLI flag will override the corresponding value in the configuration file
+2. **Configuration file values are used as defaults** - Values from the config file are used when no corresponding CLI flag is provided
+3. **Built-in defaults are used as fallback** - If a value is not specified in either the config file or CLI, built-in defaults are used (for `--title` and `--project` only)
+
+**Precedence Order (highest to lowest):**
+1. CLI flags (`--title`, `--project`, `--environment`, `--platform`, `--executor`)
+2. Configuration file values
+3. Built-in defaults (`--title`: "Test Execution Results", `--project`: "Test Case Manager - Verification Results")
+
+**Note:** The `--environment`, `--platform`, and `--executor` fields are optional and will only be included in the output if specified via either method.
+
+### Configuration Examples
+
+#### Using Defaults Only
+
+```bash
+# Uses built-in defaults for title and project
+verifier -f logs/ --format yaml --output report.yaml
+```
+
+**Output includes:**
+- `title`: "Test Execution Results"
+- `project`: "Test Case Manager - Verification Results"
+
+#### Using Configuration File Only
+
+```bash
+verifier -f logs/ --format yaml --output report.yaml --config verifier-config.yaml
+```
+
+**Configuration File (`verifier-config.yaml`):**
+```yaml
+title: "GSMA SGP.22 Compliance Testing Results"
+project: "eUICC Test Suite v3.2"
+environment: "GSMA Certification Lab - Environment 2"
+platform: "eUICC Test Platform v3.2.1"
+executor: "Automated Test Framework v2.5.0"
+```
+
+**Output includes all values from config file.**
+
+#### Using CLI Flags Only
+
+```bash
+verifier -f logs/ --format yaml --output report.yaml \
+  --title "Build 123 Results" \
+  --project "CI/CD Testing" \
+  --environment "Staging" \
+  --platform "Linux x86_64" \
+  --executor "GitLab Runner"
+```
+
+**Output includes all values from CLI flags.**
+
+#### Using Hybrid Approach
+
+```bash
+verifier -f logs/ --format yaml --output report.yaml \
+  --config base-config.yaml \
+  --title "Custom Title" \
+  --environment "Production"
+```
+
+**Configuration File (`base-config.yaml`):**
+```yaml
+title: "Default Title"
+project: "My Project"
+environment: "Development"
+platform: "Test Platform"
+executor: "Manual"
+```
+
+**Output includes:**
+- `title`: "Custom Title" (CLI override)
+- `project`: "My Project" (from config)
+- `environment`: "Production" (CLI override)
+- `platform`: "Test Platform" (from config)
+- `executor`: "Manual" (from config)
+
 ### Step-by-Step Manual Generation
 
 You can also run each step individually:
 
 #### Step 1: Run Verifier on Execution Logs
 
+**Using Configuration File:**
 ```bash
 # Build verifier if needed
 cargo build --release --bin verifier
 
-# Run verifier in folder mode
+# Run verifier with config file
 ./target/release/verifier \
   --folder testcases/verifier_scenarios \
-  --format json \
-  --output reports/documentation/verification/batch_verification.json \
-  --test-case-dir testcases
+  --format yaml \
+  --output reports/documentation/results/container_report.yaml \
+  --test-case-dir testcases \
+  --config verifier-config.yaml
 ```
 
-#### Step 2: Convert Verification JSON to Result YAML
-
+**Using CLI Flags:**
 ```bash
-# Convert verification JSON to individual result YAML files
-python3 scripts/convert_verification_to_result_yaml.py \
-  reports/documentation/verification/batch_verification.json \
-  -o reports/documentation/results \
-  -v
+# Run verifier with CLI flags
+./target/release/verifier \
+  --folder testcases/verifier_scenarios \
+  --format yaml \
+  --output reports/documentation/results/container_report.yaml \
+  --test-case-dir testcases \
+  --title "Test Execution Results Report" \
+  --project "Test Case Manager - Verification Results" \
+  --environment "Test Environment" \
+  --platform "Test Case Manager" \
+  --executor "Automated Test Framework"
 ```
 
-This creates individual `*_result.yaml` files with the structure:
-
+**Output Structure (YAML):**
 ```yaml
-type: result
-test_case_id: "TC_001"
-description: "Test description"
-sequences:
-  - sequence_id: 1
-    name: "Test Sequence"
-    step_results:
-      - Pass:
-          step: 1
-          description: "Step description"
-total_steps: 1
-passed_steps: 1
-failed_steps: 0
-not_executed_steps: 0
-overall_pass: true
-```
-
-#### Step 3: Create Results Container
-
-```bash
-# Create container YAML with all results
-cat > reports/documentation/results/results_container.yaml << 'EOF'
 title: 'Test Execution Results Report'
 project: 'Test Case Manager - Verification Results'
-test_date: '2024-01-01T00:00:00Z'
+test_date: '2024-01-15T14:30:00Z'
 test_results:
-EOF
-
-# Append result files (without 'type: result' line)
-for result_file in reports/documentation/results/*_result.yaml; do
-    sed '/^type: result/d' "$result_file" | sed 's/^/  /' >> reports/documentation/results/results_container.yaml
-done
-
-# Add metadata
-cat >> reports/documentation/results/results_container.yaml << 'EOF'
+  - test_case_id: "TC_001"
+    description: "Example test case"
+    requirement: "REQ_001"
+    item: 1
+    tc: 1
+    sequences:
+      - sequence_id: 1
+        name: "Test Sequence"
+        step_results:
+          - Pass:
+              step: 1
+              description: "Execute command"
+        all_steps_passed: true
+    total_steps: 1
+    passed_steps: 1
+    failed_steps: 0
+    not_executed_steps: 0
+    overall_pass: true
 metadata:
   environment: 'Test Environment'
   platform: 'Test Case Manager'
   executor: 'Automated Test Framework'
-  execution_duration: 0.0
-  total_test_cases: 5
-  passed_test_cases: 3
-  failed_test_cases: 2
-EOF
+  execution_duration: 45.7
+  total_test_cases: 1
+  passed_test_cases: 1
+  failed_test_cases: 0
 ```
 
-#### Step 4: Generate Test Results Report (AsciiDoc)
+**Output Structure (JSON):**
+```json
+{
+  "title": "Test Execution Results Report",
+  "project": "Test Case Manager - Verification Results",
+  "test_date": "2024-01-15T14:30:00Z",
+  "test_results": [
+    {
+      "test_case_id": "TC_001",
+      "description": "Example test case",
+      "requirement": "REQ_001",
+      "item": 1,
+      "tc": 1,
+      "sequences": [...],
+      "total_steps": 1,
+      "passed_steps": 1,
+      "failed_steps": 0,
+      "not_executed_steps": 0,
+      "overall_pass": true
+    }
+  ],
+  "metadata": {
+    "environment": "Test Environment",
+    "platform": "Test Case Manager",
+    "executor": "Automated Test Framework",
+    "execution_duration": 45.7,
+    "total_test_cases": 1,
+    "passed_test_cases": 1,
+    "failed_test_cases": 0
+  }
+}
+```
+
+#### Step 2: Generate Test Results Report (AsciiDoc)
 
 ```bash
-# Generate AsciiDoc report using test-plan-documentation-generator
-test-plan-documentation-generator \
-  --container reports/documentation/results/results_container.yaml \
-  --output reports/documentation/reports/test_results_report.adoc \
-  --format asciidoc
+# Set binary path
+export TEST_PLAN_DOC_GEN=../test-plan-doc-gen/target/release/test-plan-doc-gen
 
-# Or use environment variable for custom binary path
-export TEST_PLAN_DOC_GEN=/path/to/test-plan-documentation-generator
+# Generate AsciiDoc report
 $TEST_PLAN_DOC_GEN \
-  --container reports/documentation/results/results_container.yaml \
+  --container reports/documentation/results/container_report.yaml \
   --output reports/documentation/reports/test_results_report.adoc \
   --format asciidoc
 ```
 
-#### Step 5: Generate Test Plan Reports (Markdown)
+#### Step 3: Generate Test Plan Reports (Markdown)
 
 ```bash
 # Generate test plan for each test case
 for test_case in testcases/*.yml; do
     basename=$(basename "$test_case" .yml)
-    test-plan-documentation-generator \
+    $TEST_PLAN_DOC_GEN \
       --test-case "$test_case" \
       --output "reports/documentation/reports/${basename}_test_plan.md" \
       --format markdown
 done
 ```
 
-#### Step 6 (Optional): Convert to HTML or PDF
-
-```bash
-# Convert AsciiDoc to HTML (requires asciidoctor)
-asciidoctor reports/documentation/reports/test_results_report.adoc
-
-# Convert AsciiDoc to PDF (requires asciidoctor-pdf)
-asciidoctor-pdf reports/documentation/reports/test_results_report.adoc
-
-# Convert Markdown to HTML (requires pandoc)
-for md in reports/documentation/reports/*_test_plan.md; do
-    pandoc "$md" -o "${md%.md}.html" --standalone
-done
-```
-
 ### Using the Report Generator Library
 
-For custom scripts, use the `report_generator.sh` library which provides helper functions for working with test-plan-documentation-generator:
+For custom scripts, use the `report_generator.sh` library:
 
 ```bash
 #!/usr/bin/env bash
@@ -511,12 +541,12 @@ set -e
 source scripts/lib/logger.sh
 source scripts/lib/report_generator.sh
 
-# Check if test-plan-documentation-generator is available
-if check_test_plan_doc_gen_available; then
-    log_info "test-plan-documentation-generator is available"
-else
-    log_error "test-plan-documentation-generator not found"
-    exit 1
+# Build test-plan-doc-gen
+build_test_plan_doc_gen "../test-plan-doc-gen"
+
+# Check if available
+if check_test_plan_doc_gen_available "../test-plan-doc-gen"; then
+    log_info "test-plan-doc-gen is available"
 fi
 
 # Generate report
@@ -529,115 +559,19 @@ invoke_test_plan_doc_gen \
 validate_report_output "reports" "example_report.md"
 ```
 
-**Available Library Functions:**
-
-- `check_test_plan_doc_gen_available` - Check if binary is available in PATH
-- `invoke_test_plan_doc_gen` - Call test-plan-documentation-generator with arguments
-- `validate_report_output` - Verify report file was created successfully
-
-**Setting Custom Binary Path:**
-
-```bash
-# Use environment variable
-export TEST_PLAN_DOC_GEN=/path/to/test-plan-documentation-generator
-
-# Or specify in script
-TEST_PLAN_DOC_GEN=/custom/path invoke_test_plan_doc_gen \
-    --test-case "testcases/example.yml" \
-    --output "reports/example_report.md" \
-    --format markdown
-```
-
 ---
 
 ## Report Output Formats and Locations
 
 ### Output Formats
 
-The report generation system produces multiple output formats through a multi-stage pipeline:
+The report generation system produces multiple output formats:
 
-**Primary Formats (Generated by test-plan-documentation-generator):**
-- AsciiDoc (.adoc) - Structured documentation format
-- Markdown (.md) - GitHub-compatible documentation
+#### 1. Container YAML/JSON
 
-**Secondary Formats (Converted from AsciiDoc):**
-- HTML - Converted using asciidoctor (requires asciidoctor installation)
-- PDF - Converted using asciidoctor-pdf (requires asciidoctor-pdf installation)
+**Location:** User-specified via `--output` flag
 
-#### 1. Verification JSON
-**Location:** `reports/documentation/verification/batch_verification.json`
-
-Raw verification results from the verifier tool in JSON format. Contains detailed pass/fail information for all test cases.
-
-**Generated by:** `verifier` binary
-
-**Schema:** `schemas/verification-output.schema.json`
-
-**Example Structure:**
-```json
-{
-  "test_cases": [
-    {
-      "test_case_id": "TC_001",
-      "description": "Example test case",
-      "sequences": [...],
-      "total_steps": 5,
-      "passed_steps": 4,
-      "failed_steps": 1,
-      "not_executed_steps": 0,
-      "overall_pass": false
-    }
-  ],
-  "total_test_cases": 10,
-  "passed_test_cases": 8,
-  "failed_test_cases": 2
-}
-```
-
-#### 2. Result YAML Files
-**Location:** `reports/documentation/results/*_result.yaml`
-
-Individual YAML files for each test case, containing verification results in a structured format.
-
-**Required Field:** `type: result`
-
-**Example:**
-```yaml
-type: result
-test_case_id: "TC_001"
-description: "Example test case"
-requirement: "REQ_100"
-item: 1
-tc: 1
-sequences:
-  - sequence_id: 1
-    name: "Test Sequence"
-    step_results:
-      - Pass:
-          step: 1
-          description: "Execute command"
-      - Fail:
-          step: 2
-          description: "Check output"
-          expected:
-            success: true
-            result: "0"
-            output: "Success"
-          actual_result: "1"
-          actual_output: "Error"
-          reason: "Exit code mismatch"
-    all_steps_passed: false
-total_steps: 2
-passed_steps: 1
-failed_steps: 1
-not_executed_steps: 0
-overall_pass: false
-```
-
-#### 3. Results Container YAML
-**Location:** `reports/documentation/results/results_container.yaml`
-
-Combined container file with all test results, metadata, and execution statistics. Used as input for AsciiDoc report generation.
+Container-format output with comprehensive test results, metadata, and execution statistics. This is the primary output format used for documentation generation.
 
 **Structure:**
 ```yaml
@@ -645,7 +579,7 @@ title: 'Test Execution Results Report'
 project: 'Project Name'
 test_date: '2024-01-01T00:00:00Z'
 test_results:
-  - # Test case 1 (without 'type: result')
+  - # Test case 1
     test_case_id: "TC_001"
     # ... result data ...
   - # Test case 2
@@ -661,100 +595,31 @@ metadata:
   failed_test_cases: 2
 ```
 
-#### 4. AsciiDoc Report
+#### 2. AsciiDoc Report
+
 **Location:** `reports/documentation/reports/test_results_report.adoc`
 
-Professional test results report in AsciiDoc format, generated from the results container by test-plan-documentation-generator.
+Professional test results report in AsciiDoc format, generated from the container YAML/JSON. Can be converted to HTML or PDF using AsciiDoctor.
 
-**Generated by:** `test-plan-documentation-generator` with `--format asciidoc`
-
-**Conversion to HTML:**
+**Example Usage:**
 ```bash
-# Convert AsciiDoc to HTML (requires asciidoctor)
+# Convert AsciiDoc to HTML
 asciidoctor reports/documentation/reports/test_results_report.adoc
 
-# Output: reports/documentation/reports/test_results_report.html
-```
-
-**Conversion to PDF:**
-```bash
-# Convert AsciiDoc to PDF (requires asciidoctor-pdf)
+# Convert AsciiDoc to PDF
 asciidoctor-pdf reports/documentation/reports/test_results_report.adoc
-
-# Output: reports/documentation/reports/test_results_report.pdf
 ```
 
-**Custom Styling:**
-```bash
-# HTML with custom CSS
-asciidoctor \
-  -a stylesheet=custom-style.css \
-  reports/documentation/reports/test_results_report.adoc
+#### 3. Markdown Test Plans
 
-# PDF with custom theme
-asciidoctor-pdf \
-  -a pdf-theme=custom-theme.yml \
-  reports/documentation/reports/test_results_report.adoc
-```
-
-#### 5. Markdown Test Plans
 **Location:** `reports/documentation/reports/*_test_plan.md`
 
-Individual test plan documentation in Markdown format, generated from test case YAML files by test-plan-documentation-generator.
-
-**Generated by:** `test-plan-documentation-generator` with `--format markdown`
-
-**Content includes:**
+Individual test plan documentation in Markdown format, generated from test case YAML files. Each file documents:
 - Test case metadata (requirement, item, tc, id)
 - Description and prerequisites
 - Initial conditions (general and device-specific)
 - Test sequences and steps
 - Expected results and verification expressions
-
-**Conversion to HTML:**
-```bash
-# Convert Markdown to HTML (requires pandoc)
-pandoc reports/documentation/reports/TC_001_test_plan.md \
-  -o TC_001_test_plan.html \
-  --standalone
-
-# With custom CSS
-pandoc reports/documentation/reports/TC_001_test_plan.md \
-  -o TC_001_test_plan.html \
-  --css=custom-style.css \
-  --standalone
-```
-
-#### 6. HTML Reports (Converted)
-**Location:** `reports/documentation/reports/*.html`
-
-HTML versions of AsciiDoc and Markdown reports, generated via asciidoctor or pandoc.
-
-**Not directly generated by test-plan-documentation-generator** - these are created by converting AsciiDoc or Markdown outputs.
-
-**Generation methods:**
-```bash
-# From AsciiDoc (test results report)
-asciidoctor reports/documentation/reports/test_results_report.adoc
-
-# From Markdown (test plans)
-pandoc reports/documentation/reports/TC_001_test_plan.md \
-  -o TC_001_test_plan.html \
-  --standalone
-```
-
-#### 7. PDF Reports (Converted)
-**Location:** `reports/documentation/reports/*.pdf`
-
-PDF versions of AsciiDoc reports, generated via asciidoctor-pdf.
-
-**Not directly generated by test-plan-documentation-generator** - these are created by converting AsciiDoc outputs.
-
-**Generation method:**
-```bash
-# From AsciiDoc (test results report)
-asciidoctor-pdf reports/documentation/reports/test_results_report.adoc
-```
 
 ### Default Output Structure
 
@@ -762,13 +627,8 @@ After running `make generate-docs`, the output structure is:
 
 ```
 reports/documentation/
-├── verification/
-│   └── batch_verification.json          # Raw verification JSON
 ├── results/
-│   ├── TC_001_result.yaml              # Individual result files
-│   ├── TC_002_result.yaml
-│   ├── ...
-│   └── results_container.yaml          # Combined container
+│   └── container_report.yaml           # Container with all results
 └── reports/
     ├── test_results_report.adoc        # AsciiDoc results report
     ├── TC_001_test_plan.md             # Markdown test plans
@@ -778,242 +638,409 @@ reports/documentation/
 
 ### Accessing Reports
 
-#### Viewing Raw Reports
-
 ```bash
-# View verification JSON (with pretty printing)
-cat reports/documentation/verification/batch_verification.json | jq .
-
-# View result YAML
-cat reports/documentation/results/TC_001_result.yaml
-
 # View container YAML
-cat reports/documentation/results/results_container.yaml
+cat reports/documentation/results/container_report.yaml
 
-# View AsciiDoc report (raw source)
+# View AsciiDoc report (raw)
 less reports/documentation/reports/test_results_report.adoc
 
-# View Markdown test plan (raw source)
+# View Markdown test plan
 cat reports/documentation/reports/TC_001_test_plan.md
-```
 
-#### Converting and Viewing HTML/PDF
-
-```bash
-# Convert AsciiDoc to HTML
+# Convert AsciiDoc to HTML and open in browser
 asciidoctor reports/documentation/reports/test_results_report.adoc
-
-# Open HTML in browser (macOS)
 open reports/documentation/reports/test_results_report.html
-
-# Open HTML in browser (Linux)
-xdg-open reports/documentation/reports/test_results_report.html
-
-# Convert AsciiDoc to PDF
-asciidoctor-pdf reports/documentation/reports/test_results_report.adoc
-
-# Open PDF in viewer
-open reports/documentation/reports/test_results_report.pdf
-
-# Convert Markdown to HTML
-pandoc reports/documentation/reports/TC_001_test_plan.md \
-  -o TC_001_test_plan.html \
-  --standalone
-
-# Open Markdown HTML in browser
-open TC_001_test_plan.html
-```
-
-#### Batch Conversion
-
-```bash
-# Convert all AsciiDoc reports to HTML
-for adoc in reports/documentation/reports/*.adoc; do
-    asciidoctor "$adoc"
-done
-
-# Convert all Markdown test plans to HTML
-for md in reports/documentation/reports/*_test_plan.md; do
-    basename=$(basename "$md" .md)
-    pandoc "$md" -o "reports/documentation/reports/${basename}.html" --standalone
-done
-
-# Convert all AsciiDoc reports to PDF
-for adoc in reports/documentation/reports/*.adoc; do
-    asciidoctor-pdf "$adoc"
-done
 ```
 
 ---
 
-## Schema Compatibility
+## Workflow Examples
 
-### Overview
+This section provides complete workflow examples showing different approaches for common reporting scenarios.
 
-The test-plan-documentation-generator requires YAML files to conform to specific schemas for proper report generation. The Test Case Manager includes schema validation tools to ensure compatibility.
+### Workflow 1: Basic Test Verification with Configuration File
 
-### Container YAML Schema
+Use a configuration file to define consistent report metadata across test runs.
 
-Container YAML files must include:
-
-**Required Fields:**
-- `title`: Report title
-- `project`: Project name
-- `test_date`: Test execution date (ISO 8601 format)
-- `test_results`: Array of test result objects
-- `metadata`: Execution metadata
-
-**Example:**
-```yaml
-title: 'Test Execution Results Report'
-project: 'My Project'
-test_date: '2024-01-15T10:00:00Z'
-test_results:
-  - test_case_id: "TC_001"
-    description: "Test description"
-    # ... test results ...
-metadata:
-  environment: 'Test Environment'
-  platform: 'Test Platform'
-  executor: 'Test Framework'
-  execution_duration: 123.45
-  total_test_cases: 10
-  passed_test_cases: 8
-  failed_test_cases: 2
-```
-
-### Test Result Schema
-
-Individual test result YAML files must include:
-
-**Required Fields:**
-- `type`: Must be set to `"result"`
-- `test_case_id`: Unique test case identifier
-- `description`: Test case description
-- `sequences`: Array of test sequence results
-- `total_steps`: Total number of steps
-- `passed_steps`: Number of passed steps
-- `failed_steps`: Number of failed steps
-- `not_executed_steps`: Number of not executed steps
-- `overall_pass`: Boolean indicating overall pass/fail
-
-**Example:**
-```yaml
-type: result
-test_case_id: "TC_001"
-description: "Example test case"
-sequences:
-  - sequence_id: 1
-    name: "Test Sequence"
-    step_results:
-      - Pass:
-          step: 1
-          description: "Step description"
-total_steps: 1
-passed_steps: 1
-failed_steps: 0
-not_executed_steps: 0
-overall_pass: true
-```
-
-### Validating Compatibility
-
-The project includes a compatibility checker tool:
-
+**Step 1: Create Configuration File**
 ```bash
-# Build the compatibility checker
-cargo build --bin test-plan-documentation-generator-compat
-
-# Validate a single container file
-cargo run --bin test-plan-documentation-generator-compat -- \
-  validate container.yaml
-
-# Batch validate multiple files
-cargo run --bin test-plan-documentation-generator-compat -- \
-  batch testcases/expected_output_reports/*.yml
-
-# Test against verifier scenarios
-cargo run --bin test-plan-documentation-generator-compat -- \
-  test-verifier-scenarios
-
-# Generate compatibility report
-cargo run --bin test-plan-documentation-generator-compat -- \
-  report --output compatibility_report.md
+cat > verifier-config.yaml << 'EOF'
+title: "Test Execution Results"
+project: "Test Case Manager"
+environment: "Test Environment"
+platform: "Test Platform v1.0"
+executor: "Automated Test Framework"
+EOF
 ```
 
-### Common Schema Issues
-
-#### 1. Missing Required Fields
-
-**Problem:**
-```yaml
-# Missing 'type' field
-test_case_id: "TC_001"
-description: "Test"
-```
-
-**Solution:**
-```yaml
-type: result  # Add required 'type' field
-test_case_id: "TC_001"
-description: "Test"
-```
-
-#### 2. Invalid Date Format
-
-**Problem:**
-```yaml
-test_date: '2024-01-15'  # Missing time component
-```
-
-**Solution:**
-```yaml
-test_date: '2024-01-15T10:00:00Z'  # Use ISO 8601 format
-```
-
-#### 3. Missing Metadata Fields
-
-**Problem:**
-```yaml
-metadata:
-  environment: 'Test'
-  # Missing other required fields
-```
-
-**Solution:**
-```yaml
-metadata:
-  environment: 'Test Environment'
-  platform: 'Test Platform'
-  executor: 'Test Framework'
-  execution_duration: 0.0
-  total_test_cases: 0
-  passed_test_cases: 0
-  failed_test_cases: 0
-```
-
-### Schema Documentation
-
-For detailed schema specifications, see:
-- Test Case Schema: `schemas/test-case.schema.json`
-- Execution Log Schema: `schemas/execution-log.schema.json`
-- Verification Result Schema: `schemas/verification-result.schema.json`
-- Verification Output Schema: `schemas/verification-output.schema.json`
-- Schema Documentation: `schemas/README.md`
-
-### Compatibility Testing
-
-Run the compatibility test suite:
-
+**Step 2: Run Verifier with Configuration**
 ```bash
-# Test container YAML compatibility
-make test-container-compat
+# Build verifier
+cargo build --release --bin verifier
 
-# This runs:
-# 1. Schema validation
-# 2. Compatibility checks with test-plan-doc-gen
-# 3. Verifier scenario testing
+# Run verification with config file
+./target/release/verifier \
+  --folder testcases/verifier_scenarios \
+  --format yaml \
+  --output reports/container_report.yaml \
+  --test-case-dir testcases \
+  --config verifier-config.yaml
 ```
+
+**Step 3: Generate Documentation (Optional)**
+```bash
+# Generate AsciiDoc report with test-plan-doc-gen
+../test-plan-doc-gen/target/release/test-plan-doc-gen \
+  --container reports/container_report.yaml \
+  --output reports/test_results.adoc \
+  --format asciidoc
+
+# Convert to PDF
+asciidoctor-pdf reports/test_results.adoc
+```
+
+---
+
+### Workflow 2: Direct CLI Flags Approach
+
+Use CLI flags for one-off reports or when metadata varies between runs.
+
+**Step 1: Run Verifier with CLI Flags**
+```bash
+# Build verifier
+cargo build --release --bin verifier
+
+# Run verification with CLI flags
+./target/release/verifier \
+  --folder testcases/verifier_scenarios \
+  --format yaml \
+  --output reports/container_report.yaml \
+  --test-case-dir testcases \
+  --title "Test Execution Results Report" \
+  --project "Test Case Manager - Q1 2024" \
+  --environment "Test Environment" \
+  --platform "Test Case Manager v1.0" \
+  --executor "Automated Test Framework"
+```
+
+**Step 2: Generate Documentation (Optional)**
+```bash
+# Generate AsciiDoc report
+../test-plan-doc-gen/target/release/test-plan-doc-gen \
+  --container reports/container_report.yaml \
+  --output reports/test_results.adoc \
+  --format asciidoc
+
+# Convert to HTML
+asciidoctor reports/test_results.adoc
+```
+
+---
+
+### Workflow 3: CI/CD Pipeline Integration with Base Configuration
+
+Use a base configuration file with CI/CD-specific overrides for automated testing.
+
+**Base Configuration File (`ci-config.yaml`):**
+```yaml
+project: "Product XYZ - CI/CD Testing"
+platform: "CI/CD Test Platform v2.0"
+executor: "GitLab Runner"
+```
+
+**GitLab CI Example:**
+```yaml
+# .gitlab-ci.yml
+test_verification:
+  stage: test
+  script:
+    # Build verifier
+    - cargo build --release --bin verifier
+    
+    # Run tests and generate execution logs
+    # (your test execution commands here)
+    
+    # Run verifier with base config + environment-specific overrides
+    - |
+      ./target/release/verifier \
+        --folder testcases/verifier_scenarios \
+        --format json \
+        --output "reports/test_results_build_${CI_PIPELINE_ID}.json" \
+        --test-case-dir testcases \
+        --config ci-config.yaml \
+        --title "Build ${CI_PIPELINE_ID} Test Results" \
+        --environment "${CI_ENVIRONMENT_NAME}"
+  
+  artifacts:
+    reports:
+      junit: reports/junit.xml
+    paths:
+      - reports/
+    when: always
+  
+  allow_failure: false
+```
+
+**GitHub Actions Example:**
+```yaml
+# .github/workflows/test.yml
+name: Test Verification
+on: [push, pull_request]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      
+      - name: Build verifier
+        run: cargo build --release --bin verifier
+      
+      - name: Run tests
+        run: |
+          # Your test execution commands
+          
+      - name: Verify results
+        run: |
+          ./target/release/verifier \
+            --folder testcases/verifier_scenarios \
+            --format yaml \
+            --output reports/results.yaml \
+            --test-case-dir testcases \
+            --config ci-config.yaml \
+            --title "Build ${{ github.run_number }} Results" \
+            --environment "${{ github.ref_name }}" \
+            --executor "GitHub Actions - Run ${{ github.run_id }}"
+      
+      - name: Upload results
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results
+          path: reports/
+```
+
+---
+
+### Workflow 4: Single Test Case Verification
+
+Verify a single test case execution log with minimal configuration.
+
+**Using Configuration File:**
+```bash
+# Run verifier on single log file with config
+./target/release/verifier \
+  --log testcases/logs/TC_001_execution_log.json \
+  --test-case "TC_001" \
+  --format yaml \
+  --output reports/TC_001_result.yaml \
+  --test-case-dir testcases \
+  --config verifier-config.yaml
+
+# View results
+cat reports/TC_001_result.yaml
+```
+
+**Using CLI Flags:**
+```bash
+# Run verifier on single log file with CLI flags
+./target/release/verifier \
+  --log testcases/logs/TC_001_execution_log.json \
+  --test-case "TC_001" \
+  --format yaml \
+  --output reports/TC_001_result.yaml \
+  --test-case-dir testcases \
+  --title "TC_001 Verification Result" \
+  --project "Test Case Validation"
+
+# View results
+cat reports/TC_001_result.yaml
+```
+
+---
+
+### Workflow 5: Multi-Environment Testing
+
+Test across multiple environments with environment-specific configurations.
+
+**Base Configuration (`base-config.yaml`):**
+```yaml
+project: "Multi-Environment Validation"
+platform: "Test Platform v2.0"
+executor: "Automated Testing Framework"
+```
+
+**Multi-Environment Script:**
+```bash
+#!/bin/bash
+# multi_env_test.sh - Run tests across environments
+
+ENVIRONMENTS=("dev" "staging" "production")
+
+for ENV in "${ENVIRONMENTS[@]}"; do
+  echo "Testing environment: $ENV"
+  
+  # Run tests (your test execution commands)
+  # ./run_tests.sh --environment $ENV
+  
+  # Run verifier with base config + environment-specific overrides
+  ./target/release/verifier \
+    --folder "testcases/verifier_scenarios/$ENV" \
+    --format yaml \
+    --output "reports/${ENV}_test_results.yaml" \
+    --test-case-dir testcases \
+    --config base-config.yaml \
+    --title "$(date +%Y-%m-%d) $ENV Environment Test Results" \
+    --environment "$ENV Environment"
+  
+  # Check exit status
+  if [ $? -eq 0 ]; then
+    echo "✓ $ENV: All tests passed"
+  else
+    echo "✗ $ENV: Some tests failed"
+  fi
+done
+
+# Generate consolidated report
+echo "Consolidating results..."
+cat reports/*_test_results.yaml > reports/consolidated_results.yaml
+```
+
+---
+
+### Workflow 6: Compliance Documentation
+
+Generate audit-ready compliance documentation with comprehensive metadata.
+
+**Compliance Configuration (`compliance-config.yaml`):**
+```yaml
+project: "Product XYZ - Compliance Testing"
+platform: "Certified Test Platform"
+executor: "Compliance Testing Framework"
+```
+
+**Compliance Report Script:**
+```bash
+#!/bin/bash
+# compliance_report.sh - Generate compliance documentation
+
+# Set compliance metadata
+COMPLIANCE_STANDARD="ISO 9001:2015"
+AUDIT_DATE=$(date +%Y-%m-%d)
+AUDITOR="Quality Assurance Team"
+VERSION="v1.2.3"
+
+# Run comprehensive verification with hybrid configuration
+./target/release/verifier \
+  --folder testcases/compliance_scenarios \
+  --format yaml \
+  --output "reports/compliance_report_${AUDIT_DATE}.yaml" \
+  --test-case-dir testcases/compliance \
+  --config compliance-config.yaml \
+  --title "Compliance Verification Report - ${COMPLIANCE_STANDARD}" \
+  --environment "Compliance Test Lab - Controlled Environment" \
+  --executor "Compliance Testing Framework - Auditor: ${AUDITOR}"
+
+# Generate professional documentation
+if [ -f "../test-plan-doc-gen/target/release/test-plan-doc-gen" ]; then
+  # Generate AsciiDoc
+  ../test-plan-doc-gen/target/release/test-plan-doc-gen \
+    --container "reports/compliance_report_${AUDIT_DATE}.yaml" \
+    --output "reports/compliance_report_${AUDIT_DATE}.adoc" \
+    --format asciidoc
+  
+  # Convert to PDF for archival
+  asciidoctor-pdf "reports/compliance_report_${AUDIT_DATE}.adoc"
+  
+  echo "✓ Compliance report generated: reports/compliance_report_${AUDIT_DATE}.pdf"
+else
+  echo "⚠ test-plan-doc-gen not available, skipping PDF generation"
+fi
+
+# Create audit package
+mkdir -p "audit_packages/audit_${AUDIT_DATE}"
+cp "reports/compliance_report_${AUDIT_DATE}."* "audit_packages/audit_${AUDIT_DATE}/"
+cp -r testcases/compliance_scenarios "audit_packages/audit_${AUDIT_DATE}/logs"
+
+echo "✓ Audit package created: audit_packages/audit_${AUDIT_DATE}/"
+```
+
+---
+
+### Workflow 7: Batch Verification with Custom Metadata
+
+Generate comprehensive reports with detailed execution metadata using hybrid configuration.
+
+**Base Configuration (`batch-config.yaml`):**
+```yaml
+platform: "Test Platform v2.5.0 - Ubuntu 22.04 LTS"
+executor: "Test Automation Framework v1.2.3"
+```
+
+**Batch Verification Script:**
+```bash
+#!/bin/bash
+# batch_verification.sh
+
+# Ensure all execution logs are in place
+ls -la testcases/verifier_scenarios/*.json
+
+# Run verifier with base config + runtime overrides
+./target/release/verifier \
+  --folder testcases/verifier_scenarios \
+  --format yaml \
+  --output reports/batch_verification_$(date +%Y%m%d_%H%M%S).yaml \
+  --test-case-dir testcases \
+  --config batch-config.yaml \
+  --title "$(date +%Y-%m-%d) Test Execution Results" \
+  --project "Product XYZ - Sprint 23 Testing" \
+  --environment "QA Environment - Server cluster-qa-01"
+
+# Archive results
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+mkdir -p archives/$TIMESTAMP
+cp reports/batch_verification_*.yaml archives/$TIMESTAMP/
+cp -r testcases/verifier_scenarios/*.json archives/$TIMESTAMP/logs/
+
+# Generate summary report
+echo "Test Execution Summary - $TIMESTAMP" > archives/$TIMESTAMP/SUMMARY.txt
+echo "======================================" >> archives/$TIMESTAMP/SUMMARY.txt
+echo "" >> archives/$TIMESTAMP/SUMMARY.txt
+grep -E "total_test_cases|passed_test_cases|failed_test_cases" \
+  reports/batch_verification_*.yaml >> archives/$TIMESTAMP/SUMMARY.txt
+```
+
+---
+
+### Configuration Method Comparison
+
+| Approach | Best For | Benefits | Use When |
+|----------|----------|----------|----------|
+| **Config File Only** | Consistent environments | Reusable, version-controlled | Same metadata across runs |
+| **CLI Flags Only** | One-off reports | Flexible, no file management | Metadata varies each time |
+| **Hybrid (Config + CLI)** | CI/CD pipelines | Base consistency + runtime flexibility | Some values fixed, others dynamic |
+
+### Key Takeaways
+
+1. **Configuration File Method**: Best for maintaining consistency across test runs
+   - Define standard metadata in version-controlled config file
+   - Easy to maintain and update
+   - Good for team collaboration
+
+2. **CLI Flags Method**: Best for dynamic or one-off scenarios
+   - No file management required
+   - Full control over all metadata
+   - Good for quick reports
+
+3. **Hybrid Approach**: Best for CI/CD and automated testing
+   - Combine base configuration with runtime overrides
+   - Maximum flexibility with consistency
+   - Good for complex workflows
 
 ---
 
@@ -1203,54 +1230,35 @@ pandoc \
 
 ### Common Issues and Solutions
 
-#### 1. Missing test-plan-documentation-generator Binary
+#### 1. Missing test-plan-doc-gen Binary
 
 **Problem:**
 ```
-✗ Error: test-plan-documentation-generator binary not found
-Command not found: test-plan-documentation-generator
+✗ Error: test-plan-doc-gen binary not found
+Please build it first using build_test_plan_doc_gen()
 ```
 
 **Solutions:**
 
-**Option A: Install from crates.io (Recommended)**
+**Option A: Clone and Build test-plan-doc-gen**
 ```bash
-# Install globally
-cargo install test-plan-documentation-generator
-
-# Verify installation
-which test-plan-documentation-generator
-test-plan-documentation-generator --version
-```
-
-**Option B: Build from Source**
-```bash
-# Clone repository
-git clone <test-plan-documentation-generator-repo-url>
-cd test-plan-documentation-generator
-
-# Build and install
+cd /path/to/parent-directory
+git clone <test-plan-doc-gen-repo-url> test-plan-doc-gen
+cd test-plan-doc-gen
 cargo build --release
-cargo install --path .
 ```
 
-**Option C: Specify Custom Path**
+**Option B: Specify Custom Path**
 ```bash
-# Set environment variable
-export TEST_PLAN_DOC_GEN=/path/to/test-plan-documentation-generator
-
-# Or use with script
 ./scripts/generate_documentation_reports.sh \
-  --test-plan-doc-gen /path/to/test-plan-documentation-generator
+  --test-plan-doc-gen /custom/path/to/test-plan-doc-gen
 ```
 
-**Option D: Use PATH Binary**
+**Option C: Install to System PATH**
 ```bash
-# Add to PATH if installed elsewhere
-export PATH=$PATH:/path/to/binary/directory
-
-# Verify
-which test-plan-documentation-generator
+cd test-plan-doc-gen
+cargo install --path .
+export TEST_PLAN_DOC_GEN=test-plan-doc-gen
 ```
 
 #### 2. Schema Validation Failures
@@ -1331,39 +1339,39 @@ cargo build --release --bin verifier
   --verbose
 ```
 
-#### 4. Python Conversion Script Errors
+#### 4. Configuration File Issues
 
 **Problem:**
 ```
-✗ Error: PyYAML is required
-Install with: pip3 install pyyaml
+✗ Error: Failed to parse configuration file
+Invalid YAML syntax
 ```
 
-**Solution:**
+**Solutions:**
+
+**Validate YAML Syntax:**
 ```bash
-# Install PyYAML
-pip3 install pyyaml
+# Check YAML syntax using Python
+python3 -c "import yaml; yaml.safe_load(open('verifier-config.yaml'))"
 
-# Or use a virtual environment
-python3 -m venv venv
-source venv/bin/activate
-pip install pyyaml
+# Or use a YAML linter
+yamllint verifier-config.yaml
 ```
 
-**Problem:**
-```
-✗ Error: Failed to parse JSON
-```
+**Common Configuration Issues:**
+- Incorrect indentation
+- Missing quotes around values with special characters
+- Invalid YAML structure
 
-**Solution:**
-```bash
-# Validate JSON format
-cat reports/documentation/verification/batch_verification.json | jq .
+**Fix Example:**
+```yaml
+# Before (invalid)
+title: Test Report: Q1 2024  # Colon needs quotes
+environment: Dev & Test      # Ampersand needs quotes
 
-# Check for common issues
-# - Trailing commas
-# - Missing quotes around keys
-# - Invalid escape sequences
+# After (valid)
+title: "Test Report: Q1 2024"
+environment: "Dev & Test"
 ```
 
 #### 5. Empty or Missing Reports
@@ -1375,26 +1383,19 @@ No result files found to include in container
 
 **Solutions:**
 
-**Check Conversion Output:**
+**Check Verifier Output:**
 ```bash
-# Re-run conversion with verbose output
-python3 scripts/convert_verification_to_result_yaml.py \
-  reports/documentation/verification/batch_verification.json \
-  -o reports/documentation/results \
-  -v
-```
-
-**Verify Result Files:**
-```bash
-# Check if result files were created
+# Verify container file was generated
 ls -la reports/documentation/results/
-find reports/documentation/results -name "*_result.yaml"
+
+# Check container contents
+cat reports/documentation/results/container_report.yaml
 ```
 
-**Check Container Structure:**
+**Verify Output Structure:**
 ```bash
-# Verify container has test_results
-grep -A 5 "test_results:" reports/documentation/results/results_container.yaml
+# Check that container has test_results
+grep -A 5 "test_results:" reports/documentation/results/container_report.yaml
 ```
 
 #### 6. Cargo Build Failures
@@ -1476,6 +1477,69 @@ find testcases -name "*.yml" -o -name "*.yaml"
 rename 's/\.yaml$/.yml/' testcases/*.yaml
 ```
 
+#### 9. Metadata Not Appearing in Output
+
+**Problem:**
+```
+Missing metadata in container output
+Container YAML doesn't include environment/platform/executor
+```
+
+**Solutions:**
+
+**Verify Configuration:**
+```bash
+# Check that config file includes the fields
+cat verifier-config.yaml
+
+# Or verify CLI flags are being passed correctly
+./target/release/verifier \
+  --folder testcases/verifier_scenarios \
+  --format yaml \
+  --output reports/container.yaml \
+  --test-case-dir testcases \
+  --environment "Test Environment" \
+  --platform "Test Platform" \
+  --executor "Test Executor"
+```
+
+**Check Optional Fields:**
+```bash
+# Remember: environment, platform, executor are optional
+# They only appear if specified via config file or CLI
+
+# Verify values in output
+grep -E "^(environment|platform|executor):" reports/container.yaml
+```
+
+#### 10. CLI Override Not Working
+
+**Problem:**
+```
+CLI flag values not overriding config file values
+```
+
+**Solution:**
+
+**Verify Flag Order:**
+```bash
+# Ensure flags come after --config
+# Correct:
+verifier --config base.yaml --title "New Title" -f logs/ -o report.yaml
+
+# Incorrect (may not work):
+verifier --title "New Title" --config base.yaml -f logs/ -o report.yaml
+```
+
+**Check Flag Syntax:**
+```bash
+# Ensure values with spaces are quoted
+verifier --config base.yaml --title "My Report Title" -f logs/ -o report.yaml
+
+# Verify the override worked
+grep "^title:" report.yaml
+```
+
 ### Debug Mode
 
 Enable verbose logging for detailed troubleshooting:
@@ -1487,8 +1551,13 @@ export VERBOSE=1
 # Run report generation
 ./scripts/generate_documentation_reports.sh
 
-# Or use verbose flag in custom scripts
-VERBOSE=1 ./scripts/generate_documentation_reports.sh
+# Or use verbose flag in verifier
+./target/release/verifier \
+  --folder testcases/verifier_scenarios \
+  --format yaml \
+  --output reports/container.yaml \
+  --test-case-dir testcases \
+  --verbose
 ```
 
 ### Logging and Output
@@ -1506,297 +1575,156 @@ The report generation system uses the centralized logging library (`scripts/lib/
 ./scripts/generate_documentation_reports.sh 2>&1 | grep "✗"
 ```
 
-#### 9. HTML/PDF Conversion Issues
-
-**Problem:**
-```
-asciidoctor: command not found
-```
-
-**Solution:**
-```bash
-# Install asciidoctor (for HTML)
-gem install asciidoctor
-
-# Or via package manager
-# Ubuntu/Debian
-sudo apt-get install asciidoctor
-
-# macOS
-brew install asciidoctor
-```
-
-**Problem:**
-```
-asciidoctor-pdf: command not found
-```
-
-**Solution:**
-```bash
-# Install asciidoctor-pdf (for PDF)
-gem install asciidoctor-pdf
-
-# Verify installation
-which asciidoctor-pdf
-asciidoctor-pdf --version
-```
-
-#### 10. Report Generation Workflow Issues
-
-**Problem:**
-```
-No valid container YAML found
-```
-
-**Solution:**
-```bash
-# Check container file structure
-cat testcases/expected_output_reports/container_data.yml
-
-# Validate against schema
-cargo run --bin test-plan-documentation-generator-compat -- \
-  validate testcases/expected_output_reports/container_data.yml
-
-# Use custom container template
-./scripts/generate_documentation_reports.sh \
-  --container-template /path/to/custom_container.yml
-```
-
-**Problem:**
-```
-test-plan-documentation-generator failed with exit code 1
-```
-
-**Solution:**
-```bash
-# Enable verbose mode for detailed error messages
-export VERBOSE=1
-./scripts/generate_documentation_reports.sh
-
-# Run test-plan-documentation-generator directly to see errors
-test-plan-documentation-generator \
-  --container container.yaml \
-  --output report.adoc \
-  --format asciidoc \
-  --verbose
-
-# Check input file format
-cat container.yaml | less
-
-# Validate YAML syntax
-yamllint container.yaml
-```
-
-### Workflow Troubleshooting
-
-#### Complete Report Generation Pipeline
-
-If reports are not generating correctly, follow this diagnostic workflow:
-
-**Step 1: Verify Dependencies**
-```bash
-# Check all required tools are installed
-which test-plan-documentation-generator
-which python3
-python3 -c "import yaml; print('PyYAML installed')"
-
-# Optional tools
-which asciidoctor
-which pandoc
-```
-
-**Step 2: Verify Input Files**
-```bash
-# Check execution logs exist
-ls -la testcases/verifier_scenarios/*.log
-
-# Check test case files exist
-ls -la testcases/*.yml
-
-# Validate test case schema
-cargo run --bin validate-yaml -- \
-  --schema schemas/test-case.schema.json \
-  testcases/TC_001.yml
-```
-
-**Step 3: Run Pipeline Step by Step**
-```bash
-# 1. Run verifier
-cargo run --bin verifier -- \
-  --folder testcases/verifier_scenarios \
-  --format json \
-  --output /tmp/verification.json \
-  --test-case-dir testcases \
-  --verbose
-
-# 2. Convert to YAML
-python3 scripts/convert_verification_to_result_yaml.py \
-  /tmp/verification.json \
-  -o /tmp/results \
-  -v
-
-# 3. Create container (manual check)
-cat /tmp/results/*_result.yaml
-
-# 4. Generate report
-test-plan-documentation-generator \
-  --container /tmp/container.yaml \
-  --output /tmp/report.adoc \
-  --format asciidoc
-```
-
-**Step 4: Check Output**
-```bash
-# Verify report files were created
-ls -la reports/documentation/reports/
-
-# Check file content
-head -20 reports/documentation/reports/test_results_report.adoc
-
-# Validate AsciiDoc syntax
-asciidoctor --safe -o /dev/null \
-  reports/documentation/reports/test_results_report.adoc
-```
-
 ### Getting Help
 
 If you encounter issues not covered here:
 
-1. **Check Installation:** Verify test-plan-documentation-generator is properly installed
-   ```bash
-   test-plan-documentation-generator --version
-   test-plan-documentation-generator --help
-   ```
-
-2. **Check Schema Documentation:** `schemas/README.md`
-
-3. **Review Script Help:** 
-   ```bash
-   ./scripts/generate_documentation_reports.sh --help
-   ```
-
-4. **Examine Examples:** `testcases/expected_output_reports/`
-
-5. **Run Tests:** 
-   ```bash
-   make test
-   make test-container-compat
-   ```
-
-6. **Check AGENTS.md:** For build, lint, and test commands
-
-7. **Enable Verbose Mode:**
-   ```bash
-   export VERBOSE=1
-   ./scripts/generate_documentation_reports.sh
-   ```
-
-8. **Review Compatibility Documentation:** `docs/TEST_PLAN_DOC_GEN_COMPATIBILITY.md`
+1. **Check Schema Documentation:** `schemas/README.md`
+2. **Review Script Help:** `./scripts/generate_documentation_reports.sh --help`
+3. **Examine Examples:** `testcases/expected_output_reports/`
+4. **Run Tests:** `make test` to ensure system is working correctly
+5. **Check AGENTS.md:** For build, lint, and test commands
 
 ### Known Limitations
 
-1. **test-plan-documentation-generator Dependency:** The report generation system requires `test-plan-documentation-generator` to be installed via cargo or available in PATH.
+1. **test-plan-doc-gen Dependency:** The report generation system requires `test-plan-doc-gen` to be available as a sibling directory or in PATH for professional report generation (optional).
 
-2. **Container Template Structure:** The container template must follow the exact YAML structure expected by test-plan-documentation-generator. See schema documentation for details.
+2. **Container Template Structure:** The container template must follow the exact YAML structure expected by `test-plan-doc-gen`.
 
-3. **Result YAML Format:** Result YAML files must include the `type: result` field to be valid. This field is automatically added by the conversion script.
+3. **Execution Log Format:** Verifier expects execution logs in a specific format with TEST_SEQUENCE, STEP, EXIT_CODE, and TIMESTAMP markers.
 
-4. **Execution Log Format:** Verifier expects execution logs in a specific format with TEST_SEQUENCE, STEP, EXIT_CODE, and TIMESTAMP markers.
+4. **File Naming:** Result files are named `{test_case_id}_result.yaml`. Test case IDs must be valid filenames (no special characters like `/`, `\`, `:`, etc.).
 
-5. **File Naming:** Result files are named `{test_case_id}_result.yaml`. Test case IDs must be valid filenames (no special characters like `/`, `\`, `:`, etc.).
+5. **Metadata Field Limits:** While title, project, environment, platform, and executor fields accept arbitrary strings, extremely long values (>1000 characters) may cause rendering issues in some documentation tools.
 
-6. **HTML/PDF Dependencies:** Converting AsciiDoc to HTML or PDF requires asciidoctor or asciidoctor-pdf to be installed separately (via RubyGems).
+6. **Configuration File Format:** Configuration files must be valid YAML. The verifier does not support JSON configuration files.
 
-7. **Markdown to HTML:** Converting Markdown test plans to HTML requires pandoc to be installed separately.
+---
 
-8. **Python Dependency:** PyYAML is required for JSON to YAML conversion. This is the only remaining Python dependency after removal of reportlab.
+## Quick Reference
 
-### Migration from Python-based PDF Generation
+### Basic Verifier Commands
 
-If you were previously using Python-based PDF generation:
+**Minimal (Using Defaults):**
+```bash
+./target/release/verifier \
+  --folder testcases/verifier_scenarios \
+  --format yaml \
+  --output reports/container.yaml \
+  --test-case-dir testcases
+```
 
-1. **Removed Dependencies:**
-   - `reportlab` - No longer required
-   - `scripts/generate_verifier_reports.py` - Removed
+**With Configuration File:**
+```bash
+./target/release/verifier \
+  --folder testcases/verifier_scenarios \
+  --format yaml \
+  --output reports/container.yaml \
+  --test-case-dir testcases \
+  --config verifier-config.yaml
+```
 
-2. **New Dependencies:**
-   - `test-plan-documentation-generator` - Required (Rust-based)
-   - `asciidoctor` or `asciidoctor-pdf` - Optional (for HTML/PDF conversion)
+**With CLI Flags:**
+```bash
+./target/release/verifier \
+  --folder testcases/verifier_scenarios \
+  --format yaml \
+  --output reports/container.yaml \
+  --test-case-dir testcases \
+  --title "Report Title" \
+  --project "Project Name" \
+  --environment "Environment Info" \
+  --platform "Platform Info" \
+  --executor "Executor Info"
+```
 
-3. **Workflow Changes:**
-   - Reports are generated in AsciiDoc/Markdown format by default
-   - Use asciidoctor to convert to HTML/PDF if needed
-   - No Python code runs for report generation (only for JSON to YAML conversion)
+**Hybrid (Config + CLI Overrides):**
+```bash
+./target/release/verifier \
+  --folder testcases/verifier_scenarios \
+  --format yaml \
+  --output reports/container.yaml \
+  --test-case-dir testcases \
+  --config base-config.yaml \
+  --title "Custom Title" \
+  --environment "Production"
+```
 
-4. **Benefits:**
-   - Faster report generation
-   - Better maintainability
-   - Native Rust integration
-   - More output format options
-   - No Python packaging issues
+**Single File:**
+```bash
+./target/release/verifier \
+  --log testcases/logs/TC_001_execution_log.json \
+  --test-case "TC_001" \
+  --format yaml \
+  --output reports/TC_001_result.yaml \
+  --test-case-dir testcases \
+  --title "TC_001 Results" \
+  --project "Test Validation"
+```
+
+**JSON Output:**
+```bash
+./target/release/verifier \
+  --folder testcases/verifier_scenarios \
+  --format json \
+  --output reports/container.json \
+  --test-case-dir testcases \
+  --config verifier-config.yaml
+```
+
+### CLI Options Summary
+
+| Option | Short | Required | Default | Description |
+|--------|-------|----------|---------|-------------|
+| `--folder` | `-f` | Yes* | - | Path to folder with logs |
+| `--log` | `-l` | Yes* | - | Single log file path |
+| `--test-case` | `-c` | Yes** | - | Test case ID (single-file mode) |
+| `--format` | `-F` | No | yaml | Output format (yaml/json) |
+| `--output` | `-o` | No | stdout | Output file path |
+| `--test-case-dir` | `-d` | No | testcases | Test case directory |
+| `--config` | - | No | - | Path to YAML configuration file |
+| `--title` | - | No | "Test Execution Results" | Report title |
+| `--project` | - | No | "Test Case Manager - Verification Results" | Project name |
+| `--environment` | - | No | - | Environment info (optional) |
+| `--platform` | - | No | - | Platform info (optional) |
+| `--executor` | - | No | - | Executor info (optional) |
+| `--verbose` | `-v` | No | false | Enable verbose logging |
+
+\* Either `--folder` or `--log` is required  
+\** `--test-case` is required when using `--log`
+
+### Configuration Method Cheat Sheet
+
+| Need | Use Method | Example |
+|------|-----------|---------|
+| Consistent metadata | Config file only | `--config verifier-config.yaml` |
+| One-off report | CLI flags only | `--title "..." --project "..." --environment "..."` |
+| CI/CD with base config | Hybrid approach | `--config base.yaml --title "Build 123" --environment "staging"` |
+| Minimal setup | Defaults only | No config, no flags (uses built-in defaults) |
+
+### Precedence Rules
+
+1. **CLI flags** (highest priority)
+2. **Configuration file values**
+3. **Built-in defaults** (for title and project only)
 
 ---
 
 ## Additional Resources
 
-### Documentation
-
-- **Schema Documentation:** `schemas/README.md` - Detailed schema specifications
-- **Verifier Usage:** `docs/TEST_VERIFY_USAGE.md` - Test verification tool documentation
-- **Test Verification Workflow:** `docs/TEST_VERIFY_WORKFLOW.md` - Verification workflow guide
-- **Validation Quick Reference:** `docs/VALIDATE_YAML_QUICK_REF.md` - YAML validation guide
-- **Compatibility Documentation:** `docs/TEST_PLAN_DOC_GEN_COMPATIBILITY.md` - Container YAML compatibility
-- **GitLab CI Examples:** `docs/GITLAB_CI_EXAMPLES.md` - CI/CD integration examples
-- **AGENTS.md:** Build, lint, and test commands
-
-### Schema Files
-
-- **Test Case Schema:** `schemas/test-case.schema.json` - Test case YAML structure
-- **Execution Log Schema:** `schemas/execution-log.schema.json` - Execution log JSON structure
-- **Verification Result Schema:** `schemas/verification-result.schema.json` - Verification result structure
-- **Verification Output Schema:** `schemas/verification-output.schema.json` - Verifier output structure
-
-### Example Files
-
-- **Container Template:** `testcases/expected_output_reports/container_data.yml`
-- **Test Case Examples:** `testcases/expected_output_reports/sample_gsma_*.yml`
-- **Verifier Scenarios:** `testcases/verifier_scenarios/*.log`
-
-### External Tools
-
-- **test-plan-documentation-generator:** `cargo install test-plan-documentation-generator`
-- **asciidoctor:** `gem install asciidoctor` or `brew install asciidoctor`
-- **asciidoctor-pdf:** `gem install asciidoctor-pdf`
-- **pandoc:** `brew install pandoc` or `apt-get install pandoc`
+- **Schema Documentation:** `schemas/README.md`
+- **Verifier Usage:** `docs/TEST_VERIFY_USAGE.md`
+- **Test Verification Workflow:** `docs/TEST_VERIFY_WORKFLOW.md`
+- **Validation Quick Reference:** `docs/VALIDATE_YAML_QUICK_REF.md`
+- **GitLab CI Examples:** `docs/GITLAB_CI_EXAMPLES.md`
+- **Test Case Structure:** `schemas/test-case.schema.json`
 
 ## Related Makefile Targets
 
 ```bash
-# Building
-make build                     # Build all binaries including verifier
-
-# Report Generation
-make generate-docs             # Generate docs for verifier_scenarios
-make generate-docs-all         # Generate docs for all testcases
-
-# Validation and Testing
-make test                      # Run full test suite
-make test-container-compat     # Test container YAML compatibility
-make verify-scripts            # Verify shell script syntax
-
-# Linting
-make lint                      # Run linter on Rust code
+make build                  # Build all binaries including verifier
+make generate-docs          # Generate docs for verifier_scenarios
+make generate-docs-all      # Generate docs for all testcases
+make test                   # Run full test suite
+make verify-scripts         # Verify shell script syntax
 ```
-
-## Summary
-
-The test-plan-documentation-generator (tpdg) provides a comprehensive, high-performance solution for generating professional test documentation from YAML test cases and verification results. Key benefits include:
-
-✅ **Performance** - Rust-based implementation is significantly faster than Python  
-✅ **Maintainability** - Single codebase for all report generation  
-✅ **Multiple Formats** - AsciiDoc, Markdown, and conversion to HTML/PDF  
-✅ **Schema Validation** - Built-in compatibility checking  
-✅ **CI/CD Integration** - Easy integration with automated pipelines  
-✅ **No Python Dependencies** - Only PyYAML for conversion script  
-
-For questions or issues, refer to the [Troubleshooting](#troubleshooting) section or check the compatibility documentation at `docs/TEST_PLAN_DOC_GEN_COMPATIBILITY.md`.

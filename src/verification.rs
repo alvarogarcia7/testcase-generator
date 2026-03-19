@@ -2,13 +2,10 @@ use crate::models::{ActualResult, Expected, Step, TestCase, TestSequence};
 use crate::storage::TestCaseStorage;
 use anyhow::{Context, Result};
 use chrono::{DateTime, Local, Utc};
-use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event};
-use quick_xml::Writer;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
-use std::io::Cursor;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -32,7 +29,6 @@ pub struct StepVerificationResult {
 
 /// Result of verifying a single step (enum-based, for batch verification)
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(tag = "status", rename_all = "snake_case")]
 pub enum StepVerificationResultEnum {
     /// Step passed verification
     Pass {
@@ -324,226 +320,98 @@ impl Default for BatchVerificationReport {
     }
 }
 
-/// JUnit XML test suite representation
-#[derive(Debug, Clone)]
-pub struct JUnitTestSuite {
-    /// Test suite name
-    pub name: String,
+/// Metadata for container reports
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ContainerReportMetadata {
+    /// Optional environment information
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub environment: Option<String>,
 
-    /// Number of tests
-    pub tests: usize,
+    /// Optional platform information
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub platform: Option<String>,
 
-    /// Number of failures
-    pub failures: usize,
+    /// Optional executor information
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub executor: Option<String>,
 
-    /// Number of errors
-    pub errors: usize,
+    /// Execution duration in seconds
+    pub execution_duration: f64,
 
-    /// Number of skipped tests
-    pub skipped: usize,
+    /// Total number of test cases
+    pub total_test_cases: usize,
 
-    /// Execution time in seconds
-    pub time: f64,
+    /// Number of test cases that passed
+    pub passed_test_cases: usize,
 
-    /// Test cases
-    pub test_cases: Vec<JUnitTestCase>,
-
-    /// Timestamp
-    pub timestamp: DateTime<Utc>,
+    /// Number of test cases that failed
+    pub failed_test_cases: usize,
 }
 
-/// JUnit XML test case representation
+/// Configuration for generating container reports
 #[derive(Debug, Clone)]
-pub struct JUnitTestCase {
-    /// Test case name
-    pub name: String,
+pub struct ContainerReportConfig {
+    /// Report title
+    pub title: String,
 
-    /// Test class name
-    pub classname: String,
+    /// Project name
+    pub project: String,
 
-    /// Execution time in seconds
-    pub time: f64,
+    /// Optional environment information
+    pub environment: Option<String>,
 
-    /// Failure information
-    pub failure: Option<JUnitFailure>,
+    /// Optional platform information
+    pub platform: Option<String>,
 
-    /// Whether test was skipped
-    pub skipped: bool,
+    /// Optional executor information
+    pub executor: Option<String>,
 }
 
-/// JUnit XML failure information
-#[derive(Debug, Clone)]
-pub struct JUnitFailure {
-    /// Failure message
-    pub message: String,
+/// Container report for batch verification with enhanced metadata
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ContainerReport {
+    /// Report title
+    pub title: String,
 
-    /// Failure type
-    pub failure_type: String,
+    /// Project name
+    pub project: String,
 
-    /// Failure details
-    pub text: String,
+    /// Test execution date
+    pub test_date: DateTime<Utc>,
+
+    /// Test case results
+    pub test_results: Vec<TestCaseVerificationResult>,
+
+    /// Report metadata
+    pub metadata: ContainerReportMetadata,
 }
 
-impl JUnitTestSuite {
-    /// Generate JUnit XML format
-    pub fn to_xml(&self) -> Result<String> {
-        let mut writer = Writer::new_with_indent(Cursor::new(Vec::new()), b' ', 2);
-
-        // Write XML declaration
-        writer
-            .write_event(Event::Decl(BytesDecl::new("1.0", Some("UTF-8"), None)))
-            .context("Failed to write XML declaration")?;
-
-        // Write testsuite element
-        let mut testsuite = BytesStart::new("testsuite");
-        testsuite.push_attribute(("name", self.name.as_str()));
-        testsuite.push_attribute(("tests", self.tests.to_string().as_str()));
-        testsuite.push_attribute(("failures", self.failures.to_string().as_str()));
-        testsuite.push_attribute(("errors", self.errors.to_string().as_str()));
-        testsuite.push_attribute(("skipped", self.skipped.to_string().as_str()));
-        testsuite.push_attribute(("time", format!("{:.3}", self.time).as_str()));
-        testsuite.push_attribute((
-            "timestamp",
-            self.timestamp
-                .to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
-                .as_str(),
-        ));
-
-        writer
-            .write_event(Event::Start(testsuite))
-            .context("Failed to write testsuite start")?;
-
-        // Write test cases
-        for test_case in &self.test_cases {
-            let mut testcase = BytesStart::new("testcase");
-            testcase.push_attribute(("name", test_case.name.as_str()));
-            testcase.push_attribute(("classname", test_case.classname.as_str()));
-            testcase.push_attribute(("time", format!("{:.3}", test_case.time).as_str()));
-
-            if test_case.skipped {
-                writer
-                    .write_event(Event::Start(testcase))
-                    .context("Failed to write testcase start")?;
-                writer
-                    .write_event(Event::Empty(BytesStart::new("skipped")))
-                    .context("Failed to write skipped element")?;
-                writer
-                    .write_event(Event::End(BytesEnd::new("testcase")))
-                    .context("Failed to write testcase end")?;
-            } else if let Some(failure) = &test_case.failure {
-                writer
-                    .write_event(Event::Start(testcase))
-                    .context("Failed to write testcase start")?;
-
-                let mut failure_elem = BytesStart::new("failure");
-                failure_elem.push_attribute(("message", failure.message.as_str()));
-                failure_elem.push_attribute(("type", failure.failure_type.as_str()));
-
-                writer
-                    .write_event(Event::Start(failure_elem))
-                    .context("Failed to write failure start")?;
-                writer
-                    .write_event(Event::Text(BytesText::new(&failure.text)))
-                    .context("Failed to write failure text")?;
-                writer
-                    .write_event(Event::End(BytesEnd::new("failure")))
-                    .context("Failed to write failure end")?;
-
-                writer
-                    .write_event(Event::End(BytesEnd::new("testcase")))
-                    .context("Failed to write testcase end")?;
-            } else {
-                writer
-                    .write_event(Event::Empty(testcase))
-                    .context("Failed to write testcase")?;
-            }
+impl ContainerReport {
+    /// Create a new ContainerReport from a BatchVerificationReport
+    pub fn from_batch_report(
+        batch_report: BatchVerificationReport,
+        title: String,
+        project: String,
+        environment: Option<String>,
+        platform: Option<String>,
+        executor: Option<String>,
+        execution_duration: f64,
+    ) -> Self {
+        Self {
+            title,
+            project,
+            test_date: batch_report.generated_at,
+            test_results: batch_report.test_cases,
+            metadata: ContainerReportMetadata {
+                environment,
+                platform,
+                executor,
+                execution_duration,
+                total_test_cases: batch_report.total_test_cases,
+                passed_test_cases: batch_report.passed_test_cases,
+                failed_test_cases: batch_report.failed_test_cases,
+            },
         }
-
-        writer
-            .write_event(Event::End(BytesEnd::new("testsuite")))
-            .context("Failed to write testsuite end")?;
-
-        let result = writer.into_inner().into_inner();
-        String::from_utf8(result).context("Failed to convert XML to string")
-    }
-
-    /// Convert from batch verification report
-    pub fn from_batch_report(report: &BatchVerificationReport, suite_name: &str) -> Self {
-        let mut junit_suite = JUnitTestSuite {
-            name: suite_name.to_string(),
-            tests: 0,
-            failures: 0,
-            errors: 0,
-            skipped: 0,
-            time: 0.0,
-            test_cases: Vec::new(),
-            timestamp: report.generated_at,
-        };
-
-        for tc_result in &report.test_cases {
-            for seq_result in &tc_result.sequences {
-                for step_result in &seq_result.step_results {
-                    junit_suite.tests += 1;
-
-                    let name = format!(
-                        "{}.seq{}.step{}",
-                        tc_result.test_case_id,
-                        seq_result.sequence_id,
-                        step_result.step_number()
-                    );
-
-                    let classname = format!("{}.{}", tc_result.test_case_id, seq_result.name);
-
-                    let junit_tc = match step_result {
-                        StepVerificationResultEnum::Pass { description, .. } => JUnitTestCase {
-                            name: format!("{} - {}", name, description),
-                            classname,
-                            time: 0.0,
-                            failure: None,
-                            skipped: false,
-                        },
-                        StepVerificationResultEnum::Fail {
-                            description,
-                            expected,
-                            actual_result,
-                            actual_output,
-                            reason,
-                            ..
-                        } => {
-                            junit_suite.failures += 1;
-                            JUnitTestCase {
-                                name: format!("{} - {}", name, description),
-                                classname,
-                                time: 0.0,
-                                failure: Some(JUnitFailure {
-                                    message: reason.clone(),
-                                    failure_type: "VerificationFailure".to_string(),
-                                    text: format!(
-                                        "Expected:\n  Result: {}\n  Output: {}\n\nActual:\n  Result: {}\n  Output: {}\n\nReason: {}",
-                                        expected.result, expected.output, actual_result, actual_output, reason
-                                    ),
-                                }),
-                                skipped: false,
-                            }
-                        }
-                        StepVerificationResultEnum::NotExecuted { description, .. } => {
-                            junit_suite.skipped += 1;
-                            JUnitTestCase {
-                                name: format!("{} - {}", name, description),
-                                classname,
-                                time: 0.0,
-                                failure: None,
-                                skipped: true,
-                            }
-                        }
-                    };
-
-                    junit_suite.test_cases.push(junit_tc);
-                }
-            }
-        }
-
-        junit_suite
     }
 }
 
@@ -1666,46 +1534,69 @@ impl TestVerifier {
             .context("Failed to serialize verification result to JSON")
     }
 
-    /// Generate container report for batch verification (multiple test cases)
-    /// Supports both YAML and JSON formats
-    pub fn generate_container_report(
+    /// Generate container report with enhanced metadata
+    /// This method creates a ContainerReport with custom title, project, and metadata fields
+    ///
+    /// If multiple reports are provided, calculates execution_duration as the time difference
+    /// between the earliest and latest generated_at timestamps. Otherwise uses 0.0.
+    pub fn generate_report(
         &self,
-        report: &BatchVerificationReport,
+        reports: &[BatchVerificationReport],
         format: &str,
+        config: ContainerReportConfig,
     ) -> Result<String> {
-        log::debug!(
-            "Generating container report: format={}, test_cases={}, total_steps={}, passed={}, failed={}, not_executed={}",
-            format,
-            report.total_test_cases,
-            report.total_steps,
-            report.passed_steps,
-            report.failed_steps,
-            report.not_executed_steps
-        );
+        // Merge all reports into a single batch report
+        let mut merged_report = BatchVerificationReport::new();
 
-        let result = match format.to_lowercase().as_str() {
-            "yaml" => {
-                log::debug!("Serializing report to YAML format");
-                serde_yaml::to_string(report).context("Failed to serialize batch report to YAML")
-            }
-            "json" => {
-                log::debug!("Serializing report to JSON format");
-                serde_json::to_string_pretty(report)
-                    .context("Failed to serialize batch report to JSON")
-            }
-            _ => {
-                log::debug!("Unsupported format requested: {}", format);
-                anyhow::bail!("Unsupported format: {}. Use 'yaml' or 'json'.", format)
-            }
-        };
+        // Track timestamps for duration calculation
+        let mut earliest_timestamp: Option<DateTime<Utc>> = None;
+        let mut latest_timestamp: Option<DateTime<Utc>> = None;
 
-        if let Ok(ref content) = result {
-            log::debug!("Successfully generated report: {} bytes", content.len());
-        } else {
-            log::debug!("Failed to generate report");
+        for report in reports {
+            // Update timestamp tracking
+            let timestamp = report.generated_at;
+            earliest_timestamp = match earliest_timestamp {
+                None => Some(timestamp),
+                Some(current) => Some(current.min(timestamp)),
+            };
+            latest_timestamp = match latest_timestamp {
+                None => Some(timestamp),
+                Some(current) => Some(current.max(timestamp)),
+            };
+
+            // Add all test case results from this report
+            for test_case_result in &report.test_cases {
+                merged_report.add_test_case_result(test_case_result.clone());
+            }
         }
 
-        result
+        // Calculate execution duration
+        let execution_duration = match (earliest_timestamp, latest_timestamp) {
+            (Some(earliest), Some(latest)) if reports.len() > 1 => {
+                // Calculate difference in seconds as f64
+                let duration = latest.signed_duration_since(earliest);
+                duration.num_milliseconds() as f64 / 1000.0
+            }
+            _ => 0.0,
+        };
+
+        let container_report = ContainerReport::from_batch_report(
+            merged_report,
+            config.title,
+            config.project,
+            config.environment,
+            config.platform,
+            config.executor,
+            execution_duration,
+        );
+
+        match format.to_lowercase().as_str() {
+            "yaml" => serde_yaml::to_string(&container_report)
+                .context("Failed to serialize container report to YAML"),
+            "json" => serde_json::to_string_pretty(&container_report)
+                .context("Failed to serialize container report to JSON"),
+            _ => anyhow::bail!("Unsupported format: {}. Use 'yaml' or 'json'.", format),
+        }
     }
 }
 
@@ -1736,46 +1627,6 @@ mod tests {
     }
 
     // Note: Internal verification tests are covered by tests/verification_test.rs
-
-    #[test]
-    fn test_junit_xml_generation() {
-        let suite = JUnitTestSuite {
-            name: "Test Suite".to_string(),
-            tests: 2,
-            failures: 1,
-            errors: 0,
-            skipped: 0,
-            time: 1.5,
-            test_cases: vec![
-                JUnitTestCase {
-                    name: "test1".to_string(),
-                    classname: "TestClass".to_string(),
-                    time: 0.5,
-                    failure: None,
-                    skipped: false,
-                },
-                JUnitTestCase {
-                    name: "test2".to_string(),
-                    classname: "TestClass".to_string(),
-                    time: 1.0,
-                    failure: Some(JUnitFailure {
-                        message: "Test failed".to_string(),
-                        failure_type: "AssertionError".to_string(),
-                        text: "Expected: true, Got: false".to_string(),
-                    }),
-                    skipped: false,
-                },
-            ],
-            timestamp: Local::now().with_timezone(&Utc),
-        };
-
-        let xml = suite.to_xml().unwrap();
-        assert!(xml.contains("<testsuite"));
-        assert!(xml.contains("tests=\"2\""));
-        assert!(xml.contains("failures=\"1\""));
-        assert!(xml.contains("<testcase"));
-        assert!(xml.contains("<failure"));
-    }
 
     #[test]
     fn test_generate_report_yaml() {
@@ -1844,7 +1695,7 @@ mod tests {
     }
 
     #[test]
-    fn test_generate_container_report_json() {
+    fn test_generate_report_single_report() {
         let temp_dir = TempDir::new().unwrap();
         let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
         let verifier = TestVerifier::from_storage(storage);
@@ -1859,42 +1710,109 @@ mod tests {
             failed_steps: 0,
             not_executed_steps: 0,
             overall_pass: true,
-            requirement: None,
-            item: None,
-            tc: None,
+            requirement: Some("REQ001".to_string()),
+            item: Some(1),
+            tc: Some(1),
         });
-        report.add_test_case_result(TestCaseVerificationResult {
+
+        let config = ContainerReportConfig {
+            title: "Test Report".to_string(),
+            project: "Test Project".to_string(),
+            environment: Some("Test Env".to_string()),
+            platform: Some("Test Platform".to_string()),
+            executor: Some("Test Executor".to_string()),
+        };
+        let yaml = verifier.generate_report(&[report], "yaml", config).unwrap();
+
+        // Verify YAML structure
+        assert!(yaml.contains("title: Test Report"));
+        assert!(yaml.contains("project: Test Project"));
+        assert!(yaml.contains("test_date:"));
+        assert!(yaml.contains("test_results:"));
+        assert!(yaml.contains("metadata:"));
+        assert!(yaml.contains("environment: Test Env"));
+        assert!(yaml.contains("platform: Test Platform"));
+        assert!(yaml.contains("executor: Test Executor"));
+        assert!(yaml.contains("execution_duration: 0"));
+        assert!(yaml.contains("total_test_cases: 1"));
+        assert!(yaml.contains("passed_test_cases: 1"));
+
+        // Verify it can be deserialized
+        let parsed: ContainerReport = serde_yaml::from_str(&yaml).unwrap();
+        assert_eq!(parsed.title, "Test Report");
+        assert_eq!(parsed.project, "Test Project");
+        assert_eq!(parsed.metadata.execution_duration, 0.0);
+        assert_eq!(parsed.metadata.total_test_cases, 1);
+    }
+
+    #[test]
+    fn test_generate_report_multiple_reports() {
+        use chrono::Duration;
+
+        let temp_dir = TempDir::new().unwrap();
+        let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
+        let verifier = TestVerifier::from_storage(storage);
+
+        let base_time = Local::now().with_timezone(&Utc);
+
+        let mut report1 = BatchVerificationReport::new();
+        report1.generated_at = base_time;
+        report1.add_test_case_result(TestCaseVerificationResult {
+            test_case_id: "TC001".to_string(),
+            description: "Test 1".to_string(),
+            sequences: vec![],
+            total_steps: 2,
+            passed_steps: 2,
+            failed_steps: 0,
+            not_executed_steps: 0,
+            overall_pass: true,
+            requirement: Some("REQ001".to_string()),
+            item: Some(1),
+            tc: Some(1),
+        });
+
+        let mut report2 = BatchVerificationReport::new();
+        report2.generated_at = base_time + Duration::seconds(100);
+        report2.add_test_case_result(TestCaseVerificationResult {
             test_case_id: "TC002".to_string(),
             description: "Test 2".to_string(),
             sequences: vec![],
             total_steps: 3,
-            passed_steps: 2,
-            failed_steps: 1,
+            passed_steps: 3,
+            failed_steps: 0,
             not_executed_steps: 0,
-            overall_pass: false,
-            requirement: None,
-            item: None,
-            tc: None,
+            overall_pass: true,
+            requirement: Some("REQ002".to_string()),
+            item: Some(2),
+            tc: Some(2),
         });
 
-        let json = verifier.generate_container_report(&report, "json").unwrap();
-        assert!(json.contains("\"test_cases\""));
-        assert!(json.contains("\"total_test_cases\": 2"));
-        assert!(json.contains("\"passed_test_cases\": 1"));
-        assert!(json.contains("\"failed_test_cases\": 1"));
-        assert!(json.contains("\"total_steps\": 5"));
-        assert!(json.contains("\"passed_steps\": 4"));
-        assert!(json.contains("\"failed_steps\": 1"));
+        let config = ContainerReportConfig {
+            title: "Multi-Report Test".to_string(),
+            project: "Test Project".to_string(),
+            environment: None,
+            platform: None,
+            executor: None,
+        };
+        let yaml = verifier
+            .generate_report(&[report1, report2], "yaml", config)
+            .unwrap();
+
+        // Verify execution duration is calculated (100 seconds)
+        assert!(yaml.contains("execution_duration: 100"));
+        assert!(yaml.contains("total_test_cases: 2"));
+        assert!(yaml.contains("passed_test_cases: 2"));
 
         // Verify it can be deserialized
-        let parsed: BatchVerificationReport = serde_json::from_str(&json).unwrap();
-        assert_eq!(parsed.total_test_cases, 2);
-        assert_eq!(parsed.passed_test_cases, 1);
-        assert_eq!(parsed.failed_test_cases, 1);
+        let parsed: ContainerReport = serde_yaml::from_str(&yaml).unwrap();
+        assert_eq!(parsed.title, "Multi-Report Test");
+        assert_eq!(parsed.metadata.execution_duration, 100.0);
+        assert_eq!(parsed.metadata.total_test_cases, 2);
+        assert_eq!(parsed.test_results.len(), 2);
     }
 
     #[test]
-    fn test_generate_container_report_yaml() {
+    fn test_generate_report_json_format() {
         let temp_dir = TempDir::new().unwrap();
         let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
         let verifier = TestVerifier::from_storage(storage);
@@ -1914,31 +1832,28 @@ mod tests {
             tc: None,
         });
 
-        let yaml = verifier.generate_container_report(&report, "yaml").unwrap();
-        assert!(yaml.contains("test_cases:"));
-        assert!(yaml.contains("total_test_cases: 1"));
-        assert!(yaml.contains("passed_test_cases: 1"));
-        assert!(yaml.contains("failed_test_cases: 0"));
+        let config = ContainerReportConfig {
+            title: "JSON Test".to_string(),
+            project: "JSON Project".to_string(),
+            environment: Some("JSON Env".to_string()),
+            platform: None,
+            executor: None,
+        };
+        let json = verifier.generate_report(&[report], "json", config).unwrap();
+
+        // Verify JSON structure
+        assert!(json.contains("\"title\": \"JSON Test\""));
+        assert!(json.contains("\"project\": \"JSON Project\""));
+        assert!(json.contains("\"test_date\""));
+        assert!(json.contains("\"test_results\""));
+        assert!(json.contains("\"metadata\""));
+        assert!(json.contains("\"environment\": \"JSON Env\""));
+        assert!(json.contains("\"execution_duration\": 0"));
 
         // Verify it can be deserialized
-        let parsed: BatchVerificationReport = serde_yaml::from_str(&yaml).unwrap();
-        assert_eq!(parsed.total_test_cases, 1);
-        assert_eq!(parsed.passed_test_cases, 1);
-    }
-
-    #[test]
-    fn test_generate_container_report_unsupported_format() {
-        let temp_dir = TempDir::new().unwrap();
-        let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
-        let verifier = TestVerifier::from_storage(storage);
-
-        let report = BatchVerificationReport::new();
-
-        let result = verifier.generate_container_report(&report, "xml");
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Unsupported format"));
+        let parsed: ContainerReport = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.title, "JSON Test");
+        assert_eq!(parsed.project, "JSON Project");
+        assert_eq!(parsed.metadata.execution_duration, 0.0);
     }
 }

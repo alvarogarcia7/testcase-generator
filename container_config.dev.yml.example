@@ -1,0 +1,8 @@
+# Example development environment container configuration
+# Copy this file to container_config.dev.yml and customize for your development environment
+
+title: "Development Test Results"
+project: "Test Case Manager - Development"
+environment: "Development"
+platform: "Local Development Machine"
+executor: "Local Development Environment"

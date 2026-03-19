@@ -210,24 +210,8 @@ fn main() -> anyhow::Result<()> {
     println!("─────────────────────────────────────────");
     println!();
 
-    // Step 6: Generate JUnit XML
-    println!("Step 6: Generating JUnit XML...");
-    let junit =
-        testcase_manager::JUnitTestSuite::from_batch_report(&report, "Integration Test Suite");
-
-    let xml_path = temp_dir.path().join("junit-report.xml");
-    let xml_content = junit.to_xml()?;
-    fs::write(&xml_path, &xml_content)?;
-
-    println!("  ✓ JUnit XML generated: {}", xml_path.display());
-    println!(
-        "  Tests: {}, Failures: {}, Skipped: {}",
-        junit.tests, junit.failures, junit.skipped
-    );
-    println!();
-
-    // Step 7: Generate JSON report
-    println!("Step 7: Generating JSON report...");
+    // Step 6: Generate JSON report
+    println!("Step 6: Generating JSON report...");
     let json_path = temp_dir.path().join("verification-report.json");
     let json_content = serde_json::to_string_pretty(&report)?;
     fs::write(&json_path, &json_content)?;
@@ -250,7 +234,6 @@ fn main() -> anyhow::Result<()> {
     println!("    - {}/test_run_2.log", logs_dir.display());
     println!("    - {}/test_run_3.log", logs_dir.display());
     println!("  Reports:");
-    println!("    - {}", xml_path.display());
     println!("    - {}", json_path.display());
     println!("─────────────────────────────────────────");
     println!();
@@ -261,8 +244,8 @@ fn main() -> anyhow::Result<()> {
     println!("  cargo run --bin test-verify batch \\");
     println!("    --logs {}/test_run_*.log \\", logs_dir.display());
     println!("    --test-case-dir {} \\", testcases_dir.display());
-    println!("    --format junit \\");
-    println!("    --output junit-report.xml");
+    println!("    --format json \\");
+    println!("    --output verification-report.json");
 
     Ok(())
 }

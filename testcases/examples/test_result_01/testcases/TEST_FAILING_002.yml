@@ -1,0 +1,49 @@
+requirement: TEST_REQ_002
+item: 1
+tc: 2
+id: TEST_FAILING_002
+description: Test case with some failing verifications
+general_initial_conditions:
+  System:
+    - Ready
+initial_conditions:
+  Device:
+    - Connected
+test_sequences:
+  - id: 1
+    name: Mixed Results Sequence
+    description: Some steps pass, some fail
+    initial_conditions:
+      LPA:
+        - Active
+    steps:
+      - step: 1
+        description: Echo that passes
+        command: echo 'pass'
+        expected:
+          success: true
+          result: "0"
+          output: pass
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" == \"pass\" ]]"
+      - step: 2
+        description: Command that should fail
+        command: echo 'wrong'
+        expected:
+          success: true
+          result: "0"
+          output: expected
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" == \"expected\" ]]"
+      - step: 3
+        description: Exit code mismatch
+        command: "false"
+        expected:
+          success: true
+          result: "0"
+          output: ""
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"

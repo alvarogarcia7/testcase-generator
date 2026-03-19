@@ -3,7 +3,7 @@
 Convert verifier JSON output to individual YAML result files.
 
 This script:
-1. Reads verifier JSON output (BatchVerificationReport or TestCaseVerificationResult)
+1. Reads verifier JSON output (ContainerReport, BatchVerificationReport, or TestCaseVerificationResult)
 2. Extracts each test case result
 3. Writes individual YAML files with 'type: result' field and all verification data
 
@@ -159,11 +159,16 @@ def process_verification_json(input_path: Path, output_dir: Path, verbose: bool 
         print(f"✗ Error: Failed to read file: {e}")
         return 0
     
-    # Determine if this is a BatchVerificationReport or a single TestCaseVerificationResult
+    # Determine the format: ContainerReport, BatchVerificationReport, or single TestCaseVerificationResult
     test_cases = []
     
-    if "test_cases" in data:
-        # This is a BatchVerificationReport
+    if "test_results" in data:
+        # This is a ContainerReport (new container format)
+        if verbose:
+            print(f"Processing ContainerReport with {len(data['test_results'])} test case(s)")
+        test_cases = data["test_results"]
+    elif "test_cases" in data:
+        # This is a BatchVerificationReport (legacy format)
         if verbose:
             print(f"Processing BatchVerificationReport with {len(data['test_cases'])} test case(s)")
         test_cases = data["test_cases"]
@@ -173,7 +178,7 @@ def process_verification_json(input_path: Path, output_dir: Path, verbose: bool 
             print(f"Processing single TestCaseVerificationResult")
         test_cases = [data]
     else:
-        print(f"✗ Error: Unknown JSON structure. Expected BatchVerificationReport or TestCaseVerificationResult")
+        print(f"✗ Error: Unknown JSON structure. Expected ContainerReport, BatchVerificationReport, or TestCaseVerificationResult")
         return 0
     
     # Process each test case
@@ -212,9 +217,10 @@ Examples:
   cat verification.json | %(prog)s -o results/
 
 Input JSON format:
-  The script accepts either:
-  1. BatchVerificationReport: {"test_cases": [...], "total_test_cases": N, ...}
-  2. TestCaseVerificationResult: {"test_case_id": "...", "description": "...", ...}
+  The script accepts:
+  1. ContainerReport: {"test_results": [...], "metadata": {...}, ...}
+  2. BatchVerificationReport: {"test_cases": [...], "total_test_cases": N, ...}
+  3. TestCaseVerificationResult: {"test_case_id": "...", "description": "...", ...}
 
 Output YAML format:
   Each test case generates a file named {test_case_id}_result.yaml with:
@@ -231,7 +237,7 @@ Output YAML format:
         'input',
         nargs='?',
         type=Path,
-        help='Input JSON file (BatchVerificationReport or TestCaseVerificationResult). If omitted, reads from stdin.'
+        help='Input JSON file (ContainerReport, BatchVerificationReport, or TestCaseVerificationResult). If omitted, reads from stdin.'
     )
     
     parser.add_argument(

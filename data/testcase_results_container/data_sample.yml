@@ -1,0 +1,105 @@
+title: "Test Execution Results"
+project: "Test Case Manager - Verification Results"
+test_date: "2024-03-16T12:00:00Z"
+test_results:
+  - test_case_id: "TC001"
+    description: "Sample test case with multiple sequences"
+    sequences:
+      - sequence_id: 1
+        name: "Initialization Sequence"
+        step_results:
+          - Pass:
+              step: 1
+              description: "Initialize test environment"
+          - Pass:
+              step: 2
+              description: "Load configuration"
+        all_steps_passed: true
+        requirement: "REQ-001"
+        item: 1
+        tc: 1
+      - sequence_id: 2
+        name: "Execution Sequence"
+        step_results:
+          - Pass:
+              step: 3
+              description: "Execute main command"
+          - Fail:
+              step: 4
+              description: "Verify output"
+              expected:
+                success: true
+                result: "SUCCESS"
+                output: "Expected output message"
+              actual_result: "FAILURE"
+              actual_output: "Actual output message"
+              reason: "Output mismatch: expected 'Expected output message' but got 'Actual output message'"
+        all_steps_passed: false
+        requirement: "REQ-002"
+        item: 2
+        tc: 2
+    total_steps: 4
+    passed_steps: 3
+    failed_steps: 1
+    not_executed_steps: 0
+    overall_pass: false
+    requirement: "REQ-001"
+    item: 1
+    tc: 1
+  - test_case_id: "TC002"
+    description: "Sample test case with all passing steps"
+    sequences:
+      - sequence_id: 1
+        name: "Complete Sequence"
+        step_results:
+          - Pass:
+              step: 1
+              description: "Step one"
+          - Pass:
+              step: 2
+              description: "Step two"
+          - Pass:
+              step: 3
+              description: "Step three"
+        all_steps_passed: true
+    total_steps: 3
+    passed_steps: 3
+    failed_steps: 0
+    not_executed_steps: 0
+    overall_pass: true
+  - test_case_id: "TC003"
+    description: "Sample test case with not executed steps"
+    sequences:
+      - sequence_id: 1
+        name: "Partial Execution Sequence"
+        step_results:
+          - Pass:
+              step: 1
+              description: "First step"
+          - Fail:
+              step: 2
+              description: "Second step that fails"
+              expected:
+                success: true
+                result: "OK"
+                output: "Success message"
+              actual_result: "ERROR"
+              actual_output: "Error message"
+              reason: "Command failed with error"
+          - NotExecuted:
+              step: 3
+              description: "Third step (skipped due to failure)"
+        all_steps_passed: false
+    total_steps: 3
+    passed_steps: 1
+    failed_steps: 1
+    not_executed_steps: 1
+    overall_pass: false
+metadata:
+  environment: "Production"
+  platform: "Linux x86_64"
+  executor: "Jenkins v3.2"
+  execution_duration: 45.2
+  total_test_cases: 3
+  passed_test_cases: 1
+  failed_test_cases: 2

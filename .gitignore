@@ -140,3 +140,7 @@ test-acceptance/reports/
 # Test case validation reports (validate_all_testcases.sh)
 testcase_validation_report.txt
 backlog.md
+
+# Container config overrides (keep default, ignore environment-specific)
+container_config.*.yml
+!container_config.yml

@@ -1,0 +1,6 @@
+# Full container report configuration file - all fields populated
+title: "Full Featured Test Report"
+project: "Full Featured Test Project"
+environment: "Production"
+platform: "macOS ARM64"
+executor: "Jenkins v3.2.1"

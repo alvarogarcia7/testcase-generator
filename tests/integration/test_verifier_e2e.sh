@@ -42,6 +42,60 @@ echo "verifier End-to-End Integration Test"
 echo "======================================"
 echo ""
 
+# Schema validation helper function
+validate_report_schema() {
+    local report_file="$1"
+    local schema_file="$2"
+    local report_type="$3"
+    
+    if [[ ! -f "$report_file" ]]; then
+        fail "Report file not found: $report_file"
+        return 1
+    fi
+    
+    if [[ ! -f "$schema_file" ]]; then
+        fail "Schema file not found: $schema_file"
+        return 1
+    fi
+    
+    # Try check-jsonschema first (preferred tool)
+    if command -v check-jsonschema > /dev/null 2>&1; then
+        if check-jsonschema --schemafile "$schema_file" "$report_file" > /dev/null 2>&1; then
+            pass "Schema validation passed for $report_type"
+            return 0
+        else
+            fail "Schema validation failed for $report_type"
+            return 1
+        fi
+    # Try python jsonschema CLI
+    elif command -v jsonschema > /dev/null 2>&1; then
+        if jsonschema -i "$report_file" "$schema_file" > /dev/null 2>&1; then
+            pass "Schema validation passed for $report_type"
+            return 0
+        else
+            fail "Schema validation failed for $report_type"
+            return 1
+        fi
+    # Try python with jsonschema module
+    elif command -v python3 > /dev/null 2>&1; then
+        if python3 -c "import jsonschema, yaml, json, sys; schema = json.load(open('$schema_file')); data = yaml.safe_load(open('$report_file')) if '$report_file'.endswith('.yaml') or '$report_file'.endswith('.yml') else json.load(open('$report_file')); jsonschema.validate(data, schema)" 2>/dev/null; then
+            pass "Schema validation passed for $report_type"
+            return 0
+        else
+            # Python jsonschema module not available
+            log_warning "Schema validation tool not available (check-jsonschema, jsonschema CLI, or python jsonschema module)"
+            info "Install with: pip install check-jsonschema (or jsonschema + pyyaml)"
+            info "Skipping schema validation for $report_type"
+            return 0
+        fi
+    else
+        log_warning "No schema validation tool available"
+        info "Install with: pip install check-jsonschema"
+        info "Skipping schema validation for $report_type"
+        return 0
+    fi
+}
+
 # Check prerequisites
 section "Checking Prerequisites"
 
@@ -51,6 +105,28 @@ if [[ ! -f "$VERIFIER_BIN" ]]; then
     exit 1
 fi
 pass "verifier binary found"
+
+# Check for schema validation tools
+SCHEMA_FILE="$PROJECT_ROOT/data/testcase_results_container/schema.json"
+if [[ ! -f "$SCHEMA_FILE" ]]; then
+    log_warning "Schema file not found: $SCHEMA_FILE"
+    log_warning "Schema validation will be skipped"
+else
+    pass "Schema file found"
+    
+    # Check if any validation tool is available
+    if command -v check-jsonschema > /dev/null 2>&1; then
+        pass "check-jsonschema found"
+    elif command -v jsonschema > /dev/null 2>&1; then
+        pass "jsonschema CLI found"
+    elif command -v python3 > /dev/null 2>&1 && python3 -c "import jsonschema, yaml" 2>/dev/null; then
+        pass "Python jsonschema module found"
+    else
+        log_warning "No schema validation tool found"
+        info "Install with: pip install check-jsonschema"
+        info "Schema validation will be skipped"
+    fi
+fi
 
 # Create temporary directory for test files
 TEMP_DIR=$(mktemp -d)
@@ -255,21 +331,37 @@ EOF
 
 pass "Created failing execution log"
 
-# Test 3: Single-file mode with passing test
-section "Test 3: Single-File Mode - Passing Test"
+# Test 3: Single-file mode with passing test (using default config)
+section "Test 3: Single-File Mode - Passing Test (Default Config)"
+
+# Create a test config file
+TEST_CONFIG="$TEMP_DIR/test_config.yml"
+cat > "$TEST_CONFIG" << 'EOF'
+title: "E2E Integration Test Results"
+project: "Verifier E2E Tests"
+environment: "Testing"
+platform: "CI Environment"
+executor: "Integration Test Suite"
+EOF
 
 SINGLE_YAML_OUTPUT="$TEMP_DIR/single_pass_report.yaml"
+SINGLE_YAML_ERROR="$TEMP_DIR/single_pass_error.log"
 if "$VERIFIER_BIN" \
     --log "$PASSING_LOG" \
     --test-case "TEST_PASSING_001" \
     --test-case-dir "$TEST_CASE_DIR" \
     --format yaml \
-    --output "$SINGLE_YAML_OUTPUT" > /dev/null 2>&1; then
+    --output "$SINGLE_YAML_OUTPUT" \
+    --config "$TEST_CONFIG" 2> "$SINGLE_YAML_ERROR"; then
     SINGLE_PASS_EXIT=$?
     pass "Single-file mode completed successfully with passing test"
 else
     SINGLE_PASS_EXIT=$?
     fail "Single-file mode failed with passing test (exit code: $SINGLE_PASS_EXIT)"
+    if [[ -f "$SINGLE_YAML_ERROR" ]]; then
+        echo "Error output:" >&2
+        cat "$SINGLE_YAML_ERROR" >&2
+    fi
 fi
 
 if [[ $SINGLE_PASS_EXIT -eq 0 ]]; then
@@ -284,12 +376,12 @@ else
     fail "YAML report file not created"
 fi
 
-# Validate YAML output structure
+# Validate YAML output structure (container format)
 if [[ -f "$SINGLE_YAML_OUTPUT" ]]; then
-    if grep -q "test_cases:" "$SINGLE_YAML_OUTPUT"; then
-        pass "YAML report contains test_cases field"
+    if grep -q "test_results:" "$SINGLE_YAML_OUTPUT"; then
+        pass "YAML report contains test_results field"
     else
-        fail "YAML report missing test_cases field"
+        fail "YAML report missing test_results field"
     fi
     
     if grep -q "test_case_id: TEST_PASSING_001" "$SINGLE_YAML_OUTPUT"; then
@@ -303,10 +395,13 @@ if [[ -f "$SINGLE_YAML_OUTPUT" ]]; then
     else
         fail "YAML report should show overall pass"
     fi
+    
+    # Schema validation for passing test YAML output
+    validate_report_schema "$SINGLE_YAML_OUTPUT" "$SCHEMA_FILE" "YAML passing test report"
 fi
 
-# Test 4: Single-file mode with failing test
-section "Test 4: Single-File Mode - Failing Test"
+# Test 4: Single-file mode with failing test (using CLI flags)
+section "Test 4: Single-File Mode - Failing Test (CLI Flags)"
 
 SINGLE_YAML_FAIL_OUTPUT="$TEMP_DIR/single_fail_report.yaml"
 if "$VERIFIER_BIN" \
@@ -314,7 +409,10 @@ if "$VERIFIER_BIN" \
     --test-case "TEST_FAILING_002" \
     --test-case-dir "$TEST_CASE_DIR" \
     --format yaml \
-    --output "$SINGLE_YAML_FAIL_OUTPUT" > /dev/null 2>&1; then
+    --output "$SINGLE_YAML_FAIL_OUTPUT" \
+    --title "CLI Override Test" \
+    --project "E2E Test with CLI Flags" \
+    --environment "Development" > /dev/null 2>&1; then
     SINGLE_FAIL_EXIT=$?
     fail "Single-file mode should fail with failing test (got exit code 0)"
 else
@@ -334,7 +432,7 @@ else
     fail "YAML report file not created for failing test"
 fi
 
-# Validate failure reporting in YAML
+# Validate failure reporting in YAML (container format)
 if [[ -f "$SINGLE_YAML_FAIL_OUTPUT" ]]; then
     if grep -q "overall_pass: false" "$SINGLE_YAML_FAIL_OUTPUT"; then
         pass "YAML report shows overall failure"
@@ -343,14 +441,17 @@ if [[ -f "$SINGLE_YAML_FAIL_OUTPUT" ]]; then
     fi
     
     if grep -q "failed_test_cases:" "$SINGLE_YAML_FAIL_OUTPUT"; then
-        pass "YAML report contains failed_test_cases count"
+        pass "YAML report contains failed_test_cases count in metadata"
     else
-        fail "YAML report missing failed_test_cases count"
+        fail "YAML report missing failed_test_cases count in metadata"
     fi
+    
+    # Schema validation for failing test YAML output
+    validate_report_schema "$SINGLE_YAML_FAIL_OUTPUT" "$SCHEMA_FILE" "YAML failing test report"
 fi
 
-# Test 5: JSON output format
-section "Test 5: JSON Output Format"
+# Test 5: JSON output format (combining config file and CLI overrides)
+section "Test 5: JSON Output Format (Config + CLI Overrides)"
 
 SINGLE_JSON_OUTPUT="$TEMP_DIR/single_pass_report.json"
 if "$VERIFIER_BIN" \
@@ -358,7 +459,9 @@ if "$VERIFIER_BIN" \
     --test-case "TEST_PASSING_001" \
     --test-case-dir "$TEST_CASE_DIR" \
     --format json \
-    --output "$SINGLE_JSON_OUTPUT" > /dev/null 2>&1; then
+    --output "$SINGLE_JSON_OUTPUT" \
+    --config "$TEST_CONFIG" \
+    --executor "E2E Test Runner v1.0" > /dev/null 2>&1; then
     pass "JSON format output generated successfully"
 else
     fail "Failed to generate JSON format output"
@@ -375,15 +478,15 @@ if [[ -f "$SINGLE_JSON_OUTPUT" ]]; then
             fail "JSON report is not valid JSON"
         fi
         
-        # Check JSON fields
-        TEST_CASE_ID=$(jq -r '.test_cases[0].test_case_id' "$SINGLE_JSON_OUTPUT" 2>/dev/null)
+        # Check JSON fields (container format)
+        TEST_CASE_ID=$(jq -r '.test_results[0].test_case_id' "$SINGLE_JSON_OUTPUT" 2>/dev/null)
         if [[ "$TEST_CASE_ID" == "TEST_PASSING_001" ]]; then
             pass "JSON report contains correct test case ID"
         else
             fail "JSON report has incorrect test case ID: $TEST_CASE_ID"
         fi
         
-        OVERALL_PASS=$(jq -r '.test_cases[0].overall_pass' "$SINGLE_JSON_OUTPUT" 2>/dev/null)
+        OVERALL_PASS=$(jq -r '.test_results[0].overall_pass' "$SINGLE_JSON_OUTPUT" 2>/dev/null)
         if [[ "$OVERALL_PASS" == "true" ]]; then
             pass "JSON report shows overall pass"
         else
@@ -392,6 +495,9 @@ if [[ -f "$SINGLE_JSON_OUTPUT" ]]; then
     else
         info "jq not available, skipping JSON validation"
     fi
+    
+    # Schema validation for passing test JSON output
+    validate_report_schema "$SINGLE_JSON_OUTPUT" "$SCHEMA_FILE" "JSON passing test report"
 else
     fail "JSON report file not created"
 fi
@@ -412,7 +518,8 @@ if "$VERIFIER_BIN" \
     --folder "$LOGS_DIR" \
     --test-case-dir "$TEST_CASE_DIR" \
     --format yaml \
-    --output "$FOLDER_YAML_OUTPUT" > /dev/null 2>&1; then
+    --output "$FOLDER_YAML_OUTPUT" \
+    --config "$TEST_CONFIG" > /dev/null 2>&1; then
     FOLDER_EXIT=$?
     fail "Folder mode should fail when any test fails (got exit code 0)"
 else
@@ -451,6 +558,9 @@ if [[ -f "$FOLDER_YAML_OUTPUT" ]]; then
     else
         fail "Folder report has incorrect failed test cases count"
     fi
+    
+    # Schema validation for folder mode YAML output
+    validate_report_schema "$FOLDER_YAML_OUTPUT" "$SCHEMA_FILE" "Folder mode YAML report"
 else
     fail "Folder discovery report not created"
 fi
@@ -463,7 +573,8 @@ if "$VERIFIER_BIN" \
     --folder "$LOGS_DIR" \
     --test-case-dir "$TEST_CASE_DIR" \
     --format json \
-    --output "$FOLDER_JSON_OUTPUT" > /dev/null 2>&1; then
+    --output "$FOLDER_JSON_OUTPUT" \
+    --config "$TEST_CONFIG" > /dev/null 2>&1; then
     fail "Folder mode JSON should fail when any test fails"
 else
     pass "Folder mode JSON returned non-zero exit code"
@@ -479,27 +590,30 @@ if [[ -f "$FOLDER_JSON_OUTPUT" ]]; then
             fail "Folder JSON report is not valid JSON"
         fi
         
-        TOTAL_CASES=$(jq -r '.total_test_cases' "$FOLDER_JSON_OUTPUT" 2>/dev/null)
+        TOTAL_CASES=$(jq -r '.metadata.total_test_cases' "$FOLDER_JSON_OUTPUT" 2>/dev/null)
         if [[ "$TOTAL_CASES" == "2" ]]; then
             pass "Folder JSON shows correct total test cases"
         else
             fail "Folder JSON has incorrect total: $TOTAL_CASES"
         fi
         
-        PASSED_CASES=$(jq -r '.passed_test_cases' "$FOLDER_JSON_OUTPUT" 2>/dev/null)
+        PASSED_CASES=$(jq -r '.metadata.passed_test_cases' "$FOLDER_JSON_OUTPUT" 2>/dev/null)
         if [[ "$PASSED_CASES" == "1" ]]; then
             pass "Folder JSON shows correct passed test cases"
         else
             fail "Folder JSON has incorrect passed count: $PASSED_CASES"
         fi
         
-        FAILED_CASES=$(jq -r '.failed_test_cases' "$FOLDER_JSON_OUTPUT" 2>/dev/null)
+        FAILED_CASES=$(jq -r '.metadata.failed_test_cases' "$FOLDER_JSON_OUTPUT" 2>/dev/null)
         if [[ "$FAILED_CASES" == "1" ]]; then
             pass "Folder JSON shows correct failed test cases"
         else
             fail "Folder JSON has incorrect failed count: $FAILED_CASES"
         fi
     fi
+    
+    # Schema validation for folder mode JSON output
+    validate_report_schema "$FOLDER_JSON_OUTPUT" "$SCHEMA_FILE" "Folder mode JSON report"
 else
     fail "Folder discovery JSON report not created"
 fi
@@ -546,13 +660,16 @@ fi
 # Test 11: Verify expected report file structure (YAML)
 section "Test 11: Expected Report File Validation - YAML"
 
-# Create expected report template
+# Create expected report template (container format)
 EXPECTED_YAML="$TEMP_DIR/expected_passing_report.yaml"
 cat > "$EXPECTED_YAML" << 'EOF'
-total_test_cases: 1
-passed_test_cases: 1
-failed_test_cases: 0
-test_cases:
+title: Test
+project: Test
+metadata:
+  total_test_cases: 1
+  passed_test_cases: 1
+  failed_test_cases: 0
+test_results:
   - test_case_id: TEST_PASSING_001
     overall_pass: true
     passed_steps: 3
@@ -569,12 +686,14 @@ ACTUAL_YAML="$TEMP_DIR/actual_passing_report.yaml"
     --test-case "TEST_PASSING_001" \
     --test-case-dir "$TEST_CASE_DIR" \
     --format yaml \
-    --output "$ACTUAL_YAML" > /dev/null 2>&1
+    --output "$ACTUAL_YAML" \
+    --title "Test" \
+    --project "Test" > /dev/null 2>&1
 
-# Validate key fields match
+# Validate key fields match (container format)
 if [[ -f "$ACTUAL_YAML" ]]; then
-    ACTUAL_TOTAL=$(grep "^total_test_cases:" "$ACTUAL_YAML" | awk '{print $2}')
-    EXPECTED_TOTAL=$(grep "^total_test_cases:" "$EXPECTED_YAML" | awk '{print $2}')
+    ACTUAL_TOTAL=$(grep "total_test_cases:" "$ACTUAL_YAML" | awk '{print $2}')
+    EXPECTED_TOTAL=$(grep "total_test_cases:" "$EXPECTED_YAML" | awk '{print $2}')
     
     if [[ "$ACTUAL_TOTAL" == "$EXPECTED_TOTAL" ]]; then
         pass "Total test cases matches expected ($EXPECTED_TOTAL)"
@@ -582,8 +701,8 @@ if [[ -f "$ACTUAL_YAML" ]]; then
         fail "Total test cases mismatch: expected $EXPECTED_TOTAL, got $ACTUAL_TOTAL"
     fi
     
-    ACTUAL_PASSED=$(grep "^passed_test_cases:" "$ACTUAL_YAML" | awk '{print $2}')
-    EXPECTED_PASSED=$(grep "^passed_test_cases:" "$EXPECTED_YAML" | awk '{print $2}')
+    ACTUAL_PASSED=$(grep "passed_test_cases:" "$ACTUAL_YAML" | awk '{print $2}')
+    EXPECTED_PASSED=$(grep "passed_test_cases:" "$EXPECTED_YAML" | awk '{print $2}')
     
     if [[ "$ACTUAL_PASSED" == "$EXPECTED_PASSED" ]]; then
         pass "Passed test cases matches expected ($EXPECTED_PASSED)"
@@ -599,6 +718,9 @@ if [[ -f "$ACTUAL_YAML" ]]; then
     else
         fail "Failed test cases mismatch: expected $EXPECTED_FAILED, got $ACTUAL_FAILED"
     fi
+    
+    # Schema validation for Test 11 YAML report
+    validate_report_schema "$ACTUAL_YAML" "$SCHEMA_FILE" "Test 11 YAML report"
 fi
 
 # Test 12: Verify expected report file structure (JSON)
@@ -681,6 +803,9 @@ if command -v jq > /dev/null 2>&1 && [[ -f "$ACTUAL_JSON" ]]; then
     else
         fail "JSON test case overall_pass mismatch: expected $EXPECTED_TC_PASS, got $ACTUAL_TC_PASS"
     fi
+    
+    # Schema validation for Test 12 JSON report
+    validate_report_schema "$ACTUAL_JSON" "$SCHEMA_FILE" "Test 12 JSON report"
 fi
 
 # Test 13: Stdout output (no output file specified)
@@ -705,6 +830,9 @@ if [[ -f "$STDOUT_OUTPUT" ]] && [[ -s "$STDOUT_OUTPUT" ]]; then
     else
         fail "Stdout output missing test case data"
     fi
+    
+    # Schema validation for stdout YAML output
+    validate_report_schema "$STDOUT_OUTPUT" "$SCHEMA_FILE" "Stdout YAML report"
 else
     fail "Stdout output is empty"
 fi

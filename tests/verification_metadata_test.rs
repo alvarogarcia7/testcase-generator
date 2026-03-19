@@ -321,7 +321,7 @@ fn test_step_pass_serialization_with_metadata() {
     assert!(json.contains("\"requirement\":\"REQ-PASS-SERIAL-001\""));
     assert!(json.contains("\"item\":7"));
     assert!(json.contains("\"tc\":14"));
-    assert!(json.contains("\"status\":\"pass\""));
+    assert!(json.contains("\"Pass\""));
 
     // Test JSON deserialization
     let deserialized: StepVerificationResultEnum = serde_json::from_str(&json).unwrap();
@@ -458,7 +458,7 @@ fn test_step_fail_serialization_with_metadata() {
     assert!(json.contains("\"requirement\":\"REQ-FAIL-SERIAL-001\""));
     assert!(json.contains("\"item\":9"));
     assert!(json.contains("\"tc\":18"));
-    assert!(json.contains("\"status\":\"fail\""));
+    assert!(json.contains("\"Fail\""));
     assert!(json.contains("\"expected\""));
     assert!(json.contains("\"actual_result\""));
 
@@ -589,7 +589,7 @@ fn test_step_not_executed_serialization_with_metadata() {
     assert!(json.contains("\"requirement\":\"REQ-NE-SERIAL-001\""));
     assert!(json.contains("\"item\":13"));
     assert!(json.contains("\"tc\":26"));
-    assert!(json.contains("\"status\":\"not_executed\""));
+    assert!(json.contains("\"NotExecuted\""));
 
     // Test JSON deserialization
     let deserialized: StepVerificationResultEnum = serde_json::from_str(&json).unwrap();

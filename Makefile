@@ -95,6 +95,10 @@ run-verifier: build-verifier
 	./target/debug/verifier
 .PHONY: run-verifier
 
+test-e2e-verifier-container: build
+	./tests/integration/test_verifier_container_e2e.sh
+.PHONY: test-e2e-verifier-container
+
 test-e2e-failing: build
 	./tests/integration/run_e2e_test.sh
 	./tests/integration/test_variable_passing_e2e.sh
@@ -132,11 +136,14 @@ test-e2e:
 	./tests/integration/test_validate_yaml_transitive_schema_watch_e2e.sh
 	./tests/integration/test_variable_passing_e2e.sh
 	./tests/integration/test_verifier_e2e.sh
+	./tests/integration/test_verifier_container_e2e.sh
 	#./tests/integration/test_verify_e2e.sh
 	./tests/integration/test_container_yaml_compat_e2e.sh
 	./tests/integration/test_documentation_generation.sh
+	# Valid values of BUILD_VARIANT are "" (debug) or "--release" (release mode)
 	BUILD_VARIANT="" ./scripts/run_verifier_and_generate_reports.sh
 	./scripts/validate_tpdg_integration.sh --test-plan-doc-gen ${HOME}/Documents/projects/test-plan-documentation-generator --verbose || true
+	${MAKE} validate-output-schemas
 .PHONY: test-e2e
 
 example_export-demo:
@@ -306,6 +313,11 @@ verify-testcases: build
 validate-testcases-report: build
 	USE_MCP=0 ./scripts/validate_all_testcases.sh
 .PHONY: validate-testcases-report
+
+validate-output-schemas:
+	@echo "Validating expected output sample files against schemas..."
+	./scripts/validate-output-schemas.sh
+.PHONY: validate-output-schemas
 
 watch: build
 	./scripts/watch-yaml-files.sh
