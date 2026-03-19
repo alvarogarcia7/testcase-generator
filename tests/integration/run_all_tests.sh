@@ -10,22 +10,20 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-# Source shared library for finding binaries
+# Source shared libraries
 source "$PROJECT_ROOT/scripts/lib/find-binary.sh"
+source "$PROJECT_ROOT/scripts/lib/logger.sh" || exit 1
 
 BUILD=false
 if [[ "$1" == "--build" ]]; then
     BUILD=true
 fi
 
-echo "=========================================="
-echo "Running All Integration Tests"
-echo "=========================================="
-echo ""
+section "Running All Integration Tests"
 
 # Build if requested
 if [[ "$BUILD" == true ]]; then
-    echo "==> Building project..."
+    log_info "Building project..."
     cd "$PROJECT_ROOT"
     cargo build
     echo "✓ Build complete"
@@ -36,12 +34,11 @@ fi
 cd "$PROJECT_ROOT"
 BINARY=$(find_binary "testcase-manager")
 if [[ -z "$BINARY" ]]; then
-    echo "ERROR: Binary not found in target/release or target/debug"
-    echo "Run with --build flag to build first"
+    fail "Binary not found in target/release or target/debug"
+    log_error "Run with --build flag to build first"
     exit 1
 fi
-echo "Using binary: $BINARY"
-echo ""
+info "Using binary: $BINARY"
 
 # Check expect is installed
 if ! command -v expect &> /dev/null; then
@@ -53,14 +50,12 @@ TESTS_PASSED=0
 TESTS_FAILED=0
 
 # Run basic test
-echo "=========================================="
-echo "Test 1: Basic Workflow"
-echo "=========================================="
+section "Test 1: Basic Workflow"
 if "$SCRIPT_DIR/e2e_basic_workflow.exp" "$BINARY"; then
-    echo "✓ Basic workflow test PASSED"
+    pass "Basic workflow test PASSED"
     TESTS_PASSED=$((TESTS_PASSED+1))
 else
-    echo "✗ Basic workflow test FAILED"
+    fail "Basic workflow test FAILED"
     TESTS_FAILED=$((TESTS_FAILED+1))
 fi
 echo ""
@@ -76,7 +71,6 @@ else
     echo "✗ Complete workflow test FAILED"
     TESTS_FAILED=$((TESTS_FAILED+1))
 fi
-echo ""
 
 # Run validate-files.sh integration tests
 echo "=========================================="

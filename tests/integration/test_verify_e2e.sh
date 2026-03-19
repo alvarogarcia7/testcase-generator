@@ -3,7 +3,7 @@
 # E2E integration test for test-verify functionality
 # Tests clean, verify passing, verify failing, and report format/statistics
 #
-# Usage: ./tests/integration/test_verify_e2e.sh
+# Usage: ./tests/integration/test_verify_e2e.sh [--no-remove]
 #
 
 set -e
@@ -12,21 +12,32 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 TEST_VERIFY_BINARY="$PROJECT_ROOT/target/debug/test-verify"
 
-# Color codes for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+# Source logger library
+source "$SCRIPT_DIR/../../scripts/lib/logger.sh" || exit 1
 
-echo "=== Test-Verify E2E Integration Test ==="
+# Handle --no-remove flag
+REMOVE_TEMP=1
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --no-remove)
+            REMOVE_TEMP=0
+            shift
+            ;;
+        *)
+            shift
+            ;;
+    esac
+done
+
+section "Test-Verify E2E Integration Test"
 
 # Check if binary exists
 if [[ ! -f "$TEST_VERIFY_BINARY" ]]; then
-    echo -e "${RED}✗ test-verify binary not found at $TEST_VERIFY_BINARY${NC}"
-    echo "Please build the project first: cargo build"
+    fail "test-verify binary not found at $TEST_VERIFY_BINARY"
+    log_info "Please build the project first: cargo build"
     exit 1
 fi
-echo -e "${GREEN}✓ test-verify binary found${NC}"
+pass "test-verify binary found"
 
 # Create temporary directory for test files
 TEST_DIR=$(mktemp -d)
@@ -78,17 +89,16 @@ test_sequences:
 EOF
 
 if [[ -f "$TEST_CASE_FILE" ]]; then
-    echo -e "${GREEN}✓ Test case YAML created${NC}"
+    pass "Test case YAML created"
 else
-    echo -e "${RED}✗ Failed to create test case YAML${NC}"
+    fail "Failed to create test case YAML"
     exit 1
 fi
 
 # ============================================================================
 # Test 2: Create passing execution log YAML
 # ============================================================================
-echo ""
-echo "=== Test 2: Creating passing execution log YAML ==="
+section "Test 2: Creating passing execution log YAML"
 
 PASSING_LOG_FILE="$TEST_DIR/passing_log.yaml"
 cat > "$PASSING_LOG_FILE" <<'EOF'
@@ -101,9 +111,9 @@ duration_ms: 1000
 EOF
 
 if [[ -f "$PASSING_LOG_FILE" ]]; then
-    echo -e "${GREEN}✓ Passing execution log YAML created${NC}"
+    pass "Passing execution log YAML created"
 else
-    echo -e "${RED}✗ Failed to create passing execution log YAML${NC}"
+    fail "Failed to create passing execution log YAML"
     exit 1
 fi
 
@@ -125,9 +135,9 @@ error_message: "Command failed"
 EOF
 
 if [[ -f "$FAILING_LOG_FILE" ]]; then
-    echo -e "${GREEN}✓ Failing execution log YAML created${NC}"
+    pass "Failing execution log YAML created"
 else
-    echo -e "${RED}✗ Failed to create failing execution log YAML${NC}"
+    fail "Failed to create failing execution log YAML"
     exit 1
 fi
 

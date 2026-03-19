@@ -1,25 +1,27 @@
 #!/bin/bash
+
 set -e
 
 IMAGE_NAME="testcase-manager:latest"
 
-echo "=================================="
-echo "Docker Image Verification Script"
-echo "=================================="
-echo ""
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Source logger library
+source "$SCRIPT_DIR/lib/logger.sh" || exit 1
+
+section "Docker Image Verification Script"
 
 # Check if image exists
 if ! docker image inspect "$IMAGE_NAME" >/dev/null 2>&1; then
-    echo "ERROR: Image '$IMAGE_NAME' not found."
-    echo "Please build the image first using: ./scripts/build-docker.sh"
+    fail "Image '$IMAGE_NAME' not found."
+    log_error "Please build the image first using: ./scripts/build-docker.sh"
     exit 1
 fi
 
-echo "✓ Image '$IMAGE_NAME' found"
-echo ""
+pass "Image '$IMAGE_NAME' found"
 
 # Verify binaries are present
-echo "Checking binaries..."
+section "Checking binaries"
 BINARIES=(
     "tcm"
     "validate-yaml"
@@ -34,9 +36,9 @@ BINARIES=(
 
 for binary in "${BINARIES[@]}"; do
     if docker run --rm "$IMAGE_NAME" test -f "/usr/local/bin/$binary"; then
-        echo "  ✓ $binary"
+        pass "$binary"
     else
-        echo "  ✗ $binary - MISSING"
+        fail "$binary - MISSING"
         exit 1
     fi
 done

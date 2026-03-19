@@ -11,58 +11,58 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-# Source shared library for finding binaries
+# Source shared libraries
 source "$PROJECT_ROOT/scripts/lib/find-binary.sh"
+source "$PROJECT_ROOT/scripts/lib/logger.sh" || exit 1
 
 # Change to project root for binary search
 cd "$PROJECT_ROOT"
 
-echo "=== Quick Smoke Test ==="
+section "Quick Smoke Test"
 
 # Find the trm (testcase-runner-manager) binary
 BINARY=$(find_binary "trm")
 if [[ -z "$BINARY" ]]; then
-    echo "✗ Binary not found in target/release or target/debug"
-    echo "  Run: cargo build"
+    fail "Binary not found in target/release or target/debug"
+    log_info "Run: cargo build"
     exit 1
 fi
-echo "✓ Binary found: $BINARY"
+pass "Binary found: $BINARY"
 
 # Check help command works
 if "$BINARY" --help > /dev/null 2>&1; then
-    echo "✓ Help command works"
+    pass "Help command works"
 else
-    echo "✗ Help command failed"
+    fail "Help command failed"
     exit 1
 fi
 
 # Check version command works
 if "$BINARY" --version > /dev/null 2>&1; then
-    echo "✓ Version command works"
+    pass "Version command works"
 else
-    echo "✗ Version command failed"
+    fail "Version command failed"
     exit 1
 fi
 
 # Check expect is available
 if command -v expect &> /dev/null; then
-    echo "✓ Expect available"
+    pass "Expect available"
 else
-    echo "⚠ Expect not available (integration tests will fail)"
+    log_warning "Expect not available (integration tests will fail)"
 fi
 
 # Check git is available
 if command -v git &> /dev/null; then
-    echo "✓ Git available"
+    pass "Git available"
 else
-    echo "✗ Git not available"
+    fail "Git not available"
     exit 1
 fi
 
-echo ""
-echo "=== Smoke Test Passed ✓ ==="
-echo "Ready to run full integration tests:"
-echo "  make test-e2e        # Run complete workflow test"
-echo "  make test-e2e-all    # Run all integration tests"
+section "Smoke Test Passed"
+info "Ready to run full integration tests:"
+info "  make test-e2e        # Run complete workflow test"
+info "  make test-e2e-all    # Run all integration tests"
 
 exit 0

@@ -10,20 +10,18 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 # Source shared library for finding binaries
 source "$PROJECT_ROOT/scripts/lib/find-binary.sh"
+source "$PROJECT_ROOT/scripts/lib/logger.sh" || exit 1
 
-echo "=========================================="
-echo "Integration Test Environment Check"
-echo "=========================================="
-echo ""
+section "Integration Test Environment Check"
 
 ERRORS=0
 WARNINGS=0
 
 # Check for expect
-echo -n "Checking for expect... "
+log_info "Checking for expect..."
 if command -v expect &> /dev/null; then
     EXPECT_VERSION=$(expect -version 2>&1 | head -n1)
-    echo "✓ Found: $EXPECT_VERSION"
+    pass "Found: $EXPECT_VERSION"
 else
     echo "✗ NOT FOUND"
     echo "  Install: sudo apt-get install expect (Ubuntu/Debian)"
@@ -102,10 +100,10 @@ for script in e2e_basic_workflow.exp e2e_complete_workflow.exp run_e2e_test.sh r
 done
 
 if [[ $MISSING_EXEC -eq 0 ]]; then
-    echo "✓ All scripts executable"
+    pass "All scripts executable"
 else
-    echo "⚠ $MISSING_EXEC script(s) not executable"
-    echo "  Run: chmod +x tests/integration/*.sh tests/integration/*.exp"
+    log_warning "$MISSING_EXEC script(s) not executable"
+    log_info "Run: chmod +x tests/integration/*.sh tests/integration/*.exp"
     ((WARNINGS++))
 fi
 

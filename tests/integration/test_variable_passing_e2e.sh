@@ -10,7 +10,7 @@
 # 5. Variable substitution in verification expressions
 # 6. JSON execution log contains expected outputs using captured variables
 #
-# Usage: ./tests/integration/test_variable_passing_e2e.sh
+# Usage: ./tests/integration/test_variable_passing_e2e.sh [--no-remove]
 #
 
 set -e
@@ -21,41 +21,27 @@ TEST_EXECUTOR_BIN="$PROJECT_ROOT/target/debug/test-executor"
 VALIDATE_YAML_BIN="$PROJECT_ROOT/target/debug/validate-yaml"
 SCHEMA_FILE="$PROJECT_ROOT/schemas/test-case.schema.json"
 
-# Color codes for output
-GREEN='\033[0;32m'
-RED='\033[0;31m'
-BLUE='\033[0;34m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+# Source logger library
+source "$SCRIPT_DIR/../../scripts/lib/logger.sh" || exit 1
+source "$SCRIPT_DIR/../../scripts/lib/shellcheck-helper.sh" || true
+
+# Handle --no-remove flag
+REMOVE_TEMP=1
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --no-remove)
+            REMOVE_TEMP=0
+            shift
+            ;;
+        *)
+            shift
+            ;;
+    esac
+done
 
 # Test counter
 TESTS_PASSED=0
 TESTS_FAILED=0
-
-echo "======================================"
-echo "Variable Passing End-to-End Integration Test"
-echo "======================================"
-echo ""
-
-# Function to print test status
-pass() {
-    echo -e "${GREEN}✓${NC} $1"
-    TESTS_PASSED=$((TESTS_PASSED+1))
-}
-
-fail() {
-    echo -e "${RED}✗${NC} $1"
-    TESTS_FAILED=$((TESTS_FAILED+1))
-}
-
-info() {
-    echo -e "${BLUE}ℹ${NC} $1"
-}
-
-section() {
-    echo ""
-    echo -e "${YELLOW}=== $1 ===${NC}"
-}
 
 # Source shellcheck helper for validation
 source "$SCRIPT_DIR/../../scripts/lib/shellcheck-helper.sh" || true
@@ -64,34 +50,47 @@ source "$SCRIPT_DIR/../../scripts/lib/shellcheck-helper.sh" || true
 section "Checking Prerequisites"
 
 if [[ ! -f "$TEST_EXECUTOR_BIN" ]]; then
-    fail "test-executor binary not found at $TEST_EXECUTOR_BIN"
+    TESTS_FAILED=$((TESTS_FAILED+1))
+fail "test-executor binary not found at $TEST_EXECUTOR_BIN"
     echo "Run 'cargo build' first"
     exit 1
 fi
+TESTS_PASSED=$((TESTS_PASSED+1))
 pass "test-executor binary found"
 
 if [[ ! -f "$VALIDATE_YAML_BIN" ]]; then
-    fail "validate-yaml binary not found at $VALIDATE_YAML_BIN"
+    TESTS_FAILED=$((TESTS_FAILED+1))
+fail "validate-yaml binary not found at $VALIDATE_YAML_BIN"
     echo "Run 'cargo build' first"
     exit 1
 fi
+TESTS_PASSED=$((TESTS_PASSED+1))
 pass "validate-yaml binary found"
 
 if [[ ! -f "$SCHEMA_FILE" ]]; then
-    fail "Schema file not found at $SCHEMA_FILE"
+    TESTS_FAILED=$((TESTS_FAILED+1))
+fail "Schema file not found at $SCHEMA_FILE"
     exit 1
 fi
+TESTS_PASSED=$((TESTS_PASSED+1))
 pass "Schema file found"
 
 if ! command -v bash &> /dev/null; then
-    fail "bash not found"
+    TESTS_FAILED=$((TESTS_FAILED+1))
+fail "bash not found"
     exit 1
 fi
+TESTS_PASSED=$((TESTS_PASSED+1))
 pass "bash available"
 
 # Create temporary directory for test files
 TEMP_DIR=$(mktemp -d)
-#trap 'rm -rf "$TEMP_DIR"' EXIT
+setup_cleanup "$TEMP_DIR"
+
+if [[ $REMOVE_TEMP -eq 0 ]]; then
+    disable_cleanup
+    info "Temporary files will not be removed: $TEMP_DIR"
+fi
 
 info "Using temporary directory: $TEMP_DIR"
 
@@ -189,15 +188,18 @@ test_sequences:
           output: "[[ \"$COMMAND_OUTPUT\" == *\"192.168.1.100\"* ]]"
 EOF
 
+TESTS_PASSED=$((TESTS_PASSED+1))
 pass "Created test YAML with variable capture"
 
 # Test 2: Validate YAML against schema
 section "Test 2: YAML Schema Validation"
 
 if "$VALIDATE_YAML_BIN" --schema "$SCHEMA_FILE" "$VARIABLE_YAML" > /dev/null 2>&1; then
-    pass "YAML validates against schema"
+    TESTS_PASSED=$((TESTS_PASSED+1))
+pass "YAML validates against schema"
 else
-    fail "YAML failed schema validation"
+    TESTS_FAILED=$((TESTS_FAILED+1))
+fail "YAML failed schema validation"
     "$VALIDATE_YAML_BIN" --schema "$SCHEMA_FILE" "$VARIABLE_YAML"
 fi
 
@@ -206,15 +208,19 @@ section "Test 3: Shell Script Generation"
 
 VARIABLE_SCRIPT="$TEMP_DIR/test_variables.sh"
 if "$TEST_EXECUTOR_BIN" generate "$VARIABLE_YAML" -o "$VARIABLE_SCRIPT" > /dev/null 2>&1; then
-    pass "Generated script from YAML with variable capture"
+    TESTS_PASSED=$((TESTS_PASSED+1))
+pass "Generated script from YAML with variable capture"
 else
-    fail "Failed to generate script from YAML"
+    TESTS_FAILED=$((TESTS_FAILED+1))
+fail "Failed to generate script from YAML"
 fi
 
 if [[ -f "$VARIABLE_SCRIPT" ]]; then
-    pass "Script file created"
+    TESTS_PASSED=$((TESTS_PASSED+1))
+pass "Script file created"
 else
-    fail "Script file not found"
+    TESTS_FAILED=$((TESTS_FAILED+1))
+fail "Script file not found"
     exit 1
 fi
 
@@ -222,9 +228,11 @@ fi
 section "Test 4: Bash Syntax Validation"
 
 if bash -n "$VARIABLE_SCRIPT" 2>/dev/null; then
-    pass "Script has valid bash syntax"
+    TESTS_PASSED=$((TESTS_PASSED+1))
+pass "Script has valid bash syntax"
 else
-    fail "Script has invalid bash syntax"
+    TESTS_FAILED=$((TESTS_FAILED+1))
+fail "Script has invalid bash syntax"
     bash -n "$VARIABLE_SCRIPT" 2>&1
     exit 1
 fi
@@ -235,42 +243,54 @@ section "Test 5: Verify Script Contains Variable Capture Logic"
 
 # Check for variable storage initialization (bash 3.2+ compatible)
 if grep -q 'STEP_VAR_NAMES=""' "$VARIABLE_SCRIPT"; then
-    pass "Script declares STEP_VAR_NAMES variable"
+    TESTS_PASSED=$((TESTS_PASSED+1))
+pass "Script declares STEP_VAR_NAMES variable"
 else
-    fail "Script missing STEP_VAR_NAMES declaration"
+    TESTS_FAILED=$((TESTS_FAILED+1))
+fail "Script missing STEP_VAR_NAMES declaration"
 fi
 
 # Check for variable capture from step 1 (SESSION_ID)
 if grep -q 'STEP_VAR_SESSION_ID=' "$VARIABLE_SCRIPT"; then
-    pass "Script captures SESSION_ID variable"
+    TESTS_PASSED=$((TESTS_PASSED+1))
+pass "Script captures SESSION_ID variable"
 else
-    fail "Script doesn't capture SESSION_ID variable"
+    TESTS_FAILED=$((TESTS_FAILED+1))
+fail "Script doesn't capture SESSION_ID variable"
 fi
 
 # Check for variable capture from step 3 (username and token)
 if grep -q 'STEP_VAR_username=' "$VARIABLE_SCRIPT"; then
-    pass "Script captures username variable"
+    TESTS_PASSED=$((TESTS_PASSED+1))
+pass "Script captures username variable"
 else
-    fail "Script doesn't capture username variable"
+    TESTS_FAILED=$((TESTS_FAILED+1))
+fail "Script doesn't capture username variable"
 fi
 
 if grep -q 'STEP_VAR_token=' "$VARIABLE_SCRIPT"; then
-    pass "Script captures token variable"
+    TESTS_PASSED=$((TESTS_PASSED+1))
+pass "Script captures token variable"
 else
-    fail "Script doesn't capture token variable"
+    TESTS_FAILED=$((TESTS_FAILED+1))
+fail "Script doesn't capture token variable"
 fi
 
 # Check for variable capture from step 5 (server_ip and server_port)
 if grep -q 'STEP_VAR_server_ip=' "$VARIABLE_SCRIPT"; then
-    pass "Script captures server_ip variable"
+    TESTS_PASSED=$((TESTS_PASSED+1))
+pass "Script captures server_ip variable"
 else
-    fail "Script doesn't capture server_ip variable"
+    TESTS_FAILED=$((TESTS_FAILED+1))
+fail "Script doesn't capture server_ip variable"
 fi
 
 if grep -q 'STEP_VAR_server_port=' "$VARIABLE_SCRIPT"; then
-    pass "Script captures server_port variable"
+    TESTS_PASSED=$((TESTS_PASSED+1))
+pass "Script captures server_port variable"
 else
-    fail "Script doesn't capture server_port variable"
+    TESTS_FAILED=$((TESTS_FAILED+1))
+fail "Script doesn't capture server_port variable"
 fi
 
 # Test 6: Verify variable substitution logic is present
@@ -278,23 +298,29 @@ section "Test 6: Verify Variable Substitution Logic"
 
 # Check for variable substitution loop
 if grep -q 'for var_name in $STEP_VAR_NAMES; do' "$VARIABLE_SCRIPT"; then
-    pass "Script contains variable substitution loop"
+    TESTS_PASSED=$((TESTS_PASSED+1))
+pass "Script contains variable substitution loop"
 else
-    fail "Script missing variable substitution loop"
+    TESTS_FAILED=$((TESTS_FAILED+1))
+fail "Script missing variable substitution loop"
 fi
 
 # Check for SUBSTITUTED_COMMAND variable
 if grep -q 'SUBSTITUTED_COMMAND=' "$VARIABLE_SCRIPT"; then
-    pass "Script uses SUBSTITUTED_COMMAND for variable substitution"
+    TESTS_PASSED=$((TESTS_PASSED+1))
+pass "Script uses SUBSTITUTED_COMMAND for variable substitution"
 else
-    fail "Script missing SUBSTITUTED_COMMAND"
+    TESTS_FAILED=$((TESTS_FAILED+1))
+fail "Script missing SUBSTITUTED_COMMAND"
 fi
 
 # Verify sed command for variable substitution
 if grep -q 'sed.*\${$var_name}' "$VARIABLE_SCRIPT"; then
-    pass "Script performs variable substitution in commands"
+    TESTS_PASSED=$((TESTS_PASSED+1))
+pass "Script performs variable substitution in commands"
 else
-    fail "Script missing variable substitution in commands"
+    TESTS_FAILED=$((TESTS_FAILED+1))
+fail "Script missing variable substitution in commands"
 fi
 
 # Test 7: Execute the generated script
@@ -304,11 +330,13 @@ EXECUTION_OUTPUT="$TEMP_DIR/execution_output.txt"
 cd "$TEMP_DIR"
 
 if bash "$VARIABLE_SCRIPT" > "$EXECUTION_OUTPUT" 2>&1; then
-    pass "Script executed successfully"
+    TESTS_PASSED=$((TESTS_PASSED+1))
+pass "Script executed successfully"
     EXECUTION_EXIT_CODE=0
 else
     EXECUTION_EXIT_CODE=$?
-    fail "Script execution failed with exit code $EXECUTION_EXIT_CODE"
+    TESTS_FAILED=$((TESTS_FAILED+1))
+fail "Script execution failed with exit code $EXECUTION_EXIT_CODE"
     info "Output: $(cat "$EXECUTION_OUTPUT" | head -30)"
 fi
 
@@ -321,12 +349,15 @@ if [[ $EXECUTION_EXIT_CODE -eq 0 ]]; then
     # Note: Command outputs are verified in Test 9 (log files test) and Test 10 (JSON log test)
     # Here we just verify that the script executed successfully, which we already did above
 
-    # Check for PASS indicators
+    # Check for TESTS_PASSED=$((TESTS_PASSED+1))
+pass indicators
     PASS_COUNT=$(grep -c '\[PASS\]' "$EXECUTION_OUTPUT")
     if [[ $PASS_COUNT -eq 6 ]]; then
-        pass "All 6 steps passed verification"
+        TESTS_PASSED=$((TESTS_PASSED+1))
+pass "All 6 steps passed verification"
     else
-        fail "Expected 6 passed steps, got $PASS_COUNT"
+        TESTS_FAILED=$((TESTS_FAILED+1))
+fail "Expected 6 passed steps, got $PASS_COUNT"
     fi
 else
     info "Skipping execution output verification due to execution failure"
@@ -339,85 +370,109 @@ if [[ $EXECUTION_EXIT_CODE -eq 0 ]]; then
     # Step 1 log should contain the SESSION_ID output
     STEP1_LOG="$TEMP_DIR/TEST_VAR_PASSING_001_sequence-1_step-1.actual.log"
     if [[ -f "$STEP1_LOG" ]]; then
-        pass "Log file created for step 1"
+        TESTS_PASSED=$((TESTS_PASSED+1))
+pass "Log file created for step 1"
         LOG_CONTENT=$(cat "$STEP1_LOG")
         if [[ "$LOG_CONTENT" == "SESSION_ID=12345" ]]; then
-            pass "Step 1 log contains correct output"
+            TESTS_PASSED=$((TESTS_PASSED+1))
+pass "Step 1 log contains correct output"
         else
-            fail "Step 1 log has incorrect content: '$LOG_CONTENT'"
+            TESTS_FAILED=$((TESTS_FAILED+1))
+fail "Step 1 log has incorrect content: '$LOG_CONTENT'"
         fi
     else
-        fail "Log file not created for step 1"
+        TESTS_FAILED=$((TESTS_FAILED+1))
+fail "Log file not created for step 1"
     fi
 
     # Step 2 log should contain output with substituted session_id
     STEP2_LOG="$TEMP_DIR/TEST_VAR_PASSING_001_sequence-1_step-2.actual.log"
     if [[ -f "$STEP2_LOG" ]]; then
-        pass "Log file created for step 2"
+        TESTS_PASSED=$((TESTS_PASSED+1))
+pass "Log file created for step 2"
         LOG_CONTENT=$(cat "$STEP2_LOG")
         if [[ "$LOG_CONTENT" == "Using session 12345" ]]; then
-            pass "Step 2 log contains output with substituted session_id"
+            TESTS_PASSED=$((TESTS_PASSED+1))
+pass "Step 2 log contains output with substituted session_id"
         else
-            fail "Step 2 log has incorrect content: '$LOG_CONTENT'"
+            TESTS_FAILED=$((TESTS_FAILED+1))
+fail "Step 2 log has incorrect content: '$LOG_CONTENT'"
         fi
     else
-        fail "Log file not created for step 2"
+        TESTS_FAILED=$((TESTS_FAILED+1))
+fail "Log file not created for step 2"
     fi
 
     # Step 3 log should contain USER and TOKEN
     STEP3_LOG="$TEMP_DIR/TEST_VAR_PASSING_001_sequence-1_step-3.actual.log"
     if [[ -f "$STEP3_LOG" ]]; then
-        pass "Log file created for step 3"
+        TESTS_PASSED=$((TESTS_PASSED+1))
+pass "Log file created for step 3"
         LOG_CONTENT=$(cat "$STEP3_LOG")
         if [[ "$LOG_CONTENT" == "USER=testuser TOKEN=abc123xyz" ]]; then
-            pass "Step 3 log contains correct output"
+            TESTS_PASSED=$((TESTS_PASSED+1))
+pass "Step 3 log contains correct output"
         else
-            fail "Step 3 log has incorrect content: '$LOG_CONTENT'"
+            TESTS_FAILED=$((TESTS_FAILED+1))
+fail "Step 3 log has incorrect content: '$LOG_CONTENT'"
         fi
     else
-        fail "Log file not created for step 3"
+        TESTS_FAILED=$((TESTS_FAILED+1))
+fail "Log file not created for step 3"
     fi
 
     # Step 4 log should contain output with substituted username and token
     STEP4_LOG="$TEMP_DIR/TEST_VAR_PASSING_001_sequence-1_step-4.actual.log"
     if [[ -f "$STEP4_LOG" ]]; then
-        pass "Log file created for step 4"
+        TESTS_PASSED=$((TESTS_PASSED+1))
+pass "Log file created for step 4"
         LOG_CONTENT=$(cat "$STEP4_LOG")
         if [[ "$LOG_CONTENT" == "Auth: testuser with token abc123xyz" ]]; then
-            pass "Step 4 log contains output with substituted username and token"
+            TESTS_PASSED=$((TESTS_PASSED+1))
+pass "Step 4 log contains output with substituted username and token"
         else
-            fail "Step 4 log has incorrect content: '$LOG_CONTENT'"
+            TESTS_FAILED=$((TESTS_FAILED+1))
+fail "Step 4 log has incorrect content: '$LOG_CONTENT'"
         fi
     else
-        fail "Log file not created for step 4"
+        TESTS_FAILED=$((TESTS_FAILED+1))
+fail "Log file not created for step 4"
     fi
 
     # Step 5 log should contain IP and port
     STEP5_LOG="$TEMP_DIR/TEST_VAR_PASSING_001_sequence-1_step-5.actual.log"
     if [[ -f "$STEP5_LOG" ]]; then
-        pass "Log file created for step 5"
+        TESTS_PASSED=$((TESTS_PASSED+1))
+pass "Log file created for step 5"
         LOG_CONTENT=$(cat "$STEP5_LOG")
         if [[ "$LOG_CONTENT" == "Server running at 192.168.1.100:8080" ]]; then
-            pass "Step 5 log contains correct output"
+            TESTS_PASSED=$((TESTS_PASSED+1))
+pass "Step 5 log contains correct output"
         else
-            fail "Step 5 log has incorrect content: '$LOG_CONTENT'"
+            TESTS_FAILED=$((TESTS_FAILED+1))
+fail "Step 5 log has incorrect content: '$LOG_CONTENT'"
         fi
     else
-        fail "Log file not created for step 5"
+        TESTS_FAILED=$((TESTS_FAILED+1))
+fail "Log file not created for step 5"
     fi
 
     # Step 6 log should contain output with substituted IP and port
     STEP6_LOG="$TEMP_DIR/TEST_VAR_PASSING_001_sequence-1_step-6.actual.log"
     if [[ -f "$STEP6_LOG" ]]; then
-        pass "Log file created for step 6"
+        TESTS_PASSED=$((TESTS_PASSED+1))
+pass "Log file created for step 6"
         LOG_CONTENT=$(cat "$STEP6_LOG")
         if [[ "$LOG_CONTENT" == "Connecting to 192.168.1.100 on port 8080" ]]; then
-            pass "Step 6 log contains output with substituted IP and port"
+            TESTS_PASSED=$((TESTS_PASSED+1))
+pass "Step 6 log contains output with substituted IP and port"
         else
-            fail "Step 6 log has incorrect content: '$LOG_CONTENT'"
+            TESTS_FAILED=$((TESTS_FAILED+1))
+fail "Step 6 log has incorrect content: '$LOG_CONTENT'"
         fi
     else
-        fail "Log file not created for step 6"
+        TESTS_FAILED=$((TESTS_FAILED+1))
+fail "Log file not created for step 6"
     fi
 else
     info "Skipping log file verification due to execution failure"
@@ -430,99 +485,123 @@ section "Test 10: Verify JSON Execution Log"
 
 JSON_LOG="$TEMP_DIR/TEST_VAR_PASSING_001_execution_log.json"
 if [[ -f "$JSON_LOG" ]]; then
-    pass "JSON execution log created"
+    TESTS_PASSED=$((TESTS_PASSED+1))
+pass "JSON execution log created"
     
     # Validate JSON
     if command -v jq >/dev/null 2>&1; then
         if jq empty "$JSON_LOG" >/dev/null 2>&1; then
-            pass "JSON execution log is valid"
+            TESTS_PASSED=$((TESTS_PASSED+1))
+pass "JSON execution log is valid"
         else
-            fail "JSON execution log is invalid"
+            TESTS_FAILED=$((TESTS_FAILED+1))
+fail "JSON execution log is invalid"
             jq empty "$JSON_LOG" 2>&1
         fi
         
         # Check entry count
         ENTRY_COUNT=$(jq 'length' "$JSON_LOG")
         if [[ $ENTRY_COUNT -eq 6 ]]; then
-            pass "JSON log contains correct number of entries (6 steps)"
+            TESTS_PASSED=$((TESTS_PASSED+1))
+pass "JSON log contains correct number of entries (6 steps)"
         else
-            fail "JSON log has incorrect number of entries: expected 6, got $ENTRY_COUNT"
+            TESTS_FAILED=$((TESTS_FAILED+1))
+fail "JSON log has incorrect number of entries: expected 6, got $ENTRY_COUNT"
         fi
         
         # Verify step 1 captured the session ID
         STEP1_OUTPUT=$(jq -r '.[0].output' "$JSON_LOG")
         if [[ "$STEP1_OUTPUT" == "SESSION_ID=12345" ]]; then
-            pass "JSON log entry 1 contains correct output"
+            TESTS_PASSED=$((TESTS_PASSED+1))
+pass "JSON log entry 1 contains correct output"
         else
-            fail "JSON log entry 1 has incorrect output: '$STEP1_OUTPUT'"
+            TESTS_FAILED=$((TESTS_FAILED+1))
+fail "JSON log entry 1 has incorrect output: '$STEP1_OUTPUT'"
         fi
         
         # Verify step 2 used the captured session ID
         STEP2_OUTPUT=$(jq -r '.[1].output' "$JSON_LOG")
         if [[ "$STEP2_OUTPUT" == "Using session 12345" ]]; then
-            pass "JSON log entry 2 contains output with substituted session_id"
+            TESTS_PASSED=$((TESTS_PASSED+1))
+pass "JSON log entry 2 contains output with substituted session_id"
         else
-            fail "JSON log entry 2 has incorrect output: '$STEP2_OUTPUT'"
+            TESTS_FAILED=$((TESTS_FAILED+1))
+fail "JSON log entry 2 has incorrect output: '$STEP2_OUTPUT'"
         fi
         
         # Verify step 3 captured username and token
         STEP3_OUTPUT=$(jq -r '.[2].output' "$JSON_LOG")
         if [[ "$STEP3_OUTPUT" == "USER=testuser TOKEN=abc123xyz" ]]; then
-            pass "JSON log entry 3 contains correct output"
+            TESTS_PASSED=$((TESTS_PASSED+1))
+pass "JSON log entry 3 contains correct output"
         else
-            fail "JSON log entry 3 has incorrect output: '$STEP3_OUTPUT'"
+            TESTS_FAILED=$((TESTS_FAILED+1))
+fail "JSON log entry 3 has incorrect output: '$STEP3_OUTPUT'"
         fi
         
         # Verify step 4 used the captured username and token
         STEP4_OUTPUT=$(jq -r '.[3].output' "$JSON_LOG")
         if [[ "$STEP4_OUTPUT" == "Auth: testuser with token abc123xyz" ]]; then
-            pass "JSON log entry 4 contains output with substituted username and token"
+            TESTS_PASSED=$((TESTS_PASSED+1))
+pass "JSON log entry 4 contains output with substituted username and token"
         else
-            fail "JSON log entry 4 has incorrect output: '$STEP4_OUTPUT'"
+            TESTS_FAILED=$((TESTS_FAILED+1))
+fail "JSON log entry 4 has incorrect output: '$STEP4_OUTPUT'"
         fi
         
         # Verify step 5 captured IP and port
         STEP5_OUTPUT=$(jq -r '.[4].output' "$JSON_LOG")
         if [[ "$STEP5_OUTPUT" == "Server running at 192.168.1.100:8080" ]]; then
-            pass "JSON log entry 5 contains correct output"
+            TESTS_PASSED=$((TESTS_PASSED+1))
+pass "JSON log entry 5 contains correct output"
         else
-            fail "JSON log entry 5 has incorrect output: '$STEP5_OUTPUT'"
+            TESTS_FAILED=$((TESTS_FAILED+1))
+fail "JSON log entry 5 has incorrect output: '$STEP5_OUTPUT'"
         fi
         
         # Verify step 6 used the captured IP and port
         STEP6_OUTPUT=$(jq -r '.[5].output' "$JSON_LOG")
         if [[ "$STEP6_OUTPUT" == "Connecting to 192.168.1.100 on port 8080" ]]; then
-            pass "JSON log entry 6 contains output with substituted IP and port"
+            TESTS_PASSED=$((TESTS_PASSED+1))
+pass "JSON log entry 6 contains output with substituted IP and port"
         else
-            fail "JSON log entry 6 has incorrect output: '$STEP6_OUTPUT'"
+            TESTS_FAILED=$((TESTS_FAILED+1))
+fail "JSON log entry 6 has incorrect output: '$STEP6_OUTPUT'"
         fi
         
         # Verify all steps have exit_code 0
         ALL_SUCCESS=$(jq '[.[] | .exit_code == 0] | all' "$JSON_LOG")
         if [[ "$ALL_SUCCESS" == "true" ]]; then
-            pass "All JSON log entries show successful execution (exit_code 0)"
+            TESTS_PASSED=$((TESTS_PASSED+1))
+pass "All JSON log entries show successful execution (exit_code 0)"
         else
-            fail "Some JSON log entries have non-zero exit codes"
+            TESTS_FAILED=$((TESTS_FAILED+1))
+fail "Some JSON log entries have non-zero exit codes"
         fi
     else
         info "jq not available - skipping detailed JSON validation"
         # Fallback to python
         if python3 -c "import json; json.load(open('$JSON_LOG'))" 2>/dev/null; then
-            pass "JSON execution log is valid (verified with python)"
+            TESTS_PASSED=$((TESTS_PASSED+1))
+pass "JSON execution log is valid (verified with python)"
             
             # Basic validation with python
             STEP2_CHECK=$(python3 -c "import json; data = json.load(open('$JSON_LOG')); print(data[1]['output'])" 2>/dev/null)
             if [[ "$STEP2_CHECK" == "Using session 12345" ]]; then
-                pass "JSON log entry 2 verified with python"
+                TESTS_PASSED=$((TESTS_PASSED+1))
+pass "JSON log entry 2 verified with python"
             else
-                fail "JSON log entry 2 verification failed"
+                TESTS_FAILED=$((TESTS_FAILED+1))
+fail "JSON log entry 2 verification failed"
             fi
         else
-            fail "JSON execution log is invalid"
+            TESTS_FAILED=$((TESTS_FAILED+1))
+fail "JSON execution log is invalid"
         fi
     fi
 else
-    fail "JSON execution log not created"
+    TESTS_FAILED=$((TESTS_FAILED+1))
+fail "JSON execution log not created"
 fi
 
 # Test 11: Verify variable capture regex patterns work correctly
@@ -535,33 +614,41 @@ if [[ $EXECUTION_EXIT_CODE -eq 0 ]]; then
     # Test session_id pattern
     SESSION_CAPTURE=$(echo "SESSION_ID=12345" | sed -n 's/.*SESSION_ID=\([0-9][0-9]*\).*/\1/p' | head -n 1)
     if [[ "$SESSION_CAPTURE" == "12345" ]]; then
-        pass "session_id regex pattern works correctly"
+        TESTS_PASSED=$((TESTS_PASSED+1))
+pass "session_id regex pattern works correctly"
     else
-        fail "session_id regex pattern failed: got '$SESSION_CAPTURE'"
+        TESTS_FAILED=$((TESTS_FAILED+1))
+fail "session_id regex pattern failed: got '$SESSION_CAPTURE'"
     fi
     
     # Test username pattern
     USERNAME_CAPTURE=$(echo "USER=testuser TOKEN=abc123xyz" | sed -n 's/.*USER=\([a-zA-Z0-9_][a-zA-Z0-9_]*\).*/\1/p' | head -n 1)
     if [[ "$USERNAME_CAPTURE" == "testuser" ]]; then
-        pass "username regex pattern works correctly"
+        TESTS_PASSED=$((TESTS_PASSED+1))
+pass "username regex pattern works correctly"
     else
-        fail "username regex pattern failed: got '$USERNAME_CAPTURE'"
+        TESTS_FAILED=$((TESTS_FAILED+1))
+fail "username regex pattern failed: got '$USERNAME_CAPTURE'"
     fi
     
     # Test token pattern
     TOKEN_CAPTURE=$(echo "USER=testuser TOKEN=abc123xyz" | sed -n 's/.*TOKEN=\([a-zA-Z0-9_][a-zA-Z0-9_]*\).*/\1/p' | head -n 1)
     if [[ "$TOKEN_CAPTURE" == "abc123xyz" ]]; then
-        pass "token regex pattern works correctly"
+        TESTS_PASSED=$((TESTS_PASSED+1))
+pass "token regex pattern works correctly"
     else
-        fail "token regex pattern failed: got '$TOKEN_CAPTURE'"
+        TESTS_FAILED=$((TESTS_FAILED+1))
+fail "token regex pattern failed: got '$TOKEN_CAPTURE'"
     fi
     
     # Test server_ip pattern
     IP_CAPTURE=$(echo "Server running at 192.168.1.100:8080" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
     if [[ "$IP_CAPTURE" == "192.168.1.100" ]]; then
-        pass "server_ip regex pattern works correctly"
+        TESTS_PASSED=$((TESTS_PASSED+1))
+pass "server_ip regex pattern works correctly"
     else
-        fail "server_ip regex pattern failed: got '$IP_CAPTURE'"
+        TESTS_FAILED=$((TESTS_FAILED+1))
+fail "server_ip regex pattern failed: got '$IP_CAPTURE'"
     fi
 else
     info "Skipping regex pattern verification due to execution failure"
@@ -569,15 +656,15 @@ fi
 
 # Summary
 section "Test Summary"
-echo ""
-echo "Tests Passed: $TESTS_PASSED"
-echo "Tests Failed: $TESTS_FAILED"
-echo ""
+log_info "Tests Passed: $TESTS_PASSED"
+log_info "Tests Failed: $TESTS_FAILED"
 
 if [[ $TESTS_FAILED -eq 0 ]]; then
-    echo -e "${GREEN}All tests passed!${NC}"
+    TESTS_PASSED=$((TESTS_PASSED+1))
+pass "All tests passed!"
     exit 0
 else
-    echo -e "${RED}Some tests failed!${NC}"
+    TESTS_FAILED=$((TESTS_FAILED+1))
+fail "Some tests failed!"
     exit 1
 fi

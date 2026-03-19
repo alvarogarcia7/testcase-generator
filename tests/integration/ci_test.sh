@@ -11,8 +11,9 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-# Source shared library for finding binaries
+# Source shared libraries (for consistency, though we use CI-specific output)
 source "$PROJECT_ROOT/scripts/lib/find-binary.sh"
+source "$PROJECT_ROOT/scripts/lib/logger.sh" || exit 1
 
 # Find the binary
 cd "$PROJECT_ROOT"
