@@ -34,10 +34,19 @@ The acceptance test suite serves four primary purposes:
 
 ### Statistics
 
-- **Total test cases**: 91
-- **Test categories**: 8 (success, failure, hooks, manual, variables, dependencies, complex, bash_commands)
+- **Total test cases**: 81
+- **Test categories**: 9 (success, failure, hooks, manual, variables, dependencies, prerequisites, complex, bash_commands)
 - **Pipeline stages**: 7 (validation, generation, execution, verification, container validation, individual documentation, consolidated documentation)
 - **Supported platforms**: macOS (BSD, bash 3.2+) and Linux (GNU, bash 3.2+)
+
+### Recent Updates
+
+**Dependency Resolution** (Latest):
+- Added `--test-case-dir` parameter to test-executor for cross-directory dependency resolution
+- All dependency test cases now generate successfully (7/8 functional, 1 expected failure)
+- Created hook scripts for complex test case lifecycle management
+- Updated acceptance suite to run scripts non-interactively
+- See `DEPENDENCIES_PREREQUISITES_COMPLEX_STATUS.md` for detailed status
 
 ---
 
@@ -91,18 +100,28 @@ cd test-acceptance
 
 ```
 test-acceptance/
-├── test_cases/                  # Test case YAML files (91 total)
+├── test_cases/                  # Test case YAML files (81 total)
 │   ├── success/                 # Success scenario tests (13)
-│   ├── failure/                 # Failure scenario tests (14)
-│   ├── hooks/                   # Lifecycle hooks tests (14)
+│   ├── failure/                 # Failure scenario tests (12)
+│   ├── hooks/                   # Lifecycle hooks tests (16)
 │   ├── manual/                  # Manual test cases (9)
-│   ├── variables/               # Variable capture/usage tests (11)
-│   ├── dependencies/            # Dependency management tests (8)
-│   ├── complex/                 # Complex integration tests (9)
+│   ├── variables/               # Variable capture/usage tests (5)
 │   ├── bash_commands/           # Bash command tests (13)
+│   ├── dependencies/            # Dependency management tests (8)
+│   ├── prerequisites/           # Prerequisite validation tests (7)
+│   ├── complex/                 # Complex integration tests (9)
 │   └── README.md                # Test case documentation
 │
 ├── scripts/                     # Generated executable bash scripts (gitignored)
+│   ├── hooks/                   # Hook lifecycle scripts (8 scripts)
+│   │   ├── script_start_init.sh
+│   │   ├── setup_test_workspace.sh
+│   │   ├── before_sequence_log.sh
+│   │   ├── after_sequence_cleanup.sh
+│   │   ├── before_step_validate.sh
+│   │   ├── after_step_metrics.sh
+│   │   ├── teardown_test_final.sh
+│   │   └── script_end_summary.sh
 │   ├── TC_SUCCESS_*.sh
 │   ├── TC_FAILURE_*.sh
 │   └── ...
@@ -148,7 +167,7 @@ test-acceptance/
 
 ## Test Scenario Categories
 
-The test suite includes 91 test cases across 8 categories:
+The test suite includes 81 test cases across 9 categories:
 
 ### 1. Success Scenarios (`success/`, 13 tests)
 
@@ -199,35 +218,16 @@ Tests requiring human interaction:
 - Interactive workflows
 - **Note**: Skipped by default; use `--include-manual` to execute
 
-### 5. Variables (`variables/`, 11 tests)
+### 5. Variables (`variables/`, 5 tests)
 
 Tests for variable capture and usage:
 
-- Regex-based variable capture
-- Command-based variable capture
-- Variable substitution
-- Cross-step variable dependencies
-- Sequence-scoped variables
+- **1.yaml, 2.yaml**: Basic variable demonstration
+- **TC_VAR_CAPTURE_002**: Regex-based variable capture
+- **TC_VAR_DEMO_001**: Variable demo scenarios
+- **TC_VAR_DISPLAY_001**: Variable display and formatting
 
-### 6. Dependencies (`dependencies/`, 8 tests)
-
-Tests for dependency management:
-
-- Step dependencies
-- Sequence dependencies
-- Variable-based dependencies
-- Conditional execution based on dependencies
-
-### 7. Complex Integration (`complex/`, 9 tests)
-
-Complex end-to-end integration tests:
-
-- Multi-sequence workflows
-- Complex data transformations
-- Integration with external tools
-- Advanced verification scenarios
-
-### 8. Bash Commands (`bash_commands/`, 13 tests)
+### 6. Bash Commands (`bash_commands/`, 13 tests)
 
 Tests for various bash command scenarios:
 
@@ -236,6 +236,46 @@ Tests for various bash command scenarios:
 - Subshells and command substitution
 - Script compatibility (BSD/GNU)
 - Bash 3.2+ compatibility
+- Arrays, loops, conditionals, string operations
+
+### 7. Dependencies (`dependencies/`, 8 tests)
+
+Tests for test case dependency resolution:
+
+- **TC_DEPENDENCY_SIMPLE_001**: Basic test case dependency
+- **TC_DEPENDENCY_SEQUENCE_001**: Sequence-level dependencies
+- **TC_DEPENDENCY_NESTED_001**: Transitive dependencies (A→B→C)
+- **TC_DEPENDENCY_COMPLEX_001**: Multi-level dependency graphs
+- **TC_DEPENDENCY_CIRCULAR_001/002**: Circular dependency tests
+- **TC_DEPENDENCY_SELF_REF_001**: Self-reference detection
+- **TC_DEPENDENCY_MISSING_001**: Missing dependency error handling
+- **Note**: Requires `--test-case-dir` for cross-directory resolution
+
+### 8. Prerequisites (`prerequisites/`, 7 tests)
+
+Tests for prerequisite validation:
+
+- **PREREQ_AUTO_PASS_001**: Automatic prerequisites that pass
+- **PREREQ_AUTO_FAIL_001**: Automatic prerequisites that fail
+- **PREREQ_MANUAL_001**: Manual prerequisite steps
+- **PREREQ_MIXED_001**: Mixed automatic and manual prerequisites
+- **PREREQ_COMPLEX_001**: Complex prerequisite scenarios
+- **PREREQ_PARTIAL_FAIL_001**: Partial prerequisite failures
+- **PREREQ_NONE_001**: No prerequisites defined
+
+### 9. Complex Integration (`complex/`, 9 tests)
+
+Complex end-to-end integration tests combining multiple features:
+
+- **TC_COMPLEX_ALL_HOOKS_CAPTURE_001**: All 8 hooks + variable capture
+- **TC_COMPLEX_BDD_HOOKS_VARS_001**: BDD-style hooks with variables
+- **TC_COMPLEX_DATA_DRIVEN_ITERATIONS_001**: Data-driven iterations
+- **TC_COMPLEX_FAILED_TEARDOWN_001**: Teardown failure handling
+- **TC_COMPLEX_HYDRATION_CONDITIONAL_001**: Hydration with conditionals
+- **TC_COMPLEX_MULTI_SEQ_HOOKS_001**: Multi-sequence hooks
+- **TC_COMPLEX_PERFORMANCE_TIMING_001**: Performance timing tests
+- **TC_COMPLEX_PREREQ_DEPS_HOOKS_001**: Prerequisites + Dependencies + Hooks
+- **TC_COMPLEX_SECURITY_AUTH_API_001**: Security/auth API testing
 
 ---
 

@@ -274,8 +274,8 @@ generate_test_scripts() {
         
         log_verbose "Generating: $basename.sh"
         
-        # Generate script with --json-log flag
-        if "$TEST_EXECUTOR" generate --json-log --output "$script_file" "$yaml_file" > "$TEMP_DIR/generation_output.txt" 2>&1; then
+        # Generate script with --json-log flag and --test-case-dir for dependency resolution
+        if "$TEST_EXECUTOR" generate --json-log --test-case-dir "$TEST_CASES_DIR" --output "$script_file" "$yaml_file" > "$TEMP_DIR/generation_output.txt" 2>&1; then
             ((GENERATION_PASSED++))
             pass "$basename.sh"
             
@@ -366,9 +366,10 @@ execute_test_scripts() {
         
         log_verbose "Executing: $basename.sh"
         
-        # Execute script (output to /dev/null since we use the generated JSON log)
+        # Execute script with stdin closed to avoid blocking on interactive prompts
+        # (output to /dev/null since we use the generated JSON log)
         local exit_code=0
-        if ! "$script_file" > /dev/null 2>&1; then
+        if ! bash "$script_file" < /dev/null > /dev/null 2>&1; then
             exit_code=$?
             ((EXECUTION_FAILED++))
             fail "$basename.sh (exit code: $exit_code)"

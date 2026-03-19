@@ -1,0 +1,356 @@
+requirement: "COMPLEX_PREREQUISITES_DEPENDENCIES"
+item: 1
+tc: 2
+id: 'TC_COMPLEX_PREREQ_DEPS_HOOKS_001'
+description: 'Test with prerequisites, dependencies, and hooks - comprehensive validation with dependency chains'
+
+prerequisites:
+  - type: manual
+    description: "Ensure test system has sufficient memory (minimum 512MB available)"
+  - type: manual
+    description: "Verify network connectivity is available for external resource access"
+  - type: automatic
+    description: "Verify bash version is 3.2 or higher"
+    verification_command: "bash --version | head -1 | grep -q 'version [3-9]\\|version [1-9][0-9]' && exit 0 || exit 1"
+  - type: automatic
+    description: "Check that /tmp is writable"
+    verification_command: "test -w /tmp && exit 0 || exit 1"
+  - type: automatic
+    description: "Verify tar utility is available"
+    verification_command: "command -v tar >/dev/null 2>&1 && exit 0 || exit 1"
+  - type: automatic
+    description: "Check disk space in /tmp (minimum 50MB)"
+    verification_command: "df -k /tmp | awk 'NR==2 {if ($4 > 51200) exit 0; else exit 1}'"
+  - type: manual
+    description: "Confirm test operator has reviewed test plan and understands dependencies"
+
+hooks:
+  script_start:
+    command: "test-acceptance/scripts/hooks/script_start_init.sh"
+    on_error: "fail"
+  setup_test:
+    command: "test-acceptance/scripts/hooks/setup_test_workspace.sh"
+    on_error: "fail"
+  before_sequence:
+    command: "test-acceptance/scripts/hooks/before_sequence_log.sh"
+    on_error: "continue"
+  after_sequence:
+    command: "test-acceptance/scripts/hooks/after_sequence_cleanup.sh"
+    on_error: "continue"
+  teardown_test:
+    command: "test-acceptance/scripts/hooks/teardown_test_final.sh"
+    on_error: "continue"
+  script_end:
+    command: "test-acceptance/scripts/hooks/script_end_summary.sh"
+    on_error: "continue"
+
+hydration_vars:
+  BASE_DIR:
+    name: "BASE_DIR"
+    description: "Base directory for all test operations"
+    default_value: "/tmp/prereq_test"
+    required: true
+  
+  SERVICE_NAME:
+    name: "SERVICE_NAME"
+    description: "Name of the service under test"
+    default_value: "test-service"
+    required: true
+  
+  TIMEOUT_SECONDS:
+    name: "TIMEOUT_SECONDS"
+    description: "Timeout for operations in seconds"
+    default_value: "30"
+    required: false
+
+general_initial_conditions:
+  system:
+    - "All prerequisites have been validated"
+    - "Test environment meets minimum requirements"
+  documentation:
+    - "Test dependencies are documented and understood"
+
+initial_conditions:
+  filesystem:
+    - "Base directory can be created"
+  system:
+    - "System utilities (tar, grep, awk) are available"
+
+test_sequences:
+  - id: 1
+    name: "Foundation Setup with Dependencies"
+    description: "Establish base infrastructure required by subsequent sequences"
+    initial_conditions:
+      prerequisites:
+        - "All prerequisites have passed validation"
+    steps:
+      - step: 1
+        description: "Create base directory structure"
+        command: "mkdir -p ${BASE_DIR}/{data,logs,config,temp} && echo 'Created directories' && ls -d ${BASE_DIR}/*"
+        expected:
+          success: true
+          result: 0
+          output: "Created directories"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'data' <<< \"$COMMAND_OUTPUT\" && grep -q 'logs' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 2
+        description: "Generate unique session ID"
+        command: "echo $RANDOM$RANDOM | md5sum 2>/dev/null | cut -d' ' -f1 || echo $RANDOM$RANDOM | md5 2>/dev/null | cut -d' ' -f1 || echo 'session_'$(date +%s)"
+        capture_vars:
+          - name: session_id
+            capture: '([a-f0-9]+|session_[0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "session"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ -n \"$COMMAND_OUTPUT\" ]]"
+          general:
+            - name: verify_session_id_captured
+              condition: "[[ -n \"$session_id\" ]]"
+            - name: verify_session_id_format
+              condition: "[[ $session_id =~ ^[a-f0-9]+$ ]] || [[ $session_id =~ ^session_[0-9]+$ ]]"
+
+      - step: 3
+        description: "Create session configuration file (dependency for sequence 2)"
+        command: "cat > ${BASE_DIR}/config/session.conf << EOF
+session_id=${session_id}
+service_name=${SERVICE_NAME}
+timeout=${TIMEOUT_SECONDS}
+base_dir=${BASE_DIR}
+created_at=$(date +%Y-%m-%d_%H:%M:%S)
+EOF
+cat ${BASE_DIR}/config/session.conf"
+        capture_vars:
+          - name: config_file
+            capture: 'session_id='
+        expected:
+          success: true
+          result: 0
+          output: "session_id="
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'session_id=${session_id}' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 4
+        description: "Initialize log file (dependency for all sequences)"
+        command: "echo '[INFO] Test session ${session_id} started' > ${BASE_DIR}/logs/test.log && echo '[INFO] Service: ${SERVICE_NAME}' >> ${BASE_DIR}/logs/test.log && cat ${BASE_DIR}/logs/test.log"
+        expected:
+          success: true
+          result: 0
+          output: "[INFO] Test session"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q '\\[INFO\\] Test session' <<< \"$COMMAND_OUTPUT\""
+
+  - id: 2
+    name: "Service Initialization (depends on sequence 1)"
+    description: "Initialize service using configuration from sequence 1"
+    initial_conditions:
+      dependencies:
+        - "Sequence 1 has completed successfully"
+        - "Session configuration file exists"
+        - "Log file has been initialized"
+    steps:
+      - step: 1
+        description: "Verify sequence 1 dependencies are met"
+        command: "test -f ${BASE_DIR}/config/session.conf && test -f ${BASE_DIR}/logs/test.log && echo 'Dependencies verified'"
+        expected:
+          success: true
+          result: 0
+          output: "Dependencies verified"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Dependencies verified' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 2
+        description: "Create service data file using session ID"
+        command: "echo 'Service: ${SERVICE_NAME}' > ${BASE_DIR}/data/service_${session_id}.dat && echo 'Status: INITIALIZED' >> ${BASE_DIR}/data/service_${session_id}.dat && echo 'Timeout: ${TIMEOUT_SECONDS}' >> ${BASE_DIR}/data/service_${session_id}.dat && cat ${BASE_DIR}/data/service_${session_id}.dat"
+        expected:
+          success: true
+          result: 0
+          output: "Service:"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Status: INITIALIZED' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 3
+        description: "Log service initialization"
+        command: "echo '[INFO] Service ${SERVICE_NAME} initialized with session ${session_id}' >> ${BASE_DIR}/logs/test.log && tail -1 ${BASE_DIR}/logs/test.log"
+        expected:
+          success: true
+          result: 0
+          output: "initialized with session"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'initialized with session' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 4
+        description: "Capture initialization timestamp"
+        command: "date +%s"
+        capture_vars:
+          - name: init_timestamp
+            capture: '([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "timestamp"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
+          general:
+            - name: verify_init_timestamp
+              condition: "[[ $init_timestamp =~ ^[0-9]+$ ]]"
+
+  - id: 3
+    name: "Service Operations (depends on sequences 1 and 2)"
+    description: "Execute operations requiring all previous sequence dependencies"
+    initial_conditions:
+      dependencies:
+        - "Sequence 1 has established base infrastructure"
+        - "Sequence 2 has initialized service"
+        - "Session ID and timestamps are available"
+    steps:
+      - step: 1
+        description: "Verify all dependencies from sequences 1 and 2"
+        command: "test -d ${BASE_DIR}/data && test -f ${BASE_DIR}/data/service_${session_id}.dat && test -f ${BASE_DIR}/config/session.conf && echo 'All dependencies satisfied'"
+        expected:
+          success: true
+          result: 0
+          output: "All dependencies satisfied"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'All dependencies satisfied' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 2
+        description: "Simulate service operation with captured variables"
+        command: "echo 'Processing request for session: '${session_id} > ${BASE_DIR}/temp/operation.tmp && echo 'Initialized at: '${init_timestamp} >> ${BASE_DIR}/temp/operation.tmp && cat ${BASE_DIR}/temp/operation.tmp"
+        expected:
+          success: true
+          result: 0
+          output: "Processing request"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Processing request for session' <<< \"$COMMAND_OUTPUT\" && grep -q 'Initialized at' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 3
+        description: "Count total files created across all sequences"
+        command: "find ${BASE_DIR} -type f | wc -l"
+        capture_vars:
+          - name: file_count
+            capture: '([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "number"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output:
+            condition: "[[ $file_count -ge 4 ]]"
+            if_true:
+              - "echo 'Expected number of files created (>= 4)'"
+            if_false:
+              - "echo 'Fewer files than expected'"
+            always:
+              - "echo \"Total files: ${file_count}\""
+          general:
+            - name: verify_file_count_numeric
+              condition: "[[ $file_count =~ ^[0-9]+$ ]]"
+            - name: verify_minimum_files
+              condition: "[[ $file_count -ge 4 ]]"
+
+      - step: 4
+        description: "Update service status"
+        command: "echo 'Status: RUNNING' >> ${BASE_DIR}/data/service_${session_id}.dat && grep 'Status:' ${BASE_DIR}/data/service_${session_id}.dat | tail -1"
+        expected:
+          success: true
+          result: 0
+          output: "Status: RUNNING"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Status: RUNNING' <<< \"$COMMAND_OUTPUT\""
+
+  - id: 4
+    name: "Teardown and Validation (depends on all previous sequences)"
+    description: "Clean shutdown and verification that all dependencies were properly utilized"
+    initial_conditions:
+      dependencies:
+        - "All previous sequences completed successfully"
+        - "All data files and logs are present"
+    steps:
+      - step: 1
+        description: "Final status update"
+        command: "echo 'Status: COMPLETED' >> ${BASE_DIR}/data/service_${session_id}.dat && cat ${BASE_DIR}/data/service_${session_id}.dat"
+        expected:
+          success: true
+          result: 0
+          output: "Status: COMPLETED"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Status: COMPLETED' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 2
+        description: "Generate final test report"
+        command: "cat > ${BASE_DIR}/test_report.txt << EOF
+Test Execution Report
+====================
+Session ID: ${session_id}
+Service: ${SERVICE_NAME}
+Initialization: ${init_timestamp}
+Files Created: ${file_count}
+Status: SUCCESS
+EOF
+cat ${BASE_DIR}/test_report.txt"
+        expected:
+          success: true
+          result: 0
+          output: "Test Execution Report"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Session ID: ${session_id}' <<< \"$COMMAND_OUTPUT\" && grep -q 'Status: SUCCESS' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 3
+        description: "Archive all test artifacts"
+        command: "cd ${BASE_DIR} && tar -czf test_archive_${session_id}.tar.gz config/ data/ logs/ temp/ test_report.txt 2>&1 | head -1 || echo 'Archive created successfully'"
+        expected:
+          success: true
+          result: 0
+          output: "created"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"
+
+      - step: 4
+        description: "Verify archive integrity"
+        command: "test -f ${BASE_DIR}/test_archive_${session_id}.tar.gz && tar -tzf ${BASE_DIR}/test_archive_${session_id}.tar.gz | wc -l"
+        capture_vars:
+          - name: archived_files
+            capture: '([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "number"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output:
+            condition: "[[ $archived_files -ge 5 ]]"
+            if_true:
+              - "echo 'Archive contains expected files'"
+            if_false:
+              - "echo 'Archive may be incomplete'"
+            always:
+              - "echo \"Archived files: ${archived_files}\""
+
+      - step: 5
+        description: "Cleanup temporary files (preserve archive)"
+        command: "rm -rf ${BASE_DIR}/temp ${BASE_DIR}/config ${BASE_DIR}/data ${BASE_DIR}/logs && test -f ${BASE_DIR}/test_archive_${session_id}.tar.gz && echo 'Cleanup complete, archive preserved'"
+        expected:
+          success: true
+          result: 0
+          output: "Cleanup complete"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Cleanup complete' <<< \"$COMMAND_OUTPUT\""
