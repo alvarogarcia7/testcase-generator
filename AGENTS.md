@@ -52,6 +52,7 @@ See the [Hooks](#hooks) section for detailed documentation and examples.
 - **sccache Clean**: make sccache-clean (clear sccache compilation cache)
 - **Verify Scripts**: make verify-scripts (verify syntax of all shell scripts)
 - **Validate Output Schemas**: make validate-output-schemas (validate expected output samples against schemas)
+- **Validate Test Cases Report**: make validate-testcases-report (generate detailed validation report for all test case YAML files in testcases/ directory, output saved to reports/validation_report.txt)
 - **Watch Mode**: make watch (monitors testcases/ for changes and auto-validates)
 - **Generate Docs**: make generate-docs (generate documentation reports using test-plan-documentation-generator)
 - **Generate Docs All**: make generate-docs-all (generate documentation reports for all test scenarios using test-plan-documentation-generator)
@@ -1065,6 +1066,95 @@ make validate-output-schemas
 - `schemas/verification-output.schema.json` - Complete verification output schema
 - `schemas/execution-log.schema.json` - Test execution log schema
 - `schemas/test-case.schema.json` - Test case definition schema
+
+### Test Case Validation Report
+
+The project provides a comprehensive validation reporting tool that validates all test case YAML files and generates a detailed report.
+
+**Command**: `make validate-testcases-report`
+
+**Purpose**:
+- Validates all test case YAML files in the `testcases/` directory against the JSON schema
+- Generates a detailed validation report with file-by-file results
+- Provides summary statistics showing total files, valid files, and invalid files
+- Helps identify schema compliance issues across the entire test suite
+
+**Output Location**: `reports/validation_report.txt`
+
+**Usage**:
+```bash
+# Generate validation report for all test cases
+make validate-testcases-report
+
+# View the generated report
+cat reports/validation_report.txt
+```
+
+**Report Contents**:
+The validation report includes:
+1. **Header** - Report title and timestamp
+2. **File-by-File Results** - For each test case YAML file:
+   - File path relative to project root
+   - Validation status (✓ VALID or ✗ INVALID)
+   - Detailed error messages for invalid files (schema violations, parsing errors)
+3. **Summary Statistics**:
+   - Total number of YAML files validated
+   - Number of valid files
+   - Number of invalid files
+   - Overall validation success rate
+
+**Interpreting the Report**:
+- **Valid Files**: Files marked with `✓ VALID` comply with the test case schema and are ready for execution
+- **Invalid Files**: Files marked with `✗ INVALID` have schema violations or syntax errors that must be fixed
+- **Error Messages**: Detailed error messages indicate the specific schema property or constraint that was violated
+- **Summary**: The summary section provides a quick overview of validation health across the entire test suite
+
+**Example Report Format**:
+```
+========================================
+Test Case Validation Report
+Generated: 2024-01-15 14:30:00
+========================================
+
+Validating YAML files in: testcases/
+
+File: testcases/verifier-scenarios/TEST_SUCCESS_001.yaml
+Status: ✓ VALID
+
+File: testcases/examples/TC_EXAMPLE_001.yaml
+Status: ✗ INVALID
+Errors:
+  - Missing required property: 'test_case_id'
+  - Invalid value for 'sequences[0].steps[0].expected.exit_code': expected integer, got string
+
+========================================
+Summary
+========================================
+Total files validated: 42
+Valid files: 40
+Invalid files: 2
+Success rate: 95.24%
+```
+
+**Integration with Workflow**:
+- Run this command before committing changes to test case YAML files
+- Use in CI/CD pipelines to catch schema violations early
+- Helps maintain consistency and quality across all test cases
+- Complements the `validate-output-schemas` command which validates verification output
+
+**Common Validation Errors**:
+- Missing required properties (test_case_id, title, sequences)
+- Invalid data types (string instead of integer for exit_code)
+- Invalid enum values (unknown prerequisite types)
+- Malformed YAML syntax (indentation, quotes, special characters)
+- Schema constraint violations (empty sequences, invalid regex patterns)
+
+**Fixing Validation Errors**:
+1. Locate the invalid file in the report
+2. Review the specific error messages
+3. Consult the test case schema: `schemas/test-case.schema.json`
+4. Make corrections to the YAML file
+5. Re-run validation to confirm fixes: `make validate-testcases-report`
 
 ## Testing Requirements
 
