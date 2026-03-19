@@ -360,32 +360,36 @@ execute_test_scripts() {
             fi
         fi
         
+        # Generated scripts create JSON log files in scripts directory with naming pattern: <basename>_execution_log.json
+        local generated_log="$(dirname "$script_file")/${basename}_execution_log.json"
         local log_file="$EXECUTION_LOGS_DIR/${basename}.json"
         
         log_verbose "Executing: $basename.sh"
         
-        # Execute script and capture output
-        if "$script_file" > "$log_file" 2>&1; then
+        # Execute script (output to /dev/null since we use the generated JSON log)
+        local exit_code=0
+        if ! "$script_file" > /dev/null 2>&1; then
+            exit_code=$?
+            ((EXECUTION_FAILED++))
+            fail "$basename.sh (exit code: $exit_code)"
+            echo "$script_file" >> "$EXECUTION_FAILURES"
+        else
             ((EXECUTION_PASSED++))
             pass "$basename.sh"
-        else
-            ((EXECUTION_FAILED++))
-            fail "$basename.sh (exit code: $?)"
-            echo "$script_file" >> "$EXECUTION_FAILURES"
         fi
         
-        # Verify log file exists and is valid JSON
-        if [[ ! -f "$log_file" ]]; then
-            fail "Execution log not created: $log_file"
-            echo "$script_file (no log)" >> "$EXECUTION_FAILURES"
-            ((EXECUTION_FAILED++))
-        else
-            # Try to validate JSON using available Python
+        # Copy the generated JSON log to execution_logs directory
+        if [[ -f "$generated_log" ]]; then
+            cp "$generated_log" "$log_file"
+            
+            # Verify log file is valid JSON
             local json_valid=0
             if command -v python3.14 > /dev/null 2>&1; then
                 python3.14 -m json.tool "$log_file" > /dev/null 2>&1 && json_valid=1
             elif command -v python3 > /dev/null 2>&1; then
                 python3 -m json.tool "$log_file" > /dev/null 2>&1 && json_valid=1
+            elif command -v jq > /dev/null 2>&1; then
+                jq empty "$log_file" > /dev/null 2>&1 && json_valid=1
             fi
 
             if [[ $json_valid -eq 0 ]]; then
@@ -393,6 +397,10 @@ execute_test_scripts() {
                 fail "Invalid JSON in execution log: $log_file"
                 echo "$script_file (invalid JSON)" >> "$EXECUTION_FAILURES"
             fi
+        else
+            fail "Execution log not created: $generated_log"
+            echo "$script_file (no log)" >> "$EXECUTION_FAILURES"
+            ((EXECUTION_FAILED++))
         fi
     done
     
@@ -456,12 +464,16 @@ verify_execution_logs() {
         fi
         
         # Run verifier to generate container YAML
+        # Extract test case ID from YAML file (using basename without extension)
+        local test_case_id=$(basename "$test_case_yaml" .yaml)
+        
         if "$VERIFIER" \
             --title "Acceptance Test Results - $(basename "$test_case_yaml")" \
             --project "Test Case Manager - Acceptance Suite" \
             --environment "Automated Test Environment - $hostname" \
-            --test-case "$test_case_yaml" \
-            --execution-log "$log_file" \
+            --test-case "$test_case_id" \
+            --log "$log_file" \
+            --test-case-dir "$TEST_CASES_DIR" \
             --output "$container_file" \
             > "$TEMP_DIR/verifier_output.txt" 2>&1; then
             
