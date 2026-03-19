@@ -71,6 +71,7 @@ def discover_test_files() -> List[str]:
         exclude_patterns = [
             "te.y",  # Malformed test files
             "wrong",  # Intentionally wrong test files
+            "tests/sample/",  # Test fixture files (intentionally invalid for testing validator)
             "sample_test_runs.yaml",  # Test run metadata
             "/expected_test_results/test_case_result/",  # Expected test result samples
             "/expected_test_results/container/",  # Expected container samples
