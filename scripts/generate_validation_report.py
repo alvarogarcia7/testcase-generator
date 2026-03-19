@@ -67,10 +67,30 @@ def discover_test_files() -> List[str]:
             check=False
         )
         
+        # Patterns to exclude (these are not test case files)
+        exclude_patterns = [
+            "te.y",  # Malformed test files
+            "wrong",  # Intentionally wrong test files
+            "sample_test_runs.yaml",  # Test run metadata
+            "/expected_test_results/test_case_result/",  # Expected test result samples
+            "/expected_test_results/container/",  # Expected container samples
+            "/expected_output_reports/",  # Expected output reports
+            "/testcase_results_container/",  # Test results container samples
+            "container_config.yml",  # Container configuration files
+            "container_data.yml",  # Container data files
+            "_report.yaml",  # Report files
+        ]
+        
         files = []
         for line in result.stdout.strip().split('\n'):
-            if line and "te.y" not in line and "sample_test_runs.yaml" not in line and "wrong" not in line:
-                files.append(line.strip())
+            if not line:
+                continue
+            
+            # Skip files matching any exclude pattern
+            if any(pattern in line for pattern in exclude_patterns):
+                continue
+            
+            files.append(line.strip())
         
         return sorted(files)
     except Exception as e:
