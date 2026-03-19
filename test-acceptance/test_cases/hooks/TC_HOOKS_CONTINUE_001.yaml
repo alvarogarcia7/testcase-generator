@@ -1,0 +1,97 @@
+requirement: "HOOKS_ON_ERROR_CONTINUE"
+item: 1
+tc: 1
+id: 'TC_HOOKS_CONTINUE_001'
+description: 'Test case demonstrating hook on_error: continue mode where hook failures do not stop test execution.'
+
+general_initial_conditions:
+  system:
+    - "Bash shell is available"
+
+initial_conditions:
+  filesystem:
+    - "Temporary directory /tmp is writable"
+
+hooks:
+  script_start:
+    command: |
+      echo "HOOK: script_start - This hook will succeed"
+      echo "marker" > /tmp/tc_hooks_continue_001_start.txt
+  before_step:
+    command: |
+      echo "HOOK: before_step - Sequence ${TEST_SEQUENCE_ID:-unknown} Step ${TEST_STEP:-unknown}"
+      # Intentionally fail for step 2
+      if [ "${TEST_STEP:-0}" = "2" ]; then
+        echo "ERROR: before_step hook failing intentionally for step 2" >&2
+        exit 1
+      fi
+  after_step:
+    command: |
+      echo "HOOK: after_step - Completed step ${TEST_STEP:-unknown}"
+  script_end:
+    command: |
+      echo "HOOK: script_end - Test completed even with hook failures"
+  on_error: "continue"
+
+test_sequences:
+  - id: 1
+    name: "Continue on Hook Errors"
+    description: |
+                  Demonstrates that test continues executing even when hooks fail.
+                  The before_step hook will fail on step 2, but execution continues.
+    initial_conditions:
+      system:
+        - "Test sequence ready"
+    steps:
+      - step: 1
+        description: "Execute first step (before_step hook succeeds)"
+        command: |
+          echo "Step 1: before_step hook should succeed"
+          echo "This step should execute normally"
+        expected:
+          success: true
+          result: '0'
+          output: 'Step 1'
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Step 1' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 2
+        description: "Execute second step (before_step hook fails but test continues)"
+        command: |
+          echo "Step 2: before_step hook failed but test continues"
+          echo "This step should still execute because on_error is continue"
+        expected:
+          success: true
+          result: '0'
+          output: 'Step 2'
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Step 2' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 3
+        description: "Execute third step (before_step hook succeeds again)"
+        command: |
+          echo "Step 3: before_step hook should succeed"
+          echo "Test execution continued after hook failure"
+        expected:
+          success: true
+          result: '0'
+          output: 'Step 3'
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Step 3' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 4
+        description: "Verify all steps executed despite hook failure"
+        command: |
+          echo "All steps executed successfully"
+          echo "Hook failure in step 2 did not stop execution"
+          echo "on_error: continue mode working correctly"
+        expected:
+          success: true
+          result: '0'
+          output: 'All steps executed'
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'All steps executed' <<< \"$COMMAND_OUTPUT\""

@@ -7,6 +7,8 @@ This directory contains comprehensive test cases for acceptance testing of the Y
 ```
 test-acceptance/test_cases/
 ├── success/           # Success scenario test cases
+├── failure/           # Failure scenario test cases
+├── hooks/             # Hook lifecycle test cases
 └── README.md         # This file
 ```
 
@@ -185,9 +187,117 @@ Each step includes:
 - **expected**: Expected result and output
 - **verification**: Verification expressions (result, output, general)
 
+## Hooks Test Cases
+
+The `hooks/` directory contains 13 comprehensive test cases demonstrating the test execution lifecycle hooks feature:
+
+### 1. TC_HOOKS_001 - Comprehensive Hook Lifecycle
+- **Purpose**: Demonstrate all eight hook types with external scripts
+- **Features**: script_start, setup_test, before_sequence, after_sequence, before_step, after_step, teardown_test, script_end
+- **Hook Scripts**: Uses external shell scripts in `hooks/scripts/` directory
+- **Mode**: on_error: fail
+- **Sequences**: 3 sequences testing hook integration, variable capture, and error handling
+
+### 2. TC_HOOKS_SIMPLE_001 - Basic Hook Functionality
+- **Purpose**: Simple test with only script_start and script_end hooks
+- **Features**: Inline hook commands, marker file creation
+- **Mode**: on_error: fail
+- **Demonstrates**: Basic hook execution at test boundaries
+
+### 3. TC_HOOKS_INLINE_001 - Inline Hook Commands
+- **Purpose**: Demonstrate hooks defined as inline bash commands (no external scripts)
+- **Features**: All eight hook types as inline YAML commands
+- **Mode**: on_error: fail
+- **Demonstrates**: Hook context variables (TEST_SEQUENCE_ID, TEST_STEP), marker file creation
+
+### 4. TC_HOOKS_CONTINUE_001 - Continue on Hook Error
+- **Purpose**: Test on_error: continue mode where hook failures don't stop execution
+- **Features**: Inline hooks with intentional failures
+- **Mode**: on_error: continue
+- **Demonstrates**: Test continues executing even when before_step hook fails on step 2
+
+### 5. TC_HOOKS_MISSING_001 - Missing Hook Script Error
+- **Purpose**: Verify error handling when hook script file doesn't exist
+- **Features**: References non-existent script file
+- **Mode**: on_error: fail
+- **Expected**: Test fails immediately due to missing script_start hook
+
+### 6. TEST_HOOK_SCRIPT_START_001 - Script Start Hook Error
+- **Purpose**: Hook error scenario where script_start hook exits with error code
+- **Features**: External error script
+- **Mode**: on_error: fail
+- **Expected**: Test terminates immediately, no steps execute
+
+### 7. TEST_HOOK_SETUP_TEST_001 - Setup Test Hook Error
+- **Purpose**: Hook error scenario where setup_test hook references non-existent script
+- **Features**: Missing script file
+- **Mode**: on_error: fail
+- **Expected**: Test fails during setup phase
+
+### 8. TEST_HOOK_BEFORE_SEQ_001 - Before Sequence Hook Error
+- **Purpose**: Hook error scenario where before_sequence hook fails on sequence 1
+- **Features**: External error script that fails on sequence 1
+- **Mode**: on_error: fail
+- **Expected**: Sequence 1 steps execute, but subsequent sequences don't
+
+### 9. TEST_HOOK_AFTER_SEQ_001 - After Sequence Hook Error
+- **Purpose**: Hook error scenario where after_sequence hook fails after sequence 1
+- **Features**: External error script that fails after sequence 1
+- **Mode**: on_error: fail
+- **Expected**: Sequence 1 completes, but sequence 2 and 3 don't execute
+
+### 10. TEST_HOOK_BEFORE_STEP_001 - Before Step Hook Error
+- **Purpose**: Hook error scenario where before_step hook fails on step 3
+- **Features**: External error script that fails before step 3
+- **Mode**: on_error: fail
+- **Expected**: Steps 1 and 2 execute, step 3 and beyond don't execute
+
+### 11. TEST_HOOK_AFTER_STEP_001 - After Step Hook Error
+- **Purpose**: Hook error scenario where after_step hook fails after step 2
+- **Features**: External error script that fails after step 2
+- **Mode**: on_error: fail
+- **Expected**: Steps 1 and 2 execute, step 3 and beyond don't execute
+
+### 12. TEST_HOOK_TEARDOWN_001 - Teardown Test Hook Error
+- **Purpose**: Hook error scenario where teardown_test hook fails
+- **Features**: External error script that fails during teardown
+- **Mode**: on_error: fail
+- **Expected**: All sequences complete, but teardown hook failure is reported
+
+### 13. TEST_HOOK_SCRIPT_END_001 - Script End Hook Error
+- **Purpose**: Hook error scenario where script_end hook fails
+- **Features**: External error script that fails at script end
+- **Mode**: on_error: fail
+- **Expected**: All test execution completes, but script_end hook failure is reported
+
+### Hook Scripts
+
+All hook scripts are located in `hooks/scripts/` directory:
+
+**Success Hook Scripts** (used by TC_HOOKS_001):
+- `script_start.sh` - Logs test start time, creates marker file
+- `setup_test.sh` - Creates test workspace and sequence directories
+- `before_sequence.sh` - Logs sequence start, creates sequence log
+- `after_sequence.sh` - Cleans up sequence resources
+- `before_step.sh` - Logs step details and variables
+- `after_step.sh` - Validates step output, saves results
+- `teardown_test.sh` - Removes temporary directories and files
+- `script_end.sh` - Logs test completion time and duration
+
+**Error Hook Scripts** (used by TEST_HOOK_* test cases):
+- `hook_script_start_error.sh` - Always fails (exit 1)
+- `hook_before_sequence_error.sh` - Fails on sequence 1
+- `hook_after_sequence_error.sh` - Fails after sequence 1
+- `hook_before_step_error.sh` - Fails on step 3
+- `hook_after_step_error.sh` - Fails after step 2
+- `hook_teardown_error.sh` - Always fails (exit 1)
+- `hook_script_end_error.sh` - Always fails (exit 1)
+
 ## Notes
 
 - All test cases are designed to be idempotent and can be run multiple times
 - Test cases clean up after themselves to avoid side effects
 - Cross-platform compatibility (macOS/Linux) is considered in all commands
 - All regex patterns use portable POSIX syntax where possible
+- Hook test cases verify both successful hook execution and proper error handling
+- Hook marker files are created in /tmp to verify hook execution timing
