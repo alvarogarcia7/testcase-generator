@@ -40,6 +40,7 @@ See the [Hooks](#hooks) section for detailed documentation and examples.
 - **Build**: make build
 - **Lint**: make lint
 - **Test**: make test
+- **Test Verifier Edge Cases**: make test-verifier-edge-cases (run verifier edge case unit tests and integration tests)
 - **Coverage**: make coverage (run unit tests with coverage analysis, 50% threshold)
 - **Coverage E2E**: make coverage-e2e (run unit + e2e tests with coverage analysis, 70% threshold)
 - **Coverage HTML**: make coverage-html (generate HTML coverage report)

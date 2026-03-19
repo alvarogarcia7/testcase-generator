@@ -99,6 +99,11 @@ test-e2e-verifier-container: build
 	./tests/integration/test_verifier_container_e2e.sh
 .PHONY: test-e2e-verifier-container
 
+test-verifier-edge-cases: build
+	cargo test verification_edge_cases_test
+	./tests/integration/test_verifier_edge_cases_e2e.sh
+.PHONY: test-verifier-edge-cases
+
 test-e2e-failing: build
 	./tests/integration/run_e2e_test.sh
 	./tests/integration/test_variable_passing_e2e.sh
@@ -137,6 +142,7 @@ test-e2e:
 	./tests/integration/test_variable_passing_e2e.sh
 	./tests/integration/test_verifier_e2e.sh
 	./tests/integration/test_verifier_container_e2e.sh
+	${MAKE} test-verifier-edge-cases
 	#./tests/integration/test_verify_e2e.sh
 	./tests/integration/test_container_yaml_compat_e2e.sh
 	./tests/integration/test_documentation_generation.sh
