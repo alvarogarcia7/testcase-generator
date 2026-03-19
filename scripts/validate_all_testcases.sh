@@ -51,20 +51,24 @@ log_info "Found $(echo "$test_case_files" | wc -l | tr -d ' ') test case files"
 echo ""
 
 # Validate each file
+cargo build --bin validate-yaml
+
 while IFS= read -r file; do
     if [ -z "$file" ]; then
         continue
     fi
     
     total_files=$((total_files + 1))
+
+    VERIFIER=${VERIFIER:-./target/debug/validate-yaml}
     
     # Run validation using validate-yaml binary
-    if cargo run --quiet --bin validate-yaml -- --schema "$SCHEMA_FILE" "$file" > /dev/null 2>&1; then
+    if  ${VERIFIER} --schema "$SCHEMA_FILE" "$file" > /dev/null 2>&1; then
         echo "$(pass "$file")" >> "$temp_results"
         passed_files=$((passed_files + 1))
     else
         # Capture detailed error
-        error_output=$(cargo run --quiet --bin validate-yaml -- --schema "$SCHEMA_FILE" "$file" 2>&1 || true)
+        error_output=$(${VERIFIER} --schema "$SCHEMA_FILE" "$file" 2>&1 || true)
         echo "$(fail "$file")" >> "$temp_results"
         echo "  Error details:" >> "$temp_results"
         echo "$error_output" | sed 's/^/    /' >> "$temp_results"
