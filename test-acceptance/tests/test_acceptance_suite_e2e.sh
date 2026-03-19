@@ -778,6 +778,21 @@ test_stage7_consolidated_documentation() {
     fi
     pass "Stage 7 executed"
     
+    # Verify no CONSOLIDATED_DOC_FAILED errors occurred
+    if grep -qi "CONSOLIDATED_DOC_FAILED" "$output_file"; then
+        log_error "CONSOLIDATED_DOC_FAILED errors detected in output"
+        return 1
+    fi
+    pass "No CONSOLIDATED_DOC_FAILED errors"
+    
+    # Verify test-acceptance/reports/consolidated/ directory was created
+    local consolidated_dir="$test_env/reports/consolidated"
+    if [[ ! -d "$consolidated_dir" ]]; then
+        log_error "Consolidated reports directory not created: $consolidated_dir"
+        return 1
+    fi
+    pass "Consolidated reports directory created"
+    
     # Check that all_tests_container.yaml was created
     local consolidated_container="$test_env/reports/consolidated/all_tests_container.yaml"
     if [[ ! -f "$consolidated_container" ]]; then
@@ -803,6 +818,30 @@ test_stage7_consolidated_documentation() {
     fi
     pass "Container YAML has required structure"
     
+    # Validate container YAML against schema
+    local container_schema="$PROJECT_ROOT/data/testcase_results_container/schema.json"
+    if [[ -f "$container_schema" ]]; then
+        local validate_yaml
+        if [[ -f "$PROJECT_ROOT/target/release/validate-yaml" ]]; then
+            validate_yaml="$PROJECT_ROOT/target/release/validate-yaml"
+        elif [[ -f "$PROJECT_ROOT/target/debug/validate-yaml" ]]; then
+            validate_yaml="$PROJECT_ROOT/target/debug/validate-yaml"
+        fi
+        
+        if [[ -n "$validate_yaml" ]]; then
+            if "$validate_yaml" --schema "$container_schema" "$consolidated_container" >/dev/null 2>&1; then
+                pass "Container YAML validates against schema"
+            else
+                log_error "Container YAML failed schema validation"
+                return 1
+            fi
+        else
+            log_warning "validate-yaml binary not found, skipping schema validation"
+        fi
+    else
+        log_warning "Container schema not found at: $container_schema"
+    fi
+    
     # Verify container contains multiple test case results
     local test_case_count=$(grep -c "test_case_id:" "$consolidated_container" || true)
     if [[ $test_case_count -lt 5 ]]; then
@@ -810,6 +849,24 @@ test_stage7_consolidated_documentation() {
         return 1
     fi
     pass "Container contains $test_case_count test case results"
+    
+    # Verify metadata section has correct total_test_cases count
+    if grep -q "^metadata:" "$consolidated_container"; then
+        # Extract total_test_cases from metadata
+        local metadata_count=$(grep -A 10 "^metadata:" "$consolidated_container" | grep "total_test_cases:" | grep -o '[0-9]\+' || echo "0")
+        
+        # Count actual execution logs
+        local log_count=$(find "$test_env/execution_logs" -name "*.json" -type f 2>/dev/null | wc -l | tr -d ' ')
+        
+        if [[ "$metadata_count" -ne "$log_count" ]]; then
+            log_error "Metadata total_test_cases ($metadata_count) doesn't match execution logs count ($log_count)"
+            return 1
+        fi
+        pass "Metadata total_test_cases ($metadata_count) matches execution logs count"
+    else
+        log_error "Container YAML missing metadata section"
+        return 1
+    fi
     
     # Verify test case IDs from different categories are present
     local has_success=0

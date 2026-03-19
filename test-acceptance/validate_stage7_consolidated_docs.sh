@@ -444,7 +444,7 @@ generate_asciidoc() {
     
     # Invoke TPDG to generate AsciiDoc
     if invoke_test_plan_doc_gen \
-        --container "$CONSOLIDATED_CONTAINER" \
+        --input "$CONSOLIDATED_CONTAINER" \
         --output "$CONSOLIDATED_ASCIIDOC" \
         --format asciidoc >/dev/null 2>&1; then
         
@@ -466,7 +466,7 @@ generate_markdown() {
     
     # Invoke TPDG to generate Markdown
     if invoke_test_plan_doc_gen \
-        --container "$CONSOLIDATED_CONTAINER" \
+        --input "$CONSOLIDATED_CONTAINER" \
         --output "$CONSOLIDATED_MARKDOWN" \
         --format markdown >/dev/null 2>&1; then
         
