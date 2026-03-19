@@ -310,8 +310,21 @@ verify-testcases: build
 	fi
 .PHONY: verify-testcases
 
+# Generate a detailed validation report for all test case files
+# This target creates a comprehensive validation report that includes:
+# - Pass/fail status for each test case file
+# - Detailed error messages for any validation failures
+# - Summary statistics (total files, passed count, failed count)
+# - Troubleshooting commands for failed validations
+# The report is saved to reports/validation_report.txt and displayed to stdout
 validate-testcases-report: build
-	USE_MCP=0 ./scripts/validate_all_testcases.sh
+	@mkdir -p reports
+	@./scripts/validate_testcases_report.sh
+	@echo ""
+	@echo "========================================="
+	@echo "Displaying Validation Report"
+	@echo "========================================="
+	@cat reports/validation_report.txt
 .PHONY: validate-testcases-report
 
 validate-output-schemas:
