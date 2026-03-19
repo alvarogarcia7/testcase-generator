@@ -319,7 +319,7 @@ verify-testcases: build
 # The report is saved to reports/validation_report.txt and displayed to stdout
 validate-testcases-report: build
 	@mkdir -p reports
-	@./scripts/validate_testcases_report.sh
+	@uv run python3.14 scripts/generate_validation_report.py
 	@echo ""
 	@echo "========================================="
 	@echo "Displaying Validation Report"
