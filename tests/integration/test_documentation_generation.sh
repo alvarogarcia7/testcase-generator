@@ -168,7 +168,7 @@ fi
 pass "Conversion script found"
 
 log_info "Converting verification JSON to result YAML..."
-if python3 "$CONVERT_SCRIPT" \
+if uv run python3 "$CONVERT_SCRIPT" \
     "$VERIFICATION_OUTPUT" \
     -o "$RESULT_YAML_DIR" > /dev/null 2>&1; then
     pass "Conversion completed successfully"

@@ -16,9 +16,9 @@ section "Container YAML Compatibility E2E Test"
 
 # Build the binary
 log_info "Building test-plan-documentation-generator-compat binary..."
-cargo build --release --bin test-plan-documentation-generator-compat
+cargo build --bin test-plan-documentation-generator-compat
 
-COMPAT_BIN="$PROJECT_ROOT/target/release/test-plan-documentation-generator-compat"
+COMPAT_BIN="$PROJECT_ROOT/target/debug/test-plan-documentation-generator-compat"
 
 if [ ! -f "$COMPAT_BIN" ]; then
     log_error "Binary not found: $COMPAT_BIN"

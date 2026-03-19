@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
 use testcase_manager::BatchVerificationReport;
+use testcase_manager::ContainerReport;
 use testcase_manager::ContainerReportConfig;
 use testcase_manager::MatchStrategy;
 use testcase_manager::TestCaseStorage;
@@ -680,8 +681,12 @@ fn validate_output_against_schema(output: &str, format: &str, schema_path: &Path
     log::debug!("Validating {} output against schema", format);
     let output_json: serde_json::Value = match format.to_lowercase().as_str() {
         "yaml" => {
-            // Parse YAML and convert to JSON for validation
-            serde_yaml::from_str(output).context("Failed to parse YAML output for validation")?
+            // Parse YAML into ContainerReport, then serialize to JSON for validation
+            // This ensures proper handling of externally tagged enums
+            let container: ContainerReport = serde_yaml::from_str(output)
+                .context("Failed to parse YAML output for validation")?;
+            serde_json::to_value(&container)
+                .context("Failed to convert YAML to JSON for validation")?
         }
         "json" => {
             // Parse JSON directly

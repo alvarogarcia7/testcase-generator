@@ -345,18 +345,23 @@ executor: "Integration Test Suite"
 EOF
 
 SINGLE_YAML_OUTPUT="$TEMP_DIR/single_pass_report.yaml"
+SINGLE_YAML_ERROR="$TEMP_DIR/single_pass_error.log"
 if "$VERIFIER_BIN" \
     --log "$PASSING_LOG" \
     --test-case "TEST_PASSING_001" \
     --test-case-dir "$TEST_CASE_DIR" \
     --format yaml \
     --output "$SINGLE_YAML_OUTPUT" \
-    --config "$TEST_CONFIG" > /dev/null 2>&1; then
+    --config "$TEST_CONFIG" 2> "$SINGLE_YAML_ERROR"; then
     SINGLE_PASS_EXIT=$?
     pass "Single-file mode completed successfully with passing test"
 else
     SINGLE_PASS_EXIT=$?
     fail "Single-file mode failed with passing test (exit code: $SINGLE_PASS_EXIT)"
+    if [[ -f "$SINGLE_YAML_ERROR" ]]; then
+        echo "Error output:" >&2
+        cat "$SINGLE_YAML_ERROR" >&2
+    fi
 fi
 
 if [[ $SINGLE_PASS_EXIT -eq 0 ]]; then
@@ -371,12 +376,12 @@ else
     fail "YAML report file not created"
 fi
 
-# Validate YAML output structure
+# Validate YAML output structure (container format)
 if [[ -f "$SINGLE_YAML_OUTPUT" ]]; then
-    if grep -q "test_cases:" "$SINGLE_YAML_OUTPUT"; then
-        pass "YAML report contains test_cases field"
+    if grep -q "test_results:" "$SINGLE_YAML_OUTPUT"; then
+        pass "YAML report contains test_results field"
     else
-        fail "YAML report missing test_cases field"
+        fail "YAML report missing test_results field"
     fi
     
     if grep -q "test_case_id: TEST_PASSING_001" "$SINGLE_YAML_OUTPUT"; then
@@ -427,7 +432,7 @@ else
     fail "YAML report file not created for failing test"
 fi
 
-# Validate failure reporting in YAML
+# Validate failure reporting in YAML (container format)
 if [[ -f "$SINGLE_YAML_FAIL_OUTPUT" ]]; then
     if grep -q "overall_pass: false" "$SINGLE_YAML_FAIL_OUTPUT"; then
         pass "YAML report shows overall failure"
@@ -436,9 +441,9 @@ if [[ -f "$SINGLE_YAML_FAIL_OUTPUT" ]]; then
     fi
     
     if grep -q "failed_test_cases:" "$SINGLE_YAML_FAIL_OUTPUT"; then
-        pass "YAML report contains failed_test_cases count"
+        pass "YAML report contains failed_test_cases count in metadata"
     else
-        fail "YAML report missing failed_test_cases count"
+        fail "YAML report missing failed_test_cases count in metadata"
     fi
     
     # Schema validation for failing test YAML output
@@ -473,15 +478,15 @@ if [[ -f "$SINGLE_JSON_OUTPUT" ]]; then
             fail "JSON report is not valid JSON"
         fi
         
-        # Check JSON fields
-        TEST_CASE_ID=$(jq -r '.test_cases[0].test_case_id' "$SINGLE_JSON_OUTPUT" 2>/dev/null)
+        # Check JSON fields (container format)
+        TEST_CASE_ID=$(jq -r '.test_results[0].test_case_id' "$SINGLE_JSON_OUTPUT" 2>/dev/null)
         if [[ "$TEST_CASE_ID" == "TEST_PASSING_001" ]]; then
             pass "JSON report contains correct test case ID"
         else
             fail "JSON report has incorrect test case ID: $TEST_CASE_ID"
         fi
         
-        OVERALL_PASS=$(jq -r '.test_cases[0].overall_pass' "$SINGLE_JSON_OUTPUT" 2>/dev/null)
+        OVERALL_PASS=$(jq -r '.test_results[0].overall_pass' "$SINGLE_JSON_OUTPUT" 2>/dev/null)
         if [[ "$OVERALL_PASS" == "true" ]]; then
             pass "JSON report shows overall pass"
         else
@@ -513,7 +518,8 @@ if "$VERIFIER_BIN" \
     --folder "$LOGS_DIR" \
     --test-case-dir "$TEST_CASE_DIR" \
     --format yaml \
-    --output "$FOLDER_YAML_OUTPUT" > /dev/null 2>&1; then
+    --output "$FOLDER_YAML_OUTPUT" \
+    --config "$TEST_CONFIG" > /dev/null 2>&1; then
     FOLDER_EXIT=$?
     fail "Folder mode should fail when any test fails (got exit code 0)"
 else
@@ -567,7 +573,8 @@ if "$VERIFIER_BIN" \
     --folder "$LOGS_DIR" \
     --test-case-dir "$TEST_CASE_DIR" \
     --format json \
-    --output "$FOLDER_JSON_OUTPUT" > /dev/null 2>&1; then
+    --output "$FOLDER_JSON_OUTPUT" \
+    --config "$TEST_CONFIG" > /dev/null 2>&1; then
     fail "Folder mode JSON should fail when any test fails"
 else
     pass "Folder mode JSON returned non-zero exit code"
@@ -583,21 +590,21 @@ if [[ -f "$FOLDER_JSON_OUTPUT" ]]; then
             fail "Folder JSON report is not valid JSON"
         fi
         
-        TOTAL_CASES=$(jq -r '.total_test_cases' "$FOLDER_JSON_OUTPUT" 2>/dev/null)
+        TOTAL_CASES=$(jq -r '.metadata.total_test_cases' "$FOLDER_JSON_OUTPUT" 2>/dev/null)
         if [[ "$TOTAL_CASES" == "2" ]]; then
             pass "Folder JSON shows correct total test cases"
         else
             fail "Folder JSON has incorrect total: $TOTAL_CASES"
         fi
         
-        PASSED_CASES=$(jq -r '.passed_test_cases' "$FOLDER_JSON_OUTPUT" 2>/dev/null)
+        PASSED_CASES=$(jq -r '.metadata.passed_test_cases' "$FOLDER_JSON_OUTPUT" 2>/dev/null)
         if [[ "$PASSED_CASES" == "1" ]]; then
             pass "Folder JSON shows correct passed test cases"
         else
             fail "Folder JSON has incorrect passed count: $PASSED_CASES"
         fi
         
-        FAILED_CASES=$(jq -r '.failed_test_cases' "$FOLDER_JSON_OUTPUT" 2>/dev/null)
+        FAILED_CASES=$(jq -r '.metadata.failed_test_cases' "$FOLDER_JSON_OUTPUT" 2>/dev/null)
         if [[ "$FAILED_CASES" == "1" ]]; then
             pass "Folder JSON shows correct failed test cases"
         else
@@ -653,13 +660,16 @@ fi
 # Test 11: Verify expected report file structure (YAML)
 section "Test 11: Expected Report File Validation - YAML"
 
-# Create expected report template
+# Create expected report template (container format)
 EXPECTED_YAML="$TEMP_DIR/expected_passing_report.yaml"
 cat > "$EXPECTED_YAML" << 'EOF'
-total_test_cases: 1
-passed_test_cases: 1
-failed_test_cases: 0
-test_cases:
+title: Test
+project: Test
+metadata:
+  total_test_cases: 1
+  passed_test_cases: 1
+  failed_test_cases: 0
+test_results:
   - test_case_id: TEST_PASSING_001
     overall_pass: true
     passed_steps: 3
@@ -676,12 +686,14 @@ ACTUAL_YAML="$TEMP_DIR/actual_passing_report.yaml"
     --test-case "TEST_PASSING_001" \
     --test-case-dir "$TEST_CASE_DIR" \
     --format yaml \
-    --output "$ACTUAL_YAML" > /dev/null 2>&1
+    --output "$ACTUAL_YAML" \
+    --title "Test" \
+    --project "Test" > /dev/null 2>&1
 
-# Validate key fields match
+# Validate key fields match (container format)
 if [[ -f "$ACTUAL_YAML" ]]; then
-    ACTUAL_TOTAL=$(grep "^total_test_cases:" "$ACTUAL_YAML" | awk '{print $2}')
-    EXPECTED_TOTAL=$(grep "^total_test_cases:" "$EXPECTED_YAML" | awk '{print $2}')
+    ACTUAL_TOTAL=$(grep "total_test_cases:" "$ACTUAL_YAML" | awk '{print $2}')
+    EXPECTED_TOTAL=$(grep "total_test_cases:" "$EXPECTED_YAML" | awk '{print $2}')
     
     if [[ "$ACTUAL_TOTAL" == "$EXPECTED_TOTAL" ]]; then
         pass "Total test cases matches expected ($EXPECTED_TOTAL)"
@@ -689,8 +701,8 @@ if [[ -f "$ACTUAL_YAML" ]]; then
         fail "Total test cases mismatch: expected $EXPECTED_TOTAL, got $ACTUAL_TOTAL"
     fi
     
-    ACTUAL_PASSED=$(grep "^passed_test_cases:" "$ACTUAL_YAML" | awk '{print $2}')
-    EXPECTED_PASSED=$(grep "^passed_test_cases:" "$EXPECTED_YAML" | awk '{print $2}')
+    ACTUAL_PASSED=$(grep "passed_test_cases:" "$ACTUAL_YAML" | awk '{print $2}')
+    EXPECTED_PASSED=$(grep "passed_test_cases:" "$EXPECTED_YAML" | awk '{print $2}')
     
     if [[ "$ACTUAL_PASSED" == "$EXPECTED_PASSED" ]]; then
         pass "Passed test cases matches expected ($EXPECTED_PASSED)"
