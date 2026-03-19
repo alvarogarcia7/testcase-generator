@@ -16,6 +16,7 @@ SKIP_GENERATION=0
 SKIP_EXECUTION=0
 SKIP_VERIFICATION=0
 SKIP_DOCUMENTATION=0
+SKIP_CONSOLIDATED_DOCS=0
 
 # Paths
 TEST_CASES_DIR="$SCRIPT_DIR/test_cases"
@@ -78,13 +79,14 @@ Master orchestrator script for acceptance test suite. Validates, generates,
 executes, verifies, and documents all test cases.
 
 OPTIONS:
-    --verbose               Enable verbose output
-    --include-manual        Include manual tests in execution
-    --skip-generation       Skip bash script generation stage
-    --skip-execution        Skip test execution stage
-    --skip-verification     Skip verification stage
-    --skip-documentation    Skip documentation generation stage
-    -h, --help             Show this help message
+    --verbose                  Enable verbose output
+    --include-manual           Include manual tests in execution
+    --skip-generation          Skip bash script generation stage
+    --skip-execution           Skip test execution stage
+    --skip-verification        Skip verification stage
+    --skip-documentation       Skip documentation generation stage
+    --skip-consolidated-docs   Skip consolidated documentation generation stage
+    -h, --help                 Show this help message
 
 STAGES:
     1. Validation          Validate all test case YAMLs against schema
@@ -126,6 +128,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --skip-documentation)
             SKIP_DOCUMENTATION=1
+            shift
+            ;;
+        --skip-consolidated-docs)
+            SKIP_CONSOLIDATED_DOCS=1
             shift
             ;;
         -h|--help)
@@ -644,6 +650,12 @@ generate_documentation() {
 
 # Stage 7: Generate consolidated documentation using verifier --folder mode
 generate_consolidated_documentation() {
+    if [[ $SKIP_CONSOLIDATED_DOCS -eq 1 ]]; then
+        section "Stage 7: Consolidated Documentation Generation (SKIPPED)"
+        echo ""
+        return 0
+    fi
+    
     if [[ $SKIP_DOCUMENTATION -eq 1 ]]; then
         section "Stage 7: Consolidated Documentation Generation (SKIPPED)"
         echo ""
@@ -855,7 +867,7 @@ generate_summary_report() {
         echo ""
         
         echo "--- Stage 7: Consolidated Documentation ---"
-        if [[ $SKIP_DOCUMENTATION -eq 1 ]]; then
+        if [[ $SKIP_CONSOLIDATED_DOCS -eq 1 ]] || [[ $SKIP_DOCUMENTATION -eq 1 ]]; then
             echo "SKIPPED"
         else
             echo "Passed:  $CONSOLIDATED_DOC_PASSED"
@@ -906,6 +918,7 @@ main() {
     log_info "  Skip Execution: $SKIP_EXECUTION"
     log_info "  Skip Verification: $SKIP_VERIFICATION"
     log_info "  Skip Documentation: $SKIP_DOCUMENTATION"
+    log_info "  Skip Consolidated Docs: $SKIP_CONSOLIDATED_DOCS"
     echo ""
     
     # Verify binaries
