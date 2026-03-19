@@ -292,7 +292,7 @@ verify-testcases: build
 .PHONY: verify-testcases
 
 validate-testcases-report: build
-	./scripts/validate_all_testcases.sh
+	USE_MCP=0 ./scripts/validate_all_testcases.sh
 .PHONY: validate-testcases-report
 
 watch: build
