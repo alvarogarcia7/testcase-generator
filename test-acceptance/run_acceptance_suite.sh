@@ -2,7 +2,8 @@
 # Master orchestrator script for acceptance test suite
 # Validates, generates, executes, verifies, and documents all test cases
 
-set -e
+# Note: We do NOT use 'set -e' here because we want to run all stages
+# and collect comprehensive failure information before exiting
 
 # Get script directory and source logger
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
