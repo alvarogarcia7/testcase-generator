@@ -1,0 +1,102 @@
+requirement: "BASH_SIMPLE_COMMANDS"
+item: 1
+tc: 1
+id: 'TC_BASH_SIMPLE_001'
+description: 'Simple bash commands - basic echo, pwd, whoami, date commands with strict output validation'
+
+general_initial_conditions:
+  system:
+    - "Bash shell is available"
+    - "Basic Unix utilities are installed"
+
+initial_conditions:
+  environment:
+    - "Standard Unix utilities are accessible"
+
+test_sequences:
+  - id: 1
+    name: "Simple Command Execution"
+    description: "Execute and validate basic bash commands with strict verification"
+    initial_conditions:
+      system:
+        - "Basic command execution works"
+    steps:
+      - step: 1
+        description: "Echo a simple string as step command"
+        command: "echo 'Hello Bash'"
+        expected:
+          success: true
+          result: 0
+          output: "Hello Bash"
+        verification:
+          result: "[[ $? -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" == 'Hello Bash' ]]"
+          general:
+            - name: output_not_empty
+              condition: "[[ -n \"$COMMAND_OUTPUT\" ]]"
+            - name: output_length_exact
+              condition: "[[ $(echo -n \"$COMMAND_OUTPUT\" | wc -c | awk '{print $1}') -eq 10 ]]"
+
+      - step: 2
+        description: "Print working directory as verification command"
+        command: "echo 'testing pwd'"
+        expected:
+          success: true
+          result: 0
+          output: "testing pwd"
+        verification:
+          result: "[[ $? -eq 0 ]]"
+          output: "[[ $(pwd) =~ ^/ ]]"
+          general:
+            - name: pwd_is_absolute
+              condition: "[[ $(pwd) == /* ]]"
+            - name: pwd_not_empty
+              condition: "[[ -n $(pwd) ]]"
+
+      - step: 3
+        description: "Check username with whoami as result verification"
+        command: "whoami"
+        expected:
+          success: true
+          result: 0
+          output: "username"
+        verification:
+          result: "[[ $? -eq 0 && -n $(whoami) ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[a-zA-Z0-9_-]+$ ]]"
+          general:
+            - name: username_valid_format
+              condition: "[[ \"$COMMAND_OUTPUT\" =~ ^[a-z][a-z0-9_-]*$ ]]"
+            - name: username_length_reasonable
+              condition: "[[ $(echo -n \"$COMMAND_OUTPUT\" | wc -c | awk '{print $1}') -ge 1 && $(echo -n \"$COMMAND_OUTPUT\" | wc -c | awk '{print $1}') -le 32 ]]"
+
+      - step: 4
+        description: "Get current date in ISO format - strict validation"
+        command: "date +%Y-%m-%d"
+        expected:
+          success: true
+          result: 0
+          output: "YYYY-MM-DD format"
+        verification:
+          result: "[[ $? -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]"
+          general:
+            - name: year_is_current
+              condition: "[[ $(echo \"$COMMAND_OUTPUT\" | cut -d- -f1) -ge 2024 && $(echo \"$COMMAND_OUTPUT\" | cut -d- -f1) -le 2050 ]]"
+            - name: month_valid
+              condition: "[[ $(echo \"$COMMAND_OUTPUT\" | cut -d- -f2) -ge 01 && $(echo \"$COMMAND_OUTPUT\" | cut -d- -f2) -le 12 ]]"
+            - name: day_valid
+              condition: "[[ $(echo \"$COMMAND_OUTPUT\" | cut -d- -f3) -ge 01 && $(echo \"$COMMAND_OUTPUT\" | cut -d- -f3) -le 31 ]]"
+
+      - step: 5
+        description: "Test true command returns 0"
+        command: "true"
+        expected:
+          success: true
+          result: 0
+          output: ""
+        verification:
+          result: "[[ $? -eq 0 ]]"
+          output: "[[ -z \"$COMMAND_OUTPUT\" ]]"
+          general:
+            - name: exit_code_exactly_zero
+              condition: "[[ $? -eq 0 ]]"

@@ -1,0 +1,57 @@
+test-plan-doc-gen Integration Test Summary
+==========================================
+
+Test Date: 2026-03-19T22:18:53
+Scenarios Directory: /Users/aial/Library/Application Support/Tonkotsu/tasks/testcase-generator_PbpFL9Pkofjx2JHkHaanq/testcases/verifier_scenarios
+Output Directory: /Users/aial/Library/Application Support/Tonkotsu/tasks/testcase-generator_PbpFL9Pkofjx2JHkHaanq/reports/tpdg_integration
+
+Test Execution Summary
+----------------------
+Total Test Scenarios: 13
+Total Report Generation Tests: 0
+Passed: 0
+Failed: 0
+Success Rate: 0%
+
+Content Validation Summary
+--------------------------
+Content Checks Passed: 0
+Content Checks Failed: 0
+
+Failed Tests
+------------
+  ✗ TEST_SUCCESS_001: YAML conversion failed
+  ✗ TEST_FAILED_LAST_001: YAML conversion failed
+  ✗ TEST_FAILED_FIRST_001: YAML conversion failed
+  ✗ TEST_HOOK_SCRIPT_END_001: YAML conversion failed
+  ✗ TEST_HOOK_TEARDOWN_001: YAML conversion failed
+  ✗ TEST_HOOK_AFTER_STEP_001: YAML conversion failed
+  ✗ TEST_HOOK_AFTER_SEQ_001: YAML conversion failed
+  ✗ TEST_HOOK_SETUP_TEST_001: YAML conversion failed
+  ✗ TEST_HOOK_SCRIPT_START_001: YAML conversion failed
+  ✗ TEST_HOOK_BEFORE_SEQ_001: YAML conversion failed
+  ✗ TEST_HOOK_BEFORE_STEP_001: YAML conversion failed
+  ✗ TEST_FAILED_INTERMEDIATE_001: YAML conversion failed
+  ✗ TEST_MULTI_SEQ_001: YAML conversion failed
+
+Generated Files
+---------------
+Verification JSON: 13
+Result YAML: 0
+Container YAML: 0
+AsciiDoc Reports: 0
+Markdown Reports: 0
+HTML Reports: 0
+
+Output Directory Structure
+--------------------------
+/Users/aial/Library/Application Support/Tonkotsu/tasks/testcase-generator_PbpFL9Pkofjx2JHkHaanq/reports/tpdg_integration/
+  verification/          - Verification JSON files from verifier
+  results/               - Result YAML and container YAML files
+  reports/
+    asciidoc/            - Generated AsciiDoc reports
+    markdown/            - Generated Markdown reports
+    html/                - Generated HTML reports (if supported)
+  integration_test_summary.txt - This summary report
+
+For detailed logs, run with --verbose flag.

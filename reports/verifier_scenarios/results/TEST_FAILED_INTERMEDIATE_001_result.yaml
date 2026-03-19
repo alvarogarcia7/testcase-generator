@@ -1,0 +1,57 @@
+type: result
+test_case_id: TEST_FAILED_INTERMEDIATE_001
+description: Test case demonstrating failed intermediate step scenario where steps
+  1-2 pass, step 3 fails with exit code 127, and steps 4-5 are not executed
+sequences:
+- sequence_id: 1
+  name: Failed Intermediate Step Sequence
+  step_results:
+  - Pass:
+      step: 1
+      description: Create a temporary directory
+      requirement: FAILED_INTERMEDIATE_STEP
+      item: 1
+      tc: 1
+  - Pass:
+      step: 2
+      description: Create a test file
+      requirement: FAILED_INTERMEDIATE_STEP
+      item: 1
+      tc: 1
+  - Fail:
+      step: 3
+      description: Execute non-existent command (fails with exit code 127)
+      expected:
+        success: true
+        result: '0'
+        output: ''
+      actual_result: '127'
+      actual_output: 'bash: nonexistent_command_xyz: command not found'
+      reason: 'Success mismatch: expected true, got false'
+      requirement: FAILED_INTERMEDIATE_STEP
+      item: 1
+      tc: 1
+  - NotExecuted:
+      step: 4
+      description: Process the test file (not executed)
+      requirement: FAILED_INTERMEDIATE_STEP
+      item: 1
+      tc: 1
+  - NotExecuted:
+      step: 5
+      description: Clean up temporary directory (not executed)
+      requirement: FAILED_INTERMEDIATE_STEP
+      item: 1
+      tc: 1
+  all_steps_passed: false
+  requirement: FAILED_INTERMEDIATE_STEP
+  item: 1
+  tc: 1
+total_steps: 5
+passed_steps: 2
+failed_steps: 1
+not_executed_steps: 2
+overall_pass: false
+requirement: FAILED_INTERMEDIATE_STEP
+item: 1
+tc: 1

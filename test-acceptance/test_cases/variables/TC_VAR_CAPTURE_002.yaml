@@ -1,0 +1,456 @@
+requirement: "VAR_CAPTURE"
+item: 1
+tc: 2
+id: 'TC_VAR_CAPTURE_002'
+description: 'Comprehensive test demonstrating command-based captures, regex-based captures with new format, and general verification conditions using captured variables'
+
+general_initial_conditions:
+  system:
+    - "Bash shell is available"
+    - "Common Unix utilities (wc, grep, awk, jq) are installed"
+
+initial_conditions:
+  filesystem:
+    - "Temporary directory /tmp is writable"
+  environment:
+    - "Test data files can be created"
+
+test_sequences:
+  - id: 1
+    name: "Command-based Variable Captures"
+    description: |
+                  Test various command-based capture methods including
+                  byte counting, line counting, pattern extraction via grep/awk,
+                  and JSON field extraction via jq
+    initial_conditions:
+      system:
+        - "Test files are being created fresh"
+    steps:
+      - step: 1
+        description: "Create test file and capture byte count using wc -c"
+        command: |
+          echo "Hello World" > /tmp/test_output.txt
+        capture_vars:
+          - name: byte_count
+            command: "wc -c /tmp/test_output.txt | awk '{print $1}'"
+          - name: line_count
+            command: "wc -l /tmp/test_output.txt | awk '{print $1}'"
+        expected:
+          success: true
+          result: '0'
+          output: ''
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"
+          general:
+            - name: verify_byte_count_numeric
+              condition: "[[ $byte_count =~ ^[0-9]+$ ]]"
+            - name: verify_byte_count_value
+              condition: "[[ $byte_count -eq 12 ]]"
+            - name: verify_line_count_numeric
+              condition: "[[ $line_count =~ ^[0-9]+$ ]]"
+            - name: verify_line_count_value
+              condition: "[[ $line_count -eq 1 ]]"
+
+      - step: 2
+        description: "Create JSON data and capture fields using jq"
+        command: |
+          cat > /tmp/test_data.json << 'EOF'
+          {
+            "user_id": 12345,
+            "username": "testuser",
+            "email": "test@example.com",
+            "active": true,
+            "score": 98.5
+          }
+          EOF
+        capture_vars:
+          - name: user_id
+            command: "jq -r '.user_id' /tmp/test_data.json"
+          - name: username
+            command: "jq -r '.username' /tmp/test_data.json"
+          - name: email
+            command: "jq -r '.email' /tmp/test_data.json"
+          - name: score
+            command: "jq -r '.score' /tmp/test_data.json"
+        expected:
+          success: true
+          result: '0'
+          output: ''
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"
+          general:
+            - name: verify_user_id_numeric
+              condition: "[[ $user_id =~ ^[0-9]+$ ]]"
+            - name: verify_user_id_range
+              condition: "[[ $user_id -gt 10000 && $user_id -lt 20000 ]]"
+            - name: verify_username_pattern
+              condition: "[[ $username =~ ^[a-z]+$ ]]"
+            - name: verify_username_length
+              condition: "[[ ${#username} -ge 4 && ${#username} -le 20 ]]"
+            - name: verify_email_format
+              condition: "[[ $email =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$ ]]"
+            - name: verify_score_is_numeric
+              condition: "[[ $score =~ ^[0-9]+\\.?[0-9]*$ ]]"
+
+      - step: 3
+        description: "Extract data using grep and awk pipeline"
+        command: |
+          cat > /tmp/server_log.txt << 'EOF'
+          2024-01-15 10:30:45 INFO User=admin Action=LOGIN IP=192.168.1.100
+          2024-01-15 10:31:12 INFO User=testuser Action=READ IP=192.168.1.101
+          2024-01-15 10:32:03 WARN User=testuser Action=WRITE IP=192.168.1.101 Status=THROTTLED
+          2024-01-15 10:33:21 ERROR User=baduser Action=DELETE IP=10.0.0.50 Status=DENIED
+          EOF
+        capture_vars:
+          - name: first_user
+            command: "grep 'User=' /tmp/server_log.txt | head -1 | awk -F'User=' '{print $2}' | awk '{print $1}'"
+          - name: error_count
+            command: "grep -c 'ERROR' /tmp/server_log.txt"
+          - name: warn_count
+            command: "grep -c 'WARN' /tmp/server_log.txt"
+          - name: last_ip
+            command: "grep 'IP=' /tmp/server_log.txt | tail -1 | awk -F'IP=' '{print $2}' | awk '{print $1}'"
+        expected:
+          success: true
+          result: '0'
+          output: ''
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"
+          general:
+            - name: verify_first_user_is_admin
+              condition: "[[ \"$first_user\" = \"admin\" ]]"
+            - name: verify_error_count
+              condition: "[[ $error_count -eq 1 ]]"
+            - name: verify_warn_count
+              condition: "[[ $warn_count -eq 1 ]]"
+            - name: verify_last_ip_format
+              condition: "[[ $last_ip =~ ^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$ ]]"
+            - name: verify_total_issues
+              condition: "[[ $((error_count + warn_count)) -eq 2 ]]"
+
+  - id: 2
+    name: "Regex-based Variable Captures with New Format"
+    description: |
+                  Test regex-based captures using the new array format
+                  with capture field to extract patterns from command output
+    initial_conditions:
+      system:
+        - "API simulation data available"
+    steps:
+      - step: 1
+        description: "Simulate API response and capture tokens using regex"
+        command: |
+          cat << 'EOF'
+          {"status":"success","access_token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9","refresh_token":"rt_7f8e9d6c5b4a","expires_in":3600,"session_id":"sess_abc123xyz789"}
+          EOF
+        capture_vars:
+          - name: access_token
+            capture: '"access_token":"([^"]+)"'
+          - name: refresh_token
+            capture: '"refresh_token":"([^"]+)"'
+          - name: expires_in
+            capture: '"expires_in":([0-9]+)'
+          - name: session_id
+            capture: '"session_id":"([^"]+)"'
+        expected:
+          success: true
+          result: '0'
+          output: 'success'
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'success' <<< \"$COMMAND_OUTPUT\""
+          general:
+            - name: verify_access_token_not_empty
+              condition: "[[ -n \"$access_token\" ]]"
+            - name: verify_access_token_pattern
+              condition: "[[ $access_token =~ ^eyJ[A-Za-z0-9_-]+$ ]]"
+            - name: verify_refresh_token_prefix
+              condition: "[[ $refresh_token =~ ^rt_ ]]"
+            - name: verify_refresh_token_length
+              condition: "[[ ${#refresh_token} -gt 10 ]]"
+            - name: verify_expires_numeric
+              condition: "[[ $expires_in =~ ^[0-9]+$ ]]"
+            - name: verify_expires_range
+              condition: "[[ $expires_in -ge 3600 && $expires_in -le 86400 ]]"
+            - name: verify_session_id_prefix
+              condition: "[[ $session_id =~ ^sess_ ]]"
+
+      - step: 2
+        description: "Extract multiple fields from structured log output"
+        command: |
+          cat << 'EOF'
+          [2024-01-15T10:30:45Z] REQUEST_ID=req-a1b2c3d4 METHOD=POST PATH=/api/users/create STATUS=201 DURATION=145ms USER_AGENT="Mozilla/5.0" CLIENT_IP=203.0.113.42
+          EOF
+        capture_vars:
+          - name: request_id
+            capture: 'REQUEST_ID=([a-z0-9-]+)'
+          - name: method
+            capture: 'METHOD=([A-Z]+)'
+          - name: api_path
+            capture: 'PATH=([^ ]+)'
+          - name: status_code
+            capture: 'STATUS=([0-9]+)'
+          - name: duration_ms
+            capture: 'DURATION=([0-9]+)ms'
+          - name: client_ip
+            capture: 'CLIENT_IP=([0-9.]+)'
+        expected:
+          success: true
+          result: '0'
+          output: 'REQUEST_ID'
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'REQUEST_ID' <<< \"$COMMAND_OUTPUT\""
+          general:
+            - name: verify_request_id_format
+              condition: "[[ $request_id =~ ^req-[a-z0-9]+$ ]]"
+            - name: verify_method_is_post
+              condition: "[[ \"$method\" = \"POST\" ]]"
+            - name: verify_api_path_starts_with_slash
+              condition: "[[ $api_path =~ ^/ ]]"
+            - name: verify_status_is_2xx
+              condition: "[[ $status_code -ge 200 && $status_code -lt 300 ]]"
+            - name: verify_status_is_201
+              condition: "[[ $status_code -eq 201 ]]"
+            - name: verify_duration_numeric
+              condition: "[[ $duration_ms =~ ^[0-9]+$ ]]"
+            - name: verify_duration_reasonable
+              condition: "[[ $duration_ms -lt 1000 ]]"
+            - name: verify_client_ip_format
+              condition: "[[ $client_ip =~ ^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$ ]]"
+
+      - step: 3
+        description: "Extract version and build information from application output"
+        command: |
+          cat << 'EOF'
+          Application: TestApp
+          Version: 2.5.1
+          Build: 2024.01.15.1234
+          Environment: production
+          GitCommit: a7f3c9e2b1d8f6e4c3a2b1f9e8d7c6b5a4f3e2d1
+          BuildTime: 2024-01-15T08:30:00Z
+          EOF
+        capture_vars:
+          - name: version
+            capture: 'Version: ([0-9]+\.[0-9]+\.[0-9]+)'
+          - name: build_date
+            capture: 'Build: ([0-9.]+)'
+          - name: environment
+            capture: 'Environment: ([a-z]+)'
+          - name: git_commit
+            capture: 'GitCommit: ([a-f0-9]{40})'
+        expected:
+          success: true
+          result: '0'
+          output: 'Version'
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Version' <<< \"$COMMAND_OUTPUT\""
+          general:
+            - name: verify_version_format
+              condition: "[[ $version =~ ^[0-9]+\\.[0-9]+\\.[0-9]+$ ]]"
+            - name: verify_version_major
+              condition: "[[ $(echo $version | cut -d. -f1) -ge 2 ]]"
+            - name: verify_build_date_format
+              condition: "[[ $build_date =~ ^[0-9]{4}\\.[0-9]{2}\\.[0-9]{2}\\.[0-9]+$ ]]"
+            - name: verify_environment_is_production
+              condition: "[[ \"$environment\" = \"production\" ]]"
+            - name: verify_git_commit_length
+              condition: "[[ ${#git_commit} -eq 40 ]]"
+            - name: verify_git_commit_hexadecimal
+              condition: "[[ $git_commit =~ ^[a-f0-9]{40}$ ]]"
+
+  - id: 3
+    name: "Mixed Captures with Complex Verification"
+    description: |
+                  Test combining command-based and regex-based captures
+                  in the same step with complex bash pattern matching
+                  and arithmetic comparisons in verification conditions
+    initial_conditions:
+      system:
+        - "Both capture methods available"
+    steps:
+      - step: 1
+        description: "Process file and capture both computed and extracted values"
+        command: |
+          cat > /tmp/data.txt << 'EOF'
+          Transaction: TXN-2024-001
+          Amount: $1500.50
+          Currency: USD
+          Timestamp: 2024-01-15T10:30:00Z
+          Status: COMPLETED
+          EOF
+          cat /tmp/data.txt
+        capture_vars:
+          - name: transaction_id
+            capture: 'Transaction: (TXN-[0-9]{4}-[0-9]+)'
+          - name: amount_str
+            capture: 'Amount: \$([0-9]+\.[0-9]{2})'
+          - name: currency
+            capture: 'Currency: ([A-Z]{3})'
+          - name: status
+            capture: 'Status: ([A-Z]+)'
+          - name: file_size
+            command: "wc -c /tmp/data.txt | awk '{print $1}'"
+          - name: line_count
+            command: "wc -l /tmp/data.txt | awk '{print $1}'"
+        expected:
+          success: true
+          result: '0'
+          output: 'Transaction'
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Transaction' <<< \"$COMMAND_OUTPUT\""
+          general:
+            - name: verify_transaction_id_format
+              condition: "[[ $transaction_id =~ ^TXN-[0-9]{4}-[0-9]+$ ]]"
+            - name: verify_transaction_year
+              condition: "[[ $transaction_id =~ TXN-2024- ]]"
+            - name: verify_amount_format
+              condition: "[[ $amount_str =~ ^[0-9]+\\.[0-9]{2}$ ]]"
+            - name: verify_amount_positive
+              condition: "[[ $(echo $amount_str | cut -d. -f1) -gt 0 ]]"
+            - name: verify_amount_range
+              condition: "[[ $(echo $amount_str | cut -d. -f1) -ge 1000 && $(echo $amount_str | cut -d. -f1) -le 2000 ]]"
+            - name: verify_currency_is_usd
+              condition: "[[ \"$currency\" = \"USD\" ]]"
+            - name: verify_currency_length
+              condition: "[[ ${#currency} -eq 3 ]]"
+            - name: verify_status_is_completed
+              condition: "[[ \"$status\" = \"COMPLETED\" ]]"
+            - name: verify_status_is_uppercase
+              condition: "[[ $status =~ ^[A-Z]+$ ]]"
+            - name: verify_file_size_reasonable
+              condition: "[[ $file_size -gt 100 && $file_size -lt 1000 ]]"
+            - name: verify_line_count_matches
+              condition: "[[ $line_count -eq 5 ]]"
+
+      - step: 2
+        description: "Analyze metrics with arithmetic comparisons"
+        command: |
+          cat << 'EOF'
+          METRICS_REPORT
+          CPU_Usage: 45.2%
+          Memory_Usage: 62.8%
+          Disk_Usage: 78.5%
+          Network_In: 1024 KB/s
+          Network_Out: 512 KB/s
+          Active_Connections: 42
+          Queue_Length: 15
+          Response_Time: 125ms
+          EOF
+        capture_vars:
+          - name: cpu_usage
+            capture: 'CPU_Usage: ([0-9]+\.[0-9]+)%'
+          - name: memory_usage
+            capture: 'Memory_Usage: ([0-9]+\.[0-9]+)%'
+          - name: disk_usage
+            capture: 'Disk_Usage: ([0-9]+\.[0-9]+)%'
+          - name: network_in
+            capture: 'Network_In: ([0-9]+) KB/s'
+          - name: network_out
+            capture: 'Network_Out: ([0-9]+) KB/s'
+          - name: connections
+            capture: 'Active_Connections: ([0-9]+)'
+          - name: queue_len
+            capture: 'Queue_Length: ([0-9]+)'
+          - name: response_ms
+            capture: 'Response_Time: ([0-9]+)ms'
+          - name: total_network
+            command: "echo $((1024 + 512))"
+        expected:
+          success: true
+          result: '0'
+          output: 'METRICS_REPORT'
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'METRICS_REPORT' <<< \"$COMMAND_OUTPUT\""
+          general:
+            - name: verify_cpu_below_threshold
+              condition: "[[ $(echo $cpu_usage | cut -d. -f1) -lt 80 ]]"
+            - name: verify_memory_below_threshold
+              condition: "[[ $(echo $memory_usage | cut -d. -f1) -lt 90 ]]"
+            - name: verify_disk_within_limits
+              condition: "[[ $(echo $disk_usage | cut -d. -f1) -ge 50 && $(echo $disk_usage | cut -d. -f1) -le 85 ]]"
+            - name: verify_network_in_positive
+              condition: "[[ $network_in -gt 0 ]]"
+            - name: verify_network_out_positive
+              condition: "[[ $network_out -gt 0 ]]"
+            - name: verify_network_balance
+              condition: "[[ $network_in -gt $network_out ]]"
+            - name: verify_total_network_calculated
+              condition: "[[ $total_network -eq 1536 ]]"
+            - name: verify_connections_reasonable
+              condition: "[[ $connections -ge 1 && $connections -le 100 ]]"
+            - name: verify_queue_not_empty
+              condition: "[[ $queue_len -gt 0 ]]"
+            - name: verify_queue_manageable
+              condition: "[[ $queue_len -lt 50 ]]"
+            - name: verify_response_time_acceptable
+              condition: "[[ $response_ms -lt 200 ]]"
+            - name: verify_response_time_not_too_fast
+              condition: "[[ $response_ms -gt 10 ]]"
+
+      - step: 3
+        description: "Complex pattern matching with multiple capture groups"
+        command: |
+          cat << 'EOF'
+          [INFO] Server started successfully
+          [INFO] Listening on 0.0.0.0:8080
+          [INFO] Database connected: postgresql://db.example.com:5432/mydb
+          [INFO] Cache initialized: redis://cache.example.com:6379
+          [WARN] Configuration file /etc/app/config.yaml uses deprecated settings
+          [INFO] Ready to accept connections
+          EOF
+        capture_vars:
+          - name: listen_port
+            capture: 'Listening on [^:]+:([0-9]+)'
+          - name: db_host
+            capture: 'postgresql://([^:]+):[0-9]+'
+          - name: db_port
+            capture: 'postgresql://[^:]+:([0-9]+)'
+          - name: cache_host
+            capture: 'redis://([^:]+):[0-9]+'
+          - name: cache_port
+            capture: 'redis://[^:]+:([0-9]+)'
+          - name: config_path
+            capture: 'Configuration file ([^ ]+)'
+          - name: info_count
+            command: "grep -c '\\[INFO\\]' <<< \"$COMMAND_OUTPUT\""
+          - name: warn_count
+            command: "grep -c '\\[WARN\\]' <<< \"$COMMAND_OUTPUT\""
+        expected:
+          success: true
+          result: '0'
+          output: 'Server started'
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Server started' <<< \"$COMMAND_OUTPUT\""
+          general:
+            - name: verify_listen_port_is_8080
+              condition: "[[ $listen_port -eq 8080 ]]"
+            - name: verify_listen_port_valid_range
+              condition: "[[ $listen_port -ge 1024 && $listen_port -le 65535 ]]"
+            - name: verify_db_host_format
+              condition: "[[ $db_host =~ \\.example\\.com$ ]]"
+            - name: verify_db_host_not_empty
+              condition: "[[ -n \"$db_host\" ]]"
+            - name: verify_db_port_is_5432
+              condition: "[[ $db_port -eq 5432 ]]"
+            - name: verify_cache_host_format
+              condition: "[[ $cache_host =~ \\.example\\.com$ ]]"
+            - name: verify_cache_port_is_6379
+              condition: "[[ $cache_port -eq 6379 ]]"
+            - name: verify_config_path_absolute
+              condition: "[[ $config_path =~ ^/ ]]"
+            - name: verify_config_is_yaml
+              condition: "[[ $config_path =~ \\.yaml$ ]]"
+            - name: verify_info_messages_present
+              condition: "[[ $info_count -ge 4 ]]"
+            - name: verify_warn_messages_exist
+              condition: "[[ $warn_count -ge 1 ]]"
+            - name: verify_total_message_count
+              condition: "[[ $((info_count + warn_count)) -eq 6 ]]"

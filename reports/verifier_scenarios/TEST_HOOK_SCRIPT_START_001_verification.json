@@ -1,0 +1,58 @@
+{
+  "title": "Test Execution Results",
+  "project": "Test Case Manager - Verification Results",
+  "test_date": "2026-03-19T18:18:51.410461Z",
+  "test_results": [
+    {
+      "test_case_id": "TEST_HOOK_SCRIPT_START_001",
+      "description": "Hook error scenario for script_start hook - script exits with error code",
+      "sequences": [
+        {
+          "sequence_id": 1,
+          "name": "Test Sequence After Failed Hook",
+          "step_results": [
+            {
+              "NotExecuted": {
+                "step": 1,
+                "description": "This step should not execute",
+                "requirement": "HOOK_SCRIPT_START_ERROR",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "NotExecuted": {
+                "step": 2,
+                "description": "This step should not execute",
+                "requirement": "HOOK_SCRIPT_START_ERROR",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": false,
+          "requirement": "HOOK_SCRIPT_START_ERROR",
+          "item": 1,
+          "tc": 1
+        }
+      ],
+      "total_steps": 2,
+      "passed_steps": 0,
+      "failed_steps": 0,
+      "not_executed_steps": 2,
+      "overall_pass": false,
+      "requirement": "HOOK_SCRIPT_START_ERROR",
+      "item": 1,
+      "tc": 1
+    }
+  ],
+  "metadata": {
+    "environment": "Development",
+    "platform": "Linux x86_64",
+    "executor": "Local Development",
+    "execution_duration": 0.0,
+    "total_test_cases": 1,
+    "passed_test_cases": 0,
+    "failed_test_cases": 1
+  }
+}

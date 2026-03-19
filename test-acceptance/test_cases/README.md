@@ -293,6 +293,96 @@ All hook scripts are located in `hooks/scripts/` directory:
 - `hook_teardown_error.sh` - Always fails (exit 1)
 - `hook_script_end_error.sh` - Always fails (exit 1)
 
+## Manual Test Cases
+
+The `manual/` directory contains 9 test cases that require manual intervention:
+
+All manual test cases use the `manual: true` flag on steps that require human interaction. When running the acceptance suite:
+- Manual tests are **automatically skipped** by default
+- Use `--include-manual` flag to include manual tests in execution
+- Manual tests are tracked separately in the execution report
+
+Manual test cases include:
+- `TC_MANUAL_ALL_001.yaml` - All steps are manual
+- `TC_MANUAL_CAPTURE_001.yaml` - Manual variable capture workflows
+- `TC_MANUAL_CONDITIONAL_001.yaml` - Manual conditional verification
+- `TC_MANUAL_FILE_INSPECT_001.yaml` - Manual file inspection
+- `TC_MANUAL_MIXED_001.yaml` - Mixed automated and manual steps
+- `TC_MANUAL_MULTI_SEQ_001.yaml` - Multiple sequences with manual steps
+- `TC_MANUAL_OUTPUT_VERIFY_001.yaml` - Manual output verification
+- `TC_MANUAL_PREREQ_001.yaml` - Manual prerequisite checks
+- `TC_MANUAL_RESULT_VERIFY_001.yaml` - Manual result verification
+
+## Bash Commands Test Cases
+
+The `bash_commands/` directory contains 13 test cases focused on bash syntax validation:
+
+These test cases verify that the test harness correctly generates bash scripts for various bash language constructs:
+- `TC_BASH_SIMPLE_001.yaml` - Simple commands (echo, pwd, whoami, date)
+- `TC_BASH_STRING_OPS_001.yaml` - String manipulation operations
+- `TC_BASH_CONDITIONALS_001.yaml` - Conditional expressions (if/then/else)
+- `TC_BASH_LOOPS_001.yaml` - Loop constructs (for, while)
+- `TC_BASH_ARRAYS_001.yaml` - Array operations
+- `TC_BASH_MATH_OPS_001.yaml` - Arithmetic operations
+- `TC_BASH_FILE_OPS_001.yaml` - File operations and tests
+- `TC_BASH_REDIRECTION_001.yaml` - I/O redirection and pipes
+- `TC_BASH_PROCESS_OPS_001.yaml` - Process control operations
+- `TC_BASH_ENV_VARS_001.yaml` - Environment variable handling
+- `TC_BASH_INTERMEDIATE_001.yaml` - Intermediate complexity commands
+- `TC_BASH_COMPLEX_001.yaml` - Complex multi-command workflows
+- `TC_BASH_VERIFICATION_001.yaml` - Comprehensive verification syntax
+
+**Purpose**: Ensure bash script generation handles all common bash constructs correctly and produces syntactically valid bash 3.2+ compatible scripts.
+
+## Variables Test Cases
+
+The `variables/` directory contains 5 test cases demonstrating variable capture and usage:
+
+These test cases verify the full lifecycle of variable operations:
+- **Command-based captures**: Extract values by running commands (`command` field)
+- **Regex-based captures**: Extract values from output using patterns (`capture` field)
+- **Variable validation**: Use captured variables in verification conditions
+- **Variable substitution**: Use variables in subsequent commands
+
+Test cases include:
+- `TC_VAR_DEMO_001.yaml` - Basic variable capture, validation, and usage demonstration
+- `TC_VAR_CAPTURE_002.yaml` - Comprehensive variable capture scenarios (command + regex)
+- `TC_VAR_DISPLAY_001.yaml` - Variable display and formatting workflows
+- `1.yaml` - Additional variable workflow example
+- `2.yaml` - Additional variable workflow example
+
+**Features Tested**:
+- Command-based captures (wc, grep, awk, jq)
+- Regex pattern extraction (tokens, IDs, metrics)
+- Variable validation in general verification conditions
+- Arithmetic operations with captured variables
+- Complex pattern matching with multiple capture groups
+- Mixed command and regex captures in same step
+
+## Running the Acceptance Suite
+
+To run test cases from specific categories:
+
+```bash
+# Run all tests (manual tests skipped by default)
+./test-acceptance/run_acceptance_suite.sh --verbose
+
+# Include manual tests in execution
+./test-acceptance/run_acceptance_suite.sh --verbose --include-manual
+
+# Skip specific stages
+./test-acceptance/run_acceptance_suite.sh --verbose --skip-documentation
+```
+
+The acceptance suite will:
+1. **Validate** all YAML files against schema
+2. **Generate** bash scripts for all test cases
+3. **Execute** automated tests (manual tests skipped unless `--include-manual`)
+4. **Verify** execution logs against expected outcomes
+5. **Validate** container YAMLs against schema
+6. **Generate** documentation reports (AsciiDoc, Markdown)
+7. **Consolidate** all results into unified documentation
+
 ## Notes
 
 - All test cases are designed to be idempotent and can be run multiple times
@@ -301,3 +391,6 @@ All hook scripts are located in `hooks/scripts/` directory:
 - All regex patterns use portable POSIX syntax where possible
 - Hook test cases verify both successful hook execution and proper error handling
 - Hook marker files are created in /tmp to verify hook execution timing
+- Manual tests are automatically skipped during acceptance suite execution
+- Bash commands tests ensure generated scripts are bash 3.2+ compatible
+- Variables tests verify capture, validation, and substitution workflows
