@@ -274,19 +274,38 @@ generate_test_scripts() {
         
         log_verbose "Generating: $basename.sh"
         
+        # Determine if this test is expected to fail generation (missing dependencies)
+        local expected_generation_failure=0
+        if [[ "$basename" == "TC_DEPENDENCY_MISSING_001" ]]; then
+            expected_generation_failure=1
+        fi
+        
         # Generate script with --json-log flag and --test-case-dir for dependency resolution
         if "$TEST_EXECUTOR" generate --json-log --test-case-dir "$TEST_CASES_DIR" --output "$script_file" "$yaml_file" > "$TEMP_DIR/generation_output.txt" 2>&1; then
-            ((GENERATION_PASSED++))
-            pass "$basename.sh"
-            
-            # Make script executable
-            chmod +x "$script_file"
+            if [[ $expected_generation_failure -eq 1 ]]; then
+                # Test was expected to fail but succeeded
+                ((GENERATION_FAILED++))
+                fail "$basename.sh (unexpected success)"
+                echo "$yaml_file (expected to fail)" >> "$GENERATION_FAILURES"
+            else
+                ((GENERATION_PASSED++))
+                pass "$basename.sh"
+                
+                # Make script executable
+                chmod +x "$script_file"
+            fi
         else
-            ((GENERATION_FAILED++))
-            fail "$basename.sh"
-            echo "$yaml_file" >> "$GENERATION_FAILURES"
-            if [[ $VERBOSE -eq 1 ]]; then
-                cat "$TEMP_DIR/generation_output.txt" >&2
+            if [[ $expected_generation_failure -eq 1 ]]; then
+                # Test failed as expected
+                ((GENERATION_PASSED++))
+                pass "$basename.sh (expected failure)"
+            else
+                ((GENERATION_FAILED++))
+                fail "$basename.sh"
+                echo "$yaml_file" >> "$GENERATION_FAILURES"
+                if [[ $VERBOSE -eq 1 ]]; then
+                    cat "$TEMP_DIR/generation_output.txt" >&2
+                fi
             fi
         fi
     done
@@ -296,6 +315,8 @@ generate_test_scripts() {
     echo ""
     
     if [[ $GENERATION_FAILED -gt 0 ]]; then
+        log_error "Stage 2 (Generation) failed"
+        echo ""
         return 1
     fi
     return 0
@@ -341,6 +362,12 @@ execute_test_scripts() {
         local basename=$(basename "$script_file" .sh)
         local yaml_file="$TEST_CASES_DIR"
         
+        # Skip hook scripts (they don't have corresponding YAML files or execution logs)
+        if [[ "$script_file" == */hooks/* ]]; then
+            log_verbose "Skipping hook script: $basename.sh"
+            continue
+        fi
+        
         # Find corresponding YAML file
         local found_yaml=""
         while IFS= read -r -d '' yaml; do
@@ -360,6 +387,12 @@ execute_test_scripts() {
             fi
         fi
         
+        # Determine if this is a failure scenario test (expected to fail)
+        local is_failure_test=0
+        if [[ "$basename" =~ FAILURE|PREREQ_AUTO_FAIL|PREREQ_PARTIAL_FAIL|CIRCULAR|SELF_REF ]]; then
+            is_failure_test=1
+        fi
+        
         # Generated scripts create JSON log files in scripts directory with naming pattern: <basename>_execution_log.json
         local generated_log="$(dirname "$script_file")/${basename}_execution_log.json"
         local log_file="$EXECUTION_LOGS_DIR/${basename}.json"
@@ -369,14 +402,38 @@ execute_test_scripts() {
         # Execute script with stdin closed to avoid blocking on interactive prompts
         # (output to /dev/null since we use the generated JSON log)
         local exit_code=0
+        local execution_failed=0
         if ! bash "$script_file" < /dev/null > /dev/null 2>&1; then
             exit_code=$?
-            ((EXECUTION_FAILED++))
-            fail "$basename.sh (exit code: $exit_code)"
-            echo "$script_file" >> "$EXECUTION_FAILURES"
+            execution_failed=1
+        fi
+        
+        # Determine if execution result matches expectation
+        local test_passed_expectations=0
+        if [[ $is_failure_test -eq 1 ]]; then
+            # Failure test: expected to fail (non-zero exit code)
+            if [[ $execution_failed -eq 1 ]]; then
+                ((EXECUTION_PASSED++))
+                pass "$basename.sh"
+                test_passed_expectations=1
+            else
+                ((EXECUTION_FAILED++))
+                fail "$basename.sh (exit code: 0, expected failure)"
+                echo "$script_file" >> "$EXECUTION_FAILURES"
+                test_passed_expectations=0
+            fi
         else
-            ((EXECUTION_PASSED++))
-            pass "$basename.sh"
+            # Success test: expected to pass (zero exit code)
+            if [[ $execution_failed -eq 0 ]]; then
+                ((EXECUTION_PASSED++))
+                pass "$basename.sh"
+                test_passed_expectations=1
+            else
+                ((EXECUTION_FAILED++))
+                fail "$basename.sh (exit code: $exit_code)"
+                echo "$script_file" >> "$EXECUTION_FAILURES"
+                test_passed_expectations=0
+            fi
         fi
         
         # Copy the generated JSON log to execution_logs directory
@@ -394,14 +451,20 @@ execute_test_scripts() {
             fi
 
             if [[ $json_valid -eq 0 ]]; then
-                ((EXECUTION_FAILED++))
-                fail "Invalid JSON in execution log: $log_file"
-                echo "$script_file (invalid JSON)" >> "$EXECUTION_FAILURES"
+                # Only mark as failed if test passed its expectations (don't double-count failures)
+                if [[ $test_passed_expectations -eq 1 ]]; then
+                    ((EXECUTION_FAILED++))
+                    fail "Invalid JSON in execution log: $log_file"
+                    echo "$script_file (invalid JSON)" >> "$EXECUTION_FAILURES"
+                fi
             fi
         else
-            fail "Execution log not created: $generated_log"
-            echo "$script_file (no log)" >> "$EXECUTION_FAILURES"
-            ((EXECUTION_FAILED++))
+            # Only mark as failed if test passed its expectations (don't double-count failures)
+            if [[ $test_passed_expectations -eq 1 ]]; then
+                ((EXECUTION_FAILED++))
+                fail "Execution log not created: $generated_log"
+                echo "$script_file (no log)" >> "$EXECUTION_FAILURES"
+            fi
         fi
     done
     
@@ -410,6 +473,8 @@ execute_test_scripts() {
     echo ""
     
     if [[ $EXECUTION_FAILED -gt 0 ]]; then
+        log_error "Stage 3 (Execution) had failures"
+        echo ""
         return 1
     fi
     return 0
@@ -498,6 +563,8 @@ verify_execution_logs() {
     echo ""
     
     if [[ $VERIFICATION_FAILED -gt 0 ]]; then
+        log_error "Stage 4 (Verification) failed"
+        echo ""
         return 1
     fi
     return 0
@@ -553,6 +620,8 @@ validate_container_yamls() {
     echo ""
     
     if [[ $CONTAINER_VALIDATION_FAILED -gt 0 ]]; then
+        log_error "Stage 5 (Container Validation) failed"
+        echo ""
         return 1
     fi
     return 0
