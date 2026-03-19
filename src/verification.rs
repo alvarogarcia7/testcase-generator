@@ -618,12 +618,26 @@ impl TestVerifier {
     ) -> Result<Vec<TestExecutionLog>> {
         let mut logs = Vec::new();
 
+        log::debug!(
+            "Parsing log file with test_case_id: {} from {} (length: {} bytes)",
+            test_case_id,
+            log_path.display(),
+            content.len()
+        );
+
         // Try to parse as JSON first
         let trimmed_content = content.trim();
         if trimmed_content.starts_with('[') {
+            log::debug!("Log file appears to be JSON format (starts with '[')");
             // Attempt to parse as JSON array of TestStepExecutionEntry
             match self.parse_json_log_content_with_test_case_id(content, log_path, test_case_id) {
-                Ok(json_logs) => return Ok(json_logs),
+                Ok(json_logs) => {
+                    log::debug!(
+                        "Successfully parsed as JSON format: {} log entries",
+                        json_logs.len()
+                    );
+                    return Ok(json_logs);
+                }
                 Err(e) => {
                     log::debug!(
                         "Failed to parse as JSON, falling back to text format: {}",
@@ -631,6 +645,8 @@ impl TestVerifier {
                     );
                 }
             }
+        } else {
+            log::debug!("Log file appears to be text format (does not start with '[')");
         }
 
         // Fall back to text format parsing with the provided test_case_id
@@ -693,6 +709,16 @@ impl TestVerifier {
                     .trim()
                     .to_string();
 
+                log::debug!(
+                    "Parsed text log entry: TestCase={}, Seq={}, Step={}, Success={:?}, Result={}, Output={}",
+                    test_case_id,
+                    sequence_id,
+                    step_number,
+                    success,
+                    actual_result,
+                    actual_output
+                );
+
                 logs.push(TestExecutionLog {
                     test_case_id: test_case_id.to_string(),
                     sequence_id,
@@ -708,6 +734,8 @@ impl TestVerifier {
             }
         }
 
+        log::debug!("Parsed {} text format log entries", logs.len());
+
         Ok(logs)
     }
 
@@ -719,12 +747,25 @@ impl TestVerifier {
     ) -> Result<Vec<TestExecutionLog>> {
         let mut logs = Vec::new();
 
+        log::debug!(
+            "Parsing log file: {} (length: {} bytes)",
+            log_path.display(),
+            content.len()
+        );
+
         // Try to parse as JSON first
         let trimmed_content = content.trim();
         if trimmed_content.starts_with('[') {
+            log::debug!("Log file appears to be JSON format (starts with '[')");
             // Attempt to parse as JSON array of TestStepExecutionEntry
             match self.parse_json_log_content(content, log_path) {
-                Ok(json_logs) => return Ok(json_logs),
+                Ok(json_logs) => {
+                    log::debug!(
+                        "Successfully parsed as JSON format: {} log entries",
+                        json_logs.len()
+                    );
+                    return Ok(json_logs);
+                }
                 Err(e) => {
                     log::debug!(
                         "Failed to parse as JSON, falling back to text format: {}",
@@ -732,6 +773,8 @@ impl TestVerifier {
                     );
                 }
             }
+        } else {
+            log::debug!("Log file appears to be text format (does not start with '[')");
         }
 
         // Fall back to text format parsing
@@ -802,6 +845,16 @@ impl TestVerifier {
                     .trim()
                     .to_string();
 
+                log::debug!(
+                    "Parsed text log entry: TestCase={}, Seq={}, Step={}, Success={:?}, Result={}, Output={}",
+                    test_case_id,
+                    sequence_id,
+                    step_number,
+                    success,
+                    actual_result,
+                    actual_output
+                );
+
                 logs.push(TestExecutionLog {
                     test_case_id,
                     sequence_id,
@@ -817,6 +870,8 @@ impl TestVerifier {
             }
         }
 
+        log::debug!("Parsed {} text format log entries", logs.len());
+
         Ok(logs)
     }
 
@@ -829,8 +884,15 @@ impl TestVerifier {
     ) -> Result<Vec<TestExecutionLog>> {
         use crate::models::TestStepExecutionEntry;
 
+        log::debug!(
+            "Parsing JSON log content with test_case_id: {}",
+            test_case_id
+        );
+
         let entries: Vec<TestStepExecutionEntry> =
             serde_json::from_str(content).context("Failed to parse JSON execution log")?;
+
+        log::debug!("Successfully parsed {} JSON entries", entries.len());
 
         let mut logs = Vec::new();
         for entry in entries {
@@ -846,6 +908,16 @@ impl TestVerifier {
                     .ok()
                     .map(|dt| dt.with_timezone(&Utc))
             });
+
+            log::debug!(
+                "Parsed JSON entry: TestCase={}, Seq={}, Step={}, ExitCode={}, Success={:?}, Output={}",
+                test_case_id,
+                entry.test_sequence,
+                entry.step,
+                entry.exit_code,
+                success,
+                entry.output
+            );
 
             logs.push(TestExecutionLog {
                 test_case_id: test_case_id.to_string(),
@@ -884,6 +956,13 @@ impl TestVerifier {
             .unwrap_or("UNKNOWN")
             .to_string();
 
+        log::debug!(
+            "Parsing JSON log content, extracted test_case_id: {} from path: {}",
+            test_case_id,
+            log_path.display()
+        );
+        log::debug!("Successfully parsed {} JSON entries", entries.len());
+
         let mut logs = Vec::new();
         for entry in entries {
             // Derive success from exit_code (0 = success, non-zero = failure)
@@ -898,6 +977,16 @@ impl TestVerifier {
                     .ok()
                     .map(|dt| dt.with_timezone(&Utc))
             });
+
+            log::debug!(
+                "Parsed JSON entry: TestCase={}, Seq={}, Step={}, ExitCode={}, Success={:?}, Output={}",
+                test_case_id,
+                entry.test_sequence,
+                entry.step,
+                entry.exit_code,
+                success,
+                entry.output
+            );
 
             logs.push(TestExecutionLog {
                 test_case_id: test_case_id.clone(),
@@ -922,6 +1011,13 @@ impl TestVerifier {
         test_case: &TestCase,
         execution_logs: &[TestExecutionLog],
     ) -> TestCaseVerificationResult {
+        log::debug!(
+            "Verifying test case: {} ({}) with {} execution logs",
+            test_case.id,
+            test_case.description,
+            execution_logs.len()
+        );
+
         let mut sequences = Vec::new();
         let mut total_steps = 0;
         let mut passed_steps = 0;
@@ -936,12 +1032,25 @@ impl TestVerifier {
             }
         }
 
+        log::debug!(
+            "Built log map with {} entries for test case {}",
+            log_map.len(),
+            test_case.id
+        );
+
         // Extract requirement, item, and tc from test case
         let requirement = Some(test_case.requirement.clone());
         let item = Some(test_case.item);
         let tc = Some(test_case.tc);
 
         for sequence in &test_case.test_sequences {
+            log::debug!(
+                "Verifying sequence {} ({}) with {} steps",
+                sequence.id,
+                sequence.name,
+                sequence.steps.len()
+            );
+
             let step_results =
                 self.verify_sequence(sequence, &log_map, requirement.as_ref(), item, tc);
 
@@ -956,6 +1065,12 @@ impl TestVerifier {
                 }
             }
 
+            log::debug!(
+                "Sequence {} verification complete: all_passed={}",
+                sequence.id,
+                all_steps_passed
+            );
+
             sequences.push(SequenceVerificationResult {
                 sequence_id: sequence.id,
                 name: sequence.name.clone(),
@@ -968,6 +1083,16 @@ impl TestVerifier {
         }
 
         let overall_pass = failed_steps == 0 && not_executed_steps == 0;
+
+        log::debug!(
+            "Test case {} verification complete: passed={}/{}, failed={}, not_executed={}, overall_pass={}",
+            test_case.id,
+            passed_steps,
+            total_steps,
+            failed_steps,
+            not_executed_steps,
+            overall_pass
+        );
 
         TestCaseVerificationResult {
             test_case_id: test_case.id.clone(),
@@ -997,8 +1122,18 @@ impl TestVerifier {
 
         for step in &sequence.steps {
             let result = if let Some(log) = log_map.get(&(sequence.id, step.step)) {
+                log::debug!(
+                    "Found execution log for sequence {} step {}, verifying...",
+                    sequence.id,
+                    step.step
+                );
                 self.verify_step_new(step, log, requirement, item, tc)
             } else {
+                log::debug!(
+                    "No execution log found for sequence {} step {} - marking as NotExecuted",
+                    sequence.id,
+                    step.step
+                );
                 StepVerificationResultEnum::NotExecuted {
                     step: step.step,
                     description: step.description.clone(),
@@ -1073,10 +1208,31 @@ impl TestVerifier {
         }
 
         // Non-Precomputed mode: standard verification logic
+        log::debug!(
+            "Verifying step {} ({}): Expected[result='{}', output='{}', success={:?}]",
+            step.step,
+            step.description,
+            expected.result,
+            expected.output,
+            expected.success
+        );
+        log::debug!(
+            "  Actual from log: result='{}', output='{}', success={:?}",
+            log.actual_result,
+            log.actual_output,
+            log.success
+        );
+
         // Check success field if it's defined
         if let Some(expected_success) = expected.success {
             if let Some(actual_success) = log.success {
+                log::debug!(
+                    "  Checking success: expected={}, actual={}",
+                    expected_success,
+                    actual_success
+                );
                 if expected_success != actual_success {
+                    log::debug!("  SUCCESS CHECK FAILED: mismatch detected");
                     return StepVerificationResultEnum::Fail {
                         step: step.step,
                         description: step.description.clone(),
@@ -1092,11 +1248,22 @@ impl TestVerifier {
                         tc,
                     };
                 }
+                log::debug!("  Success check passed");
             }
         }
 
         // Check result
+        log::debug!(
+            "  Checking result: expected='{}', actual='{}', strategy={:?}",
+            expected.result,
+            log.actual_result,
+            self.result_strategy
+        );
         if !self.matches(&expected.result, &log.actual_result, self.result_strategy) {
+            log::debug!(
+                "  RESULT CHECK FAILED: no match with strategy {:?}",
+                self.result_strategy
+            );
             return StepVerificationResultEnum::Fail {
                 step: step.step,
                 description: step.description.clone(),
@@ -1112,9 +1279,20 @@ impl TestVerifier {
                 tc,
             };
         }
+        log::debug!("  Result check passed");
 
         // Check output
+        log::debug!(
+            "  Checking output: expected='{}', actual='{}', strategy={:?}",
+            expected.output,
+            log.actual_output,
+            self.output_strategy
+        );
         if !self.matches(&expected.output, &log.actual_output, self.output_strategy) {
+            log::debug!(
+                "  OUTPUT CHECK FAILED: no match with strategy {:?}",
+                self.output_strategy
+            );
             return StepVerificationResultEnum::Fail {
                 step: step.step,
                 description: step.description.clone(),
@@ -1130,6 +1308,9 @@ impl TestVerifier {
                 tc,
             };
         }
+        log::debug!("  Output check passed");
+
+        log::debug!("  Step {} PASSED all checks", step.step);
 
         StepVerificationResultEnum::Pass {
             step: step.step,
@@ -1141,13 +1322,42 @@ impl TestVerifier {
     }
 
     fn matches(&self, expected: &str, actual: &str, strategy: MatchStrategy) -> bool {
-        match strategy {
-            MatchStrategy::Exact => expected == actual,
-            MatchStrategy::Contains => actual.contains(expected),
+        let result = match strategy {
+            MatchStrategy::Exact => {
+                let matched = expected == actual;
+                log::debug!(
+                    "    Match check (Exact): expected='{}', actual='{}' => {}",
+                    expected,
+                    actual,
+                    matched
+                );
+                matched
+            }
+            MatchStrategy::Contains => {
+                let matched = actual.contains(expected);
+                log::debug!(
+                    "    Match check (Contains): expected='{}', actual='{}' => {}",
+                    expected,
+                    actual,
+                    matched
+                );
+                matched
+            }
             MatchStrategy::Regex => {
                 if let Ok(regex) = Regex::new(expected) {
-                    regex.is_match(actual)
+                    let matched = regex.is_match(actual);
+                    log::debug!(
+                        "    Match check (Regex): pattern='{}', actual='{}' => {}",
+                        expected,
+                        actual,
+                        matched
+                    );
+                    matched
                 } else {
+                    log::debug!(
+                        "    Match check (Regex): INVALID pattern='{}' - compilation failed",
+                        expected
+                    );
                     false
                 }
             }
@@ -1156,7 +1366,8 @@ impl TestVerifier {
                 // This should be handled separately in verify_step_new
                 false
             }
-        }
+        };
+        result
     }
 
     /// Process multiple log files and verify against test cases
@@ -1462,14 +1673,39 @@ impl TestVerifier {
         report: &BatchVerificationReport,
         format: &str,
     ) -> Result<String> {
-        match format.to_lowercase().as_str() {
+        log::debug!(
+            "Generating container report: format={}, test_cases={}, total_steps={}, passed={}, failed={}, not_executed={}",
+            format,
+            report.total_test_cases,
+            report.total_steps,
+            report.passed_steps,
+            report.failed_steps,
+            report.not_executed_steps
+        );
+
+        let result = match format.to_lowercase().as_str() {
             "yaml" => {
+                log::debug!("Serializing report to YAML format");
                 serde_yaml::to_string(report).context("Failed to serialize batch report to YAML")
             }
-            "json" => serde_json::to_string_pretty(report)
-                .context("Failed to serialize batch report to JSON"),
-            _ => anyhow::bail!("Unsupported format: {}. Use 'yaml' or 'json'.", format),
+            "json" => {
+                log::debug!("Serializing report to JSON format");
+                serde_json::to_string_pretty(report)
+                    .context("Failed to serialize batch report to JSON")
+            }
+            _ => {
+                log::debug!("Unsupported format requested: {}", format);
+                anyhow::bail!("Unsupported format: {}. Use 'yaml' or 'json'.", format)
+            }
+        };
+
+        if let Ok(ref content) = result {
+            log::debug!("Successfully generated report: {} bytes", content.len());
+        } else {
+            log::debug!("Failed to generate report");
         }
+
+        result
     }
 }
 

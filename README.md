@@ -158,7 +158,13 @@ test-verify batch --logs logs/*.log --format junit --output report.xml
 
 # Parse log file
 test-verify parse-log --log exec.log --format json
+
+# Verbose mode - detailed logging for debugging
+test-verify single --log exec.log --test-case-id TC001 --verbose
+test-verify batch --logs logs/*.log --verbose
 ```
+
+**Verbose Mode**: Use the `--verbose` flag to enable detailed logging that shows parser state transitions, match attempts, field extraction, and validation steps. This is helpful for debugging log parsing issues. See [Verifier Verbose Logging Documentation](docs/VERIFIER_VERBOSE_LOGGING.md) for details.
 
 ### 4. test-orchestrator
 
