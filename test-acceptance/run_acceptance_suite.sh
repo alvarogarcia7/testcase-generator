@@ -860,6 +860,13 @@ generate_summary_report() {
         else
             echo "Passed:  $CONSOLIDATED_DOC_PASSED"
             echo "Failed:  $CONSOLIDATED_DOC_FAILED"
+            if [[ $CONSOLIDATED_DOC_FAILED -eq 0 ]] && [[ $CONSOLIDATED_DOC_PASSED -gt 0 ]]; then
+                echo ""
+                echo "Generated consolidated reports:"
+                echo "  - $REPORTS_DIR/consolidated/all_tests_container.yaml"
+                echo "  - $REPORTS_DIR/consolidated/all_tests.adoc"
+                echo "  - $REPORTS_DIR/consolidated/all_tests.md"
+            fi
         fi
         echo ""
         
