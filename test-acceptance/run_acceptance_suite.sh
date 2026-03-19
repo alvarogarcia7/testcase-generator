@@ -50,6 +50,8 @@ declare -i CONTAINER_VALIDATION_PASSED=0
 declare -i CONTAINER_VALIDATION_FAILED=0
 declare -i DOCUMENTATION_PASSED=0
 declare -i DOCUMENTATION_FAILED=0
+declare -i CONSOLIDATED_DOC_PASSED=0
+declare -i CONSOLIDATED_DOC_FAILED=0
 
 # Temporary files for tracking
 TEMP_DIR=$(mktemp -d)
@@ -91,6 +93,7 @@ STAGES:
     4. Verification        Run verifier on execution logs
     5. Container Validation Validate container YAMLs against schema
     6. Documentation       Generate AsciiDoc and Markdown reports
+    7. Consolidated Docs   Generate unified documentation for all tests
 
 EXIT CODES:
     0 - All stages completed successfully
@@ -639,6 +642,116 @@ generate_documentation() {
     return 0
 }
 
+# Stage 7: Generate consolidated documentation using verifier --folder mode
+generate_consolidated_documentation() {
+    if [[ $SKIP_DOCUMENTATION -eq 1 ]]; then
+        section "Stage 7: Consolidated Documentation Generation (SKIPPED)"
+        echo ""
+        return 0
+    fi
+    
+    section "Stage 7: Generating Consolidated Documentation"
+    
+    # Check if TPDG is available
+    if ! command -v "$TPDG_BIN" &> /dev/null; then
+        log_warning "test-plan-documentation-generator not found"
+        log_info "Skipping consolidated documentation generation"
+        log_info "Install: cargo install test-plan-documentation-generator"
+        echo ""
+        return 0
+    fi
+    
+    # Check if execution logs directory exists and has logs
+    if [[ ! -d "$EXECUTION_LOGS_DIR" ]] || [[ -z "$(ls -A "$EXECUTION_LOGS_DIR" 2>/dev/null)" ]]; then
+        log_warning "No execution logs found in $EXECUTION_LOGS_DIR"
+        log_info "Skipping consolidated documentation generation"
+        echo ""
+        return 0
+    fi
+    
+    # Create consolidated reports directory
+    mkdir -p "$REPORTS_DIR/consolidated"
+    
+    local consolidated_container="$REPORTS_DIR/consolidated/all_tests_container.yaml"
+    local consolidated_asciidoc="$REPORTS_DIR/consolidated/all_tests.adoc"
+    local consolidated_markdown="$REPORTS_DIR/consolidated/all_tests.md"
+    
+    log_info "Generating unified container YAML from all execution logs..."
+    
+    # Generate consolidated container YAML using verifier --folder mode
+    if "$VERIFIER" \
+        --folder "$EXECUTION_LOGS_DIR" \
+        --title "Acceptance Test Suite - All Test Cases" \
+        --project "Test Case Manager - Acceptance Suite" \
+        --environment "Automated Test Environment - $(hostname)" \
+        --output "$consolidated_container" \
+        > "$TEMP_DIR/verifier_consolidated_output.txt" 2>&1; then
+        
+        pass "Unified container YAML generated"
+        log_verbose "Container: $consolidated_container"
+    else
+        fail "Failed to generate unified container YAML"
+        ((CONSOLIDATED_DOC_FAILED++))
+        if [[ $VERBOSE -eq 1 ]]; then
+            cat "$TEMP_DIR/verifier_consolidated_output.txt" >&2
+        fi
+        echo ""
+        return 1
+    fi
+    
+    # Generate AsciiDoc from consolidated container
+    log_info "Generating AsciiDoc documentation..."
+    if "$TPDG_BIN" \
+        --input "$consolidated_container" \
+        --output "$consolidated_asciidoc" \
+        --format asciidoc \
+        > "$TEMP_DIR/tpdg_consolidated_asciidoc.txt" 2>&1; then
+        
+        pass "all_tests.adoc"
+        log_verbose "AsciiDoc: $consolidated_asciidoc"
+    else
+        fail "Failed to generate AsciiDoc"
+        ((CONSOLIDATED_DOC_FAILED++))
+        if [[ $VERBOSE -eq 1 ]]; then
+            cat "$TEMP_DIR/tpdg_consolidated_asciidoc.txt" >&2
+        fi
+    fi
+    
+    # Generate Markdown from consolidated container
+    log_info "Generating Markdown documentation..."
+    if "$TPDG_BIN" \
+        --input "$consolidated_container" \
+        --output "$consolidated_markdown" \
+        --format markdown \
+        > "$TEMP_DIR/tpdg_consolidated_markdown.txt" 2>&1; then
+        
+        pass "all_tests.md"
+        log_verbose "Markdown: $consolidated_markdown"
+    else
+        fail "Failed to generate Markdown"
+        ((CONSOLIDATED_DOC_FAILED++))
+        if [[ $VERBOSE -eq 1 ]]; then
+            cat "$TEMP_DIR/tpdg_consolidated_markdown.txt" >&2
+        fi
+    fi
+    
+    # Determine overall success
+    if [[ $CONSOLIDATED_DOC_FAILED -eq 0 ]]; then
+        ((CONSOLIDATED_DOC_PASSED++))
+        echo ""
+        log_info "Consolidated Documentation: SUCCESS"
+    else
+        echo ""
+        log_info "Consolidated Documentation: $CONSOLIDATED_DOC_FAILED failures"
+    fi
+    echo ""
+    
+    if [[ $CONSOLIDATED_DOC_FAILED -gt 0 ]]; then
+        return 1
+    fi
+    return 0
+}
+
 # Generate final summary report
 generate_summary_report() {
     section "Final Summary Report"
@@ -741,10 +854,19 @@ generate_summary_report() {
         fi
         echo ""
         
+        echo "--- Stage 7: Consolidated Documentation ---"
+        if [[ $SKIP_DOCUMENTATION -eq 1 ]]; then
+            echo "SKIPPED"
+        else
+            echo "Passed:  $CONSOLIDATED_DOC_PASSED"
+            echo "Failed:  $CONSOLIDATED_DOC_FAILED"
+        fi
+        echo ""
+        
         echo "========================================="
         echo "Overall Result:"
         
-        local total_failures=$((VALIDATION_FAILED + GENERATION_FAILED + EXECUTION_FAILED + VERIFICATION_FAILED + CONTAINER_VALIDATION_FAILED + DOCUMENTATION_FAILED))
+        local total_failures=$((VALIDATION_FAILED + GENERATION_FAILED + EXECUTION_FAILED + VERIFICATION_FAILED + CONTAINER_VALIDATION_FAILED + DOCUMENTATION_FAILED + CONSOLIDATED_DOC_FAILED))
         
         if [[ $total_failures -eq 0 ]]; then
             echo "SUCCESS - All stages completed without errors"
@@ -821,6 +943,12 @@ main() {
         overall_success=1
     fi
     
+    # Stage 7: Generate consolidated documentation
+    if ! generate_consolidated_documentation; then
+        log_error "Stage 7 (Consolidated Documentation) had failures"
+        overall_success=1
+    fi
+    
     # Generate final summary
     if ! generate_summary_report; then
         overall_success=1
@@ -832,7 +960,8 @@ main() {
        [[ $EXECUTION_FAILED -ne 0 ]] || \
        [[ $VERIFICATION_FAILED -ne 0 ]] || \
        [[ $CONTAINER_VALIDATION_FAILED -ne 0 ]] || \
-       [[ $DOCUMENTATION_FAILED -ne 0 ]]; then
+       [[ $DOCUMENTATION_FAILED -ne 0 ]] || \
+       [[ $CONSOLIDATED_DOC_FAILED -ne 0 ]]; then
         overall_success=1
     fi
     
