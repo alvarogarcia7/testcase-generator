@@ -36,7 +36,7 @@ The acceptance test suite serves four primary purposes:
 
 - **Total test cases**: 91
 - **Test categories**: 8 (success, failure, hooks, manual, variables, dependencies, complex, bash_commands)
-- **Pipeline stages**: 6 (validation, generation, execution, verification, container validation, documentation)
+- **Pipeline stages**: 7 (validation, generation, execution, verification, container validation, individual documentation, consolidated documentation)
 - **Supported platforms**: macOS (BSD, bash 3.2+) and Linux (GNU, bash 3.2+)
 
 ---
@@ -54,8 +54,8 @@ make acceptance-test
 This will:
 - Build all required binaries (test-executor, verifier, validate-yaml, validate-json)
 - Validate TPDG (test-plan-documentation-generator) availability
-- Execute all 6 pipeline stages
-- Generate comprehensive reports
+- Execute all 7 pipeline stages
+- Generate comprehensive individual and consolidated reports
 - Display final statistics and results
 
 **Exit codes:**
@@ -118,8 +118,12 @@ test-acceptance/
 │   └── ...
 │
 ├── reports/                     # Generated documentation (gitignored)
-│   ├── asciidoc/                # AsciiDoc format reports
-│   ├── markdown/                # Markdown format reports
+│   ├── asciidoc/                # AsciiDoc format reports (individual)
+│   ├── markdown/                # Markdown format reports (individual)
+│   ├── consolidated/            # Consolidated documentation (all tests)
+│   │   ├── all_tests_container.yaml
+│   │   ├── all_tests.adoc
+│   │   └── all_tests.md
 │   ├── acceptance_suite_execution.log
 │   └── acceptance_suite_summary.txt
 │
@@ -130,6 +134,7 @@ test-acceptance/
 ├── validate_stage4_verification.sh  # Stage 4: Verification validation
 ├── validate_stage5_tpdg_result_docs.sh  # Stage 5: Result docs validation
 ├── validate_stage6_tpdg_plan_docs.sh    # Stage 6: Plan docs validation
+├── validate_stage7_consolidated_docs.sh # Stage 7: Consolidated docs validation
 ├── generate_final_report.sh     # Summary report generator
 │
 ├── README.md                    # This file
@@ -373,13 +378,13 @@ Generates plan documentation:
 - Creates comprehensive project documentation
 - Validates final documentation output
 
-**Note:** Stages 5 and 6 require TPDG to be installed.
+**Note:** Stages 5, 6, and 7 require TPDG to be installed.
 
 ---
 
 ## Pipeline Validation Process
 
-The acceptance test suite executes a 6-stage pipeline:
+The acceptance test suite executes a 7-stage pipeline:
 
 ### Stage 1: YAML Validation ✓
 
@@ -520,23 +525,23 @@ results:
 - Validates schema compliance
 - Catches data structure issues early
 
-### Stage 6: Documentation Generation ✓
+### Stage 6: Individual Documentation ✓
 
-**Purpose:** Generate AsciiDoc and Markdown documentation using TPDG
+**Purpose:** Generate individual AsciiDoc and Markdown documentation for each test using TPDG
 
 **Actions:**
 - Checks for TPDG binary availability
-- Processes each container YAML
+- Processes each container YAML individually
 - Generates AsciiDoc reports in `reports/asciidoc/`
 - Generates Markdown reports in `reports/markdown/`
 - Includes original test case YAML for context
-- Creates comprehensive test documentation
+- Creates comprehensive per-test documentation
 
 **Input:** Container YAMLs from Stage 4
 **Output:** 
-- AsciiDoc reports (`.adoc`)
-- Markdown reports (`.md`)
-- HTML reports (if asciidoctor installed)
+- Individual AsciiDoc reports (`.adoc`)
+- Individual Markdown reports (`.md`)
+- Individual HTML reports (if asciidoctor installed)
 
 **Can Skip:** Yes (`--skip-documentation`) or auto-skipped if TPDG not available
 
@@ -548,6 +553,143 @@ test-plan-documentation-generator \
     --format asciidoc \
     --test-case original.yaml
 ```
+
+### Stage 7: Consolidated Documentation ✓
+
+**Purpose:** Generate unified documentation combining all test results in a single report
+
+**Actions:**
+- Runs verifier in `--folder` mode to process all execution logs
+- Creates consolidated container YAML (`all_tests_container.yaml`)
+- Generates comprehensive AsciiDoc report (`all_tests.adoc`)
+- Generates comprehensive Markdown report (`all_tests.md`)
+- Outputs to `reports/consolidated/` directory
+- Provides high-level overview of entire test suite
+
+**Input:** All execution logs from Stage 3
+**Output:** 
+- `reports/consolidated/all_tests_container.yaml` - Unified container with all test results
+- `reports/consolidated/all_tests.adoc` - Comprehensive AsciiDoc report
+- `reports/consolidated/all_tests.md` - Comprehensive Markdown report
+
+**Can Skip:** Auto-skipped if Stage 6 is skipped or TPDG not available
+
+**Verifier Folder Mode Command:**
+```bash
+verifier --folder \
+    --title "Acceptance Test Suite - All Tests" \
+    --project "Test Case Manager - Acceptance Suite" \
+    --environment "Automated Test Environment - [hostname]" \
+    test-acceptance/test_cases/ \
+    test-acceptance/execution_logs/
+```
+
+**TPDG Consolidated Command:**
+```bash
+test-plan-documentation-generator \
+    --input reports/consolidated/all_tests_container.yaml \
+    --output reports/consolidated/all_tests.adoc \
+    --format asciidoc
+```
+
+---
+
+## Individual vs. Consolidated Documentation
+
+The acceptance suite generates two types of documentation to serve different purposes:
+
+### Individual Documentation (Stage 6)
+
+**Purpose:** Detailed per-test analysis and debugging
+
+**Generated Files:**
+- `reports/asciidoc/TC_*_container.adoc` - One file per test
+- `reports/markdown/TC_*_container.md` - One file per test
+
+**Use Cases:**
+- Debugging individual test failures
+- Reviewing specific test execution details
+- Understanding single test behavior
+- Detailed step-by-step analysis
+- Test case development and validation
+
+**Content:**
+- Single test case metadata
+- Full execution trace for all sequences and steps
+- Captured variables and outputs
+- Verification results
+- Error messages and diagnostics
+
+**When to Use:**
+- Investigating why a specific test failed
+- Reviewing test case implementation details
+- Creating test case documentation
+- Sharing individual test results
+
+### Consolidated Documentation (Stage 7)
+
+**Purpose:** High-level suite overview and comprehensive reporting
+
+**Generated Files:**
+- `reports/consolidated/all_tests_container.yaml` - Unified container
+- `reports/consolidated/all_tests.adoc` - Suite-wide AsciiDoc report
+- `reports/consolidated/all_tests.md` - Suite-wide Markdown report
+
+**Use Cases:**
+- Suite-wide status overview
+- Executive summaries and reporting
+- Pass/fail statistics across all tests
+- Identifying patterns in test results
+- Release validation documentation
+- CI/CD pipeline reporting
+
+**Content:**
+- Aggregated test suite metadata
+- Summary statistics (pass/fail counts by category)
+- High-level execution results
+- Suite-wide verification status
+- Cross-test trends and patterns
+
+**When to Use:**
+- Generating suite-level reports for stakeholders
+- Analyzing overall test coverage
+- Release go/no-go decisions
+- CI/CD dashboard integration
+- Quality metrics and trends
+
+### Key Differences
+
+| Aspect | Individual (Stage 6) | Consolidated (Stage 7) |
+|--------|---------------------|----------------------|
+| Granularity | Per-test detail | Suite-wide overview |
+| File Count | 91 files (one per test) | 3 files (container + 2 formats) |
+| Detail Level | Complete step traces | Summary statistics |
+| Use Case | Debugging, development | Reporting, metrics |
+| Output Directory | `reports/asciidoc/`, `reports/markdown/` | `reports/consolidated/` |
+| Generation | Loop over containers | Single verifier --folder call |
+| Target Audience | Developers, QA engineers | Managers, stakeholders |
+
+### Example Scenarios
+
+**Scenario 1: Test Development**
+- **Use Individual Documentation**
+- You're writing a new test case and need to verify each step executes correctly
+- Review `reports/asciidoc/TC_NEW_TEST_001_container.adoc` for detailed execution trace
+
+**Scenario 2: CI/CD Pipeline Report**
+- **Use Consolidated Documentation**
+- Your CI pipeline completes and needs to generate a summary report
+- Use `reports/consolidated/all_tests.md` for the build report artifact
+
+**Scenario 3: Debugging Failure**
+- **Use Individual Documentation**
+- Test `TC_FAILURE_EXPECTED_003` failed unexpectedly
+- Open `reports/markdown/TC_FAILURE_EXPECTED_003_container.md` to see exact command output and error
+
+**Scenario 4: Release Validation**
+- **Use Consolidated Documentation**
+- Preparing for a release and need overall test status
+- Review `reports/consolidated/all_tests.adoc` for comprehensive pass/fail statistics
 
 ---
 
@@ -835,9 +977,18 @@ Failed:  0
 Passed:  81
 Failed:  0
 
---- Stage 6: Documentation Generation ---
+--- Stage 6: Individual Documentation ---
 Passed:  81
 Failed:  0
+
+--- Stage 7: Consolidated Documentation ---
+Passed:  1
+Failed:  0
+
+Generated files:
+reports/consolidated/all_tests_container.yaml
+reports/consolidated/all_tests.adoc
+reports/consolidated/all_tests.md
 
 =========================================
 Overall Result:
@@ -1546,4 +1697,4 @@ When contributing to the acceptance test suite:
 
 **Last Updated:** 2024-03-17  
 **Test Suite Version:** 91 test cases across 8 categories  
-**Pipeline Stages:** 6 (validation, generation, execution, verification, container validation, documentation)
+**Pipeline Stages:** 7 (validation, generation, execution, verification, container validation, individual documentation, consolidated documentation)
