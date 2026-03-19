@@ -1326,7 +1326,7 @@ impl TestExecutor {
 
         script.push_str("exit 0\n");
 
-        script
+        script.replace("\\r", "")
     }
 
     pub fn generate_test_script(&self, test_case: &TestCase) -> String {
