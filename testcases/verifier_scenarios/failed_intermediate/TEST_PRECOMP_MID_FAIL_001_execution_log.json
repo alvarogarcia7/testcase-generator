@@ -1,0 +1,32 @@
+[
+  {
+    "test_sequence": 1,
+    "step": 1,
+    "command": "echo \"Step 1 complete\"",
+    "exit_code": 0,
+    "output": "Step 1 complete",
+    "timestamp": "2026-03-01T10:00:00.123456+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": true
+  },
+  {
+    "test_sequence": 1,
+    "step": 2,
+    "command": "echo \"Wrong output\"",
+    "exit_code": 0,
+    "output": "Wrong output",
+    "timestamp": "2026-03-01T10:00:00.234567+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": false
+  },
+  {
+    "test_sequence": 1,
+    "step": 3,
+    "command": "echo \"Step 3 complete\"",
+    "exit_code": 0,
+    "output": "Step 3 complete",
+    "timestamp": "2026-03-01T10:00:00.345678+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": true
+  }
+]

@@ -1,0 +1,22 @@
+[
+  {
+    "test_sequence": 1,
+    "step": 1,
+    "command": "echo \"Testing result failure\"",
+    "exit_code": 1,
+    "output": "Testing result failure",
+    "timestamp": "2026-03-01T10:00:00.123456+00:00",
+    "result_verification_pass": false,
+    "output_verification_pass": true
+  },
+  {
+    "test_sequence": 1,
+    "step": 2,
+    "command": "echo \"Step 2 success\"",
+    "exit_code": 0,
+    "output": "Step 2 success",
+    "timestamp": "2026-03-01T10:00:00.234567+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": true
+  }
+]

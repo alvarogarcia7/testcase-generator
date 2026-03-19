@@ -1,0 +1,12 @@
+[
+  {
+    "test_sequence": 1,
+    "step": 1,
+    "command": "echo \"Single step test\"",
+    "exit_code": 0,
+    "output": "Single step test",
+    "timestamp": "2026-03-01T10:00:00.123456+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": true
+  }
+]

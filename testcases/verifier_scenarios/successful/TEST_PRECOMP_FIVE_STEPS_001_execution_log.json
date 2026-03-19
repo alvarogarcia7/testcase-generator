@@ -1,0 +1,52 @@
+[
+  {
+    "test_sequence": 1,
+    "step": 1,
+    "command": "echo \"Step 1 done\"",
+    "exit_code": 0,
+    "output": "Step 1 done",
+    "timestamp": "2026-03-01T10:00:00.111111+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": true
+  },
+  {
+    "test_sequence": 1,
+    "step": 2,
+    "command": "echo \"Step 2 done\"",
+    "exit_code": 0,
+    "output": "Step 2 done",
+    "timestamp": "2026-03-01T10:00:00.222222+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": true
+  },
+  {
+    "test_sequence": 1,
+    "step": 3,
+    "command": "echo \"Step 3 done\"",
+    "exit_code": 0,
+    "output": "Step 3 done",
+    "timestamp": "2026-03-01T10:00:00.333333+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": true
+  },
+  {
+    "test_sequence": 1,
+    "step": 4,
+    "command": "echo \"Step 4 done\"",
+    "exit_code": 0,
+    "output": "Step 4 done",
+    "timestamp": "2026-03-01T10:00:00.444444+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": true
+  },
+  {
+    "test_sequence": 1,
+    "step": 5,
+    "command": "echo \"Step 5 done\"",
+    "exit_code": 0,
+    "output": "Step 5 done",
+    "timestamp": "2026-03-01T10:00:00.555555+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": true
+  }
+]

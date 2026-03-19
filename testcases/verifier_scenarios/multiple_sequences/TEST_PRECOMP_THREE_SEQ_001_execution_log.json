@@ -1,0 +1,42 @@
+[
+  {
+    "test_sequence": 1,
+    "step": 1,
+    "command": "echo \"S1-1\"",
+    "exit_code": 0,
+    "output": "S1-1",
+    "timestamp": "2026-03-01T10:00:00.100000+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": true
+  },
+  {
+    "test_sequence": 2,
+    "step": 1,
+    "command": "echo \"S2-1\"",
+    "exit_code": 0,
+    "output": "S2-1",
+    "timestamp": "2026-03-01T10:00:00.200000+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": true
+  },
+  {
+    "test_sequence": 2,
+    "step": 2,
+    "command": "echo \"S2-2\"",
+    "exit_code": 0,
+    "output": "S2-2",
+    "timestamp": "2026-03-01T10:00:00.210000+00:00",
+    "result_verification_pass": false,
+    "output_verification_pass": true
+  },
+  {
+    "test_sequence": 3,
+    "step": 1,
+    "command": "echo \"S3-1\"",
+    "exit_code": 0,
+    "output": "S3-1",
+    "timestamp": "2026-03-01T10:00:00.300000+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": true
+  }
+]

@@ -1,0 +1,53 @@
+requirement: "TEST_PRECOMP_NUMERIC_OUTPUT"
+item: 1
+tc: 1
+id: 'TEST_PRECOMP_NUMERIC_OUTPUT_001'
+description: 'Precomputed verification: steps with numeric output values'
+
+general_initial_conditions:
+  system:
+    - "Shell environment is available"
+
+initial_conditions:
+  system:
+    - "All commands can be executed"
+
+test_sequences:
+  - id: 1
+    name: "Numeric Output Sequence"
+    description: |
+                   Test sequence with commands producing numeric output.
+    initial_conditions:
+      system:
+        - "Shell is ready"
+    steps:
+      - step: 1
+        description: "Output simple number"
+        command: echo "42"
+        expected:
+          success: true
+          result: 0
+          output: "42"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q '42' <<< \"$COMMAND_OUTPUT\""
+      - step: 2
+        description: "Output decimal number"
+        command: echo "3.14159"
+        expected:
+          success: true
+          result: 0
+          output: "3.14159"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q '3.14159' <<< \"$COMMAND_OUTPUT\""
+      - step: 3
+        description: "Output negative number"
+        command: echo "-100"
+        expected:
+          success: true
+          result: 0
+          output: "-100"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q -- '-100' <<< \"$COMMAND_OUTPUT\""

@@ -1,0 +1,54 @@
+requirement: "TEST_PRECOMP_LAST_FAIL"
+item: 1
+tc: 1
+id: 'TEST_PRECOMP_LAST_FAIL_001'
+description: 'Precomputed verification: last step fails verification'
+
+general_initial_conditions:
+  system:
+    - "Shell environment is available"
+
+initial_conditions:
+  system:
+    - "All commands can be executed"
+
+test_sequences:
+  - id: 1
+    name: "Last Step Fail Sequence"
+    description: |
+                   Test sequence where all steps pass except the last one.
+                   Last step has result_verification_pass=false.
+    initial_conditions:
+      system:
+        - "Shell is ready"
+    steps:
+      - step: 1
+        description: "Execute first command successfully"
+        command: echo "Step 1 pass"
+        expected:
+          success: true
+          result: 0
+          output: "Step 1 pass"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Step 1 pass' <<< \"$COMMAND_OUTPUT\""
+      - step: 2
+        description: "Execute second command successfully"
+        command: echo "Step 2 pass"
+        expected:
+          success: true
+          result: 0
+          output: "Step 2 pass"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Step 2 pass' <<< \"$COMMAND_OUTPUT\""
+      - step: 3
+        description: "Execute final command with failure"
+        command: exit 1
+        expected:
+          success: false
+          result: 1
+          output: ""
+        verification:
+          result: "[[ $EXIT_CODE -eq 1 ]]"
+          output: "true"
