@@ -5,7 +5,9 @@
     "command": "echo \"Step 1 executed\"",
     "exit_code": 0,
     "output": "Step 1 executed",
-    "timestamp": "2026-02-28T10:00:00.123456+00:00"
+    "timestamp": "2026-02-28T10:00:00.123456+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": true
   },
   {
     "test_sequence": 1,
@@ -13,7 +15,9 @@
     "command": "echo \"Step 3 executed\"",
     "exit_code": 0,
     "output": "Step 3 executed",
-    "timestamp": "2026-02-28T10:00:00.456789+00:00"
+    "timestamp": "2026-02-28T10:00:00.456789+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": true
   },
   {
     "test_sequence": 1,
@@ -21,6 +25,8 @@
     "command": "echo \"Step 5 executed\"",
     "exit_code": 0,
     "output": "Step 5 executed",
-    "timestamp": "2026-02-28T10:00:00.789012+00:00"
+    "timestamp": "2026-02-28T10:00:00.789012+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": true
   }
 ]

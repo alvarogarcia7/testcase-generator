@@ -1,0 +1,49 @@
+type: result
+test_case_id: TEST_PRECOMP_FIVE_STEPS_001
+description: 'Precomputed verification: five steps all passing'
+sequences:
+- sequence_id: 1
+  name: Five Steps Sequence
+  step_results:
+  - Pass:
+      step: 1
+      description: First step
+      requirement: TEST_PRECOMP_FIVE_STEPS
+      item: 1
+      tc: 1
+  - Pass:
+      step: 2
+      description: Second step
+      requirement: TEST_PRECOMP_FIVE_STEPS
+      item: 1
+      tc: 1
+  - Pass:
+      step: 3
+      description: Third step
+      requirement: TEST_PRECOMP_FIVE_STEPS
+      item: 1
+      tc: 1
+  - Pass:
+      step: 4
+      description: Fourth step
+      requirement: TEST_PRECOMP_FIVE_STEPS
+      item: 1
+      tc: 1
+  - Pass:
+      step: 5
+      description: Fifth step
+      requirement: TEST_PRECOMP_FIVE_STEPS
+      item: 1
+      tc: 1
+  all_steps_passed: true
+  requirement: TEST_PRECOMP_FIVE_STEPS
+  item: 1
+  tc: 1
+total_steps: 5
+passed_steps: 5
+failed_steps: 0
+not_executed_steps: 0
+overall_pass: true
+requirement: TEST_PRECOMP_FIVE_STEPS
+item: 1
+tc: 1

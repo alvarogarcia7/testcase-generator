@@ -1,0 +1,72 @@
+{
+  "title": "Test Execution Results",
+  "project": "Test Case Manager - Verification Results",
+  "test_date": "2026-03-20T07:46:29.398108Z",
+  "test_results": [
+    {
+      "test_case_id": "TEST_PRECOMP_LAST_FAIL_001",
+      "description": "Precomputed verification: last step fails verification",
+      "sequences": [
+        {
+          "sequence_id": 1,
+          "name": "Last Step Fail Sequence",
+          "step_results": [
+            {
+              "Pass": {
+                "step": 1,
+                "description": "Execute first command successfully",
+                "requirement": "TEST_PRECOMP_LAST_FAIL",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 2,
+                "description": "Execute second command successfully",
+                "requirement": "TEST_PRECOMP_LAST_FAIL",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Fail": {
+                "step": 3,
+                "description": "Execute final command with failure",
+                "expected": {
+                  "success": false,
+                  "result": "1",
+                  "output": ""
+                },
+                "actual_result": "0",
+                "actual_output": "",
+                "reason": "Success mismatch: expected false, got true",
+                "requirement": "TEST_PRECOMP_LAST_FAIL",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": false,
+          "requirement": "TEST_PRECOMP_LAST_FAIL",
+          "item": 1,
+          "tc": 1
+        }
+      ],
+      "total_steps": 3,
+      "passed_steps": 2,
+      "failed_steps": 1,
+      "not_executed_steps": 0,
+      "overall_pass": false,
+      "requirement": "TEST_PRECOMP_LAST_FAIL",
+      "item": 1,
+      "tc": 1
+    }
+  ],
+  "metadata": {
+    "execution_duration": 0.0,
+    "total_test_cases": 1,
+    "passed_test_cases": 0,
+    "failed_test_cases": 1
+  }
+}

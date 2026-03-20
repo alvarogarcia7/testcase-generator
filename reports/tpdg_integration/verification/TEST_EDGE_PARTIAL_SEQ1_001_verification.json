@@ -1,0 +1,83 @@
+{
+  "title": "Test Execution Results",
+  "project": "Test Case Manager - Verification Results",
+  "test_date": "2026-03-20T07:46:29.366546Z",
+  "test_results": [
+    {
+      "test_case_id": "TEST_EDGE_PARTIAL_SEQ1_001",
+      "description": "Edge case: multi-sequence with only seq 1 step 1 executed",
+      "sequences": [
+        {
+          "sequence_id": 1,
+          "name": "First Sequence Partial",
+          "step_results": [
+            {
+              "Pass": {
+                "step": 1,
+                "description": "Execute first step",
+                "requirement": "EDGE_PARTIAL_SEQ1",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "NotExecuted": {
+                "step": 2,
+                "description": "Missing second step",
+                "requirement": "EDGE_PARTIAL_SEQ1",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": false,
+          "requirement": "EDGE_PARTIAL_SEQ1",
+          "item": 1,
+          "tc": 1
+        },
+        {
+          "sequence_id": 2,
+          "name": "Second Sequence Not Executed",
+          "step_results": [
+            {
+              "NotExecuted": {
+                "step": 1,
+                "description": "Missing first step",
+                "requirement": "EDGE_PARTIAL_SEQ1",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "NotExecuted": {
+                "step": 2,
+                "description": "Missing second step",
+                "requirement": "EDGE_PARTIAL_SEQ1",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": false,
+          "requirement": "EDGE_PARTIAL_SEQ1",
+          "item": 1,
+          "tc": 1
+        }
+      ],
+      "total_steps": 4,
+      "passed_steps": 1,
+      "failed_steps": 0,
+      "not_executed_steps": 3,
+      "overall_pass": false,
+      "requirement": "EDGE_PARTIAL_SEQ1",
+      "item": 1,
+      "tc": 1
+    }
+  ],
+  "metadata": {
+    "execution_duration": 0.0,
+    "total_test_cases": 1,
+    "passed_test_cases": 0,
+    "failed_test_cases": 1
+  }
+}

@@ -5,6 +5,8 @@
     "command": "mkdir /invalid/path/directory",
     "exit_code": 1,
     "output": "mkdir: cannot create directory '/invalid/path/directory': No such file or directory",
-    "timestamp": "2026-02-28T10:15:30.123456+00:00"
+    "timestamp": "2026-02-28T10:15:30.123456+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": true
   }
 ]

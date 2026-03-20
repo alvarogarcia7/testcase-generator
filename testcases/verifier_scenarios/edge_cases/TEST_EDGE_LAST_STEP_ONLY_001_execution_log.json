@@ -5,6 +5,8 @@
     "command": "echo \"Step 4 executed\"",
     "exit_code": 0,
     "output": "Step 4 executed",
-    "timestamp": "2026-02-28T10:00:00.789012+00:00"
+    "timestamp": "2026-02-28T10:00:00.789012+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": true
   }
 ]

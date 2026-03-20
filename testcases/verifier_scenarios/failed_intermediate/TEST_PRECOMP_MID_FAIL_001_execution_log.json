@@ -16,7 +16,7 @@
     "exit_code": 0,
     "output": "Wrong output",
     "timestamp": "2026-03-01T10:00:00.234567+00:00",
-    "result_verification_pass": true,
+    "result_verification_pass": false,
     "output_verification_pass": false
   },
   {

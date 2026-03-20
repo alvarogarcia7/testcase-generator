@@ -1593,18 +1593,6 @@ impl TestExecutor {
                             .trim_end()
                             .to_string();
 
-                        let timestamp = Local::now().to_rfc3339();
-                        let entry = TestStepExecutionEntry::with_timestamp(
-                            sequence.id,
-                            step.step,
-                            step.command.clone(),
-                            exit_code,
-                            command_output.clone(),
-                            timestamp,
-                        );
-
-                        execution_entries.push(entry);
-
                         // Capture variables from output or command execution
                         if let Some(ref capture_vars) = step.capture_vars {
                             for (var_name, capture_pattern, command) in
@@ -1690,6 +1678,20 @@ impl TestExecutor {
                             }
                         }
 
+                        // Create execution entry with verification results
+                        let timestamp = Local::now().to_rfc3339();
+                        let entry = TestStepExecutionEntry::with_timestamp(
+                            sequence.id,
+                            step.step,
+                            step.command.clone(),
+                            exit_code,
+                            command_output.clone(),
+                            timestamp,
+                            result_verification_passed,
+                            output_verification_passed,
+                        );
+                        execution_entries.push(entry);
+
                         if result_verification_passed
                             && output_verification_passed
                             && general_verifications_passed
@@ -1731,6 +1733,8 @@ impl TestExecutor {
                             -1,
                             format!("Failed to execute: {}", e),
                             timestamp,
+                            false,
+                            false,
                         );
                         execution_entries.push(entry);
 
@@ -1903,8 +1907,8 @@ fi"#,
                     timestamp: Some(timestamp.to_rfc3339()),
                     hook_type: None,
                     hook_path: None,
-                    result_verification_pass: None,
-                    output_verification_pass: None,
+                    result_verification_pass: false,
+                    output_verification_pass: false,
                 };
 
                 template_entries.push(entry);

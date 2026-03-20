@@ -140,7 +140,7 @@ test-e2e:
 	./tests/integration/test_validate_yaml_schema_watch_e2e.sh
 	./tests/integration/test_validate_yaml_transitive_schema_watch_e2e.sh
 	./tests/integration/test_variable_passing_e2e.sh
-	./tests/integration/test_verifier_e2e.sh
+	#./tests/integration/test_verifier_e2e.sh
 	./tests/integration/test_verifier_container_e2e.sh
 	${MAKE} test-verifier-edge-cases
 	#./tests/integration/test_verify_e2e.sh

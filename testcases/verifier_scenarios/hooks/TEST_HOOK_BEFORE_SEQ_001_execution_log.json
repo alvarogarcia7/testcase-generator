@@ -7,7 +7,9 @@
     "output": "before_sequence hook: Sequence 1 - allowing execution",
     "timestamp": "2024-03-15T14:40:00.100000+00:00",
     "hook_type": "before_sequence",
-    "hook_script": "scripts/hook_before_sequence_error.sh"
+    "hook_script": "scripts/hook_before_sequence_error.sh",
+    "result_verification_pass": true,
+    "output_verification_pass": true
   },
   {
     "test_sequence": 1,
@@ -15,7 +17,9 @@
     "command": "echo \"Sequence 1 - Step 1 executed\"",
     "exit_code": 0,
     "output": "Sequence 1 - Step 1 executed",
-    "timestamp": "2024-03-15T14:40:00.200000+00:00"
+    "timestamp": "2024-03-15T14:40:00.200000+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": true
   },
   {
     "test_sequence": 1,
@@ -23,7 +27,9 @@
     "command": "echo \"Sequence 1 - Step 2 executed\"",
     "exit_code": 0,
     "output": "Sequence 1 - Step 2 executed",
-    "timestamp": "2024-03-15T14:40:00.300000+00:00"
+    "timestamp": "2024-03-15T14:40:00.300000+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": true
   },
   {
     "test_sequence": 2,
@@ -33,6 +39,8 @@
     "output": "ERROR: before_sequence hook failed for sequence 2",
     "timestamp": "2024-03-15T14:40:00.400000+00:00",
     "hook_type": "before_sequence",
-    "hook_script": "scripts/hook_before_sequence_error.sh"
+    "hook_script": "scripts/hook_before_sequence_error.sh",
+    "result_verification_pass": true,
+    "output_verification_pass": true
   }
 ]

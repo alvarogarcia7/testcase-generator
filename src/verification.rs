@@ -797,8 +797,8 @@ impl TestVerifier {
                 actual_output: entry.output.clone(),
                 timestamp,
                 log_file_path: log_path.to_path_buf(),
-                result_verification_pass: entry.result_verification_pass,
-                output_verification_pass: entry.output_verification_pass,
+                result_verification_pass: Some(entry.result_verification_pass),
+                output_verification_pass: Some(entry.output_verification_pass),
             });
         }
 
@@ -866,8 +866,8 @@ impl TestVerifier {
                 actual_output: entry.output.clone(),
                 timestamp,
                 log_file_path: log_path.to_path_buf(),
-                result_verification_pass: entry.result_verification_pass,
-                output_verification_pass: entry.output_verification_pass,
+                result_verification_pass: Some(entry.result_verification_pass),
+                output_verification_pass: Some(entry.output_verification_pass),
             });
         }
 

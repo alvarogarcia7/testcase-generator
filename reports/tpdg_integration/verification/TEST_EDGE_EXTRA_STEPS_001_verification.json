@@ -1,0 +1,64 @@
+{
+  "title": "Test Execution Results",
+  "project": "Test Case Manager - Verification Results",
+  "test_date": "2026-03-20T07:46:28.788759Z",
+  "test_results": [
+    {
+      "test_case_id": "TEST_EDGE_EXTRA_STEPS_001",
+      "description": "Edge case: execution log has steps not in test case",
+      "sequences": [
+        {
+          "sequence_id": 1,
+          "name": "Extra Steps Sequence",
+          "step_results": [
+            {
+              "Pass": {
+                "step": 1,
+                "description": "Execute step 1",
+                "requirement": "EDGE_EXTRA_STEPS",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 2,
+                "description": "Execute step 2",
+                "requirement": "EDGE_EXTRA_STEPS",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 3,
+                "description": "Execute step 3",
+                "requirement": "EDGE_EXTRA_STEPS",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": true,
+          "requirement": "EDGE_EXTRA_STEPS",
+          "item": 1,
+          "tc": 1
+        }
+      ],
+      "total_steps": 3,
+      "passed_steps": 3,
+      "failed_steps": 0,
+      "not_executed_steps": 0,
+      "overall_pass": true,
+      "requirement": "EDGE_EXTRA_STEPS",
+      "item": 1,
+      "tc": 1
+    }
+  ],
+  "metadata": {
+    "execution_duration": 0.0,
+    "total_test_cases": 1,
+    "passed_test_cases": 1,
+    "failed_test_cases": 0
+  }
+}

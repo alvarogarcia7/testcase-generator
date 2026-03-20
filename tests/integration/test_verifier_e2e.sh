@@ -217,7 +217,9 @@ cat > "$PASSING_LOG" << 'EOF'
     "command": "echo 'hello'",
     "exit_code": 0,
     "output": "hello",
-    "timestamp": "2026-02-02T10:00:00.000000+00:00"
+    "timestamp": "2026-02-02T10:00:00.000000+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": true
   },
   {
     "test_sequence": 1,
@@ -225,7 +227,9 @@ cat > "$PASSING_LOG" << 'EOF'
     "command": "true",
     "exit_code": 0,
     "output": "",
-    "timestamp": "2026-02-02T10:00:01.000000+00:00"
+    "timestamp": "2026-02-02T10:00:01.000000+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": true
   },
   {
     "test_sequence": 2,
@@ -233,7 +237,9 @@ cat > "$PASSING_LOG" << 'EOF'
     "command": "echo 'world'",
     "exit_code": 0,
     "output": "world",
-    "timestamp": "2026-02-02T10:00:02.000000+00:00"
+    "timestamp": "2026-02-02T10:00:02.000000+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": true
   }
 ]
 EOF
@@ -308,7 +314,9 @@ cat > "$FAILING_LOG" << 'EOF'
     "command": "echo 'pass'",
     "exit_code": 0,
     "output": "pass",
-    "timestamp": "2026-02-02T10:00:00.000000+00:00"
+    "timestamp": "2026-02-02T10:00:00.000000+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": true
   },
   {
     "test_sequence": 1,
@@ -316,7 +324,9 @@ cat > "$FAILING_LOG" << 'EOF'
     "command": "echo 'wrong'",
     "exit_code": 0,
     "output": "wrong",
-    "timestamp": "2026-02-02T10:00:01.000000+00:00"
+    "timestamp": "2026-02-02T10:00:01.000000+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": false
   },
   {
     "test_sequence": 1,
@@ -324,7 +334,9 @@ cat > "$FAILING_LOG" << 'EOF'
     "command": "false",
     "exit_code": 1,
     "output": "",
-    "timestamp": "2026-02-02T10:00:02.000000+00:00"
+    "timestamp": "2026-02-02T10:00:02.000000+00:00",
+    "result_verification_pass": false,
+    "output_verification_pass": true
   }
 ]
 EOF
@@ -726,14 +738,16 @@ fi
 # Test 12: Verify expected report file structure (JSON)
 section "Test 12: Expected Report File Validation - JSON"
 
-# Create expected JSON report template
+# Create expected JSON report template (container format)
 EXPECTED_JSON="$TEMP_DIR/expected_passing_report.json"
 cat > "$EXPECTED_JSON" << 'EOF'
 {
-  "total_test_cases": 1,
-  "passed_test_cases": 1,
-  "failed_test_cases": 0,
-  "test_cases": [
+  "metadata": {
+    "total_test_cases": 1,
+    "passed_test_cases": 1,
+    "failed_test_cases": 0
+  },
+  "test_results": [
     {
       "test_case_id": "TEST_PASSING_001",
       "overall_pass": true,
@@ -758,8 +772,8 @@ ACTUAL_JSON="$TEMP_DIR/actual_passing_report.json"
 
 # Validate JSON fields if jq is available
 if command -v jq > /dev/null 2>&1 && [[ -f "$ACTUAL_JSON" ]]; then
-    ACTUAL_TOTAL_JSON=$(jq -r '.total_test_cases' "$ACTUAL_JSON" 2>/dev/null)
-    EXPECTED_TOTAL_JSON=$(jq -r '.total_test_cases' "$EXPECTED_JSON" 2>/dev/null)
+    ACTUAL_TOTAL_JSON=$(jq -r '.metadata.total_test_cases' "$ACTUAL_JSON" 2>/dev/null)
+    EXPECTED_TOTAL_JSON=$(jq -r '.metadata.total_test_cases' "$EXPECTED_JSON" 2>/dev/null)
     
     if [[ "$ACTUAL_TOTAL_JSON" == "$EXPECTED_TOTAL_JSON" ]]; then
         pass "JSON total test cases matches expected ($EXPECTED_TOTAL_JSON)"
@@ -767,8 +781,8 @@ if command -v jq > /dev/null 2>&1 && [[ -f "$ACTUAL_JSON" ]]; then
         fail "JSON total test cases mismatch: expected $EXPECTED_TOTAL_JSON, got $ACTUAL_TOTAL_JSON"
     fi
     
-    ACTUAL_PASSED_JSON=$(jq -r '.passed_test_cases' "$ACTUAL_JSON" 2>/dev/null)
-    EXPECTED_PASSED_JSON=$(jq -r '.passed_test_cases' "$EXPECTED_JSON" 2>/dev/null)
+    ACTUAL_PASSED_JSON=$(jq -r '.metadata.passed_test_cases' "$ACTUAL_JSON" 2>/dev/null)
+    EXPECTED_PASSED_JSON=$(jq -r '.metadata.passed_test_cases' "$EXPECTED_JSON" 2>/dev/null)
     
     if [[ "$ACTUAL_PASSED_JSON" == "$EXPECTED_PASSED_JSON" ]]; then
         pass "JSON passed test cases matches expected ($EXPECTED_PASSED_JSON)"
@@ -776,8 +790,8 @@ if command -v jq > /dev/null 2>&1 && [[ -f "$ACTUAL_JSON" ]]; then
         fail "JSON passed test cases mismatch: expected $EXPECTED_PASSED_JSON, got $ACTUAL_PASSED_JSON"
     fi
     
-    ACTUAL_FAILED_JSON=$(jq -r '.failed_test_cases' "$ACTUAL_JSON" 2>/dev/null)
-    EXPECTED_FAILED_JSON=$(jq -r '.failed_test_cases' "$EXPECTED_JSON" 2>/dev/null)
+    ACTUAL_FAILED_JSON=$(jq -r '.metadata.failed_test_cases' "$ACTUAL_JSON" 2>/dev/null)
+    EXPECTED_FAILED_JSON=$(jq -r '.metadata.failed_test_cases' "$EXPECTED_JSON" 2>/dev/null)
     
     if [[ "$ACTUAL_FAILED_JSON" == "$EXPECTED_FAILED_JSON" ]]; then
         pass "JSON failed test cases matches expected ($EXPECTED_FAILED_JSON)"
@@ -786,8 +800,8 @@ if command -v jq > /dev/null 2>&1 && [[ -f "$ACTUAL_JSON" ]]; then
     fi
     
     # Validate nested test case data
-    ACTUAL_TC_ID=$(jq -r '.test_cases[0].test_case_id' "$ACTUAL_JSON" 2>/dev/null)
-    EXPECTED_TC_ID=$(jq -r '.test_cases[0].test_case_id' "$EXPECTED_JSON" 2>/dev/null)
+    ACTUAL_TC_ID=$(jq -r '.test_results[0].test_case_id' "$ACTUAL_JSON" 2>/dev/null)
+    EXPECTED_TC_ID=$(jq -r '.test_results[0].test_case_id' "$EXPECTED_JSON" 2>/dev/null)
     
     if [[ "$ACTUAL_TC_ID" == "$EXPECTED_TC_ID" ]]; then
         pass "JSON test case ID matches expected ($EXPECTED_TC_ID)"
@@ -795,8 +809,8 @@ if command -v jq > /dev/null 2>&1 && [[ -f "$ACTUAL_JSON" ]]; then
         fail "JSON test case ID mismatch: expected $EXPECTED_TC_ID, got $ACTUAL_TC_ID"
     fi
     
-    ACTUAL_TC_PASS=$(jq -r '.test_cases[0].overall_pass' "$ACTUAL_JSON" 2>/dev/null)
-    EXPECTED_TC_PASS=$(jq -r '.test_cases[0].overall_pass' "$EXPECTED_JSON" 2>/dev/null)
+    ACTUAL_TC_PASS=$(jq -r '.test_results[0].overall_pass' "$ACTUAL_JSON" 2>/dev/null)
+    EXPECTED_TC_PASS=$(jq -r '.test_results[0].overall_pass' "$EXPECTED_JSON" 2>/dev/null)
     
     if [[ "$ACTUAL_TC_PASS" == "$EXPECTED_TC_PASS" ]]; then
         pass "JSON test case overall_pass matches expected ($EXPECTED_TC_PASS)"

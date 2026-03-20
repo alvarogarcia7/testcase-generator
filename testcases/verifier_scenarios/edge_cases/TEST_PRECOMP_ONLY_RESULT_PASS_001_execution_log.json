@@ -6,7 +6,8 @@
     "exit_code": 0,
     "output": "Test 1",
     "timestamp": "2026-03-01T10:00:00.123456+00:00",
-    "result_verification_pass": true
+    "result_verification_pass": true,
+    "output_verification_pass": false
   },
   {
     "test_sequence": 1,
@@ -15,6 +16,7 @@
     "exit_code": 0,
     "output": "Test 2",
     "timestamp": "2026-03-01T10:00:00.234567+00:00",
-    "result_verification_pass": true
+    "result_verification_pass": true,
+    "output_verification_pass": false
   }
 ]

@@ -1,0 +1,46 @@
+{
+  "title": "Test Execution Results",
+  "project": "Test Case Manager - Verification Results",
+  "test_date": "2026-03-20T07:46:28.758839Z",
+  "test_results": [
+    {
+      "test_case_id": "TEST_PRECOMP_SINGLE_STEP_001",
+      "description": "Precomputed verification: single step passing all verifications",
+      "sequences": [
+        {
+          "sequence_id": 1,
+          "name": "Single Step Sequence",
+          "step_results": [
+            {
+              "Pass": {
+                "step": 1,
+                "description": "Execute single command",
+                "requirement": "TEST_PRECOMP_SINGLE_STEP",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": true,
+          "requirement": "TEST_PRECOMP_SINGLE_STEP",
+          "item": 1,
+          "tc": 1
+        }
+      ],
+      "total_steps": 1,
+      "passed_steps": 1,
+      "failed_steps": 0,
+      "not_executed_steps": 0,
+      "overall_pass": true,
+      "requirement": "TEST_PRECOMP_SINGLE_STEP",
+      "item": 1,
+      "tc": 1
+    }
+  ],
+  "metadata": {
+    "execution_duration": 0.0,
+    "total_test_cases": 1,
+    "passed_test_cases": 1,
+    "failed_test_cases": 0
+  }
+}

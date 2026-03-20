@@ -101,14 +101,18 @@ fn test_json_log_schema_validation() -> Result<()> {
     "command": "echo 'test'",
     "exit_code": 0,
     "output": "test",
-    "timestamp": "2024-01-15T10:30:00Z"
+    "timestamp": "2024-01-15T10:30:00Z",
+    "result_verification_pass": true,
+    "output_verification_pass": true
   },
   {
     "test_sequence": 1,
     "step": 2,
     "command": "true",
     "exit_code": 0,
-    "output": ""
+    "output": "",
+    "result_verification_pass": true,
+    "output_verification_pass": true
   }
 ]"#;
 

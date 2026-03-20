@@ -41,6 +41,14 @@
         "teardown_test",
         "script_end"
       ]
+    },
+    "result_verification_pass": {
+      "type": "boolean",
+      "description": "Whether result verification passed"
+    },
+    "output_verification_pass": {
+      "type": "boolean",
+      "description": "Whether output verification passed"
     }
   },
   "required": [
@@ -48,6 +56,8 @@
     "step",
     "command",
     "exit_code",
-    "output"
+    "output",
+    "result_verification_pass",
+    "output_verification_pass"
   ]
 }
