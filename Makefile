@@ -339,6 +339,11 @@ validate-output-schemas:
 	./scripts/validate-output-schemas.sh
 .PHONY: validate-output-schemas
 
+validate-envelope-schemas:
+	@echo "Validating TCMS envelope schemas..."
+	./scripts/validate_envelope_schemas.sh
+.PHONY: validate-envelope-schemas
+
 watch: build
 	./scripts/watch-yaml-files.sh
 .PHONY: watch

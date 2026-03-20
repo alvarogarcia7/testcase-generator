@@ -4,6 +4,16 @@
   "description": "Schema for test execution log entries",
   "type": "object",
   "properties": {
+    "type": {
+      "type": "string",
+      "enum": ["test_execution"],
+      "description": "Document type (optional, for envelope support)"
+    },
+    "schema": {
+      "type": "string",
+      "pattern": "^tcms/.*\\.schema\\.v\\d+\\.json$",
+      "description": "Schema reference (optional, for envelope support)"
+    },
     "test_sequence": {
       "type": "integer",
       "description": "Sequence number of the test"

@@ -4,6 +4,16 @@
   "description": "Schema for test case verification results",
   "type": "object",
   "properties": {
+    "type": {
+      "type": "string",
+      "enum": ["test_verification"],
+      "description": "Document type (optional, for envelope support)"
+    },
+    "schema": {
+      "type": "string",
+      "pattern": "^tcms/.*\\.schema\\.v\\d+\\.json$",
+      "description": "Schema reference (optional, for envelope support)"
+    },
     "test_case_id": {
       "type": "string",
       "description": "Unique identifier for the test case"

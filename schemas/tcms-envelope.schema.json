@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tcms.example.com/schemas/tcms-envelope.schema.json",
+  "title": "TCMS Envelope Meta-Schema",
+  "description": "Meta-schema for TCMS document envelopes requiring type and schema fields",
+  "type": "object",
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": [
+        "test_case",
+        "test_execution",
+        "test_verification",
+        "test_result",
+        "container_config",
+        "test_results_container"
+      ],
+      "description": "Type of TCMS document"
+    },
+    "schema": {
+      "type": "string",
+      "pattern": "^tcms/.*\\.schema\\.v\\d+\\.json$",
+      "description": "Schema reference following the tcms/<type>.schema.v<version>.json convention"
+    }
+  },
+  "required": [
+    "type",
+    "schema"
+  ]
+}

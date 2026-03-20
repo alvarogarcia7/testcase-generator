@@ -2,6 +2,16 @@
   "$schema": "http://json-schema.org/draft-04/schema#",
   "type": "object",
   "properties": {
+    "type": {
+      "type": "string",
+      "enum": ["test_case"],
+      "description": "Document type (optional, for envelope support)"
+    },
+    "schema": {
+      "type": "string",
+      "pattern": "^tcms/.*\\.schema\\.v\\d+\\.json$",
+      "description": "Schema reference (optional, for envelope support)"
+    },
     "requirement": {
       "type": "string"
     },
