@@ -1,3 +1,5 @@
+type: batch_verification_report
+schema: tcms/batch-verification-report.schema.v1.json
 test_cases:
 - test_case_id: TEST_FAILING_002
   description: Test case with some failing verifications
@@ -99,4 +101,4 @@ total_steps: 6
 passed_steps: 4
 failed_steps: 2
 not_executed_steps: 0
-generated_at: 2026-03-16T13:37:18.831293Z
+generated_at: 2026-03-16 13:37:18.831293+00:00

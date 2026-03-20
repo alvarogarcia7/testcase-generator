@@ -1,63 +1,63 @@
-requirement: "SAMPLE_FAILED_INTERMEDIATE"
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: SAMPLE_FAILED_INTERMEDIATE
 item: 1
 tc: 1
-id: 'SAMPLE_FAILED_INTERMEDIATE_001'
-description: 'Sample demonstrating failure of intermediate step'
-
+id: SAMPLE_FAILED_INTERMEDIATE_001
+description: Sample demonstrating failure of intermediate step
 general_initial_conditions:
   system:
-    - "Shell environment is available"
-
+  - Shell environment is available
 initial_conditions:
   system:
-    - "Standard commands are accessible"
-
+  - Standard commands are accessible
 test_sequences:
-  - id: 1
-    name: "Intermediate Step Failure"
-    description: |
-                   Sample where step 3 fails after successful steps 1-2.
-    initial_conditions:
-      system:
-        - "Test sequence ready"
-    steps:
-      - step: 1
-        description: "First successful step"
-        command: echo "Step 1 success"
-        expected:
-          success: true
-          result: 0
-          output: "Step 1 success"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Step 1 success' <<< \"$COMMAND_OUTPUT\""
-      - step: 2
-        description: "Second successful step"
-        command: echo "Step 2 success"
-        expected:
-          success: true
-          result: 0
-          output: "Step 2 success"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Step 2 success' <<< \"$COMMAND_OUTPUT\""
-      - step: 3
-        description: "Third step fails"
-        command: cat /nonexistent_file_99999.txt
-        expected:
-          success: true
-          result: 0
-          output: ""
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "true"
-      - step: 4
-        description: "This step will not execute"
-        command: echo "Step 4"
-        expected:
-          success: true
-          result: 0
-          output: "Step 4"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Step 4' <<< \"$COMMAND_OUTPUT\""
+- id: 1
+  name: Intermediate Step Failure
+  description: 'Sample where step 3 fails after successful steps 1-2.
+
+    '
+  initial_conditions:
+    system:
+    - Test sequence ready
+  steps:
+  - step: 1
+    description: First successful step
+    command: echo "Step 1 success"
+    expected:
+      success: true
+      result: 0
+      output: Step 1 success
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Step 1 success' <<< "$COMMAND_OUTPUT"
+  - step: 2
+    description: Second successful step
+    command: echo "Step 2 success"
+    expected:
+      success: true
+      result: 0
+      output: Step 2 success
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Step 2 success' <<< "$COMMAND_OUTPUT"
+  - step: 3
+    description: Third step fails
+    command: cat /nonexistent_file_99999.txt
+    expected:
+      success: true
+      result: 0
+      output: ''
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: 'true'
+  - step: 4
+    description: This step will not execute
+    command: echo "Step 4"
+    expected:
+      success: true
+      result: 0
+      output: Step 4
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Step 4' <<< "$COMMAND_OUTPUT"

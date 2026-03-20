@@ -1,5 +1,7 @@
 [
   {
+    "type": "test_execution",
+    "schema": "tcms/execution-log.schema.v1.json",
     "test_sequence": 1,
     "step": 1,
     "command": "echo \"Step 1 correct\"",
@@ -10,6 +12,8 @@
     "output_verification_pass": true
   },
   {
+    "type": "test_execution",
+    "schema": "tcms/execution-log.schema.v1.json",
     "test_sequence": 1,
     "step": 2,
     "command": "echo \"Step 2 wrong\"",
@@ -20,6 +24,8 @@
     "output_verification_pass": true
   },
   {
+    "type": "test_execution",
+    "schema": "tcms/execution-log.schema.v1.json",
     "test_sequence": 1,
     "step": 3,
     "command": "echo \"Step 3 correct\"",
@@ -30,6 +36,8 @@
     "output_verification_pass": true
   },
   {
+    "type": "test_execution",
+    "schema": "tcms/execution-log.schema.v1.json",
     "test_sequence": 1,
     "step": 4,
     "command": "echo \"Step 4 wrong\"",
@@ -40,6 +48,8 @@
     "output_verification_pass": true
   },
   {
+    "type": "test_execution",
+    "schema": "tcms/execution-log.schema.v1.json",
     "test_sequence": 1,
     "step": 5,
     "command": "echo \"Step 5 correct\"",

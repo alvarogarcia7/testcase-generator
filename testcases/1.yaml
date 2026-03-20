@@ -1,3 +1,5 @@
+type: test_case
+schema: tcms/test-case.schema.v1.json
 requirement: '1'
 item: 1
 tc: 3

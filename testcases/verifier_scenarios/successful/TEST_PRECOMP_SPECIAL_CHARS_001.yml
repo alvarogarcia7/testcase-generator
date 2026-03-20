@@ -1,43 +1,43 @@
-requirement: "TEST_PRECOMP_SPECIAL_CHARS"
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: TEST_PRECOMP_SPECIAL_CHARS
 item: 1
 tc: 1
-id: 'TEST_PRECOMP_SPECIAL_CHARS_001'
+id: TEST_PRECOMP_SPECIAL_CHARS_001
 description: 'Precomputed verification: output with special characters'
-
 general_initial_conditions:
   system:
-    - "Shell environment is available"
-
+  - Shell environment is available
 initial_conditions:
   system:
-    - "All commands can be executed"
-
+  - All commands can be executed
 test_sequences:
-  - id: 1
-    name: "Special Characters Sequence"
-    description: |
-                   Test sequence with special characters in output.
-    initial_conditions:
-      system:
-        - "Shell is ready"
-    steps:
-      - step: 1
-        description: "Output with quotes"
-        command: echo "Output with \"quotes\""
-        expected:
-          success: true
-          result: 0
-          output: "Output with \"quotes\""
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'quotes' <<< \"$COMMAND_OUTPUT\""
-      - step: 2
-        description: "Output with special symbols"
-        command: echo "Test $var @host #comment"
-        expected:
-          success: true
-          result: 0
-          output: "Test $var @host #comment"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Test' <<< \"$COMMAND_OUTPUT\""
+- id: 1
+  name: Special Characters Sequence
+  description: 'Test sequence with special characters in output.
+
+    '
+  initial_conditions:
+    system:
+    - Shell is ready
+  steps:
+  - step: 1
+    description: Output with quotes
+    command: echo "Output with \"quotes\""
+    expected:
+      success: true
+      result: 0
+      output: Output with "quotes"
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'quotes' <<< "$COMMAND_OUTPUT"
+  - step: 2
+    description: Output with special symbols
+    command: echo "Test $var @host
+    expected:
+      success: true
+      result: 0
+      output: 'Test $var @host #comment'
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Test' <<< "$COMMAND_OUTPUT"

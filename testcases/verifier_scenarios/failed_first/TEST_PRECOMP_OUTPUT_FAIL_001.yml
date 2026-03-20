@@ -1,44 +1,45 @@
-requirement: "TEST_PRECOMP_OUTPUT_FAIL"
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: TEST_PRECOMP_OUTPUT_FAIL
 item: 1
 tc: 1
-id: 'TEST_PRECOMP_OUTPUT_FAIL_001'
+id: TEST_PRECOMP_OUTPUT_FAIL_001
 description: 'Precomputed verification: first step fails output verification'
-
 general_initial_conditions:
   system:
-    - "Shell environment is available"
-
+  - Shell environment is available
 initial_conditions:
   system:
-    - "All commands can be executed"
-
+  - All commands can be executed
 test_sequences:
-  - id: 1
-    name: "Output Verification Fail Sequence"
-    description: |
-                   Test sequence where first step fails output verification (output_verification_pass=false).
-                   Result verification passes but output verification fails.
-    initial_conditions:
-      system:
-        - "Shell is ready"
-    steps:
-      - step: 1
-        description: "Execute command with failed output verification"
-        command: echo "Unexpected output"
-        expected:
-          success: true
-          result: 0
-          output: "Expected output"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Expected output' <<< \"$COMMAND_OUTPUT\""
-      - step: 2
-        description: "Execute command with passing verification"
-        command: echo "Step 2 pass"
-        expected:
-          success: true
-          result: 0
-          output: "Step 2 pass"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Step 2 pass' <<< \"$COMMAND_OUTPUT\""
+- id: 1
+  name: Output Verification Fail Sequence
+  description: 'Test sequence where first step fails output verification (output_verification_pass=false).
+
+    Result verification passes but output verification fails.
+
+    '
+  initial_conditions:
+    system:
+    - Shell is ready
+  steps:
+  - step: 1
+    description: Execute command with failed output verification
+    command: echo "Unexpected output"
+    expected:
+      success: true
+      result: 0
+      output: Expected output
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Expected output' <<< "$COMMAND_OUTPUT"
+  - step: 2
+    description: Execute command with passing verification
+    command: echo "Step 2 pass"
+    expected:
+      success: true
+      result: 0
+      output: Step 2 pass
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Step 2 pass' <<< "$COMMAND_OUTPUT"

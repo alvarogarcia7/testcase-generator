@@ -225,8 +225,8 @@ fn test_execution_log_json_deserialization() {
     assert_eq!(entry.command, "echo 'hello'");
     assert_eq!(entry.exit_code, 0);
     assert_eq!(entry.output, "hello");
-    assert_eq!(entry.result_verification_pass, true);
-    assert_eq!(entry.output_verification_pass, true);
+    assert!(entry.result_verification_pass);
+    assert!(entry.output_verification_pass);
 }
 
 // ============================================================================

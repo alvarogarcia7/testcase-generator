@@ -1,74 +1,75 @@
-requirement: "EDGE_MIXED_PASS_FAIL"
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: EDGE_MIXED_PASS_FAIL
 item: 1
 tc: 1
-id: 'TEST_EDGE_MIXED_PASS_FAIL_001'
+id: TEST_EDGE_MIXED_PASS_FAIL_001
 description: 'Edge case: alternating pass/fail pattern across steps'
-
 general_initial_conditions:
   system:
-    - "Shell environment is available"
-
+  - Shell environment is available
 initial_conditions:
   system:
-    - "All commands can be executed"
-
+  - All commands can be executed
 test_sequences:
-  - id: 1
-    name: "Alternating Pass/Fail Sequence"
-    description: |
-                   Test sequence with alternating pass and fail pattern.
-                   Steps 1, 3, 5 pass verification; steps 2, 4 fail verification.
-    initial_conditions:
-      system:
-        - "Shell is ready"
-    steps:
-      - step: 1
-        description: "Pass verification"
-        command: echo "Step 1 correct"
-        expected:
-          success: true
-          result: 0
-          output: "Step 1 correct"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Step 1 correct' <<< \"$COMMAND_OUTPUT\""
-      - step: 2
-        description: "Fail verification"
-        command: echo "Step 2 wrong"
-        expected:
-          success: true
-          result: 0
-          output: "Step 2 expected"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Step 2 expected' <<< \"$COMMAND_OUTPUT\""
-      - step: 3
-        description: "Pass verification"
-        command: echo "Step 3 correct"
-        expected:
-          success: true
-          result: 0
-          output: "Step 3 correct"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Step 3 correct' <<< \"$COMMAND_OUTPUT\""
-      - step: 4
-        description: "Fail verification"
-        command: echo "Step 4 wrong"
-        expected:
-          success: true
-          result: 0
-          output: "Step 4 expected"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Step 4 expected' <<< \"$COMMAND_OUTPUT\""
-      - step: 5
-        description: "Pass verification"
-        command: echo "Step 5 correct"
-        expected:
-          success: true
-          result: 0
-          output: "Step 5 correct"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Step 5 correct' <<< \"$COMMAND_OUTPUT\""
+- id: 1
+  name: Alternating Pass/Fail Sequence
+  description: 'Test sequence with alternating pass and fail pattern.
+
+    Steps 1, 3, 5 pass verification; steps 2, 4 fail verification.
+
+    '
+  initial_conditions:
+    system:
+    - Shell is ready
+  steps:
+  - step: 1
+    description: Pass verification
+    command: echo "Step 1 correct"
+    expected:
+      success: true
+      result: 0
+      output: Step 1 correct
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Step 1 correct' <<< "$COMMAND_OUTPUT"
+  - step: 2
+    description: Fail verification
+    command: echo "Step 2 wrong"
+    expected:
+      success: true
+      result: 0
+      output: Step 2 expected
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Step 2 expected' <<< "$COMMAND_OUTPUT"
+  - step: 3
+    description: Pass verification
+    command: echo "Step 3 correct"
+    expected:
+      success: true
+      result: 0
+      output: Step 3 correct
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Step 3 correct' <<< "$COMMAND_OUTPUT"
+  - step: 4
+    description: Fail verification
+    command: echo "Step 4 wrong"
+    expected:
+      success: true
+      result: 0
+      output: Step 4 expected
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Step 4 expected' <<< "$COMMAND_OUTPUT"
+  - step: 5
+    description: Pass verification
+    command: echo "Step 5 correct"
+    expected:
+      success: true
+      result: 0
+      output: Step 5 correct
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Step 5 correct' <<< "$COMMAND_OUTPUT"

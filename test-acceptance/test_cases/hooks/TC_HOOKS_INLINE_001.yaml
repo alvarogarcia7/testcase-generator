@@ -1,171 +1,158 @@
-requirement: "HOOKS_INLINE"
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: HOOKS_INLINE
 item: 1
 tc: 1
-id: 'TC_HOOKS_INLINE_001'
-description: 'Test case demonstrating inline hook commands without external scripts. All hooks are defined directly in the YAML file using inline bash commands.'
-
+id: TC_HOOKS_INLINE_001
+description: Test case demonstrating inline hook commands without external scripts.
+  All hooks are defined directly in the YAML file using inline bash commands.
 general_initial_conditions:
   system:
-    - "Bash shell is available"
-
+  - Bash shell is available
 initial_conditions:
   filesystem:
-    - "Temporary directory /tmp is writable"
+  - Temporary directory /tmp is writable
   environment:
-    - "Test can create temporary files"
-
+  - Test can create temporary files
 hooks:
   script_start:
-    command: |
-      echo "HOOK: script_start - Starting test execution at $(date)"
+    command: 'echo "HOOK: script_start - Starting test execution at $(date)"
+
       echo "Creating marker file for script start"
+
       echo "$(date +%s)" > /tmp/tc_hooks_inline_001_start.marker
+
+      '
   setup_test:
-    command: |
-      echo "HOOK: setup_test - Setting up test environment"
+    command: 'echo "HOOK: setup_test - Setting up test environment"
+
       TEST_WORKSPACE="/tmp/tc_hooks_inline_001_workspace"
+
       mkdir -p "$TEST_WORKSPACE"
+
       echo "$TEST_WORKSPACE" > /tmp/tc_hooks_inline_001_workspace.marker
+
       echo "HOOK: setup_test - Workspace created: $TEST_WORKSPACE"
+
+      '
   before_sequence:
-    command: |
-      echo "HOOK: before_sequence - Starting sequence ${TEST_SEQUENCE_ID:-unknown}"
+    command: 'echo "HOOK: before_sequence - Starting sequence ${TEST_SEQUENCE_ID:-unknown}"
+
       echo "$(date +%s)" > "/tmp/tc_hooks_inline_001_seq_${TEST_SEQUENCE_ID:-1}_start.marker"
+
+      '
   after_sequence:
-    command: |
-      echo "HOOK: after_sequence - Completed sequence ${TEST_SEQUENCE_ID:-unknown}"
+    command: 'echo "HOOK: after_sequence - Completed sequence ${TEST_SEQUENCE_ID:-unknown}"
+
       echo "$(date +%s)" > "/tmp/tc_hooks_inline_001_seq_${TEST_SEQUENCE_ID:-1}_end.marker"
+
+      '
   before_step:
-    command: |
-      echo "HOOK: before_step - Sequence ${TEST_SEQUENCE_ID:-unknown} Step ${TEST_STEP:-unknown}"
+    command: 'echo "HOOK: before_step - Sequence ${TEST_SEQUENCE_ID:-unknown} Step
+      ${TEST_STEP:-unknown}"
+
       echo "$(date +%s)" > "/tmp/tc_hooks_inline_001_seq_${TEST_SEQUENCE_ID:-1}_step_${TEST_STEP:-1}.marker"
+
+      '
   after_step:
-    command: |
-      echo "HOOK: after_step - Completed step ${TEST_STEP:-unknown} with exit code ${STEP_EXIT_CODE:-unknown}"
+    command: 'echo "HOOK: after_step - Completed step ${TEST_STEP:-unknown} with exit
+      code ${STEP_EXIT_CODE:-unknown}"
+
+      '
   teardown_test:
-    command: |
-      echo "HOOK: teardown_test - Cleaning up test environment"
-      if [ -f /tmp/tc_hooks_inline_001_workspace.marker ]; then
-        WORKSPACE=$(cat /tmp/tc_hooks_inline_001_workspace.marker)
-        if [ -d "$WORKSPACE" ]; then
-          rm -rf "$WORKSPACE"
-          echo "HOOK: teardown_test - Removed workspace: $WORKSPACE"
-        fi
-      fi
+    command: "echo \"HOOK: teardown_test - Cleaning up test environment\"\nif [ -f\
+      \ /tmp/tc_hooks_inline_001_workspace.marker ]; then\n  WORKSPACE=$(cat /tmp/tc_hooks_inline_001_workspace.marker)\n\
+      \  if [ -d \"$WORKSPACE\" ]; then\n    rm -rf \"$WORKSPACE\"\n    echo \"HOOK:\
+      \ teardown_test - Removed workspace: $WORKSPACE\"\n  fi\nfi\n"
   script_end:
-    command: |
-      echo "HOOK: script_end - Test execution completed at $(date)"
-      if [ -f /tmp/tc_hooks_inline_001_start.marker ]; then
-        START_TIME=$(cat /tmp/tc_hooks_inline_001_start.marker)
-        END_TIME=$(date +%s)
-        DURATION=$((END_TIME - START_TIME))
-        echo "HOOK: script_end - Total execution time: ${DURATION}s"
-        echo "$END_TIME" > /tmp/tc_hooks_inline_001_end.marker
-      fi
-  on_error: "fail"
-
+    command: "echo \"HOOK: script_end - Test execution completed at $(date)\"\nif\
+      \ [ -f /tmp/tc_hooks_inline_001_start.marker ]; then\n  START_TIME=$(cat /tmp/tc_hooks_inline_001_start.marker)\n\
+      \  END_TIME=$(date +%s)\n  DURATION=$((END_TIME - START_TIME))\n  echo \"HOOK:\
+      \ script_end - Total execution time: ${DURATION}s\"\n  echo \"$END_TIME\" >\
+      \ /tmp/tc_hooks_inline_001_end.marker\nfi\n"
+  on_error: fail
 test_sequences:
-  - id: 1
-    name: "Inline Hook Demonstration"
-    description: |
-                  Demonstrates inline hooks that execute at each lifecycle point.
-                  All hooks create marker files to prove they executed.
-    initial_conditions:
-      system:
-        - "Test sequence 1 ready to execute"
-    steps:
-      - step: 1
-        description: "Execute simple command and verify inline hooks"
-        command: |
-          echo "Step 1: Verifying inline hooks work correctly"
-          echo "Marker files should be created by hooks"
-        expected:
-          success: true
-          result: '0'
-          output: 'Step 1'
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Step 1' <<< \"$COMMAND_OUTPUT\""
+- id: 1
+  name: Inline Hook Demonstration
+  description: 'Demonstrates inline hooks that execute at each lifecycle point.
 
-      - step: 2
-        description: "Verify hook marker files were created"
-        command: |
-          echo "Checking for hook marker files:"
-          if [ -f /tmp/tc_hooks_inline_001_start.marker ]; then
-            echo "✓ script_start marker exists"
-          else
-            echo "✗ script_start marker missing"
-          fi
-          
-          if [ -f /tmp/tc_hooks_inline_001_workspace.marker ]; then
-            echo "✓ setup_test marker exists"
-          else
-            echo "✗ setup_test marker missing"
-          fi
-          
-          if [ -f /tmp/tc_hooks_inline_001_seq_1_start.marker ]; then
-            echo "✓ before_sequence marker exists"
-          else
-            echo "✗ before_sequence marker missing"
-          fi
-          
-          if [ -f /tmp/tc_hooks_inline_001_seq_1_step_1.marker ]; then
-            echo "✓ before_step marker exists for step 1"
-          else
-            echo "✗ before_step marker missing for step 1"
-          fi
-          
-          echo "All marker file checks completed"
-        expected:
-          success: true
-          result: '0'
-          output: 'completed'
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'completed' <<< \"$COMMAND_OUTPUT\""
+    All hooks create marker files to prove they executed.
 
-  - id: 2
-    name: "Hook Context Variables"
-    description: |
-                  Demonstrates that hooks have access to context variables like
-                  TEST_SEQUENCE_ID and TEST_STEP.
-    initial_conditions:
-      system:
-        - "Test sequence 2 ready to execute"
-    steps:
-      - step: 1
-        description: "Execute command in second sequence"
-        command: |
-          echo "Sequence 2, Step 1 execution"
-          echo "Hooks should create markers for sequence 2"
-        expected:
-          success: true
-          result: '0'
-          output: 'Sequence 2'
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Sequence 2' <<< \"$COMMAND_OUTPUT\""
+    '
+  initial_conditions:
+    system:
+    - Test sequence 1 ready to execute
+  steps:
+  - step: 1
+    description: Execute simple command and verify inline hooks
+    command: 'echo "Step 1: Verifying inline hooks work correctly"
 
-      - step: 2
-        description: "Verify sequence 2 markers were created"
-        command: |
-          if [ -f /tmp/tc_hooks_inline_001_seq_2_start.marker ]; then
-            echo "✓ Sequence 2 before_sequence marker exists"
-          else
-            echo "✗ Sequence 2 before_sequence marker missing"
-          fi
-          
-          if [ -f /tmp/tc_hooks_inline_001_seq_2_step_1.marker ]; then
-            echo "✓ Sequence 2 Step 1 before_step marker exists"
-          else
-            echo "✗ Sequence 2 Step 1 before_step marker missing"
-          fi
-          
-          echo "Sequence 2 marker verification completed"
-        expected:
-          success: true
-          result: '0'
-          output: 'completed'
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'completed' <<< \"$COMMAND_OUTPUT\""
+      echo "Marker files should be created by hooks"
+
+      '
+    expected:
+      success: true
+      result: '0'
+      output: Step 1
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Step 1' <<< "$COMMAND_OUTPUT"
+  - step: 2
+    description: Verify hook marker files were created
+    command: "echo \"Checking for hook marker files:\"\nif [ -f /tmp/tc_hooks_inline_001_start.marker\
+      \ ]; then\n  echo \"✓ script_start marker exists\"\nelse\n  echo \"✗ script_start\
+      \ marker missing\"\nfi\n\nif [ -f /tmp/tc_hooks_inline_001_workspace.marker\
+      \ ]; then\n  echo \"✓ setup_test marker exists\"\nelse\n  echo \"✗ setup_test\
+      \ marker missing\"\nfi\n\nif [ -f /tmp/tc_hooks_inline_001_seq_1_start.marker\
+      \ ]; then\n  echo \"✓ before_sequence marker exists\"\nelse\n  echo \"✗ before_sequence\
+      \ marker missing\"\nfi\n\nif [ -f /tmp/tc_hooks_inline_001_seq_1_step_1.marker\
+      \ ]; then\n  echo \"✓ before_step marker exists for step 1\"\nelse\n  echo \"\
+      ✗ before_step marker missing for step 1\"\nfi\n\necho \"All marker file checks\
+      \ completed\"\n"
+    expected:
+      success: true
+      result: '0'
+      output: completed
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'completed' <<< "$COMMAND_OUTPUT"
+- id: 2
+  name: Hook Context Variables
+  description: 'Demonstrates that hooks have access to context variables like
+
+    TEST_SEQUENCE_ID and TEST_STEP.
+
+    '
+  initial_conditions:
+    system:
+    - Test sequence 2 ready to execute
+  steps:
+  - step: 1
+    description: Execute command in second sequence
+    command: 'echo "Sequence 2, Step 1 execution"
+
+      echo "Hooks should create markers for sequence 2"
+
+      '
+    expected:
+      success: true
+      result: '0'
+      output: Sequence 2
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Sequence 2' <<< "$COMMAND_OUTPUT"
+  - step: 2
+    description: Verify sequence 2 markers were created
+    command: "if [ -f /tmp/tc_hooks_inline_001_seq_2_start.marker ]; then\n  echo\
+      \ \"✓ Sequence 2 before_sequence marker exists\"\nelse\n  echo \"✗ Sequence\
+      \ 2 before_sequence marker missing\"\nfi\n\nif [ -f /tmp/tc_hooks_inline_001_seq_2_step_1.marker\
+      \ ]; then\n  echo \"✓ Sequence 2 Step 1 before_step marker exists\"\nelse\n\
+      \  echo \"✗ Sequence 2 Step 1 before_step marker missing\"\nfi\n\necho \"Sequence\
+      \ 2 marker verification completed\"\n"
+    expected:
+      success: true
+      result: '0'
+      output: completed
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'completed' <<< "$COMMAND_OUTPUT"

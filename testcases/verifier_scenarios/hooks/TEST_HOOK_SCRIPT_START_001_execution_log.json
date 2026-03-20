@@ -1,5 +1,7 @@
 [
   {
+    "type": "test_execution",
+    "schema": "tcms/execution-log.schema.v1.json",
     "test_sequence": 0,
     "step": 0,
     "command": "scripts/hook_script_start_error.sh",

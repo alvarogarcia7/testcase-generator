@@ -1,470 +1,381 @@
-requirement: "COMPLEX_HYDRATION_CONDITIONAL_VERIFICATION"
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: COMPLEX_HYDRATION_CONDITIONAL_VERIFICATION
 item: 1
 tc: 6
-id: 'TC_COMPLEX_HYDRATION_CONDITIONAL_001'
-description: 'Test with extensive hydration variables and conditional verification - demonstrates environment-driven testing'
-
+id: TC_COMPLEX_HYDRATION_CONDITIONAL_001
+description: Test with extensive hydration variables and conditional verification
+  - demonstrates environment-driven testing
 hydration_vars:
   ENVIRONMENT:
-    name: "ENVIRONMENT"
-    description: "Target environment (development, staging, production)"
-    default_value: "staging"
+    name: ENVIRONMENT
+    description: Target environment (development, staging, production)
+    default_value: staging
     required: true
-  
   DATABASE_HOST:
-    name: "DATABASE_HOST"
-    description: "Database server hostname"
-    default_value: "localhost"
+    name: DATABASE_HOST
+    description: Database server hostname
+    default_value: localhost
     required: true
-  
   DATABASE_PORT:
-    name: "DATABASE_PORT"
-    description: "Database server port"
-    default_value: "5432"
+    name: DATABASE_PORT
+    description: Database server port
+    default_value: '5432'
     required: true
-  
   API_TIMEOUT:
-    name: "API_TIMEOUT"
-    description: "API request timeout in seconds"
-    default_value: "30"
+    name: API_TIMEOUT
+    description: API request timeout in seconds
+    default_value: '30'
     required: true
-  
   CACHE_ENABLED:
-    name: "CACHE_ENABLED"
-    description: "Enable caching (true/false)"
-    default_value: "true"
+    name: CACHE_ENABLED
+    description: Enable caching (true/false)
+    default_value: 'true'
     required: false
-  
   DEBUG_MODE:
-    name: "DEBUG_MODE"
-    description: "Enable debug logging (true/false)"
-    default_value: "false"
+    name: DEBUG_MODE
+    description: Enable debug logging (true/false)
+    default_value: 'false'
     required: false
-  
   MAX_CONNECTIONS:
-    name: "MAX_CONNECTIONS"
-    description: "Maximum concurrent connections"
-    default_value: "100"
+    name: MAX_CONNECTIONS
+    description: Maximum concurrent connections
+    default_value: '100'
     required: false
-  
   RETRY_COUNT:
-    name: "RETRY_COUNT"
-    description: "Number of retry attempts"
-    default_value: "3"
+    name: RETRY_COUNT
+    description: Number of retry attempts
+    default_value: '3'
     required: false
-
 general_initial_conditions:
   system:
-    - "Environment variables are properly hydrated"
-    - "Configuration supports multiple environments"
+  - Environment variables are properly hydrated
+  - Configuration supports multiple environments
   environment:
-    - "All required hydration variables are set"
-    - "Optional variables have default values"
-
+  - All required hydration variables are set
+  - Optional variables have default values
 initial_conditions:
   configuration:
-    - "Environment-specific settings are available"
-    - "Conditional logic can use hydration variables"
-
+  - Environment-specific settings are available
+  - Conditional logic can use hydration variables
 test_sequences:
-  - id: 1
-    name: "Configuration Validation"
-    description: "Validate hydration variables and generate environment-specific configuration"
-    initial_conditions:
-      hydration:
-        - "All hydration variables are available"
-        - "Values can be used in commands and verification"
-    steps:
-      - step: 1
-        description: "Verify environment type and capture for conditional logic"
-        command: "echo ${ENVIRONMENT}"
-        capture_vars:
-          - name: env_type
-            capture: '([a-z]+)'
-        expected:
-          success: true
-          result: 0
-          output: "environment name"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output:
-            condition: "[[ \"$env_type\" =~ ^(development|staging|production)$ ]]"
-            if_true:
-              - "echo 'Valid environment detected'"
-            if_false:
-              - "echo 'Invalid environment'"
-            always:
-              - "echo \"Environment: ${env_type}\""
-          general:
-            - name: verify_env_captured
-              condition: "[[ -n \"$env_type\" ]]"
-            - name: verify_env_valid
-              condition: "[[ \"$env_type\" =~ ^(development|staging|production)$ ]]"
+- id: 1
+  name: Configuration Validation
+  description: Validate hydration variables and generate environment-specific configuration
+  initial_conditions:
+    hydration:
+    - All hydration variables are available
+    - Values can be used in commands and verification
+  steps:
+  - step: 1
+    description: Verify environment type and capture for conditional logic
+    command: echo ${ENVIRONMENT}
+    capture_vars:
+    - name: env_type
+      capture: ([a-z]+)
+    expected:
+      success: true
+      result: 0
+      output: environment name
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output:
+        condition: '[[ "$env_type" =~ ^(development|staging|production)$ ]]'
+        if_true:
+        - echo 'Valid environment detected'
+        if_false:
+        - echo 'Invalid environment'
+        always:
+        - 'echo "Environment: ${env_type}"'
+      general:
+      - name: verify_env_captured
+        condition: '[[ -n "$env_type" ]]'
+      - name: verify_env_valid
+        condition: '[[ "$env_type" =~ ^(development|staging|production)$ ]]'
+  - step: 2
+    description: Generate environment-specific configuration file
+    command: 'cat > /tmp/config_${env_type}.ini << EOF [environment] name=${ENVIRONMENT}
+      type=${env_type}
 
-      - step: 2
-        description: "Generate environment-specific configuration file"
-        command: "cat > /tmp/config_${env_type}.ini << EOF
-[environment]
-name=${ENVIRONMENT}
-type=${env_type}
+      [database] host=${DATABASE_HOST} port=${DATABASE_PORT}
 
-[database]
-host=${DATABASE_HOST}
-port=${DATABASE_PORT}
+      [api] timeout=${API_TIMEOUT}
 
-[api]
-timeout=${API_TIMEOUT}
+      [features] cache_enabled=${CACHE_ENABLED} debug_mode=${DEBUG_MODE}
 
-[features]
-cache_enabled=${CACHE_ENABLED}
-debug_mode=${DEBUG_MODE}
+      [performance] max_connections=${MAX_CONNECTIONS} retry_count=${RETRY_COUNT}
+      EOF cat /tmp/config_${env_type}.ini'
+    expected:
+      success: true
+      result: 0
+      output: '[environment]'
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q '\[environment\]' <<< "$COMMAND_OUTPUT" && grep -q '\[database\]'
+        <<< "$COMMAND_OUTPUT"
+  - step: 3
+    description: Validate database connection string format
+    command: echo '${DATABASE_HOST}:${DATABASE_PORT}'
+    capture_vars:
+    - name: db_connection
+      capture: ([^:]+:[0-9]+)
+    expected:
+      success: true
+      result: 0
+      output: connection string
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" =~ ^[^:]+:[0-9]+$ ]]'
+      general:
+      - name: verify_db_connection_captured
+        condition: '[[ -n "$db_connection" ]]'
+      - name: verify_db_connection_format
+        condition: '[[ $db_connection =~ ^[^:]+:[0-9]+$ ]]'
+  - step: 4
+    description: Check database port is numeric and in valid range
+    command: echo ${DATABASE_PORT}
+    capture_vars:
+    - name: db_port_value
+      capture: ([0-9]+)
+    expected:
+      success: true
+      result: 0
+      output: port number
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output:
+        condition: '[[ $db_port_value -ge 1024 && $db_port_value -le 65535 ]]'
+        if_true:
+        - echo 'Port is in valid user port range (1024-65535)'
+        if_false:
+        - echo 'Port is in system range or outside valid range'
+        always:
+        - 'echo "Database port: ${db_port_value}"'
+      general:
+      - name: verify_port_numeric
+        condition: '[[ $db_port_value =~ ^[0-9]+$ ]]'
+- id: 2
+  name: Environment-Specific Behavior
+  description: Test conditional behavior based on environment type
+  initial_conditions:
+    configuration:
+    - Environment type has been determined
+    - Configuration file has been generated
+  steps:
+  - step: 1
+    description: Set environment-specific timeout values
+    command: case "${env_type}" in production) echo 'TIMEOUT_MULTIPLIER=1.0' ;; staging)
+      echo 'TIMEOUT_MULTIPLIER=1.5' ;; development) echo 'TIMEOUT_MULTIPLIER=2.0'
+      ;; *) echo 'TIMEOUT_MULTIPLIER=1.0' ;; esac
+    capture_vars:
+    - name: timeout_multiplier
+      capture: TIMEOUT_MULTIPLIER=([0-9.]+)
+    expected:
+      success: true
+      result: 0
+      output: TIMEOUT_MULTIPLIER=
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output:
+        condition: '[[ "$env_type" == "production" ]]'
+        if_true:
+        - grep -q 'TIMEOUT_MULTIPLIER=1.0' <<< "$COMMAND_OUTPUT"
+        if_false:
+        - grep -q 'TIMEOUT_MULTIPLIER=' <<< "$COMMAND_OUTPUT"
+        always:
+        - echo "Timeout multiplier set for ${env_type}"
+  - step: 2
+    description: Configure connection pool based on environment
+    command: case "${env_type}" in production) echo 'POOL_SIZE='${MAX_CONNECTIONS}
+      ;; staging) echo 'POOL_SIZE='$((${MAX_CONNECTIONS} / 2)) ;; development) echo
+      'POOL_SIZE=10' ;; *) echo 'POOL_SIZE=5' ;; esac
+    capture_vars:
+    - name: pool_size
+      capture: POOL_SIZE=([0-9]+)
+    expected:
+      success: true
+      result: 0
+      output: POOL_SIZE=
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" =~ POOL_SIZE=[0-9]+ ]]'
+      general:
+      - name: verify_pool_size_numeric
+        condition: '[[ $pool_size =~ ^[0-9]+$ ]]'
+      - name: verify_pool_size_positive
+        condition: '[[ $pool_size -gt 0 ]]'
+  - step: 3
+    description: Determine logging verbosity based on debug mode
+    command: if [[ "${DEBUG_MODE}" == "true" ]]; then echo 'LOG_LEVEL=DEBUG' elif
+      [[ "${env_type}" == "production" ]]; then echo 'LOG_LEVEL=ERROR' else echo 'LOG_LEVEL=INFO'
+      fi
+    capture_vars:
+    - name: log_level
+      capture: LOG_LEVEL=([A-Z]+)
+    expected:
+      success: true
+      result: 0
+      output: LOG_LEVEL=
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output:
+        condition: '[[ "${DEBUG_MODE}" == "true" ]]'
+        if_true:
+        - grep -q 'LOG_LEVEL=DEBUG' <<< "$COMMAND_OUTPUT"
+        if_false:
+        - grep -q 'LOG_LEVEL=' <<< "$COMMAND_OUTPUT"
+        always:
+        - 'echo "Log level configured: ${log_level}"'
+  - step: 4
+    description: Configure caching strategy
+    command: if [[ "${CACHE_ENABLED}" == "true" ]]; then echo 'CACHE_STRATEGY=redis'
+      echo 'CACHE_TTL=3600' else echo 'CACHE_STRATEGY=none' echo 'CACHE_TTL=0' fi
+    capture_vars:
+    - name: cache_strategy
+      capture: CACHE_STRATEGY=([a-z]+)
+    - name: cache_ttl
+      capture: CACHE_TTL=([0-9]+)
+    expected:
+      success: true
+      result: 0
+      output: CACHE_STRATEGY=
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output:
+        condition: '[[ "${CACHE_ENABLED}" == "true" ]]'
+        if_true:
+        - grep -q 'CACHE_STRATEGY=redis' <<< "$COMMAND_OUTPUT"
+        - grep -q 'CACHE_TTL=3600' <<< "$COMMAND_OUTPUT"
+        if_false:
+        - grep -q 'CACHE_STRATEGY=none' <<< "$COMMAND_OUTPUT"
+        always:
+        - 'echo "Caching: ${cache_strategy} (TTL: ${cache_ttl}s)"'
+- id: 3
+  name: Runtime Configuration Validation
+  description: Validate complete runtime configuration with all hydration variables
+  initial_conditions:
+    configuration:
+    - All environment-specific values have been determined
+    - Conditional logic has been evaluated
+  steps:
+  - step: 1
+    description: Generate complete runtime configuration
+    command: 'cat > /tmp/runtime_config_${env_type}.txt << EOF Runtime Configuration
+      Summary ============================ Environment: ${env_type} Database: ${db_connection}
+      API Timeout: ${API_TIMEOUT}s (multiplier: ${timeout_multiplier}) Connection
+      Pool: ${pool_size} Caching: ${cache_strategy} (TTL: ${cache_ttl}s) Logging:
+      ${log_level} Retry Attempts: ${RETRY_COUNT} Debug Mode: ${DEBUG_MODE}
 
-[performance]
-max_connections=${MAX_CONNECTIONS}
-retry_count=${RETRY_COUNT}
-EOF
-cat /tmp/config_${env_type}.ini"
-        expected:
-          success: true
-          result: 0
-          output: "[environment]"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q '\\[environment\\]' <<< \"$COMMAND_OUTPUT\" && grep -q '\\[database\\]' <<< \"$COMMAND_OUTPUT\""
+      Conditional Settings: - Timeout adjusted for ${env_type} environment - Pool
+      size optimized for ${env_type} load - Logging verbosity set to ${log_level}
+      - Cache strategy: ${cache_strategy} EOF cat /tmp/runtime_config_${env_type}.txt'
+    expected:
+      success: true
+      result: 0
+      output: Runtime Configuration Summary
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: 'grep -q ''Runtime Configuration Summary'' <<< "$COMMAND_OUTPUT" &&
+        grep -q ''Environment: ${env_type}'' <<< "$COMMAND_OUTPUT"'
+  - step: 2
+    description: Validate all required configuration values are present
+    command: grep -E '(Environment|Database|API Timeout|Connection Pool|Caching|Logging|Retry)'
+      /tmp/runtime_config_${env_type}.txt | wc -l
+    capture_vars:
+    - name: config_entries
+      capture: ([0-9]+)
+    expected:
+      success: true
+      result: 0
+      output: '7'
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output:
+        condition: '[[ $config_entries -ge 7 ]]'
+        if_true:
+        - echo 'All required configuration entries present'
+        if_false:
+        - echo 'Some configuration entries missing'
+        always:
+        - 'echo "Configuration entries: ${config_entries}"'
+  - step: 3
+    description: Verify numeric configuration values are valid
+    command: 'cat << EOF Database port: ${db_port_value} API timeout: ${API_TIMEOUT}
+      Pool size: ${pool_size} Cache TTL: ${cache_ttl} Retry count: ${RETRY_COUNT}
+      Max connections: ${MAX_CONNECTIONS} EOF'
+    expected:
+      success: true
+      result: 0
+      output: 'Database port:'
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: 'true'
+      general:
+      - name: verify_db_port_numeric
+        condition: '[[ $db_port_value =~ ^[0-9]+$ && $db_port_value -gt 0 ]]'
+      - name: verify_pool_size_numeric
+        condition: '[[ $pool_size =~ ^[0-9]+$ && $pool_size -gt 0 ]]'
+      - name: verify_cache_ttl_numeric
+        condition: '[[ $cache_ttl =~ ^[0-9]+$ && $cache_ttl -ge 0 ]]'
+  - step: 4
+    description: Test configuration with conditional environment checks
+    command: 'if [[ "${env_type}" == "production" ]]; then echo ''VALIDATION: Production
+      mode - strict checks enabled'' [[ "${log_level}" == "DEBUG" ]] && echo ''WARNING:
+      Debug mode in production'' || echo ''PASS: Appropriate log level'' elif [[ "${env_type}"
+      == "staging" ]]; then echo ''VALIDATION: Staging mode - moderate checks'' echo
+      ''PASS: Staging configuration acceptable'' else echo ''VALIDATION: Development
+      mode - relaxed checks'' echo ''PASS: Development configuration acceptable''
+      fi'
+    expected:
+      success: true
+      result: 0
+      output: 'VALIDATION:'
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output:
+        condition: '[[ "${env_type}" == "production" ]]'
+        if_true:
+        - grep -q 'Production mode' <<< "$COMMAND_OUTPUT"
+        if_false:
+        - grep -q 'VALIDATION:' <<< "$COMMAND_OUTPUT"
+        always:
+        - grep -q 'PASS:' <<< "$COMMAND_OUTPUT" || echo 'Validation warnings present'
+  - step: 5
+    description: Generate final validation report
+    command: 'cat > /tmp/validation_report_${env_type}.txt << EOF Configuration Validation
+      Report ===============================
 
-      - step: 3
-        description: "Validate database connection string format"
-        command: "echo '${DATABASE_HOST}:${DATABASE_PORT}'"
-        capture_vars:
-          - name: db_connection
-            capture: '([^:]+:[0-9]+)'
-        expected:
-          success: true
-          result: 0
-          output: "connection string"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[^:]+:[0-9]+$ ]]"
-          general:
-            - name: verify_db_connection_captured
-              condition: "[[ -n \"$db_connection\" ]]"
-            - name: verify_db_connection_format
-              condition: "[[ $db_connection =~ ^[^:]+:[0-9]+$ ]]"
+      Environment Type: ${env_type} Hydration Status: COMPLETE
 
-      - step: 4
-        description: "Check database port is numeric and in valid range"
-        command: "echo ${DATABASE_PORT}"
-        capture_vars:
-          - name: db_port_value
-            capture: '([0-9]+)'
-        expected:
-          success: true
-          result: 0
-          output: "port number"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output:
-            condition: "[[ $db_port_value -ge 1024 && $db_port_value -le 65535 ]]"
-            if_true:
-              - "echo 'Port is in valid user port range (1024-65535)'"
-            if_false:
-              - "echo 'Port is in system range or outside valid range'"
-            always:
-              - "echo \"Database port: ${db_port_value}\""
-          general:
-            - name: verify_port_numeric
-              condition: "[[ $db_port_value =~ ^[0-9]+$ ]]"
+      Required Variables: - ENVIRONMENT: ${ENVIRONMENT} ✓ - DATABASE_HOST: ${DATABASE_HOST}
+      ✓ - DATABASE_PORT: ${DATABASE_PORT} ✓ - API_TIMEOUT: ${API_TIMEOUT} ✓
 
-  - id: 2
-    name: "Environment-Specific Behavior"
-    description: "Test conditional behavior based on environment type"
-    initial_conditions:
-      configuration:
-        - "Environment type has been determined"
-        - "Configuration file has been generated"
-    steps:
-      - step: 1
-        description: "Set environment-specific timeout values"
-        command: "case \"${env_type}\" in
-  production)
-    echo 'TIMEOUT_MULTIPLIER=1.0'
-    ;;
-  staging)
-    echo 'TIMEOUT_MULTIPLIER=1.5'
-    ;;
-  development)
-    echo 'TIMEOUT_MULTIPLIER=2.0'
-    ;;
-  *)
-    echo 'TIMEOUT_MULTIPLIER=1.0'
-    ;;
-esac"
-        capture_vars:
-          - name: timeout_multiplier
-            capture: 'TIMEOUT_MULTIPLIER=([0-9.]+)'
-        expected:
-          success: true
-          result: 0
-          output: "TIMEOUT_MULTIPLIER="
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output:
-            condition: "[[ \"$env_type\" == \"production\" ]]"
-            if_true:
-              - "grep -q 'TIMEOUT_MULTIPLIER=1.0' <<< \"$COMMAND_OUTPUT\""
-            if_false:
-              - "grep -q 'TIMEOUT_MULTIPLIER=' <<< \"$COMMAND_OUTPUT\""
-            always:
-              - "echo \"Timeout multiplier set for ${env_type}\""
+      Optional Variables: - CACHE_ENABLED: ${CACHE_ENABLED} - DEBUG_MODE: ${DEBUG_MODE}
+      - MAX_CONNECTIONS: ${MAX_CONNECTIONS} - RETRY_COUNT: ${RETRY_COUNT}
 
-      - step: 2
-        description: "Configure connection pool based on environment"
-        command: "case \"${env_type}\" in
-  production)
-    echo 'POOL_SIZE='${MAX_CONNECTIONS}
-    ;;
-  staging)
-    echo 'POOL_SIZE='$((${MAX_CONNECTIONS} / 2))
-    ;;
-  development)
-    echo 'POOL_SIZE=10'
-    ;;
-  *)
-    echo 'POOL_SIZE=5'
-    ;;
-esac"
-        capture_vars:
-          - name: pool_size
-            capture: 'POOL_SIZE=([0-9]+)'
-        expected:
-          success: true
-          result: 0
-          output: "POOL_SIZE="
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" =~ POOL_SIZE=[0-9]+ ]]"
-          general:
-            - name: verify_pool_size_numeric
-              condition: "[[ $pool_size =~ ^[0-9]+$ ]]"
-            - name: verify_pool_size_positive
-              condition: "[[ $pool_size -gt 0 ]]"
+      Derived Configuration: - Connection: ${db_connection} - Pool Size: ${pool_size}
+      - Log Level: ${log_level} - Cache Strategy: ${cache_strategy} - Timeout Multiplier:
+      ${timeout_multiplier}
 
-      - step: 3
-        description: "Determine logging verbosity based on debug mode"
-        command: "if [[ \"${DEBUG_MODE}\" == \"true\" ]]; then
-  echo 'LOG_LEVEL=DEBUG'
-elif [[ \"${env_type}\" == \"production\" ]]; then
-  echo 'LOG_LEVEL=ERROR'
-else
-  echo 'LOG_LEVEL=INFO'
-fi"
-        capture_vars:
-          - name: log_level
-            capture: 'LOG_LEVEL=([A-Z]+)'
-        expected:
-          success: true
-          result: 0
-          output: "LOG_LEVEL="
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output:
-            condition: "[[ \"${DEBUG_MODE}\" == \"true\" ]]"
-            if_true:
-              - "grep -q 'LOG_LEVEL=DEBUG' <<< \"$COMMAND_OUTPUT\""
-            if_false:
-              - "grep -q 'LOG_LEVEL=' <<< \"$COMMAND_OUTPUT\""
-            always:
-              - "echo \"Log level configured: ${log_level}\""
-
-      - step: 4
-        description: "Configure caching strategy"
-        command: "if [[ \"${CACHE_ENABLED}\" == \"true\" ]]; then
-  echo 'CACHE_STRATEGY=redis'
-  echo 'CACHE_TTL=3600'
-else
-  echo 'CACHE_STRATEGY=none'
-  echo 'CACHE_TTL=0'
-fi"
-        capture_vars:
-          - name: cache_strategy
-            capture: 'CACHE_STRATEGY=([a-z]+)'
-          - name: cache_ttl
-            capture: 'CACHE_TTL=([0-9]+)'
-        expected:
-          success: true
-          result: 0
-          output: "CACHE_STRATEGY="
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output:
-            condition: "[[ \"${CACHE_ENABLED}\" == \"true\" ]]"
-            if_true:
-              - "grep -q 'CACHE_STRATEGY=redis' <<< \"$COMMAND_OUTPUT\""
-              - "grep -q 'CACHE_TTL=3600' <<< \"$COMMAND_OUTPUT\""
-            if_false:
-              - "grep -q 'CACHE_STRATEGY=none' <<< \"$COMMAND_OUTPUT\""
-            always:
-              - "echo \"Caching: ${cache_strategy} (TTL: ${cache_ttl}s)\""
-
-  - id: 3
-    name: "Runtime Configuration Validation"
-    description: "Validate complete runtime configuration with all hydration variables"
-    initial_conditions:
-      configuration:
-        - "All environment-specific values have been determined"
-        - "Conditional logic has been evaluated"
-    steps:
-      - step: 1
-        description: "Generate complete runtime configuration"
-        command: "cat > /tmp/runtime_config_${env_type}.txt << EOF
-Runtime Configuration Summary
-============================
-Environment: ${env_type}
-Database: ${db_connection}
-API Timeout: ${API_TIMEOUT}s (multiplier: ${timeout_multiplier})
-Connection Pool: ${pool_size}
-Caching: ${cache_strategy} (TTL: ${cache_ttl}s)
-Logging: ${log_level}
-Retry Attempts: ${RETRY_COUNT}
-Debug Mode: ${DEBUG_MODE}
-
-Conditional Settings:
-- Timeout adjusted for ${env_type} environment
-- Pool size optimized for ${env_type} load
-- Logging verbosity set to ${log_level}
-- Cache strategy: ${cache_strategy}
-EOF
-cat /tmp/runtime_config_${env_type}.txt"
-        expected:
-          success: true
-          result: 0
-          output: "Runtime Configuration Summary"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Runtime Configuration Summary' <<< \"$COMMAND_OUTPUT\" && grep -q 'Environment: ${env_type}' <<< \"$COMMAND_OUTPUT\""
-
-      - step: 2
-        description: "Validate all required configuration values are present"
-        command: "grep -E '(Environment|Database|API Timeout|Connection Pool|Caching|Logging|Retry)' /tmp/runtime_config_${env_type}.txt | wc -l"
-        capture_vars:
-          - name: config_entries
-            capture: '([0-9]+)'
-        expected:
-          success: true
-          result: 0
-          output: "7"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output:
-            condition: "[[ $config_entries -ge 7 ]]"
-            if_true:
-              - "echo 'All required configuration entries present'"
-            if_false:
-              - "echo 'Some configuration entries missing'"
-            always:
-              - "echo \"Configuration entries: ${config_entries}\""
-
-      - step: 3
-        description: "Verify numeric configuration values are valid"
-        command: "cat << EOF
-Database port: ${db_port_value}
-API timeout: ${API_TIMEOUT}
-Pool size: ${pool_size}
-Cache TTL: ${cache_ttl}
-Retry count: ${RETRY_COUNT}
-Max connections: ${MAX_CONNECTIONS}
-EOF"
-        expected:
-          success: true
-          result: 0
-          output: "Database port:"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "true"
-          general:
-            - name: verify_db_port_numeric
-              condition: "[[ $db_port_value =~ ^[0-9]+$ && $db_port_value -gt 0 ]]"
-            - name: verify_pool_size_numeric
-              condition: "[[ $pool_size =~ ^[0-9]+$ && $pool_size -gt 0 ]]"
-            - name: verify_cache_ttl_numeric
-              condition: "[[ $cache_ttl =~ ^[0-9]+$ && $cache_ttl -ge 0 ]]"
-
-      - step: 4
-        description: "Test configuration with conditional environment checks"
-        command: "if [[ \"${env_type}\" == \"production\" ]]; then
-  echo 'VALIDATION: Production mode - strict checks enabled'
-  [[ \"${log_level}\" == \"DEBUG\" ]] && echo 'WARNING: Debug mode in production' || echo 'PASS: Appropriate log level'
-elif [[ \"${env_type}\" == \"staging\" ]]; then
-  echo 'VALIDATION: Staging mode - moderate checks'
-  echo 'PASS: Staging configuration acceptable'
-else
-  echo 'VALIDATION: Development mode - relaxed checks'
-  echo 'PASS: Development configuration acceptable'
-fi"
-        expected:
-          success: true
-          result: 0
-          output: "VALIDATION:"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output:
-            condition: "[[ \"${env_type}\" == \"production\" ]]"
-            if_true:
-              - "grep -q 'Production mode' <<< \"$COMMAND_OUTPUT\""
-            if_false:
-              - "grep -q 'VALIDATION:' <<< \"$COMMAND_OUTPUT\""
-            always:
-              - "grep -q 'PASS:' <<< \"$COMMAND_OUTPUT\" || echo 'Validation warnings present'"
-
-      - step: 5
-        description: "Generate final validation report"
-        command: "cat > /tmp/validation_report_${env_type}.txt << EOF
-Configuration Validation Report
-===============================
-
-Environment Type: ${env_type}
-Hydration Status: COMPLETE
-
-Required Variables:
-- ENVIRONMENT: ${ENVIRONMENT} ✓
-- DATABASE_HOST: ${DATABASE_HOST} ✓
-- DATABASE_PORT: ${DATABASE_PORT} ✓
-- API_TIMEOUT: ${API_TIMEOUT} ✓
-
-Optional Variables:
-- CACHE_ENABLED: ${CACHE_ENABLED}
-- DEBUG_MODE: ${DEBUG_MODE}
-- MAX_CONNECTIONS: ${MAX_CONNECTIONS}
-- RETRY_COUNT: ${RETRY_COUNT}
-
-Derived Configuration:
-- Connection: ${db_connection}
-- Pool Size: ${pool_size}
-- Log Level: ${log_level}
-- Cache Strategy: ${cache_strategy}
-- Timeout Multiplier: ${timeout_multiplier}
-
-Validation Result: PASSED
-All hydration variables processed successfully
-Conditional logic executed correctly
-Configuration is ready for use
-EOF
-cat /tmp/validation_report_${env_type}.txt"
-        expected:
-          success: true
-          result: 0
-          output: "Configuration Validation Report"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Validation Result: PASSED' <<< \"$COMMAND_OUTPUT\" && grep -q 'All hydration variables processed successfully' <<< \"$COMMAND_OUTPUT\""
-
-      - step: 6
-        description: "Cleanup configuration files"
-        command: "rm -f /tmp/config_${env_type}.ini /tmp/runtime_config_${env_type}.txt /tmp/validation_report_${env_type}.txt && echo 'Configuration files cleaned up'"
-        expected:
-          success: true
-          result: 0
-          output: "cleaned up"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'cleaned up' <<< \"$COMMAND_OUTPUT\""
+      Validation Result: PASSED All hydration variables processed successfully Conditional
+      logic executed correctly Configuration is ready for use EOF cat /tmp/validation_report_${env_type}.txt'
+    expected:
+      success: true
+      result: 0
+      output: Configuration Validation Report
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: 'grep -q ''Validation Result: PASSED'' <<< "$COMMAND_OUTPUT" && grep
+        -q ''All hydration variables processed successfully'' <<< "$COMMAND_OUTPUT"'
+  - step: 6
+    description: Cleanup configuration files
+    command: rm -f /tmp/config_${env_type}.ini /tmp/runtime_config_${env_type}.txt
+      /tmp/validation_report_${env_type}.txt && echo 'Configuration files cleaned
+      up'
+    expected:
+      success: true
+      result: 0
+      output: cleaned up
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'cleaned up' <<< "$COMMAND_OUTPUT"

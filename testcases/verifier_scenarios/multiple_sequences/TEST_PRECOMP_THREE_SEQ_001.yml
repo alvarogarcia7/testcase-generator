@@ -1,79 +1,81 @@
-requirement: "TEST_PRECOMP_THREE_SEQ"
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: TEST_PRECOMP_THREE_SEQ
 item: 1
 tc: 1
-id: 'TEST_PRECOMP_THREE_SEQ_001'
+id: TEST_PRECOMP_THREE_SEQ_001
 description: 'Precomputed verification: three sequences with varying results'
-
 general_initial_conditions:
   system:
-    - "Shell environment is available"
-
+  - Shell environment is available
 initial_conditions:
   system:
-    - "All commands can be executed"
-
+  - All commands can be executed
 test_sequences:
-  - id: 1
-    name: "First Sequence - All Pass"
-    description: |
-                   First sequence with all steps passing.
-    initial_conditions:
-      system:
-        - "Shell is ready"
-    steps:
-      - step: 1
-        description: "Seq 1 Step 1"
-        command: echo "S1-1"
-        expected:
-          success: true
-          result: 0
-          output: "S1-1"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'S1-1' <<< \"$COMMAND_OUTPUT\""
-  - id: 2
-    name: "Second Sequence - One Fail"
-    description: |
-                   Second sequence with one failing step.
-    initial_conditions:
-      system:
-        - "Shell is ready"
-    steps:
-      - step: 1
-        description: "Seq 2 Step 1 - pass"
-        command: echo "S2-1"
-        expected:
-          success: true
-          result: 0
-          output: "S2-1"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'S2-1' <<< \"$COMMAND_OUTPUT\""
-      - step: 2
-        description: "Seq 2 Step 2 - fail"
-        command: echo "S2-2"
-        expected:
-          success: true
-          result: 0
-          output: "S2-2"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'S2-2' <<< \"$COMMAND_OUTPUT\""
-  - id: 3
-    name: "Third Sequence - All Pass"
-    description: |
-                   Third sequence with all steps passing.
-    initial_conditions:
-      system:
-        - "Shell is ready"
-    steps:
-      - step: 1
-        description: "Seq 3 Step 1"
-        command: echo "S3-1"
-        expected:
-          success: true
-          result: 0
-          output: "S3-1"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'S3-1' <<< \"$COMMAND_OUTPUT\""
+- id: 1
+  name: First Sequence - All Pass
+  description: 'First sequence with all steps passing.
+
+    '
+  initial_conditions:
+    system:
+    - Shell is ready
+  steps:
+  - step: 1
+    description: Seq 1 Step 1
+    command: echo "S1-1"
+    expected:
+      success: true
+      result: 0
+      output: S1-1
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'S1-1' <<< "$COMMAND_OUTPUT"
+- id: 2
+  name: Second Sequence - One Fail
+  description: 'Second sequence with one failing step.
+
+    '
+  initial_conditions:
+    system:
+    - Shell is ready
+  steps:
+  - step: 1
+    description: Seq 2 Step 1 - pass
+    command: echo "S2-1"
+    expected:
+      success: true
+      result: 0
+      output: S2-1
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'S2-1' <<< "$COMMAND_OUTPUT"
+  - step: 2
+    description: Seq 2 Step 2 - fail
+    command: echo "S2-2"
+    expected:
+      success: true
+      result: 0
+      output: S2-2
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'S2-2' <<< "$COMMAND_OUTPUT"
+- id: 3
+  name: Third Sequence - All Pass
+  description: 'Third sequence with all steps passing.
+
+    '
+  initial_conditions:
+    system:
+    - Shell is ready
+  steps:
+  - step: 1
+    description: Seq 3 Step 1
+    command: echo "S3-1"
+    expected:
+      success: true
+      result: 0
+      output: S3-1
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'S3-1' <<< "$COMMAND_OUTPUT"

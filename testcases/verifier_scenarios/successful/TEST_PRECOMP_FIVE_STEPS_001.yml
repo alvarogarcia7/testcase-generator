@@ -1,73 +1,73 @@
-requirement: "TEST_PRECOMP_FIVE_STEPS"
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: TEST_PRECOMP_FIVE_STEPS
 item: 1
 tc: 1
-id: 'TEST_PRECOMP_FIVE_STEPS_001'
+id: TEST_PRECOMP_FIVE_STEPS_001
 description: 'Precomputed verification: five steps all passing'
-
 general_initial_conditions:
   system:
-    - "Shell environment is available"
-
+  - Shell environment is available
 initial_conditions:
   system:
-    - "All commands can be executed"
-
+  - All commands can be executed
 test_sequences:
-  - id: 1
-    name: "Five Steps Sequence"
-    description: |
-                   Test sequence with five steps, all passing verification.
-    initial_conditions:
-      system:
-        - "Shell is ready"
-    steps:
-      - step: 1
-        description: "First step"
-        command: echo "Step 1 done"
-        expected:
-          success: true
-          result: 0
-          output: "Step 1 done"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Step 1 done' <<< \"$COMMAND_OUTPUT\""
-      - step: 2
-        description: "Second step"
-        command: echo "Step 2 done"
-        expected:
-          success: true
-          result: 0
-          output: "Step 2 done"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Step 2 done' <<< \"$COMMAND_OUTPUT\""
-      - step: 3
-        description: "Third step"
-        command: echo "Step 3 done"
-        expected:
-          success: true
-          result: 0
-          output: "Step 3 done"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Step 3 done' <<< \"$COMMAND_OUTPUT\""
-      - step: 4
-        description: "Fourth step"
-        command: echo "Step 4 done"
-        expected:
-          success: true
-          result: 0
-          output: "Step 4 done"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Step 4 done' <<< \"$COMMAND_OUTPUT\""
-      - step: 5
-        description: "Fifth step"
-        command: echo "Step 5 done"
-        expected:
-          success: true
-          result: 0
-          output: "Step 5 done"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Step 5 done' <<< \"$COMMAND_OUTPUT\""
+- id: 1
+  name: Five Steps Sequence
+  description: 'Test sequence with five steps, all passing verification.
+
+    '
+  initial_conditions:
+    system:
+    - Shell is ready
+  steps:
+  - step: 1
+    description: First step
+    command: echo "Step 1 done"
+    expected:
+      success: true
+      result: 0
+      output: Step 1 done
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Step 1 done' <<< "$COMMAND_OUTPUT"
+  - step: 2
+    description: Second step
+    command: echo "Step 2 done"
+    expected:
+      success: true
+      result: 0
+      output: Step 2 done
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Step 2 done' <<< "$COMMAND_OUTPUT"
+  - step: 3
+    description: Third step
+    command: echo "Step 3 done"
+    expected:
+      success: true
+      result: 0
+      output: Step 3 done
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Step 3 done' <<< "$COMMAND_OUTPUT"
+  - step: 4
+    description: Fourth step
+    command: echo "Step 4 done"
+    expected:
+      success: true
+      result: 0
+      output: Step 4 done
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Step 4 done' <<< "$COMMAND_OUTPUT"
+  - step: 5
+    description: Fifth step
+    command: echo "Step 5 done"
+    expected:
+      success: true
+      result: 0
+      output: Step 5 done
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Step 5 done' <<< "$COMMAND_OUTPUT"

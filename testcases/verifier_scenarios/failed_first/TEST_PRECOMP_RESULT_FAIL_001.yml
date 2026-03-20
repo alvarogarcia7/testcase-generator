@@ -1,44 +1,45 @@
-requirement: "TEST_PRECOMP_RESULT_FAIL"
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: TEST_PRECOMP_RESULT_FAIL
 item: 1
 tc: 1
-id: 'TEST_PRECOMP_RESULT_FAIL_001'
+id: TEST_PRECOMP_RESULT_FAIL_001
 description: 'Precomputed verification: first step fails result verification'
-
 general_initial_conditions:
   system:
-    - "Shell environment is available"
-
+  - Shell environment is available
 initial_conditions:
   system:
-    - "All commands can be executed"
-
+  - All commands can be executed
 test_sequences:
-  - id: 1
-    name: "Result Verification Fail Sequence"
-    description: |
-                   Test sequence where first step fails result verification (result_verification_pass=false).
-                   Output verification passes but result verification fails.
-    initial_conditions:
-      system:
-        - "Shell is ready"
-    steps:
-      - step: 1
-        description: "Execute command with failed result verification"
-        command: echo "Testing result failure"
-        expected:
-          success: true
-          result: 0
-          output: "Testing result failure"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Testing result failure' <<< \"$COMMAND_OUTPUT\""
-      - step: 2
-        description: "Execute command with passing verification"
-        command: echo "Step 2 success"
-        expected:
-          success: true
-          result: 0
-          output: "Step 2 success"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Step 2 success' <<< \"$COMMAND_OUTPUT\""
+- id: 1
+  name: Result Verification Fail Sequence
+  description: 'Test sequence where first step fails result verification (result_verification_pass=false).
+
+    Output verification passes but result verification fails.
+
+    '
+  initial_conditions:
+    system:
+    - Shell is ready
+  steps:
+  - step: 1
+    description: Execute command with failed result verification
+    command: echo "Testing result failure"
+    expected:
+      success: true
+      result: 0
+      output: Testing result failure
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Testing result failure' <<< "$COMMAND_OUTPUT"
+  - step: 2
+    description: Execute command with passing verification
+    command: echo "Step 2 success"
+    expected:
+      success: true
+      result: 0
+      output: Step 2 success
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Step 2 success' <<< "$COMMAND_OUTPUT"

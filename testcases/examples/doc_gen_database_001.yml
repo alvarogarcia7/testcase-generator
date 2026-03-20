@@ -1,388 +1,395 @@
-requirement: "DOC_GEN_DATABASE"
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: DOC_GEN_DATABASE
 item: 1
 tc: 1
-id: 'DOC_GEN_DATABASE_001'
-description: 'Comprehensive database operations testing including schema management, data manipulation, transactions, and query performance'
-
+id: DOC_GEN_DATABASE_001
+description: Comprehensive database operations testing including schema management,
+  data manipulation, transactions, and query performance
 general_initial_conditions:
   system:
-    - "PostgreSQL client (psql) is installed"
-    - "Database server is running and accessible"
+  - PostgreSQL client (psql) is installed
+  - Database server is running and accessible
   database:
-    - "Test database 'testdb' is created"
-    - "Database user 'testuser' has appropriate privileges"
-
+  - Test database 'testdb' is created
+  - Database user 'testuser' has appropriate privileges
 initial_conditions:
   database:
-    - "Connection to database is established"
-    - "Previous test data is cleaned up"
+  - Connection to database is established
+  - Previous test data is cleaned up
   environment:
-    - "Database credentials are set in environment variables"
-
+  - Database credentials are set in environment variables
 test_sequences:
-  - id: 1
-    name: "Database Connection and Schema Setup"
-    description: |
-                   Verify database connectivity and create necessary schema
-                   elements including tables, indexes, and constraints.
-    initial_conditions:
-      database:
-        - "Database is accessible"
-    steps:
-      - step: 1
-        description: "Test database connection"
-        command: psql -U testuser -d testdb -c "SELECT version();" | grep -i postgresql
-        expected:
-          success: true
-          result: 0
-          output: "PostgreSQL"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -qi 'postgresql' <<< \"$COMMAND_OUTPUT\""
-      - step: 2
-        description: "Create users table"
-        command: |
-          psql -U testuser -d testdb -c "
-          CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
-            username VARCHAR(50) UNIQUE NOT NULL,
-            email VARCHAR(100) UNIQUE NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-          );"
-        expected:
-          success: true
-          result: 0
-          output: "CREATE TABLE"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'CREATE TABLE' <<< \"$COMMAND_OUTPUT\""
-      - step: 3
-        description: "Create orders table with foreign key"
-        command: |
-          psql -U testuser -d testdb -c "
-          CREATE TABLE IF NOT EXISTS orders (
-            id SERIAL PRIMARY KEY,
-            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-            order_number VARCHAR(20) UNIQUE NOT NULL,
-            total_amount DECIMAL(10,2) NOT NULL,
-            status VARCHAR(20) DEFAULT 'pending',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-          );"
-        expected:
-          success: true
-          result: 0
-          output: "CREATE TABLE"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'CREATE TABLE' <<< \"$COMMAND_OUTPUT\""
-      - step: 4
-        description: "Create index on email for faster lookups"
-        command: psql -U testuser -d testdb -c "CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);"
-        expected:
-          success: true
-          result: 0
-          output: "CREATE INDEX"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'CREATE INDEX' <<< \"$COMMAND_OUTPUT\""
-      - step: 5
-        description: "Verify table structure"
-        command: psql -U testuser -d testdb -c "\\d users" | grep -c "id\|username\|email"
-        expected:
-          success: true
-          result: 0
-          output: "3"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "[[ $(echo \"$COMMAND_OUTPUT\" | tr -d '\\n') -ge 3 ]]"
+- id: 1
+  name: Database Connection and Schema Setup
+  description: 'Verify database connectivity and create necessary schema
 
-  - id: 2
-    name: "Data Insertion and Retrieval"
-    description: |
-                   Test basic CRUD operations including INSERT, SELECT,
-                   and data validation.
-    initial_conditions:
-      database:
-        - "Tables are created and ready"
-    steps:
-      - step: 1
-        description: "Insert sample users"
-        command: |
-          psql -U testuser -d testdb -c "
-          INSERT INTO users (username, email) VALUES
-            ('john_doe', 'john@example.com'),
-            ('jane_smith', 'jane@example.com'),
-            ('bob_wilson', 'bob@example.com')
-          RETURNING id, username;"
-        expected:
-          success: true
-          result: 0
-          output: "john_doe"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'john_doe' <<< \"$COMMAND_OUTPUT\""
-      - step: 2
-        description: "Query user count"
-        command: psql -U testuser -d testdb -t -c "SELECT COUNT(*) FROM users;"
-        expected:
-          success: true
-          result: 0
-          output: "3"
-        capture:
-          - variable: USER_COUNT
-            pattern: "\\s*([0-9]+)"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "[[ $(echo \"$COMMAND_OUTPUT\" | tr -d ' \\n') -ge 3 ]]"
-      - step: 3
-        description: "Query specific user by username"
-        command: psql -U testuser -d testdb -t -c "SELECT email FROM users WHERE username = 'jane_smith';"
-        expected:
-          success: true
-          result: 0
-          output: "jane@example.com"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'jane@example.com' <<< \"$COMMAND_OUTPUT\""
-      - step: 4
-        description: "Get user ID for order creation"
-        command: psql -U testuser -d testdb -t -c "SELECT id FROM users WHERE username = 'john_doe';"
-        expected:
-          success: true
-          result: 0
-          output: "1"
-        capture:
-          - variable: USER_ID
-            pattern: "\\s*([0-9]+)"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "[[ $(echo \"$COMMAND_OUTPUT\" | tr -d ' \\n') =~ ^[0-9]+$ ]]"
-      - step: 5
-        description: "Insert orders for user"
-        command: |
-          psql -U testuser -d testdb -c "
-          INSERT INTO orders (user_id, order_number, total_amount, status) VALUES
-            ($USER_ID, 'ORD-001', 299.99, 'completed'),
-            ($USER_ID, 'ORD-002', 149.50, 'pending')
-          RETURNING id, order_number, total_amount;"
-        expected:
-          success: true
-          result: 0
-          output: "ORD-001"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'ORD-001' <<< \"$COMMAND_OUTPUT\""
+    elements including tables, indexes, and constraints.
 
-  - id: 3
-    name: "Data Updates and Complex Queries"
-    description: |
-                   Test UPDATE operations, joins, aggregations, and
-                   complex query patterns.
-    initial_conditions:
-      database:
-        - "Test data exists in tables"
-    steps:
-      - step: 1
-        description: "Update user email"
-        command: |
-          psql -U testuser -d testdb -c "
-          UPDATE users 
-          SET email = 'john.doe@example.com', updated_at = CURRENT_TIMESTAMP 
-          WHERE username = 'john_doe'
-          RETURNING username, email;"
-        expected:
-          success: true
-          result: 0
-          output: "john.doe@example.com"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'john.doe@example.com' <<< \"$COMMAND_OUTPUT\""
-      - step: 2
-        description: "Update order status"
-        command: |
-          psql -U testuser -d testdb -c "
-          UPDATE orders 
-          SET status = 'shipped' 
-          WHERE order_number = 'ORD-002'
-          RETURNING order_number, status;"
-        expected:
-          success: true
-          result: 0
-          output: "shipped"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'shipped' <<< \"$COMMAND_OUTPUT\""
-      - step: 3
-        description: "Join query - users with their orders"
-        command: |
-          psql -U testuser -d testdb -t -c "
-          SELECT u.username, COUNT(o.id) as order_count, SUM(o.total_amount) as total_spent
-          FROM users u
-          LEFT JOIN orders o ON u.id = o.user_id
-          WHERE u.username = 'john_doe'
-          GROUP BY u.username;"
-        expected:
-          success: true
-          result: 0
-          output: "john_doe"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'john_doe' <<< \"$COMMAND_OUTPUT\""
-      - step: 4
-        description: "Calculate total revenue"
-        command: psql -U testuser -d testdb -t -c "SELECT SUM(total_amount) FROM orders WHERE status = 'completed';"
-        expected:
-          success: true
-          result: 0
-          output: "299.99"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "[[ $(echo \"$COMMAND_OUTPUT\" | tr -d ' \\n') =~ ^[0-9.]+$ ]]"
-      - step: 5
-        description: "Complex subquery - users with pending orders"
-        command: |
-          psql -U testuser -d testdb -t -c "
-          SELECT username FROM users 
-          WHERE id IN (
-            SELECT user_id FROM orders WHERE status = 'pending' OR status = 'shipped'
-          );"
-        expected:
-          success: true
-          result: 0
-          output: "john_doe"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'john_doe' <<< \"$COMMAND_OUTPUT\""
+    '
+  initial_conditions:
+    database:
+    - Database is accessible
+  steps:
+  - step: 1
+    description: Test database connection
+    command: psql -U testuser -d testdb -c "SELECT version();" | grep -i postgresql
+    expected:
+      success: true
+      result: 0
+      output: PostgreSQL
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -qi 'postgresql' <<< "$COMMAND_OUTPUT"
+  - step: 2
+    description: Create users table
+    command: "psql -U testuser -d testdb -c \"\nCREATE TABLE IF NOT EXISTS users (\n\
+      \  id SERIAL PRIMARY KEY,\n  username VARCHAR(50) UNIQUE NOT NULL,\n  email\
+      \ VARCHAR(100) UNIQUE NOT NULL,\n  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n\
+      \  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP\n);\"\n"
+    expected:
+      success: true
+      result: 0
+      output: CREATE TABLE
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'CREATE TABLE' <<< "$COMMAND_OUTPUT"
+  - step: 3
+    description: Create orders table with foreign key
+    command: "psql -U testuser -d testdb -c \"\nCREATE TABLE IF NOT EXISTS orders\
+      \ (\n  id SERIAL PRIMARY KEY,\n  user_id INTEGER REFERENCES users(id) ON DELETE\
+      \ CASCADE,\n  order_number VARCHAR(20) UNIQUE NOT NULL,\n  total_amount DECIMAL(10,2)\
+      \ NOT NULL,\n  status VARCHAR(20) DEFAULT 'pending',\n  created_at TIMESTAMP\
+      \ DEFAULT CURRENT_TIMESTAMP\n);\"\n"
+    expected:
+      success: true
+      result: 0
+      output: CREATE TABLE
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'CREATE TABLE' <<< "$COMMAND_OUTPUT"
+  - step: 4
+    description: Create index on email for faster lookups
+    command: psql -U testuser -d testdb -c "CREATE INDEX IF NOT EXISTS idx_users_email
+      ON users(email);"
+    expected:
+      success: true
+      result: 0
+      output: CREATE INDEX
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'CREATE INDEX' <<< "$COMMAND_OUTPUT"
+  - step: 5
+    description: Verify table structure
+    command: psql -U testuser -d testdb -c "\\d users" | grep -c "id\|username\|email"
+    expected:
+      success: true
+      result: 0
+      output: '3'
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: '[[ $(echo "$COMMAND_OUTPUT" | tr -d ''\n'') -ge 3 ]]'
+- id: 2
+  name: Data Insertion and Retrieval
+  description: 'Test basic CRUD operations including INSERT, SELECT,
 
-  - id: 4
-    name: "Transactions and Data Integrity"
-    description: |
-                   Test transaction handling, rollback scenarios,
-                   and constraint enforcement.
-    initial_conditions:
-      database:
-        - "Tables have constraints defined"
-    steps:
-      - step: 1
-        description: "Test unique constraint violation"
-        command: psql -U testuser -d testdb -c "INSERT INTO users (username, email) VALUES ('john_doe', 'duplicate@example.com');" 2>&1
-        expected:
-          success: false
-          result: 1
-          output: "duplicate key"
-        verification:
-          result: "[[ $EXIT_CODE -ne 0 ]]"
-          output: "grep -qi 'duplicate\\|unique' <<< \"$COMMAND_OUTPUT\""
-      - step: 2
-        description: "Test foreign key constraint"
-        command: psql -U testuser -d testdb -c "INSERT INTO orders (user_id, order_number, total_amount) VALUES (99999, 'ORD-999', 100.00);" 2>&1
-        expected:
-          success: false
-          result: 1
-          output: "foreign key"
-        verification:
-          result: "[[ $EXIT_CODE -ne 0 ]]"
-          output: "grep -qi 'foreign key\\|constraint' <<< \"$COMMAND_OUTPUT\""
-      - step: 3
-        description: "Begin transaction and insert data"
-        command: |
-          psql -U testuser -d testdb -c "
-          BEGIN;
-          INSERT INTO users (username, email) VALUES ('alice_temp', 'alice@example.com');
-          SELECT username FROM users WHERE username = 'alice_temp';
-          COMMIT;"
-        expected:
-          success: true
-          result: 0
-          output: "alice_temp"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'alice_temp' <<< \"$COMMAND_OUTPUT\""
-      - step: 4
-        description: "Transaction with rollback"
-        command: |
-          psql -U testuser -d testdb -c "
-          BEGIN;
-          INSERT INTO users (username, email) VALUES ('temp_user', 'temp@example.com');
-          ROLLBACK;
-          " && psql -U testuser -d testdb -t -c "SELECT COUNT(*) FROM users WHERE username = 'temp_user';"
-        expected:
-          success: true
-          result: 0
-          output: "0"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "[[ $(echo \"$COMMAND_OUTPUT\" | tail -1 | tr -d ' \\n') -eq 0 ]]"
-      - step: 5
-        description: "Test CASCADE delete"
-        command: |
-          psql -U testuser -d testdb -c "DELETE FROM users WHERE username = 'john_doe';" && \
-          psql -U testuser -d testdb -t -c "SELECT COUNT(*) FROM orders WHERE order_number LIKE 'ORD-%';"
-        expected:
-          success: true
-          result: 0
-          output: "0"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "true"
+    and data validation.
 
-  - id: 5
-    name: "Cleanup and Schema Teardown"
-    description: |
-                   Clean up test data and drop schema elements,
-                   verifying proper cleanup procedures.
-    initial_conditions:
-      database:
-        - "Test data and schema exist"
-    steps:
-      - step: 1
-        description: "Delete all orders"
-        command: psql -U testuser -d testdb -c "DELETE FROM orders;" 
-        expected:
-          success: true
-          result: 0
-          output: "DELETE"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'DELETE' <<< \"$COMMAND_OUTPUT\""
-      - step: 2
-        description: "Delete all users"
-        command: psql -U testuser -d testdb -c "DELETE FROM users;"
-        expected:
-          success: true
-          result: 0
-          output: "DELETE"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'DELETE' <<< \"$COMMAND_OUTPUT\""
-      - step: 3
-        description: "Drop orders table"
-        command: psql -U testuser -d testdb -c "DROP TABLE IF EXISTS orders;"
-        expected:
-          success: true
-          result: 0
-          output: "DROP TABLE"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'DROP TABLE' <<< \"$COMMAND_OUTPUT\""
-      - step: 4
-        description: "Drop users table"
-        command: psql -U testuser -d testdb -c "DROP TABLE IF EXISTS users;"
-        expected:
-          success: true
-          result: 0
-          output: "DROP TABLE"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'DROP TABLE' <<< \"$COMMAND_OUTPUT\""
-      - step: 5
-        description: "Verify tables are dropped"
-        command: psql -U testuser -d testdb -c "\\dt" | grep -c "users\|orders"
-        expected:
-          success: true
-          result: 0
-          output: "0"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "true"
+    '
+  initial_conditions:
+    database:
+    - Tables are created and ready
+  steps:
+  - step: 1
+    description: Insert sample users
+    command: "psql -U testuser -d testdb -c \"\nINSERT INTO users (username, email)\
+      \ VALUES\n  ('john_doe', 'john@example.com'),\n  ('jane_smith', 'jane@example.com'),\n\
+      \  ('bob_wilson', 'bob@example.com')\nRETURNING id, username;\"\n"
+    expected:
+      success: true
+      result: 0
+      output: john_doe
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'john_doe' <<< "$COMMAND_OUTPUT"
+  - step: 2
+    description: Query user count
+    command: psql -U testuser -d testdb -t -c "SELECT COUNT(*) FROM users;"
+    expected:
+      success: true
+      result: 0
+      output: '3'
+    capture:
+    - variable: USER_COUNT
+      pattern: \s*([0-9]+)
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: '[[ $(echo "$COMMAND_OUTPUT" | tr -d '' \n'') -ge 3 ]]'
+  - step: 3
+    description: Query specific user by username
+    command: psql -U testuser -d testdb -t -c "SELECT email FROM users WHERE username
+      = 'jane_smith';"
+    expected:
+      success: true
+      result: 0
+      output: jane@example.com
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'jane@example.com' <<< "$COMMAND_OUTPUT"
+  - step: 4
+    description: Get user ID for order creation
+    command: psql -U testuser -d testdb -t -c "SELECT id FROM users WHERE username
+      = 'john_doe';"
+    expected:
+      success: true
+      result: 0
+      output: '1'
+    capture:
+    - variable: USER_ID
+      pattern: \s*([0-9]+)
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: '[[ $(echo "$COMMAND_OUTPUT" | tr -d '' \n'') =~ ^[0-9]+$ ]]'
+  - step: 5
+    description: Insert orders for user
+    command: "psql -U testuser -d testdb -c \"\nINSERT INTO orders (user_id, order_number,\
+      \ total_amount, status) VALUES\n  ($USER_ID, 'ORD-001', 299.99, 'completed'),\n\
+      \  ($USER_ID, 'ORD-002', 149.50, 'pending')\nRETURNING id, order_number, total_amount;\"\
+      \n"
+    expected:
+      success: true
+      result: 0
+      output: ORD-001
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'ORD-001' <<< "$COMMAND_OUTPUT"
+- id: 3
+  name: Data Updates and Complex Queries
+  description: 'Test UPDATE operations, joins, aggregations, and
+
+    complex query patterns.
+
+    '
+  initial_conditions:
+    database:
+    - Test data exists in tables
+  steps:
+  - step: 1
+    description: Update user email
+    command: "psql -U testuser -d testdb -c \"\nUPDATE users \nSET email = 'john.doe@example.com',\
+      \ updated_at = CURRENT_TIMESTAMP \nWHERE username = 'john_doe'\nRETURNING username,\
+      \ email;\"\n"
+    expected:
+      success: true
+      result: 0
+      output: john.doe@example.com
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'john.doe@example.com' <<< "$COMMAND_OUTPUT"
+  - step: 2
+    description: Update order status
+    command: "psql -U testuser -d testdb -c \"\nUPDATE orders \nSET status = 'shipped'\
+      \ \nWHERE order_number = 'ORD-002'\nRETURNING order_number, status;\"\n"
+    expected:
+      success: true
+      result: 0
+      output: shipped
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'shipped' <<< "$COMMAND_OUTPUT"
+  - step: 3
+    description: Join query - users with their orders
+    command: 'psql -U testuser -d testdb -t -c "
+
+      SELECT u.username, COUNT(o.id) as order_count, SUM(o.total_amount) as total_spent
+
+      FROM users u
+
+      LEFT JOIN orders o ON u.id = o.user_id
+
+      WHERE u.username = ''john_doe''
+
+      GROUP BY u.username;"
+
+      '
+    expected:
+      success: true
+      result: 0
+      output: john_doe
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'john_doe' <<< "$COMMAND_OUTPUT"
+  - step: 4
+    description: Calculate total revenue
+    command: psql -U testuser -d testdb -t -c "SELECT SUM(total_amount) FROM orders
+      WHERE status = 'completed';"
+    expected:
+      success: true
+      result: 0
+      output: '299.99'
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: '[[ $(echo "$COMMAND_OUTPUT" | tr -d '' \n'') =~ ^[0-9.]+$ ]]'
+  - step: 5
+    description: Complex subquery - users with pending orders
+    command: "psql -U testuser -d testdb -t -c \"\nSELECT username FROM users \nWHERE\
+      \ id IN (\n  SELECT user_id FROM orders WHERE status = 'pending' OR status =\
+      \ 'shipped'\n);\"\n"
+    expected:
+      success: true
+      result: 0
+      output: john_doe
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'john_doe' <<< "$COMMAND_OUTPUT"
+- id: 4
+  name: Transactions and Data Integrity
+  description: 'Test transaction handling, rollback scenarios,
+
+    and constraint enforcement.
+
+    '
+  initial_conditions:
+    database:
+    - Tables have constraints defined
+  steps:
+  - step: 1
+    description: Test unique constraint violation
+    command: psql -U testuser -d testdb -c "INSERT INTO users (username, email) VALUES
+      ('john_doe', 'duplicate@example.com');" 2>&1
+    expected:
+      success: false
+      result: 1
+      output: duplicate key
+    verification:
+      result: '[[ $EXIT_CODE -ne 0 ]]'
+      output: grep -qi 'duplicate\|unique' <<< "$COMMAND_OUTPUT"
+  - step: 2
+    description: Test foreign key constraint
+    command: psql -U testuser -d testdb -c "INSERT INTO orders (user_id, order_number,
+      total_amount) VALUES (99999, 'ORD-999', 100.00);" 2>&1
+    expected:
+      success: false
+      result: 1
+      output: foreign key
+    verification:
+      result: '[[ $EXIT_CODE -ne 0 ]]'
+      output: grep -qi 'foreign key\|constraint' <<< "$COMMAND_OUTPUT"
+  - step: 3
+    description: Begin transaction and insert data
+    command: 'psql -U testuser -d testdb -c "
+
+      BEGIN;
+
+      INSERT INTO users (username, email) VALUES (''alice_temp'', ''alice@example.com'');
+
+      SELECT username FROM users WHERE username = ''alice_temp'';
+
+      COMMIT;"
+
+      '
+    expected:
+      success: true
+      result: 0
+      output: alice_temp
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'alice_temp' <<< "$COMMAND_OUTPUT"
+  - step: 4
+    description: Transaction with rollback
+    command: 'psql -U testuser -d testdb -c "
+
+      BEGIN;
+
+      INSERT INTO users (username, email) VALUES (''temp_user'', ''temp@example.com'');
+
+      ROLLBACK;
+
+      " && psql -U testuser -d testdb -t -c "SELECT COUNT(*) FROM users WHERE username
+      = ''temp_user'';"
+
+      '
+    expected:
+      success: true
+      result: 0
+      output: '0'
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: '[[ $(echo "$COMMAND_OUTPUT" | tail -1 | tr -d '' \n'') -eq 0 ]]'
+  - step: 5
+    description: Test CASCADE delete
+    command: 'psql -U testuser -d testdb -c "DELETE FROM users WHERE username = ''john_doe'';"
+      && \
+
+      psql -U testuser -d testdb -t -c "SELECT COUNT(*) FROM orders WHERE order_number
+      LIKE ''ORD-%'';"
+
+      '
+    expected:
+      success: true
+      result: 0
+      output: '0'
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: 'true'
+- id: 5
+  name: Cleanup and Schema Teardown
+  description: 'Clean up test data and drop schema elements,
+
+    verifying proper cleanup procedures.
+
+    '
+  initial_conditions:
+    database:
+    - Test data and schema exist
+  steps:
+  - step: 1
+    description: Delete all orders
+    command: psql -U testuser -d testdb -c "DELETE FROM orders;"
+    expected:
+      success: true
+      result: 0
+      output: DELETE
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'DELETE' <<< "$COMMAND_OUTPUT"
+  - step: 2
+    description: Delete all users
+    command: psql -U testuser -d testdb -c "DELETE FROM users;"
+    expected:
+      success: true
+      result: 0
+      output: DELETE
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'DELETE' <<< "$COMMAND_OUTPUT"
+  - step: 3
+    description: Drop orders table
+    command: psql -U testuser -d testdb -c "DROP TABLE IF EXISTS orders;"
+    expected:
+      success: true
+      result: 0
+      output: DROP TABLE
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'DROP TABLE' <<< "$COMMAND_OUTPUT"
+  - step: 4
+    description: Drop users table
+    command: psql -U testuser -d testdb -c "DROP TABLE IF EXISTS users;"
+    expected:
+      success: true
+      result: 0
+      output: DROP TABLE
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'DROP TABLE' <<< "$COMMAND_OUTPUT"
+  - step: 5
+    description: Verify tables are dropped
+    command: psql -U testuser -d testdb -c "\\dt" | grep -c "users\|orders"
+    expected:
+      success: true
+      result: 0
+      output: '0'
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: 'true'

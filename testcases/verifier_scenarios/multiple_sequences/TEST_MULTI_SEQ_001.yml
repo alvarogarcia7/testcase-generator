@@ -1,104 +1,108 @@
-requirement: "MULTI_SEQUENCE_MIXED_RESULTS"
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: MULTI_SEQUENCE_MIXED_RESULTS
 item: 1
 tc: 1
-id: 'TEST_MULTI_SEQ_001'
-description: 'Multiple sequences scenario with mixed results: sequence 1 passes, sequence 2 fails on step 2, sequence 3 not executed'
-
+id: TEST_MULTI_SEQ_001
+description: 'Multiple sequences scenario with mixed results: sequence 1 passes, sequence
+  2 fails on step 2, sequence 3 not executed'
 general_initial_conditions:
   system:
-    - "Shell environment is available"
-
+  - Shell environment is available
 initial_conditions:
   system:
-    - "All commands can be executed"
-
+  - All commands can be executed
 test_sequences:
-  - id: 1
-    name: "Successful Sequence"
-    description: |
-                   First test sequence that completes successfully.
-                   Both steps execute and pass all verifications.
-    initial_conditions:
-      system:
-        - "Shell is ready"
-    steps:
-      - step: 1
-        description: "Initialize test environment"
-        command: echo "Sequence 1 - Step 1 initialized"
-        expected:
-          success: true
-          result: 0
-          output: "Sequence 1 - Step 1 initialized"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Sequence 1 - Step 1 initialized' <<< \"$COMMAND_OUTPUT\""
-      - step: 2
-        description: "Complete first sequence"
-        command: echo "Sequence 1 - Step 2 completed"
-        expected:
-          success: true
-          result: 0
-          output: "Sequence 1 - Step 2 completed"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Sequence 1 - Step 2 completed' <<< \"$COMMAND_OUTPUT\""
+- id: 1
+  name: Successful Sequence
+  description: 'First test sequence that completes successfully.
 
-  - id: 2
-    name: "Failing Sequence"
-    description: |
-                   Second test sequence that fails on step 2.
-                   Step 1 passes successfully, but step 2 fails due to output mismatch.
-    initial_conditions:
-      system:
-        - "Shell is ready"
-    steps:
-      - step: 1
-        description: "Initialize second sequence"
-        command: echo "Sequence 2 - Step 1 initialized"
-        expected:
-          success: true
-          result: 0
-          output: "Sequence 2 - Step 1 initialized"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Sequence 2 - Step 1 initialized' <<< \"$COMMAND_OUTPUT\""
-      - step: 2
-        description: "Fails with output mismatch"
-        command: echo "UNEXPECTED_OUTPUT"
-        expected:
-          success: true
-          result: 0
-          output: "EXPECTED_OUTPUT"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'EXPECTED_OUTPUT' <<< \"$COMMAND_OUTPUT\""
+    Both steps execute and pass all verifications.
 
-  - id: 3
-    name: "Not Executed Sequence"
-    description: |
-                   Third test sequence that should not execute due to previous failure.
-                   This sequence would pass if executed, but it should be skipped.
-    initial_conditions:
-      system:
-        - "Shell is ready"
-    steps:
-      - step: 1
-        description: "Would initialize third sequence"
-        command: echo "Sequence 3 - Step 1 initialized"
-        expected:
-          success: true
-          result: 0
-          output: "Sequence 3 - Step 1 initialized"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Sequence 3 - Step 1 initialized' <<< \"$COMMAND_OUTPUT\""
-      - step: 2
-        description: "Would complete third sequence"
-        command: echo "Sequence 3 - Step 2 completed"
-        expected:
-          success: true
-          result: 0
-          output: "Sequence 3 - Step 2 completed"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Sequence 3 - Step 2 completed' <<< \"$COMMAND_OUTPUT\""
+    '
+  initial_conditions:
+    system:
+    - Shell is ready
+  steps:
+  - step: 1
+    description: Initialize test environment
+    command: echo "Sequence 1 - Step 1 initialized"
+    expected:
+      success: true
+      result: 0
+      output: Sequence 1 - Step 1 initialized
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Sequence 1 - Step 1 initialized' <<< "$COMMAND_OUTPUT"
+  - step: 2
+    description: Complete first sequence
+    command: echo "Sequence 1 - Step 2 completed"
+    expected:
+      success: true
+      result: 0
+      output: Sequence 1 - Step 2 completed
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Sequence 1 - Step 2 completed' <<< "$COMMAND_OUTPUT"
+- id: 2
+  name: Failing Sequence
+  description: 'Second test sequence that fails on step 2.
+
+    Step 1 passes successfully, but step 2 fails due to output mismatch.
+
+    '
+  initial_conditions:
+    system:
+    - Shell is ready
+  steps:
+  - step: 1
+    description: Initialize second sequence
+    command: echo "Sequence 2 - Step 1 initialized"
+    expected:
+      success: true
+      result: 0
+      output: Sequence 2 - Step 1 initialized
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Sequence 2 - Step 1 initialized' <<< "$COMMAND_OUTPUT"
+  - step: 2
+    description: Fails with output mismatch
+    command: echo "UNEXPECTED_OUTPUT"
+    expected:
+      success: true
+      result: 0
+      output: EXPECTED_OUTPUT
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'EXPECTED_OUTPUT' <<< "$COMMAND_OUTPUT"
+- id: 3
+  name: Not Executed Sequence
+  description: 'Third test sequence that should not execute due to previous failure.
+
+    This sequence would pass if executed, but it should be skipped.
+
+    '
+  initial_conditions:
+    system:
+    - Shell is ready
+  steps:
+  - step: 1
+    description: Would initialize third sequence
+    command: echo "Sequence 3 - Step 1 initialized"
+    expected:
+      success: true
+      result: 0
+      output: Sequence 3 - Step 1 initialized
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Sequence 3 - Step 1 initialized' <<< "$COMMAND_OUTPUT"
+  - step: 2
+    description: Would complete third sequence
+    command: echo "Sequence 3 - Step 2 completed"
+    expected:
+      success: true
+      result: 0
+      output: Sequence 3 - Step 2 completed
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Sequence 3 - Step 2 completed' <<< "$COMMAND_OUTPUT"

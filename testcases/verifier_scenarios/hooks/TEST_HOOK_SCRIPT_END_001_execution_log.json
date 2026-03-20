@@ -1,5 +1,7 @@
 [
   {
+    "type": "test_execution",
+    "schema": "tcms/execution-log.schema.v1.json",
     "test_sequence": 1,
     "step": 1,
     "command": "echo \"Sequence 1 - Step 1 executed\"",
@@ -10,6 +12,8 @@
     "output_verification_pass": true
   },
   {
+    "type": "test_execution",
+    "schema": "tcms/execution-log.schema.v1.json",
     "test_sequence": 1,
     "step": 2,
     "command": "echo \"Sequence 1 - Step 2 executed\"",
@@ -20,6 +24,8 @@
     "output_verification_pass": true
   },
   {
+    "type": "test_execution",
+    "schema": "tcms/execution-log.schema.v1.json",
     "test_sequence": 2,
     "step": 1,
     "command": "echo \"Sequence 2 - Step 1 executed\"",
@@ -30,6 +36,8 @@
     "output_verification_pass": true
   },
   {
+    "type": "test_execution",
+    "schema": "tcms/execution-log.schema.v1.json",
     "test_sequence": 2,
     "step": 2,
     "command": "echo \"Sequence 2 - Step 2 executed\"",
@@ -40,6 +48,8 @@
     "output_verification_pass": true
   },
   {
+    "type": "test_execution",
+    "schema": "tcms/execution-log.schema.v1.json",
     "test_sequence": 3,
     "step": 1,
     "command": "echo \"Sequence 3 - Step 1 executed\"",
@@ -50,6 +60,8 @@
     "output_verification_pass": true
   },
   {
+    "type": "test_execution",
+    "schema": "tcms/execution-log.schema.v1.json",
     "test_sequence": 0,
     "step": 0,
     "command": "scripts/hook_script_end_error.sh",

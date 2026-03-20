@@ -1,5 +1,7 @@
 [
   {
+    "type": "test_execution",
+    "schema": "tcms/execution-log.schema.v1.json",
     "test_sequence": 1,
     "step": 1,
     "command": "echo \"Single step test\"",

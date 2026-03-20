@@ -1,124 +1,119 @@
-requirement: "MANUAL_ALL_STEPS"
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: MANUAL_ALL_STEPS
 item: 1
 tc: 1
-id: 'TC_MANUAL_ALL_001'
-description: 'Test case with all manual steps and verification prompts - demonstrates pure manual testing workflow'
-
+id: TC_MANUAL_ALL_001
+description: Test case with all manual steps and verification prompts - demonstrates
+  pure manual testing workflow
 general_initial_conditions:
   system:
-    - "Test operator is available to perform manual actions"
-    - "Physical access to the device is available"
+  - Test operator is available to perform manual actions
+  - Physical access to the device is available
   documentation:
-    - "Test procedure documentation is accessible"
-
+  - Test procedure documentation is accessible
 initial_conditions:
   environment:
-    - "Testing environment is set up and ready"
+  - Testing environment is set up and ready
   device:
-    - "Device under test is accessible"
-
+  - Device under test is accessible
 test_sequences:
-  - id: 1
-    name: "Complete Manual Testing Workflow"
-    description: |
-                  This test sequence demonstrates a complete manual testing workflow
-                  where all steps require human interaction and verification.
-    initial_conditions:
-      system:
-        - "Tester is ready to perform manual actions"
-    steps:
-      - step: 1
-        manual: true
-        description: "Power on the device using the physical power button"
-        command: "Press and hold the power button for 2 seconds"
-        expected:
-          success: true
-          result: 0
-          output: "Device LED turns on and boot sequence begins"
-        verification:
-          result: "true"
-          output: "Did the device LED turn on and boot sequence start? (Y/n)"
-      
-      - step: 2
-        manual: true
-        description: "Observe boot messages on the device display"
-        command: "Watch the device screen during boot"
-        expected:
-          success: true
-          result: 0
-          output: "Boot messages appear showing initialization progress"
-        verification:
-          result: "true"
-          output: "Did you see boot messages showing initialization progress? (Y/n)"
-      
-      - step: 3
-        manual: true
-        description: "Wait for login prompt to appear"
-        command: "Monitor the screen until login prompt is visible"
-        expected:
-          success: true
-          result: 0
-          output: "Login prompt appears within 60 seconds"
-        verification:
-          result: "true"
-          output: "Did the login prompt appear within 60 seconds? (Y/n)"
-      
-      - step: 4
-        manual: true
-        description: "Enter username at login prompt"
-        command: "Type 'testuser' at the login prompt and press Enter"
-        expected:
-          success: true
-          result: 0
-          output: "Password prompt appears"
-        verification:
-          result: "true"
-          output: "Did the password prompt appear after entering username? (Y/n)"
-      
-      - step: 5
-        manual: true
-        description: "Enter password and complete login"
-        command: "Type the password and press Enter"
-        expected:
-          success: true
-          result: 0
-          output: "Login succeeds and shell prompt appears"
-        verification:
-          result: "true"
-          output: "Did you successfully login and see the shell prompt? (Y/n)"
-      
-      - step: 6
-        manual: true
-        description: "Navigate to application menu"
-        command: "Open the main application menu from the GUI"
-        expected:
-          success: true
-          result: 0
-          output: "Application menu displays all available options"
-        verification:
-          result: "true"
-          output: "Did the application menu open and display all options? (Y/n)"
-      
-      - step: 7
-        manual: true
-        description: "Launch diagnostic tool from menu"
-        command: "Select Diagnostics from the menu and click Run"
-        expected:
-          success: true
-          result: 0
-          output: "Diagnostic tool launches and shows status window"
-        verification:
-          result: "true"
-          output: "Did the diagnostic tool launch successfully? (Y/n)"
-      
-      - step: 8
-        manual: true
-        description: "Verify diagnostic results"
-        command: "Review the diagnostic results displayed in the window"
-        expected:
-          success: true
-          result: 0
-          output: "All diagnostic checks show PASS status"
-        verification:
-          result: "true"
-          output: "Do all diagnostic checks show PASS status? (Y/n)"
+- id: 1
+  name: Complete Manual Testing Workflow
+  description: 'This test sequence demonstrates a complete manual testing workflow
+
+    where all steps require human interaction and verification.
+
+    '
+  initial_conditions:
+    system:
+    - Tester is ready to perform manual actions
+  steps:
+  - step: 1
+    manual: true
+    description: Power on the device using the physical power button
+    command: Press and hold the power button for 2 seconds
+    expected:
+      success: true
+      result: 0
+      output: Device LED turns on and boot sequence begins
+    verification:
+      result: 'true'
+      output: Did the device LED turn on and boot sequence start? (Y/n)
+  - step: 2
+    manual: true
+    description: Observe boot messages on the device display
+    command: Watch the device screen during boot
+    expected:
+      success: true
+      result: 0
+      output: Boot messages appear showing initialization progress
+    verification:
+      result: 'true'
+      output: Did you see boot messages showing initialization progress? (Y/n)
+  - step: 3
+    manual: true
+    description: Wait for login prompt to appear
+    command: Monitor the screen until login prompt is visible
+    expected:
+      success: true
+      result: 0
+      output: Login prompt appears within 60 seconds
+    verification:
+      result: 'true'
+      output: Did the login prompt appear within 60 seconds? (Y/n)
+  - step: 4
+    manual: true
+    description: Enter username at login prompt
+    command: Type 'testuser' at the login prompt and press Enter
+    expected:
+      success: true
+      result: 0
+      output: Password prompt appears
+    verification:
+      result: 'true'
+      output: Did the password prompt appear after entering username? (Y/n)
+  - step: 5
+    manual: true
+    description: Enter password and complete login
+    command: Type the password and press Enter
+    expected:
+      success: true
+      result: 0
+      output: Login succeeds and shell prompt appears
+    verification:
+      result: 'true'
+      output: Did you successfully login and see the shell prompt? (Y/n)
+  - step: 6
+    manual: true
+    description: Navigate to application menu
+    command: Open the main application menu from the GUI
+    expected:
+      success: true
+      result: 0
+      output: Application menu displays all available options
+    verification:
+      result: 'true'
+      output: Did the application menu open and display all options? (Y/n)
+  - step: 7
+    manual: true
+    description: Launch diagnostic tool from menu
+    command: Select Diagnostics from the menu and click Run
+    expected:
+      success: true
+      result: 0
+      output: Diagnostic tool launches and shows status window
+    verification:
+      result: 'true'
+      output: Did the diagnostic tool launch successfully? (Y/n)
+  - step: 8
+    manual: true
+    description: Verify diagnostic results
+    command: Review the diagnostic results displayed in the window
+    expected:
+      success: true
+      result: 0
+      output: All diagnostic checks show PASS status
+    verification:
+      result: 'true'
+      output: Do all diagnostic checks show PASS status? (Y/n)

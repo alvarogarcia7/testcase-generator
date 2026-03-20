@@ -39,6 +39,8 @@ fn create_test_case_with_hooks(hooks: Option<Hooks>) -> TestCase {
     };
 
     TestCase {
+        doc_type: None,
+        schema: None,
         requirement: "REQ001".to_string(),
         item: 1,
         tc: 1,
@@ -638,6 +640,8 @@ fn test_hook_test_case_id_available() {
 #[test]
 fn test_hook_execution_entry_with_hook_type() {
     let entry = TestStepExecutionEntry {
+        doc_type: None,
+        schema: None,
         test_sequence: 1,
         step: 2,
         command: "scripts/hook.sh".to_string(),
@@ -663,6 +667,8 @@ fn test_hook_execution_entry_with_hook_type() {
 #[test]
 fn test_hook_execution_entry_display_with_hook() {
     let entry = TestStepExecutionEntry {
+        doc_type: None,
+        schema: None,
         test_sequence: 1,
         step: 2,
         command: "scripts/hook.sh".to_string(),
@@ -683,6 +689,8 @@ fn test_hook_execution_entry_display_with_hook() {
 #[test]
 fn test_hook_execution_entry_yaml_roundtrip() {
     let entry = TestStepExecutionEntry {
+        doc_type: None,
+        schema: None,
         test_sequence: 1,
         step: 1,
         command: "scripts/hook.sh".to_string(),
@@ -979,6 +987,8 @@ fn test_hook_non_executable_handling() {
 #[test]
 fn test_hook_execution_entry_without_hook_type() {
     let entry = TestStepExecutionEntry {
+        doc_type: None,
+        schema: None,
         test_sequence: 1,
         step: 1,
         command: "echo test".to_string(),

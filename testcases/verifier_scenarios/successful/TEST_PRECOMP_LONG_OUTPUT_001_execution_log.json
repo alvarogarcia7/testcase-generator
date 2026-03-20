@@ -1,5 +1,7 @@
 [
   {
+    "type": "test_execution",
+    "schema": "tcms/execution-log.schema.v1.json",
     "test_sequence": 1,
     "step": 1,
     "command": "printf \"Line 1\\nLine 2\\nLine 3\"",
@@ -10,6 +12,8 @@
     "output_verification_pass": true
   },
   {
+    "type": "test_execution",
+    "schema": "tcms/execution-log.schema.v1.json",
     "test_sequence": 1,
     "step": 2,
     "command": "echo \"This is a longer output message with multiple words\"",

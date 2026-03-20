@@ -1,203 +1,234 @@
-requirement: "TEXT_PROCESSING"
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: TEXT_PROCESSING
 item: 1
 tc: 1
-id: 'TC_SUCCESS_TEXT_PROCESSING_001'
-description: 'Advanced text processing with sed, awk, and grep - demonstrates complex text manipulation and pattern matching'
-
+id: TC_SUCCESS_TEXT_PROCESSING_001
+description: Advanced text processing with sed, awk, and grep - demonstrates complex
+  text manipulation and pattern matching
 general_initial_conditions:
   system:
-    - "Bash shell is available"
-    - "Text processing utilities (sed, awk, grep) are installed"
-
+  - Bash shell is available
+  - Text processing utilities (sed, awk, grep) are installed
 initial_conditions:
   system:
-    - "Text processing tools work correctly"
-
+  - Text processing tools work correctly
 test_sequences:
-  - id: 1
-    name: "Pattern Matching and Extraction"
-    description: "Use grep, sed, and awk for text pattern operations"
-    initial_conditions:
-      system:
-        - "Pattern matching utilities available"
-    steps:
-      - step: 1
-        description: "Extract fields using awk"
-        command: |
-          echo "john,doe,30,engineer" | awk -F',' '{print "First: "$1" Last: "$2" Age: "$3" Role: "$4}'
-        capture_vars:
-          - name: first_name
-            capture: 'First: ([a-z]+)'
-          - name: age
-            capture: 'Age: ([0-9]+)'
-          - name: role
-            capture: 'Role: ([a-z]+)'
-        expected:
-          success: true
-          result: '0'
-          output: "First:"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "grep -q 'First:' <<< \"$COMMAND_OUTPUT\""
-          general:
-            - name: verify_first_name
-              condition: "[[ \"$first_name\" == \"john\" ]]"
-            - name: verify_age_numeric
-              condition: "[[ $age -eq 30 ]]"
-            - name: verify_role
-              condition: "[[ \"$role\" == \"engineer\" ]]"
+- id: 1
+  name: Pattern Matching and Extraction
+  description: Use grep, sed, and awk for text pattern operations
+  initial_conditions:
+    system:
+    - Pattern matching utilities available
+  steps:
+  - step: 1
+    description: Extract fields using awk
+    command: 'echo "john,doe,30,engineer" | awk -F'','' ''{print "First: "$1" Last:
+      "$2" Age: "$3" Role: "$4}''
 
-      - step: 2
-        description: "Transform text with sed"
-        command: |
-          echo "Error: Connection timeout at 2024-01-15 10:30:45" | sed -E 's/Error:/WARNING:/g'
-        capture_vars:
-          - name: message_type
-            capture: '^([A-Z]+):'
-          - name: timestamp
-            capture: '([0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2})'
-        expected:
-          success: true
-          result: '0'
-          output: "WARNING:"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "grep -q 'WARNING:' <<< \"$COMMAND_OUTPUT\""
-          general:
-            - name: verify_message_type_changed
-              condition: "[[ \"$message_type\" == \"WARNING\" ]]"
-            - name: verify_timestamp_format
-              condition: "[[ \"$timestamp\" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}' '[0-9]{2}:[0-9]{2}:[0-9]{2}$ ]]"
+      '
+    capture_vars:
+    - name: first_name
+      capture: 'First: ([a-z]+)'
+    - name: age
+      capture: 'Age: ([0-9]+)'
+    - name: role
+      capture: 'Role: ([a-z]+)'
+    expected:
+      success: true
+      result: '0'
+      output: 'First:'
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: grep -q 'First:' <<< "$COMMAND_OUTPUT"
+      general:
+      - name: verify_first_name
+        condition: '[[ "$first_name" == "john" ]]'
+      - name: verify_age_numeric
+        condition: '[[ $age -eq 30 ]]'
+      - name: verify_role
+        condition: '[[ "$role" == "engineer" ]]'
+  - step: 2
+    description: Transform text with sed
+    command: 'echo "Error: Connection timeout at 2024-01-15 10:30:45" | sed -E ''s/Error:/WARNING:/g''
 
-      - step: 3
-        description: "Count occurrences with grep"
-        command: |
-          cat << 'EOF' | grep -o 'error' | wc -l
-          error in line 1
-          warning in line 2
-          error in line 3
-          info in line 4
-          error in line 5
-          EOF
-        capture_vars:
-          - name: error_count
-            capture: '^([0-9]+)$'
-        expected:
-          success: true
-          result: '0'
-          output: "3"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" -eq 3 ]]"
-          general:
-            - name: verify_error_count
-              condition: "[[ $error_count -eq 3 ]]"
+      '
+    capture_vars:
+    - name: message_type
+      capture: '^([A-Z]+):'
+    - name: timestamp
+      capture: ([0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2})
+    expected:
+      success: true
+      result: '0'
+      output: 'WARNING:'
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: grep -q 'WARNING:' <<< "$COMMAND_OUTPUT"
+      general:
+      - name: verify_message_type_changed
+        condition: '[[ "$message_type" == "WARNING" ]]'
+      - name: verify_timestamp_format
+        condition: '[[ "$timestamp" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}'' ''[0-9]{2}:[0-9]{2}:[0-9]{2}$
+          ]]'
+  - step: 3
+    description: Count occurrences with grep
+    command: 'cat << ''EOF'' | grep -o ''error'' | wc -l
 
-      - step: 4
-        description: "Extract and sum numbers with awk"
-        command: |
-          cat << 'EOF' | awk '{sum += $2} END {print sum}'
-          Item1 100
-          Item2 250
-          Item3 150
-          EOF
-        capture_vars:
-          - name: total_sum
-            capture: '^([0-9]+)$'
-        expected:
-          success: true
-          result: '0'
-          output: "500"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" -eq 500 ]]"
-          general:
-            - name: verify_sum_calculated
-              condition: "[[ $total_sum -eq 500 ]]"
+      error in line 1
 
-  - id: 2
-    name: "Complex Text Transformations"
-    description: "Perform advanced text transformations and validations"
-    initial_conditions:
-      system:
-        - "Advanced text processing available"
-    steps:
-      - step: 1
-        description: "Parse CSV and calculate average"
-        command: |
-          cat << 'EOF' | awk -F',' 'NR>1 {sum+=$3; count++} END {printf "%.2f\n", sum/count}'
-          Name,Age,Score
-          Alice,25,85
-          Bob,30,92
-          Charlie,28,78
-          Diana,32,88
-          EOF
-        capture_vars:
-          - name: average_score
-            capture: '^([0-9]+\.[0-9]+)$'
-        expected:
-          success: true
-          result: '0'
-          output: "average"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+\\.[0-9]+$ ]]"
-          general:
-            - name: verify_average_in_range
-              condition: "[[ $(echo \"$average_score > 80 && $average_score < 90\" | bc) -eq 1 ]]"
+      warning in line 2
 
-      - step: 2
-        description: "Extract and format log data"
-        command: |
-          cat << 'EOF' | grep 'ERROR' | sed -E 's/.*\[([0-9:]+)\].*Code:([0-9]+).*/\1 - \2/g'
-          [10:30:15] INFO: Request received
-          [10:30:16] ERROR: Database connection failed Code:500
-          [10:30:17] WARN: Retrying connection
-          [10:30:18] ERROR: Timeout occurred Code:408
-          EOF
-        capture_vars:
-          - name: error_times
-            command: "cat << 'EOF' | grep 'ERROR' | wc -l
-          [10:30:15] INFO: Request received
-          [10:30:16] ERROR: Database connection failed Code:500
-          [10:30:17] WARN: Retrying connection
-          [10:30:18] ERROR: Timeout occurred Code:408
-          EOF"
-        expected:
-          success: true
-          result: '0'
-          output: ":"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "grep -q ':' <<< \"$COMMAND_OUTPUT\""
-          general:
-            - name: verify_error_count
-              condition: "[[ $error_times -eq 2 ]]"
+      error in line 3
 
-      - step: 3
-        description: "Filter and aggregate data"
-        command: |
-          cat << 'EOF' | awk '$3 > 50 {count++; sum+=$3} END {print "Count: "count" Total: "sum}'
-          Product1 10 25
-          Product2 5 75
-          Product3 8 60
-          Product4 15 45
-          Product5 12 80
-          EOF
-        capture_vars:
-          - name: filtered_count
-            capture: 'Count: ([0-9]+)'
-          - name: filtered_total
-            capture: 'Total: ([0-9]+)'
-        expected:
-          success: true
-          result: '0'
-          output: "Count:"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "grep -q 'Count:' <<< \"$COMMAND_OUTPUT\""
-          general:
-            - name: verify_filtered_count
-              condition: "[[ $filtered_count -eq 3 ]]"
-            - name: verify_filtered_total
-              condition: "[[ $filtered_total -eq 215 ]]"
+      info in line 4
+
+      error in line 5
+
+      EOF
+
+      '
+    capture_vars:
+    - name: error_count
+      capture: ^([0-9]+)$
+    expected:
+      success: true
+      result: '0'
+      output: '3'
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" -eq 3 ]]'
+      general:
+      - name: verify_error_count
+        condition: '[[ $error_count -eq 3 ]]'
+  - step: 4
+    description: Extract and sum numbers with awk
+    command: 'cat << ''EOF'' | awk ''{sum += $2} END {print sum}''
+
+      Item1 100
+
+      Item2 250
+
+      Item3 150
+
+      EOF
+
+      '
+    capture_vars:
+    - name: total_sum
+      capture: ^([0-9]+)$
+    expected:
+      success: true
+      result: '0'
+      output: '500'
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" -eq 500 ]]'
+      general:
+      - name: verify_sum_calculated
+        condition: '[[ $total_sum -eq 500 ]]'
+- id: 2
+  name: Complex Text Transformations
+  description: Perform advanced text transformations and validations
+  initial_conditions:
+    system:
+    - Advanced text processing available
+  steps:
+  - step: 1
+    description: Parse CSV and calculate average
+    command: 'cat << ''EOF'' | awk -F'','' ''NR>1 {sum+=$3; count++} END {printf "%.2f\n",
+      sum/count}''
+
+      Name,Age,Score
+
+      Alice,25,85
+
+      Bob,30,92
+
+      Charlie,28,78
+
+      Diana,32,88
+
+      EOF
+
+      '
+    capture_vars:
+    - name: average_score
+      capture: ^([0-9]+\.[0-9]+)$
+    expected:
+      success: true
+      result: '0'
+      output: average
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" =~ ^[0-9]+\.[0-9]+$ ]]'
+      general:
+      - name: verify_average_in_range
+        condition: '[[ $(echo "$average_score > 80 && $average_score < 90" | bc) -eq
+          1 ]]'
+  - step: 2
+    description: Extract and format log data
+    command: 'cat << ''EOF'' | grep ''ERROR'' | sed -E ''s/.*\[([0-9:]+)\].*Code:([0-9]+).*/\1
+      - \2/g''
+
+      [10:30:15] INFO: Request received
+
+      [10:30:16] ERROR: Database connection failed Code:500
+
+      [10:30:17] WARN: Retrying connection
+
+      [10:30:18] ERROR: Timeout occurred Code:408
+
+      EOF
+
+      '
+    capture_vars:
+    - name: error_times
+      command: 'cat << ''EOF'' | grep ''ERROR'' | wc -l [10:30:15] INFO: Request received
+        [10:30:16] ERROR: Database connection failed Code:500 [10:30:17] WARN: Retrying
+        connection [10:30:18] ERROR: Timeout occurred Code:408 EOF'
+    expected:
+      success: true
+      result: '0'
+      output: ':'
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: grep -q ':' <<< "$COMMAND_OUTPUT"
+      general:
+      - name: verify_error_count
+        condition: '[[ $error_times -eq 2 ]]'
+  - step: 3
+    description: Filter and aggregate data
+    command: 'cat << ''EOF'' | awk ''$3 > 50 {count++; sum+=$3} END {print "Count:
+      "count" Total: "sum}''
+
+      Product1 10 25
+
+      Product2 5 75
+
+      Product3 8 60
+
+      Product4 15 45
+
+      Product5 12 80
+
+      EOF
+
+      '
+    capture_vars:
+    - name: filtered_count
+      capture: 'Count: ([0-9]+)'
+    - name: filtered_total
+      capture: 'Total: ([0-9]+)'
+    expected:
+      success: true
+      result: '0'
+      output: 'Count:'
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: grep -q 'Count:' <<< "$COMMAND_OUTPUT"
+      general:
+      - name: verify_filtered_count
+        condition: '[[ $filtered_count -eq 3 ]]'
+      - name: verify_filtered_total
+        condition: '[[ $filtered_total -eq 215 ]]'

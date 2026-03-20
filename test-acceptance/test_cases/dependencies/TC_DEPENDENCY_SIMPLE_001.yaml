@@ -1,60 +1,58 @@
-requirement: "DEPENDENCY_SIMPLE"
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: DEPENDENCY_SIMPLE
 item: 1
 tc: 1
-id: 'TC_DEPENDENCY_SIMPLE_001'
-description: 'Simple dependency test - test case has dependency on another test case (TC_SUCCESS_SIMPLE_001)'
-
+id: TC_DEPENDENCY_SIMPLE_001
+description: Simple dependency test - test case has dependency on another test case
+  (TC_SUCCESS_SIMPLE_001)
 general_initial_conditions:
   include:
-    - id: 'TC_SUCCESS_SIMPLE_001'
+  - id: TC_SUCCESS_SIMPLE_001
   system:
-    - "Bash shell is available"
-    - "Basic Unix utilities are installed"
-    - "Depends on TC_SUCCESS_SIMPLE_001"
-
+  - Bash shell is available
+  - Basic Unix utilities are installed
+  - Depends on TC_SUCCESS_SIMPLE_001
 initial_conditions:
   filesystem:
-    - "Temporary directory /tmp is writable"
+  - Temporary directory /tmp is writable
   system:
-    - "Dependencies from TC_SUCCESS_SIMPLE_001 must be satisfied"
-
+  - Dependencies from TC_SUCCESS_SIMPLE_001 must be satisfied
 test_sequences:
-  - id: 1
-    name: "Dependent Execution"
-    description: "Execute test that depends on another test case"
-    initial_conditions:
-      system:
-        - "Dependencies are established via include reference"
-    steps:
-      - step: 1
-        description: "Verify dependency satisfaction"
-        command: "echo 'Dependencies satisfied from TC_SUCCESS_SIMPLE_001'"
-        expected:
-          success: true
-          result: '0'
-          output: "Dependencies satisfied"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Dependencies satisfied' <<< \"$COMMAND_OUTPUT\""
-
-      - step: 2
-        description: "Execute dependent operation"
-        command: "echo 'Executing dependent test' && date +%Y-%m-%d"
-        expected:
-          success: true
-          result: '0'
-          output: "Executing dependent test"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Executing dependent test' <<< \"$COMMAND_OUTPUT\""
-
-      - step: 3
-        description: "Complete dependent test"
-        command: "echo 'Test completed successfully'"
-        expected:
-          success: true
-          result: '0'
-          output: "Test completed successfully"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Test completed successfully' <<< \"$COMMAND_OUTPUT\""
+- id: 1
+  name: Dependent Execution
+  description: Execute test that depends on another test case
+  initial_conditions:
+    system:
+    - Dependencies are established via include reference
+  steps:
+  - step: 1
+    description: Verify dependency satisfaction
+    command: echo 'Dependencies satisfied from TC_SUCCESS_SIMPLE_001'
+    expected:
+      success: true
+      result: '0'
+      output: Dependencies satisfied
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Dependencies satisfied' <<< "$COMMAND_OUTPUT"
+  - step: 2
+    description: Execute dependent operation
+    command: echo 'Executing dependent test' && date +%Y-%m-%d
+    expected:
+      success: true
+      result: '0'
+      output: Executing dependent test
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Executing dependent test' <<< "$COMMAND_OUTPUT"
+  - step: 3
+    description: Complete dependent test
+    command: echo 'Test completed successfully'
+    expected:
+      success: true
+      result: '0'
+      output: Test completed successfully
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Test completed successfully' <<< "$COMMAND_OUTPUT"

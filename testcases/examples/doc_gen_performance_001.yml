@@ -1,73 +1,80 @@
-requirement: "DOC_GEN_PERFORMANCE"
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: DOC_GEN_PERFORMANCE
 item: 1
 tc: 1
-id: 'DOC_GEN_PERFORMANCE_001'
-description: 'Comprehensive performance testing including load testing, stress testing, benchmarking, and resource monitoring'
-
+id: DOC_GEN_PERFORMANCE_001
+description: Comprehensive performance testing including load testing, stress testing,
+  benchmarking, and resource monitoring
 general_initial_conditions:
   system:
-    - "Performance monitoring tools are installed (time, bc, vmstat)"
-    - "System has sufficient resources for testing"
-
+  - Performance monitoring tools are installed (time, bc, vmstat)
+  - System has sufficient resources for testing
 initial_conditions:
   system:
-    - "Baseline performance metrics are established"
+  - Baseline performance metrics are established
   monitoring:
-    - "Resource monitoring is configured"
-
+  - Resource monitoring is configured
 test_sequences:
-  - id: 1
-    name: "CPU and Memory Performance"
-    description: |
-                   Measure CPU performance, memory usage,
-                   and I/O operations under load.
-    initial_conditions:
-      system:
-        - "Performance testing environment ready"
-    steps:
-      - step: 1
-        description: "Measure CPU count"
-        command: |
-          CPU_COUNT=$(sysctl -n hw.ncpu 2>/dev/null || nproc 2>/dev/null || echo "1")
-          echo "CPU_COUNT: $CPU_COUNT"
-        expected:
-          success: true
-          result: 0
-          output: "CPU_COUNT:"
-        capture:
-          - variable: CPU_COUNT
-            pattern: "CPU_COUNT: ([0-9]+)"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'CPU_COUNT:' <<< \"$COMMAND_OUTPUT\""
-      - step: 2
-        description: "Create test file and measure write speed"
-        command: |
-          dd if=/dev/zero of=/tmp/perf_test.bin bs=1M count=10 2>&1 | grep -v records || echo "Written"
-        expected:
-          success: true
-          result: 0
-          output: ""
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "test -f /tmp/perf_test.bin"
-      - step: 3
-        description: "Measure file read speed"
-        command: cat /tmp/perf_test.bin > /dev/null && echo "Read complete"
-        expected:
-          success: true
-          result: 0
-          output: "Read complete"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Read complete' <<< \"$COMMAND_OUTPUT\""
-      - step: 4
-        description: "Cleanup test file"
-        command: rm -f /tmp/perf_test.bin && echo "Cleaned"
-        expected:
-          success: true
-          result: 0
-          output: "Cleaned"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "! test -f /tmp/perf_test.bin"
+- id: 1
+  name: CPU and Memory Performance
+  description: 'Measure CPU performance, memory usage,
+
+    and I/O operations under load.
+
+    '
+  initial_conditions:
+    system:
+    - Performance testing environment ready
+  steps:
+  - step: 1
+    description: Measure CPU count
+    command: 'CPU_COUNT=$(sysctl -n hw.ncpu 2>/dev/null || nproc 2>/dev/null || echo
+      "1")
+
+      echo "CPU_COUNT: $CPU_COUNT"
+
+      '
+    expected:
+      success: true
+      result: 0
+      output: 'CPU_COUNT:'
+    capture:
+    - variable: CPU_COUNT
+      pattern: 'CPU_COUNT: ([0-9]+)'
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'CPU_COUNT:' <<< "$COMMAND_OUTPUT"
+  - step: 2
+    description: Create test file and measure write speed
+    command: 'dd if=/dev/zero of=/tmp/perf_test.bin bs=1M count=10 2>&1 | grep -v
+      records || echo "Written"
+
+      '
+    expected:
+      success: true
+      result: 0
+      output: ''
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: test -f /tmp/perf_test.bin
+  - step: 3
+    description: Measure file read speed
+    command: cat /tmp/perf_test.bin > /dev/null && echo "Read complete"
+    expected:
+      success: true
+      result: 0
+      output: Read complete
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Read complete' <<< "$COMMAND_OUTPUT"
+  - step: 4
+    description: Cleanup test file
+    command: rm -f /tmp/perf_test.bin && echo "Cleaned"
+    expected:
+      success: true
+      result: 0
+      output: Cleaned
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: '! test -f /tmp/perf_test.bin'

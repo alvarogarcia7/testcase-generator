@@ -1,124 +1,119 @@
-requirement: "MANUAL_OUTPUT_VERIFICATION"
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: MANUAL_OUTPUT_VERIFICATION
 item: 1
 tc: 4
-id: 'TC_MANUAL_OUTPUT_VERIFY_001'
-description: 'Test case with manual steps requiring output verification - demonstrates validation of command outputs and displays'
-
+id: TC_MANUAL_OUTPUT_VERIFY_001
+description: Test case with manual steps requiring output verification - demonstrates
+  validation of command outputs and displays
 general_initial_conditions:
   system:
-    - "Output verification tools are available"
-    - "Display devices are functional"
+  - Output verification tools are available
+  - Display devices are functional
   tester:
-    - "Test operator can observe system outputs"
-
+  - Test operator can observe system outputs
 initial_conditions:
   display:
-    - "Display is configured and visible"
+  - Display is configured and visible
   logging:
-    - "Output logging is enabled"
-
+  - Output logging is enabled
 test_sequences:
-  - id: 1
-    name: "Manual Output Verification Testing"
-    description: |
-                  This test sequence focuses on verifying outputs from manual
-                  operations including visual displays, logs, and messages.
-    initial_conditions:
-      system:
-        - "System is ready for output verification"
-    steps:
-      - step: 1
-        manual: true
-        description: "Generate system status report"
-        command: "Click System > Generate Status Report"
-        expected:
-          success: true
-          result: 0
-          output: "Status report displays showing system information and metrics"
-        verification:
-          result: "true"
-          output: "Does the status report display system information correctly? (Y/n)"
-      
-      - step: 2
-        manual: true
-        description: "View detailed log output"
-        command: "Open Log Viewer and display recent system logs"
-        expected:
-          success: true
-          result: 0
-          output: "Log viewer shows timestamped entries with severity levels"
-        verification:
-          result: "true"
-          output: "Do the logs show timestamps and severity levels correctly? (Y/n)"
-      
-      - step: 3
-        manual: true
-        description: "Display network statistics"
-        command: "Navigate to Network > Statistics and view current stats"
-        expected:
-          success: true
-          result: 0
-          output: "Network statistics display with packet counts and throughput"
-        verification:
-          result: "true"
-          output: "Do network statistics display packet counts and throughput? (Y/n)"
-      
-      - step: 4
-        manual: true
-        description: "Generate diagnostic report with graphs"
-        command: "Run Diagnostics > Performance Analysis with graphical output"
-        expected:
-          success: true
-          result: 0
-          output: "Performance graphs display CPU, memory, and disk usage over time"
-        verification:
-          result: "true"
-          output: "Do the performance graphs display correctly for all metrics? (Y/n)"
-      
-      - step: 5
-        manual: true
-        description: "View system error messages"
-        command: "Open System Messages panel and filter for warnings/errors"
-        expected:
-          success: true
-          result: 0
-          output: "No critical errors displayed, only informational messages"
-        verification:
-          result: "true"
-          output: "Are there no critical errors, only informational messages? (Y/n)"
-      
-      - step: 6
-        manual: true
-        description: "Display device configuration output"
-        command: "Navigate to Configuration > View Current Settings"
-        expected:
-          success: true
-          result: 0
-          output: "Configuration settings display in structured format"
-        verification:
-          result: "true"
-          output: "Do configuration settings display in proper structured format? (Y/n)"
-      
-      - step: 7
-        manual: true
-        description: "Generate and view test results summary"
-        command: "Click Tests > View Summary to see aggregated test results"
-        expected:
-          success: true
-          result: 0
-          output: "Summary shows test counts, pass/fail statistics, and percentages"
-        verification:
-          result: "true"
-          output: "Does the summary show all test statistics correctly? (Y/n)"
-      
-      - step: 8
-        manual: true
-        description: "Export output to file and verify"
-        command: "Use Export > Save to File and confirm file creation"
-        expected:
-          success: true
-          result: 0
-          output: "Export completes and success message displays file location"
-        verification:
-          result: "true"
-          output: "Did export complete with success message showing file location? (Y/n)"
+- id: 1
+  name: Manual Output Verification Testing
+  description: 'This test sequence focuses on verifying outputs from manual
+
+    operations including visual displays, logs, and messages.
+
+    '
+  initial_conditions:
+    system:
+    - System is ready for output verification
+  steps:
+  - step: 1
+    manual: true
+    description: Generate system status report
+    command: Click System > Generate Status Report
+    expected:
+      success: true
+      result: 0
+      output: Status report displays showing system information and metrics
+    verification:
+      result: 'true'
+      output: Does the status report display system information correctly? (Y/n)
+  - step: 2
+    manual: true
+    description: View detailed log output
+    command: Open Log Viewer and display recent system logs
+    expected:
+      success: true
+      result: 0
+      output: Log viewer shows timestamped entries with severity levels
+    verification:
+      result: 'true'
+      output: Do the logs show timestamps and severity levels correctly? (Y/n)
+  - step: 3
+    manual: true
+    description: Display network statistics
+    command: Navigate to Network > Statistics and view current stats
+    expected:
+      success: true
+      result: 0
+      output: Network statistics display with packet counts and throughput
+    verification:
+      result: 'true'
+      output: Do network statistics display packet counts and throughput? (Y/n)
+  - step: 4
+    manual: true
+    description: Generate diagnostic report with graphs
+    command: Run Diagnostics > Performance Analysis with graphical output
+    expected:
+      success: true
+      result: 0
+      output: Performance graphs display CPU, memory, and disk usage over time
+    verification:
+      result: 'true'
+      output: Do the performance graphs display correctly for all metrics? (Y/n)
+  - step: 5
+    manual: true
+    description: View system error messages
+    command: Open System Messages panel and filter for warnings/errors
+    expected:
+      success: true
+      result: 0
+      output: No critical errors displayed, only informational messages
+    verification:
+      result: 'true'
+      output: Are there no critical errors, only informational messages? (Y/n)
+  - step: 6
+    manual: true
+    description: Display device configuration output
+    command: Navigate to Configuration > View Current Settings
+    expected:
+      success: true
+      result: 0
+      output: Configuration settings display in structured format
+    verification:
+      result: 'true'
+      output: Do configuration settings display in proper structured format? (Y/n)
+  - step: 7
+    manual: true
+    description: Generate and view test results summary
+    command: Click Tests > View Summary to see aggregated test results
+    expected:
+      success: true
+      result: 0
+      output: Summary shows test counts, pass/fail statistics, and percentages
+    verification:
+      result: 'true'
+      output: Does the summary show all test statistics correctly? (Y/n)
+  - step: 8
+    manual: true
+    description: Export output to file and verify
+    command: Use Export > Save to File and confirm file creation
+    expected:
+      success: true
+      result: 0
+      output: Export completes and success message displays file location
+    verification:
+      result: 'true'
+      output: Did export complete with success message showing file location? (Y/n)

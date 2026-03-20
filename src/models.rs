@@ -437,6 +437,14 @@ impl fmt::Display for TestSequence {
 /// A complete test case following the GSMA schema
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TestCase {
+    /// Document type (envelope field)
+    #[serde(rename = "type", default, skip_serializing_if = "Option::is_none")]
+    pub doc_type: Option<String>,
+
+    /// Schema reference (envelope field)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub schema: Option<String>,
+
     /// Requirement identifier
     pub requirement: String,
 
@@ -496,6 +504,8 @@ impl TestCase {
     /// Create a new test case with required fields
     pub fn new(requirement: String, item: i64, tc: i64, id: String, description: String) -> Self {
         Self {
+            doc_type: None,
+            schema: None,
             requirement,
             item,
             tc,
@@ -859,6 +869,14 @@ impl fmt::Display for HookType {
 /// Test step execution entry following the test execution log schema
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TestStepExecutionEntry {
+    /// Document type (envelope field)
+    #[serde(rename = "type", default, skip_serializing_if = "Option::is_none")]
+    pub doc_type: Option<String>,
+
+    /// Schema reference (envelope field)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub schema: Option<String>,
+
     /// Sequence number of the test
     pub test_sequence: i64,
 
@@ -906,6 +924,8 @@ impl TestStepExecutionEntry {
         output_verification_pass: bool,
     ) -> Self {
         Self {
+            doc_type: None,
+            schema: None,
             test_sequence,
             step,
             command,
@@ -932,6 +952,8 @@ impl TestStepExecutionEntry {
         output_verification_pass: bool,
     ) -> Self {
         Self {
+            doc_type: None,
+            schema: None,
             test_sequence,
             step,
             command,
@@ -1601,8 +1623,8 @@ mod tests {
         assert_eq!(entry.exit_code, 0);
         assert_eq!(entry.output, "test output");
         assert_eq!(entry.timestamp, None);
-        assert_eq!(entry.result_verification_pass, true);
-        assert_eq!(entry.output_verification_pass, true);
+        assert!(entry.result_verification_pass);
+        assert!(entry.output_verification_pass);
     }
 
     #[test]
@@ -1624,8 +1646,8 @@ mod tests {
         assert_eq!(entry.exit_code, 0);
         assert_eq!(entry.output, "test output");
         assert_eq!(entry.timestamp, Some("2024-01-15T10:30:00Z".to_string()));
-        assert_eq!(entry.result_verification_pass, true);
-        assert_eq!(entry.output_verification_pass, true);
+        assert!(entry.result_verification_pass);
+        assert!(entry.output_verification_pass);
     }
 
     #[test]

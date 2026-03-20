@@ -1,77 +1,77 @@
-requirement: "HOOKS_SIMPLE"
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: HOOKS_SIMPLE
 item: 1
 tc: 1
-id: 'TC_HOOKS_SIMPLE_001'
-description: 'Simple test case with only script_start and script_end hooks to verify basic hook functionality.'
-
+id: TC_HOOKS_SIMPLE_001
+description: Simple test case with only script_start and script_end hooks to verify
+  basic hook functionality.
 general_initial_conditions:
   system:
-    - "Bash shell is available"
-
+  - Bash shell is available
 initial_conditions:
   filesystem:
-    - "Temporary directory /tmp is writable"
-
+  - Temporary directory /tmp is writable
 hooks:
   script_start:
-    command: |
-      echo "HOOK: script_start executed"
+    command: 'echo "HOOK: script_start executed"
+
       date +%s > /tmp/tc_hooks_simple_001_start.txt
+
+      '
   script_end:
-    command: |
-      echo "HOOK: script_end executed"
+    command: 'echo "HOOK: script_end executed"
+
       date +%s > /tmp/tc_hooks_simple_001_end.txt
-  on_error: "fail"
 
+      '
+  on_error: fail
 test_sequences:
-  - id: 1
-    name: "Simple Test with Basic Hooks"
-    description: "Execute a simple test with only script_start and script_end hooks"
-    initial_conditions:
-      system:
-        - "Test sequence ready"
-    steps:
-      - step: 1
-        description: "Execute simple echo command"
-        command: |
-          echo "Step 1: Testing basic hook functionality"
-          echo "Both script_start and script_end hooks should execute"
-        expected:
-          success: true
-          result: '0'
-          output: 'Step 1'
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Step 1' <<< \"$COMMAND_OUTPUT\""
+- id: 1
+  name: Simple Test with Basic Hooks
+  description: Execute a simple test with only script_start and script_end hooks
+  initial_conditions:
+    system:
+    - Test sequence ready
+  steps:
+  - step: 1
+    description: Execute simple echo command
+    command: 'echo "Step 1: Testing basic hook functionality"
 
-      - step: 2
-        description: "Verify start marker was created by script_start hook"
-        command: |
-          if [ -f /tmp/tc_hooks_simple_001_start.txt ]; then
-            echo "✓ script_start hook executed successfully"
-            START_TIME=$(cat /tmp/tc_hooks_simple_001_start.txt)
-            echo "Start time: $START_TIME"
-          else
-            echo "✗ script_start hook did not create marker file"
-            exit 1
-          fi
-        expected:
-          success: true
-          result: '0'
-          output: 'executed successfully'
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'executed successfully' <<< \"$COMMAND_OUTPUT\""
+      echo "Both script_start and script_end hooks should execute"
 
-      - step: 3
-        description: "Execute final step"
-        command: |
-          echo "Step 3: Final step execution"
-          echo "script_end hook will execute after this sequence completes"
-        expected:
-          success: true
-          result: '0'
-          output: 'Step 3'
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Step 3' <<< \"$COMMAND_OUTPUT\""
+      '
+    expected:
+      success: true
+      result: '0'
+      output: Step 1
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Step 1' <<< "$COMMAND_OUTPUT"
+  - step: 2
+    description: Verify start marker was created by script_start hook
+    command: "if [ -f /tmp/tc_hooks_simple_001_start.txt ]; then\n  echo \"✓ script_start\
+      \ hook executed successfully\"\n  START_TIME=$(cat /tmp/tc_hooks_simple_001_start.txt)\n\
+      \  echo \"Start time: $START_TIME\"\nelse\n  echo \"✗ script_start hook did\
+      \ not create marker file\"\n  exit 1\nfi\n"
+    expected:
+      success: true
+      result: '0'
+      output: executed successfully
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'executed successfully' <<< "$COMMAND_OUTPUT"
+  - step: 3
+    description: Execute final step
+    command: 'echo "Step 3: Final step execution"
+
+      echo "script_end hook will execute after this sequence completes"
+
+      '
+    expected:
+      success: true
+      result: '0'
+      output: Step 3
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Step 3' <<< "$COMMAND_OUTPUT"

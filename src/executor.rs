@@ -1899,6 +1899,8 @@ fi"#,
 
                 // Create a template entry with expected values
                 let entry = TestStepExecutionEntry {
+                    doc_type: None,
+                    schema: None,
                     test_sequence: sequence.id,
                     step: step.step,
                     command: step.command.clone(),

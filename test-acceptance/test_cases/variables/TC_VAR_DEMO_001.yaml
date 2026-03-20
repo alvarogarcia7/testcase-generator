@@ -1,99 +1,108 @@
-requirement: "VAR_DEMO"
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: VAR_DEMO
 item: 1
 tc: 1
-id: 'TC_VAR_DEMO_001'
-description: 'Demonstration test showing variable capture using command-based captures, validation of captured values through general verification conditions, and usage of captured variables in subsequent steps'
-
+id: TC_VAR_DEMO_001
+description: Demonstration test showing variable capture using command-based captures,
+  validation of captured values through general verification conditions, and usage
+  of captured variables in subsequent steps
 general_initial_conditions:
   system:
-    - "Bash shell is available"
-    - "Common Unix utilities (date, hostname, ps) are installed"
-
+  - Bash shell is available
+  - Common Unix utilities (date, hostname, ps) are installed
 initial_conditions:
   environment:
-    - "System utilities are accessible"
-    - "Variable capture functionality is enabled"
-
+  - System utilities are accessible
+  - Variable capture functionality is enabled
 test_sequences:
-  - id: 1
-    name: "Variable Capture and Usage Demonstration"
-    description: |
-                  Demonstrate the full lifecycle of variable usage in test cases:
-                  1. Capture system information using command-based captures
-                  2. Validate captured values using general verification conditions
-                  3. Use captured variables in subsequent commands
-    initial_conditions:
-      system:
-        - "System information commands available"
-    steps:
-      - step: 1
-        description: "Capture timestamp, hostname, and process count using command-based captures"
-        command: "echo 'Capturing system information...'"
-        capture_vars:
-          - name: timestamp
-            command: "date +%s"
-          - name: hostname
-            command: "hostname"
-          - name: process_count
-            command: "ps -e | wc -l | awk '{print $1}'"
-        expected:
-          success: true
-          result: '0'
-          output: 'Capturing system information'
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Capturing system information' <<< \"$COMMAND_OUTPUT\""
-          general:
-            - name: verify_timestamp_captured
-              condition: "[[ -n \"$timestamp\" ]]"
-            - name: verify_hostname_captured
-              condition: "[[ -n \"$hostname\" ]]"
-            - name: verify_process_count_captured
-              condition: "[[ -n \"$process_count\" ]]"
+- id: 1
+  name: Variable Capture and Usage Demonstration
+  description: 'Demonstrate the full lifecycle of variable usage in test cases:
 
-      - step: 2
-        description: "Assert captured values are valid using general verification conditions"
-        command: "echo 'Validating captured system information...'"
-        expected:
-          success: true
-          result: '0'
-          output: 'Validating'
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Validating' <<< \"$COMMAND_OUTPUT\""
-          general:
-            - name: verify_timestamp_is_numeric
-              condition: "[[ $timestamp =~ ^[0-9]+$ ]]"
-            - name: verify_timestamp_reasonable
-              condition: "[[ $timestamp -gt 1704067200 ]]"
-            - name: verify_hostname_format
-              condition: "[[ $hostname =~ ^[a-zA-Z0-9._-]+$ ]]"
-            - name: verify_hostname_length
-              condition: "[[ ${#hostname} -ge 1 && ${#hostname} -le 255 ]]"
-            - name: verify_process_count_numeric
-              condition: "[[ $process_count =~ ^[0-9]+$ ]]"
-            - name: verify_process_count_range
-              condition: "[[ $process_count -ge 10 && $process_count -le 10000 ]]"
+    1. Capture system information using command-based captures
 
-      - step: 3
-        description: "Print all captured variables using echo to demonstrate variable usage"
-        command: |
-          echo "=== Captured System Information ==="
-          echo "Timestamp: $timestamp"
-          echo "Hostname: $hostname"
-          echo "Process Count: $process_count"
-          echo "==================================="
-        expected:
-          success: true
-          result: '0'
-          output: 'Captured System Information'
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Captured System Information' <<< \"$COMMAND_OUTPUT\""
-          general:
-            - name: verify_output_contains_timestamp
-              condition: "grep -q \"Timestamp: $timestamp\" <<< \"$COMMAND_OUTPUT\""
-            - name: verify_output_contains_hostname
-              condition: "grep -q \"Hostname: $hostname\" <<< \"$COMMAND_OUTPUT\""
-            - name: verify_output_contains_process_count
-              condition: "grep -q \"Process Count: $process_count\" <<< \"$COMMAND_OUTPUT\""
+    2. Validate captured values using general verification conditions
+
+    3. Use captured variables in subsequent commands
+
+    '
+  initial_conditions:
+    system:
+    - System information commands available
+  steps:
+  - step: 1
+    description: Capture timestamp, hostname, and process count using command-based
+      captures
+    command: echo 'Capturing system information...'
+    capture_vars:
+    - name: timestamp
+      command: date +%s
+    - name: hostname
+      command: hostname
+    - name: process_count
+      command: ps -e | wc -l | awk '{print $1}'
+    expected:
+      success: true
+      result: '0'
+      output: Capturing system information
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Capturing system information' <<< "$COMMAND_OUTPUT"
+      general:
+      - name: verify_timestamp_captured
+        condition: '[[ -n "$timestamp" ]]'
+      - name: verify_hostname_captured
+        condition: '[[ -n "$hostname" ]]'
+      - name: verify_process_count_captured
+        condition: '[[ -n "$process_count" ]]'
+  - step: 2
+    description: Assert captured values are valid using general verification conditions
+    command: echo 'Validating captured system information...'
+    expected:
+      success: true
+      result: '0'
+      output: Validating
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Validating' <<< "$COMMAND_OUTPUT"
+      general:
+      - name: verify_timestamp_is_numeric
+        condition: '[[ $timestamp =~ ^[0-9]+$ ]]'
+      - name: verify_timestamp_reasonable
+        condition: '[[ $timestamp -gt 1704067200 ]]'
+      - name: verify_hostname_format
+        condition: '[[ $hostname =~ ^[a-zA-Z0-9._-]+$ ]]'
+      - name: verify_hostname_length
+        condition: '[[ ${#hostname} -ge 1 && ${#hostname} -le 255 ]]'
+      - name: verify_process_count_numeric
+        condition: '[[ $process_count =~ ^[0-9]+$ ]]'
+      - name: verify_process_count_range
+        condition: '[[ $process_count -ge 10 && $process_count -le 10000 ]]'
+  - step: 3
+    description: Print all captured variables using echo to demonstrate variable usage
+    command: 'echo "=== Captured System Information ==="
+
+      echo "Timestamp: $timestamp"
+
+      echo "Hostname: $hostname"
+
+      echo "Process Count: $process_count"
+
+      echo "==================================="
+
+      '
+    expected:
+      success: true
+      result: '0'
+      output: Captured System Information
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Captured System Information' <<< "$COMMAND_OUTPUT"
+      general:
+      - name: verify_output_contains_timestamp
+        condition: 'grep -q "Timestamp: $timestamp" <<< "$COMMAND_OUTPUT"'
+      - name: verify_output_contains_hostname
+        condition: 'grep -q "Hostname: $hostname" <<< "$COMMAND_OUTPUT"'
+      - name: verify_output_contains_process_count
+        condition: 'grep -q "Process Count: $process_count" <<< "$COMMAND_OUTPUT"'

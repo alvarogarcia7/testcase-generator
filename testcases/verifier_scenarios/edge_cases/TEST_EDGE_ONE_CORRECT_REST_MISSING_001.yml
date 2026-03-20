@@ -1,74 +1,75 @@
-requirement: "EDGE_ONE_CORRECT_REST_MISSING"
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: EDGE_ONE_CORRECT_REST_MISSING
 item: 1
 tc: 1
-id: 'TEST_EDGE_ONE_CORRECT_REST_MISSING_001'
+id: TEST_EDGE_ONE_CORRECT_REST_MISSING_001
 description: 'Edge case: single step passes, all others missing'
-
 general_initial_conditions:
   system:
-    - "Shell environment is available"
-
+  - Shell environment is available
 initial_conditions:
   system:
-    - "All commands can be executed"
-
+  - All commands can be executed
 test_sequences:
-  - id: 1
-    name: "One Correct Rest Missing Sequence"
-    description: |
-                   Test sequence where only one step passes verification.
-                   Step 2 passes; steps 1, 3, 4, 5 are missing from execution log.
-    initial_conditions:
-      system:
-        - "Shell is ready"
-    steps:
-      - step: 1
-        description: "Missing step 1"
-        command: echo "Step 1 missing"
-        expected:
-          success: true
-          result: 0
-          output: "Step 1 missing"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Step 1 missing' <<< \"$COMMAND_OUTPUT\""
-      - step: 2
-        description: "Only passing step"
-        command: echo "Step 2 passed"
-        expected:
-          success: true
-          result: 0
-          output: "Step 2 passed"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Step 2 passed' <<< \"$COMMAND_OUTPUT\""
-      - step: 3
-        description: "Missing step 3"
-        command: echo "Step 3 missing"
-        expected:
-          success: true
-          result: 0
-          output: "Step 3 missing"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Step 3 missing' <<< \"$COMMAND_OUTPUT\""
-      - step: 4
-        description: "Missing step 4"
-        command: echo "Step 4 missing"
-        expected:
-          success: true
-          result: 0
-          output: "Step 4 missing"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Step 4 missing' <<< \"$COMMAND_OUTPUT\""
-      - step: 5
-        description: "Missing step 5"
-        command: echo "Step 5 missing"
-        expected:
-          success: true
-          result: 0
-          output: "Step 5 missing"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Step 5 missing' <<< \"$COMMAND_OUTPUT\""
+- id: 1
+  name: One Correct Rest Missing Sequence
+  description: 'Test sequence where only one step passes verification.
+
+    Step 2 passes; steps 1, 3, 4, 5 are missing from execution log.
+
+    '
+  initial_conditions:
+    system:
+    - Shell is ready
+  steps:
+  - step: 1
+    description: Missing step 1
+    command: echo "Step 1 missing"
+    expected:
+      success: true
+      result: 0
+      output: Step 1 missing
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Step 1 missing' <<< "$COMMAND_OUTPUT"
+  - step: 2
+    description: Only passing step
+    command: echo "Step 2 passed"
+    expected:
+      success: true
+      result: 0
+      output: Step 2 passed
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Step 2 passed' <<< "$COMMAND_OUTPUT"
+  - step: 3
+    description: Missing step 3
+    command: echo "Step 3 missing"
+    expected:
+      success: true
+      result: 0
+      output: Step 3 missing
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Step 3 missing' <<< "$COMMAND_OUTPUT"
+  - step: 4
+    description: Missing step 4
+    command: echo "Step 4 missing"
+    expected:
+      success: true
+      result: 0
+      output: Step 4 missing
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Step 4 missing' <<< "$COMMAND_OUTPUT"
+  - step: 5
+    description: Missing step 5
+    command: echo "Step 5 missing"
+    expected:
+      success: true
+      result: 0
+      output: Step 5 missing
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Step 5 missing' <<< "$COMMAND_OUTPUT"

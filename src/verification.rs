@@ -371,6 +371,14 @@ pub struct ContainerReportConfig {
 /// Container report for batch verification with enhanced metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ContainerReport {
+    /// Document type (envelope field)
+    #[serde(rename = "type", default, skip_serializing_if = "Option::is_none")]
+    pub doc_type: Option<String>,
+
+    /// Schema reference (envelope field)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub schema: Option<String>,
+
     /// Report title
     pub title: String,
 
@@ -399,6 +407,8 @@ impl ContainerReport {
         execution_duration: f64,
     ) -> Self {
         Self {
+            doc_type: None,
+            schema: None,
             title,
             project,
             test_date: batch_report.generated_at,

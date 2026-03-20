@@ -1,59 +1,60 @@
-requirement: "HOOK_SETUP_TEST_ERROR"
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: HOOK_SETUP_TEST_ERROR
 item: 1
 tc: 1
-id: 'TEST_HOOK_SETUP_TEST_001'
-description: 'Hook error scenario for setup_test hook - script not found'
-
+id: TEST_HOOK_SETUP_TEST_001
+description: Hook error scenario for setup_test hook - script not found
 general_initial_conditions:
   system:
-    - "Shell environment is available"
-
+  - Shell environment is available
 initial_conditions:
   system:
-    - "All commands can be executed"
-
+  - All commands can be executed
 hooks:
   setup_test:
-    command: "scripts/nonexistent_setup_hook.sh"
-    on_error: "fail"
-
+    command: scripts/nonexistent_setup_hook.sh
+    on_error: fail
 test_sequences:
-  - id: 1
-    name: "Test Sequence After Failed Setup"
-    description: |
-                   This test sequence should never execute because the setup_test hook fails.
-                   The setup_test hook references a non-existent script, causing immediate test failure.
-    initial_conditions:
-      system:
-        - "Shell is ready"
-    steps:
-      - step: 1
-        description: "This step should not execute"
-        command: echo "Setup test step 1 should not run"
-        expected:
-          success: true
-          result: 0
-          output: "Setup test step 1 should not run"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Setup test step 1 should not run' <<< \"$COMMAND_OUTPUT\""
-      - step: 2
-        description: "This step should not execute"
-        command: echo "Setup test step 2 should not run"
-        expected:
-          success: true
-          result: 0
-          output: "Setup test step 2 should not run"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Setup test step 2 should not run' <<< \"$COMMAND_OUTPUT\""
-      - step: 3
-        description: "This step should not execute"
-        command: true
-        expected:
-          success: true
-          result: 0
-          output: ""
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "true"
+- id: 1
+  name: Test Sequence After Failed Setup
+  description: 'This test sequence should never execute because the setup_test hook
+    fails.
+
+    The setup_test hook references a non-existent script, causing immediate test failure.
+
+    '
+  initial_conditions:
+    system:
+    - Shell is ready
+  steps:
+  - step: 1
+    description: This step should not execute
+    command: echo "Setup test step 1 should not run"
+    expected:
+      success: true
+      result: 0
+      output: Setup test step 1 should not run
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Setup test step 1 should not run' <<< "$COMMAND_OUTPUT"
+  - step: 2
+    description: This step should not execute
+    command: echo "Setup test step 2 should not run"
+    expected:
+      success: true
+      result: 0
+      output: Setup test step 2 should not run
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Setup test step 2 should not run' <<< "$COMMAND_OUTPUT"
+  - step: 3
+    description: This step should not execute
+    command: true
+    expected:
+      success: true
+      result: 0
+      output: ''
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: 'true'

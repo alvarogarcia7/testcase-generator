@@ -1,85 +1,94 @@
-requirement: "DOC_GEN_INTEGRATION"
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: DOC_GEN_INTEGRATION
 item: 1
 tc: 1
-id: 'DOC_GEN_INTEGRATION_001'
-description: 'End-to-end integration testing with multiple system components and data flow validation'
-
+id: DOC_GEN_INTEGRATION_001
+description: End-to-end integration testing with multiple system components and data
+  flow validation
 general_initial_conditions:
   system:
-    - "All required services are installed"
-    - "Integration test environment is configured"
-
+  - All required services are installed
+  - Integration test environment is configured
 initial_conditions:
   system:
-    - "Test workspace is clean"
+  - Test workspace is clean
   services:
-    - "Mock services are ready"
-
+  - Mock services are ready
 test_sequences:
-  - id: 1
-    name: "Multi-Component Integration"
-    description: |
-                   Test integration between file system, processes,
-                   and data transformation components.
-    initial_conditions:
-      system:
-        - "Integration environment ready"
-    steps:
-      - step: 1
-        description: "Create integration test workspace"
-        command: mkdir -p /tmp/integration_test && echo "Workspace created"
-        expected:
-          success: true
-          result: 0
-          output: "Workspace created"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "test -d /tmp/integration_test"
-      - step: 2
-        description: "Generate test data file"
-        command: |
-          cat > /tmp/integration_test/data.json << 'EOF'
-          {"users":[{"id":1,"name":"Alice"},{"id":2,"name":"Bob"}],"count":2}
-          EOF
-          echo "Data file created"
-        expected:
-          success: true
-          result: 0
-          output: "Data file created"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "test -f /tmp/integration_test/data.json"
-      - step: 3
-        description: "Process data and extract count"
-        command: |
-          grep -o '"count":[0-9]*' /tmp/integration_test/data.json | cut -d: -f2
-        expected:
-          success: true
-          result: 0
-          output: "2"
-        capture:
-          - variable: USER_COUNT
-            pattern: "^([0-9]+)$"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
-      - step: 4
-        description: "Create processed output"
-        command: echo "Processed ${USER_COUNT} users" > /tmp/integration_test/result.txt && cat /tmp/integration_test/result.txt
-        expected:
-          success: true
-          result: 0
-          output: "Processed 2 users"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Processed 2 users' <<< \"$COMMAND_OUTPUT\""
-      - step: 5
-        description: "Cleanup integration test"
-        command: rm -rf /tmp/integration_test && echo "Cleaned up"
-        expected:
-          success: true
-          result: 0
-          output: "Cleaned up"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "! test -d /tmp/integration_test"
+- id: 1
+  name: Multi-Component Integration
+  description: 'Test integration between file system, processes,
+
+    and data transformation components.
+
+    '
+  initial_conditions:
+    system:
+    - Integration environment ready
+  steps:
+  - step: 1
+    description: Create integration test workspace
+    command: mkdir -p /tmp/integration_test && echo "Workspace created"
+    expected:
+      success: true
+      result: 0
+      output: Workspace created
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: test -d /tmp/integration_test
+  - step: 2
+    description: Generate test data file
+    command: 'cat > /tmp/integration_test/data.json << ''EOF''
+
+      {"users":[{"id":1,"name":"Alice"},{"id":2,"name":"Bob"}],"count":2}
+
+      EOF
+
+      echo "Data file created"
+
+      '
+    expected:
+      success: true
+      result: 0
+      output: Data file created
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: test -f /tmp/integration_test/data.json
+  - step: 3
+    description: Process data and extract count
+    command: 'grep -o ''"count":[0-9]*'' /tmp/integration_test/data.json | cut -d:
+      -f2
+
+      '
+    expected:
+      success: true
+      result: 0
+      output: '2'
+    capture:
+    - variable: USER_COUNT
+      pattern: ^([0-9]+)$
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" =~ ^[0-9]+$ ]]'
+  - step: 4
+    description: Create processed output
+    command: echo "Processed ${USER_COUNT} users" > /tmp/integration_test/result.txt
+      && cat /tmp/integration_test/result.txt
+    expected:
+      success: true
+      result: 0
+      output: Processed 2 users
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Processed 2 users' <<< "$COMMAND_OUTPUT"
+  - step: 5
+    description: Cleanup integration test
+    command: rm -rf /tmp/integration_test && echo "Cleaned up"
+    expected:
+      success: true
+      result: 0
+      output: Cleaned up
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: '! test -d /tmp/integration_test'

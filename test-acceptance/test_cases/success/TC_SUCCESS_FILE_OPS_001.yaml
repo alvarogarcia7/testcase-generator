@@ -1,209 +1,204 @@
-requirement: "FILE_OPERATIONS"
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: FILE_OPERATIONS
 item: 1
 tc: 1
-id: 'TC_SUCCESS_FILE_OPS_001'
-description: 'Advanced file operations with permissions and metadata - demonstrates comprehensive file system operations'
-
+id: TC_SUCCESS_FILE_OPS_001
+description: Advanced file operations with permissions and metadata - demonstrates
+  comprehensive file system operations
 general_initial_conditions:
   system:
-    - "Bash shell is available"
-    - "File system utilities are available"
-
+  - Bash shell is available
+  - File system utilities are available
 initial_conditions:
   filesystem:
-    - "Temporary directory /tmp is writable"
-    - "User has permission to modify file attributes"
-
+  - Temporary directory /tmp is writable
+  - User has permission to modify file attributes
 test_sequences:
-  - id: 1
-    name: "File Creation and Metadata"
-    description: "Create files and verify metadata properties"
-    initial_conditions:
-      filesystem:
-        - "Test directory can be created"
-    steps:
-      - step: 1
-        description: "Create test directory and capture path"
-        command: "mkdir -p /tmp/fileops_test && echo '/tmp/fileops_test'"
-        capture_vars:
-          - name: test_dir
-            capture: '(/tmp/fileops_test)'
-        expected:
-          success: true
-          result: '0'
-          output: "/tmp/fileops_test"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "grep -q '/tmp/fileops_test' <<< \"$COMMAND_OUTPUT\""
-
-      - step: 2
-        description: "Create file with specific content and size"
-        command: "echo 'Test content for file operations' > ${test_dir}/test.txt && wc -c ${test_dir}/test.txt | awk '{print $1}'"
-        capture_vars:
-          - name: file_size
-            capture: '^([0-9]+)$'
-        expected:
-          success: true
-          result: '0'
-          output: "bytes"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
-          general:
-            - name: verify_file_size_captured
-              condition: "[[ $file_size -gt 0 ]]"
-            - name: verify_file_size_reasonable
-              condition: "[[ $file_size -ge 30 && $file_size -le 40 ]]"
-
-      - step: 3
-        description: "Set file permissions and verify"
-        command: "chmod 644 ${test_dir}/test.txt && ls -l ${test_dir}/test.txt | awk '{print $1}'"
-        capture_vars:
-          - name: file_perms
-            capture: '(-rw-r--r--)'
-        expected:
-          success: true
-          result: '0'
-          output: "permissions"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" =~ rw-r--r-- ]]"
-          general:
-            - name: verify_permissions_captured
-              condition: "[[ -n \"$file_perms\" ]]"
-
-      - step: 4
-        description: "Create multiple files and count them"
-        command: "touch ${test_dir}/file1.txt ${test_dir}/file2.txt ${test_dir}/file3.txt && ls ${test_dir}/*.txt | wc -l"
-        capture_vars:
-          - name: total_files
-            command: "ls ${test_dir}/*.txt | wc -l"
-        expected:
-          success: true
-          result: '0'
-          output: "4"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" -eq 4 ]]"
-          general:
-            - name: verify_file_count
-              condition: "[[ $total_files -eq 4 ]]"
-
-  - id: 2
-    name: "File Content Operations"
-    description: "Manipulate and verify file contents"
-    variables:
-      test_dir: "/tmp/fileops_test"
-    initial_conditions:
-      filesystem:
-        - "Test files from sequence 1 exist"
-    steps:
-      - step: 1
-        description: "Append to file and verify line count"
-        command: "echo 'Line 2' >> ${test_dir}/test.txt && echo 'Line 3' >> ${test_dir}/test.txt && wc -l ${test_dir}/test.txt | awk '{print $1}'"
-        capture_vars:
-          - name: line_count
-            capture: '^([0-9]+)$'
-        expected:
-          success: true
-          result: '0'
-          output: "3"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" -eq 3 ]]"
-          general:
-            - name: verify_line_count
-              condition: "[[ $line_count -eq 3 ]]"
-
-      - step: 2
-        description: "Search file content with grep"
-        command: "grep -c 'Line' ${test_dir}/test.txt"
-        capture_vars:
-          - name: match_count
-            capture: '^([0-9]+)$'
-        expected:
-          success: true
-          result: '0'
-          output: "2"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" -eq 2 ]]"
-          general:
-            - name: verify_matches_found
-              condition: "[[ $match_count -eq 2 ]]"
-
-      - step: 3
-        description: "Copy file and verify both exist"
-        command: "cp ${test_dir}/test.txt ${test_dir}/test_copy.txt && diff ${test_dir}/test.txt ${test_dir}/test_copy.txt && echo 'Files are identical'"
-        expected:
-          success: true
-          result: '0'
-          output: "Files are identical"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "grep -q 'Files are identical' <<< \"$COMMAND_OUTPUT\""
-
-  - id: 3
-    name: "Cleanup and Verification"
-    description: "Remove test files and verify cleanup"
-    variables:
-      test_dir: "/tmp/fileops_test"
-    initial_conditions:
-      filesystem:
-        - "Test directory and files exist"
-    steps:
-      - step: 1
-        description: "Count files before cleanup"
-        command: "find ${test_dir} -type f | wc -l"
-        capture_vars:
-          - name: files_before
-            capture: '^([0-9]+)$'
-        expected:
-          success: true
-          result: '0'
-          output: "files"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
-          general:
-            - name: verify_files_exist
-              condition: "[[ $files_before -gt 0 ]]"
-
-      - step: 2
-        description: "Remove all test files"
-        command: "rm -f ${test_dir}/*.txt && echo 'Files removed'"
-        expected:
-          success: true
-          result: '0'
-          output: "Files removed"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "grep -q 'Files removed' <<< \"$COMMAND_OUTPUT\""
-
-      - step: 3
-        description: "Verify directory is empty"
-        command: "find ${test_dir} -type f | wc -l"
-        capture_vars:
-          - name: files_after
-            capture: '^([0-9]+)$'
-        expected:
-          success: true
-          result: '0'
-          output: "0"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" -eq 0 ]]"
-          general:
-            - name: verify_all_files_removed
-              condition: "[[ $files_after -eq 0 ]]"
-
-      - step: 4
-        description: "Remove test directory"
-        command: "rmdir ${test_dir} && echo 'Directory removed'"
-        expected:
-          success: true
-          result: '0'
-          output: "Directory removed"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "grep -q 'Directory removed' <<< \"$COMMAND_OUTPUT\""
+- id: 1
+  name: File Creation and Metadata
+  description: Create files and verify metadata properties
+  initial_conditions:
+    filesystem:
+    - Test directory can be created
+  steps:
+  - step: 1
+    description: Create test directory and capture path
+    command: mkdir -p /tmp/fileops_test && echo '/tmp/fileops_test'
+    capture_vars:
+    - name: test_dir
+      capture: (/tmp/fileops_test)
+    expected:
+      success: true
+      result: '0'
+      output: /tmp/fileops_test
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: grep -q '/tmp/fileops_test' <<< "$COMMAND_OUTPUT"
+  - step: 2
+    description: Create file with specific content and size
+    command: echo 'Test content for file operations' > ${test_dir}/test.txt && wc
+      -c ${test_dir}/test.txt | awk '{print $1}'
+    capture_vars:
+    - name: file_size
+      capture: ^([0-9]+)$
+    expected:
+      success: true
+      result: '0'
+      output: bytes
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" =~ ^[0-9]+$ ]]'
+      general:
+      - name: verify_file_size_captured
+        condition: '[[ $file_size -gt 0 ]]'
+      - name: verify_file_size_reasonable
+        condition: '[[ $file_size -ge 30 && $file_size -le 40 ]]'
+  - step: 3
+    description: Set file permissions and verify
+    command: chmod 644 ${test_dir}/test.txt && ls -l ${test_dir}/test.txt | awk '{print
+      $1}'
+    capture_vars:
+    - name: file_perms
+      capture: (-rw-r--r--)
+    expected:
+      success: true
+      result: '0'
+      output: permissions
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" =~ rw-r--r-- ]]'
+      general:
+      - name: verify_permissions_captured
+        condition: '[[ -n "$file_perms" ]]'
+  - step: 4
+    description: Create multiple files and count them
+    command: touch ${test_dir}/file1.txt ${test_dir}/file2.txt ${test_dir}/file3.txt
+      && ls ${test_dir}/*.txt | wc -l
+    capture_vars:
+    - name: total_files
+      command: ls ${test_dir}/*.txt | wc -l
+    expected:
+      success: true
+      result: '0'
+      output: '4'
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" -eq 4 ]]'
+      general:
+      - name: verify_file_count
+        condition: '[[ $total_files -eq 4 ]]'
+- id: 2
+  name: File Content Operations
+  description: Manipulate and verify file contents
+  variables:
+    test_dir: /tmp/fileops_test
+  initial_conditions:
+    filesystem:
+    - Test files from sequence 1 exist
+  steps:
+  - step: 1
+    description: Append to file and verify line count
+    command: echo 'Line 2' >> ${test_dir}/test.txt && echo 'Line 3' >> ${test_dir}/test.txt
+      && wc -l ${test_dir}/test.txt | awk '{print $1}'
+    capture_vars:
+    - name: line_count
+      capture: ^([0-9]+)$
+    expected:
+      success: true
+      result: '0'
+      output: '3'
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" -eq 3 ]]'
+      general:
+      - name: verify_line_count
+        condition: '[[ $line_count -eq 3 ]]'
+  - step: 2
+    description: Search file content with grep
+    command: grep -c 'Line' ${test_dir}/test.txt
+    capture_vars:
+    - name: match_count
+      capture: ^([0-9]+)$
+    expected:
+      success: true
+      result: '0'
+      output: '2'
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" -eq 2 ]]'
+      general:
+      - name: verify_matches_found
+        condition: '[[ $match_count -eq 2 ]]'
+  - step: 3
+    description: Copy file and verify both exist
+    command: cp ${test_dir}/test.txt ${test_dir}/test_copy.txt && diff ${test_dir}/test.txt
+      ${test_dir}/test_copy.txt && echo 'Files are identical'
+    expected:
+      success: true
+      result: '0'
+      output: Files are identical
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: grep -q 'Files are identical' <<< "$COMMAND_OUTPUT"
+- id: 3
+  name: Cleanup and Verification
+  description: Remove test files and verify cleanup
+  variables:
+    test_dir: /tmp/fileops_test
+  initial_conditions:
+    filesystem:
+    - Test directory and files exist
+  steps:
+  - step: 1
+    description: Count files before cleanup
+    command: find ${test_dir} -type f | wc -l
+    capture_vars:
+    - name: files_before
+      capture: ^([0-9]+)$
+    expected:
+      success: true
+      result: '0'
+      output: files
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" =~ ^[0-9]+$ ]]'
+      general:
+      - name: verify_files_exist
+        condition: '[[ $files_before -gt 0 ]]'
+  - step: 2
+    description: Remove all test files
+    command: rm -f ${test_dir}/*.txt && echo 'Files removed'
+    expected:
+      success: true
+      result: '0'
+      output: Files removed
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: grep -q 'Files removed' <<< "$COMMAND_OUTPUT"
+  - step: 3
+    description: Verify directory is empty
+    command: find ${test_dir} -type f | wc -l
+    capture_vars:
+    - name: files_after
+      capture: ^([0-9]+)$
+    expected:
+      success: true
+      result: '0'
+      output: '0'
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" -eq 0 ]]'
+      general:
+      - name: verify_all_files_removed
+        condition: '[[ $files_after -eq 0 ]]'
+  - step: 4
+    description: Remove test directory
+    command: rmdir ${test_dir} && echo 'Directory removed'
+    expected:
+      success: true
+      result: '0'
+      output: Directory removed
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: grep -q 'Directory removed' <<< "$COMMAND_OUTPUT"

@@ -1,66 +1,67 @@
-requirement: "PREREQ_AUTO_PASS"
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: PREREQ_AUTO_PASS
 item: 1
 tc: 1
-id: 'PREREQ_AUTO_PASS_001'
-description: 'Test case with automatic prerequisite that passes verification'
-
+id: PREREQ_AUTO_PASS_001
+description: Test case with automatic prerequisite that passes verification
 prerequisites:
-  - type: automatic
-    description: "Check that echo command is available"
-    verification_command: "which echo > /dev/null 2>&1"
-  - type: automatic
-    description: "Verify /tmp directory exists and is writable"
-    verification_command: "test -d /tmp && test -w /tmp"
-  - type: automatic
-    description: "Confirm bash version 3.2 or higher is available"
-    verification_command: "bash --version | head -n 1 | grep -qE 'version [3-9]\\.[2-9]|version [4-9]'"
-
+- type: automatic
+  description: Check that echo command is available
+  verification_command: which echo > /dev/null 2>&1
+- type: automatic
+  description: Verify /tmp directory exists and is writable
+  verification_command: test -d /tmp && test -w /tmp
+- type: automatic
+  description: Confirm bash version 3.2 or higher is available
+  verification_command: bash --version | head -n 1 | grep -qE 'version [3-9]\.[2-9]|version
+    [4-9]'
 general_initial_conditions:
   system:
-    - "Shell environment is available"
-    - "Basic UNIX utilities are installed"
-
+  - Shell environment is available
+  - Basic UNIX utilities are installed
 initial_conditions:
   system:
-    - "All prerequisite checks have passed"
-
+  - All prerequisite checks have passed
 test_sequences:
-  - id: 1
-    name: "Basic Command Execution After Prerequisites"
-    description: |
-                   This test sequence executes simple commands after
-                   automatic prerequisites have been verified.
-    initial_conditions:
-      system:
-        - "Environment is ready for test execution"
-    steps:
-      - step: 1
-        description: "Echo a test message"
-        command: echo "Prerequisites passed successfully"
-        expected:
-          success: true
-          result: 0
-          output: "Prerequisites passed successfully"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Prerequisites passed successfully' <<< \"$COMMAND_OUTPUT\""
-      - step: 2
-        description: "Create a temporary file"
-        command: echo "test data" > /tmp/prereq_auto_pass_test.txt && cat /tmp/prereq_auto_pass_test.txt
-        expected:
-          success: true
-          result: 0
-          output: "test data"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'test data' <<< \"$COMMAND_OUTPUT\""
-      - step: 3
-        description: "Clean up temporary file"
-        command: rm -f /tmp/prereq_auto_pass_test.txt
-        expected:
-          success: true
-          result: 0
-          output: ""
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "true"
+- id: 1
+  name: Basic Command Execution After Prerequisites
+  description: 'This test sequence executes simple commands after
+
+    automatic prerequisites have been verified.
+
+    '
+  initial_conditions:
+    system:
+    - Environment is ready for test execution
+  steps:
+  - step: 1
+    description: Echo a test message
+    command: echo "Prerequisites passed successfully"
+    expected:
+      success: true
+      result: 0
+      output: Prerequisites passed successfully
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Prerequisites passed successfully' <<< "$COMMAND_OUTPUT"
+  - step: 2
+    description: Create a temporary file
+    command: echo "test data" > /tmp/prereq_auto_pass_test.txt && cat /tmp/prereq_auto_pass_test.txt
+    expected:
+      success: true
+      result: 0
+      output: test data
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'test data' <<< "$COMMAND_OUTPUT"
+  - step: 3
+    description: Clean up temporary file
+    command: rm -f /tmp/prereq_auto_pass_test.txt
+    expected:
+      success: true
+      result: 0
+      output: ''
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: 'true'

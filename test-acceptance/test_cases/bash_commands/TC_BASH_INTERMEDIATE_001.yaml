@@ -1,142 +1,172 @@
-requirement: "BASH_INTERMEDIATE_COMMANDS"
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: BASH_INTERMEDIATE_COMMANDS
 item: 1
 tc: 1
-id: 'TC_BASH_INTERMEDIATE_001'
-description: 'Intermediate bash commands - text processing with grep, sed, awk, wc with variable capture and strict validation'
-
+id: TC_BASH_INTERMEDIATE_001
+description: Intermediate bash commands - text processing with grep, sed, awk, wc
+  with variable capture and strict validation
 general_initial_conditions:
   system:
-    - "Bash shell with text processing utilities is available"
-    - "grep, sed, awk, wc commands are installed"
-
+  - Bash shell with text processing utilities is available
+  - grep, sed, awk, wc commands are installed
 initial_conditions:
   filesystem:
-    - "Temporary directory /tmp is writable"
-
+  - Temporary directory /tmp is writable
 test_sequences:
-  - id: 1
-    name: "Text Processing Commands"
-    description: "Test grep, sed, awk, and wc with strict validation"
-    initial_conditions:
-      system:
-        - "Text processing tools work correctly"
-    steps:
-      - step: 1
-        description: "Grep specific pattern from echo output"
-        command: "echo -e 'line1\nline2\nline3' | grep 'line2'"
-        expected:
-          success: true
-          result: 0
-          output: "line2"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" == 'line2' ]]"
-          general:
-            - name: output_exact_match
-              condition: "[[ \"$COMMAND_OUTPUT\" =~ ^line2$ ]]"
-            - name: no_other_lines
-              condition: "[[ $(echo \"$COMMAND_OUTPUT\" | wc -l | awk '{print $1}') -eq 1 ]]"
+- id: 1
+  name: Text Processing Commands
+  description: Test grep, sed, awk, and wc with strict validation
+  initial_conditions:
+    system:
+    - Text processing tools work correctly
+  steps:
+  - step: 1
+    description: Grep specific pattern from echo output
+    command: 'echo -e ''line1
 
-      - step: 2
-        description: "Sed substitution and capture result"
-        command: "echo 'Hello World' | sed 's/World/Bash/'"
-        capture_vars:
-          - name: substituted_text
-            capture: '^(.*)$'
-        expected:
-          success: true
-          result: 0
-          output: "Hello Bash"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" == 'Hello Bash' ]]"
-          general:
-            - name: substitution_successful
-              condition: "[[ \"$substituted_text\" == 'Hello Bash' ]]"
-            - name: no_world_remaining
-              condition: "[[ ! \"$substituted_text\" =~ World ]]"
-            - name: contains_bash
-              condition: "[[ \"$substituted_text\" =~ Bash ]]"
+      line2
 
-      - step: 3
-        description: "Awk field extraction with validation"
-        command: "echo 'user:1000:staff' | awk -F: '{print $2}'"
-        capture_vars:
-          - name: uid_extracted
-            capture: '^([0-9]+)$'
-        expected:
-          success: true
-          result: 0
-          output: "1000"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" == '1000' ]]"
-          general:
-            - name: uid_is_numeric
-              condition: "[[ $uid_extracted =~ ^[0-9]+$ ]]"
-            - name: uid_in_valid_range
-              condition: "[[ $uid_extracted -ge 1000 && $uid_extracted -le 65535 ]]"
-            - name: uid_matches_output
-              condition: "[[ \"$uid_extracted\" == \"$COMMAND_OUTPUT\" ]]"
+      line3'' | grep ''line2'''
+    expected:
+      success: true
+      result: 0
+      output: line2
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" == ''line2'' ]]'
+      general:
+      - name: output_exact_match
+        condition: '[[ "$COMMAND_OUTPUT" =~ ^line2$ ]]'
+      - name: no_other_lines
+        condition: '[[ $(echo "$COMMAND_OUTPUT" | wc -l | awk ''{print $1}'') -eq
+          1 ]]'
+  - step: 2
+    description: Sed substitution and capture result
+    command: echo 'Hello World' | sed 's/World/Bash/'
+    capture_vars:
+    - name: substituted_text
+      capture: ^(.*)$
+    expected:
+      success: true
+      result: 0
+      output: Hello Bash
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" == ''Hello Bash'' ]]'
+      general:
+      - name: substitution_successful
+        condition: '[[ "$substituted_text" == ''Hello Bash'' ]]'
+      - name: no_world_remaining
+        condition: '[[ ! "$substituted_text" =~ World ]]'
+      - name: contains_bash
+        condition: '[[ "$substituted_text" =~ Bash ]]'
+  - step: 3
+    description: Awk field extraction with validation
+    command: 'echo ''user:1000:staff'' | awk -F: ''{print $2}'''
+    capture_vars:
+    - name: uid_extracted
+      capture: ^([0-9]+)$
+    expected:
+      success: true
+      result: 0
+      output: '1000'
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" == ''1000'' ]]'
+      general:
+      - name: uid_is_numeric
+        condition: '[[ $uid_extracted =~ ^[0-9]+$ ]]'
+      - name: uid_in_valid_range
+        condition: '[[ $uid_extracted -ge 1000 && $uid_extracted -le 65535 ]]'
+      - name: uid_matches_output
+        condition: '[[ "$uid_extracted" == "$COMMAND_OUTPUT" ]]'
+  - step: 4
+    description: Word count with multiple metrics
+    command: 'echo -e ''first line
 
-      - step: 4
-        description: "Word count with multiple metrics"
-        command: "echo -e 'first line\nsecond line\nthird line' | wc"
-        capture_vars:
-          - name: line_count
-            command: "echo -e 'first line\nsecond line\nthird line' | wc -l | awk '{print $1}'"
-          - name: word_count
-            command: "echo -e 'first line\nsecond line\nthird line' | wc -w | awk '{print $1}'"
-        expected:
-          success: true
-          result: 0
-          output: "word count output"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" =~ [0-9] ]]"
-          general:
-            - name: line_count_correct
-              condition: "[[ $line_count -eq 3 ]]"
-            - name: word_count_correct
-              condition: "[[ $word_count -eq 6 ]]"
-            - name: counts_are_numeric
-              condition: "[[ $line_count =~ ^[0-9]+$ && $word_count =~ ^[0-9]+$ ]]"
+      second line
 
-      - step: 5
-        description: "Complex grep with regex pattern"
-        command: "echo -e 'user@example.com\\ntest@test.com\\ninvalid-email' | grep -E '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$'"
-        expected:
-          success: true
-          result: 0
-          output: "email addresses"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" =~ @ ]]"
-          general:
-            - name: contains_at_symbol
-              condition: "[[ \"$COMMAND_OUTPUT\" =~ @ ]]"
-            - name: two_valid_emails
-              condition: "[[ $(echo \"$COMMAND_OUTPUT\" | wc -l | awk '{print $1}') -eq 2 ]]"
-            - name: no_invalid_email
-              condition: "[[ ! \"$COMMAND_OUTPUT\" =~ invalid-email ]]"
+      third line'' | wc'
+    capture_vars:
+    - name: line_count
+      command: 'echo -e ''first line
 
-      - step: 6
-        description: "Sed delete lines and validate"
-        command: "echo -e 'keep1\ndelete\nkeep2\ndelete\nkeep3' | sed '/delete/d'"
-        capture_vars:
-          - name: remaining_lines
-            command: "echo -e 'keep1\ndelete\nkeep2\ndelete\nkeep3' | sed '/delete/d' | wc -l | awk '{print $1}'"
-        expected:
-          success: true
-          result: 0
-          output: "keep lines"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" =~ keep ]]"
-          general:
-            - name: three_lines_remain
-              condition: "[[ $remaining_lines -eq 3 ]]"
-            - name: no_delete_keyword
-              condition: "[[ ! \"$COMMAND_OUTPUT\" =~ delete ]]"
-            - name: all_keep_lines_present
-              condition: "[[ \"$COMMAND_OUTPUT\" =~ keep1 && \"$COMMAND_OUTPUT\" =~ keep2 && \"$COMMAND_OUTPUT\" =~ keep3 ]]"
+        second line
+
+        third line'' | wc -l | awk ''{print $1}'''
+    - name: word_count
+      command: 'echo -e ''first line
+
+        second line
+
+        third line'' | wc -w | awk ''{print $1}'''
+    expected:
+      success: true
+      result: 0
+      output: word count output
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" =~ [0-9] ]]'
+      general:
+      - name: line_count_correct
+        condition: '[[ $line_count -eq 3 ]]'
+      - name: word_count_correct
+        condition: '[[ $word_count -eq 6 ]]'
+      - name: counts_are_numeric
+        condition: '[[ $line_count =~ ^[0-9]+$ && $word_count =~ ^[0-9]+$ ]]'
+  - step: 5
+    description: Complex grep with regex pattern
+    command: echo -e 'user@example.com\ntest@test.com\ninvalid-email' | grep -E '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    expected:
+      success: true
+      result: 0
+      output: email addresses
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" =~ @ ]]'
+      general:
+      - name: contains_at_symbol
+        condition: '[[ "$COMMAND_OUTPUT" =~ @ ]]'
+      - name: two_valid_emails
+        condition: '[[ $(echo "$COMMAND_OUTPUT" | wc -l | awk ''{print $1}'') -eq
+          2 ]]'
+      - name: no_invalid_email
+        condition: '[[ ! "$COMMAND_OUTPUT" =~ invalid-email ]]'
+  - step: 6
+    description: Sed delete lines and validate
+    command: 'echo -e ''keep1
+
+      delete
+
+      keep2
+
+      delete
+
+      keep3'' | sed ''/delete/d'''
+    capture_vars:
+    - name: remaining_lines
+      command: 'echo -e ''keep1
+
+        delete
+
+        keep2
+
+        delete
+
+        keep3'' | sed ''/delete/d'' | wc -l | awk ''{print $1}'''
+    expected:
+      success: true
+      result: 0
+      output: keep lines
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" =~ keep ]]'
+      general:
+      - name: three_lines_remain
+        condition: '[[ $remaining_lines -eq 3 ]]'
+      - name: no_delete_keyword
+        condition: '[[ ! "$COMMAND_OUTPUT" =~ delete ]]'
+      - name: all_keep_lines_present
+        condition: '[[ "$COMMAND_OUTPUT" =~ keep1 && "$COMMAND_OUTPUT" =~ keep2 &&
+          "$COMMAND_OUTPUT" =~ keep3 ]]'

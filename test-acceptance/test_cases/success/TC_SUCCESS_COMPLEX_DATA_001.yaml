@@ -1,172 +1,197 @@
-requirement: "COMPLEX_DATA_PROCESSING"
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: COMPLEX_DATA_PROCESSING
 item: 1
 tc: 1
-id: 'TC_SUCCESS_COMPLEX_DATA_001'
-description: 'Complex data processing with multiple captures and validations - demonstrates real-world data extraction and validation'
-
+id: TC_SUCCESS_COMPLEX_DATA_001
+description: Complex data processing with multiple captures and validations - demonstrates
+  real-world data extraction and validation
 general_initial_conditions:
   system:
-    - "Bash shell is available"
-    - "Text processing utilities (grep, awk, sed) are installed"
-
+  - Bash shell is available
+  - Text processing utilities (grep, awk, sed) are installed
 initial_conditions:
   filesystem:
-    - "Temporary directory is writable"
-
+  - Temporary directory is writable
 test_sequences:
-  - id: 1
-    name: "JSON-like Data Processing"
-    description: "Process and validate complex structured data"
-    initial_conditions:
-      system:
-        - "Data processing tools available"
-    steps:
-      - step: 1
-        description: "Generate and parse API response data"
-        command: |
-          cat << 'EOF'
-          {"status":"success","code":200,"data":{"user_id":"USR-12345","username":"john.doe","email":"john@example.com","role":"admin","last_login":"2024-01-15T10:30:00Z","session_token":"tk_a1b2c3d4e5f6"},"metadata":{"request_id":"req-98765","timestamp":1705315800,"server":"api-01"}}
-          EOF
-        capture_vars:
-          - name: status
-            capture: '"status":"([^"]+)"'
-          - name: code
-            capture: '"code":([0-9]+)'
-          - name: user_id
-            capture: '"user_id":"([^"]+)"'
-          - name: username
-            capture: '"username":"([^"]+)"'
-          - name: email
-            capture: '"email":"([^"]+)"'
-          - name: role
-            capture: '"role":"([^"]+)"'
-          - name: session_token
-            capture: '"session_token":"([^"]+)"'
-          - name: request_id
-            capture: '"request_id":"([^"]+)"'
-        expected:
-          success: true
-          result: '0'
-          output: "success"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "grep -q 'success' <<< \"$COMMAND_OUTPUT\""
-          general:
-            - name: verify_status_success
-              condition: "[[ \"$status\" == \"success\" ]]"
-            - name: verify_code_is_200
-              condition: "[[ $code -eq 200 ]]"
-            - name: verify_user_id_format
-              condition: "[[ $user_id =~ ^USR-[0-9]+$ ]]"
-            - name: verify_username_format
-              condition: "[[ \"$username\" =~ ^[a-z]+\\.[a-z]+$ ]]"
-            - name: verify_email_valid
-              condition: "[[ $email =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$ ]]"
-            - name: verify_role_is_admin
-              condition: "[[ \"$role\" == \"admin\" ]]"
-            - name: verify_session_token_prefix
-              condition: "[[ $session_token =~ ^tk_ ]]"
-            - name: verify_request_id_format
-              condition: "[[ $request_id =~ ^req-[0-9]+$ ]]"
+- id: 1
+  name: JSON-like Data Processing
+  description: Process and validate complex structured data
+  initial_conditions:
+    system:
+    - Data processing tools available
+  steps:
+  - step: 1
+    description: Generate and parse API response data
+    command: 'cat << ''EOF''
 
-      - step: 2
-        description: "Parse and validate server log entries"
-        command: |
-          cat << 'EOF'
-          [2024-01-15 10:30:45] INFO [API-01] Request received: GET /api/v1/users/12345 from 203.0.113.42
-          [2024-01-15 10:30:46] INFO [AUTH] Token validated for user: john.doe (role: admin)
-          [2024-01-15 10:30:46] INFO [DB] Query executed: SELECT * FROM users WHERE id=12345 (duration: 15ms)
-          [2024-01-15 10:30:46] INFO [API-01] Response sent: 200 OK (size: 2.3KB, duration: 125ms)
-          EOF
-        capture_vars:
-          - name: client_ip
-            capture: 'from ([0-9.]+)'
-          - name: authenticated_user
-            capture: 'Token validated for user: ([a-z.]+)'
-          - name: user_role
-            capture: 'role: ([a-z]+)'
-          - name: db_duration_ms
-            capture: 'Query executed:.*duration: ([0-9]+)ms'
-          - name: response_code
-            capture: 'Response sent: ([0-9]+)'
-          - name: response_duration_ms
-            capture: 'Response sent:.*duration: ([0-9]+)ms'
-          - name: log_lines
-            command: "grep -c '\\[INFO\\]' <<< \"$COMMAND_OUTPUT\""
-        expected:
-          success: true
-          result: '0'
-          output: "INFO"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "grep -q 'INFO' <<< \"$COMMAND_OUTPUT\""
-          general:
-            - name: verify_ip_format
-              condition: "[[ $client_ip =~ ^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$ ]]"
-            - name: verify_user_authenticated
-              condition: "[[ \"$authenticated_user\" == \"john.doe\" ]]"
-            - name: verify_role_admin
-              condition: "[[ \"$user_role\" == \"admin\" ]]"
-            - name: verify_db_duration_fast
-              condition: "[[ $db_duration_ms -lt 100 ]]"
-            - name: verify_response_success
-              condition: "[[ $response_code -eq 200 ]]"
-            - name: verify_response_duration_acceptable
-              condition: "[[ $response_duration_ms -lt 500 ]]"
-            - name: verify_log_count
-              condition: "[[ $log_lines -eq 4 ]]"
+      {"status":"success","code":200,"data":{"user_id":"USR-12345","username":"john.doe","email":"john@example.com","role":"admin","last_login":"2024-01-15T10:30:00Z","session_token":"tk_a1b2c3d4e5f6"},"metadata":{"request_id":"req-98765","timestamp":1705315800,"server":"api-01"}}
 
-      - step: 3
-        description: "Process metrics data with calculations"
-        command: |
-          cat << 'EOF'
-          PERFORMANCE_METRICS
-          Requests_Total: 1000
-          Requests_Success: 950
-          Requests_Failed: 50
-          Average_Response_Time: 145ms
-          Peak_Response_Time: 890ms
-          Min_Response_Time: 23ms
-          Throughput: 125.5 req/sec
-          Error_Rate: 5.0%
-          Active_Connections: 42
-          EOF
-        capture_vars:
-          - name: total_requests
-            capture: 'Requests_Total: ([0-9]+)'
-          - name: success_requests
-            capture: 'Requests_Success: ([0-9]+)'
-          - name: failed_requests
-            capture: 'Requests_Failed: ([0-9]+)'
-          - name: avg_response_ms
-            capture: 'Average_Response_Time: ([0-9]+)ms'
-          - name: peak_response_ms
-            capture: 'Peak_Response_Time: ([0-9]+)ms'
-          - name: error_rate
-            capture: 'Error_Rate: ([0-9.]+)%'
-          - name: active_conns
-            capture: 'Active_Connections: ([0-9]+)'
-          - name: calculated_success_rate
-            command: "echo \"scale=2; (950 * 100) / 1000\" | bc"
-        expected:
-          success: true
-          result: '0'
-          output: "PERFORMANCE_METRICS"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "grep -q 'PERFORMANCE_METRICS' <<< \"$COMMAND_OUTPUT\""
-          general:
-            - name: verify_totals_match
-              condition: "[[ $((success_requests + failed_requests)) -eq $total_requests ]]"
-            - name: verify_success_rate_high
-              condition: "[[ $success_requests -gt 900 ]]"
-            - name: verify_avg_response_acceptable
-              condition: "[[ $avg_response_ms -lt 200 ]]"
-            - name: verify_peak_reasonable
-              condition: "[[ $peak_response_ms -lt 1000 ]]"
-            - name: verify_peak_gt_avg
-              condition: "[[ $peak_response_ms -gt $avg_response_ms ]]"
-            - name: verify_error_rate_low
-              condition: "[[ $(echo \"$error_rate < 10\" | bc) -eq 1 ]]"
-            - name: verify_active_connections_reasonable
-              condition: "[[ $active_conns -gt 0 && $active_conns -lt 100 ]]"
+      EOF
+
+      '
+    capture_vars:
+    - name: status
+      capture: '"status":"([^"]+)"'
+    - name: code
+      capture: '"code":([0-9]+)'
+    - name: user_id
+      capture: '"user_id":"([^"]+)"'
+    - name: username
+      capture: '"username":"([^"]+)"'
+    - name: email
+      capture: '"email":"([^"]+)"'
+    - name: role
+      capture: '"role":"([^"]+)"'
+    - name: session_token
+      capture: '"session_token":"([^"]+)"'
+    - name: request_id
+      capture: '"request_id":"([^"]+)"'
+    expected:
+      success: true
+      result: '0'
+      output: success
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: grep -q 'success' <<< "$COMMAND_OUTPUT"
+      general:
+      - name: verify_status_success
+        condition: '[[ "$status" == "success" ]]'
+      - name: verify_code_is_200
+        condition: '[[ $code -eq 200 ]]'
+      - name: verify_user_id_format
+        condition: '[[ $user_id =~ ^USR-[0-9]+$ ]]'
+      - name: verify_username_format
+        condition: '[[ "$username" =~ ^[a-z]+\.[a-z]+$ ]]'
+      - name: verify_email_valid
+        condition: '[[ $email =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$
+          ]]'
+      - name: verify_role_is_admin
+        condition: '[[ "$role" == "admin" ]]'
+      - name: verify_session_token_prefix
+        condition: '[[ $session_token =~ ^tk_ ]]'
+      - name: verify_request_id_format
+        condition: '[[ $request_id =~ ^req-[0-9]+$ ]]'
+  - step: 2
+    description: Parse and validate server log entries
+    command: 'cat << ''EOF''
+
+      [2024-01-15 10:30:45] INFO [API-01] Request received: GET /api/v1/users/12345
+      from 203.0.113.42
+
+      [2024-01-15 10:30:46] INFO [AUTH] Token validated for user: john.doe (role:
+      admin)
+
+      [2024-01-15 10:30:46] INFO [DB] Query executed: SELECT * FROM users WHERE id=12345
+      (duration: 15ms)
+
+      [2024-01-15 10:30:46] INFO [API-01] Response sent: 200 OK (size: 2.3KB, duration:
+      125ms)
+
+      EOF
+
+      '
+    capture_vars:
+    - name: client_ip
+      capture: from ([0-9.]+)
+    - name: authenticated_user
+      capture: 'Token validated for user: ([a-z.]+)'
+    - name: user_role
+      capture: 'role: ([a-z]+)'
+    - name: db_duration_ms
+      capture: 'Query executed:.*duration: ([0-9]+)ms'
+    - name: response_code
+      capture: 'Response sent: ([0-9]+)'
+    - name: response_duration_ms
+      capture: 'Response sent:.*duration: ([0-9]+)ms'
+    - name: log_lines
+      command: grep -c '\[INFO\]' <<< "$COMMAND_OUTPUT"
+    expected:
+      success: true
+      result: '0'
+      output: INFO
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: grep -q 'INFO' <<< "$COMMAND_OUTPUT"
+      general:
+      - name: verify_ip_format
+        condition: '[[ $client_ip =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]'
+      - name: verify_user_authenticated
+        condition: '[[ "$authenticated_user" == "john.doe" ]]'
+      - name: verify_role_admin
+        condition: '[[ "$user_role" == "admin" ]]'
+      - name: verify_db_duration_fast
+        condition: '[[ $db_duration_ms -lt 100 ]]'
+      - name: verify_response_success
+        condition: '[[ $response_code -eq 200 ]]'
+      - name: verify_response_duration_acceptable
+        condition: '[[ $response_duration_ms -lt 500 ]]'
+      - name: verify_log_count
+        condition: '[[ $log_lines -eq 4 ]]'
+  - step: 3
+    description: Process metrics data with calculations
+    command: 'cat << ''EOF''
+
+      PERFORMANCE_METRICS
+
+      Requests_Total: 1000
+
+      Requests_Success: 950
+
+      Requests_Failed: 50
+
+      Average_Response_Time: 145ms
+
+      Peak_Response_Time: 890ms
+
+      Min_Response_Time: 23ms
+
+      Throughput: 125.5 req/sec
+
+      Error_Rate: 5.0%
+
+      Active_Connections: 42
+
+      EOF
+
+      '
+    capture_vars:
+    - name: total_requests
+      capture: 'Requests_Total: ([0-9]+)'
+    - name: success_requests
+      capture: 'Requests_Success: ([0-9]+)'
+    - name: failed_requests
+      capture: 'Requests_Failed: ([0-9]+)'
+    - name: avg_response_ms
+      capture: 'Average_Response_Time: ([0-9]+)ms'
+    - name: peak_response_ms
+      capture: 'Peak_Response_Time: ([0-9]+)ms'
+    - name: error_rate
+      capture: 'Error_Rate: ([0-9.]+)%'
+    - name: active_conns
+      capture: 'Active_Connections: ([0-9]+)'
+    - name: calculated_success_rate
+      command: echo "scale=2; (950 * 100) / 1000" | bc
+    expected:
+      success: true
+      result: '0'
+      output: PERFORMANCE_METRICS
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: grep -q 'PERFORMANCE_METRICS' <<< "$COMMAND_OUTPUT"
+      general:
+      - name: verify_totals_match
+        condition: '[[ $((success_requests + failed_requests)) -eq $total_requests
+          ]]'
+      - name: verify_success_rate_high
+        condition: '[[ $success_requests -gt 900 ]]'
+      - name: verify_avg_response_acceptable
+        condition: '[[ $avg_response_ms -lt 200 ]]'
+      - name: verify_peak_reasonable
+        condition: '[[ $peak_response_ms -lt 1000 ]]'
+      - name: verify_peak_gt_avg
+        condition: '[[ $peak_response_ms -gt $avg_response_ms ]]'
+      - name: verify_error_rate_low
+        condition: '[[ $(echo "$error_rate < 10" | bc) -eq 1 ]]'
+      - name: verify_active_connections_reasonable
+        condition: '[[ $active_conns -gt 0 && $active_conns -lt 100 ]]'
