@@ -773,6 +773,24 @@ impl TestVerifier {
 
         log::debug!("Successfully parsed {} JSON entries", entries.len());
 
+        // Check for type/schema fields in the first entry (if any)
+        if let Some(first_entry) = entries.first() {
+            if first_entry.doc_type.is_none() {
+                log::warn!(
+                    "Missing 'type' field in execution log: {}",
+                    log_path.display()
+                );
+            }
+            if first_entry.schema.is_none() {
+                log::warn!(
+                    "Missing 'schema' field in execution log: {}",
+                    log_path.display()
+                );
+            } else if let Some(ref schema) = first_entry.schema {
+                log::debug!("Execution log schema: {}", schema);
+            }
+        }
+
         let mut logs = Vec::new();
         for entry in entries {
             // Derive success from exit_code (0 = success, non-zero = failure)
@@ -841,6 +859,24 @@ impl TestVerifier {
             log_path.display()
         );
         log::debug!("Successfully parsed {} JSON entries", entries.len());
+
+        // Check for type/schema fields in the first entry (if any)
+        if let Some(first_entry) = entries.first() {
+            if first_entry.doc_type.is_none() {
+                log::warn!(
+                    "Missing 'type' field in execution log: {}",
+                    log_path.display()
+                );
+            }
+            if first_entry.schema.is_none() {
+                log::warn!(
+                    "Missing 'schema' field in execution log: {}",
+                    log_path.display()
+                );
+            } else if let Some(ref schema) = first_entry.schema {
+                log::debug!("Execution log schema: {}", schema);
+            }
+        }
 
         let mut logs = Vec::new();
         for entry in entries {

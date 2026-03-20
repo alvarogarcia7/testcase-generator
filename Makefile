@@ -139,6 +139,7 @@ test-e2e:
 	./tests/integration/test_validate_yaml_watch_e2e.sh
 	./tests/integration/test_validate_yaml_schema_watch_e2e.sh
 	./tests/integration/test_validate_yaml_transitive_schema_watch_e2e.sh
+	./tests/integration/test_auto_schema_validation_e2e.sh
 	./tests/integration/test_variable_passing_e2e.sh
 	./tests/integration/test_verifier_e2e.sh
 	./tests/integration/test_verifier_container_e2e.sh
@@ -278,6 +279,10 @@ test-e2e-validate-yaml: build
 	./tests/integration/test_validate_yaml_multi_e2e.sh
 	./tests/integration/test_validate_yaml_watch_e2e.sh
 .PHONY: test-e2e-validate-yaml
+
+test-e2e-auto-schema: build
+	./tests/integration/test_auto_schema_validation_e2e.sh
+.PHONY: test-e2e-auto-schema
 
 docker-build:
 	${MAKE} README_INSTALL_AUTOMATED.md
