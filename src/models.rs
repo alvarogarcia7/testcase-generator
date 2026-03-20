@@ -1630,28 +1630,56 @@ mod tests {
 
     #[test]
     fn test_test_step_execution_entry_is_success() {
-        let success_entry =
-            TestStepExecutionEntry::new(1, 1, "cmd".to_string(), 0, "output".to_string(), true, true);
+        let success_entry = TestStepExecutionEntry::new(
+            1,
+            1,
+            "cmd".to_string(),
+            0,
+            "output".to_string(),
+            true,
+            true,
+        );
         assert!(success_entry.is_success());
         assert!(!success_entry.is_failure());
 
-        let failure_entry =
-            TestStepExecutionEntry::new(1, 1, "cmd".to_string(), 1, "error".to_string(), false, false);
+        let failure_entry = TestStepExecutionEntry::new(
+            1,
+            1,
+            "cmd".to_string(),
+            1,
+            "error".to_string(),
+            false,
+            false,
+        );
         assert!(!failure_entry.is_success());
         assert!(failure_entry.is_failure());
     }
 
     #[test]
     fn test_test_step_execution_entry_validate_success() {
-        let entry =
-            TestStepExecutionEntry::new(1, 2, "echo test".to_string(), 0, "output".to_string(), true, true);
+        let entry = TestStepExecutionEntry::new(
+            1,
+            2,
+            "echo test".to_string(),
+            0,
+            "output".to_string(),
+            true,
+            true,
+        );
         assert!(entry.validate().is_ok());
     }
 
     #[test]
     fn test_test_step_execution_entry_validate_negative_sequence() {
-        let entry =
-            TestStepExecutionEntry::new(-1, 2, "echo test".to_string(), 0, "output".to_string(), true, true);
+        let entry = TestStepExecutionEntry::new(
+            -1,
+            2,
+            "echo test".to_string(),
+            0,
+            "output".to_string(),
+            true,
+            true,
+        );
         let result = entry.validate();
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), "test_sequence must be non-negative");
@@ -1659,8 +1687,15 @@ mod tests {
 
     #[test]
     fn test_test_step_execution_entry_validate_negative_step() {
-        let entry =
-            TestStepExecutionEntry::new(1, -1, "echo test".to_string(), 0, "output".to_string(), true, true);
+        let entry = TestStepExecutionEntry::new(
+            1,
+            -1,
+            "echo test".to_string(),
+            0,
+            "output".to_string(),
+            true,
+            true,
+        );
         let result = entry.validate();
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), "step must be non-negative");
@@ -1668,7 +1703,8 @@ mod tests {
 
     #[test]
     fn test_test_step_execution_entry_validate_empty_command() {
-        let entry = TestStepExecutionEntry::new(1, 2, "".to_string(), 0, "output".to_string(), true, true);
+        let entry =
+            TestStepExecutionEntry::new(1, 2, "".to_string(), 0, "output".to_string(), true, true);
         let result = entry.validate();
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), "command must not be empty");
@@ -1676,7 +1712,15 @@ mod tests {
 
     #[test]
     fn test_test_step_execution_entry_matches() {
-        let entry = TestStepExecutionEntry::new(3, 5, "cmd".to_string(), 0, "output".to_string(), true, true);
+        let entry = TestStepExecutionEntry::new(
+            3,
+            5,
+            "cmd".to_string(),
+            0,
+            "output".to_string(),
+            true,
+            true,
+        );
 
         assert!(entry.matches(3, 5));
         assert!(!entry.matches(3, 6));
@@ -1686,15 +1730,29 @@ mod tests {
 
     #[test]
     fn test_test_step_execution_entry_result_summary() {
-        let success_entry =
-            TestStepExecutionEntry::new(1, 2, "cmd".to_string(), 0, "output".to_string(), true, true);
+        let success_entry = TestStepExecutionEntry::new(
+            1,
+            2,
+            "cmd".to_string(),
+            0,
+            "output".to_string(),
+            true,
+            true,
+        );
         assert_eq!(
             success_entry.result_summary(),
             "Sequence 1, Step 2: SUCCESS (exit code: 0)"
         );
 
-        let failure_entry =
-            TestStepExecutionEntry::new(3, 4, "cmd".to_string(), 127, "error".to_string(), false, false);
+        let failure_entry = TestStepExecutionEntry::new(
+            3,
+            4,
+            "cmd".to_string(),
+            127,
+            "error".to_string(),
+            false,
+            false,
+        );
         assert_eq!(
             failure_entry.result_summary(),
             "Sequence 3, Step 4: FAILURE (exit code: 127)"
@@ -1718,8 +1776,15 @@ mod tests {
         let timestamp = parsed.unwrap();
         assert_eq!(timestamp.to_rfc3339(), "2024-01-15T10:30:00+00:00");
 
-        let entry_without_timestamp =
-            TestStepExecutionEntry::new(1, 1, "cmd".to_string(), 0, "output".to_string(), true, true);
+        let entry_without_timestamp = TestStepExecutionEntry::new(
+            1,
+            1,
+            "cmd".to_string(),
+            0,
+            "output".to_string(),
+            true,
+            true,
+        );
         assert!(entry_without_timestamp.parse_timestamp().is_none());
 
         let entry_with_invalid_timestamp = TestStepExecutionEntry::with_timestamp(

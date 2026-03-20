@@ -1,9 +1,9 @@
 test-plan-doc-gen Integration Test Summary
 ==========================================
 
-Test Date: 2026-03-20T11:46:30
-Scenarios Directory: /Users/aial/Library/Application Support/Tonkotsu/tasks/testcase-generator_k7AUe9dVKT7Z40EIcXl9z/testcases/verifier_scenarios
-Output Directory: /Users/aial/Library/Application Support/Tonkotsu/tasks/testcase-generator_k7AUe9dVKT7Z40EIcXl9z/reports/tpdg_integration
+Test Date: 2026-03-20T12:28:55
+Scenarios Directory: /Users/aial/Library/Application Support/Tonkotsu/tasks/testcase-generator_lDHWW2d1Cxx2nGddqrUf8/testcases/verifier_scenarios
+Output Directory: /Users/aial/Library/Application Support/Tonkotsu/tasks/testcase-generator_lDHWW2d1Cxx2nGddqrUf8/reports/tpdg_integration
 
 Test Execution Summary
 ----------------------
@@ -79,7 +79,7 @@ HTML Reports: 0
 
 Output Directory Structure
 --------------------------
-/Users/aial/Library/Application Support/Tonkotsu/tasks/testcase-generator_k7AUe9dVKT7Z40EIcXl9z/reports/tpdg_integration/
+/Users/aial/Library/Application Support/Tonkotsu/tasks/testcase-generator_lDHWW2d1Cxx2nGddqrUf8/reports/tpdg_integration/
   verification/          - Verification JSON files from verifier
   results/               - Result YAML and container YAML files
   reports/

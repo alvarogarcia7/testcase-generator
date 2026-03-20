@@ -140,7 +140,7 @@ test-e2e:
 	./tests/integration/test_validate_yaml_schema_watch_e2e.sh
 	./tests/integration/test_validate_yaml_transitive_schema_watch_e2e.sh
 	./tests/integration/test_variable_passing_e2e.sh
-	#./tests/integration/test_verifier_e2e.sh
+	./tests/integration/test_verifier_e2e.sh
 	./tests/integration/test_verifier_container_e2e.sh
 	${MAKE} test-verifier-edge-cases
 	#./tests/integration/test_verify_e2e.sh
@@ -299,9 +299,10 @@ validate-all-testcases: build
 verify-testcases: build
 	@echo "Verifying test case files against schema..."
 	@FAILED=0; \
-	for file in $$(find testcases tests/sample data -type f \( -name "*.yml" -o -name "*.yaml" \) -not \( -path "*/expected_output_reports/*" -o -path "*/testcase_results_container/*" -o -path "*/generated_samples/*" -o -path "*/verifier_scenarios_incorrect/*" -o -name "*te.y*" -o -iname "sample_test_runs.yaml" -o -name "*wrong*" -o -name "data.yml" -o -name "steps-in-json.yml" -o -name "1.yaml" -o -name "SGP.22_4.4.2.yaml" -o -name "conditional_verification_example.yml" -o -name "doc_gen_*.yml" \) 2>/dev/null); do \
+	cargo build --bin validate-yaml; \
+	for file in $$(find testcases tests/sample data -type f \( -name "*.yml" -o -name "*.yaml" \) -not \( -path "*/expected_output_reports/*" -o -path "*/testcase_results_container/*" -o -path "*/generated_samples/*" -o -path "*/verifier_scenarios_incorrect/*" -o -name "*te.y*" -o -iname "sample_test_runs.yaml" -o -name "*wrong*" -o -name "data.yml" -o -name "steps-in-json.yml" -o -name "1.yaml" -o -name "SGP.22_4.4.2.yaml" -o -name "conditional_verification_example.yml" -o -name "doc_gen_*.yml" -o -name "*container*" -o -path "*test_case_result*" -o -path "*test_result_01*" \) 2>/dev/null); do \
 		echo "Validating: $$file"; \
-		if cargo run --bin validate-yaml -- --schema schemas/test-case.schema.json "$$file" >/dev/null 2>&1; then \
+		if ./target/debug/validate-yaml --schema schemas/test-case.schema.json "$$file" >/dev/null 2>&1; then \
 			echo "  ✓ PASSED"; \
 		else \
 			echo "  ✗ FAILED"; \

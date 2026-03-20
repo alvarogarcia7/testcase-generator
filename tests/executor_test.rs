@@ -168,9 +168,33 @@ fn test_execution_log_json_serialization() {
 #[test]
 fn test_execution_log_json_array_serialization() {
     let entries = vec![
-        TestStepExecutionEntry::new(1, 1, "step1".to_string(), 0, "output1".to_string(), true, true),
-        TestStepExecutionEntry::new(1, 2, "step2".to_string(), 0, "output2".to_string(), true, true),
-        TestStepExecutionEntry::new(1, 3, "step3".to_string(), 1, "error".to_string(), false, false),
+        TestStepExecutionEntry::new(
+            1,
+            1,
+            "step1".to_string(),
+            0,
+            "output1".to_string(),
+            true,
+            true,
+        ),
+        TestStepExecutionEntry::new(
+            1,
+            2,
+            "step2".to_string(),
+            0,
+            "output2".to_string(),
+            true,
+            true,
+        ),
+        TestStepExecutionEntry::new(
+            1,
+            3,
+            "step3".to_string(),
+            1,
+            "error".to_string(),
+            false,
+            false,
+        ),
     ];
 
     let json = serde_json::to_string_pretty(&entries).unwrap();
@@ -649,8 +673,24 @@ fn test_execution_produces_json_logs() {
     // In the two-stage workflow:
     // 1. Execution produces JSON logs (TestStepExecutionEntry)
     let entries = vec![
-        TestStepExecutionEntry::new(1, 1, "echo 'test1'".to_string(), 0, "test1".to_string(), true, true),
-        TestStepExecutionEntry::new(1, 2, "echo 'test2'".to_string(), 0, "test2".to_string(), true, true),
+        TestStepExecutionEntry::new(
+            1,
+            1,
+            "echo 'test1'".to_string(),
+            0,
+            "test1".to_string(),
+            true,
+            true,
+        ),
+        TestStepExecutionEntry::new(
+            1,
+            2,
+            "echo 'test2'".to_string(),
+            0,
+            "test2".to_string(),
+            true,
+            true,
+        ),
     ];
 
     // Verify JSON serialization works
@@ -671,8 +711,10 @@ fn test_execution_produces_json_logs() {
 
 #[test]
 fn test_json_log_preserves_exit_codes() {
-    let success_entry = TestStepExecutionEntry::new(1, 1, "true".to_string(), 0, "".to_string(), true, true);
-    let failure_entry = TestStepExecutionEntry::new(1, 2, "false".to_string(), 1, "".to_string(), false, false);
+    let success_entry =
+        TestStepExecutionEntry::new(1, 1, "true".to_string(), 0, "".to_string(), true, true);
+    let failure_entry =
+        TestStepExecutionEntry::new(1, 2, "false".to_string(), 1, "".to_string(), false, false);
 
     let entries = vec![success_entry, failure_entry];
     let json = serde_json::to_string(&entries).unwrap();
@@ -685,8 +727,15 @@ fn test_json_log_preserves_exit_codes() {
 #[test]
 fn test_json_log_preserves_multiline_output() {
     let multiline_output = "Line 1\nLine 2\nLine 3";
-    let entry =
-        TestStepExecutionEntry::new(1, 1, "command".to_string(), 0, multiline_output.to_string(), true, true);
+    let entry = TestStepExecutionEntry::new(
+        1,
+        1,
+        "command".to_string(),
+        0,
+        multiline_output.to_string(),
+        true,
+        true,
+    );
 
     let json = serde_json::to_string(&entry).unwrap();
     let deserialized: TestStepExecutionEntry = serde_json::from_str(&json).unwrap();
