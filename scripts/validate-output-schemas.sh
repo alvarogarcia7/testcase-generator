@@ -58,7 +58,7 @@ check_python_requirements() {
     fi
     
     # Check for jsonschema module
-    if ! uv python3 -c 'import jsonschema' 2>/dev/null; then
+    if ! uv run python3 -c 'import jsonschema' 2>/dev/null; then
         log_error "Python jsonschema module is required but not found"
         log_info "Install with: pip3 install jsonschema"
         return 1
@@ -82,7 +82,7 @@ validate_yaml_file() {
     temp_json=$(mktemp)
     
     # Convert YAML to JSON and validate
-    python3 -c "
+    uv run python3 -c "
 import sys
 import json
 import yaml

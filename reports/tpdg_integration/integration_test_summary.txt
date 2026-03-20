@@ -1,13 +1,13 @@
 test-plan-doc-gen Integration Test Summary
 ==========================================
 
-Test Date: 2026-03-19T22:18:53
-Scenarios Directory: /Users/aial/Library/Application Support/Tonkotsu/tasks/testcase-generator_PbpFL9Pkofjx2JHkHaanq/testcases/verifier_scenarios
-Output Directory: /Users/aial/Library/Application Support/Tonkotsu/tasks/testcase-generator_PbpFL9Pkofjx2JHkHaanq/reports/tpdg_integration
+Test Date: 2026-03-20T10:07:23
+Scenarios Directory: /Users/aial/Documents/projects/testcase-generator/testcases/verifier_scenarios
+Output Directory: /Users/aial/Documents/projects/testcase-generator/reports/tpdg_integration
 
 Test Execution Summary
 ----------------------
-Total Test Scenarios: 13
+Total Test Scenarios: 47
 Total Report Generation Tests: 0
 Passed: 0
 Failed: 0
@@ -20,8 +20,38 @@ Content Checks Failed: 0
 
 Failed Tests
 ------------
+  ✗ TEST_PRECOMP_ALL_PASS_001: YAML conversion failed
+  ✗ TEST_PRECOMP_LONG_OUTPUT_001: YAML conversion failed
   ✗ TEST_SUCCESS_001: YAML conversion failed
+  ✗ TEST_PRECOMP_SPECIAL_CHARS_001: YAML conversion failed
+  ✗ TEST_PRECOMP_FIVE_STEPS_001: YAML conversion failed
+  ✗ TEST_PRECOMP_EMPTY_OUTPUT_001: YAML conversion failed
+  ✗ TEST_PRECOMP_SINGLE_STEP_001: YAML conversion failed
+  ✗ TEST_EDGE_EXTRA_STEPS_001: YAML conversion failed
+  ✗ TEST_EDGE_LAST_STEP_ONLY_001: YAML conversion failed
+  ✗ TEST_EDGE_SPARSE_EXECUTION_001: YAML conversion failed
+  ✗ TEST_EDGE_ALL_MISSING_001: YAML conversion failed
+  ✗ TEST_PRECOMP_NUMERIC_OUTPUT_001: YAML conversion failed
+  ✗ TEST_EDGE_MISSING_MIDDLE_001: YAML conversion failed
+  ✗ TEST_EDGE_MIXED_PASS_FAIL_001: YAML conversion failed
+  ✗ TEST_EDGE_PARTIAL_SEQ2_001: YAML conversion failed
+  ✗ TEST_EDGE_DUPLICATE_STEPS_001: YAML conversion failed
+  ✗ TEST_PRECOMP_ALL_FAIL_001: YAML conversion failed
+  ✗ TEST_EDGE_MISSING_LAST_001: YAML conversion failed
+  ✗ TEST_EDGE_ALL_FAIL_001: YAML conversion failed
+  ✗ TEST_PRECOMP_ONLY_RESULT_PASS_001: YAML conversion failed
+  ✗ TEST_EDGE_ALL_PASS_ONE_MISSING_001: YAML conversion failed
+  ✗ TEST_PRECOMP_PARTIAL_EXEC_001: YAML conversion failed
+  ✗ TEST_EDGE_WRONG_SEQUENCE_001: YAML conversion failed
+  ✗ TEST_PRECOMP_MIXED_RESULTS_001: YAML conversion failed
+  ✗ TEST_EDGE_ONE_CORRECT_REST_MISSING_001: YAML conversion failed
+  ✗ TEST_EDGE_MISSING_FIRST_001: YAML conversion failed
+  ✗ TEST_EDGE_PARTIAL_SEQ1_001: YAML conversion failed
+  ✗ TEST_PRECOMP_LAST_FAIL_001: YAML conversion failed
   ✗ TEST_FAILED_LAST_001: YAML conversion failed
+  ✗ TEST_PRECOMP_OUTPUT_FAIL_001: YAML conversion failed
+  ✗ TEST_PRECOMP_BOTH_FAIL_001: YAML conversion failed
+  ✗ TEST_PRECOMP_RESULT_FAIL_001: YAML conversion failed
   ✗ TEST_FAILED_FIRST_001: YAML conversion failed
   ✗ TEST_HOOK_SCRIPT_END_001: YAML conversion failed
   ✗ TEST_HOOK_TEARDOWN_001: YAML conversion failed
@@ -32,20 +62,24 @@ Failed Tests
   ✗ TEST_HOOK_BEFORE_SEQ_001: YAML conversion failed
   ✗ TEST_HOOK_BEFORE_STEP_001: YAML conversion failed
   ✗ TEST_FAILED_INTERMEDIATE_001: YAML conversion failed
+  ✗ TEST_PRECOMP_MID_FAIL_001: YAML conversion failed
+  ✗ TEST_PRECOMP_TWO_FAILURES_001: YAML conversion failed
+  ✗ TEST_PRECOMP_THREE_SEQ_001: YAML conversion failed
+  ✗ TEST_PRECOMP_MULTI_SEQ_001: YAML conversion failed
   ✗ TEST_MULTI_SEQ_001: YAML conversion failed
 
 Generated Files
 ---------------
-Verification JSON: 13
+Verification JSON: 47
 Result YAML: 0
 Container YAML: 0
-AsciiDoc Reports: 0
+AsciiDoc Reports: 13
 Markdown Reports: 0
-HTML Reports: 0
+HTML Reports: 13
 
 Output Directory Structure
 --------------------------
-/Users/aial/Library/Application Support/Tonkotsu/tasks/testcase-generator_PbpFL9Pkofjx2JHkHaanq/reports/tpdg_integration/
+/Users/aial/Documents/projects/testcase-generator/reports/tpdg_integration/
   verification/          - Verification JSON files from verifier
   results/               - Result YAML and container YAML files
   reports/

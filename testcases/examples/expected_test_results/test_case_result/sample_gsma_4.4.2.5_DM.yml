@@ -45,7 +45,7 @@ sequences:
           step: 10
           description: "Verify profile removal from eUICC"
     all_steps_passed: true
-total_steps: "1"
+total_steps: 1
 passed_steps: 10
 failed_steps: 0
 not_executed_steps: 0
