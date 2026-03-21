@@ -1014,7 +1014,8 @@ impl TestExecutor {
                     script.push_str("FIRST_ENTRY=false\n\n");
 
                     // Escape command for JSON
-                    let escaped_command = step.command
+                    let escaped_command = step
+                        .command
                         .replace("\\", "\\\\")
                         .replace("'", "\"")
                         .replace("\"", "\\\"")
@@ -1024,9 +1025,7 @@ impl TestExecutor {
 
                     script.push_str("# Write manual step JSON entry\n");
                     script.push_str("{\n");
-                    script.push_str(&format!(
-                        "    echo '  {{\'\n"
-                    ));
+                    script.push_str(&format!("    echo '  {{\'\n"));
                     script.push_str(&format!(
                         "    echo '    \"test_sequence\": {},'\n",
                         sequence.id
@@ -1037,7 +1036,9 @@ impl TestExecutor {
                         escaped_command
                     ));
                     script.push_str("    echo \"    \\\"exit_code\\\": 0,\"\n");
-                    script.push_str("    echo \"    \\\"output\\\": \\\"Manual step confirmed by user\\\",\"\n");
+                    script.push_str(
+                        "    echo \"    \\\"output\\\": \\\"Manual step confirmed by user\\\",\"\n",
+                    );
                     script.push_str("    echo \"    \\\"timestamp\\\": \\\"$TIMESTAMP\\\",\"\n");
 
                     if has_verification {
