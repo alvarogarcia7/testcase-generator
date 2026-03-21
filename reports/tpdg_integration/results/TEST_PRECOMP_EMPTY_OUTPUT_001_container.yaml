@@ -1,8 +1,10 @@
-title: 'Test Execution Results - TEST_PRECOMP_EMPTY_OUTPUT_001'
+type: test_case_verification_result
+schema: tcms/test-case-verification-result.schema.v1.json
+title: Test Execution Results - TEST_PRECOMP_EMPTY_OUTPUT_001
 date: '2026-03-21'
-product: 'Test Case Manager'
-description: 'Integration test results for TEST_PRECOMP_EMPTY_OUTPUT_001'
-project: 'Test Case Manager - Integration Test'
+product: Test Case Manager
+description: Integration test results for TEST_PRECOMP_EMPTY_OUTPUT_001
+project: Test Case Manager - Integration Test
 test_date: '2026-03-21T19:33:36'
 test_results:
   description: 'Precomputed verification: steps with empty output pass verification'
@@ -19,30 +21,21 @@ test_results:
     requirement: TEST_PRECOMP_EMPTY_OUTPUT
     sequence_id: 1
     step_results:
-    - Pass:
-        description: Execute command with no output
-        item: 1
-        requirement: TEST_PRECOMP_EMPTY_OUTPUT
-        step: 1
-        tc: 1
-    - Pass:
-        description: Execute another silent command
-        item: 1
-        requirement: TEST_PRECOMP_EMPTY_OUTPUT
-        step: 2
-        tc: 1
-    - Pass:
-        description: Execute final silent command
-        item: 1
-        requirement: TEST_PRECOMP_EMPTY_OUTPUT
-        step: 3
-        tc: 1
+    - step: 1
+      status: pass
+      description: Execute command with no output
+    - step: 2
+      status: pass
+      description: Execute another silent command
+    - step: 3
+      status: pass
+      description: Execute final silent command
     tc: 1
   tc: 1
   test_case_id: TEST_PRECOMP_EMPTY_OUTPUT_001
   total_steps: 3
 metadata:
-  environment: 'Integration Test Environment'
-  platform: 'Test Case Manager Integration Tests'
-  executor: 'validate_tpdg_integration.sh'
+  environment: Integration Test Environment
+  platform: Test Case Manager Integration Tests
+  executor: validate_tpdg_integration.sh
   total_test_cases: 1

@@ -1,8 +1,10 @@
-title: 'Test Execution Results - TEST_PRECOMP_THREE_SEQ_001'
+type: test_case_verification_result
+schema: tcms/test-case-verification-result.schema.v1.json
+title: Test Execution Results - TEST_PRECOMP_THREE_SEQ_001
 date: '2026-03-21'
-product: 'Test Case Manager'
-description: 'Integration test results for TEST_PRECOMP_THREE_SEQ_001'
-project: 'Test Case Manager - Integration Test'
+product: Test Case Manager
+description: Integration test results for TEST_PRECOMP_THREE_SEQ_001
+project: Test Case Manager - Integration Test
 test_date: '2026-03-21T19:33:37'
 test_results:
   description: 'Precomputed verification: three sequences with varying results'
@@ -19,12 +21,9 @@ test_results:
     requirement: TEST_PRECOMP_THREE_SEQ
     sequence_id: 1
     step_results:
-    - Pass:
-        description: Seq 1 Step 1
-        item: 1
-        requirement: TEST_PRECOMP_THREE_SEQ
-        step: 1
-        tc: 1
+    - step: 1
+      status: pass
+      description: Seq 1 Step 1
     tc: 1
   - all_steps_passed: true
     item: 1
@@ -32,18 +31,12 @@ test_results:
     requirement: TEST_PRECOMP_THREE_SEQ
     sequence_id: 2
     step_results:
-    - Pass:
-        description: Seq 2 Step 1 - pass
-        item: 1
-        requirement: TEST_PRECOMP_THREE_SEQ
-        step: 1
-        tc: 1
-    - Pass:
-        description: Seq 2 Step 2 - fail
-        item: 1
-        requirement: TEST_PRECOMP_THREE_SEQ
-        step: 2
-        tc: 1
+    - step: 1
+      status: pass
+      description: Seq 2 Step 1 - pass
+    - step: 2
+      status: pass
+      description: Seq 2 Step 2 - fail
     tc: 1
   - all_steps_passed: true
     item: 1
@@ -51,18 +44,15 @@ test_results:
     requirement: TEST_PRECOMP_THREE_SEQ
     sequence_id: 3
     step_results:
-    - Pass:
-        description: Seq 3 Step 1
-        item: 1
-        requirement: TEST_PRECOMP_THREE_SEQ
-        step: 1
-        tc: 1
+    - step: 1
+      status: pass
+      description: Seq 3 Step 1
     tc: 1
   tc: 1
   test_case_id: TEST_PRECOMP_THREE_SEQ_001
   total_steps: 4
 metadata:
-  environment: 'Integration Test Environment'
-  platform: 'Test Case Manager Integration Tests'
-  executor: 'validate_tpdg_integration.sh'
+  environment: Integration Test Environment
+  platform: Test Case Manager Integration Tests
+  executor: validate_tpdg_integration.sh
   total_test_cases: 1

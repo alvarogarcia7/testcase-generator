@@ -1,8 +1,10 @@
-title: 'Test Execution Results - TEST_PRECOMP_MID_FAIL_001'
+type: test_case_verification_result
+schema: tcms/test-case-verification-result.schema.v1.json
+title: Test Execution Results - TEST_PRECOMP_MID_FAIL_001
 date: '2026-03-21'
-product: 'Test Case Manager'
-description: 'Integration test results for TEST_PRECOMP_MID_FAIL_001'
-project: 'Test Case Manager - Integration Test'
+product: Test Case Manager
+description: Integration test results for TEST_PRECOMP_MID_FAIL_001
+project: Test Case Manager - Integration Test
 test_date: '2026-03-21T19:33:37'
 test_results:
   description: 'Precomputed verification: middle step fails verification'
@@ -19,37 +21,21 @@ test_results:
     requirement: TEST_PRECOMP_MID_FAIL
     sequence_id: 1
     step_results:
-    - Pass:
-        description: Execute first command successfully
-        item: 1
-        requirement: TEST_PRECOMP_MID_FAIL
-        step: 1
-        tc: 1
-    - Fail:
-        actual_output: Wrong output
-        actual_result: '0'
-        description: Execute middle command with output mismatch
-        expected:
-          output: Expected output
-          result: '0'
-          success: true
-        item: 1
-        reason: 'Output mismatch: expected ''Expected output'', got ''Wrong output'''
-        requirement: TEST_PRECOMP_MID_FAIL
-        step: 2
-        tc: 1
-    - Pass:
-        description: Execute final command successfully
-        item: 1
-        requirement: TEST_PRECOMP_MID_FAIL
-        step: 3
-        tc: 1
+    - step: 1
+      status: pass
+      description: Execute first command successfully
+    - step: 2
+      status: fail
+      description: Execute middle command with output mismatch
+    - step: 3
+      status: pass
+      description: Execute final command successfully
     tc: 1
   tc: 1
   test_case_id: TEST_PRECOMP_MID_FAIL_001
   total_steps: 3
 metadata:
-  environment: 'Integration Test Environment'
-  platform: 'Test Case Manager Integration Tests'
-  executor: 'validate_tpdg_integration.sh'
+  environment: Integration Test Environment
+  platform: Test Case Manager Integration Tests
+  executor: validate_tpdg_integration.sh
   total_test_cases: 1

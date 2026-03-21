@@ -1,11 +1,14 @@
-title: 'Test Execution Results - TEST_HOOK_TEARDOWN_001'
+type: test_case_verification_result
+schema: tcms/test-case-verification-result.schema.v1.json
+title: Test Execution Results - TEST_HOOK_TEARDOWN_001
 date: '2026-03-21'
-product: 'Test Case Manager'
-description: 'Integration test results for TEST_HOOK_TEARDOWN_001'
-project: 'Test Case Manager - Integration Test'
+product: Test Case Manager
+description: Integration test results for TEST_HOOK_TEARDOWN_001
+project: Test Case Manager - Integration Test
 test_date: '2026-03-21T19:33:37'
 test_results:
-  description: Hook error scenario for teardown_test hook - script exits with error code during test cleanup
+  description: Hook error scenario for teardown_test hook - script exits with error
+    code during test cleanup
   failed_steps: 0
   item: 1
   not_executed_steps: 0
@@ -19,18 +22,12 @@ test_results:
     requirement: HOOK_TEARDOWN_TEST_ERROR
     sequence_id: 1
     step_results:
-    - Pass:
-        description: Execute first step of sequence 1
-        item: 1
-        requirement: HOOK_TEARDOWN_TEST_ERROR
-        step: 1
-        tc: 1
-    - Pass:
-        description: Execute second step of sequence 1
-        item: 1
-        requirement: HOOK_TEARDOWN_TEST_ERROR
-        step: 2
-        tc: 1
+    - step: 1
+      status: pass
+      description: Execute first step of sequence 1
+    - step: 2
+      status: pass
+      description: Execute second step of sequence 1
     tc: 1
   - all_steps_passed: true
     item: 1
@@ -38,18 +35,12 @@ test_results:
     requirement: HOOK_TEARDOWN_TEST_ERROR
     sequence_id: 2
     step_results:
-    - Pass:
-        description: Execute first step of sequence 2
-        item: 1
-        requirement: HOOK_TEARDOWN_TEST_ERROR
-        step: 1
-        tc: 1
-    - Pass:
-        description: Execute second step of sequence 2
-        item: 1
-        requirement: HOOK_TEARDOWN_TEST_ERROR
-        step: 2
-        tc: 1
+    - step: 1
+      status: pass
+      description: Execute first step of sequence 2
+    - step: 2
+      status: pass
+      description: Execute second step of sequence 2
     tc: 1
   - all_steps_passed: true
     item: 1
@@ -57,18 +48,15 @@ test_results:
     requirement: HOOK_TEARDOWN_TEST_ERROR
     sequence_id: 3
     step_results:
-    - Pass:
-        description: Execute final step
-        item: 1
-        requirement: HOOK_TEARDOWN_TEST_ERROR
-        step: 1
-        tc: 1
+    - step: 1
+      status: pass
+      description: Execute final step
     tc: 1
   tc: 1
   test_case_id: TEST_HOOK_TEARDOWN_001
   total_steps: 5
 metadata:
-  environment: 'Integration Test Environment'
-  platform: 'Test Case Manager Integration Tests'
-  executor: 'validate_tpdg_integration.sh'
+  environment: Integration Test Environment
+  platform: Test Case Manager Integration Tests
+  executor: validate_tpdg_integration.sh
   total_test_cases: 1

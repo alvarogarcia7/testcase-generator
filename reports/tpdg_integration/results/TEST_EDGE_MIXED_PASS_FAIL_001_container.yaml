@@ -1,8 +1,10 @@
-title: 'Test Execution Results - TEST_EDGE_MIXED_PASS_FAIL_001'
+type: test_case_verification_result
+schema: tcms/test-case-verification-result.schema.v1.json
+title: Test Execution Results - TEST_EDGE_MIXED_PASS_FAIL_001
 date: '2026-03-21'
-product: 'Test Case Manager'
-description: 'Integration test results for TEST_EDGE_MIXED_PASS_FAIL_001'
-project: 'Test Case Manager - Integration Test'
+product: Test Case Manager
+description: Integration test results for TEST_EDGE_MIXED_PASS_FAIL_001
+project: Test Case Manager - Integration Test
 test_date: '2026-03-21T19:33:36'
 test_results:
   description: 'Edge case: alternating pass/fail pattern across steps'
@@ -19,56 +21,27 @@ test_results:
     requirement: EDGE_MIXED_PASS_FAIL
     sequence_id: 1
     step_results:
-    - Pass:
-        description: Pass verification
-        item: 1
-        requirement: EDGE_MIXED_PASS_FAIL
-        step: 1
-        tc: 1
-    - Fail:
-        actual_output: Step 2 wrong
-        actual_result: '0'
-        description: Fail verification
-        expected:
-          output: Step 2 expected
-          result: '0'
-          success: true
-        item: 1
-        reason: 'Output mismatch: expected ''Step 2 expected'', got ''Step 2 wrong'''
-        requirement: EDGE_MIXED_PASS_FAIL
-        step: 2
-        tc: 1
-    - Pass:
-        description: Pass verification
-        item: 1
-        requirement: EDGE_MIXED_PASS_FAIL
-        step: 3
-        tc: 1
-    - Fail:
-        actual_output: Step 4 wrong
-        actual_result: '0'
-        description: Fail verification
-        expected:
-          output: Step 4 expected
-          result: '0'
-          success: true
-        item: 1
-        reason: 'Output mismatch: expected ''Step 4 expected'', got ''Step 4 wrong'''
-        requirement: EDGE_MIXED_PASS_FAIL
-        step: 4
-        tc: 1
-    - Pass:
-        description: Pass verification
-        item: 1
-        requirement: EDGE_MIXED_PASS_FAIL
-        step: 5
-        tc: 1
+    - step: 1
+      status: pass
+      description: Pass verification
+    - step: 2
+      status: fail
+      description: Fail verification
+    - step: 3
+      status: pass
+      description: Pass verification
+    - step: 4
+      status: fail
+      description: Fail verification
+    - step: 5
+      status: pass
+      description: Pass verification
     tc: 1
   tc: 1
   test_case_id: TEST_EDGE_MIXED_PASS_FAIL_001
   total_steps: 5
 metadata:
-  environment: 'Integration Test Environment'
-  platform: 'Test Case Manager Integration Tests'
-  executor: 'validate_tpdg_integration.sh'
+  environment: Integration Test Environment
+  platform: Test Case Manager Integration Tests
+  executor: validate_tpdg_integration.sh
   total_test_cases: 1

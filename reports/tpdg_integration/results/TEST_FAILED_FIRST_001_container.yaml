@@ -1,11 +1,14 @@
-title: 'Test Execution Results - TEST_FAILED_FIRST_001'
+type: test_case_verification_result
+schema: tcms/test-case-verification-result.schema.v1.json
+title: Test Execution Results - TEST_FAILED_FIRST_001
 date: '2026-03-21'
-product: 'Test Case Manager'
-description: 'Integration test results for TEST_FAILED_FIRST_001'
-project: 'Test Case Manager - Integration Test'
+product: Test Case Manager
+description: Integration test results for TEST_FAILED_FIRST_001
+project: Test Case Manager - Integration Test
 test_date: '2026-03-21T19:33:37'
 test_results:
-  description: Test case demonstrating failed first step scenario where step 1 fails and remaining steps are not executed
+  description: Test case demonstrating failed first step scenario where step 1 fails
+    and remaining steps are not executed
   failed_steps: 1
   item: 1
   not_executed_steps: 3
@@ -19,43 +22,24 @@ test_results:
     requirement: FAILED_FIRST_STEP
     sequence_id: 1
     step_results:
-    - Fail:
-        actual_output: 'mkdir: cannot create directory ''/invalid/path/directory'': No such file or directory'
-        actual_result: '1'
-        description: Attempt to create directory (fails)
-        expected:
-          output: ''
-          result: '0'
-          success: true
-        item: 1
-        reason: 'Success mismatch: expected true, got false'
-        requirement: FAILED_FIRST_STEP
-        step: 1
-        tc: 1
-    - NotExecuted:
-        description: Create a file (not executed)
-        item: 1
-        requirement: FAILED_FIRST_STEP
-        step: 2
-        tc: 1
-    - NotExecuted:
-        description: Read the file (not executed)
-        item: 1
-        requirement: FAILED_FIRST_STEP
-        step: 3
-        tc: 1
-    - NotExecuted:
-        description: Clean up the file (not executed)
-        item: 1
-        requirement: FAILED_FIRST_STEP
-        step: 4
-        tc: 1
+    - step: 1
+      status: fail
+      description: Attempt to create directory (fails)
+    - step: 2
+      status: not_executed
+      description: Create a file (not executed)
+    - step: 3
+      status: not_executed
+      description: Read the file (not executed)
+    - step: 4
+      status: not_executed
+      description: Clean up the file (not executed)
     tc: 1
   tc: 1
   test_case_id: TEST_FAILED_FIRST_001
   total_steps: 4
 metadata:
-  environment: 'Integration Test Environment'
-  platform: 'Test Case Manager Integration Tests'
-  executor: 'validate_tpdg_integration.sh'
+  environment: Integration Test Environment
+  platform: Test Case Manager Integration Tests
+  executor: validate_tpdg_integration.sh
   total_test_cases: 1
