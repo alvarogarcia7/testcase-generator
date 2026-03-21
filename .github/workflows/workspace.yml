@@ -107,7 +107,7 @@ jobs:
           cd /tmp/test-plan-documentation-generator
           git checkout "$TPDG_REF"
           echo "Building TPDG..."
-          cargo build --release
+          RUSTC_WRAPPER="" cargo build --release
           echo "TPDG built successfully at: /tmp/test-plan-documentation-generator/target/release/test-plan-documentation-generator"
 
       - name: Run E2E tests
