@@ -1,0 +1,81 @@
+{
+  "title": "Test Execution Results",
+  "project": "Test Case Manager - Verification Results",
+  "test_date": "2026-03-21T15:33:37.013277Z",
+  "test_results": [
+    {
+      "test_case_id": "TEST_FAILED_LAST_001",
+      "description": "Test case demonstrating failed last step scenario where steps 1-3 pass successfully but step 4 fails due to output mismatch (expected SUCCESS but got FAILURE)",
+      "sequences": [
+        {
+          "sequence_id": 1,
+          "name": "Failed Last Step Sequence",
+          "step_results": [
+            {
+              "Pass": {
+                "step": 1,
+                "description": "Create a temporary directory",
+                "requirement": "FAILED_LAST_STEP",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 2,
+                "description": "Create a status file with initial content",
+                "requirement": "FAILED_LAST_STEP",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 3,
+                "description": "Verify the file was created",
+                "requirement": "FAILED_LAST_STEP",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Fail": {
+                "step": 4,
+                "description": "Check final status (fails with output mismatch)",
+                "expected": {
+                  "success": true,
+                  "result": "0",
+                  "output": "SUCCESS"
+                },
+                "actual_result": "0",
+                "actual_output": "FAILURE",
+                "reason": "Output mismatch: expected 'SUCCESS', got 'FAILURE'",
+                "requirement": "FAILED_LAST_STEP",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": false,
+          "requirement": "FAILED_LAST_STEP",
+          "item": 1,
+          "tc": 1
+        }
+      ],
+      "total_steps": 4,
+      "passed_steps": 3,
+      "failed_steps": 1,
+      "not_executed_steps": 0,
+      "overall_pass": false,
+      "requirement": "FAILED_LAST_STEP",
+      "item": 1,
+      "tc": 1
+    }
+  ],
+  "metadata": {
+    "execution_duration": 0.0,
+    "total_test_cases": 1,
+    "passed_test_cases": 0,
+    "failed_test_cases": 1
+  }
+}

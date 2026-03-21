@@ -1,164 +1,108 @@
-# Variable Test Cases
+# Variable Capture Examples
 
-This directory contains 11 comprehensive test cases that validate variable capture, substitution, and hydration functionality.
+This directory contains example test cases demonstrating variable capture functionality.
 
-## Test Cases Overview
+## Files
 
-### TC_VAR_001 - Single Variable Capture
-- **Purpose**: Test capturing a single variable from command output using regex pattern
-- **Features**: Basic regex-based variable capture
-- **Validates**: Variable capture, numeric validation, value verification
+### 1.yaml
+A test case demonstrating both command-based and regex-based variable captures with general verification conditions.
 
-### TC_VAR_002 - Multiple Variable Capture
-- **Purpose**: Test capturing multiple variables from single step output using regex patterns
-- **Features**: Multiple capture_vars in one step, JSON-like output parsing
-- **Validates**: Simultaneous capture of multiple fields, email format validation
+**Features:**
+- Command-based variable capture (using `command` field in `capture_vars`)
+- Regex-based variable capture (using `capture` field in `capture_vars`)
+- General verification conditions that use captured variables
+- Multiple capture variables in a single step
+- Mix of both capture methods in one step
 
-### TC_VAR_003 - Use in Subsequent Steps
-- **Purpose**: Test using captured variable in subsequent step commands
-- **Features**: Variable persistence across steps, variable substitution
-- **Validates**: Cross-step variable availability, substitution in commands
+**Steps:**
+1. **Step 1**: Creates a file and captures byte count using command-based capture
+   - Captures `output_len` via `wc -c` command
+   - Verifies the captured value is numeric and >= 5
 
-### TC_VAR_004 - Hydration Export
-- **Purpose**: Test variable hydration from export file with environment variables
-- **Features**: Hydration variables with ${#VAR_NAME} syntax
-- **Validates**: Hydration variable usage, export file integration
-- **Hydration Vars**: TEST_API_URL, TEST_API_KEY, TEST_TIMEOUT
+2. **Step 2**: Echoes JSON and captures fields using regex patterns
+   - Captures `token` from JSON using regex pattern `"token":"([^"]+)"`
+   - Captures `user_id` from JSON using regex pattern `"user_id":([0-9]+)`
+   - Verifies token format and user_id value
 
-### TC_VAR_005 - Optional vs Required Variables
-- **Purpose**: Test optional vs required hydration variables with default values
-- **Features**: Required/optional flags, default values, variable validation
-- **Validates**: Required variable enforcement, optional variable handling
-- **Hydration Vars**: REQUIRED_VAR, REQUIRED_WITH_DEFAULT, OPTIONAL_VAR, OPTIONAL_NO_DEFAULT
+3. **Step 3**: Demonstrates mixing command-based and regex-based captures
+   - Captures `transaction_id`, `amount`, `status` using regex patterns
+   - Captures `line_count` using command `wc -l`
+   - Verifies all captured values with multiple conditions
 
-### TC_VAR_006 - Command-Based Capture
-- **Purpose**: Test command-based variable capture using command execution
-- **Features**: Command-based capture (alternative to regex)
-- **Validates**: System command execution for variable capture (date, hostname, whoami, wc)
+### 1_test.sh
+The generated bash script from `1.yaml`. This script:
+- Captures variables using both methods
+- Stores captured variables in `STEP_VAR_*` bash variables
+- Executes general verification conditions
+- Creates `.actual.log` files for each step
+- Generates JSON execution log
 
-### TC_VAR_007 - Across Sequences
-- **Purpose**: Test variables captured and used across multiple test sequences
-- **Features**: Cross-sequence variable persistence
-- **Validates**: Variable availability across 3 sequences, variable immutability
+### TC_VAR_CAPTURE_002.yaml
+A comprehensive test case with extensive examples of:
+- Command-based captures with various Unix tools (wc, grep, awk, jq)
+- Regex-based captures with complex patterns
+- Mixed capture methods in single steps
+- Advanced bash pattern matching in verification conditions
+- Arithmetic comparisons in general verifications
 
-### TC_VAR_008 - Complex Substitution
-- **Purpose**: Test complex variable substitution with default values and bash parameter expansion
-- **Features**: ${VAR:-default} syntax, nested variable substitution
-- **Validates**: Bash parameter expansion, default value fallbacks
-- **Hydration Vars**: OPTIONAL_CONFIG, SERVICE_NAME
+## Variable Capture Methods
 
-### TC_VAR_009 - Mixed Capture
-- **Purpose**: Test mixing regex-based and command-based variable captures in same step
-- **Features**: Combines regex and command capture methods
-- **Validates**: Both capture methods working together in single step
-
-### TC_VAR_010 - JSON Extraction
-- **Purpose**: Test extracting variables from JSON output using regex patterns
-- **Features**: JSON parsing with regex, nested field extraction
-- **Validates**: JSON field extraction, data manipulation with captured vars
-
-### TC_VAR_011 - Sequence Variables
-- **Purpose**: Test sequence-scoped variables declared in test sequence variables section
-- **Features**: Sequence-level variable declarations
-- **Validates**: Sequence-scoped variables, variable scope isolation between sequences
-
-## Validation Status
-
-All 11 test cases have been validated:
-- ✅ YAML syntax validation
-- ✅ Schema compliance (test-case.schema.json)
-- ✅ Script generation
-- ✅ Export file generation (for hydration test cases)
-
-## Changes Made
-
-### Fixed Files
-
-1. **TC_VAR_004_hydration_export.yaml**
-   - Fixed hydration variable syntax (using ${#VAR_NAME} correctly)
-   - Added comprehensive verification conditions
-   - Ensured proper default value usage
-
-2. **TC_VAR_005_optional_required.yaml**
-   - Fixed hydration variable syntax
-   - Added default values for required variables
-   - Enhanced verification to check actual values
-
-3. **TC_VAR_008_complex_substitution.yaml**
-   - Maintained proper ${#VAR_NAME} syntax for hydration vars
-   - Used ${VAR:-default} for bash parameter expansion
-   - Added verification for default value behavior
-
-4. **TC_VAR_009_mixed_capture.yaml**
-   - Fixed command-based capture using printf instead of echo with \n
-   - Changed from: `echo 'text\ntext'` 
-   - Changed to: `printf 'text\\ntext\\n'`
-   - Ensures proper newline handling across all shells
-
-## Key Syntax Patterns
-
-### Hydration Variables (YAML Level)
-```yaml
-# In YAML files, use ${#VAR_NAME} for variables that will be hydrated
-command: "echo ${#TEST_API_URL}"
-```
-
-### Bash Variables (Script Level)
-```yaml
-# For regular variable substitution in generated scripts
-command: "echo ${VAR_NAME}"
-command: "echo ${VAR_NAME:-default_value}"
-```
-
-### Variable Capture Methods
-
-#### Regex-Based Capture
+### Command-Based Capture
 ```yaml
 capture_vars:
-  - name: user_id
-    capture: 'User ID: ([0-9]+)'
+  - name: output_len
+    command: "cat /tmp/hello.txt | wc -c"
 ```
+Executes the command and stores the result in the named variable.
 
-#### Command-Based Capture
+### Regex-Based Capture
 ```yaml
 capture_vars:
-  - name: timestamp
-    command: "date +%s"
+  - name: token
+    capture: '"token":"([^"]+)"'
 ```
+Extracts values from command output using regex patterns (first capture group).
 
-#### Mixed Capture
+### Mixed Capture
 ```yaml
 capture_vars:
-  - name: user_id
-    capture: 'User ID: ([0-9]+)'
-  - name: timestamp
-    command: "date +%s"
+  - name: status
+    capture: 'Status: ([A-Z]+)'
+  - name: line_count
+    command: "wc -l /tmp/file.txt | awk '{print $1}'"
+```
+Both methods can be used in the same step.
+
+## General Verification Conditions
+
+General verifications allow testing captured variables:
+
+```yaml
+verification:
+  result: "[[ $EXIT_CODE -eq 0 ]]"
+  output: "true"
+  general:
+    - name: verify token format
+      condition: "[[ $token =~ ^[a-zA-Z0-9]+$ ]]"
+    - name: verify amount range
+      condition: "[[ $amount -ge 1000 && $amount -le 2000 ]]"
 ```
 
-## Hydration Variables
+All general verification conditions must pass for the step to succeed.
 
-To generate export files for test cases with hydration_vars:
+## Usage
 
+Generate bash script from YAML:
 ```bash
-# Generate export template
-target/debug/test-executor generate-export TC_VAR_004_hydration_export.yaml -o TC_VAR_004.env
-
-# Edit the export file with your values
-vi TC_VAR_004.env
-
-# Validate export file has all required variables
-target/debug/test-executor validate-export TC_VAR_004_hydration_export.yaml TC_VAR_004.env
+./target/release/test-executor generate testcases/examples/variables/1.yaml -o /tmp/test.sh
 ```
 
-## Running Tests
-
+Execute test case:
 ```bash
-# Generate test script
-target/debug/test-executor generate TC_VAR_001_single_capture.yaml -o TC_VAR_001.sh
+./target/release/test-executor execute testcases/examples/variables/1.yaml
+```
 
-# Execute test
-target/debug/test-executor execute TC_VAR_001_single_capture.yaml
-
-# For tests with hydration variables
-target/debug/test-executor execute TC_VAR_004_hydration_export.yaml --export TC_VAR_004.env
+Validate YAML against schema:
+```bash
+./target/release/validate-yaml --schema schemas/schema.json testcases/examples/variables/1.yaml
 ```

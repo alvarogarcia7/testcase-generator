@@ -2,7 +2,8 @@
 # Master orchestrator script for acceptance test suite
 # Validates, generates, executes, verifies, and documents all test cases
 
-set -e
+# Note: We do NOT use 'set -e' here because we want to run all stages
+# and collect comprehensive failure information before exiting
 
 # Get script directory and source logger
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -16,6 +17,7 @@ SKIP_GENERATION=0
 SKIP_EXECUTION=0
 SKIP_VERIFICATION=0
 SKIP_DOCUMENTATION=0
+SKIP_CONSOLIDATED_DOCS=0
 
 # Paths
 TEST_CASES_DIR="$SCRIPT_DIR/test_cases"
@@ -50,6 +52,8 @@ declare -i CONTAINER_VALIDATION_PASSED=0
 declare -i CONTAINER_VALIDATION_FAILED=0
 declare -i DOCUMENTATION_PASSED=0
 declare -i DOCUMENTATION_FAILED=0
+declare -i CONSOLIDATED_DOC_PASSED=0
+declare -i CONSOLIDATED_DOC_FAILED=0
 
 # Temporary files for tracking
 TEMP_DIR=$(mktemp -d)
@@ -76,13 +80,14 @@ Master orchestrator script for acceptance test suite. Validates, generates,
 executes, verifies, and documents all test cases.
 
 OPTIONS:
-    --verbose               Enable verbose output
-    --include-manual        Include manual tests in execution
-    --skip-generation       Skip bash script generation stage
-    --skip-execution        Skip test execution stage
-    --skip-verification     Skip verification stage
-    --skip-documentation    Skip documentation generation stage
-    -h, --help             Show this help message
+    --verbose                  Enable verbose output
+    --include-manual           Include manual tests in execution
+    --skip-generation          Skip bash script generation stage
+    --skip-execution           Skip test execution stage
+    --skip-verification        Skip verification stage
+    --skip-documentation       Skip documentation generation stage
+    --skip-consolidated-docs   Skip consolidated documentation generation stage
+    -h, --help                 Show this help message
 
 STAGES:
     1. Validation          Validate all test case YAMLs against schema
@@ -91,6 +96,7 @@ STAGES:
     4. Verification        Run verifier on execution logs
     5. Container Validation Validate container YAMLs against schema
     6. Documentation       Generate AsciiDoc and Markdown reports
+    7. Consolidated Docs   Generate unified documentation for all tests
 
 EXIT CODES:
     0 - All stages completed successfully
@@ -123,6 +129,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --skip-documentation)
             SKIP_DOCUMENTATION=1
+            shift
+            ;;
+        --skip-consolidated-docs)
+            SKIP_CONSOLIDATED_DOCS=1
             shift
             ;;
         -h|--help)
@@ -265,19 +275,38 @@ generate_test_scripts() {
         
         log_verbose "Generating: $basename.sh"
         
-        # Generate script with --json-log flag
-        if "$TEST_EXECUTOR" generate --json-log --output "$script_file" "$yaml_file" > "$TEMP_DIR/generation_output.txt" 2>&1; then
-            ((GENERATION_PASSED++))
-            pass "$basename.sh"
-            
-            # Make script executable
-            chmod +x "$script_file"
+        # Determine if this test is expected to fail generation (missing dependencies)
+        local expected_generation_failure=0
+        if [[ "$basename" == "TC_DEPENDENCY_MISSING_001" ]]; then
+            expected_generation_failure=1
+        fi
+        
+        # Generate script with --json-log flag and --test-case-dir for dependency resolution
+        if "$TEST_EXECUTOR" generate --json-log --test-case-dir "$TEST_CASES_DIR" --output "$script_file" "$yaml_file" > "$TEMP_DIR/generation_output.txt" 2>&1; then
+            if [[ $expected_generation_failure -eq 1 ]]; then
+                # Test was expected to fail but succeeded
+                ((GENERATION_FAILED++))
+                fail "$basename.sh (unexpected success)"
+                echo "$yaml_file (expected to fail)" >> "$GENERATION_FAILURES"
+            else
+                ((GENERATION_PASSED++))
+                pass "$basename.sh"
+                
+                # Make script executable
+                chmod +x "$script_file"
+            fi
         else
-            ((GENERATION_FAILED++))
-            fail "$basename.sh"
-            echo "$yaml_file" >> "$GENERATION_FAILURES"
-            if [[ $VERBOSE -eq 1 ]]; then
-                cat "$TEMP_DIR/generation_output.txt" >&2
+            if [[ $expected_generation_failure -eq 1 ]]; then
+                # Test failed as expected
+                ((GENERATION_PASSED++))
+                pass "$basename.sh (expected failure)"
+            else
+                ((GENERATION_FAILED++))
+                fail "$basename.sh"
+                echo "$yaml_file" >> "$GENERATION_FAILURES"
+                if [[ $VERBOSE -eq 1 ]]; then
+                    cat "$TEMP_DIR/generation_output.txt" >&2
+                fi
             fi
         fi
     done
@@ -287,6 +316,8 @@ generate_test_scripts() {
     echo ""
     
     if [[ $GENERATION_FAILED -gt 0 ]]; then
+        log_error "Stage 2 (Generation) failed"
+        echo ""
         return 1
     fi
     return 0
@@ -332,6 +363,12 @@ execute_test_scripts() {
         local basename=$(basename "$script_file" .sh)
         local yaml_file="$TEST_CASES_DIR"
         
+        # Skip hook scripts (they don't have corresponding YAML files or execution logs)
+        if [[ "$script_file" == */hooks/* ]]; then
+            log_verbose "Skipping hook script: $basename.sh"
+            continue
+        fi
+        
         # Find corresponding YAML file
         local found_yaml=""
         while IFS= read -r -d '' yaml; do
@@ -351,38 +388,83 @@ execute_test_scripts() {
             fi
         fi
         
+        # Determine if this is a failure scenario test (expected to fail)
+        local is_failure_test=0
+        if [[ "$basename" =~ FAILURE|PREREQ_AUTO_FAIL|PREREQ_PARTIAL_FAIL|CIRCULAR|SELF_REF ]]; then
+            is_failure_test=1
+        fi
+        
+        # Generated scripts create JSON log files in scripts directory with naming pattern: <basename>_execution_log.json
+        local generated_log="$(dirname "$script_file")/${basename}_execution_log.json"
         local log_file="$EXECUTION_LOGS_DIR/${basename}.json"
         
         log_verbose "Executing: $basename.sh"
         
-        # Execute script and capture output
-        if "$script_file" > "$log_file" 2>&1; then
-            ((EXECUTION_PASSED++))
-            pass "$basename.sh"
-        else
-            ((EXECUTION_FAILED++))
-            fail "$basename.sh (exit code: $?)"
-            echo "$script_file" >> "$EXECUTION_FAILURES"
+        # Execute script with stdin closed to avoid blocking on interactive prompts
+        # (output to /dev/null since we use the generated JSON log)
+        local exit_code=0
+        local execution_failed=0
+        if ! bash "$script_file" < /dev/null > /dev/null 2>&1; then
+            exit_code=$?
+            execution_failed=1
         fi
         
-        # Verify log file exists and is valid JSON
-        if [[ ! -f "$log_file" ]]; then
-            fail "Execution log not created: $log_file"
-            echo "$script_file (no log)" >> "$EXECUTION_FAILURES"
-            ((EXECUTION_FAILED++))
+        # Determine if execution result matches expectation
+        local test_passed_expectations=0
+        if [[ $is_failure_test -eq 1 ]]; then
+            # Failure test: expected to fail (non-zero exit code)
+            if [[ $execution_failed -eq 1 ]]; then
+                ((EXECUTION_PASSED++))
+                pass "$basename.sh"
+                test_passed_expectations=1
+            else
+                ((EXECUTION_FAILED++))
+                fail "$basename.sh (exit code: 0, expected failure)"
+                echo "$script_file" >> "$EXECUTION_FAILURES"
+                test_passed_expectations=0
+            fi
         else
-            # Try to validate JSON using available Python
+            # Success test: expected to pass (zero exit code)
+            if [[ $execution_failed -eq 0 ]]; then
+                ((EXECUTION_PASSED++))
+                pass "$basename.sh"
+                test_passed_expectations=1
+            else
+                ((EXECUTION_FAILED++))
+                fail "$basename.sh (exit code: $exit_code)"
+                echo "$script_file" >> "$EXECUTION_FAILURES"
+                test_passed_expectations=0
+            fi
+        fi
+        
+        # Copy the generated JSON log to execution_logs directory
+        if [[ -f "$generated_log" ]]; then
+            cp "$generated_log" "$log_file"
+            
+            # Verify log file is valid JSON
             local json_valid=0
             if command -v python3.14 > /dev/null 2>&1; then
                 python3.14 -m json.tool "$log_file" > /dev/null 2>&1 && json_valid=1
             elif command -v python3 > /dev/null 2>&1; then
                 python3 -m json.tool "$log_file" > /dev/null 2>&1 && json_valid=1
+            elif command -v jq > /dev/null 2>&1; then
+                jq empty "$log_file" > /dev/null 2>&1 && json_valid=1
             fi
 
             if [[ $json_valid -eq 0 ]]; then
+                # Only mark as failed if test passed its expectations (don't double-count failures)
+                if [[ $test_passed_expectations -eq 1 ]]; then
+                    ((EXECUTION_FAILED++))
+                    fail "Invalid JSON in execution log: $log_file"
+                    echo "$script_file (invalid JSON)" >> "$EXECUTION_FAILURES"
+                fi
+            fi
+        else
+            # Only mark as failed if test passed its expectations (don't double-count failures)
+            if [[ $test_passed_expectations -eq 1 ]]; then
                 ((EXECUTION_FAILED++))
-                fail "Invalid JSON in execution log: $log_file"
-                echo "$script_file (invalid JSON)" >> "$EXECUTION_FAILURES"
+                fail "Execution log not created: $generated_log"
+                echo "$script_file (no log)" >> "$EXECUTION_FAILURES"
             fi
         fi
     done
@@ -392,6 +474,8 @@ execute_test_scripts() {
     echo ""
     
     if [[ $EXECUTION_FAILED -gt 0 ]]; then
+        log_error "Stage 3 (Execution) had failures"
+        echo ""
         return 1
     fi
     return 0
@@ -447,13 +531,20 @@ verify_execution_logs() {
         fi
         
         # Run verifier to generate container YAML
+        # Extract test case ID from YAML file (using basename without extension)
+        local test_case_id=$(basename "$test_case_yaml" .yaml)
+        
+        # Use --success-on-completion flag to ensure verifier exits 0 even if test cases failed
+        # This is important for acceptance testing where we expect some test cases to fail
         if "$VERIFIER" \
             --title "Acceptance Test Results - $(basename "$test_case_yaml")" \
             --project "Test Case Manager - Acceptance Suite" \
             --environment "Automated Test Environment - $hostname" \
-            --test-case "$test_case_yaml" \
-            --execution-log "$log_file" \
+            --test-case "$test_case_id" \
+            --log "$log_file" \
+            --test-case-dir "$TEST_CASES_DIR" \
             --output "$container_file" \
+            --success-on-completion \
             > "$TEMP_DIR/verifier_output.txt" 2>&1; then
             
             ((VERIFICATION_PASSED++))
@@ -473,6 +564,8 @@ verify_execution_logs() {
     echo ""
     
     if [[ $VERIFICATION_FAILED -gt 0 ]]; then
+        log_error "Stage 4 (Verification) failed"
+        echo ""
         return 1
     fi
     return 0
@@ -528,6 +621,8 @@ validate_container_yamls() {
     echo ""
     
     if [[ $CONTAINER_VALIDATION_FAILED -gt 0 ]]; then
+        log_error "Stage 5 (Container Validation) failed"
+        echo ""
         return 1
     fi
     return 0
@@ -639,6 +734,124 @@ generate_documentation() {
     return 0
 }
 
+# Stage 7: Generate consolidated documentation using verifier --folder mode
+generate_consolidated_documentation() {
+    if [[ $SKIP_CONSOLIDATED_DOCS -eq 1 ]]; then
+        section "Stage 7: Consolidated Documentation Generation (SKIPPED)"
+        echo ""
+        return 0
+    fi
+    
+    if [[ $SKIP_DOCUMENTATION -eq 1 ]]; then
+        section "Stage 7: Consolidated Documentation Generation (SKIPPED)"
+        echo ""
+        return 0
+    fi
+    
+    section "Stage 7: Generating Consolidated Documentation"
+    
+    # Check if TPDG is available
+    if ! command -v "$TPDG_BIN" &> /dev/null; then
+        log_warning "test-plan-documentation-generator not found"
+        log_info "Skipping consolidated documentation generation"
+        log_info "Install: cargo install test-plan-documentation-generator"
+        echo ""
+        return 0
+    fi
+    
+    # Check if execution logs directory exists and has logs
+    if [[ ! -d "$EXECUTION_LOGS_DIR" ]] || [[ -z "$(ls -A "$EXECUTION_LOGS_DIR" 2>/dev/null)" ]]; then
+        log_warning "No execution logs found in $EXECUTION_LOGS_DIR"
+        log_info "Skipping consolidated documentation generation"
+        echo ""
+        return 0
+    fi
+    
+    # Create consolidated reports directory
+    mkdir -p "$REPORTS_DIR/consolidated"
+    
+    local consolidated_container="$REPORTS_DIR/consolidated/all_tests_container.yaml"
+    local consolidated_asciidoc="$REPORTS_DIR/consolidated/all_tests.adoc"
+    local consolidated_markdown="$REPORTS_DIR/consolidated/all_tests.md"
+    
+    log_info "Generating unified container YAML from all execution logs..."
+    
+    # Generate consolidated container YAML using verifier --folder mode
+    # Use --success-on-completion flag to ensure verifier exits 0 even if test cases failed
+    if "$VERIFIER" \
+        --folder "$EXECUTION_LOGS_DIR" \
+        --title "Acceptance Test Suite - All Test Cases" \
+        --project "Test Case Manager - Acceptance Suite" \
+        --environment "Automated Test Environment - $(hostname)" \
+        --output "$consolidated_container" \
+        --success-on-completion \
+        > "$TEMP_DIR/verifier_consolidated_output.txt" 2>&1; then
+        
+        pass "Unified container YAML generated"
+        log_verbose "Container: $consolidated_container"
+    else
+        fail "Failed to generate unified container YAML"
+        ((CONSOLIDATED_DOC_FAILED++))
+        if [[ $VERBOSE -eq 1 ]]; then
+            cat "$TEMP_DIR/verifier_consolidated_output.txt" >&2
+        fi
+        echo ""
+        return 1
+    fi
+    
+    # Generate AsciiDoc from consolidated container
+    log_info "Generating AsciiDoc documentation..."
+    if "$TPDG_BIN" \
+        --input "$consolidated_container" \
+        --output "$consolidated_asciidoc" \
+        --format asciidoc \
+        > "$TEMP_DIR/tpdg_consolidated_asciidoc.txt" 2>&1; then
+        
+        pass "all_tests.adoc"
+        log_verbose "AsciiDoc: $consolidated_asciidoc"
+    else
+        fail "Failed to generate AsciiDoc"
+        ((CONSOLIDATED_DOC_FAILED++))
+        if [[ $VERBOSE -eq 1 ]]; then
+            cat "$TEMP_DIR/tpdg_consolidated_asciidoc.txt" >&2
+        fi
+    fi
+    
+    # Generate Markdown from consolidated container
+    log_info "Generating Markdown documentation..."
+    if "$TPDG_BIN" \
+        --input "$consolidated_container" \
+        --output "$consolidated_markdown" \
+        --format markdown \
+        > "$TEMP_DIR/tpdg_consolidated_markdown.txt" 2>&1; then
+        
+        pass "all_tests.md"
+        log_verbose "Markdown: $consolidated_markdown"
+    else
+        fail "Failed to generate Markdown"
+        ((CONSOLIDATED_DOC_FAILED++))
+        if [[ $VERBOSE -eq 1 ]]; then
+            cat "$TEMP_DIR/tpdg_consolidated_markdown.txt" >&2
+        fi
+    fi
+    
+    # Determine overall success
+    if [[ $CONSOLIDATED_DOC_FAILED -eq 0 ]]; then
+        ((CONSOLIDATED_DOC_PASSED++))
+        echo ""
+        log_info "Consolidated Documentation: SUCCESS"
+    else
+        echo ""
+        log_info "Consolidated Documentation: $CONSOLIDATED_DOC_FAILED failures"
+    fi
+    echo ""
+    
+    if [[ $CONSOLIDATED_DOC_FAILED -gt 0 ]]; then
+        return 1
+    fi
+    return 0
+}
+
 # Generate final summary report
 generate_summary_report() {
     section "Final Summary Report"
@@ -741,10 +954,26 @@ generate_summary_report() {
         fi
         echo ""
         
+        echo "--- Stage 7: Consolidated Documentation ---"
+        if [[ $SKIP_CONSOLIDATED_DOCS -eq 1 ]] || [[ $SKIP_DOCUMENTATION -eq 1 ]]; then
+            echo "SKIPPED"
+        else
+            echo "Passed:  $CONSOLIDATED_DOC_PASSED"
+            echo "Failed:  $CONSOLIDATED_DOC_FAILED"
+            if [[ $CONSOLIDATED_DOC_FAILED -eq 0 ]] && [[ $CONSOLIDATED_DOC_PASSED -gt 0 ]]; then
+                echo ""
+                echo "Generated consolidated reports:"
+                echo "  - $REPORTS_DIR/consolidated/all_tests_container.yaml"
+                echo "  - $REPORTS_DIR/consolidated/all_tests.adoc"
+                echo "  - $REPORTS_DIR/consolidated/all_tests.md"
+            fi
+        fi
+        echo ""
+        
         echo "========================================="
         echo "Overall Result:"
         
-        local total_failures=$((VALIDATION_FAILED + GENERATION_FAILED + EXECUTION_FAILED + VERIFICATION_FAILED + CONTAINER_VALIDATION_FAILED + DOCUMENTATION_FAILED))
+        local total_failures=$((VALIDATION_FAILED + GENERATION_FAILED + EXECUTION_FAILED + VERIFICATION_FAILED + CONTAINER_VALIDATION_FAILED + DOCUMENTATION_FAILED + CONSOLIDATED_DOC_FAILED))
         
         if [[ $total_failures -eq 0 ]]; then
             echo "SUCCESS - All stages completed without errors"
@@ -777,6 +1006,7 @@ main() {
     log_info "  Skip Execution: $SKIP_EXECUTION"
     log_info "  Skip Verification: $SKIP_VERIFICATION"
     log_info "  Skip Documentation: $SKIP_DOCUMENTATION"
+    log_info "  Skip Consolidated Docs: $SKIP_CONSOLIDATED_DOCS"
     echo ""
     
     # Verify binaries
@@ -821,6 +1051,12 @@ main() {
         overall_success=1
     fi
     
+    # Stage 7: Generate consolidated documentation
+    if ! generate_consolidated_documentation; then
+        log_error "Stage 7 (Consolidated Documentation) had failures"
+        overall_success=1
+    fi
+    
     # Generate final summary
     if ! generate_summary_report; then
         overall_success=1
@@ -832,7 +1068,8 @@ main() {
        [[ $EXECUTION_FAILED -ne 0 ]] || \
        [[ $VERIFICATION_FAILED -ne 0 ]] || \
        [[ $CONTAINER_VALIDATION_FAILED -ne 0 ]] || \
-       [[ $DOCUMENTATION_FAILED -ne 0 ]]; then
+       [[ $DOCUMENTATION_FAILED -ne 0 ]] || \
+       [[ $CONSOLIDATED_DOC_FAILED -ne 0 ]]; then
         overall_success=1
     fi
     

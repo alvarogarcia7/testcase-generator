@@ -99,6 +99,11 @@ test-e2e-verifier-container: build
 	./tests/integration/test_verifier_container_e2e.sh
 .PHONY: test-e2e-verifier-container
 
+test-verifier-edge-cases: build
+	cargo test verification_edge_cases_test
+	./tests/integration/test_verifier_edge_cases_e2e.sh
+.PHONY: test-verifier-edge-cases
+
 test-e2e-failing: build
 	./tests/integration/run_e2e_test.sh
 	./tests/integration/test_variable_passing_e2e.sh
@@ -134,15 +139,21 @@ test-e2e:
 	./tests/integration/test_validate_yaml_watch_e2e.sh
 	./tests/integration/test_validate_yaml_schema_watch_e2e.sh
 	./tests/integration/test_validate_yaml_transitive_schema_watch_e2e.sh
+	./tests/integration/test_auto_schema_validation_e2e.sh
 	./tests/integration/test_variable_passing_e2e.sh
 	./tests/integration/test_verifier_e2e.sh
 	./tests/integration/test_verifier_container_e2e.sh
+	${MAKE} test-verifier-edge-cases
 	#./tests/integration/test_verify_e2e.sh
 	./tests/integration/test_container_yaml_compat_e2e.sh
 	./tests/integration/test_documentation_generation.sh
 	# Valid values of BUILD_VARIANT are "" (debug) or "--release" (release mode)
 	BUILD_VARIANT="" ./scripts/run_verifier_and_generate_reports.sh
-	./scripts/validate_tpdg_integration.sh --test-plan-doc-gen ${HOME}/Documents/projects/test-plan-documentation-generator --verbose || true
+	@if [ -n "$$TPDG_PATH" ]; then \
+		./scripts/validate_tpdg_integration.sh --test-plan-doc-gen "$$TPDG_PATH" --verbose || true; \
+	else \
+		./scripts/validate_tpdg_integration.sh --test-plan-doc-gen ${HOME}/Documents/projects/test-plan-documentation-generator --verbose || true; \
+	fi
 	${MAKE} validate-output-schemas
 .PHONY: test-e2e
 
@@ -273,6 +284,10 @@ test-e2e-validate-yaml: build
 	./tests/integration/test_validate_yaml_watch_e2e.sh
 .PHONY: test-e2e-validate-yaml
 
+test-e2e-auto-schema: build
+	./tests/integration/test_auto_schema_validation_e2e.sh
+.PHONY: test-e2e-auto-schema
+
 docker-build:
 	${MAKE} README_INSTALL_AUTOMATED.md
 	docker build -t testcase-manager:latest .
@@ -293,9 +308,10 @@ validate-all-testcases: build
 verify-testcases: build
 	@echo "Verifying test case files against schema..."
 	@FAILED=0; \
-	for file in $$(find testcases tests/sample data -type f \( -name "*.yml" -o -name "*.yaml" \) -not \( -path "*/expected_output_reports/*" -o -path "*/testcase_results_container/*" -o -path "*/generated_samples/*" -o -path "*/verifier_scenarios_incorrect/*" -o -name "*te.y*" -o -iname "sample_test_runs.yaml" -o -name "*wrong*" -o -name "data.yml" -o -name "steps-in-json.yml" -o -name "1.yaml" -o -name "SGP.22_4.4.2.yaml" -o -name "conditional_verification_example.yml" -o -name "doc_gen_*.yml" \) 2>/dev/null); do \
+	cargo build --bin validate-yaml; \
+	for file in $$(find testcases tests/sample data -type f \( -name "*.yml" -o -name "*.yaml" \) -not \( -path "*/expected_output_reports/*" -o -path "*/testcase_results_container/*" -o -path "*/generated_samples/*" -o -path "*/verifier_scenarios_incorrect/*" -o -name "*te.y*" -o -iname "sample_test_runs.yaml" -o -name "*wrong*" -o -name "data.yml" -o -name "steps-in-json.yml" -o -name "1.yaml" -o -name "SGP.22_4.4.2.yaml" -o -name "conditional_verification_example.yml" -o -name "doc_gen_*.yml" -o -name "*container*" -o -path "*test_case_result*" -o -path "*test_result_01*" \) 2>/dev/null); do \
 		echo "Validating: $$file"; \
-		if cargo run --bin validate-yaml -- --schema schemas/test-case.schema.json "$$file" >/dev/null 2>&1; then \
+		if ./target/debug/validate-yaml --schema schemas/test-case.schema.json "$$file" >/dev/null 2>&1; then \
 			echo "  ✓ PASSED"; \
 		else \
 			echo "  ✗ FAILED"; \
@@ -310,14 +326,32 @@ verify-testcases: build
 	fi
 .PHONY: verify-testcases
 
+# Generate a detailed validation report for all test case files
+# This target creates a comprehensive validation report that includes:
+# - Pass/fail status for each test case file
+# - Detailed error messages for any validation failures
+# - Summary statistics (total files, passed count, failed count)
+# - Troubleshooting commands for failed validations
+# The report is saved to reports/validation_report.txt and displayed to stdout
 validate-testcases-report: build
-	USE_MCP=0 ./scripts/validate_all_testcases.sh
+	@mkdir -p reports
+	@uv run python3.14 scripts/generate_validation_report.py
+	@echo ""
+	@echo "========================================="
+	@echo "Displaying Validation Report"
+	@echo "========================================="
+	@cat reports/validation_report.txt
 .PHONY: validate-testcases-report
 
 validate-output-schemas:
 	@echo "Validating expected output sample files against schemas..."
 	./scripts/validate-output-schemas.sh
 .PHONY: validate-output-schemas
+
+validate-envelope-schemas:
+	@echo "Validating TCMS envelope schemas..."
+	./scripts/validate_envelope_schemas.sh
+.PHONY: validate-envelope-schemas
 
 watch: build
 	./scripts/watch-yaml-files.sh

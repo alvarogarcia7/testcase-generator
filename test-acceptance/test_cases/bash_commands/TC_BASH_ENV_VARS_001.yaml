@@ -1,176 +1,167 @@
-requirement: "BASH_ENVIRONMENT_VARIABLES"
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: BASH_ENVIRONMENT_VARIABLES
 item: 1
 tc: 1
-id: 'TC_BASH_ENV_VARS_001'
-description: 'Bash environment variables - set, export, unset, default values with strict validation'
-
+id: TC_BASH_ENV_VARS_001
+description: Bash environment variables - set, export, unset, default values with
+  strict validation
 general_initial_conditions:
   system:
-    - "Bash shell with environment variable support is available"
-
+  - Bash shell with environment variable support is available
 initial_conditions:
   environment:
-    - "Environment variables can be set and read"
-
+  - Environment variables can be set and read
 test_sequences:
-  - id: 1
-    name: "Environment Variable Operations"
-    description: "Test setting, exporting, and using environment variables"
-    initial_conditions:
-      system:
-        - "Environment variable operations work correctly"
-    steps:
-      - step: 1
-        description: "Set and read simple variable"
-        command: "MY_VAR='test_value'; echo $MY_VAR"
-        capture_vars:
-          - name: var_value
-            capture: '^(.*)$'
-        expected:
-          success: true
-          result: 0
-          output: "test_value"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" == 'test_value' ]]"
-          general:
-            - name: value_matches
-              condition: "[[ \"$var_value\" == 'test_value' ]]"
-
-      - step: 2
-        description: "Set numeric variable and use in arithmetic"
-        command: "NUM=42; echo $((NUM * 2))"
-        capture_vars:
-          - name: doubled
-            capture: '^([0-9]+)$'
-        expected:
-          success: true
-          result: 0
-          output: "84"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" == '84' ]]"
-          general:
-            - name: calculation_correct
-              condition: "[[ $doubled -eq 84 ]]"
-
-      - step: 3
-        description: "Export variable for subshell"
-        command: "export EXPORTED_VAR='exported'; bash -c 'echo $EXPORTED_VAR'"
-        expected:
-          success: true
-          result: 0
-          output: "exported"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" == 'exported' ]]"
-          general:
-            - name: export_works
-              condition: "[[ \"$COMMAND_OUTPUT\" == 'exported' ]]"
-
-      - step: 4
-        description: "Check PATH environment variable"
-        command: "echo $PATH"
-        expected:
-          success: true
-          result: 0
-          output: "path string"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ -n \"$COMMAND_OUTPUT\" && \"$COMMAND_OUTPUT\" =~ : ]]"
-          general:
-            - name: path_not_empty
-              condition: "[[ -n \"$COMMAND_OUTPUT\" ]]"
-            - name: path_has_separators
-              condition: "[[ \"$COMMAND_OUTPUT\" =~ : ]]"
-
-      - step: 5
-        description: "Check HOME environment variable"
-        command: "echo $HOME"
-        expected:
-          success: true
-          result: 0
-          output: "home directory"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" == /* ]]"
-          general:
-            - name: home_is_absolute
-              condition: "[[ \"$COMMAND_OUTPUT\" == /* ]]"
-            - name: home_not_empty
-              condition: "[[ -n \"$COMMAND_OUTPUT\" ]]"
-
-      - step: 6
-        description: "Use default value for unset variable"
-        command: "unset UNSET_VAR; echo ${UNSET_VAR:-default_value}"
-        expected:
-          success: true
-          result: 0
-          output: "default_value"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" == 'default_value' ]]"
-          general:
-            - name: default_used
-              condition: "[[ \"$COMMAND_OUTPUT\" == 'default_value' ]]"
-
-      - step: 7
-        description: "Variable substitution in strings"
-        command: "NAME='World'; echo \"Hello $NAME\""
-        capture_vars:
-          - name: greeting
-            capture: '^(.*)$'
-        expected:
-          success: true
-          result: 0
-          output: "Hello World"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" == 'Hello World' ]]"
-          general:
-            - name: substitution_works
-              condition: "[[ \"$greeting\" == 'Hello World' ]]"
-
-      - step: 8
-        description: "Set multiple variables"
-        command: "VAR1='one'; VAR2='two'; VAR3='three'; echo $VAR1-$VAR2-$VAR3"
-        expected:
-          success: true
-          result: 0
-          output: "one-two-three"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" == 'one-two-three' ]]"
-          general:
-            - name: all_vars_set
-              condition: "[[ \"$COMMAND_OUTPUT\" =~ one.*two.*three ]]"
-
-      - step: 9
-        description: "Check USER environment variable"
-        command: "echo $USER"
-        expected:
-          success: true
-          result: 0
-          output: "username"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ -n \"$COMMAND_OUTPUT\" ]]"
-          general:
-            - name: user_not_empty
-              condition: "[[ -n \"$COMMAND_OUTPUT\" ]]"
-            - name: user_valid_format
-              condition: "[[ \"$COMMAND_OUTPUT\" =~ ^[a-zA-Z0-9_-]+$ ]]"
-
-      - step: 10
-        description: "Readonly variable test"
-        command: "readonly READONLY_VAR='cannot_change'; echo $READONLY_VAR"
-        expected:
-          success: true
-          result: 0
-          output: "cannot_change"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" == 'cannot_change' ]]"
-          general:
-            - name: readonly_set
-              condition: "[[ \"$COMMAND_OUTPUT\" == 'cannot_change' ]]"
+- id: 1
+  name: Environment Variable Operations
+  description: Test setting, exporting, and using environment variables
+  initial_conditions:
+    system:
+    - Environment variable operations work correctly
+  steps:
+  - step: 1
+    description: Set and read simple variable
+    command: MY_VAR='test_value'; echo $MY_VAR
+    capture_vars:
+    - name: var_value
+      capture: ^(.*)$
+    expected:
+      success: true
+      result: 0
+      output: test_value
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" == ''test_value'' ]]'
+      general:
+      - name: value_matches
+        condition: '[[ "$var_value" == ''test_value'' ]]'
+  - step: 2
+    description: Set numeric variable and use in arithmetic
+    command: NUM=42; echo $((NUM * 2))
+    capture_vars:
+    - name: doubled
+      capture: ^([0-9]+)$
+    expected:
+      success: true
+      result: 0
+      output: '84'
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" == ''84'' ]]'
+      general:
+      - name: calculation_correct
+        condition: '[[ $doubled -eq 84 ]]'
+  - step: 3
+    description: Export variable for subshell
+    command: export EXPORTED_VAR='exported'; bash -c 'echo $EXPORTED_VAR'
+    expected:
+      success: true
+      result: 0
+      output: exported
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" == ''exported'' ]]'
+      general:
+      - name: export_works
+        condition: '[[ "$COMMAND_OUTPUT" == ''exported'' ]]'
+  - step: 4
+    description: Check PATH environment variable
+    command: echo $PATH
+    expected:
+      success: true
+      result: 0
+      output: path string
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ -n "$COMMAND_OUTPUT" && "$COMMAND_OUTPUT" =~ : ]]'
+      general:
+      - name: path_not_empty
+        condition: '[[ -n "$COMMAND_OUTPUT" ]]'
+      - name: path_has_separators
+        condition: '[[ "$COMMAND_OUTPUT" =~ : ]]'
+  - step: 5
+    description: Check HOME environment variable
+    command: echo $HOME
+    expected:
+      success: true
+      result: 0
+      output: home directory
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" == /* ]]'
+      general:
+      - name: home_is_absolute
+        condition: '[[ "$COMMAND_OUTPUT" == /* ]]'
+      - name: home_not_empty
+        condition: '[[ -n "$COMMAND_OUTPUT" ]]'
+  - step: 6
+    description: Use default value for unset variable
+    command: unset UNSET_VAR; echo ${UNSET_VAR:-default_value}
+    expected:
+      success: true
+      result: 0
+      output: default_value
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" == ''default_value'' ]]'
+      general:
+      - name: default_used
+        condition: '[[ "$COMMAND_OUTPUT" == ''default_value'' ]]'
+  - step: 7
+    description: Variable substitution in strings
+    command: NAME='World'; echo "Hello $NAME"
+    capture_vars:
+    - name: greeting
+      capture: ^(.*)$
+    expected:
+      success: true
+      result: 0
+      output: Hello World
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" == ''Hello World'' ]]'
+      general:
+      - name: substitution_works
+        condition: '[[ "$greeting" == ''Hello World'' ]]'
+  - step: 8
+    description: Set multiple variables
+    command: VAR1='one'; VAR2='two'; VAR3='three'; echo $VAR1-$VAR2-$VAR3
+    expected:
+      success: true
+      result: 0
+      output: one-two-three
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" == ''one-two-three'' ]]'
+      general:
+      - name: all_vars_set
+        condition: '[[ "$COMMAND_OUTPUT" =~ one.*two.*three ]]'
+  - step: 9
+    description: Check USER environment variable
+    command: echo $USER
+    expected:
+      success: true
+      result: 0
+      output: username
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ -n "$COMMAND_OUTPUT" ]]'
+      general:
+      - name: user_not_empty
+        condition: '[[ -n "$COMMAND_OUTPUT" ]]'
+      - name: user_valid_format
+        condition: '[[ "$COMMAND_OUTPUT" =~ ^[a-zA-Z0-9_-]+$ ]]'
+  - step: 10
+    description: Readonly variable test
+    command: readonly READONLY_VAR='cannot_change'; echo $READONLY_VAR
+    expected:
+      success: true
+      result: 0
+      output: cannot_change
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" == ''cannot_change'' ]]'
+      general:
+      - name: readonly_set
+        condition: '[[ "$COMMAND_OUTPUT" == ''cannot_change'' ]]'

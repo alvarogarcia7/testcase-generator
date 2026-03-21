@@ -1,0 +1,37 @@
+type: result
+test_case_id: TEST_PRECOMP_PARTIAL_EXEC_001
+description: 'Precomputed verification: partial execution with missing steps'
+sequences:
+- sequence_id: 1
+  name: Partial Execution Sequence
+  step_results:
+  - Pass:
+      step: 1
+      description: Execute first step
+      requirement: TEST_PRECOMP_PARTIAL_EXEC
+      item: 1
+      tc: 1
+  - NotExecuted:
+      step: 2
+      description: Missing step - not executed
+      requirement: TEST_PRECOMP_PARTIAL_EXEC
+      item: 1
+      tc: 1
+  - Pass:
+      step: 3
+      description: Execute third step
+      requirement: TEST_PRECOMP_PARTIAL_EXEC
+      item: 1
+      tc: 1
+  all_steps_passed: false
+  requirement: TEST_PRECOMP_PARTIAL_EXEC
+  item: 1
+  tc: 1
+total_steps: 3
+passed_steps: 2
+failed_steps: 0
+not_executed_steps: 1
+overall_pass: false
+requirement: TEST_PRECOMP_PARTIAL_EXEC
+item: 1
+tc: 1

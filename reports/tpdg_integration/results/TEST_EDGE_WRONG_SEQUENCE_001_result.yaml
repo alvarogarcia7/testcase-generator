@@ -1,0 +1,37 @@
+description: 'Edge case: steps executed in wrong sequence order'
+failed_steps: 0
+item: 1
+not_executed_steps: 0
+overall_pass: true
+passed_steps: 3
+requirement: EDGE_WRONG_SEQUENCE
+sequences:
+- all_steps_passed: true
+  item: 1
+  name: Wrong Order Sequence
+  requirement: EDGE_WRONG_SEQUENCE
+  sequence_id: 1
+  step_results:
+  - Pass:
+      description: Execute step 1
+      item: 1
+      requirement: EDGE_WRONG_SEQUENCE
+      step: 1
+      tc: 1
+  - Pass:
+      description: Execute step 2
+      item: 1
+      requirement: EDGE_WRONG_SEQUENCE
+      step: 2
+      tc: 1
+  - Pass:
+      description: Execute step 3
+      item: 1
+      requirement: EDGE_WRONG_SEQUENCE
+      step: 3
+      tc: 1
+  tc: 1
+tc: 1
+test_case_id: TEST_EDGE_WRONG_SEQUENCE_001
+total_steps: 3
+type: result

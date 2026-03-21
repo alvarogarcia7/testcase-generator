@@ -1,0 +1,25 @@
+description: 'Precomputed verification: single step passing all verifications'
+failed_steps: 0
+item: 1
+not_executed_steps: 0
+overall_pass: true
+passed_steps: 1
+requirement: TEST_PRECOMP_SINGLE_STEP
+sequences:
+- all_steps_passed: true
+  item: 1
+  name: Single Step Sequence
+  requirement: TEST_PRECOMP_SINGLE_STEP
+  sequence_id: 1
+  step_results:
+  - Pass:
+      description: Execute single command
+      item: 1
+      requirement: TEST_PRECOMP_SINGLE_STEP
+      step: 1
+      tc: 1
+  tc: 1
+tc: 1
+test_case_id: TEST_PRECOMP_SINGLE_STEP_001
+total_steps: 1
+type: result

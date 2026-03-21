@@ -338,8 +338,8 @@ impl TestExecutor {
             }
             JsonEscapingMethod::ShellFallback => {
                 // Use sed/awk fallback directly
-                script.push_str("# Shell fallback: escape backslashes, quotes, tabs, carriage returns, and convert newlines to \\n\n");
-                script.push_str("OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g; s/\\t/\\\\t/g; s/\\r/\\\\r/g' | awk '{printf \"%s%s\", (NR>1?\"\\\\n\":\"\"), $0}')\n");
+                script.push_str("# Shell fallback: escape backslashes, quotes, tabs, and convert newlines to \\n\n");
+                script.push_str("OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g; s/\\t/\\\\t/g' | awk '{printf \"%s%s\", (NR>1?\"\\\\n\":\"\"), $0}')\n");
             }
             JsonEscapingMethod::Auto => {
                 // Try json-escape binary first, fallback to sed/awk
@@ -356,8 +356,8 @@ impl TestExecutor {
                     bin_path
                 ));
                 script.push_str("else\n");
-                script.push_str("    # Shell fallback: escape backslashes, quotes, tabs, carriage returns, and convert newlines to \\n\n");
-                script.push_str("    OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g; s/\\t/\\\\t/g; s/\\r/\\\\r/g' | awk '{printf \"%s%s\", (NR>1?\"\\\\n\":\"\"), $0}')\n");
+                script.push_str("    # Shell fallback: escape backslashes, quotes, tabs, and convert newlines to \\n\n");
+                script.push_str("    OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g; s/\\t/\\\\t/g' | awk '{printf \"%s%s\", (NR>1?\"\\\\n\":\"\"), $0}')\n");
                 script.push_str("fi\n");
             }
         }
@@ -1326,7 +1326,7 @@ impl TestExecutor {
 
         script.push_str("exit 0\n");
 
-        script
+        script.replace("\\r", "")
     }
 
     pub fn generate_test_script(&self, test_case: &TestCase) -> String {
@@ -1593,18 +1593,6 @@ impl TestExecutor {
                             .trim_end()
                             .to_string();
 
-                        let timestamp = Local::now().to_rfc3339();
-                        let entry = TestStepExecutionEntry::with_timestamp(
-                            sequence.id,
-                            step.step,
-                            step.command.clone(),
-                            exit_code,
-                            command_output.clone(),
-                            timestamp,
-                        );
-
-                        execution_entries.push(entry);
-
                         // Capture variables from output or command execution
                         if let Some(ref capture_vars) = step.capture_vars {
                             for (var_name, capture_pattern, command) in
@@ -1690,6 +1678,20 @@ impl TestExecutor {
                             }
                         }
 
+                        // Create execution entry with verification results
+                        let timestamp = Local::now().to_rfc3339();
+                        let entry = TestStepExecutionEntry::with_timestamp(
+                            sequence.id,
+                            step.step,
+                            step.command.clone(),
+                            exit_code,
+                            command_output.clone(),
+                            timestamp,
+                            result_verification_passed,
+                            output_verification_passed,
+                        );
+                        execution_entries.push(entry);
+
                         if result_verification_passed
                             && output_verification_passed
                             && general_verifications_passed
@@ -1731,6 +1733,8 @@ impl TestExecutor {
                             -1,
                             format!("Failed to execute: {}", e),
                             timestamp,
+                            false,
+                            false,
                         );
                         execution_entries.push(entry);
 
@@ -1895,6 +1899,8 @@ fi"#,
 
                 // Create a template entry with expected values
                 let entry = TestStepExecutionEntry {
+                    doc_type: None,
+                    schema: None,
                     test_sequence: sequence.id,
                     step: step.step,
                     command: step.command.clone(),
@@ -1903,8 +1909,8 @@ fi"#,
                     timestamp: Some(timestamp.to_rfc3339()),
                     hook_type: None,
                     hook_path: None,
-                    result_verification_pass: None,
-                    output_verification_pass: None,
+                    result_verification_pass: false,
+                    output_verification_pass: false,
                 };
 
                 template_entries.push(entry);

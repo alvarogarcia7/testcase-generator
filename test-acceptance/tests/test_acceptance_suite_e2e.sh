@@ -747,6 +747,272 @@ test_multiple_skip_flags() {
     return 0
 }
 
+# Test 13: Test Stage 7 consolidated documentation generation
+test_stage7_consolidated_documentation() {
+    local test_env="$TEST_WORKSPACE/stage7_consolidated"
+    create_test_environment "$test_env"
+    
+    log_info "Testing Stage 7 consolidated documentation generation..."
+    
+    # Check if TPDG is available
+    if ! command -v test-plan-documentation-generator > /dev/null 2>&1 && [[ -z "${TEST_PLAN_DOC_GEN:-}" ]]; then
+        log_warning "TPDG not available, skipping Stage 7 test"
+        return 0
+    fi
+    
+    local output_file="$TEST_WORKSPACE/stage7_output.log"
+    
+    # Run acceptance suite on test subset
+    cd "$test_env"
+    TEST_CASES_DIR="$test_env/test_cases" \
+    EXECUTION_LOGS_DIR="$test_env/execution_logs" \
+    VERIFICATION_RESULTS_DIR="$test_env/verification_results" \
+    SCRIPTS_DIR="$test_env/scripts" \
+    REPORTS_DIR="$test_env/reports" \
+    "$ACCEPTANCE_SUITE" > "$output_file" 2>&1 || true
+    
+    # Verify Stage 7 was executed
+    if ! grep -q "Stage 7: Generating Consolidated Documentation" "$output_file"; then
+        log_error "Stage 7 not found in output"
+        return 1
+    fi
+    pass "Stage 7 executed"
+    
+    # Verify no CONSOLIDATED_DOC_FAILED errors occurred
+    if grep -qi "CONSOLIDATED_DOC_FAILED" "$output_file"; then
+        log_error "CONSOLIDATED_DOC_FAILED errors detected in output"
+        return 1
+    fi
+    pass "No CONSOLIDATED_DOC_FAILED errors"
+    
+    # Verify test-acceptance/reports/consolidated/ directory was created
+    local consolidated_dir="$test_env/reports/consolidated"
+    if [[ ! -d "$consolidated_dir" ]]; then
+        log_error "Consolidated reports directory not created: $consolidated_dir"
+        return 1
+    fi
+    pass "Consolidated reports directory created"
+    
+    # Check that all_tests_container.yaml was created
+    local consolidated_container="$test_env/reports/consolidated/all_tests_container.yaml"
+    if [[ ! -f "$consolidated_container" ]]; then
+        log_error "Consolidated container YAML not created: $consolidated_container"
+        return 1
+    fi
+    pass "all_tests_container.yaml created"
+    
+    # Validate container YAML structure
+    if ! grep -q "^title:" "$consolidated_container"; then
+        log_error "Container missing 'title' field"
+        return 1
+    fi
+    
+    if ! grep -q "^project:" "$consolidated_container"; then
+        log_error "Container missing 'project' field"
+        return 1
+    fi
+    
+    if ! grep -q "^test_results:" "$consolidated_container"; then
+        log_error "Container missing 'test_results' field"
+        return 1
+    fi
+    pass "Container YAML has required structure"
+    
+    # Validate container YAML against schema
+    local container_schema="$PROJECT_ROOT/data/testcase_results_container/schema.json"
+    if [[ -f "$container_schema" ]]; then
+        local validate_yaml
+        if [[ -f "$PROJECT_ROOT/target/release/validate-yaml" ]]; then
+            validate_yaml="$PROJECT_ROOT/target/release/validate-yaml"
+        elif [[ -f "$PROJECT_ROOT/target/debug/validate-yaml" ]]; then
+            validate_yaml="$PROJECT_ROOT/target/debug/validate-yaml"
+        fi
+        
+        if [[ -n "$validate_yaml" ]]; then
+            if "$validate_yaml" --schema "$container_schema" "$consolidated_container" >/dev/null 2>&1; then
+                pass "Container YAML validates against schema"
+            else
+                log_error "Container YAML failed schema validation"
+                return 1
+            fi
+        else
+            log_warning "validate-yaml binary not found, skipping schema validation"
+        fi
+    else
+        log_warning "Container schema not found at: $container_schema"
+    fi
+    
+    # Verify container contains multiple test case results
+    local test_case_count=$(grep -c "test_case_id:" "$consolidated_container" || true)
+    if [[ $test_case_count -lt 5 ]]; then
+        log_error "Container has too few test cases: $test_case_count (expected at least 5)"
+        return 1
+    fi
+    pass "Container contains $test_case_count test case results"
+    
+    # Verify metadata section has correct total_test_cases count
+    if grep -q "^metadata:" "$consolidated_container"; then
+        # Extract total_test_cases from metadata
+        local metadata_count=$(grep -A 10 "^metadata:" "$consolidated_container" | grep "total_test_cases:" | grep -o '[0-9]\+' || echo "0")
+        
+        # Count actual execution logs
+        local log_count=$(find "$test_env/execution_logs" -name "*.json" -type f 2>/dev/null | wc -l | tr -d ' ')
+        
+        if [[ "$metadata_count" -ne "$log_count" ]]; then
+            log_error "Metadata total_test_cases ($metadata_count) doesn't match execution logs count ($log_count)"
+            return 1
+        fi
+        pass "Metadata total_test_cases ($metadata_count) matches execution logs count"
+    else
+        log_error "Container YAML missing metadata section"
+        return 1
+    fi
+    
+    # Verify test case IDs from different categories are present
+    local has_success=0
+    local has_failure=0
+    local has_hooks=0
+    
+    # Check for success test cases
+    if grep -q "TC_SUCCESS_" "$consolidated_container"; then
+        has_success=1
+    fi
+    
+    # Check for failure test cases
+    if grep -q "TC_FAILURE_" "$consolidated_container"; then
+        has_failure=1
+    fi
+    
+    # Check for hook test cases
+    if grep -q "HOOKS_" "$consolidated_container"; then
+        has_hooks=1
+    fi
+    
+    if [[ $has_success -eq 0 ]]; then
+        log_error "No success test cases found in container"
+        return 1
+    fi
+    
+    if [[ $has_failure -eq 0 ]]; then
+        log_error "No failure test cases found in container"
+        return 1
+    fi
+    
+    if [[ $has_hooks -eq 0 ]]; then
+        log_error "No hooks test cases found in container"
+        return 1
+    fi
+    pass "Container includes test cases from multiple categories (success, failure, hooks)"
+    
+    # Verify TPDG successfully generated AsciiDoc
+    local consolidated_asciidoc="$test_env/reports/consolidated/all_tests.adoc"
+    if [[ ! -f "$consolidated_asciidoc" ]]; then
+        log_error "Consolidated AsciiDoc not created: $consolidated_asciidoc"
+        return 1
+    fi
+    pass "all_tests.adoc created"
+    
+    # Verify AsciiDoc content
+    if [[ ! -s "$consolidated_asciidoc" ]]; then
+        log_error "AsciiDoc file is empty"
+        return 1
+    fi
+    
+    # Check for typical AsciiDoc markers
+    if ! grep -q "^=" "$consolidated_asciidoc"; then
+        log_error "AsciiDoc missing header markers"
+        return 1
+    fi
+    pass "AsciiDoc has valid content"
+    
+    # Verify TPDG successfully generated Markdown
+    local consolidated_markdown="$test_env/reports/consolidated/all_tests.md"
+    if [[ ! -f "$consolidated_markdown" ]]; then
+        log_error "Consolidated Markdown not created: $consolidated_markdown"
+        return 1
+    fi
+    pass "all_tests.md created"
+    
+    # Verify Markdown content
+    if [[ ! -s "$consolidated_markdown" ]]; then
+        log_error "Markdown file is empty"
+        return 1
+    fi
+    
+    # Check for typical Markdown markers
+    if ! grep -q "^#" "$consolidated_markdown"; then
+        log_error "Markdown missing header markers"
+        return 1
+    fi
+    pass "Markdown has valid content"
+    
+    # Verify documentation includes test case IDs from multiple categories
+    local doc_has_success=0
+    local doc_has_failure=0
+    local doc_has_hooks=0
+    
+    if grep -q "TC_SUCCESS_" "$consolidated_asciidoc" && grep -q "TC_SUCCESS_" "$consolidated_markdown"; then
+        doc_has_success=1
+    fi
+    
+    if grep -q "TC_FAILURE_" "$consolidated_asciidoc" && grep -q "TC_FAILURE_" "$consolidated_markdown"; then
+        doc_has_failure=1
+    fi
+    
+    if grep -q "HOOKS_" "$consolidated_asciidoc" && grep -q "HOOKS_" "$consolidated_markdown"; then
+        doc_has_hooks=1
+    fi
+    
+    if [[ $doc_has_success -eq 0 ]]; then
+        log_error "Success test cases not found in generated documentation"
+        return 1
+    fi
+    
+    if [[ $doc_has_failure -eq 0 ]]; then
+        log_error "Failure test cases not found in generated documentation"
+        return 1
+    fi
+    
+    if [[ $doc_has_hooks -eq 0 ]]; then
+        log_error "Hooks test cases not found in generated documentation"
+        return 1
+    fi
+    pass "Documentation content includes test case IDs from multiple categories"
+    
+    # Verify summary report mentions Stage 7
+    local report="$test_env/reports/acceptance_suite_summary.txt"
+    if [[ ! -f "$report" ]]; then
+        log_error "Summary report not found"
+        return 1
+    fi
+    
+    if ! grep -q "Stage 7: Consolidated Documentation" "$report"; then
+        log_error "Summary report missing Stage 7 section"
+        return 1
+    fi
+    pass "Summary report includes Stage 7 results"
+    
+    # Verify consolidated reports paths are listed in summary
+    if ! grep -q "all_tests_container.yaml" "$report"; then
+        log_error "Summary report doesn't mention consolidated container"
+        return 1
+    fi
+    
+    if ! grep -q "all_tests.adoc" "$report"; then
+        log_error "Summary report doesn't mention consolidated AsciiDoc"
+        return 1
+    fi
+    
+    if ! grep -q "all_tests.md" "$report"; then
+        log_error "Summary report doesn't mention consolidated Markdown"
+        return 1
+    fi
+    pass "Summary report lists all consolidated documentation files"
+    
+    log_info "Stage 7 consolidated documentation generation verified successfully"
+    return 0
+}
+
 # Main test execution
 main() {
     section "$TEST_NAME"
@@ -790,6 +1056,7 @@ main() {
     run_test "Timeout Handling" test_timeout_handling
     run_test "Cleanup of Temporary Files" test_cleanup_temporary_files
     run_test "Multiple Skip Flags" test_multiple_skip_flags
+    run_test "Stage 7 Consolidated Documentation" test_stage7_consolidated_documentation
     
     # Print summary
     section "Test Summary"

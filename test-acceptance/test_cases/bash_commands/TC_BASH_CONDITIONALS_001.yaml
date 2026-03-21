@@ -1,177 +1,179 @@
-requirement: "BASH_CONDITIONAL_OPERATIONS"
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: BASH_CONDITIONAL_OPERATIONS
 item: 1
 tc: 1
-id: 'TC_BASH_CONDITIONALS_001'
-description: 'Bash conditional operations - if/then/else, test operators, logical operators with comprehensive validation'
-
+id: TC_BASH_CONDITIONALS_001
+description: Bash conditional operations - if/then/else, test operators, logical operators
+  with comprehensive validation
 general_initial_conditions:
   system:
-    - "Bash shell with conditional support is available"
-
+  - Bash shell with conditional support is available
 initial_conditions:
   environment:
-    - "Conditional expressions work correctly"
-
+  - Conditional expressions work correctly
 test_sequences:
-  - id: 1
-    name: "Conditional Expressions"
-    description: "Test various bash conditional constructs and test operators"
-    initial_conditions:
-      system:
-        - "Conditional syntax works"
-    steps:
-      - step: 1
-        description: "Numeric comparison - equal"
-        command: "a=10; b=10; if [[ $a -eq $b ]]; then echo 'equal'; else echo 'not equal'; fi"
-        expected:
-          success: true
-          result: 0
-          output: "equal"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" == 'equal' ]]"
-          general:
-            - name: comparison_correct
-              condition: "[[ \"$COMMAND_OUTPUT\" == 'equal' ]]"
-
-      - step: 2
-        description: "Numeric comparison - greater than"
-        command: "x=20; y=10; if [[ $x -gt $y ]]; then echo 'greater'; else echo 'not greater'; fi"
-        expected:
-          success: true
-          result: 0
-          output: "greater"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" == 'greater' ]]"
-          general:
-            - name: gt_works
-              condition: "[[ \"$COMMAND_OUTPUT\" == 'greater' ]]"
-
-      - step: 3
-        description: "String comparison - equal"
-        command: "s1='hello'; s2='hello'; if [[ $s1 == $s2 ]]; then echo 'match'; else echo 'no match'; fi"
-        expected:
-          success: true
-          result: 0
-          output: "match"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" == 'match' ]]"
-          general:
-            - name: string_match
-              condition: "[[ \"$COMMAND_OUTPUT\" == 'match' ]]"
-
-      - step: 4
-        description: "String regex matching"
-        command: "email='user@example.com'; if [[ $email =~ @.*\\. ]]; then echo 'valid'; else echo 'invalid'; fi"
-        expected:
-          success: true
-          result: 0
-          output: "valid"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" == 'valid' ]]"
-          general:
-            - name: regex_matched
-              condition: "[[ \"$COMMAND_OUTPUT\" == 'valid' ]]"
-
-      - step: 5
-        description: "File existence test"
-        command: "touch /tmp/conditional_test.txt; if [[ -f /tmp/conditional_test.txt ]]; then echo 'exists'; else echo 'not exists'; fi"
-        expected:
-          success: true
-          result: 0
-          output: "exists"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" == 'exists' ]]"
-          general:
-            - name: file_exists
-              condition: "[[ -f /tmp/conditional_test.txt ]]"
-            - name: output_correct
-              condition: "[[ \"$COMMAND_OUTPUT\" == 'exists' ]]"
-
-      - step: 6
-        description: "Directory existence test"
-        command: "mkdir -p /tmp/conditional_dir; if [[ -d /tmp/conditional_dir ]]; then echo 'is directory'; else echo 'not directory'; fi"
-        expected:
-          success: true
-          result: 0
-          output: "is directory"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" == 'is directory' ]]"
-          general:
-            - name: dir_exists
-              condition: "[[ -d /tmp/conditional_dir ]]"
-
-      - step: 7
-        description: "Logical AND operator"
-        command: "a=5; if [[ $a -gt 3 && $a -lt 10 ]]; then echo 'in range'; else echo 'out of range'; fi"
-        expected:
-          success: true
-          result: 0
-          output: "in range"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" == 'in range' ]]"
-          general:
-            - name: and_logic_works
-              condition: "[[ \"$COMMAND_OUTPUT\" == 'in range' ]]"
-
-      - step: 8
-        description: "Logical OR operator"
-        command: "val=15; if [[ $val -lt 10 || $val -gt 12 ]]; then echo 'condition met'; else echo 'condition not met'; fi"
-        expected:
-          success: true
-          result: 0
-          output: "condition met"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" == 'condition met' ]]"
-          general:
-            - name: or_logic_works
-              condition: "[[ \"$COMMAND_OUTPUT\" == 'condition met' ]]"
-
-      - step: 9
-        description: "String not empty test"
-        command: "str='not empty'; if [[ -n $str ]]; then echo 'has content'; else echo 'empty'; fi"
-        expected:
-          success: true
-          result: 0
-          output: "has content"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" == 'has content' ]]"
-          general:
-            - name: string_not_empty
-              condition: "[[ \"$COMMAND_OUTPUT\" == 'has content' ]]"
-
-      - step: 10
-        description: "Nested conditionals"
-        command: "num=7; if [[ $num -gt 5 ]]; then if [[ $num -lt 10 ]]; then echo 'between 5 and 10'; fi; fi"
-        expected:
-          success: true
-          result: 0
-          output: "between 5 and 10"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" == 'between 5 and 10' ]]"
-          general:
-            - name: nested_works
-              condition: "[[ \"$COMMAND_OUTPUT\" == 'between 5 and 10' ]]"
-
-      - step: 11
-        description: "Cleanup conditional test files"
-        command: "rm -f /tmp/conditional_test.txt && rm -rf /tmp/conditional_dir && echo 'cleaned'"
-        expected:
-          success: true
-          result: 0
-          output: "cleaned"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" == 'cleaned' ]]"
-          general:
-            - name: files_removed
-              condition: "[[ ! -f /tmp/conditional_test.txt && ! -d /tmp/conditional_dir ]]"
+- id: 1
+  name: Conditional Expressions
+  description: Test various bash conditional constructs and test operators
+  initial_conditions:
+    system:
+    - Conditional syntax works
+  steps:
+  - step: 1
+    description: Numeric comparison - equal
+    command: a=10; b=10; if [[ $a -eq $b ]]; then echo 'equal'; else echo 'not equal';
+      fi
+    expected:
+      success: true
+      result: 0
+      output: equal
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" == ''equal'' ]]'
+      general:
+      - name: comparison_correct
+        condition: '[[ "$COMMAND_OUTPUT" == ''equal'' ]]'
+  - step: 2
+    description: Numeric comparison - greater than
+    command: x=20; y=10; if [[ $x -gt $y ]]; then echo 'greater'; else echo 'not greater';
+      fi
+    expected:
+      success: true
+      result: 0
+      output: greater
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" == ''greater'' ]]'
+      general:
+      - name: gt_works
+        condition: '[[ "$COMMAND_OUTPUT" == ''greater'' ]]'
+  - step: 3
+    description: String comparison - equal
+    command: s1='hello'; s2='hello'; if [[ $s1 == $s2 ]]; then echo 'match'; else
+      echo 'no match'; fi
+    expected:
+      success: true
+      result: 0
+      output: match
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" == ''match'' ]]'
+      general:
+      - name: string_match
+        condition: '[[ "$COMMAND_OUTPUT" == ''match'' ]]'
+  - step: 4
+    description: String regex matching
+    command: email='user@example.com'; if [[ $email =~ @.*\. ]]; then echo 'valid';
+      else echo 'invalid'; fi
+    expected:
+      success: true
+      result: 0
+      output: valid
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" == ''valid'' ]]'
+      general:
+      - name: regex_matched
+        condition: '[[ "$COMMAND_OUTPUT" == ''valid'' ]]'
+  - step: 5
+    description: File existence test
+    command: touch /tmp/conditional_test.txt; if [[ -f /tmp/conditional_test.txt ]];
+      then echo 'exists'; else echo 'not exists'; fi
+    expected:
+      success: true
+      result: 0
+      output: exists
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" == ''exists'' ]]'
+      general:
+      - name: file_exists
+        condition: '[[ -f /tmp/conditional_test.txt ]]'
+      - name: output_correct
+        condition: '[[ "$COMMAND_OUTPUT" == ''exists'' ]]'
+  - step: 6
+    description: Directory existence test
+    command: mkdir -p /tmp/conditional_dir; if [[ -d /tmp/conditional_dir ]]; then
+      echo 'is directory'; else echo 'not directory'; fi
+    expected:
+      success: true
+      result: 0
+      output: is directory
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" == ''is directory'' ]]'
+      general:
+      - name: dir_exists
+        condition: '[[ -d /tmp/conditional_dir ]]'
+  - step: 7
+    description: Logical AND operator
+    command: a=5; if [[ $a -gt 3 && $a -lt 10 ]]; then echo 'in range'; else echo
+      'out of range'; fi
+    expected:
+      success: true
+      result: 0
+      output: in range
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" == ''in range'' ]]'
+      general:
+      - name: and_logic_works
+        condition: '[[ "$COMMAND_OUTPUT" == ''in range'' ]]'
+  - step: 8
+    description: Logical OR operator
+    command: val=15; if [[ $val -lt 10 || $val -gt 12 ]]; then echo 'condition met';
+      else echo 'condition not met'; fi
+    expected:
+      success: true
+      result: 0
+      output: condition met
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" == ''condition met'' ]]'
+      general:
+      - name: or_logic_works
+        condition: '[[ "$COMMAND_OUTPUT" == ''condition met'' ]]'
+  - step: 9
+    description: String not empty test
+    command: str='not empty'; if [[ -n $str ]]; then echo 'has content'; else echo
+      'empty'; fi
+    expected:
+      success: true
+      result: 0
+      output: has content
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" == ''has content'' ]]'
+      general:
+      - name: string_not_empty
+        condition: '[[ "$COMMAND_OUTPUT" == ''has content'' ]]'
+  - step: 10
+    description: Nested conditionals
+    command: num=7; if [[ $num -gt 5 ]]; then if [[ $num -lt 10 ]]; then echo 'between
+      5 and 10'; fi; fi
+    expected:
+      success: true
+      result: 0
+      output: between 5 and 10
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" == ''between 5 and 10'' ]]'
+      general:
+      - name: nested_works
+        condition: '[[ "$COMMAND_OUTPUT" == ''between 5 and 10'' ]]'
+  - step: 11
+    description: Cleanup conditional test files
+    command: rm -f /tmp/conditional_test.txt && rm -rf /tmp/conditional_dir && echo
+      'cleaned'
+    expected:
+      success: true
+      result: 0
+      output: cleaned
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" == ''cleaned'' ]]'
+      general:
+      - name: files_removed
+        condition: '[[ ! -f /tmp/conditional_test.txt && ! -d /tmp/conditional_dir
+          ]]'

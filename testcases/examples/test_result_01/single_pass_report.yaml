@@ -1,3 +1,5 @@
+type: batch_verification_report
+schema: tcms/batch-verification-report.schema.v1.json
 test_cases:
 - test_case_id: TEST_PASSING_001
   description: Test case with all passing verifications
@@ -49,4 +51,4 @@ total_steps: 3
 passed_steps: 3
 failed_steps: 0
 not_executed_steps: 0
-generated_at: 2026-03-16T13:37:18.747151Z
+generated_at: 2026-03-16 13:37:18.747151+00:00

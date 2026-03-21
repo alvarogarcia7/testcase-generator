@@ -1,0 +1,26 @@
+[
+  {
+    "type": "test_execution",
+    "schema": "tcms/execution-log.schema.v1.json",
+    "test_sequence": 1,
+    "step": 1,
+    "command": "echo \"Output with \\\"quotes\\\"\"",
+    "exit_code": 0,
+    "output": "Output with \"quotes\"",
+    "timestamp": "2026-03-01T10:00:00.123456+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": true
+  },
+  {
+    "type": "test_execution",
+    "schema": "tcms/execution-log.schema.v1.json",
+    "test_sequence": 1,
+    "step": 2,
+    "command": "echo \"Test $var @host #comment\"",
+    "exit_code": 0,
+    "output": "Test $var @host #comment",
+    "timestamp": "2026-03-01T10:00:00.234567+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": true
+  }
+]

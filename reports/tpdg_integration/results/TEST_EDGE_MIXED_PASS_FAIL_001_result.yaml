@@ -1,0 +1,63 @@
+description: 'Edge case: alternating pass/fail pattern across steps'
+failed_steps: 2
+item: 1
+not_executed_steps: 0
+overall_pass: false
+passed_steps: 3
+requirement: EDGE_MIXED_PASS_FAIL
+sequences:
+- all_steps_passed: false
+  item: 1
+  name: Alternating Pass/Fail Sequence
+  requirement: EDGE_MIXED_PASS_FAIL
+  sequence_id: 1
+  step_results:
+  - Pass:
+      description: Pass verification
+      item: 1
+      requirement: EDGE_MIXED_PASS_FAIL
+      step: 1
+      tc: 1
+  - Fail:
+      actual_output: Step 2 wrong
+      actual_result: '0'
+      description: Fail verification
+      expected:
+        output: Step 2 expected
+        result: '0'
+        success: true
+      item: 1
+      reason: 'Output mismatch: expected ''Step 2 expected'', got ''Step 2 wrong'''
+      requirement: EDGE_MIXED_PASS_FAIL
+      step: 2
+      tc: 1
+  - Pass:
+      description: Pass verification
+      item: 1
+      requirement: EDGE_MIXED_PASS_FAIL
+      step: 3
+      tc: 1
+  - Fail:
+      actual_output: Step 4 wrong
+      actual_result: '0'
+      description: Fail verification
+      expected:
+        output: Step 4 expected
+        result: '0'
+        success: true
+      item: 1
+      reason: 'Output mismatch: expected ''Step 4 expected'', got ''Step 4 wrong'''
+      requirement: EDGE_MIXED_PASS_FAIL
+      step: 4
+      tc: 1
+  - Pass:
+      description: Pass verification
+      item: 1
+      requirement: EDGE_MIXED_PASS_FAIL
+      step: 5
+      tc: 1
+  tc: 1
+tc: 1
+test_case_id: TEST_EDGE_MIXED_PASS_FAIL_001
+total_steps: 5
+type: result

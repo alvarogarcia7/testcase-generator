@@ -1,44 +1,44 @@
-requirement: "FAILURE_INVALID_SYNTAX"
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: FAILURE_INVALID_SYNTAX
 item: 1
 tc: 1
-id: 'TC_FAILURE_INVALID_SYNTAX_001'
-description: 'Test case with invalid command syntax - verifies handling of malformed commands'
-
+id: TC_FAILURE_INVALID_SYNTAX_001
+description: Test case with invalid command syntax - verifies handling of malformed
+  commands
 general_initial_conditions:
   system:
-    - "Bash shell is available"
-    - "Basic Unix utilities are installed"
-
+  - Bash shell is available
+  - Basic Unix utilities are installed
 initial_conditions:
   filesystem:
-    - "Temporary directory /tmp is writable"
-
+  - Temporary directory /tmp is writable
 test_sequences:
-  - id: 1
-    name: "Invalid Syntax Sequence"
-    description: "Execute commands with invalid syntax"
-    initial_conditions:
-      system:
-        - "Bash shell with syntax checking"
-    steps:
-      - step: 1
-        description: "Execute command with invalid brace expansion"
-        command: "bash -c 'echo {a..'"
-        expected:
-          success: false
-          result: '2'
-          output: "syntax error"
-        verification:
-          result: "[[ $EXIT_CODE -ne 0 ]]"
-          output: "true"
-
-      - step: 2
-        description: "This step should not execute"
-        command: "echo 'Step 2'"
-        expected:
-          success: true
-          result: '0'
-          output: "Step 2"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Step 2' <<< \"$COMMAND_OUTPUT\""
+- id: 1
+  name: Invalid Syntax Sequence
+  description: Execute commands with invalid syntax
+  initial_conditions:
+    system:
+    - Bash shell with syntax checking
+  steps:
+  - step: 1
+    description: Execute command with invalid brace expansion but expect success (verification
+      fails)
+    command: bash -c 'echo {a..'
+    expected:
+      success: true
+      result: '0'
+      output: ''
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: 'true'
+  - step: 2
+    description: This step should not execute due to verification failure
+    command: echo 'Step 2'
+    expected:
+      success: true
+      result: '0'
+      output: Step 2
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Step 2' <<< "$COMMAND_OUTPUT"

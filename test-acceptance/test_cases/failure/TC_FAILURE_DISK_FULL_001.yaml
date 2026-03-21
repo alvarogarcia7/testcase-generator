@@ -1,45 +1,45 @@
-requirement: "FAILURE_DISK_FULL"
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: FAILURE_DISK_FULL
 item: 1
 tc: 1
-id: 'TC_FAILURE_DISK_FULL_001'
-description: 'Test case simulating disk full scenario - verifies handling of write failures due to space constraints'
-
+id: TC_FAILURE_DISK_FULL_001
+description: Test case simulating disk full scenario - verifies handling of write
+  failures due to space constraints
 general_initial_conditions:
   system:
-    - "Bash shell is available"
-    - "Basic Unix utilities are installed"
-
+  - Bash shell is available
+  - Basic Unix utilities are installed
 initial_conditions:
   filesystem:
-    - "Temporary directory /tmp is writable"
-    - "/dev/full device is available (Linux only)"
-
+  - Temporary directory /tmp is writable
+  - /dev/full device is available (Linux only)
 test_sequences:
-  - id: 1
-    name: "Disk Full Simulation Sequence"
-    description: "Simulate disk full by writing to /dev/full"
-    initial_conditions:
-      filesystem:
-        - "/dev/full device exists"
-    steps:
-      - step: 1
-        description: "Attempt to write to /dev/full device"
-        command: "echo 'test data' > /dev/full 2>&1"
-        expected:
-          success: false
-          result: '1'
-          output: "No space left on device"
-        verification:
-          result: "[[ $EXIT_CODE -ne 0 ]]"
-          output: "grep -qi 'no space left' <<< \"$COMMAND_OUTPUT\" || grep -qi 'device full' <<< \"$COMMAND_OUTPUT\" || [[ $EXIT_CODE -ne 0 ]]"
-
-      - step: 2
-        description: "This step should not execute"
-        command: "echo 'Step 2'"
-        expected:
-          success: true
-          result: '0'
-          output: "Step 2"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Step 2' <<< \"$COMMAND_OUTPUT\""
+- id: 1
+  name: Disk Full Simulation Sequence
+  description: Simulate disk full by writing to /dev/full
+  initial_conditions:
+    filesystem:
+    - /dev/full device exists
+  steps:
+  - step: 1
+    description: Attempt to write to /dev/full device but expect success (verification
+      fails)
+    command: echo 'test data' > /dev/full 2>&1
+    expected:
+      success: true
+      result: '0'
+      output: ''
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: 'true'
+  - step: 2
+    description: This step should not execute due to verification failure
+    command: echo 'Step 2'
+    expected:
+      success: true
+      result: '0'
+      output: Step 2
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Step 2' <<< "$COMMAND_OUTPUT"

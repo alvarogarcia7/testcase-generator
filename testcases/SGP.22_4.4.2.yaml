@@ -1,3 +1,5 @@
+type: test_case
+schema: tcms/test-case.schema.v1.json
 requirement: SGP.22
 item: 4
 tc: 42
@@ -6,3 +8,20 @@ description: Sample test case for demonstration
 general_initial_conditions:
   eUICC:
   - Condition 1
+initial_conditions:
+  eUICC:
+  - Ready for testing
+test_sequences:
+- id: 1
+  name: Sample Sequence
+  description: Sample test sequence
+  initial_conditions:
+    eUICC:
+    - Sequence ready
+  steps:
+  - step: 1
+    description: Sample step
+    command: echo "test"
+    expected:
+      result: 0
+      output: test

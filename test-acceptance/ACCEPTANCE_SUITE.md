@@ -4,7 +4,7 @@ The `run_acceptance_suite.sh` script is a comprehensive master orchestrator that
 
 ## Overview
 
-The orchestrator executes six sequential stages:
+The orchestrator executes seven sequential stages:
 
 1. **YAML Validation** - Validates all test case YAMLs against schema
 2. **Script Generation** - Generates bash scripts with JSON logging
@@ -12,6 +12,7 @@ The orchestrator executes six sequential stages:
 4. **Verification** - Runs verifier on execution logs to create containers
 5. **Container Validation** - Validates container YAMLs against schema
 6. **Documentation** - Generates AsciiDoc and Markdown reports via TPDG
+7. **Consolidated Documentation** - Aggregates all results into unified reports
 
 ## Prerequisites
 
@@ -29,7 +30,7 @@ cargo build --bin validate-json
 
 ### Optional: Test Plan Documentation Generator
 
-For documentation generation (Stage 6), install TPDG:
+For documentation generation (Stages 6 and 7), install TPDG:
 
 ```bash
 # Install globally
@@ -39,7 +40,7 @@ cargo install test-plan-documentation-generator
 export TEST_PLAN_DOC_GEN=/path/to/test-plan-documentation-generator
 ```
 
-If TPDG is not available, Stage 6 will be skipped with a warning.
+If TPDG is not available, Stages 6 and 7 will be skipped with a warning.
 
 ## Usage
 
@@ -58,7 +59,8 @@ This will:
 - Execute only automated tests (skip manual tests)
 - Verify execution logs
 - Validate container YAMLs
-- Generate documentation (if TPDG available)
+- Generate individual documentation reports (if TPDG available)
+- Generate consolidated documentation reports (if TPDG available)
 
 ### Command Line Options
 
@@ -132,10 +134,13 @@ test-acceptance/
 ├── reports/                 # Generated: Documentation reports
 │   ├── asciidoc/           # AsciiDoc format reports
 │   │   ├── TC_SUCCESS_*.adoc
+│   │   ├── all_tests.adoc  # Consolidated AsciiDoc report
 │   │   └── ...
 │   ├── markdown/           # Markdown format reports
 │   │   ├── TC_SUCCESS_*.md
+│   │   ├── all_tests.md    # Consolidated Markdown report
 │   │   └── ...
+│   ├── all_tests_container.yaml  # Consolidated container YAML
 │   └── acceptance_suite_summary.txt  # Final summary
 └── run_acceptance_suite.sh  # Master orchestrator script
 ```
@@ -260,6 +265,96 @@ test-plan-documentation-generator \
     --test-case original.yaml
 ```
 
+### Stage 7: Consolidated Documentation
+
+Aggregates all individual test results into a single unified container and generates comprehensive consolidated documentation reports.
+
+**Actions:**
+- Collects all individual container YAML files from `verification_results/`
+- Uses TPDG in `--folder` mode to aggregate containers
+- Generates consolidated container YAML (`all_tests_container.yaml`)
+- Generates unified AsciiDoc report (`all_tests.adoc`)
+- Generates unified Markdown report (`all_tests.md`)
+- Saves all consolidated outputs to `reports/` directory
+
+**Output:**
+- `reports/all_tests_container.yaml` - Aggregated container with all test results
+- `reports/asciidoc/all_tests.adoc` - Consolidated AsciiDoc report
+- `reports/markdown/all_tests.md` - Consolidated Markdown report
+- Console: Aggregation and generation status
+
+**Skip:** `--skip-documentation` or auto-skip if TPDG not available
+
+**TPDG Folder Mode Command:**
+```bash
+test-plan-documentation-generator \
+    --folder verification_results/ \
+    --output reports/all_tests_container.yaml \
+    --format container
+```
+
+**Relationship Between Individual and Consolidated Reports:**
+
+The acceptance suite generates two types of documentation:
+
+1. **Individual Reports (Stage 6):**
+   - One report per test case
+   - Generated from individual container YAMLs
+   - Located in `reports/asciidoc/TC_*.adoc` and `reports/markdown/TC_*.md`
+   - Useful for detailed inspection of specific test cases
+   - Contains full test execution details for a single test
+
+2. **Consolidated Reports (Stage 7):**
+   - Single unified report containing all test results
+   - Generated from aggregated container YAML
+   - Located in `reports/asciidoc/all_tests.adoc` and `reports/markdown/all_tests.md`
+   - Provides comprehensive overview of entire test suite
+   - Ideal for high-level analysis and reporting
+   - Contains summary statistics and combined results
+
+**Aggregation Process:**
+
+Stage 7 uses TPDG's `--folder` mode to automatically:
+1. Discover all `*_container.yaml` files in `verification_results/`
+2. Merge all test results into a single container structure
+3. Preserve individual test metadata (titles, timestamps, environments)
+4. Generate unified documentation with all tests included
+5. Maintain cross-references between related test cases
+
+**Expected Output Files:**
+
+After Stage 7 completes successfully, you should see:
+
+```
+reports/
+├── all_tests_container.yaml       # Aggregated container YAML
+├── asciidoc/
+│   ├── all_tests.adoc             # Consolidated AsciiDoc report
+│   ├── TC_SUCCESS_SIMPLE_001.adoc # Individual reports...
+│   └── ...
+└── markdown/
+    ├── all_tests.md               # Consolidated Markdown report
+    ├── TC_SUCCESS_SIMPLE_001.md   # Individual reports...
+    └── ...
+```
+
+**Consolidated Container Structure:**
+
+The `all_tests_container.yaml` file contains:
+- Aggregated metadata from all test runs
+- Combined test results array with all test cases
+- Unified project and environment information
+- Consolidated execution timestamps
+- Summary statistics (total tests, pass/fail counts)
+
+**Use Cases:**
+
+- **CI/CD Dashboard:** Display consolidated report for build status overview
+- **Release Documentation:** Include all_tests.adoc in release notes
+- **Trend Analysis:** Compare all_tests_container.yaml across builds
+- **Stakeholder Reports:** Share high-level markdown summary with management
+- **Debugging:** Use individual reports for detailed failure investigation
+
 ## Output and Reporting
 
 ### Console Output
@@ -321,6 +416,11 @@ Failed:  0
 --- Stage 6: Documentation Generation ---
 Passed:  75
 Failed:  0
+
+--- Stage 7: Consolidated Documentation ---
+Container:  1 (all_tests_container.yaml)
+AsciiDoc:   1 (all_tests.adoc)
+Markdown:   1 (all_tests.md)
 
 =========================================
 Overall Result:

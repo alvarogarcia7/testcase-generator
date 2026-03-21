@@ -1,44 +1,43 @@
-requirement: "FAILURE_COMMAND_NOT_FOUND"
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: FAILURE_COMMAND_NOT_FOUND
 item: 1
 tc: 1
-id: 'TC_FAILURE_COMMAND_NOT_FOUND_001'
-description: 'Test case where a command is not found - verifies handling of non-existent commands'
-
+id: TC_FAILURE_COMMAND_NOT_FOUND_001
+description: Test case where a command is not found - verifies handling of non-existent
+  commands
 general_initial_conditions:
   system:
-    - "Bash shell is available"
-    - "Basic Unix utilities are installed"
-
+  - Bash shell is available
+  - Basic Unix utilities are installed
 initial_conditions:
   filesystem:
-    - "Temporary directory /tmp is writable"
-
+  - Temporary directory /tmp is writable
 test_sequences:
-  - id: 1
-    name: "Command Not Found Sequence"
-    description: "Execute a non-existent command"
-    initial_conditions:
-      system:
-        - "Standard PATH is configured"
-    steps:
-      - step: 1
-        description: "Run non-existent command"
-        command: "nonexistent_command_xyz_12345"
-        expected:
-          success: false
-          result: '127'
-          output: "command not found"
-        verification:
-          result: "[[ $EXIT_CODE -eq 127 ]]"
-          output: "grep -qi 'command not found' <<< \"$COMMAND_OUTPUT\""
-
-      - step: 2
-        description: "This step should not execute"
-        command: "echo 'Step 2'"
-        expected:
-          success: true
-          result: '0'
-          output: "Step 2"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Step 2' <<< \"$COMMAND_OUTPUT\""
+- id: 1
+  name: Command Not Found Sequence
+  description: Execute a non-existent command that fails verification
+  initial_conditions:
+    system:
+    - Standard PATH is configured
+  steps:
+  - step: 1
+    description: Run non-existent command (verification fails)
+    command: nonexistent_command_xyz_12345
+    expected:
+      success: true
+      result: '0'
+      output: ''
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: 'true'
+  - step: 2
+    description: This step should not execute due to verification failure
+    command: echo 'Step 2'
+    expected:
+      success: true
+      result: '0'
+      output: Step 2
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Step 2' <<< "$COMMAND_OUTPUT"

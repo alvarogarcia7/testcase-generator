@@ -1,0 +1,37 @@
+description: 'Edge case: first step missing from log while others executed'
+failed_steps: 0
+item: 1
+not_executed_steps: 1
+overall_pass: false
+passed_steps: 2
+requirement: EDGE_MISSING_FIRST
+sequences:
+- all_steps_passed: false
+  item: 1
+  name: Missing First Step Sequence
+  requirement: EDGE_MISSING_FIRST
+  sequence_id: 1
+  step_results:
+  - NotExecuted:
+      description: Missing step - never executed
+      item: 1
+      requirement: EDGE_MISSING_FIRST
+      step: 1
+      tc: 1
+  - Pass:
+      description: Execute step 2
+      item: 1
+      requirement: EDGE_MISSING_FIRST
+      step: 2
+      tc: 1
+  - Pass:
+      description: Execute step 3
+      item: 1
+      requirement: EDGE_MISSING_FIRST
+      step: 3
+      tc: 1
+  tc: 1
+tc: 1
+test_case_id: TEST_EDGE_MISSING_FIRST_001
+total_steps: 3
+type: result

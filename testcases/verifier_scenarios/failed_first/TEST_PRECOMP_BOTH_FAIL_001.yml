@@ -1,0 +1,45 @@
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: TEST_PRECOMP_BOTH_FAIL
+item: 1
+tc: 1
+id: TEST_PRECOMP_BOTH_FAIL_001
+description: 'Precomputed verification: first step fails both result and output verification'
+general_initial_conditions:
+  system:
+  - Shell environment is available
+initial_conditions:
+  system:
+  - All commands can be executed
+test_sequences:
+- id: 1
+  name: Both Verifications Fail Sequence
+  description: 'Test sequence where first step fails both result and output verification.
+
+    Both result_verification_pass and output_verification_pass are false.
+
+    '
+  initial_conditions:
+    system:
+    - Shell is ready
+  steps:
+  - step: 1
+    description: Execute command with both verifications failing
+    command: some-failed-command
+    expected:
+      success: false
+      result: 1
+      output: Error message
+    verification:
+      result: '[[ $EXIT_CODE -eq 1 ]]'
+      output: grep -q 'Error message' <<< "$COMMAND_OUTPUT"
+  - step: 2
+    description: Execute command with passing verification
+    command: echo "Recovery step"
+    expected:
+      success: true
+      result: 0
+      output: Recovery step
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Recovery step' <<< "$COMMAND_OUTPUT"

@@ -11,6 +11,7 @@ The verifier validates test execution logs against test case definitions to ensu
 - Interrupted/incomplete execution
 - Multiple sequence scenarios with mixed results
 - Hook failures at various lifecycle points
+- Edge cases: missing steps, duplicate entries, extra steps, execution anomalies
 
 ## Directory Structure
 
@@ -22,6 +23,7 @@ verifier_scenarios/
 ├── failed_last/             # Last step failure scenarios
 ├── interrupted/             # Interrupted execution scenarios
 ├── multiple_sequences/      # Multi-sequence with mixed results
+├── edge_cases/              # Edge case scenarios (missing steps, duplicates, etc.)
 └── hooks/                   # Hook error scenarios
     └── scripts/             # Hook scripts for testing
 ```
@@ -315,6 +317,136 @@ These scenarios test verifier behavior when hooks fail at different lifecycle po
 - All sequences should be marked as passed
 - Overall result depends on whether script_end failures fail the test
 - Failure should indicate script_end hook error
+
+---
+
+### 8. Edge Case Scenarios (`edge_cases/`)
+
+The edge_cases subdirectory contains 15 comprehensive test scenarios that validate verifier behavior in non-standard execution patterns, including missing steps, execution gaps, duplicate entries, and execution anomalies. These tests ensure the verifier correctly handles real-world edge cases that may occur during test execution.
+
+#### Overview of Edge Cases
+
+The edge case scenarios cover four main categories:
+
+1. **Complete Failures (2 tests)**: Scenarios where all steps fail or no execution occurs
+2. **Partial Execution (8 tests)**: Scenarios with missing steps at various positions (first, last, middle, sparse patterns)
+3. **Mixed Results (1 test)**: Scenarios with alternating pass/fail patterns
+4. **Execution Anomalies (4 tests)**: Scenarios with duplicate entries, extra steps, or wrong execution order
+
+#### Missing Step Handling
+
+The verifier implements robust missing step detection and handles various patterns:
+
+**Single Missing Step:**
+- **Missing First Step** (`TEST_EDGE_MISSING_FIRST_001`): Step 1 missing, steps 2-3 execute
+  - Expected: Sequence fails, step 1 marked as not_executed, steps 2-3 may pass
+  - Reason: Incomplete execution (missing initial step)
+
+- **Missing Middle Step** (`TEST_EDGE_MISSING_MIDDLE_001`): Steps 1,3 execute, step 2 missing
+  - Expected: Sequence fails, step 2 marked as not_executed
+  - Reason: Gap in execution sequence
+
+- **Missing Last Step** (`TEST_EDGE_MISSING_LAST_001`): Steps 1-2 execute, step 3 missing
+  - Expected: Sequence fails, step 3 marked as not_executed
+  - Reason: Incomplete sequence execution
+
+**Multiple Missing Steps:**
+- **All Steps Missing** (`TEST_EDGE_ALL_MISSING_001`): Empty execution log
+  - Expected: All steps marked as not_executed, overall fail
+  - Reason: Complete execution failure
+
+- **Sparse Execution** (`TEST_EDGE_SPARSE_EXECUTION_001`): Steps 1,3,5 execute, steps 2,4,6 missing
+  - Expected: Executed steps verified, missing steps marked as not_executed
+  - Reason: Alternating execution pattern with gaps
+
+- **One Step Only** (`TEST_EDGE_ONE_CORRECT_REST_MISSING_001`): Only step 2 executes, steps 1,3,4,5 missing
+  - Expected: Step 2 verified, all others marked as not_executed
+  - Reason: Minimal execution with most steps missing
+
+- **Last Step Only** (`TEST_EDGE_LAST_STEP_ONLY_001`): Only final step executes, earlier steps missing
+  - Expected: Last step verified, earlier steps marked as not_executed
+  - Reason: Skipped initial steps
+
+- **All Pass One Missing** (`TEST_EDGE_ALL_PASS_ONE_MISSING_001`): Steps 1,2,4,5 pass, step 3 missing
+  - Expected: Executed steps pass, step 3 marked as not_executed
+  - Reason: Gap in otherwise successful execution
+
+**Key Behavior:**
+- Missing steps are marked with status `not_executed`
+- Any missing step causes sequence to fail (overall_pass = false)
+- Missing steps do not prevent verification of executed steps
+- Verifier reports count of not_executed steps in summary
+
+#### Duplicate and Extra Step Behavior
+
+**Duplicate Steps** (`TEST_EDGE_DUPLICATE_STEPS_001`):
+- **Scenario**: Execution log contains duplicate entries (e.g., steps 1,2,1,3,2)
+- **Expected Behavior**:
+  - Verifier uses only the first occurrence of each step
+  - Duplicate entries are ignored for verification purposes
+  - All unique steps are verified normally
+  - Sequence may pass if all unique steps pass (overall_pass = true)
+- **Use Case**: Handles logs where steps are accidentally logged multiple times
+
+**Extra Steps** (`TEST_EDGE_EXTRA_STEPS_001`):
+- **Scenario**: Execution log contains steps not defined in test case (e.g., test case has steps 1-3, log has steps 1-5)
+- **Expected Behavior**:
+  - Verifier ignores extra steps beyond test case definition
+  - Only steps defined in test case are verified
+  - Extra steps do not cause verification failure
+  - Sequence may pass if all defined steps pass (overall_pass = true)
+- **Use Case**: Handles logs where additional debugging or cleanup steps were executed
+
+**Wrong Execution Order** (`TEST_EDGE_WRONG_SEQUENCE_001`):
+- **Scenario**: Steps executed in different order than defined (e.g., executed 3,1,2 instead of 1,2,3)
+- **Expected Behavior**:
+  - Verifier matches steps by step number, not execution order
+  - Each step verified against its definition regardless of order
+  - Out-of-order execution does not cause failure
+  - Sequence passes if all steps pass verification (overall_pass = true)
+- **Use Case**: Handles non-sequential execution patterns
+
+#### Complete Edge Case Test List
+
+| Test Case ID | Description | Pattern |
+|--------------|-------------|---------|
+| `TEST_EDGE_ALL_FAIL_001` | All steps execute but fail verification | All executed, all failed |
+| `TEST_EDGE_ALL_MISSING_001` | No steps in execution log | All missing |
+| `TEST_EDGE_ALL_PASS_ONE_MISSING_001` | All executed steps pass, one missing | 4 pass, 1 missing |
+| `TEST_EDGE_DUPLICATE_STEPS_001` | Duplicate step entries in log | Steps 1,2 duplicated |
+| `TEST_EDGE_EXTRA_STEPS_001` | Extra steps beyond test case | 3 defined, 5 in log |
+| `TEST_EDGE_LAST_STEP_ONLY_001` | Only last step executed | First 3 missing, last passes |
+| `TEST_EDGE_MISSING_FIRST_001` | First step missing | Step 1 missing, 2-3 pass |
+| `TEST_EDGE_MISSING_LAST_001` | Last step missing | Steps 1-2 pass, 3 missing |
+| `TEST_EDGE_MISSING_MIDDLE_001` | Middle step missing | Steps 1,3 pass, 2 missing |
+| `TEST_EDGE_MIXED_PASS_FAIL_001` | Alternating pass/fail pattern | Steps 1,3,5 pass; 2,4 fail |
+| `TEST_EDGE_ONE_CORRECT_REST_MISSING_001` | Single step passes, rest missing | Only step 2, others missing |
+| `TEST_EDGE_PARTIAL_SEQ1_001` | Partial first sequence in multi-seq | Seq 1: step 1 only |
+| `TEST_EDGE_PARTIAL_SEQ2_001` | Complete seq 1, partial seq 2 | Seq 1: complete; Seq 2: partial |
+| `TEST_EDGE_SPARSE_EXECUTION_001` | Alternating execution/missing pattern | Steps 1,3,5 pass; 2,4,6 missing |
+| `TEST_EDGE_WRONG_SEQUENCE_001` | Steps executed out of order | Executed 3,1,2 |
+
+#### Expected Results Summary
+
+**Pass (overall_pass = true): 3 tests**
+- `TEST_EDGE_DUPLICATE_STEPS_001`: All unique steps pass
+- `TEST_EDGE_EXTRA_STEPS_001`: All defined steps pass (extras ignored)
+- `TEST_EDGE_WRONG_SEQUENCE_001`: All steps pass (order doesn't matter)
+
+**Fail (overall_pass = false): 12 tests**
+- All scenarios with missing steps, failed steps, or incomplete execution
+
+#### Complete Test Case Documentation
+
+For detailed information about each edge case scenario including:
+- Test sequence counts
+- Total steps defined vs steps in execution log
+- Execution patterns
+- Expected sequence results
+- Expected step counts (passed/failed/not_executed)
+- Additional notes
+
+See the comprehensive test case table: [`edge_cases/TEST_CASE_TABLE.md`](edge_cases/TEST_CASE_TABLE.md)
 
 ---
 

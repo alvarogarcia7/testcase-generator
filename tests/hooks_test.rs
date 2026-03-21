@@ -39,6 +39,8 @@ fn create_test_case_with_hooks(hooks: Option<Hooks>) -> TestCase {
     };
 
     TestCase {
+        doc_type: None,
+        schema: None,
         requirement: "REQ001".to_string(),
         item: 1,
         tc: 1,
@@ -638,6 +640,8 @@ fn test_hook_test_case_id_available() {
 #[test]
 fn test_hook_execution_entry_with_hook_type() {
     let entry = TestStepExecutionEntry {
+        doc_type: None,
+        schema: None,
         test_sequence: 1,
         step: 2,
         command: "scripts/hook.sh".to_string(),
@@ -646,8 +650,8 @@ fn test_hook_execution_entry_with_hook_type() {
         timestamp: Some("2024-01-01T00:00:00Z".to_string()),
         hook_type: Some(HookType::BeforeStep),
         hook_path: Some("scripts/hook.sh".to_string()),
-        result_verification_pass: None,
-        output_verification_pass: None,
+        result_verification_pass: false,
+        output_verification_pass: false,
     };
 
     let json = serde_json::to_string(&entry).unwrap();
@@ -663,6 +667,8 @@ fn test_hook_execution_entry_with_hook_type() {
 #[test]
 fn test_hook_execution_entry_display_with_hook() {
     let entry = TestStepExecutionEntry {
+        doc_type: None,
+        schema: None,
         test_sequence: 1,
         step: 2,
         command: "scripts/hook.sh".to_string(),
@@ -671,8 +677,8 @@ fn test_hook_execution_entry_display_with_hook() {
         timestamp: None,
         hook_type: Some(HookType::AfterSequence),
         hook_path: Some("scripts/after.sh".to_string()),
-        result_verification_pass: None,
-        output_verification_pass: None,
+        result_verification_pass: false,
+        output_verification_pass: false,
     };
 
     let display = format!("{}", entry);
@@ -683,6 +689,8 @@ fn test_hook_execution_entry_display_with_hook() {
 #[test]
 fn test_hook_execution_entry_yaml_roundtrip() {
     let entry = TestStepExecutionEntry {
+        doc_type: None,
+        schema: None,
         test_sequence: 1,
         step: 1,
         command: "scripts/hook.sh".to_string(),
@@ -691,8 +699,8 @@ fn test_hook_execution_entry_yaml_roundtrip() {
         timestamp: Some("2024-01-01T12:00:00Z".to_string()),
         hook_type: Some(HookType::SetupTest),
         hook_path: Some("scripts/setup.sh".to_string()),
-        result_verification_pass: None,
-        output_verification_pass: None,
+        result_verification_pass: false,
+        output_verification_pass: false,
     };
 
     let yaml = serde_yaml::to_string(&entry).unwrap();
@@ -979,6 +987,8 @@ fn test_hook_non_executable_handling() {
 #[test]
 fn test_hook_execution_entry_without_hook_type() {
     let entry = TestStepExecutionEntry {
+        doc_type: None,
+        schema: None,
         test_sequence: 1,
         step: 1,
         command: "echo test".to_string(),
@@ -987,8 +997,8 @@ fn test_hook_execution_entry_without_hook_type() {
         timestamp: None,
         hook_type: None,
         hook_path: None,
-        result_verification_pass: None,
-        output_verification_pass: None,
+        result_verification_pass: true,
+        output_verification_pass: true,
     };
 
     let json = serde_json::to_string(&entry).unwrap();

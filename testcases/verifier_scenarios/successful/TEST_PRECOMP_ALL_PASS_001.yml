@@ -1,0 +1,57 @@
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: TEST_PRECOMP_ALL_PASS
+item: 1
+tc: 1
+id: TEST_PRECOMP_ALL_PASS_001
+description: 'Precomputed verification: all steps pass with precomputed result and
+  output verification'
+general_initial_conditions:
+  system:
+  - Shell environment is available
+initial_conditions:
+  system:
+  - All commands can be executed
+test_sequences:
+- id: 1
+  name: All Pass Precomputed Sequence
+  description: 'Test sequence where all steps pass verification using precomputed
+    verification results.
+
+    All steps have result_verification_pass=true and output_verification_pass=true.
+
+    '
+  initial_conditions:
+    system:
+    - Shell is ready
+  steps:
+  - step: 1
+    description: Execute command with precomputed verification pass
+    command: echo "Hello from step 1"
+    expected:
+      success: true
+      result: 0
+      output: Hello from step 1
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Hello from step 1' <<< "$COMMAND_OUTPUT"
+  - step: 2
+    description: Execute another command with precomputed verification pass
+    command: echo "Step 2 completed"
+    expected:
+      success: true
+      result: 0
+      output: Step 2 completed
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Step 2 completed' <<< "$COMMAND_OUTPUT"
+  - step: 3
+    description: Execute final command with precomputed verification pass
+    command: true
+    expected:
+      success: true
+      result: 0
+      output: ''
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: 'true'

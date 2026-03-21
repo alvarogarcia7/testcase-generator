@@ -1,568 +1,537 @@
-requirement: "COMPLEX_DATA_DRIVEN_ITERATIONS"
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: COMPLEX_DATA_DRIVEN_ITERATIONS
 item: 1
 tc: 9
-id: 'TC_COMPLEX_DATA_DRIVEN_ITERATIONS_001'
-description: 'Data-driven test with multiple iterations and aggregated results - demonstrates iterative testing patterns'
-
+id: TC_COMPLEX_DATA_DRIVEN_ITERATIONS_001
+description: Data-driven test with multiple iterations and aggregated results - demonstrates
+  iterative testing patterns
 hooks:
   setup_test:
-    command: "test-acceptance/scripts/hooks/setup_test_workspace.sh"
-    on_error: "fail"
+    command: test-acceptance/scripts/hooks/setup_test_workspace.sh
+    on_error: fail
   before_sequence:
-    command: "test-acceptance/scripts/hooks/before_sequence_log.sh"
-    on_error: "continue"
+    command: test-acceptance/scripts/hooks/before_sequence_log.sh
+    on_error: continue
   after_sequence:
-    command: "test-acceptance/scripts/hooks/after_sequence_cleanup.sh"
-    on_error: "continue"
+    command: test-acceptance/scripts/hooks/after_sequence_cleanup.sh
+    on_error: continue
   teardown_test:
-    command: "test-acceptance/scripts/hooks/teardown_test_final.sh"
-    on_error: "continue"
-
+    command: test-acceptance/scripts/hooks/teardown_test_final.sh
+    on_error: continue
 hydration_vars:
   ITERATION_COUNT:
-    name: "ITERATION_COUNT"
-    description: "Number of test iterations to execute"
-    default_value: "5"
+    name: ITERATION_COUNT
+    description: Number of test iterations to execute
+    default_value: '5'
     required: false
-  
   DATA_SET_SIZE:
-    name: "DATA_SET_SIZE"
-    description: "Size of data set for each iteration"
-    default_value: "10"
+    name: DATA_SET_SIZE
+    description: Size of data set for each iteration
+    default_value: '10'
     required: false
-  
   FAILURE_THRESHOLD:
-    name: "FAILURE_THRESHOLD"
-    description: "Maximum allowed failure percentage"
-    default_value: "10"
+    name: FAILURE_THRESHOLD
+    description: Maximum allowed failure percentage
+    default_value: '10'
     required: false
-  
   TEST_DATA_DIR:
-    name: "TEST_DATA_DIR"
-    description: "Directory for test data files"
-    default_value: "/tmp/data_driven_test"
+    name: TEST_DATA_DIR
+    description: Directory for test data files
+    default_value: /tmp/data_driven_test
     required: true
-
 general_initial_conditions:
   system:
-    - "Test iteration framework is available"
-    - "Data aggregation utilities are present"
+  - Test iteration framework is available
+  - Data aggregation utilities are present
   testing:
-    - "Multiple iterations can be executed"
-    - "Results can be aggregated and analyzed"
-
+  - Multiple iterations can be executed
+  - Results can be aggregated and analyzed
 initial_conditions:
   filesystem:
-    - "Test data directory can be created"
+  - Test data directory can be created
   testing:
-    - "Iteration counter can be maintained"
-    - "Results can be accumulated across iterations"
-
+  - Iteration counter can be maintained
+  - Results can be accumulated across iterations
 test_sequences:
-  - id: 1
-    name: "Test Data Preparation"
-    description: "Prepare test data sets for iterative testing"
-    initial_conditions:
-      testing:
-        - "Test data directory is available"
-    steps:
-      - step: 1
-        description: "Create test data directory structure"
-        command: "mkdir -p ${TEST_DATA_DIR}/{input,output,results} && echo 'Created: '${TEST_DATA_DIR}"
-        capture_vars:
-          - name: data_dir
-            capture: 'Created: (/tmp/[^\s]+)'
-        expected:
-          success: true
-          result: 0
-          output: "Created:"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Created:' <<< \"$COMMAND_OUTPUT\""
-          general:
-            - name: verify_data_dir_captured
-              condition: "[[ -n \"$data_dir\" ]]"
-            - name: verify_data_dir_exists
-              condition: "[[ -d \"$data_dir\" ]]"
+- id: 1
+  name: Test Data Preparation
+  description: Prepare test data sets for iterative testing
+  initial_conditions:
+    testing:
+    - Test data directory is available
+  steps:
+  - step: 1
+    description: Create test data directory structure
+    command: 'mkdir -p ${TEST_DATA_DIR}/{input,output,results} && echo ''Created:
+      ''${TEST_DATA_DIR}'
+    capture_vars:
+    - name: data_dir
+      capture: 'Created: (/tmp/[^\s]+)'
+    expected:
+      success: true
+      result: 0
+      output: 'Created:'
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Created:' <<< "$COMMAND_OUTPUT"
+      general:
+      - name: verify_data_dir_captured
+        condition: '[[ -n "$data_dir" ]]'
+      - name: verify_data_dir_exists
+        condition: '[[ -d "$data_dir" ]]'
+  - step: 2
+    description: Generate test run identifier
+    command: date +%Y%m%d_%H%M%S
+    capture_vars:
+    - name: test_run_id
+      capture: ([0-9_]+)
+    expected:
+      success: true
+      result: 0
+      output: timestamp
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" =~ ^[0-9_]+$ ]]'
+  - step: 3
+    description: Initialize iteration counter and results file
+    command: echo 0 > ${data_dir}/results/iteration_counter.txt && cat > ${data_dir}/results/test_results_${test_run_id}.csv
+      << EOF iteration,data_size,processing_time_ms,success,error_count EOF cat ${data_dir}/results/test_results_${test_run_id}.csv
+    expected:
+      success: true
+      result: 0
+      output: iteration
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'iteration' <<< "$COMMAND_OUTPUT"
+  - step: 4
+    description: Create test data manifest
+    command: 'cat > ${data_dir}/test_manifest.txt << EOF Test Run Manifest =================
+      Run ID: ${test_run_id} Iterations: ${ITERATION_COUNT} Data Set Size: ${DATA_SET_SIZE}
+      Failure Threshold: ${FAILURE_THRESHOLD}% Data Directory: ${data_dir} Status:
+      INITIALIZED EOF cat ${data_dir}/test_manifest.txt'
+    expected:
+      success: true
+      result: 0
+      output: Test Run Manifest
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: 'grep -q ''Run ID: ${test_run_id}'' <<< "$COMMAND_OUTPUT"'
+- id: 2
+  name: Iteration 1 - Data Processing
+  description: First iteration of data-driven test
+  initial_conditions:
+    testing:
+    - Test data infrastructure is ready
+    - Results file is initialized
+  steps:
+  - step: 1
+    description: Generate input data for iteration 1
+    command: for i in $(seq 1 ${DATA_SET_SIZE}); do echo "DATA_ITEM_1_$i" >> ${data_dir}/input/iteration_1.txt;
+      done && wc -l ${data_dir}/input/iteration_1.txt | awk '{print $1}'
+    capture_vars:
+    - name: iter1_input_count
+      capture: ([0-9]+)
+    expected:
+      success: true
+      result: 0
+      output: count
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" -eq ${DATA_SET_SIZE} ]]'
+  - step: 2
+    description: Capture iteration 1 start time
+    command: date +%s%N
+    capture_vars:
+    - name: iter1_start_ns
+      capture: ([0-9]+)
+    expected:
+      success: true
+      result: 0
+      output: timestamp
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" =~ ^[0-9]+$ ]]'
+  - step: 3
+    description: Process iteration 1 data
+    command: grep 'DATA_ITEM' ${data_dir}/input/iteration_1.txt | sort | uniq > ${data_dir}/output/iteration_1_processed.txt
+      && wc -l ${data_dir}/output/iteration_1_processed.txt | awk '{print $1}'
+    capture_vars:
+    - name: iter1_output_count
+      capture: ([0-9]+)
+    expected:
+      success: true
+      result: 0
+      output: count
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" -eq ${DATA_SET_SIZE} ]]'
+  - step: 4
+    description: Capture iteration 1 end time and calculate duration
+    command: date +%s%N
+    capture_vars:
+    - name: iter1_end_ns
+      capture: ([0-9]+)
+    expected:
+      success: true
+      result: 0
+      output: timestamp
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" =~ ^[0-9]+$ ]]'
+  - step: 5
+    description: Calculate iteration 1 processing time and record results
+    command: iter1_duration_ms=$(( (${iter1_end_ns} - ${iter1_start_ns}) / 1000000
+      )) && echo "1,${iter1_output_count},${iter1_duration_ms},true,0" >> ${data_dir}/results/test_results_${test_run_id}.csv
+      && echo $iter1_duration_ms
+    capture_vars:
+    - name: iter1_duration_ms
+      capture: ([0-9]+)
+    expected:
+      success: true
+      result: 0
+      output: duration
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" =~ ^[0-9]+$ ]]'
+      general:
+      - name: verify_iter1_duration
+        condition: '[[ $iter1_duration_ms -ge 0 ]]'
+- id: 3
+  name: Iteration 2 - Data Processing
+  description: Second iteration of data-driven test
+  initial_conditions:
+    testing:
+    - Iteration 1 completed successfully
+  steps:
+  - step: 1
+    description: Generate input data for iteration 2
+    command: for i in $(seq 1 ${DATA_SET_SIZE}); do echo "DATA_ITEM_2_$i" >> ${data_dir}/input/iteration_2.txt;
+      done && wc -l ${data_dir}/input/iteration_2.txt | awk '{print $1}'
+    capture_vars:
+    - name: iter2_input_count
+      capture: ([0-9]+)
+    expected:
+      success: true
+      result: 0
+      output: count
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" -eq ${DATA_SET_SIZE} ]]'
+  - step: 2
+    description: Capture iteration 2 start time
+    command: date +%s%N
+    capture_vars:
+    - name: iter2_start_ns
+      capture: ([0-9]+)
+    expected:
+      success: true
+      result: 0
+      output: timestamp
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" =~ ^[0-9]+$ ]]'
+  - step: 3
+    description: Process iteration 2 data
+    command: grep 'DATA_ITEM' ${data_dir}/input/iteration_2.txt | sort | uniq > ${data_dir}/output/iteration_2_processed.txt
+      && wc -l ${data_dir}/output/iteration_2_processed.txt | awk '{print $1}'
+    capture_vars:
+    - name: iter2_output_count
+      capture: ([0-9]+)
+    expected:
+      success: true
+      result: 0
+      output: count
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" -eq ${DATA_SET_SIZE} ]]'
+  - step: 4
+    description: Capture iteration 2 end time and calculate duration
+    command: date +%s%N
+    capture_vars:
+    - name: iter2_end_ns
+      capture: ([0-9]+)
+    expected:
+      success: true
+      result: 0
+      output: timestamp
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" =~ ^[0-9]+$ ]]'
+  - step: 5
+    description: Calculate iteration 2 processing time and record results
+    command: iter2_duration_ms=$(( (${iter2_end_ns} - ${iter2_start_ns}) / 1000000
+      )) && echo "2,${iter2_output_count},${iter2_duration_ms},true,0" >> ${data_dir}/results/test_results_${test_run_id}.csv
+      && echo $iter2_duration_ms
+    capture_vars:
+    - name: iter2_duration_ms
+      capture: ([0-9]+)
+    expected:
+      success: true
+      result: 0
+      output: duration
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" =~ ^[0-9]+$ ]]'
+- id: 4
+  name: Iteration 3 - Data Processing
+  description: Third iteration of data-driven test
+  initial_conditions:
+    testing:
+    - Iteration 2 completed successfully
+  steps:
+  - step: 1
+    description: Generate input data for iteration 3
+    command: for i in $(seq 1 ${DATA_SET_SIZE}); do echo "DATA_ITEM_3_$i" >> ${data_dir}/input/iteration_3.txt;
+      done && wc -l ${data_dir}/input/iteration_3.txt | awk '{print $1}'
+    capture_vars:
+    - name: iter3_input_count
+      capture: ([0-9]+)
+    expected:
+      success: true
+      result: 0
+      output: count
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" -eq ${DATA_SET_SIZE} ]]'
+  - step: 2
+    description: Capture iteration 3 start time
+    command: date +%s%N
+    capture_vars:
+    - name: iter3_start_ns
+      capture: ([0-9]+)
+    expected:
+      success: true
+      result: 0
+      output: timestamp
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" =~ ^[0-9]+$ ]]'
+  - step: 3
+    description: Process iteration 3 data
+    command: grep 'DATA_ITEM' ${data_dir}/input/iteration_3.txt | sort | uniq > ${data_dir}/output/iteration_3_processed.txt
+      && wc -l ${data_dir}/output/iteration_3_processed.txt | awk '{print $1}'
+    capture_vars:
+    - name: iter3_output_count
+      capture: ([0-9]+)
+    expected:
+      success: true
+      result: 0
+      output: count
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" -eq ${DATA_SET_SIZE} ]]'
+  - step: 4
+    description: Capture iteration 3 end time and calculate duration
+    command: date +%s%N
+    capture_vars:
+    - name: iter3_end_ns
+      capture: ([0-9]+)
+    expected:
+      success: true
+      result: 0
+      output: timestamp
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" =~ ^[0-9]+$ ]]'
+  - step: 5
+    description: Calculate iteration 3 processing time and record results
+    command: iter3_duration_ms=$(( (${iter3_end_ns} - ${iter3_start_ns}) / 1000000
+      )) && echo "3,${iter3_output_count},${iter3_duration_ms},true,0" >> ${data_dir}/results/test_results_${test_run_id}.csv
+      && echo $iter3_duration_ms
+    capture_vars:
+    - name: iter3_duration_ms
+      capture: ([0-9]+)
+    expected:
+      success: true
+      result: 0
+      output: duration
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" =~ ^[0-9]+$ ]]'
+- id: 5
+  name: Results Aggregation and Analysis
+  description: Aggregate results from all iterations and generate analysis report
+  initial_conditions:
+    testing:
+    - All iterations have completed
+    - Results CSV file contains all iteration data
+  steps:
+  - step: 1
+    description: Count total iterations completed
+    command: tail -n +2 ${data_dir}/results/test_results_${test_run_id}.csv | wc -l
+    capture_vars:
+    - name: total_iterations
+      capture: ([0-9]+)
+    expected:
+      success: true
+      result: 0
+      output: '3'
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output:
+        condition: '[[ $total_iterations -ge 3 ]]'
+        if_true:
+        - echo 'Required iterations completed'
+        if_false:
+        - echo 'Fewer iterations than expected'
+        always:
+        - 'echo "Iterations: ${total_iterations}"'
+  - step: 2
+    description: Calculate average processing time across iterations
+    command: tail -n +2 ${data_dir}/results/test_results_${test_run_id}.csv | awk
+      -F',' '{sum+=$3; count++} END {if(count>0) print int(sum/count); else print
+      0}'
+    capture_vars:
+    - name: avg_processing_time_ms
+      capture: ([0-9]+)
+    expected:
+      success: true
+      result: 0
+      output: average
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" =~ ^[0-9]+$ ]]'
+      general:
+      - name: verify_avg_time_calculated
+        condition: '[[ $avg_processing_time_ms =~ ^[0-9]+$ ]]'
+  - step: 3
+    description: Calculate minimum processing time
+    command: tail -n +2 ${data_dir}/results/test_results_${test_run_id}.csv | awk
+      -F',' 'NR==1 || $3<min {min=$3} END {print int(min)}'
+    capture_vars:
+    - name: min_processing_time_ms
+      capture: ([0-9]+)
+    expected:
+      success: true
+      result: 0
+      output: minimum
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" =~ ^[0-9]+$ ]]'
+  - step: 4
+    description: Calculate maximum processing time
+    command: tail -n +2 ${data_dir}/results/test_results_${test_run_id}.csv | awk
+      -F',' 'NR==1 || $3>max {max=$3} END {print int(max)}'
+    capture_vars:
+    - name: max_processing_time_ms
+      capture: ([0-9]+)
+    expected:
+      success: true
+      result: 0
+      output: maximum
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" =~ ^[0-9]+$ ]]'
+  - step: 5
+    description: Count successful iterations
+    command: tail -n +2 ${data_dir}/results/test_results_${test_run_id}.csv | grep
+      -c 'true'
+    capture_vars:
+    - name: success_count
+      capture: ([0-9]+)
+    expected:
+      success: true
+      result: 0
+      output: count
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" =~ ^[0-9]+$ ]]'
+  - step: 6
+    description: Calculate success rate percentage
+    command: echo "scale=2; (${success_count} * 100) / ${total_iterations}" | bc 2>/dev/null
+      || echo 100
+    capture_vars:
+    - name: success_rate
+      capture: ([0-9]+\\.?[0-9]*)
+    expected:
+      success: true
+      result: 0
+      output: percentage
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output:
+        condition: '[[ $(echo "${success_rate} >= 90" | bc 2>/dev/null || echo 1)
+          -eq 1 ]]'
+        if_true:
+        - echo 'Success rate meets quality threshold (>=90%)'
+        if_false:
+        - 'echo ''WARNING: Success rate below quality threshold'''
+        always:
+        - 'echo "Success rate: ${success_rate}%"'
+  - step: 7
+    description: Generate comprehensive analysis report
+    command: 'cat > ${data_dir}/results/analysis_report_${test_run_id}.txt << EOF
+      Data-Driven Test Analysis Report =================================
 
-      - step: 2
-        description: "Generate test run identifier"
-        command: "date +%Y%m%d_%H%M%S"
-        capture_vars:
-          - name: test_run_id
-            capture: '([0-9_]+)'
-        expected:
-          success: true
-          result: 0
-          output: "timestamp"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9_]+$ ]]"
+      Test Configuration: - Run ID: ${test_run_id} - Iterations Configured: ${ITERATION_COUNT}
+      - Iterations Completed: ${total_iterations} - Data Set Size: ${DATA_SET_SIZE}
+      items per iteration - Failure Threshold: ${FAILURE_THRESHOLD}%
 
-      - step: 3
-        description: "Initialize iteration counter and results file"
-        command: "echo 0 > ${data_dir}/results/iteration_counter.txt && cat > ${data_dir}/results/test_results_${test_run_id}.csv << EOF
-iteration,data_size,processing_time_ms,success,error_count
-EOF
-cat ${data_dir}/results/test_results_${test_run_id}.csv"
-        expected:
-          success: true
-          result: 0
-          output: "iteration"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'iteration' <<< \"$COMMAND_OUTPUT\""
+      Performance Metrics: ------------------- - Average Processing Time: ${avg_processing_time_ms}ms
+      - Minimum Processing Time: ${min_processing_time_ms}ms - Maximum Processing
+      Time: ${max_processing_time_ms}ms - Processing Time Range: $((${max_processing_time_ms}
+      - ${min_processing_time_ms}))ms
 
-      - step: 4
-        description: "Create test data manifest"
-        command: "cat > ${data_dir}/test_manifest.txt << EOF
-Test Run Manifest
-=================
-Run ID: ${test_run_id}
-Iterations: ${ITERATION_COUNT}
-Data Set Size: ${DATA_SET_SIZE}
-Failure Threshold: ${FAILURE_THRESHOLD}%
-Data Directory: ${data_dir}
-Status: INITIALIZED
-EOF
-cat ${data_dir}/test_manifest.txt"
-        expected:
-          success: true
-          result: 0
-          output: "Test Run Manifest"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Run ID: ${test_run_id}' <<< \"$COMMAND_OUTPUT\""
+      Quality Metrics: --------------- - Successful Iterations: ${success_count} /
+      ${total_iterations} - Success Rate: ${success_rate}% - Quality Threshold: 90%
+      - Status: $([ $(echo "${success_rate} >= 90" | bc 2>/dev/null || echo 1) -eq
+      1 ] && echo ''PASS'' || echo ''FAIL'')
 
-  - id: 2
-    name: "Iteration 1 - Data Processing"
-    description: "First iteration of data-driven test"
-    initial_conditions:
-      testing:
-        - "Test data infrastructure is ready"
-        - "Results file is initialized"
-    steps:
-      - step: 1
-        description: "Generate input data for iteration 1"
-        command: "for i in $(seq 1 ${DATA_SET_SIZE}); do echo \"DATA_ITEM_1_$i\" >> ${data_dir}/input/iteration_1.txt; done && wc -l ${data_dir}/input/iteration_1.txt | awk '{print $1}'"
-        capture_vars:
-          - name: iter1_input_count
-            capture: '([0-9]+)'
-        expected:
-          success: true
-          result: 0
-          output: "count"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" -eq ${DATA_SET_SIZE} ]]"
+      Individual Iteration Results: ---------------------------- Iteration 1: ${iter1_duration_ms}ms
+      (${iter1_output_count} items) Iteration 2: ${iter2_duration_ms}ms (${iter2_output_count}
+      items) Iteration 3: ${iter3_duration_ms}ms (${iter3_output_count} items)
 
-      - step: 2
-        description: "Capture iteration 1 start time"
-        command: "date +%s%N"
-        capture_vars:
-          - name: iter1_start_ns
-            capture: '([0-9]+)'
-        expected:
-          success: true
-          result: 0
-          output: "timestamp"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
+      Data Verification: ----------------- - Input Files: $(ls ${data_dir}/input/
+      | wc -l) - Output Files: $(ls ${data_dir}/output/ | wc -l) - Results Files:
+      $(ls ${data_dir}/results/ | wc -l)
 
-      - step: 3
-        description: "Process iteration 1 data"
-        command: "grep 'DATA_ITEM' ${data_dir}/input/iteration_1.txt | sort | uniq > ${data_dir}/output/iteration_1_processed.txt && wc -l ${data_dir}/output/iteration_1_processed.txt | awk '{print $1}'"
-        capture_vars:
-          - name: iter1_output_count
-            capture: '([0-9]+)'
-        expected:
-          success: true
-          result: 0
-          output: "count"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" -eq ${DATA_SET_SIZE} ]]"
+      Conclusion: ---------- $([ $(echo "${success_rate} >= 90" | bc 2>/dev/null ||
+      echo 1) -eq 1 ] && echo ''All iterations completed successfully with acceptable
+      performance.'' || echo ''Some iterations did not meet quality thresholds.'')
 
-      - step: 4
-        description: "Capture iteration 1 end time and calculate duration"
-        command: "date +%s%N"
-        capture_vars:
-          - name: iter1_end_ns
-            capture: '([0-9]+)'
-        expected:
-          success: true
-          result: 0
-          output: "timestamp"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
-
-      - step: 5
-        description: "Calculate iteration 1 processing time and record results"
-        command: "iter1_duration_ms=$(( (${iter1_end_ns} - ${iter1_start_ns}) / 1000000 )) && echo \"1,${iter1_output_count},${iter1_duration_ms},true,0\" >> ${data_dir}/results/test_results_${test_run_id}.csv && echo $iter1_duration_ms"
-        capture_vars:
-          - name: iter1_duration_ms
-            capture: '([0-9]+)'
-        expected:
-          success: true
-          result: 0
-          output: "duration"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
-          general:
-            - name: verify_iter1_duration
-              condition: "[[ $iter1_duration_ms -ge 0 ]]"
-
-  - id: 3
-    name: "Iteration 2 - Data Processing"
-    description: "Second iteration of data-driven test"
-    initial_conditions:
-      testing:
-        - "Iteration 1 completed successfully"
-    steps:
-      - step: 1
-        description: "Generate input data for iteration 2"
-        command: "for i in $(seq 1 ${DATA_SET_SIZE}); do echo \"DATA_ITEM_2_$i\" >> ${data_dir}/input/iteration_2.txt; done && wc -l ${data_dir}/input/iteration_2.txt | awk '{print $1}'"
-        capture_vars:
-          - name: iter2_input_count
-            capture: '([0-9]+)'
-        expected:
-          success: true
-          result: 0
-          output: "count"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" -eq ${DATA_SET_SIZE} ]]"
-
-      - step: 2
-        description: "Capture iteration 2 start time"
-        command: "date +%s%N"
-        capture_vars:
-          - name: iter2_start_ns
-            capture: '([0-9]+)'
-        expected:
-          success: true
-          result: 0
-          output: "timestamp"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
-
-      - step: 3
-        description: "Process iteration 2 data"
-        command: "grep 'DATA_ITEM' ${data_dir}/input/iteration_2.txt | sort | uniq > ${data_dir}/output/iteration_2_processed.txt && wc -l ${data_dir}/output/iteration_2_processed.txt | awk '{print $1}'"
-        capture_vars:
-          - name: iter2_output_count
-            capture: '([0-9]+)'
-        expected:
-          success: true
-          result: 0
-          output: "count"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" -eq ${DATA_SET_SIZE} ]]"
-
-      - step: 4
-        description: "Capture iteration 2 end time and calculate duration"
-        command: "date +%s%N"
-        capture_vars:
-          - name: iter2_end_ns
-            capture: '([0-9]+)'
-        expected:
-          success: true
-          result: 0
-          output: "timestamp"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
-
-      - step: 5
-        description: "Calculate iteration 2 processing time and record results"
-        command: "iter2_duration_ms=$(( (${iter2_end_ns} - ${iter2_start_ns}) / 1000000 )) && echo \"2,${iter2_output_count},${iter2_duration_ms},true,0\" >> ${data_dir}/results/test_results_${test_run_id}.csv && echo $iter2_duration_ms"
-        capture_vars:
-          - name: iter2_duration_ms
-            capture: '([0-9]+)'
-        expected:
-          success: true
-          result: 0
-          output: "duration"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
-
-  - id: 4
-    name: "Iteration 3 - Data Processing"
-    description: "Third iteration of data-driven test"
-    initial_conditions:
-      testing:
-        - "Iteration 2 completed successfully"
-    steps:
-      - step: 1
-        description: "Generate input data for iteration 3"
-        command: "for i in $(seq 1 ${DATA_SET_SIZE}); do echo \"DATA_ITEM_3_$i\" >> ${data_dir}/input/iteration_3.txt; done && wc -l ${data_dir}/input/iteration_3.txt | awk '{print $1}'"
-        capture_vars:
-          - name: iter3_input_count
-            capture: '([0-9]+)'
-        expected:
-          success: true
-          result: 0
-          output: "count"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" -eq ${DATA_SET_SIZE} ]]"
-
-      - step: 2
-        description: "Capture iteration 3 start time"
-        command: "date +%s%N"
-        capture_vars:
-          - name: iter3_start_ns
-            capture: '([0-9]+)'
-        expected:
-          success: true
-          result: 0
-          output: "timestamp"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
-
-      - step: 3
-        description: "Process iteration 3 data"
-        command: "grep 'DATA_ITEM' ${data_dir}/input/iteration_3.txt | sort | uniq > ${data_dir}/output/iteration_3_processed.txt && wc -l ${data_dir}/output/iteration_3_processed.txt | awk '{print $1}'"
-        capture_vars:
-          - name: iter3_output_count
-            capture: '([0-9]+)'
-        expected:
-          success: true
-          result: 0
-          output: "count"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" -eq ${DATA_SET_SIZE} ]]"
-
-      - step: 4
-        description: "Capture iteration 3 end time and calculate duration"
-        command: "date +%s%N"
-        capture_vars:
-          - name: iter3_end_ns
-            capture: '([0-9]+)'
-        expected:
-          success: true
-          result: 0
-          output: "timestamp"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
-
-      - step: 5
-        description: "Calculate iteration 3 processing time and record results"
-        command: "iter3_duration_ms=$(( (${iter3_end_ns} - ${iter3_start_ns}) / 1000000 )) && echo \"3,${iter3_output_count},${iter3_duration_ms},true,0\" >> ${data_dir}/results/test_results_${test_run_id}.csv && echo $iter3_duration_ms"
-        capture_vars:
-          - name: iter3_duration_ms
-            capture: '([0-9]+)'
-        expected:
-          success: true
-          result: 0
-          output: "duration"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
-
-  - id: 5
-    name: "Results Aggregation and Analysis"
-    description: "Aggregate results from all iterations and generate analysis report"
-    initial_conditions:
-      testing:
-        - "All iterations have completed"
-        - "Results CSV file contains all iteration data"
-    steps:
-      - step: 1
-        description: "Count total iterations completed"
-        command: "tail -n +2 ${data_dir}/results/test_results_${test_run_id}.csv | wc -l"
-        capture_vars:
-          - name: total_iterations
-            capture: '([0-9]+)'
-        expected:
-          success: true
-          result: 0
-          output: "3"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output:
-            condition: "[[ $total_iterations -ge 3 ]]"
-            if_true:
-              - "echo 'Required iterations completed'"
-            if_false:
-              - "echo 'Fewer iterations than expected'"
-            always:
-              - "echo \"Iterations: ${total_iterations}\""
-
-      - step: 2
-        description: "Calculate average processing time across iterations"
-        command: "tail -n +2 ${data_dir}/results/test_results_${test_run_id}.csv | awk -F',' '{sum+=$3; count++} END {if(count>0) print int(sum/count); else print 0}'"
-        capture_vars:
-          - name: avg_processing_time_ms
-            capture: '([0-9]+)'
-        expected:
-          success: true
-          result: 0
-          output: "average"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
-          general:
-            - name: verify_avg_time_calculated
-              condition: "[[ $avg_processing_time_ms =~ ^[0-9]+$ ]]"
-
-      - step: 3
-        description: "Calculate minimum processing time"
-        command: "tail -n +2 ${data_dir}/results/test_results_${test_run_id}.csv | awk -F',' 'NR==1 || $3<min {min=$3} END {print int(min)}'"
-        capture_vars:
-          - name: min_processing_time_ms
-            capture: '([0-9]+)'
-        expected:
-          success: true
-          result: 0
-          output: "minimum"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
-
-      - step: 4
-        description: "Calculate maximum processing time"
-        command: "tail -n +2 ${data_dir}/results/test_results_${test_run_id}.csv | awk -F',' 'NR==1 || $3>max {max=$3} END {print int(max)}'"
-        capture_vars:
-          - name: max_processing_time_ms
-            capture: '([0-9]+)'
-        expected:
-          success: true
-          result: 0
-          output: "maximum"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
-
-      - step: 5
-        description: "Count successful iterations"
-        command: "tail -n +2 ${data_dir}/results/test_results_${test_run_id}.csv | grep -c 'true'"
-        capture_vars:
-          - name: success_count
-            capture: '([0-9]+)'
-        expected:
-          success: true
-          result: 0
-          output: "count"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
-
-      - step: 6
-        description: "Calculate success rate percentage"
-        command: "echo \"scale=2; (${success_count} * 100) / ${total_iterations}\" | bc 2>/dev/null || echo 100"
-        capture_vars:
-          - name: success_rate
-            capture: '([0-9]+\\.?[0-9]*)'
-        expected:
-          success: true
-          result: 0
-          output: "percentage"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output:
-            condition: "[[ $(echo \"${success_rate} >= 90\" | bc 2>/dev/null || echo 1) -eq 1 ]]"
-            if_true:
-              - "echo 'Success rate meets quality threshold (>=90%)'"
-            if_false:
-              - "echo 'WARNING: Success rate below quality threshold'"
-            always:
-              - "echo \"Success rate: ${success_rate}%\""
-
-      - step: 7
-        description: "Generate comprehensive analysis report"
-        command: "cat > ${data_dir}/results/analysis_report_${test_run_id}.txt << EOF
-Data-Driven Test Analysis Report
-=================================
-
-Test Configuration:
-- Run ID: ${test_run_id}
-- Iterations Configured: ${ITERATION_COUNT}
-- Iterations Completed: ${total_iterations}
-- Data Set Size: ${DATA_SET_SIZE} items per iteration
-- Failure Threshold: ${FAILURE_THRESHOLD}%
-
-Performance Metrics:
--------------------
-- Average Processing Time: ${avg_processing_time_ms}ms
-- Minimum Processing Time: ${min_processing_time_ms}ms
-- Maximum Processing Time: ${max_processing_time_ms}ms
-- Processing Time Range: $((${max_processing_time_ms} - ${min_processing_time_ms}))ms
-
-Quality Metrics:
----------------
-- Successful Iterations: ${success_count} / ${total_iterations}
-- Success Rate: ${success_rate}%
-- Quality Threshold: 90%
-- Status: $([ $(echo \"${success_rate} >= 90\" | bc 2>/dev/null || echo 1) -eq 1 ] && echo 'PASS' || echo 'FAIL')
-
-Individual Iteration Results:
-----------------------------
-Iteration 1: ${iter1_duration_ms}ms (${iter1_output_count} items)
-Iteration 2: ${iter2_duration_ms}ms (${iter2_output_count} items)
-Iteration 3: ${iter3_duration_ms}ms (${iter3_output_count} items)
-
-Data Verification:
------------------
-- Input Files: $(ls ${data_dir}/input/ | wc -l)
-- Output Files: $(ls ${data_dir}/output/ | wc -l)
-- Results Files: $(ls ${data_dir}/results/ | wc -l)
-
-Conclusion:
-----------
-$([ $(echo \"${success_rate} >= 90\" | bc 2>/dev/null || echo 1) -eq 1 ] && echo 'All iterations completed successfully with acceptable performance.' || echo 'Some iterations did not meet quality thresholds.')
-
-Test data and results are available in: ${data_dir}
-EOF
-cat ${data_dir}/results/analysis_report_${test_run_id}.txt"
-        expected:
-          success: true
-          result: 0
-          output: "Data-Driven Test Analysis Report"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Data-Driven Test Analysis Report' <<< \"$COMMAND_OUTPUT\" && grep -q 'Success Rate: ${success_rate}%' <<< \"$COMMAND_OUTPUT\""
-
-      - step: 8
-        description: "Verify analysis report completeness"
-        command: "grep -E '(Performance Metrics|Quality Metrics|Individual Iteration|Conclusion)' ${data_dir}/results/analysis_report_${test_run_id}.txt | wc -l"
-        capture_vars:
-          - name: report_sections
-            capture: '([0-9]+)'
-        expected:
-          success: true
-          result: 0
-          output: "4"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output:
-            condition: "[[ $report_sections -ge 4 ]]"
-            if_true:
-              - "echo 'Report contains all required sections'"
-            if_false:
-              - "echo 'Report may be incomplete'"
-            always:
-              - "echo \"Report sections: ${report_sections}\""
-
-      - step: 9
-        description: "Archive test results and cleanup"
-        command: "cd ${data_dir} && tar -czf /tmp/data_driven_results_${test_run_id}.tar.gz results/ 2>&1 | head -1 || echo 'Results archived' && rm -rf ${data_dir} && echo 'Test cleanup complete'"
-        expected:
-          success: true
-          result: 0
-          output: "complete"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'complete' <<< \"$COMMAND_OUTPUT\""
-          general:
-            - name: verify_cleanup_complete
-              condition: "[[ ! -d \"${data_dir}\" ]]"
+      Test data and results are available in: ${data_dir} EOF cat ${data_dir}/results/analysis_report_${test_run_id}.txt'
+    expected:
+      success: true
+      result: 0
+      output: Data-Driven Test Analysis Report
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: 'grep -q ''Data-Driven Test Analysis Report'' <<< "$COMMAND_OUTPUT"
+        && grep -q ''Success Rate: ${success_rate}%'' <<< "$COMMAND_OUTPUT"'
+  - step: 8
+    description: Verify analysis report completeness
+    command: grep -E '(Performance Metrics|Quality Metrics|Individual Iteration|Conclusion)'
+      ${data_dir}/results/analysis_report_${test_run_id}.txt | wc -l
+    capture_vars:
+    - name: report_sections
+      capture: ([0-9]+)
+    expected:
+      success: true
+      result: 0
+      output: '4'
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output:
+        condition: '[[ $report_sections -ge 4 ]]'
+        if_true:
+        - echo 'Report contains all required sections'
+        if_false:
+        - echo 'Report may be incomplete'
+        always:
+        - 'echo "Report sections: ${report_sections}"'
+  - step: 9
+    description: Archive test results and cleanup
+    command: cd ${data_dir} && tar -czf /tmp/data_driven_results_${test_run_id}.tar.gz
+      results/ 2>&1 | head -1 || echo 'Results archived' && rm -rf ${data_dir} &&
+      echo 'Test cleanup complete'
+    expected:
+      success: true
+      result: 0
+      output: complete
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'complete' <<< "$COMMAND_OUTPUT"
+      general:
+      - name: verify_cleanup_complete
+        condition: '[[ ! -d "${data_dir}" ]]'

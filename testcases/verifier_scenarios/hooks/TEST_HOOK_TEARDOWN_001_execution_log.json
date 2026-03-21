@@ -1,45 +1,67 @@
 [
   {
+    "type": "test_execution",
+    "schema": "tcms/execution-log.schema.v1.json",
     "test_sequence": 1,
     "step": 1,
     "command": "echo \"Sequence 1 - Step 1 executed\"",
     "exit_code": 0,
     "output": "Sequence 1 - Step 1 executed",
-    "timestamp": "2024-03-15T15:15:00.100000+00:00"
+    "timestamp": "2024-03-15T15:15:00.100000+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": true
   },
   {
+    "type": "test_execution",
+    "schema": "tcms/execution-log.schema.v1.json",
     "test_sequence": 1,
     "step": 2,
     "command": "echo \"Sequence 1 - Step 2 executed\"",
     "exit_code": 0,
     "output": "Sequence 1 - Step 2 executed",
-    "timestamp": "2024-03-15T15:15:00.200000+00:00"
+    "timestamp": "2024-03-15T15:15:00.200000+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": true
   },
   {
+    "type": "test_execution",
+    "schema": "tcms/execution-log.schema.v1.json",
     "test_sequence": 2,
     "step": 1,
     "command": "echo \"Sequence 2 - Step 1 executed\"",
     "exit_code": 0,
     "output": "Sequence 2 - Step 1 executed",
-    "timestamp": "2024-03-15T15:15:00.300000+00:00"
+    "timestamp": "2024-03-15T15:15:00.300000+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": true
   },
   {
+    "type": "test_execution",
+    "schema": "tcms/execution-log.schema.v1.json",
     "test_sequence": 2,
     "step": 2,
     "command": "echo \"Sequence 2 - Step 2 executed\"",
     "exit_code": 0,
     "output": "Sequence 2 - Step 2 executed",
-    "timestamp": "2024-03-15T15:15:00.400000+00:00"
+    "timestamp": "2024-03-15T15:15:00.400000+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": true
   },
   {
+    "type": "test_execution",
+    "schema": "tcms/execution-log.schema.v1.json",
     "test_sequence": 3,
     "step": 1,
     "command": "echo \"Sequence 3 - Step 1 executed\"",
     "exit_code": 0,
     "output": "Sequence 3 - Step 1 executed",
-    "timestamp": "2024-03-15T15:15:00.500000+00:00"
+    "timestamp": "2024-03-15T15:15:00.500000+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": true
   },
   {
+    "type": "test_execution",
+    "schema": "tcms/execution-log.schema.v1.json",
     "test_sequence": 0,
     "step": 0,
     "command": "scripts/hook_teardown_error.sh",
@@ -47,6 +69,8 @@
     "output": "ERROR: teardown_test hook failed during test cleanup",
     "timestamp": "2024-03-15T15:15:00.600000+00:00",
     "hook_type": "teardown_test",
-    "hook_script": "scripts/hook_teardown_error.sh"
+    "hook_script": "scripts/hook_teardown_error.sh",
+    "result_verification_pass": true,
+    "output_verification_pass": true
   }
 ]

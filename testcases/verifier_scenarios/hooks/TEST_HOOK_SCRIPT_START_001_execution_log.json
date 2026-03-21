@@ -1,5 +1,7 @@
 [
   {
+    "type": "test_execution",
+    "schema": "tcms/execution-log.schema.v1.json",
     "test_sequence": 0,
     "step": 0,
     "command": "scripts/hook_script_start_error.sh",
@@ -7,6 +9,8 @@
     "output": "ERROR: script_start hook failed intentionally",
     "timestamp": "2024-03-15T14:30:00.123456+00:00",
     "hook_type": "script_start",
-    "hook_script": "scripts/hook_script_start_error.sh"
+    "hook_script": "scripts/hook_script_start_error.sh",
+    "result_verification_pass": true,
+    "output_verification_pass": true
   }
 ]

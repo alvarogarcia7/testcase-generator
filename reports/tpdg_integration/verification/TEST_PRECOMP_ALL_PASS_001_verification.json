@@ -1,0 +1,64 @@
+{
+  "title": "Test Execution Results",
+  "project": "Test Case Manager - Verification Results",
+  "test_date": "2026-03-21T15:33:35.493741Z",
+  "test_results": [
+    {
+      "test_case_id": "TEST_PRECOMP_ALL_PASS_001",
+      "description": "Precomputed verification: all steps pass with precomputed result and output verification",
+      "sequences": [
+        {
+          "sequence_id": 1,
+          "name": "All Pass Precomputed Sequence",
+          "step_results": [
+            {
+              "Pass": {
+                "step": 1,
+                "description": "Execute command with precomputed verification pass",
+                "requirement": "TEST_PRECOMP_ALL_PASS",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 2,
+                "description": "Execute another command with precomputed verification pass",
+                "requirement": "TEST_PRECOMP_ALL_PASS",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 3,
+                "description": "Execute final command with precomputed verification pass",
+                "requirement": "TEST_PRECOMP_ALL_PASS",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": true,
+          "requirement": "TEST_PRECOMP_ALL_PASS",
+          "item": 1,
+          "tc": 1
+        }
+      ],
+      "total_steps": 3,
+      "passed_steps": 3,
+      "failed_steps": 0,
+      "not_executed_steps": 0,
+      "overall_pass": true,
+      "requirement": "TEST_PRECOMP_ALL_PASS",
+      "item": 1,
+      "tc": 1
+    }
+  ],
+  "metadata": {
+    "execution_duration": 0.0,
+    "total_test_cases": 1,
+    "passed_test_cases": 1,
+    "failed_test_cases": 0
+  }
+}

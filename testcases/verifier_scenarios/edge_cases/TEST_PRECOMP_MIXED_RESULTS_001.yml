@@ -1,0 +1,65 @@
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: TEST_PRECOMP_MIXED_RESULTS
+item: 1
+tc: 1
+id: TEST_PRECOMP_MIXED_RESULTS_001
+description: 'Precomputed verification: mixed pass and fail results across steps'
+general_initial_conditions:
+  system:
+  - Shell environment is available
+initial_conditions:
+  system:
+  - All commands can be executed
+test_sequences:
+- id: 1
+  name: Mixed Results Sequence
+  description: 'Test sequence with alternating pass and fail verifications.
+
+    Steps alternate between passing and failing.
+
+    '
+  initial_conditions:
+    system:
+    - Shell is ready
+  steps:
+  - step: 1
+    description: Step 1 - pass both verifications
+    command: echo "Pass 1"
+    expected:
+      success: true
+      result: 0
+      output: Pass 1
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Pass 1' <<< "$COMMAND_OUTPUT"
+  - step: 2
+    description: Step 2 - fail result verification
+    command: false
+    expected:
+      success: false
+      result: 1
+      output: ''
+    verification:
+      result: '[[ $EXIT_CODE -eq 1 ]]'
+      output: 'true'
+  - step: 3
+    description: Step 3 - pass both verifications
+    command: echo "Pass 3"
+    expected:
+      success: true
+      result: 0
+      output: Pass 3
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Pass 3' <<< "$COMMAND_OUTPUT"
+  - step: 4
+    description: Step 4 - fail output verification
+    command: echo "Output mismatch"
+    expected:
+      success: true
+      result: 0
+      output: Expected text
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Expected text' <<< "$COMMAND_OUTPUT"

@@ -1,185 +1,225 @@
-requirement: "BASH_COMPLEX_COMMANDS"
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: BASH_COMPLEX_COMMANDS
 item: 1
 tc: 1
-id: 'TC_BASH_COMPLEX_001'
-description: 'Complex bash commands - advanced pipes, subshells, process substitution, command substitution with comprehensive validation'
-
+id: TC_BASH_COMPLEX_001
+description: Complex bash commands - advanced pipes, subshells, process substitution,
+  command substitution with comprehensive validation
 general_initial_conditions:
   system:
-    - "Bash shell with advanced features is available"
-    - "All standard Unix utilities are installed"
-
+  - Bash shell with advanced features is available
+  - All standard Unix utilities are installed
 initial_conditions:
   filesystem:
-    - "Temporary directory /tmp is writable"
+  - Temporary directory /tmp is writable
   environment:
-    - "Complex bash features are supported"
-
+  - Complex bash features are supported
 test_sequences:
-  - id: 1
-    name: "Complex Command Pipelines"
-    description: "Test advanced bash features with multi-stage pipelines and strict validation"
-    initial_conditions:
-      system:
-        - "Advanced bash features work correctly"
-    steps:
-      - step: 1
-        description: "Multi-stage pipeline with multiple filters"
-        command: "echo -e '100\n200\n50\n300\n150' | sort -n | head -3 | awk '{sum+=$1} END {print sum}'"
-        capture_vars:
-          - name: sum_result
-            capture: '^([0-9]+)$'
-        expected:
-          success: true
-          result: 0
-          output: "400"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" == '400' ]]"
-          general:
-            - name: sum_is_correct
-              condition: "[[ $sum_result -eq 400 ]]"
-            - name: sum_is_numeric
-              condition: "[[ $sum_result =~ ^[0-9]+$ ]]"
-            - name: result_matches_expected
-              condition: "[[ $sum_result -eq 400 ]]"
+- id: 1
+  name: Complex Command Pipelines
+  description: Test advanced bash features with multi-stage pipelines and strict validation
+  initial_conditions:
+    system:
+    - Advanced bash features work correctly
+  steps:
+  - step: 1
+    description: Multi-stage pipeline with multiple filters
+    command: 'echo -e ''100
 
-      - step: 2
-        description: "Command substitution with arithmetic"
-        command: "echo $(($(echo '5') + $(echo '10') * $(echo '2')))"
-        capture_vars:
-          - name: calc_result
-            capture: '^([0-9]+)$'
-        expected:
-          success: true
-          result: 0
-          output: "25"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" == '25' ]]"
-          general:
-            - name: calculation_correct
-              condition: "[[ $calc_result -eq 25 ]]"
-            - name: arithmetic_works
-              condition: "[[ $((5 + 10 * 2)) -eq $calc_result ]]"
+      200
 
-      - step: 3
-        description: "Complex grep with count and piping"
-        command: "echo -e 'apple\nbanana\napple\ncherry\napple' | sort | uniq -c | grep 'apple' | awk '{print $1}'"
-        capture_vars:
-          - name: apple_count
-            capture: '^([0-9]+)$'
-        expected:
-          success: true
-          result: 0
-          output: "3"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" == '3' ]]"
-          general:
-            - name: count_is_three
-              condition: "[[ $apple_count -eq 3 ]]"
-            - name: count_numeric
-              condition: "[[ $apple_count =~ ^[0-9]+$ ]]"
+      50
 
-      - step: 4
-        description: "Nested command substitution with string manipulation"
-        command: "echo $(echo 'HELLO' | tr '[:upper:]' '[:lower:]' | sed 's/^/prefix-/' | sed 's/$/-suffix/')"
-        capture_vars:
-          - name: transformed_string
-            capture: '^(.*)$'
-        expected:
-          success: true
-          result: 0
-          output: "prefix-hello-suffix"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" == 'prefix-hello-suffix' ]]"
-          general:
-            - name: has_prefix
-              condition: "[[ \"$transformed_string\" =~ ^prefix- ]]"
-            - name: has_suffix
-              condition: "[[ \"$transformed_string\" =~ -suffix$ ]]"
-            - name: lowercase_conversion
-              condition: "[[ \"$transformed_string\" =~ hello ]]"
-            - name: exact_match
-              condition: "[[ \"$transformed_string\" == 'prefix-hello-suffix' ]]"
+      300
 
-      - step: 5
-        description: "Complex awk with multiple conditions and calculations"
-        command: "echo -e '10 20\n30 40\n50 60' | awk '{if ($1 > 20) print $1, $2, $1+$2}' | awk '{sum1+=$1; sum2+=$2; sum3+=$3} END {print sum1, sum2, sum3}'"
-        capture_vars:
-          - name: first_sum
-            command: "echo -e '10 20\n30 40\n50 60' | awk '{if ($1 > 20) print $1, $2, $1+$2}' | awk '{sum1+=$1} END {print sum1}'"
-          - name: second_sum
-            command: "echo -e '10 20\n30 40\n50 60' | awk '{if ($1 > 20) print $1, $2, $1+$2}' | awk '{sum2+=$2} END {print sum2}'"
-          - name: third_sum
-            command: "echo -e '10 20\n30 40\n50 60' | awk '{if ($1 > 20) print $1, $2, $1+$2}' | awk '{sum3+=$3} END {print sum3}'"
-        expected:
-          success: true
-          result: 0
-          output: "sums"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" =~ [0-9] ]]"
-          general:
-            - name: first_sum_correct
-              condition: "[[ $first_sum -eq 80 ]]"
-            - name: second_sum_correct
-              condition: "[[ $second_sum -eq 100 ]]"
-            - name: third_sum_correct
-              condition: "[[ $third_sum -eq 180 ]]"
-            - name: all_numeric
-              condition: "[[ $first_sum =~ ^[0-9]+$ && $second_sum =~ ^[0-9]+$ && $third_sum =~ ^[0-9]+$ ]]"
+      150'' | sort -n | head -3 | awk ''{sum+=$1} END {print sum}'''
+    capture_vars:
+    - name: sum_result
+      capture: ^([0-9]+)$
+    expected:
+      success: true
+      result: 0
+      output: '400'
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" == ''400'' ]]'
+      general:
+      - name: sum_is_correct
+        condition: '[[ $sum_result -eq 400 ]]'
+      - name: sum_is_numeric
+        condition: '[[ $sum_result =~ ^[0-9]+$ ]]'
+      - name: result_matches_expected
+        condition: '[[ $sum_result -eq 400 ]]'
+  - step: 2
+    description: Command substitution with arithmetic
+    command: echo $(($(echo '5') + $(echo '10') * $(echo '2')))
+    capture_vars:
+    - name: calc_result
+      capture: ^([0-9]+)$
+    expected:
+      success: true
+      result: 0
+      output: '25'
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" == ''25'' ]]'
+      general:
+      - name: calculation_correct
+        condition: '[[ $calc_result -eq 25 ]]'
+      - name: arithmetic_works
+        condition: '[[ $((5 + 10 * 2)) -eq $calc_result ]]'
+  - step: 3
+    description: Complex grep with count and piping
+    command: 'echo -e ''apple
 
-      - step: 6
-        description: "Process substitution simulation with temporary data"
-        command: "diff <(echo -e 'a\nb\nc') <(echo -e 'a\nb\nd') | wc -l | awk '{print $1}'"
-        capture_vars:
-          - name: diff_lines
-            capture: '^([0-9]+)$'
-        expected:
-          success: true
-          result: 0
-          output: "difference count"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
-          general:
-            - name: diff_detected
-              condition: "[[ $diff_lines -gt 0 ]]"
-            - name: diff_is_numeric
-              condition: "[[ $diff_lines =~ ^[0-9]+$ ]]"
+      banana
 
-      - step: 7
-        description: "Complex find and process pipeline"
-        command: "mkdir -p /tmp/bash_complex_test && touch /tmp/bash_complex_test/file{1..5}.txt && find /tmp/bash_complex_test -name '*.txt' -type f | wc -l | awk '{print $1}'"
-        capture_vars:
-          - name: file_count
-            capture: '^([0-9]+)$'
-        expected:
-          success: true
-          result: 0
-          output: "5"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" == '5' ]]"
-          general:
-            - name: count_is_five
-              condition: "[[ $file_count -eq 5 ]]"
-            - name: files_created
-              condition: "[[ -f /tmp/bash_complex_test/file1.txt ]]"
+      apple
 
-      - step: 8
-        description: "Cleanup complex test directory"
-        command: "rm -rf /tmp/bash_complex_test && echo 'cleaned'"
-        expected:
-          success: true
-          result: 0
-          output: "cleaned"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" == 'cleaned' ]]"
-          general:
-            - name: directory_removed
-              condition: "[[ ! -d /tmp/bash_complex_test ]]"
+      cherry
+
+      apple'' | sort | uniq -c | grep ''apple'' | awk ''{print $1}'''
+    capture_vars:
+    - name: apple_count
+      capture: ^([0-9]+)$
+    expected:
+      success: true
+      result: 0
+      output: '3'
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" == ''3'' ]]'
+      general:
+      - name: count_is_three
+        condition: '[[ $apple_count -eq 3 ]]'
+      - name: count_numeric
+        condition: '[[ $apple_count =~ ^[0-9]+$ ]]'
+  - step: 4
+    description: Nested command substitution with string manipulation
+    command: echo $(echo 'HELLO' | tr '[:upper:]' '[:lower:]' | sed 's/^/prefix-/'
+      | sed 's/$/-suffix/')
+    capture_vars:
+    - name: transformed_string
+      capture: ^(.*)$
+    expected:
+      success: true
+      result: 0
+      output: prefix-hello-suffix
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" == ''prefix-hello-suffix'' ]]'
+      general:
+      - name: has_prefix
+        condition: '[[ "$transformed_string" =~ ^prefix- ]]'
+      - name: has_suffix
+        condition: '[[ "$transformed_string" =~ -suffix$ ]]'
+      - name: lowercase_conversion
+        condition: '[[ "$transformed_string" =~ hello ]]'
+      - name: exact_match
+        condition: '[[ "$transformed_string" == ''prefix-hello-suffix'' ]]'
+  - step: 5
+    description: Complex awk with multiple conditions and calculations
+    command: 'echo -e ''10 20
+
+      30 40
+
+      50 60'' | awk ''{if ($1 > 20) print $1, $2, $1+$2}'' | awk ''{sum1+=$1; sum2+=$2;
+      sum3+=$3} END {print sum1, sum2, sum3}'''
+    capture_vars:
+    - name: first_sum
+      command: 'echo -e ''10 20
+
+        30 40
+
+        50 60'' | awk ''{if ($1 > 20) print $1, $2, $1+$2}'' | awk ''{sum1+=$1} END
+        {print sum1}'''
+    - name: second_sum
+      command: 'echo -e ''10 20
+
+        30 40
+
+        50 60'' | awk ''{if ($1 > 20) print $1, $2, $1+$2}'' | awk ''{sum2+=$2} END
+        {print sum2}'''
+    - name: third_sum
+      command: 'echo -e ''10 20
+
+        30 40
+
+        50 60'' | awk ''{if ($1 > 20) print $1, $2, $1+$2}'' | awk ''{sum3+=$3} END
+        {print sum3}'''
+    expected:
+      success: true
+      result: 0
+      output: sums
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" =~ [0-9] ]]'
+      general:
+      - name: first_sum_correct
+        condition: '[[ $first_sum -eq 80 ]]'
+      - name: second_sum_correct
+        condition: '[[ $second_sum -eq 100 ]]'
+      - name: third_sum_correct
+        condition: '[[ $third_sum -eq 180 ]]'
+      - name: all_numeric
+        condition: '[[ $first_sum =~ ^[0-9]+$ && $second_sum =~ ^[0-9]+$ && $third_sum
+          =~ ^[0-9]+$ ]]'
+  - step: 6
+    description: Process substitution simulation with temporary data
+    command: 'diff <(echo -e ''a
+
+      b
+
+      c'') <(echo -e ''a
+
+      b
+
+      d'') | wc -l | awk ''{print $1}'''
+    capture_vars:
+    - name: diff_lines
+      capture: ^([0-9]+)$
+    expected:
+      success: true
+      result: 0
+      output: difference count
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" =~ ^[0-9]+$ ]]'
+      general:
+      - name: diff_detected
+        condition: '[[ $diff_lines -gt 0 ]]'
+      - name: diff_is_numeric
+        condition: '[[ $diff_lines =~ ^[0-9]+$ ]]'
+  - step: 7
+    description: Complex find and process pipeline
+    command: mkdir -p /tmp/bash_complex_test && touch /tmp/bash_complex_test/file{1..5}.txt
+      && find /tmp/bash_complex_test -name '*.txt' -type f | wc -l | awk '{print $1}'
+    capture_vars:
+    - name: file_count
+      capture: ^([0-9]+)$
+    expected:
+      success: true
+      result: 0
+      output: '5'
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" == ''5'' ]]'
+      general:
+      - name: count_is_five
+        condition: '[[ $file_count -eq 5 ]]'
+      - name: files_created
+        condition: '[[ -f /tmp/bash_complex_test/file1.txt ]]'
+  - step: 8
+    description: Cleanup complex test directory
+    command: rm -rf /tmp/bash_complex_test && echo 'cleaned'
+    expected:
+      success: true
+      result: 0
+      output: cleaned
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" == ''cleaned'' ]]'
+      general:
+      - name: directory_removed
+        condition: '[[ ! -d /tmp/bash_complex_test ]]'

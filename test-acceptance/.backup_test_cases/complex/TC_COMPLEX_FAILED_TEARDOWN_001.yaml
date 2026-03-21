@@ -1,0 +1,240 @@
+requirement: "COMPLEX_FAILED_STEP_TEARDOWN"
+item: 1
+tc: 5
+id: 'TC_COMPLEX_FAILED_TEARDOWN_001'
+description: 'Failed step scenario with teardown hooks ensuring proper cleanup - demonstrates error handling and cleanup guarantees'
+
+hooks:
+  setup_test:
+    command: "test-acceptance/scripts/hooks/setup_test_workspace.sh"
+    on_error: "fail"
+  before_sequence:
+    command: "test-acceptance/scripts/hooks/before_sequence_log.sh"
+    on_error: "continue"
+  after_sequence:
+    command: "test-acceptance/scripts/hooks/after_sequence_cleanup.sh"
+    on_error: "continue"
+  before_step:
+    command: "test-acceptance/scripts/hooks/before_step_validate.sh"
+    on_error: "continue"
+  after_step:
+    command: "test-acceptance/scripts/hooks/after_step_metrics.sh"
+    on_error: "continue"
+  teardown_test:
+    command: "test-acceptance/scripts/hooks/teardown_test_final.sh"
+    on_error: "continue"
+  script_end:
+    command: "test-acceptance/scripts/hooks/script_end_summary.sh"
+    on_error: "continue"
+
+hydration_vars:
+  CLEANUP_DIR:
+    name: "CLEANUP_DIR"
+    description: "Directory for cleanup test resources"
+    default_value: "/tmp/cleanup_test"
+    required: true
+  
+  FAIL_AT_STEP:
+    name: "FAIL_AT_STEP"
+    description: "Which step number should fail for testing"
+    default_value: "3"
+    required: false
+
+general_initial_conditions:
+  system:
+    - "Test infrastructure supports cleanup hooks"
+    - "Teardown hooks will execute even on failure"
+  testing:
+    - "This test intentionally includes a failing step"
+    - "Cleanup must occur regardless of test outcome"
+
+initial_conditions:
+  filesystem:
+    - "Cleanup directory can be created"
+  hooks:
+    - "Teardown hooks are configured with on_error: continue"
+    - "after_sequence hooks will execute for cleanup"
+
+test_sequences:
+  - id: 1
+    name: "Resource Allocation Before Failure"
+    description: "Allocate resources that must be cleaned up even if test fails"
+    initial_conditions:
+      testing:
+        - "Resources will be allocated for testing"
+        - "Cleanup must be guaranteed"
+    steps:
+      - step: 1
+        description: "Create cleanup test directory structure"
+        command: "mkdir -p ${CLEANUP_DIR}/{tmp,data,logs,locks} && echo 'Directories created' && ls -d ${CLEANUP_DIR}/*"
+        expected:
+          success: true
+          result: 0
+          output: "Directories created"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'tmp' <<< \"$COMMAND_OUTPUT\" && grep -q 'data' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 2
+        description: "Create test resources that need cleanup"
+        command: "date +%s"
+        capture_vars:
+          - name: resource_timestamp
+            capture: '([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "timestamp"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
+          general:
+            - name: verify_timestamp_captured
+              condition: "[[ -n \"$resource_timestamp\" ]]"
+
+      - step: 3
+        description: "Allocate multiple test files"
+        command: "for i in 1 2 3 4 5; do echo \"Test data $i\" > ${CLEANUP_DIR}/data/test_file_$i.txt; done && ls ${CLEANUP_DIR}/data/ | wc -l"
+        capture_vars:
+          - name: allocated_files
+            capture: '([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "5"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" -eq 5 ]]"
+          general:
+            - name: verify_files_allocated
+              condition: "[[ $allocated_files -eq 5 ]]"
+
+      - step: 4
+        description: "Create lock file that must be cleaned up"
+        command: "echo $$ > ${CLEANUP_DIR}/locks/test.lock && cat ${CLEANUP_DIR}/locks/test.lock"
+        capture_vars:
+          - name: lock_pid
+            capture: '([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "pid"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
+
+      - step: 5
+        description: "Create cleanup manifest"
+        command: "cat > ${CLEANUP_DIR}/cleanup_manifest.txt << EOF
+# Cleanup Manifest - Created at ${resource_timestamp}
+# Resources that must be cleaned up:
+DIRECTORIES: tmp data logs locks
+FILES: ${allocated_files} files in data/
+LOCKS: test.lock (PID: ${lock_pid})
+STATUS: Resources allocated, cleanup required
+EOF
+cat ${CLEANUP_DIR}/cleanup_manifest.txt"
+        expected:
+          success: true
+          result: 0
+          output: "Cleanup Manifest"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'cleanup required' <<< \"$COMMAND_OUTPUT\""
+
+  - id: 2
+    name: "Intentional Failure Sequence"
+    description: "Sequence that will fail to test cleanup behavior"
+    initial_conditions:
+      testing:
+        - "Resources from sequence 1 are allocated"
+        - "Step ${FAIL_AT_STEP} will intentionally fail"
+        - "Cleanup hooks must still execute"
+    steps:
+      - step: 1
+        description: "Pre-failure operation - should succeed"
+        command: "echo 'Pre-failure step executing' && echo 'Resource timestamp: '${resource_timestamp}"
+        expected:
+          success: true
+          result: 0
+          output: "Pre-failure step executing"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Pre-failure step executing' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 2
+        description: "Create temporary processing files"
+        command: "for i in 1 2 3; do echo 'Processing $i' > ${CLEANUP_DIR}/tmp/process_$i.tmp; done && ls ${CLEANUP_DIR}/tmp/ | wc -l"
+        capture_vars:
+          - name: temp_files_created
+            capture: '([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "3"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" -eq 3 ]]"
+
+      - step: 3
+        description: "THIS STEP INTENTIONALLY FAILS - Simulating error condition"
+        command: "echo 'Attempting risky operation...' && echo 'SIMULATED FAILURE' && exit 1"
+        expected:
+          success: false
+          result: 1
+          output: "SIMULATED FAILURE"
+        verification:
+          result: "[[ $EXIT_CODE -eq 1 ]]"
+          output: "grep -q 'SIMULATED FAILURE' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 4
+        description: "Post-failure step - should not execute"
+        command: "echo 'This step should not execute'"
+        expected:
+          success: true
+          result: 0
+          output: "should not execute"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'should not execute' <<< \"$COMMAND_OUTPUT\""
+
+  - id: 3
+    name: "Cleanup Verification Sequence"
+    description: "This sequence verifies cleanup hooks executed properly (may not execute if test stops on failure)"
+    initial_conditions:
+      testing:
+        - "This sequence may not execute if test fails"
+        - "Cleanup hooks should have executed regardless"
+    steps:
+      - step: 1
+        description: "Verify cleanup directory still exists for inspection"
+        command: "test -d ${CLEANUP_DIR} && echo 'Cleanup directory exists' || echo 'Cleanup directory removed'"
+        expected:
+          success: true
+          result: 0
+          output: "exists"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"
+
+      - step: 2
+        description: "Check if cleanup manifest is still present"
+        command: "test -f ${CLEANUP_DIR}/cleanup_manifest.txt && cat ${CLEANUP_DIR}/cleanup_manifest.txt || echo 'Manifest not found'"
+        expected:
+          success: true
+          result: 0
+          output: "Cleanup Manifest"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"
+
+      - step: 3
+        description: "Log cleanup verification results"
+        command: "echo 'Cleanup verification completed' && echo 'Teardown hooks should execute regardless of this sequence'"
+        expected:
+          success: true
+          result: 0
+          output: "Cleanup verification completed"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Cleanup verification completed' <<< \"$COMMAND_OUTPUT\""

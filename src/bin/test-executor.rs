@@ -49,6 +49,10 @@ enum Commands {
         /// Force output even if shellcheck validation fails
         #[arg(short = 'f', long)]
         force: bool,
+
+        /// Optional test case directory for dependency resolution (defaults to parent directory of YAML file)
+        #[arg(long, value_name = "TEST_CASE_DIR")]
+        test_case_dir: Option<PathBuf>,
     },
     /// Execute a test case by generating and running the script
     Execute {
@@ -177,6 +181,61 @@ fn build_dependency_resolver(yaml_file: &Path) -> Result<DependencyResolver> {
     }
 
     Ok(DependencyResolver::new(index))
+}
+
+fn build_dependency_resolver_from_dir(test_case_dir: &Path) -> Result<DependencyResolver> {
+    let test_cases = load_all_yaml_files_from_dir_recursive(test_case_dir)?;
+
+    let mut index = HashMap::new();
+    for (_, test_case) in test_cases {
+        index.insert(test_case.id.clone(), test_case);
+    }
+
+    Ok(DependencyResolver::new(index))
+}
+
+fn load_all_yaml_files_from_dir_recursive(dir: &Path) -> Result<Vec<(PathBuf, TestCase)>> {
+    let mut test_cases = Vec::new();
+
+    if !dir.is_dir() {
+        return Ok(test_cases);
+    }
+
+    // Load YAML files from this directory
+    for entry in
+        fs::read_dir(dir).context(format!("Failed to read directory: {}", dir.display()))?
+    {
+        let entry = entry.context("Failed to read directory entry")?;
+        let path = entry.path();
+
+        if path.is_file() {
+            if let Some(ext) = path.extension() {
+                let ext_str = ext.to_string_lossy().to_lowercase();
+                if ext_str == "yaml" || ext_str == "yml" {
+                    match load_test_case(&path) {
+                        Ok(test_case) => {
+                            test_cases.push((path, test_case));
+                        }
+                        Err(e) => {
+                            eprintln!("Warning: Failed to load {}: {}", path.display(), e);
+                        }
+                    }
+                }
+            }
+        } else if path.is_dir() {
+            // Recursively load from subdirectories
+            match load_all_yaml_files_from_dir_recursive(&path) {
+                Ok(mut sub_test_cases) => {
+                    test_cases.append(&mut sub_test_cases);
+                }
+                Err(e) => {
+                    eprintln!("Warning: Failed to load from {}: {}", path.display(), e);
+                }
+            }
+        }
+    }
+
+    Ok(test_cases)
 }
 
 fn build_resolver_from_files(yaml_files: &[PathBuf]) -> Result<DependencyResolver> {
@@ -322,10 +381,15 @@ fn main() -> Result<()> {
             output,
             json_log,
             force,
+            test_case_dir,
         } => {
             let mut test_case = load_test_case(&yaml_file)?;
 
-            let resolver = build_dependency_resolver(&yaml_file)?;
+            let resolver = if let Some(dir) = test_case_dir {
+                build_dependency_resolver_from_dir(&dir)?
+            } else {
+                build_dependency_resolver(&yaml_file)?
+            };
             test_case = resolver
                 .resolve(&test_case)
                 .context("Failed to resolve dependencies")?;

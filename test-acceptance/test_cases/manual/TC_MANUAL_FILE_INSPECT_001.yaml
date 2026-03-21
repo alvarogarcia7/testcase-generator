@@ -1,132 +1,127 @@
-requirement: "MANUAL_FILE_INSPECTION"
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: MANUAL_FILE_INSPECTION
 item: 1
 tc: 5
-id: 'TC_MANUAL_FILE_INSPECT_001'
-description: 'Test case with manual step requiring file inspection - demonstrates validation through file system verification'
-
+id: TC_MANUAL_FILE_INSPECT_001
+description: Test case with manual step requiring file inspection - demonstrates validation
+  through file system verification
 general_initial_conditions:
   system:
-    - "File system access is available"
-    - "File inspection tools are installed"
+  - File system access is available
+  - File inspection tools are installed
   permissions:
-    - "User has read access to test directories"
-
+  - User has read access to test directories
 initial_conditions:
   filesystem:
-    - "Test directories are accessible"
+  - Test directories are accessible
   environment:
-    - "File browser or terminal is available"
-
+  - File browser or terminal is available
 test_sequences:
-  - id: 1
-    name: "Manual File Inspection Workflow"
-    description: |
-                  This test sequence requires manual inspection of files
-                  to verify their existence, contents, and properties.
-    initial_conditions:
-      filesystem:
-        - "Test file system is ready for inspection"
-    steps:
-      - step: 1
-        description: "Create test file with known content"
-        command: "echo 'Test data for manual inspection' > /tmp/manual_inspect_test.txt"
-        expected:
-          success: true
-          result: 0
-          output: ""
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "true"
-      
-      - step: 2
-        manual: true
-        description: "Manually verify test file was created"
-        command: "Open file browser and navigate to /tmp directory"
-        expected:
-          success: true
-          result: 0
-          output: "File 'manual_inspect_test.txt' exists in /tmp directory"
-        verification:
-          result: "true"
-          output: "Can you see the file 'manual_inspect_test.txt' in /tmp? (Y/n)"
-      
-      - step: 3
-        manual: true
-        description: "Inspect file contents using text editor"
-        command: "Open /tmp/manual_inspect_test.txt in a text editor"
-        expected:
-          success: true
-          result: 0
-          output: "File contains the text 'Test data for manual inspection'"
-        verification:
-          result: "true"
-          output: "Does the file contain 'Test data for manual inspection'? (Y/n)"
-      
-      - step: 4
-        description: "Create directory structure for inspection"
-        command: "mkdir -p /tmp/manual_test_dir/subdir && touch /tmp/manual_test_dir/file1.txt /tmp/manual_test_dir/subdir/file2.txt"
-        expected:
-          success: true
-          result: 0
-          output: ""
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "true"
-      
-      - step: 5
-        manual: true
-        description: "Verify directory structure was created"
-        command: "Navigate to /tmp/manual_test_dir in file browser"
-        expected:
-          success: true
-          result: 0
-          output: "Directory contains file1.txt and subdirectory 'subdir'"
-        verification:
-          result: "true"
-          output: "Does the directory contain file1.txt and 'subdir' subdirectory? (Y/n)"
-      
-      - step: 6
-        manual: true
-        description: "Verify nested file exists"
-        command: "Navigate to /tmp/manual_test_dir/subdir in file browser"
-        expected:
-          success: true
-          result: 0
-          output: "Subdirectory contains file2.txt"
-        verification:
-          result: "true"
-          output: "Does the subdir contain file2.txt? (Y/n)"
-      
-      - step: 7
-        description: "Create file with specific permissions"
-        command: "echo 'permission test' > /tmp/perms_test.txt && chmod 644 /tmp/perms_test.txt"
-        expected:
-          success: true
-          result: 0
-          output: ""
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "true"
-      
-      - step: 8
-        manual: true
-        description: "Verify file permissions are correct"
-        command: "View file properties for /tmp/perms_test.txt"
-        expected:
-          success: true
-          result: 0
-          output: "File shows read/write for owner, read-only for group and others"
-        verification:
-          result: "true"
-          output: "Do file permissions show rw-r--r-- (644)? (Y/n)"
-      
-      - step: 9
-        description: "Cleanup test files"
-        command: "rm -f /tmp/manual_inspect_test.txt /tmp/perms_test.txt && rm -rf /tmp/manual_test_dir"
-        expected:
-          success: true
-          result: 0
-          output: ""
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "true"
+- id: 1
+  name: Manual File Inspection Workflow
+  description: 'This test sequence requires manual inspection of files
+
+    to verify their existence, contents, and properties.
+
+    '
+  initial_conditions:
+    filesystem:
+    - Test file system is ready for inspection
+  steps:
+  - step: 1
+    description: Create test file with known content
+    command: echo 'Test data for manual inspection' > /tmp/manual_inspect_test.txt
+    expected:
+      success: true
+      result: 0
+      output: ''
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: 'true'
+  - step: 2
+    manual: true
+    description: Manually verify test file was created
+    command: Open file browser and navigate to /tmp directory
+    expected:
+      success: true
+      result: 0
+      output: File 'manual_inspect_test.txt' exists in /tmp directory
+    verification:
+      result: 'true'
+      output: Can you see the file 'manual_inspect_test.txt' in /tmp? (Y/n)
+  - step: 3
+    manual: true
+    description: Inspect file contents using text editor
+    command: Open /tmp/manual_inspect_test.txt in a text editor
+    expected:
+      success: true
+      result: 0
+      output: File contains the text 'Test data for manual inspection'
+    verification:
+      result: 'true'
+      output: Does the file contain 'Test data for manual inspection'? (Y/n)
+  - step: 4
+    description: Create directory structure for inspection
+    command: mkdir -p /tmp/manual_test_dir/subdir && touch /tmp/manual_test_dir/file1.txt
+      /tmp/manual_test_dir/subdir/file2.txt
+    expected:
+      success: true
+      result: 0
+      output: ''
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: 'true'
+  - step: 5
+    manual: true
+    description: Verify directory structure was created
+    command: Navigate to /tmp/manual_test_dir in file browser
+    expected:
+      success: true
+      result: 0
+      output: Directory contains file1.txt and subdirectory 'subdir'
+    verification:
+      result: 'true'
+      output: Does the directory contain file1.txt and 'subdir' subdirectory? (Y/n)
+  - step: 6
+    manual: true
+    description: Verify nested file exists
+    command: Navigate to /tmp/manual_test_dir/subdir in file browser
+    expected:
+      success: true
+      result: 0
+      output: Subdirectory contains file2.txt
+    verification:
+      result: 'true'
+      output: Does the subdir contain file2.txt? (Y/n)
+  - step: 7
+    description: Create file with specific permissions
+    command: echo 'permission test' > /tmp/perms_test.txt && chmod 644 /tmp/perms_test.txt
+    expected:
+      success: true
+      result: 0
+      output: ''
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: 'true'
+  - step: 8
+    manual: true
+    description: Verify file permissions are correct
+    command: View file properties for /tmp/perms_test.txt
+    expected:
+      success: true
+      result: 0
+      output: File shows read/write for owner, read-only for group and others
+    verification:
+      result: 'true'
+      output: Do file permissions show rw-r--r-- (644)? (Y/n)
+  - step: 9
+    description: Cleanup test files
+    command: rm -f /tmp/manual_inspect_test.txt /tmp/perms_test.txt && rm -rf /tmp/manual_test_dir
+    expected:
+      success: true
+      result: 0
+      output: ''
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: 'true'

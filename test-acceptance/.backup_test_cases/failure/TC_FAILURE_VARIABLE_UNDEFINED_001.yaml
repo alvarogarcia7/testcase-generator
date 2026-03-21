@@ -1,0 +1,44 @@
+requirement: "FAILURE_VARIABLE_UNDEFINED"
+item: 1
+tc: 1
+id: 'TC_FAILURE_VARIABLE_UNDEFINED_001'
+description: 'Test case with undefined variable reference - verifies handling of unset variables in strict mode'
+
+general_initial_conditions:
+  system:
+    - "Bash shell is available"
+    - "Basic Unix utilities are installed"
+
+initial_conditions:
+  system:
+    - "Shell can detect undefined variables"
+
+test_sequences:
+  - id: 1
+    name: "Undefined Variable Sequence"
+    description: "Reference undefined variables in commands"
+    initial_conditions:
+      system:
+        - "Bash strict mode can be enabled"
+    steps:
+      - step: 1
+        description: "Execute command that uses undefined variable"
+        command: "bash -u -c 'echo $UNDEFINED_VARIABLE_XYZ' 2>&1"
+        expected:
+          success: false
+          result: '1'
+          output: "unbound variable"
+        verification:
+          result: "[[ $EXIT_CODE -ne 0 ]]"
+          output: "grep -qi 'unbound variable' <<< \"$COMMAND_OUTPUT\" || grep -qi 'not set' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 2
+        description: "This step should not execute"
+        command: "echo 'Step 2'"
+        expected:
+          success: true
+          result: '0'
+          output: "Step 2"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Step 2' <<< \"$COMMAND_OUTPUT\""

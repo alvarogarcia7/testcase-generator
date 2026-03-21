@@ -1,0 +1,14 @@
+[
+  {
+    "type": "test_execution",
+    "schema": "tcms/execution-log.schema.v1.json",
+    "test_sequence": 1,
+    "step": 2,
+    "command": "echo \"Step 2 passed\"",
+    "exit_code": 0,
+    "output": "Step 2 passed",
+    "timestamp": "2026-02-28T10:00:00.456789+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": true
+  }
+]

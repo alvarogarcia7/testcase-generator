@@ -34,10 +34,19 @@ The acceptance test suite serves four primary purposes:
 
 ### Statistics
 
-- **Total test cases**: 91
-- **Test categories**: 8 (success, failure, hooks, manual, variables, dependencies, complex, bash_commands)
-- **Pipeline stages**: 6 (validation, generation, execution, verification, container validation, documentation)
+- **Total test cases**: 81
+- **Test categories**: 9 (success, failure, hooks, manual, variables, dependencies, prerequisites, complex, bash_commands)
+- **Pipeline stages**: 7 (validation, generation, execution, verification, container validation, individual documentation, consolidated documentation)
 - **Supported platforms**: macOS (BSD, bash 3.2+) and Linux (GNU, bash 3.2+)
+
+### Recent Updates
+
+**Dependency Resolution** (Latest):
+- Added `--test-case-dir` parameter to test-executor for cross-directory dependency resolution
+- All dependency test cases now generate successfully (7/8 functional, 1 expected failure)
+- Created hook scripts for complex test case lifecycle management
+- Updated acceptance suite to run scripts non-interactively
+- See `DEPENDENCIES_PREREQUISITES_COMPLEX_STATUS.md` for detailed status
 
 ---
 
@@ -54,8 +63,8 @@ make acceptance-test
 This will:
 - Build all required binaries (test-executor, verifier, validate-yaml, validate-json)
 - Validate TPDG (test-plan-documentation-generator) availability
-- Execute all 6 pipeline stages
-- Generate comprehensive reports
+- Execute all 7 pipeline stages
+- Generate comprehensive individual and consolidated reports
 - Display final statistics and results
 
 **Exit codes:**
@@ -91,18 +100,28 @@ cd test-acceptance
 
 ```
 test-acceptance/
-├── test_cases/                  # Test case YAML files (91 total)
+├── test_cases/                  # Test case YAML files (81 total)
 │   ├── success/                 # Success scenario tests (13)
-│   ├── failure/                 # Failure scenario tests (14)
-│   ├── hooks/                   # Lifecycle hooks tests (14)
+│   ├── failure/                 # Failure scenario tests (12)
+│   ├── hooks/                   # Lifecycle hooks tests (16)
 │   ├── manual/                  # Manual test cases (9)
-│   ├── variables/               # Variable capture/usage tests (11)
-│   ├── dependencies/            # Dependency management tests (8)
-│   ├── complex/                 # Complex integration tests (9)
+│   ├── variables/               # Variable capture/usage tests (5)
 │   ├── bash_commands/           # Bash command tests (13)
+│   ├── dependencies/            # Dependency management tests (8)
+│   ├── prerequisites/           # Prerequisite validation tests (7)
+│   ├── complex/                 # Complex integration tests (9)
 │   └── README.md                # Test case documentation
 │
 ├── scripts/                     # Generated executable bash scripts (gitignored)
+│   ├── hooks/                   # Hook lifecycle scripts (8 scripts)
+│   │   ├── script_start_init.sh
+│   │   ├── setup_test_workspace.sh
+│   │   ├── before_sequence_log.sh
+│   │   ├── after_sequence_cleanup.sh
+│   │   ├── before_step_validate.sh
+│   │   ├── after_step_metrics.sh
+│   │   ├── teardown_test_final.sh
+│   │   └── script_end_summary.sh
 │   ├── TC_SUCCESS_*.sh
 │   ├── TC_FAILURE_*.sh
 │   └── ...
@@ -118,8 +137,12 @@ test-acceptance/
 │   └── ...
 │
 ├── reports/                     # Generated documentation (gitignored)
-│   ├── asciidoc/                # AsciiDoc format reports
-│   ├── markdown/                # Markdown format reports
+│   ├── asciidoc/                # AsciiDoc format reports (individual)
+│   ├── markdown/                # Markdown format reports (individual)
+│   ├── consolidated/            # Consolidated documentation (all tests)
+│   │   ├── all_tests_container.yaml
+│   │   ├── all_tests.adoc
+│   │   └── all_tests.md
 │   ├── acceptance_suite_execution.log
 │   └── acceptance_suite_summary.txt
 │
@@ -130,6 +153,7 @@ test-acceptance/
 ├── validate_stage4_verification.sh  # Stage 4: Verification validation
 ├── validate_stage5_tpdg_result_docs.sh  # Stage 5: Result docs validation
 ├── validate_stage6_tpdg_plan_docs.sh    # Stage 6: Plan docs validation
+├── validate_stage7_consolidated_docs.sh # Stage 7: Consolidated docs validation
 ├── generate_final_report.sh     # Summary report generator
 │
 ├── README.md                    # This file
@@ -143,7 +167,7 @@ test-acceptance/
 
 ## Test Scenario Categories
 
-The test suite includes 91 test cases across 8 categories:
+The test suite includes 81 test cases across 9 categories:
 
 ### 1. Success Scenarios (`success/`, 13 tests)
 
@@ -194,35 +218,16 @@ Tests requiring human interaction:
 - Interactive workflows
 - **Note**: Skipped by default; use `--include-manual` to execute
 
-### 5. Variables (`variables/`, 11 tests)
+### 5. Variables (`variables/`, 5 tests)
 
 Tests for variable capture and usage:
 
-- Regex-based variable capture
-- Command-based variable capture
-- Variable substitution
-- Cross-step variable dependencies
-- Sequence-scoped variables
+- **1.yaml, 2.yaml**: Basic variable demonstration
+- **TC_VAR_CAPTURE_002**: Regex-based variable capture
+- **TC_VAR_DEMO_001**: Variable demo scenarios
+- **TC_VAR_DISPLAY_001**: Variable display and formatting
 
-### 6. Dependencies (`dependencies/`, 8 tests)
-
-Tests for dependency management:
-
-- Step dependencies
-- Sequence dependencies
-- Variable-based dependencies
-- Conditional execution based on dependencies
-
-### 7. Complex Integration (`complex/`, 9 tests)
-
-Complex end-to-end integration tests:
-
-- Multi-sequence workflows
-- Complex data transformations
-- Integration with external tools
-- Advanced verification scenarios
-
-### 8. Bash Commands (`bash_commands/`, 13 tests)
+### 6. Bash Commands (`bash_commands/`, 13 tests)
 
 Tests for various bash command scenarios:
 
@@ -231,6 +236,46 @@ Tests for various bash command scenarios:
 - Subshells and command substitution
 - Script compatibility (BSD/GNU)
 - Bash 3.2+ compatibility
+- Arrays, loops, conditionals, string operations
+
+### 7. Dependencies (`dependencies/`, 8 tests)
+
+Tests for test case dependency resolution:
+
+- **TC_DEPENDENCY_SIMPLE_001**: Basic test case dependency
+- **TC_DEPENDENCY_SEQUENCE_001**: Sequence-level dependencies
+- **TC_DEPENDENCY_NESTED_001**: Transitive dependencies (A→B→C)
+- **TC_DEPENDENCY_COMPLEX_001**: Multi-level dependency graphs
+- **TC_DEPENDENCY_CIRCULAR_001/002**: Circular dependency tests
+- **TC_DEPENDENCY_SELF_REF_001**: Self-reference detection
+- **TC_DEPENDENCY_MISSING_001**: Missing dependency error handling
+- **Note**: Requires `--test-case-dir` for cross-directory resolution
+
+### 8. Prerequisites (`prerequisites/`, 7 tests)
+
+Tests for prerequisite validation:
+
+- **PREREQ_AUTO_PASS_001**: Automatic prerequisites that pass
+- **PREREQ_AUTO_FAIL_001**: Automatic prerequisites that fail
+- **PREREQ_MANUAL_001**: Manual prerequisite steps
+- **PREREQ_MIXED_001**: Mixed automatic and manual prerequisites
+- **PREREQ_COMPLEX_001**: Complex prerequisite scenarios
+- **PREREQ_PARTIAL_FAIL_001**: Partial prerequisite failures
+- **PREREQ_NONE_001**: No prerequisites defined
+
+### 9. Complex Integration (`complex/`, 9 tests)
+
+Complex end-to-end integration tests combining multiple features:
+
+- **TC_COMPLEX_ALL_HOOKS_CAPTURE_001**: All 8 hooks + variable capture
+- **TC_COMPLEX_BDD_HOOKS_VARS_001**: BDD-style hooks with variables
+- **TC_COMPLEX_DATA_DRIVEN_ITERATIONS_001**: Data-driven iterations
+- **TC_COMPLEX_FAILED_TEARDOWN_001**: Teardown failure handling
+- **TC_COMPLEX_HYDRATION_CONDITIONAL_001**: Hydration with conditionals
+- **TC_COMPLEX_MULTI_SEQ_HOOKS_001**: Multi-sequence hooks
+- **TC_COMPLEX_PERFORMANCE_TIMING_001**: Performance timing tests
+- **TC_COMPLEX_PREREQ_DEPS_HOOKS_001**: Prerequisites + Dependencies + Hooks
+- **TC_COMPLEX_SECURITY_AUTH_API_001**: Security/auth API testing
 
 ---
 
@@ -373,13 +418,13 @@ Generates plan documentation:
 - Creates comprehensive project documentation
 - Validates final documentation output
 
-**Note:** Stages 5 and 6 require TPDG to be installed.
+**Note:** Stages 5, 6, and 7 require TPDG to be installed.
 
 ---
 
 ## Pipeline Validation Process
 
-The acceptance test suite executes a 6-stage pipeline:
+The acceptance test suite executes a 7-stage pipeline:
 
 ### Stage 1: YAML Validation ✓
 
@@ -520,23 +565,23 @@ results:
 - Validates schema compliance
 - Catches data structure issues early
 
-### Stage 6: Documentation Generation ✓
+### Stage 6: Individual Documentation ✓
 
-**Purpose:** Generate AsciiDoc and Markdown documentation using TPDG
+**Purpose:** Generate individual AsciiDoc and Markdown documentation for each test using TPDG
 
 **Actions:**
 - Checks for TPDG binary availability
-- Processes each container YAML
+- Processes each container YAML individually
 - Generates AsciiDoc reports in `reports/asciidoc/`
 - Generates Markdown reports in `reports/markdown/`
 - Includes original test case YAML for context
-- Creates comprehensive test documentation
+- Creates comprehensive per-test documentation
 
 **Input:** Container YAMLs from Stage 4
 **Output:** 
-- AsciiDoc reports (`.adoc`)
-- Markdown reports (`.md`)
-- HTML reports (if asciidoctor installed)
+- Individual AsciiDoc reports (`.adoc`)
+- Individual Markdown reports (`.md`)
+- Individual HTML reports (if asciidoctor installed)
 
 **Can Skip:** Yes (`--skip-documentation`) or auto-skipped if TPDG not available
 
@@ -548,6 +593,143 @@ test-plan-documentation-generator \
     --format asciidoc \
     --test-case original.yaml
 ```
+
+### Stage 7: Consolidated Documentation ✓
+
+**Purpose:** Generate unified documentation combining all test results in a single report
+
+**Actions:**
+- Runs verifier in `--folder` mode to process all execution logs
+- Creates consolidated container YAML (`all_tests_container.yaml`)
+- Generates comprehensive AsciiDoc report (`all_tests.adoc`)
+- Generates comprehensive Markdown report (`all_tests.md`)
+- Outputs to `reports/consolidated/` directory
+- Provides high-level overview of entire test suite
+
+**Input:** All execution logs from Stage 3
+**Output:** 
+- `reports/consolidated/all_tests_container.yaml` - Unified container with all test results
+- `reports/consolidated/all_tests.adoc` - Comprehensive AsciiDoc report
+- `reports/consolidated/all_tests.md` - Comprehensive Markdown report
+
+**Can Skip:** Auto-skipped if Stage 6 is skipped or TPDG not available
+
+**Verifier Folder Mode Command:**
+```bash
+verifier --folder \
+    --title "Acceptance Test Suite - All Tests" \
+    --project "Test Case Manager - Acceptance Suite" \
+    --environment "Automated Test Environment - [hostname]" \
+    test-acceptance/test_cases/ \
+    test-acceptance/execution_logs/
+```
+
+**TPDG Consolidated Command:**
+```bash
+test-plan-documentation-generator \
+    --input reports/consolidated/all_tests_container.yaml \
+    --output reports/consolidated/all_tests.adoc \
+    --format asciidoc
+```
+
+---
+
+## Individual vs. Consolidated Documentation
+
+The acceptance suite generates two types of documentation to serve different purposes:
+
+### Individual Documentation (Stage 6)
+
+**Purpose:** Detailed per-test analysis and debugging
+
+**Generated Files:**
+- `reports/asciidoc/TC_*_container.adoc` - One file per test
+- `reports/markdown/TC_*_container.md` - One file per test
+
+**Use Cases:**
+- Debugging individual test failures
+- Reviewing specific test execution details
+- Understanding single test behavior
+- Detailed step-by-step analysis
+- Test case development and validation
+
+**Content:**
+- Single test case metadata
+- Full execution trace for all sequences and steps
+- Captured variables and outputs
+- Verification results
+- Error messages and diagnostics
+
+**When to Use:**
+- Investigating why a specific test failed
+- Reviewing test case implementation details
+- Creating test case documentation
+- Sharing individual test results
+
+### Consolidated Documentation (Stage 7)
+
+**Purpose:** High-level suite overview and comprehensive reporting
+
+**Generated Files:**
+- `reports/consolidated/all_tests_container.yaml` - Unified container
+- `reports/consolidated/all_tests.adoc` - Suite-wide AsciiDoc report
+- `reports/consolidated/all_tests.md` - Suite-wide Markdown report
+
+**Use Cases:**
+- Suite-wide status overview
+- Executive summaries and reporting
+- Pass/fail statistics across all tests
+- Identifying patterns in test results
+- Release validation documentation
+- CI/CD pipeline reporting
+
+**Content:**
+- Aggregated test suite metadata
+- Summary statistics (pass/fail counts by category)
+- High-level execution results
+- Suite-wide verification status
+- Cross-test trends and patterns
+
+**When to Use:**
+- Generating suite-level reports for stakeholders
+- Analyzing overall test coverage
+- Release go/no-go decisions
+- CI/CD dashboard integration
+- Quality metrics and trends
+
+### Key Differences
+
+| Aspect | Individual (Stage 6) | Consolidated (Stage 7) |
+|--------|---------------------|----------------------|
+| Granularity | Per-test detail | Suite-wide overview |
+| File Count | 91 files (one per test) | 3 files (container + 2 formats) |
+| Detail Level | Complete step traces | Summary statistics |
+| Use Case | Debugging, development | Reporting, metrics |
+| Output Directory | `reports/asciidoc/`, `reports/markdown/` | `reports/consolidated/` |
+| Generation | Loop over containers | Single verifier --folder call |
+| Target Audience | Developers, QA engineers | Managers, stakeholders |
+
+### Example Scenarios
+
+**Scenario 1: Test Development**
+- **Use Individual Documentation**
+- You're writing a new test case and need to verify each step executes correctly
+- Review `reports/asciidoc/TC_NEW_TEST_001_container.adoc` for detailed execution trace
+
+**Scenario 2: CI/CD Pipeline Report**
+- **Use Consolidated Documentation**
+- Your CI pipeline completes and needs to generate a summary report
+- Use `reports/consolidated/all_tests.md` for the build report artifact
+
+**Scenario 3: Debugging Failure**
+- **Use Individual Documentation**
+- Test `TC_FAILURE_EXPECTED_003` failed unexpectedly
+- Open `reports/markdown/TC_FAILURE_EXPECTED_003_container.md` to see exact command output and error
+
+**Scenario 4: Release Validation**
+- **Use Consolidated Documentation**
+- Preparing for a release and need overall test status
+- Review `reports/consolidated/all_tests.adoc` for comprehensive pass/fail statistics
 
 ---
 
@@ -835,9 +1017,18 @@ Failed:  0
 Passed:  81
 Failed:  0
 
---- Stage 6: Documentation Generation ---
+--- Stage 6: Individual Documentation ---
 Passed:  81
 Failed:  0
+
+--- Stage 7: Consolidated Documentation ---
+Passed:  1
+Failed:  0
+
+Generated files:
+reports/consolidated/all_tests_container.yaml
+reports/consolidated/all_tests.adoc
+reports/consolidated/all_tests.md
 
 =========================================
 Overall Result:
@@ -1546,4 +1737,4 @@ When contributing to the acceptance test suite:
 
 **Last Updated:** 2024-03-17  
 **Test Suite Version:** 91 test cases across 8 categories  
-**Pipeline Stages:** 6 (validation, generation, execution, verification, container validation, documentation)
+**Pipeline Stages:** 7 (validation, generation, execution, verification, container validation, individual documentation, consolidated documentation)

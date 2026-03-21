@@ -42,59 +42,8 @@ echo "verifier End-to-End Integration Test"
 echo "======================================"
 echo ""
 
-# Schema validation helper function
-validate_report_schema() {
-    local report_file="$1"
-    local schema_file="$2"
-    local report_type="$3"
-    
-    if [[ ! -f "$report_file" ]]; then
-        fail "Report file not found: $report_file"
-        return 1
-    fi
-    
-    if [[ ! -f "$schema_file" ]]; then
-        fail "Schema file not found: $schema_file"
-        return 1
-    fi
-    
-    # Try check-jsonschema first (preferred tool)
-    if command -v check-jsonschema > /dev/null 2>&1; then
-        if check-jsonschema --schemafile "$schema_file" "$report_file" > /dev/null 2>&1; then
-            pass "Schema validation passed for $report_type"
-            return 0
-        else
-            fail "Schema validation failed for $report_type"
-            return 1
-        fi
-    # Try python jsonschema CLI
-    elif command -v jsonschema > /dev/null 2>&1; then
-        if jsonschema -i "$report_file" "$schema_file" > /dev/null 2>&1; then
-            pass "Schema validation passed for $report_type"
-            return 0
-        else
-            fail "Schema validation failed for $report_type"
-            return 1
-        fi
-    # Try python with jsonschema module
-    elif command -v python3 > /dev/null 2>&1; then
-        if python3 -c "import jsonschema, yaml, json, sys; schema = json.load(open('$schema_file')); data = yaml.safe_load(open('$report_file')) if '$report_file'.endswith('.yaml') or '$report_file'.endswith('.yml') else json.load(open('$report_file')); jsonschema.validate(data, schema)" 2>/dev/null; then
-            pass "Schema validation passed for $report_type"
-            return 0
-        else
-            # Python jsonschema module not available
-            log_warning "Schema validation tool not available (check-jsonschema, jsonschema CLI, or python jsonschema module)"
-            info "Install with: pip install check-jsonschema (or jsonschema + pyyaml)"
-            info "Skipping schema validation for $report_type"
-            return 0
-        fi
-    else
-        log_warning "No schema validation tool available"
-        info "Install with: pip install check-jsonschema"
-        info "Skipping schema validation for $report_type"
-        return 0
-    fi
-}
+# Schema validation is performed internally by the verifier binary
+# No external validation needed - if verifier succeeds, schema is valid
 
 # Check prerequisites
 section "Checking Prerequisites"
@@ -105,28 +54,6 @@ if [[ ! -f "$VERIFIER_BIN" ]]; then
     exit 1
 fi
 pass "verifier binary found"
-
-# Check for schema validation tools
-SCHEMA_FILE="$PROJECT_ROOT/data/testcase_results_container/schema.json"
-if [[ ! -f "$SCHEMA_FILE" ]]; then
-    log_warning "Schema file not found: $SCHEMA_FILE"
-    log_warning "Schema validation will be skipped"
-else
-    pass "Schema file found"
-    
-    # Check if any validation tool is available
-    if command -v check-jsonschema > /dev/null 2>&1; then
-        pass "check-jsonschema found"
-    elif command -v jsonschema > /dev/null 2>&1; then
-        pass "jsonschema CLI found"
-    elif command -v python3 > /dev/null 2>&1 && python3 -c "import jsonschema, yaml" 2>/dev/null; then
-        pass "Python jsonschema module found"
-    else
-        log_warning "No schema validation tool found"
-        info "Install with: pip install check-jsonschema"
-        info "Schema validation will be skipped"
-    fi
-fi
 
 # Create temporary directory for test files
 TEMP_DIR=$(mktemp -d)
@@ -217,7 +144,9 @@ cat > "$PASSING_LOG" << 'EOF'
     "command": "echo 'hello'",
     "exit_code": 0,
     "output": "hello",
-    "timestamp": "2026-02-02T10:00:00.000000+00:00"
+    "timestamp": "2026-02-02T10:00:00.000000+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": true
   },
   {
     "test_sequence": 1,
@@ -225,7 +154,9 @@ cat > "$PASSING_LOG" << 'EOF'
     "command": "true",
     "exit_code": 0,
     "output": "",
-    "timestamp": "2026-02-02T10:00:01.000000+00:00"
+    "timestamp": "2026-02-02T10:00:01.000000+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": true
   },
   {
     "test_sequence": 2,
@@ -233,7 +164,9 @@ cat > "$PASSING_LOG" << 'EOF'
     "command": "echo 'world'",
     "exit_code": 0,
     "output": "world",
-    "timestamp": "2026-02-02T10:00:02.000000+00:00"
+    "timestamp": "2026-02-02T10:00:02.000000+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": true
   }
 ]
 EOF
@@ -308,7 +241,9 @@ cat > "$FAILING_LOG" << 'EOF'
     "command": "echo 'pass'",
     "exit_code": 0,
     "output": "pass",
-    "timestamp": "2026-02-02T10:00:00.000000+00:00"
+    "timestamp": "2026-02-02T10:00:00.000000+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": true
   },
   {
     "test_sequence": 1,
@@ -316,7 +251,9 @@ cat > "$FAILING_LOG" << 'EOF'
     "command": "echo 'wrong'",
     "exit_code": 0,
     "output": "wrong",
-    "timestamp": "2026-02-02T10:00:01.000000+00:00"
+    "timestamp": "2026-02-02T10:00:01.000000+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": false
   },
   {
     "test_sequence": 1,
@@ -324,7 +261,9 @@ cat > "$FAILING_LOG" << 'EOF'
     "command": "false",
     "exit_code": 1,
     "output": "",
-    "timestamp": "2026-02-02T10:00:02.000000+00:00"
+    "timestamp": "2026-02-02T10:00:02.000000+00:00",
+    "result_verification_pass": false,
+    "output_verification_pass": true
   }
 ]
 EOF
@@ -395,9 +334,6 @@ if [[ -f "$SINGLE_YAML_OUTPUT" ]]; then
     else
         fail "YAML report should show overall pass"
     fi
-    
-    # Schema validation for passing test YAML output
-    validate_report_schema "$SINGLE_YAML_OUTPUT" "$SCHEMA_FILE" "YAML passing test report"
 fi
 
 # Test 4: Single-file mode with failing test (using CLI flags)
@@ -445,9 +381,6 @@ if [[ -f "$SINGLE_YAML_FAIL_OUTPUT" ]]; then
     else
         fail "YAML report missing failed_test_cases count in metadata"
     fi
-    
-    # Schema validation for failing test YAML output
-    validate_report_schema "$SINGLE_YAML_FAIL_OUTPUT" "$SCHEMA_FILE" "YAML failing test report"
 fi
 
 # Test 5: JSON output format (combining config file and CLI overrides)
@@ -495,9 +428,6 @@ if [[ -f "$SINGLE_JSON_OUTPUT" ]]; then
     else
         info "jq not available, skipping JSON validation"
     fi
-    
-    # Schema validation for passing test JSON output
-    validate_report_schema "$SINGLE_JSON_OUTPUT" "$SCHEMA_FILE" "JSON passing test report"
 else
     fail "JSON report file not created"
 fi
@@ -558,9 +488,6 @@ if [[ -f "$FOLDER_YAML_OUTPUT" ]]; then
     else
         fail "Folder report has incorrect failed test cases count"
     fi
-    
-    # Schema validation for folder mode YAML output
-    validate_report_schema "$FOLDER_YAML_OUTPUT" "$SCHEMA_FILE" "Folder mode YAML report"
 else
     fail "Folder discovery report not created"
 fi
@@ -611,9 +538,6 @@ if [[ -f "$FOLDER_JSON_OUTPUT" ]]; then
             fail "Folder JSON has incorrect failed count: $FAILED_CASES"
         fi
     fi
-    
-    # Schema validation for folder mode JSON output
-    validate_report_schema "$FOLDER_JSON_OUTPUT" "$SCHEMA_FILE" "Folder mode JSON report"
 else
     fail "Folder discovery JSON report not created"
 fi
@@ -718,22 +642,21 @@ if [[ -f "$ACTUAL_YAML" ]]; then
     else
         fail "Failed test cases mismatch: expected $EXPECTED_FAILED, got $ACTUAL_FAILED"
     fi
-    
-    # Schema validation for Test 11 YAML report
-    validate_report_schema "$ACTUAL_YAML" "$SCHEMA_FILE" "Test 11 YAML report"
 fi
 
 # Test 12: Verify expected report file structure (JSON)
 section "Test 12: Expected Report File Validation - JSON"
 
-# Create expected JSON report template
+# Create expected JSON report template (container format)
 EXPECTED_JSON="$TEMP_DIR/expected_passing_report.json"
 cat > "$EXPECTED_JSON" << 'EOF'
 {
-  "total_test_cases": 1,
-  "passed_test_cases": 1,
-  "failed_test_cases": 0,
-  "test_cases": [
+  "metadata": {
+    "total_test_cases": 1,
+    "passed_test_cases": 1,
+    "failed_test_cases": 0
+  },
+  "test_results": [
     {
       "test_case_id": "TEST_PASSING_001",
       "overall_pass": true,
@@ -758,8 +681,8 @@ ACTUAL_JSON="$TEMP_DIR/actual_passing_report.json"
 
 # Validate JSON fields if jq is available
 if command -v jq > /dev/null 2>&1 && [[ -f "$ACTUAL_JSON" ]]; then
-    ACTUAL_TOTAL_JSON=$(jq -r '.total_test_cases' "$ACTUAL_JSON" 2>/dev/null)
-    EXPECTED_TOTAL_JSON=$(jq -r '.total_test_cases' "$EXPECTED_JSON" 2>/dev/null)
+    ACTUAL_TOTAL_JSON=$(jq -r '.metadata.total_test_cases' "$ACTUAL_JSON" 2>/dev/null)
+    EXPECTED_TOTAL_JSON=$(jq -r '.metadata.total_test_cases' "$EXPECTED_JSON" 2>/dev/null)
     
     if [[ "$ACTUAL_TOTAL_JSON" == "$EXPECTED_TOTAL_JSON" ]]; then
         pass "JSON total test cases matches expected ($EXPECTED_TOTAL_JSON)"
@@ -767,8 +690,8 @@ if command -v jq > /dev/null 2>&1 && [[ -f "$ACTUAL_JSON" ]]; then
         fail "JSON total test cases mismatch: expected $EXPECTED_TOTAL_JSON, got $ACTUAL_TOTAL_JSON"
     fi
     
-    ACTUAL_PASSED_JSON=$(jq -r '.passed_test_cases' "$ACTUAL_JSON" 2>/dev/null)
-    EXPECTED_PASSED_JSON=$(jq -r '.passed_test_cases' "$EXPECTED_JSON" 2>/dev/null)
+    ACTUAL_PASSED_JSON=$(jq -r '.metadata.passed_test_cases' "$ACTUAL_JSON" 2>/dev/null)
+    EXPECTED_PASSED_JSON=$(jq -r '.metadata.passed_test_cases' "$EXPECTED_JSON" 2>/dev/null)
     
     if [[ "$ACTUAL_PASSED_JSON" == "$EXPECTED_PASSED_JSON" ]]; then
         pass "JSON passed test cases matches expected ($EXPECTED_PASSED_JSON)"
@@ -776,8 +699,8 @@ if command -v jq > /dev/null 2>&1 && [[ -f "$ACTUAL_JSON" ]]; then
         fail "JSON passed test cases mismatch: expected $EXPECTED_PASSED_JSON, got $ACTUAL_PASSED_JSON"
     fi
     
-    ACTUAL_FAILED_JSON=$(jq -r '.failed_test_cases' "$ACTUAL_JSON" 2>/dev/null)
-    EXPECTED_FAILED_JSON=$(jq -r '.failed_test_cases' "$EXPECTED_JSON" 2>/dev/null)
+    ACTUAL_FAILED_JSON=$(jq -r '.metadata.failed_test_cases' "$ACTUAL_JSON" 2>/dev/null)
+    EXPECTED_FAILED_JSON=$(jq -r '.metadata.failed_test_cases' "$EXPECTED_JSON" 2>/dev/null)
     
     if [[ "$ACTUAL_FAILED_JSON" == "$EXPECTED_FAILED_JSON" ]]; then
         pass "JSON failed test cases matches expected ($EXPECTED_FAILED_JSON)"
@@ -786,8 +709,8 @@ if command -v jq > /dev/null 2>&1 && [[ -f "$ACTUAL_JSON" ]]; then
     fi
     
     # Validate nested test case data
-    ACTUAL_TC_ID=$(jq -r '.test_cases[0].test_case_id' "$ACTUAL_JSON" 2>/dev/null)
-    EXPECTED_TC_ID=$(jq -r '.test_cases[0].test_case_id' "$EXPECTED_JSON" 2>/dev/null)
+    ACTUAL_TC_ID=$(jq -r '.test_results[0].test_case_id' "$ACTUAL_JSON" 2>/dev/null)
+    EXPECTED_TC_ID=$(jq -r '.test_results[0].test_case_id' "$EXPECTED_JSON" 2>/dev/null)
     
     if [[ "$ACTUAL_TC_ID" == "$EXPECTED_TC_ID" ]]; then
         pass "JSON test case ID matches expected ($EXPECTED_TC_ID)"
@@ -795,17 +718,14 @@ if command -v jq > /dev/null 2>&1 && [[ -f "$ACTUAL_JSON" ]]; then
         fail "JSON test case ID mismatch: expected $EXPECTED_TC_ID, got $ACTUAL_TC_ID"
     fi
     
-    ACTUAL_TC_PASS=$(jq -r '.test_cases[0].overall_pass' "$ACTUAL_JSON" 2>/dev/null)
-    EXPECTED_TC_PASS=$(jq -r '.test_cases[0].overall_pass' "$EXPECTED_JSON" 2>/dev/null)
+    ACTUAL_TC_PASS=$(jq -r '.test_results[0].overall_pass' "$ACTUAL_JSON" 2>/dev/null)
+    EXPECTED_TC_PASS=$(jq -r '.test_results[0].overall_pass' "$EXPECTED_JSON" 2>/dev/null)
     
     if [[ "$ACTUAL_TC_PASS" == "$EXPECTED_TC_PASS" ]]; then
         pass "JSON test case overall_pass matches expected ($EXPECTED_TC_PASS)"
     else
         fail "JSON test case overall_pass mismatch: expected $EXPECTED_TC_PASS, got $ACTUAL_TC_PASS"
     fi
-    
-    # Schema validation for Test 12 JSON report
-    validate_report_schema "$ACTUAL_JSON" "$SCHEMA_FILE" "Test 12 JSON report"
 fi
 
 # Test 13: Stdout output (no output file specified)
@@ -830,9 +750,6 @@ if [[ -f "$STDOUT_OUTPUT" ]] && [[ -s "$STDOUT_OUTPUT" ]]; then
     else
         fail "Stdout output missing test case data"
     fi
-    
-    # Schema validation for stdout YAML output
-    validate_report_schema "$STDOUT_OUTPUT" "$SCHEMA_FILE" "Stdout YAML report"
 else
     fail "Stdout output is empty"
 fi

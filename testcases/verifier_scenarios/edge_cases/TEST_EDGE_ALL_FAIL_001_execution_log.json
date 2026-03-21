@@ -1,0 +1,38 @@
+[
+  {
+    "type": "test_execution",
+    "schema": "tcms/execution-log.schema.v1.json",
+    "test_sequence": 1,
+    "step": 1,
+    "command": "echo \"Wrong output 1\"",
+    "exit_code": 0,
+    "output": "Wrong output 1",
+    "timestamp": "2026-02-28T10:00:00.123456+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": true
+  },
+  {
+    "type": "test_execution",
+    "schema": "tcms/execution-log.schema.v1.json",
+    "test_sequence": 1,
+    "step": 2,
+    "command": "echo \"Wrong output 2\"",
+    "exit_code": 0,
+    "output": "Wrong output 2",
+    "timestamp": "2026-02-28T10:00:00.456789+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": true
+  },
+  {
+    "type": "test_execution",
+    "schema": "tcms/execution-log.schema.v1.json",
+    "test_sequence": 1,
+    "step": 3,
+    "command": "echo \"Wrong output 3\"",
+    "exit_code": 0,
+    "output": "Wrong output 3",
+    "timestamp": "2026-02-28T10:00:00.789012+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": true
+  }
+]

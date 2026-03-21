@@ -1,0 +1,174 @@
+requirement: "BASH_FILE_OPERATIONS"
+item: 1
+tc: 1
+id: 'TC_BASH_FILE_OPS_001'
+description: 'Bash file operations - create, read, write, append, delete files with comprehensive validation'
+
+general_initial_conditions:
+  system:
+    - "Bash shell with file operation support is available"
+    - "Filesystem operations are permitted"
+
+initial_conditions:
+  filesystem:
+    - "Temporary directory /tmp is writable"
+
+test_sequences:
+  - id: 1
+    name: "File Operations"
+    description: "Test file creation, modification, and validation"
+    initial_conditions:
+      system:
+        - "File operations work correctly"
+    steps:
+      - step: 1
+        description: "Create file with content"
+        command: "echo 'initial content' > /tmp/bash_file_test.txt && cat /tmp/bash_file_test.txt"
+        expected:
+          success: true
+          result: 0
+          output: "initial content"
+        verification:
+          result: "[[ $? -eq 0 && -f /tmp/bash_file_test.txt ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" == 'initial content' ]]"
+          general:
+            - name: file_exists
+              condition: "[[ -f /tmp/bash_file_test.txt ]]"
+            - name: file_readable
+              condition: "[[ -r /tmp/bash_file_test.txt ]]"
+            - name: content_matches
+              condition: "[[ $(cat /tmp/bash_file_test.txt) == 'initial content' ]]"
+
+      - step: 2
+        description: "Append to existing file"
+        command: "echo 'appended line' >> /tmp/bash_file_test.txt && wc -l /tmp/bash_file_test.txt | awk '{print $1}'"
+        capture_vars:
+          - name: line_count
+            capture: '^([0-9]+)$'
+        expected:
+          success: true
+          result: 0
+          output: "2"
+        verification:
+          result: "[[ $? -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" == '2' ]]"
+          general:
+            - name: two_lines
+              condition: "[[ $line_count -eq 2 ]]"
+            - name: has_both_lines
+              condition: "[[ $(grep -c 'initial' /tmp/bash_file_test.txt) -eq 1 && $(grep -c 'appended' /tmp/bash_file_test.txt) -eq 1 ]]"
+
+      - step: 3
+        description: "Check file size"
+        command: "wc -c /tmp/bash_file_test.txt | awk '{print $1}'"
+        capture_vars:
+          - name: file_size
+            capture: '^([0-9]+)$'
+        expected:
+          success: true
+          result: 0
+          output: "byte count"
+        verification:
+          result: "[[ $? -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
+          general:
+            - name: size_positive
+              condition: "[[ $file_size -gt 0 ]]"
+            - name: size_reasonable
+              condition: "[[ $file_size -ge 30 && $file_size -le 100 ]]"
+
+      - step: 4
+        description: "Copy file and verify"
+        command: "cp /tmp/bash_file_test.txt /tmp/bash_file_copy.txt && diff /tmp/bash_file_test.txt /tmp/bash_file_copy.txt; echo $?"
+        capture_vars:
+          - name: diff_result
+            capture: '^([0-9]+)$'
+        expected:
+          success: true
+          result: 0
+          output: "0"
+        verification:
+          result: "[[ $? -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" == '0' ]]"
+          general:
+            - name: copy_exists
+              condition: "[[ -f /tmp/bash_file_copy.txt ]]"
+            - name: files_identical
+              condition: "[[ $diff_result -eq 0 ]]"
+
+      - step: 5
+        description: "Rename file"
+        command: "mv /tmp/bash_file_copy.txt /tmp/bash_file_renamed.txt && [[ -f /tmp/bash_file_renamed.txt ]] && echo 'renamed'"
+        expected:
+          success: true
+          result: 0
+          output: "renamed"
+        verification:
+          result: "[[ $? -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" == 'renamed' ]]"
+          general:
+            - name: new_name_exists
+              condition: "[[ -f /tmp/bash_file_renamed.txt ]]"
+            - name: old_name_gone
+              condition: "[[ ! -f /tmp/bash_file_copy.txt ]]"
+
+      - step: 6
+        description: "Read specific line from file"
+        command: "sed -n '2p' /tmp/bash_file_test.txt"
+        capture_vars:
+          - name: second_line
+            capture: '^(.*)$'
+        expected:
+          success: true
+          result: 0
+          output: "appended line"
+        verification:
+          result: "[[ $? -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" == 'appended line' ]]"
+          general:
+            - name: line_correct
+              condition: "[[ \"$second_line\" == 'appended line' ]]"
+
+      - step: 7
+        description: "Test file permissions"
+        command: "chmod 644 /tmp/bash_file_test.txt && stat -f '%Lp' /tmp/bash_file_test.txt 2>/dev/null || stat -c '%a' /tmp/bash_file_test.txt 2>/dev/null"
+        expected:
+          success: true
+          result: 0
+          output: "644"
+        verification:
+          result: "[[ $? -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" == '644' ]]"
+          general:
+            - name: permissions_set
+              condition: "[[ -r /tmp/bash_file_test.txt && -w /tmp/bash_file_test.txt ]]"
+
+      - step: 8
+        description: "Create empty file with touch"
+        command: "touch /tmp/bash_empty_file.txt && [[ -f /tmp/bash_empty_file.txt ]] && echo 'created'"
+        expected:
+          success: true
+          result: 0
+          output: "created"
+        verification:
+          result: "[[ $? -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" == 'created' ]]"
+          general:
+            - name: empty_file_exists
+              condition: "[[ -f /tmp/bash_empty_file.txt ]]"
+            - name: file_is_empty
+              condition: "[[ ! -s /tmp/bash_empty_file.txt ]]"
+
+      - step: 9
+        description: "Delete files"
+        command: "rm -f /tmp/bash_file_test.txt /tmp/bash_file_renamed.txt /tmp/bash_empty_file.txt && echo 'deleted'"
+        expected:
+          success: true
+          result: 0
+          output: "deleted"
+        verification:
+          result: "[[ $? -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" == 'deleted' ]]"
+          general:
+            - name: all_files_deleted
+              condition: "[[ ! -f /tmp/bash_file_test.txt && ! -f /tmp/bash_file_renamed.txt && ! -f /tmp/bash_empty_file.txt ]]"
