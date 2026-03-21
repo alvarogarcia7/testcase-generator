@@ -1,5 +1,4 @@
-type: test_case_verification_result
-schema: tcms/test-case-verification-result.schema.v1.json
+type: result
 requirement: XXX100
 item: 1
 tc: 4

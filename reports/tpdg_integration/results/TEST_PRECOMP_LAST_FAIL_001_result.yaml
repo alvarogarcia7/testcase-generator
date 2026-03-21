@@ -1,0 +1,44 @@
+description: 'Precomputed verification: last step fails verification'
+failed_steps: 1
+item: 1
+not_executed_steps: 0
+overall_pass: false
+passed_steps: 2
+requirement: TEST_PRECOMP_LAST_FAIL
+sequences:
+- all_steps_passed: false
+  item: 1
+  name: Last Step Fail Sequence
+  requirement: TEST_PRECOMP_LAST_FAIL
+  sequence_id: 1
+  step_results:
+  - Pass:
+      description: Execute first command successfully
+      item: 1
+      requirement: TEST_PRECOMP_LAST_FAIL
+      step: 1
+      tc: 1
+  - Pass:
+      description: Execute second command successfully
+      item: 1
+      requirement: TEST_PRECOMP_LAST_FAIL
+      step: 2
+      tc: 1
+  - Fail:
+      actual_output: ''
+      actual_result: '0'
+      description: Execute final command with failure
+      expected:
+        output: ''
+        result: '1'
+        success: false
+      item: 1
+      reason: 'Success mismatch: expected false, got true'
+      requirement: TEST_PRECOMP_LAST_FAIL
+      step: 3
+      tc: 1
+  tc: 1
+tc: 1
+test_case_id: TEST_PRECOMP_LAST_FAIL_001
+total_steps: 3
+type: result

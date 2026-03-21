@@ -1,5 +1,4 @@
-type: test_case_verification_result
-schema: tcms/test-case-verification-result.schema.v1.json
+type: result
 requirement: XXX400
 test_case_id: 4.2.2.6 IN_eUICC_Security_Compliance
 description: Inspection of eUICC implementation to verify compliance with security

@@ -1,5 +1,4 @@
-type: test_case_verification_result
-schema: tcms/test-case-verification-result.schema.v1.json
+type: result
 requirement: XXX200
 test_case_id: 4.2.2.4 AN_eUICC_Performance_Analysis
 description: Analysis of eUICC performance under various load conditions to verify

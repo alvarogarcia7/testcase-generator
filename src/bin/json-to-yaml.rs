@@ -34,16 +34,22 @@ fn main() -> Result<()> {
         .map_err(|e| anyhow!("Failed to create output directory: {}", e))?;
 
     // Extract test cases
-    let test_cases =
-        if let Some(test_cases_array) = data.get("test_cases").and_then(|v| v.as_array()) {
-            // Batch report format
-            test_cases_array.clone()
-        } else if data.get("test_case_id").is_some() {
-            // Single test case format
-            vec![data.clone()]
-        } else {
-            return Err(anyhow!("No test_cases or test_case_id found in JSON"));
-        };
+    let test_cases = if let Some(test_cases_array) =
+        data.get("test_cases").and_then(|v| v.as_array())
+    {
+        // Batch report format
+        test_cases_array.clone()
+    } else if let Some(test_results_array) = data.get("test_results").and_then(|v| v.as_array()) {
+        // Container report format
+        test_results_array.clone()
+    } else if data.get("test_case_id").is_some() {
+        // Single test case format
+        vec![data.clone()]
+    } else {
+        return Err(anyhow!(
+            "No test_cases, test_results, or test_case_id found in JSON"
+        ));
+    };
 
     if test_cases.is_empty() {
         return Err(anyhow!("No test cases found in JSON"));
