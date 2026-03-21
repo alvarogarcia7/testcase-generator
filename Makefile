@@ -149,7 +149,11 @@ test-e2e:
 	./tests/integration/test_documentation_generation.sh
 	# Valid values of BUILD_VARIANT are "" (debug) or "--release" (release mode)
 	BUILD_VARIANT="" ./scripts/run_verifier_and_generate_reports.sh
-	./scripts/validate_tpdg_integration.sh --test-plan-doc-gen ${HOME}/Documents/projects/test-plan-documentation-generator --verbose || true
+	@if [ -n "$$TPDG_PATH" ]; then \
+		./scripts/validate_tpdg_integration.sh --test-plan-doc-gen "$$TPDG_PATH" --verbose || true; \
+	else \
+		./scripts/validate_tpdg_integration.sh --test-plan-doc-gen ${HOME}/Documents/projects/test-plan-documentation-generator --verbose || true; \
+	fi
 	${MAKE} validate-output-schemas
 .PHONY: test-e2e
 
