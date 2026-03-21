@@ -905,15 +905,16 @@ impl TestExecutor {
                     if has_verification {
                         // Generate interactive prompt for action using read_true_false
                         script.push_str("# Prompt user to confirm manual action completion\n");
+                        script.push_str("MANUAL_STEP_CONFIRMED=false\n");
                         script.push_str(
                             "if read_true_false \"Have you completed the manual action?\"; then\n",
                         );
                         script
                             .push_str("    # User confirmed (read_true_false returns 0 for yes)\n");
-                        script.push_str("    :\n");
+                        script.push_str("    MANUAL_STEP_CONFIRMED=true\n");
                         script.push_str("else\n");
-                        script.push_str("    echo \"Manual action not completed. Exiting.\" >&2\n");
-                        script.push_str("    exit 1\n");
+                        script.push_str("    # User rejected (read_true_false returns 1 for no)\n");
+                        script.push_str("    MANUAL_STEP_CONFIRMED=false\n");
                         script.push_str("fi\n\n");
 
                         // Convert hydration placeholders in verification expressions
@@ -994,15 +995,25 @@ impl TestExecutor {
                     } else {
                         // No verification fields - just prompt to continue using read_true_false
                         script.push_str("# Prompt user to confirm they want to continue\n");
+                        script.push_str("MANUAL_STEP_CONFIRMED=false\n");
                         script.push_str(
                             "if read_true_false \"Have you completed the manual step?\"; then\n",
                         );
                         script
                             .push_str("    # User confirmed (read_true_false returns 0 for yes)\n");
-                        script.push_str("    :\n");
+                        script.push_str("    MANUAL_STEP_CONFIRMED=true\n");
                         script.push_str("else\n");
-                        script.push_str("    echo \"Manual step not completed. Exiting.\" >&2\n");
-                        script.push_str("    exit 1\n");
+                        script.push_str("    # User rejected (read_true_false returns 1 for no)\n");
+                        script.push_str("    MANUAL_STEP_CONFIRMED=false\n");
+                        script.push_str("fi\n\n");
+
+                        // Set verification variables for logging (no explicit verification)
+                        script.push_str("if [ \"$MANUAL_STEP_CONFIRMED\" = true ]; then\n");
+                        script.push_str("    USER_VERIFICATION_RESULT=true\n");
+                        script.push_str("    USER_VERIFICATION_OUTPUT=true\n");
+                        script.push_str("else\n");
+                        script.push_str("    USER_VERIFICATION_RESULT=false\n");
+                        script.push_str("    USER_VERIFICATION_OUTPUT=false\n");
                         script.push_str("fi\n\n");
                     }
 
@@ -1036,9 +1047,15 @@ impl TestExecutor {
                         escaped_command
                     ));
                     script.push_str("    echo \"    \\\"exit_code\\\": 0,\"\n");
+                    script.push_str("    if [ \"$MANUAL_STEP_CONFIRMED\" = true ]; then\n");
                     script.push_str(
-                        "    echo \"    \\\"output\\\": \\\"Manual step confirmed by user\\\",\"\n",
+                        "        echo \"    \\\"output\\\": \\\"Manual step confirmed by user\\\",\"\n",
                     );
+                    script.push_str("    else\n");
+                    script.push_str(
+                        "        echo \"    \\\"output\\\": \\\"Manual step rejected by user\\\",\"\n",
+                    );
+                    script.push_str("    fi\n");
                     script.push_str("    echo \"    \\\"timestamp\\\": \\\"$TIMESTAMP\\\",\"\n");
 
                     if has_verification {
@@ -1050,6 +1067,12 @@ impl TestExecutor {
                     }
                     script.push_str("    echo '  }'\n");
                     script.push_str("} >> \"$JSON_LOG\"\n\n");
+
+                    // Check if manual step was confirmed and handle rejection
+                    script.push_str("if [ \"$MANUAL_STEP_CONFIRMED\" = false ]; then\n");
+                    script.push_str("    echo \"Manual step not completed. Exiting.\" >&2\n");
+                    script.push_str("    exit 1\n");
+                    script.push_str("fi\n\n");
 
                     // Execute after_step hook for manual step
                     if let Some(ref hooks) = test_case.hooks {
