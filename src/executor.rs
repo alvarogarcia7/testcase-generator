@@ -1006,6 +1006,50 @@ impl TestExecutor {
                         script.push_str("fi\n\n");
                     }
 
+                    // Log manual step to JSON execution log
+                    script.push_str("# Log manual step to execution log\n");
+                    script.push_str("if [ \"$FIRST_ENTRY\" = false ]; then\n");
+                    script.push_str("    echo ',' >> \"$JSON_LOG\"\n");
+                    script.push_str("fi\n");
+                    script.push_str("FIRST_ENTRY=false\n\n");
+
+                    // Escape command for JSON
+                    let escaped_command = step.command
+                        .replace("\\", "\\\\")
+                        .replace("'", "\"")
+                        .replace("\"", "\\\"")
+                        .replace("\n", "\\n")
+                        .replace("\r", "\\r")
+                        .replace("\t", "\\t");
+
+                    script.push_str("# Write manual step JSON entry\n");
+                    script.push_str("{\n");
+                    script.push_str(&format!(
+                        "    echo '  {{\'\n"
+                    ));
+                    script.push_str(&format!(
+                        "    echo '    \"test_sequence\": {},'\n",
+                        sequence.id
+                    ));
+                    script.push_str(&format!("    echo '    \"step\": {},'\n", step.step));
+                    script.push_str(&format!(
+                        "    echo '    \"command\": \"{}\",'\n",
+                        escaped_command
+                    ));
+                    script.push_str("    echo \"    \\\"exit_code\\\": 0,\"\n");
+                    script.push_str("    echo \"    \\\"output\\\": \\\"Manual step confirmed by user\\\",\"\n");
+                    script.push_str("    echo \"    \\\"timestamp\\\": \\\"$TIMESTAMP\\\",\"\n");
+
+                    if has_verification {
+                        script.push_str("    echo \"    \\\"result_verification_pass\\\": $USER_VERIFICATION_RESULT,\"\n");
+                        script.push_str("    echo \"    \\\"output_verification_pass\\\": $USER_VERIFICATION_OUTPUT\"\n");
+                    } else {
+                        script.push_str("    echo '    \"result_verification_pass\": true,'\n");
+                        script.push_str("    echo '    \"output_verification_pass\": true'\n");
+                    }
+                    script.push_str("    echo '  }'\n");
+                    script.push_str("} >> \"$JSON_LOG\"\n\n");
+
                     // Execute after_step hook for manual step
                     if let Some(ref hooks) = test_case.hooks {
                         if let Some(ref hook) = hooks.after_step {
