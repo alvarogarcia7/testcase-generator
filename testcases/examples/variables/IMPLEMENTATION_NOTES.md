@@ -44,14 +44,14 @@ The generated script (`1_test.sh`) includes:
 
 #### Variable Storage (Bash 3.2+ Compatible)
 - Uses `STEP_VAR_*` prefix for captured variables
-- Maintains `STEP_VAR_NAMES` space-separated list
+- Maintains `CAPTURED_VAR_NAMES` space-separated list
 - No associative arrays (compatible with bash 3.2+)
 
 #### Command-Based Captures
 ```bash
 STEP_VAR_output_len=$(cat /tmp/hello.txt | wc -c 2>&1 || echo "")
-if ! echo " $STEP_VAR_NAMES " | grep -q " output_len "; then
-    STEP_VAR_NAMES="$STEP_VAR_NAMES output_len"
+if ! echo " $NAMES " | grep -q " output_len "; then
+    CAPTURED_VAR_NAMES="$NAMES output_len"
 fi
 ```
 
@@ -64,7 +64,7 @@ Uses `sed` with extended regex (BSD/GNU compatible)
 #### General Verification Logic
 ```bash
 GENERAL_VERIFY_PASS_verify_output_len_is_numeric=false
-if [[ $STEP_VAR_output_len =~ ^[0-9]+$ ]]; then
+if [[ $output_len =~ ^[0-9]+$ ]]; then
     GENERAL_VERIFY_PASS_verify_output_len_is_numeric=true
 fi
 ```

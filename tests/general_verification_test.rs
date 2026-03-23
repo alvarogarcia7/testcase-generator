@@ -476,7 +476,7 @@ fn test_bash_generation_with_variables_and_general_conditions() {
     let script = executor.generate_test_script(&test_case);
 
     // Should have variable initialization
-    assert!(script.contains("STEP_VAR_test_var="));
+    assert!(script.contains("test_var="));
 
     // Should have general verification with variable substitution support
     assert!(script.contains("# General verifications"));
@@ -484,7 +484,7 @@ fn test_bash_generation_with_variables_and_general_conditions() {
 
     // Should include variable substitution code for general verification
     assert!(script.contains("EXPR="));
-    assert!(script.contains("STEP_VAR_NAMES"));
+    assert!(script.contains("CAPTURED_VAR_NAMES"));
 }
 
 // ============================================================================

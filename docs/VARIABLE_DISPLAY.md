@@ -4,7 +4,7 @@
 
 This document describes how captured variables are displayed throughout the Test Case Manager system:
 
-1. **Generated Bash Scripts**: Variables stored as `STEP_VAR_*` with comments
+1. **Generated Bash Scripts**: Variables stored as `*` with comments
 2. **Console Output**: Variable names and values displayed during execution
 3. **JSON Execution Logs**: Commands with variable metadata
 4. **Debugging**: Techniques for troubleshooting variable capture issues
@@ -20,25 +20,25 @@ Understanding how variables are displayed helps with debugging test failures, ve
 
 ### Variable Storage Format
 
-When test cases use variable capture, the generated bash scripts store captured values in variables prefixed with `STEP_VAR_`:
+When test cases use variable capture, the generated bash scripts store captured values in variables prefixed with ``:
 
 ```bash
 # Variable captured via regex
-STEP_VAR_user_id=$(echo "$COMMAND_OUTPUT" | sed -n 's/.*"user_id":([0-9]+).*/\1/p' | head -n 1 || echo "")
+user_id=$(echo "$COMMAND_OUTPUT" | sed -n 's/.*"user_id":([0-9]+).*/\1/p' | head -n 1 || echo "")
 
 # Variable captured via command
-STEP_VAR_file_size=$(wc -c /tmp/output.txt | awk '{print $1}' 2>&1 || echo "")
+file_size=$(wc -c /tmp/output.txt | awk '{print $1}' 2>&1 || echo "")
 ```
 
 **Naming Convention:**
-- All captured variables use the prefix `STEP_VAR_`
-- Original variable name follows the prefix: `STEP_VAR_{variable_name}`
+- All captured variables use the prefix ``
+- Original variable name follows the prefix: `{variable_name}`
 - Variable names follow bash naming rules: alphanumeric and underscores only
 
 **Examples:**
-- `api_token` → `STEP_VAR_api_token`
-- `session_id` → `STEP_VAR_session_id`
-- `byte_count` → `STEP_VAR_byte_count`
+- `api_token` → `api_token`
+- `session_id` → `session_id`
+- `byte_count` → `byte_count`
 
 ### Comments Indicating Capture Source
 
@@ -46,8 +46,8 @@ The generated scripts include a comment before each capture block:
 
 ```bash
 # Capture variables from output
-STEP_VAR_token=$(echo "$COMMAND_OUTPUT" | sed -n 's/.*"token":"([^"]+)".*/\1/p' | head -n 1 || echo "")
-STEP_VAR_user_id=$(echo "$COMMAND_OUTPUT" | sed -n 's/.*"user_id":([0-9]+).*/\1/p' | head -n 1 || echo "")
+token=$(echo "$COMMAND_OUTPUT" | sed -n 's/.*"token":"([^"]+)".*/\1/p' | head -n 1 || echo "")
+user_id=$(echo "$COMMAND_OUTPUT" | sed -n 's/.*"user_id":([0-9]+).*/\1/p' | head -n 1 || echo "")
 ```
 
 The comment `# Capture variables from output` indicates the start of a variable capture section for a step.
@@ -58,9 +58,9 @@ Regex-based captures extract values from the step's `COMMAND_OUTPUT`:
 
 ```bash
 # Capture variables from output
-STEP_VAR_access_token=$(echo "$COMMAND_OUTPUT" | sed -n 's/.*"access_token":"([^"]+)".*/\1/p' | head -n 1 || echo "")
-STEP_VAR_refresh_token=$(echo "$COMMAND_OUTPUT" | sed -n 's/.*"refresh_token":"([^"]+)".*/\1/p' | head -n 1 || echo "")
-STEP_VAR_expires_in=$(echo "$COMMAND_OUTPUT" | sed -n 's/.*"expires_in":([0-9]+).*/\1/p' | head -n 1 || echo "")
+access_token=$(echo "$COMMAND_OUTPUT" | sed -n 's/.*"access_token":"([^"]+)".*/\1/p' | head -n 1 || echo "")
+refresh_token=$(echo "$COMMAND_OUTPUT" | sed -n 's/.*"refresh_token":"([^"]+)".*/\1/p' | head -n 1 || echo "")
+expires_in=$(echo "$COMMAND_OUTPUT" | sed -n 's/.*"expires_in":([0-9]+).*/\1/p' | head -n 1 || echo "")
 ```
 
 **Characteristics:**
@@ -75,9 +75,9 @@ Command-based captures execute shell commands directly:
 
 ```bash
 # Capture variables from output
-STEP_VAR_byte_count=$(wc -c /tmp/test_output.txt | awk '{print $1}' 2>&1 || echo "")
-STEP_VAR_line_count=$(wc -l /tmp/test_output.txt | awk '{print $1}' 2>&1 || echo "")
-STEP_VAR_user_id=$(jq -r '.user_id' /tmp/data.json 2>&1 || echo "")
+byte_count=$(wc -c /tmp/test_output.txt | awk '{print $1}' 2>&1 || echo "")
+line_count=$(wc -l /tmp/test_output.txt | awk '{print $1}' 2>&1 || echo "")
+user_id=$(jq -r '.user_id' /tmp/data.json 2>&1 || echo "")
 ```
 
 **Characteristics:**
@@ -92,15 +92,15 @@ The generated scripts maintain a list of captured variable names:
 
 ```bash
 # Initialize variable storage for captured variables (bash 3.2+ compatible)
-STEP_VAR_NAMES=""
+NAMES=""
 ```
 
 After each variable capture, it's added to the tracking list:
 
 ```bash
-STEP_VAR_token=$(echo "$COMMAND_OUTPUT" | sed -n 's/.*"token":"([^"]+)".*/\1/p' | head -n 1 || echo "")
-if ! echo " $STEP_VAR_NAMES " | grep -q " token "; then
-    STEP_VAR_NAMES="$STEP_VAR_NAMES token"
+token=$(echo "$COMMAND_OUTPUT" | sed -n 's/.*"token":"([^"]+)".*/\1/p' | head -n 1 || echo "")
+if ! echo " $NAMES " | grep -q " token "; then
+    NAMES="$NAMES token"
 fi
 ```
 
@@ -119,9 +119,9 @@ ORIGINAL_COMMAND="curl http://api.example.com/users/${user_id}/profile"
 
 # Perform variable substitution
 SUBSTITUTED_COMMAND="$ORIGINAL_COMMAND"
-if [ -n "$STEP_VAR_NAMES" ]; then
-    for var_name in $STEP_VAR_NAMES; do
-        eval "var_value=\$STEP_VAR_$var_name"
+if [ -n "$NAMES" ]; then
+    for var_name in $NAMES; do
+        eval "var_value=\$$var_name"
         # Escape special characters for sed
         escaped_value=$(printf '%s' "$var_value" | sed 's/[&/\\]/\\&/g')
         # Replace ${var_name} pattern
@@ -151,10 +151,10 @@ Generated script:
 
 ```bash
 # Initialize sequence variables
-STEP_VAR_api_host="api.example.com"
-if ! echo " $STEP_VAR_NAMES " | grep -q " api_host "; then STEP_VAR_NAMES="$STEP_VAR_NAMES api_host"; fi
-STEP_VAR_api_port="8080"
-if ! echo " $STEP_VAR_NAMES " | grep -q " api_port "; then STEP_VAR_NAMES="$STEP_VAR_NAMES api_port"; fi
+api_host="api.example.com"
+if ! echo " $NAMES " | grep -q " api_host "; then CAPTURED_VAR_NAMES="$NAMES api_host"; fi
+api_port="8080"
+if ! echo " $NAMES " | grep -q " api_port "; then CAPTURED_VAR_NAMES="$NAMES api_port"; fi
 ```
 
 ### Example: Complete Variable Capture Block
@@ -167,8 +167,8 @@ Here's a complete example from a generated script showing both regex and command
 # =============================================================================
 
 # Initialize sequence variables
-STEP_VAR_api_base="http://localhost:8080"
-if ! echo " $STEP_VAR_NAMES " | grep -q " api_base "; then STEP_VAR_NAMES="$STEP_VAR_NAMES api_base"; fi
+api_base="http://localhost:8080"
+if ! echo " $NAMES " | grep -q " api_base "; then CAPTURED_VAR_NAMES="$NAMES api_base"; fi
 
 # -----------------------------------------------------------------------------
 # Step 1: Register user and capture tokens
@@ -182,19 +182,19 @@ EOF
 EXIT_CODE=$?
 
 # Capture variables from output
-STEP_VAR_user_id=$(echo "$COMMAND_OUTPUT" | sed -n 's/.*"user_id":([0-9]+).*/\1/p' | head -n 1 || echo "")
-if ! echo " $STEP_VAR_NAMES " | grep -q " user_id "; then
-    STEP_VAR_NAMES="$STEP_VAR_NAMES user_id"
+user_id=$(echo "$COMMAND_OUTPUT" | sed -n 's/.*"user_id":([0-9]+).*/\1/p' | head -n 1 || echo "")
+if ! echo " $NAMES " | grep -q " user_id "; then
+    NAMES="$NAMES user_id"
 fi
 
-STEP_VAR_access_token=$(echo "$COMMAND_OUTPUT" | sed -n 's/.*"access_token":"([^"]+)".*/\1/p' | head -n 1 || echo "")
-if ! echo " $STEP_VAR_NAMES " | grep -q " access_token "; then
-    STEP_VAR_NAMES="$STEP_VAR_NAMES access_token"
+access_token=$(echo "$COMMAND_OUTPUT" | sed -n 's/.*"access_token":"([^"]+)".*/\1/p' | head -n 1 || echo "")
+if ! echo " $NAMES " | grep -q " access_token "; then
+    NAMES="$NAMES access_token"
 fi
 
-STEP_VAR_refresh_token=$(echo "$COMMAND_OUTPUT" | sed -n 's/.*"refresh_token":"([^"]+)".*/\1/p' | head -n 1 || echo "")
-if ! echo " $STEP_VAR_NAMES " | grep -q " refresh_token "; then
-    STEP_VAR_NAMES="$STEP_VAR_NAMES refresh_token"
+refresh_token=$(echo "$COMMAND_OUTPUT" | sed -n 's/.*"refresh_token":"([^"]+)".*/\1/p' | head -n 1 || echo "")
+if ! echo " $NAMES " | grep -q " refresh_token "; then
+    NAMES="$NAMES refresh_token"
 fi
 
 # -----------------------------------------------------------------------------
@@ -206,9 +206,9 @@ ORIGINAL_COMMAND='echo "Token: ${access_token}" > /tmp/token.txt'
 
 # Perform variable substitution
 SUBSTITUTED_COMMAND="$ORIGINAL_COMMAND"
-if [ -n "$STEP_VAR_NAMES" ]; then
-    for var_name in $STEP_VAR_NAMES; do
-        eval "var_value=\$STEP_VAR_$var_name"
+if [ -n "$NAMES" ]; then
+    for var_name in $NAMES; do
+        eval "var_value=\$$var_name"
         escaped_value=$(printf '%s' "$var_value" | sed 's/[&/\\]/\\&/g')
         SUBSTITUTED_COMMAND=$(echo "$SUBSTITUTED_COMMAND" | sed "s/\${$var_name}/$escaped_value/g")
     done
@@ -219,9 +219,9 @@ eval "$SUBSTITUTED_COMMAND"
 EXIT_CODE=$?
 
 # Capture variables from output
-STEP_VAR_file_size=$(wc -c /tmp/token.txt | awk '{print $1}' 2>&1 || echo "")
-if ! echo " $STEP_VAR_NAMES " | grep -q " file_size "; then
-    STEP_VAR_NAMES="$STEP_VAR_NAMES file_size"
+file_size=$(wc -c /tmp/token.txt | awk '{print $1}' 2>&1 || echo "")
+if ! echo " $NAMES " | grep -q " file_size "; then
+    NAMES="$NAMES file_size"
 fi
 ```
 
@@ -441,7 +441,7 @@ The execution log follows this JSON schema:
 Look for the capture line in the generated bash script:
 
 ```bash
-STEP_VAR_user_id=$(echo "$COMMAND_OUTPUT" | sed -n 's/.*"user_id":([0-9]+).*/\1/p' | head -n 1 || echo "")
+user_id=$(echo "$COMMAND_OUTPUT" | sed -n 's/.*"user_id":([0-9]+).*/\1/p' | head -n 1 || echo "")
 ```
 
 **Step 3: Test the regex pattern manually**
@@ -547,7 +547,7 @@ test_sequences:
 - Verify variable was captured in an earlier step
 - Check spelling and case of variable names
 - Ensure variable and usage are in the same sequence
-- Use explicit `${STEP_VARS[var_name]}` syntax if needed
+- Use explicit `${captured variables[var_name]}` syntax if needed
 
 #### 3. Regex Pattern Issues
 
@@ -685,10 +685,10 @@ testcase_manager generate testcases/TC_VAR_CAPTURE_001.yaml > generated_script.s
 
 ```bash
 # Find all variable captures
-grep -A 2 "STEP_VAR_" generated_script.sh
+grep -A 2 "" generated_script.sh
 
 # Find specific variable
-grep "STEP_VAR_user_id" generated_script.sh
+grep "user_id" generated_script.sh
 
 # See full capture block
 grep -A 10 "# Capture variables from output" generated_script.sh
@@ -825,7 +825,7 @@ Use step descriptions to document variable flow:
 
 Variable display in Test Case Manager:
 
-✅ **Bash Scripts**: Variables stored as `STEP_VAR_*` with clear comments  
+✅ **Bash Scripts**: Variables stored as `*` with clear comments  
 ✅ **Console**: Command output shows variable capture sources  
 ✅ **JSON Logs**: Execution history with command and output metadata  
 ✅ **Debugging**: Multiple techniques to troubleshoot capture issues

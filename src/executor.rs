@@ -202,9 +202,9 @@ fn generate_verification_with_var_subst(expr: &VerificationExpression, var_name:
                 .replace("$", "\\$")
                 .replace("\"", "\\\"");
             script.push_str(&format!("EXPR=\"{}\"\n", escaped_expr));
-            script.push_str("if [ -n \"$STEP_VAR_NAMES\" ]; then\n");
-            script.push_str("    for var_name in $STEP_VAR_NAMES; do\n");
-            script.push_str("        eval \"var_value=\\$STEP_VAR_$var_name\"\n");
+            script.push_str("if [ -n \"$CAPTURED_VAR_NAMES\" ]; then\n");
+            script.push_str("    for var_name in $CAPTURED_VAR_NAMES; do\n");
+            script.push_str("        eval \"var_value=\\$$var_name\"\n");
             script.push_str("        # Escape special characters for sed\n");
             script.push_str(
                 "        escaped_value=$(printf '%s' \"$var_value\" | sed 's/[&/\\]/\\\\&/g')\n",
@@ -236,9 +236,9 @@ fn generate_verification_with_var_subst(expr: &VerificationExpression, var_name:
                 .replace("$", "\\$")
                 .replace("\"", "\\\"");
             script.push_str(&format!("COND_EXPR=\"{}\"\n", escaped_condition));
-            script.push_str("if [ -n \"$STEP_VAR_NAMES\" ]; then\n");
-            script.push_str("    for var_name in $STEP_VAR_NAMES; do\n");
-            script.push_str("        eval \"var_value=\\$STEP_VAR_$var_name\"\n");
+            script.push_str("if [ -n \"$CAPTURED_VAR_NAMES\" ]; then\n");
+            script.push_str("    for var_name in $CAPTURED_VAR_NAMES; do\n");
+            script.push_str("        eval \"var_value=\\$$var_name\"\n");
             script.push_str(
                 "        escaped_value=$(printf '%s' \"$var_value\" | sed 's/[&/\\]/\\\\&/g')\n",
             );
@@ -581,7 +581,7 @@ impl TestExecutor {
             script.push_str(
                 "# Initialize variable storage for captured variables (bash 3.2+ compatible)\n",
             );
-            script.push_str("STEP_VAR_NAMES=\"\"\n\n");
+            script.push_str("CAPTURED_VAR_NAMES=\"\"\n\n");
         }
 
         // Add trap to ensure JSON file is properly closed on any exit
@@ -858,13 +858,9 @@ impl TestExecutor {
                 if !variables.is_empty() {
                     script.push_str("# Initialize sequence variables\n");
                     for (var_name, var_value) in variables {
+                        script.push_str(&format!("{}={}\n", var_name, bash_escape(var_value)));
                         script.push_str(&format!(
-                            "STEP_VAR_{}={}\n",
-                            var_name,
-                            bash_escape(var_value)
-                        ));
-                        script.push_str(&format!(
-                            "if ! echo \" $STEP_VAR_NAMES \" | grep -q \" {} \"; then STEP_VAR_NAMES=\"$STEP_VAR_NAMES {}\"; fi\n",
+                            "if ! echo \" $CAPTURED_VAR_NAMES \" | grep -q \" {} \"; then CAPTURED_VAR_NAMES=\"$CAPTURED_VAR_NAMES {}\"; fi\n",
                             var_name, var_name
                         ));
                     }
@@ -1050,9 +1046,9 @@ impl TestExecutor {
 
                     // Perform variable substitution: replace ${var_name} patterns using eval
                     script.push_str("SUBSTITUTED_COMMAND=\"$ORIGINAL_COMMAND\"\n");
-                    script.push_str("if [ -n \"$STEP_VAR_NAMES\" ]; then\n");
-                    script.push_str("    for var_name in $STEP_VAR_NAMES; do\n");
-                    script.push_str("        eval \"var_value=\\$STEP_VAR_$var_name\"\n");
+                    script.push_str("if [ -n \"$CAPTURED_VAR_NAMES\" ]; then\n");
+                    script.push_str("    for var_name in $CAPTURED_VAR_NAMES; do\n");
+                    script.push_str("        eval \"var_value=\\$$var_name\"\n");
                     script.push_str("        # Escape special characters for sed\n");
                     script.push_str(
                         "        escaped_value=$(printf '%s' \"$var_value\" | sed 's/[&/\\]/\\\\&/g')\n",
@@ -1089,7 +1085,7 @@ impl TestExecutor {
                                 // Capture from COMMAND_OUTPUT using regex pattern
                                 let sed_pattern = convert_pcre_to_sed_pattern(&pattern);
                                 script.push_str(&format!(
-                                    "STEP_VAR_{}=$(echo \"$COMMAND_OUTPUT\" | sed -n {} | head -n 1 || echo \"\")\n",
+                                    "{}=$(echo \"$COMMAND_OUTPUT\" | sed -n {} | head -n 1 || echo \"\")\n",
                                     var_name,
                                     bash_escape(&sed_pattern)
                                 ));
@@ -1099,17 +1095,17 @@ impl TestExecutor {
                                 // Both stdout and stderr are captured (2>&1)
                                 // Fallback to empty string if command fails (|| echo "")
                                 script.push_str(&format!(
-                                    "STEP_VAR_{}=$({} 2>&1 || echo \"\")\n",
+                                    "{}=$({} 2>&1 || echo \"\")\n",
                                     var_name, cmd
                                 ));
                             }
                             // Add to string-based list only if not already present (avoid duplicates)
                             script.push_str(&format!(
-                                "if ! echo \" $STEP_VAR_NAMES \" | grep -q \" {} \"; then\n",
+                                "if ! echo \" $CAPTURED_VAR_NAMES \" | grep -q \" {} \"; then\n",
                                 var_name
                             ));
                             script.push_str(&format!(
-                                "    STEP_VAR_NAMES=\"$STEP_VAR_NAMES {}\"\n",
+                                "    CAPTURED_VAR_NAMES=\"$CAPTURED_VAR_NAMES {}\"\n",
                                 var_name
                             ));
                             script.push_str("fi\n");
@@ -2998,8 +2994,8 @@ mod tests {
         let script = executor.generate_test_script(&test_case);
 
         assert!(script.contains("# Capture variables from output"));
-        assert!(script.contains("STEP_VAR_user_id=$(echo \"$COMMAND_OUTPUT\" | sed -n"));
-        assert!(script.contains("STEP_VAR_token=$(echo \"$COMMAND_OUTPUT\" | sed -n"));
+        assert!(script.contains("user_id=$(echo \"$COMMAND_OUTPUT\" | sed -n"));
+        assert!(script.contains("token=$(echo \"$COMMAND_OUTPUT\" | sed -n"));
         assert!(script.contains("| head -n 1 || echo \"\")"));
     }
 
@@ -3047,12 +3043,12 @@ mod tests {
         let script = executor.generate_test_script(&test_case);
 
         // Verify variable storage initialization (bash 3.2+ compatible - uses string instead of array)
-        assert!(script.contains("STEP_VAR_NAMES=\"\""));
+        assert!(script.contains("CAPTURED_VAR_NAMES=\"\""));
         assert!(script.contains("# Initialize variable storage for captured variables"));
 
         // Verify capture code generation
         assert!(script.contains("# Capture variables from output"));
-        assert!(script.contains("STEP_VAR_session_id=$(echo \"$COMMAND_OUTPUT\" | sed -n"));
+        assert!(script.contains("session_id=$(echo \"$COMMAND_OUTPUT\" | sed -n"));
         assert!(script.contains("| head -n 1 || echo \"\")"));
     }
 
@@ -3096,8 +3092,8 @@ mod tests {
         // Verify substitution logic is present
         assert!(script.contains("ORIGINAL_COMMAND="));
         assert!(script.contains("SUBSTITUTED_COMMAND=\"$ORIGINAL_COMMAND\""));
-        assert!(script.contains("for var_name in $STEP_VAR_NAMES; do"));
-        assert!(script.contains("eval \"var_value=\\$STEP_VAR_$var_name\""));
+        assert!(script.contains("for var_name in $CAPTURED_VAR_NAMES; do"));
+        assert!(script.contains("eval \"var_value=\\$$var_name\""));
         assert!(script.contains("# Replace ${var_name} pattern"));
         assert!(script.contains("SUBSTITUTED_COMMAND=$(echo \"$SUBSTITUTED_COMMAND\" | sed \"s/\\${$var_name}/$escaped_value/g\")"));
         assert!(script.contains(
@@ -3148,8 +3144,8 @@ mod tests {
 
         // Verify substitution in result expression
         assert!(script.contains("EXPR="));
-        assert!(script.contains("for var_name in $STEP_VAR_NAMES; do"));
-        assert!(script.contains("eval \"var_value=\\$STEP_VAR_$var_name\""));
+        assert!(script.contains("for var_name in $CAPTURED_VAR_NAMES; do"));
+        assert!(script.contains("eval \"var_value=\\$$var_name\""));
         assert!(
             script.contains("EXPR=$(echo \"$EXPR\" | sed \"s/\\${$var_name}/$escaped_value/g\")")
         );
@@ -3207,9 +3203,9 @@ mod tests {
 
         // Verify all three variables are captured
         assert!(script.contains("# Capture variables from output"));
-        assert!(script.contains("STEP_VAR_user_id=$(echo \"$COMMAND_OUTPUT\" | sed -n"));
-        assert!(script.contains("STEP_VAR_session_token=$(echo \"$COMMAND_OUTPUT\" | sed -n"));
-        assert!(script.contains("STEP_VAR_timestamp=$(echo \"$COMMAND_OUTPUT\" | sed -n"));
+        assert!(script.contains("user_id=$(echo \"$COMMAND_OUTPUT\" | sed -n"));
+        assert!(script.contains("session_token=$(echo \"$COMMAND_OUTPUT\" | sed -n"));
+        assert!(script.contains("timestamp=$(echo \"$COMMAND_OUTPUT\" | sed -n"));
 
         // Verify the capture block appears exactly once for this step
         let capture_count = script.matches("# Capture variables from output").count();
@@ -3524,24 +3520,26 @@ mod tests {
         assert!(script.contains("# Capture variables from output"));
 
         // Verify regex-based capture (token) uses sed
-        assert!(script.contains("STEP_VAR_token=$(echo \"$COMMAND_OUTPUT\" | sed -n"));
+        assert!(script.contains("token=$(echo \"$COMMAND_OUTPUT\" | sed -n"));
         assert!(script.contains("| head -n 1 || echo \"\")"));
 
         // Verify command-based capture (file_size) executes the command
-        assert!(
-            script.contains("STEP_VAR_file_size=$(cat /tmp/output.txt | wc -c 2>&1 || echo \"\")")
-        );
+        assert!(script.contains("file_size=$(cat /tmp/output.txt | wc -c 2>&1 || echo \"\")"));
 
         // Verify command-based capture (timestamp) executes the command
-        assert!(script.contains("STEP_VAR_timestamp=$(date +%s 2>&1 || echo \"\")"));
+        assert!(script.contains("timestamp=$(date +%s 2>&1 || echo \"\")"));
 
-        // Verify all variables are added to STEP_VAR_NAMES
-        assert!(script.contains("if ! echo \" $STEP_VAR_NAMES \" | grep -q \" token \"; then"));
-        assert!(script.contains("STEP_VAR_NAMES=\"$STEP_VAR_NAMES token\""));
-        assert!(script.contains("if ! echo \" $STEP_VAR_NAMES \" | grep -q \" file_size \"; then"));
-        assert!(script.contains("STEP_VAR_NAMES=\"$STEP_VAR_NAMES file_size\""));
-        assert!(script.contains("if ! echo \" $STEP_VAR_NAMES \" | grep -q \" timestamp \"; then"));
-        assert!(script.contains("STEP_VAR_NAMES=\"$STEP_VAR_NAMES timestamp\""));
+        // Verify all variables are added to CAPTURED_VAR_NAMES
+        assert!(script.contains("if ! echo \" $CAPTURED_VAR_NAMES \" | grep -q \" token \"; then"));
+        assert!(script.contains("CAPTURED_VAR_NAMES=\"$CAPTURED_VAR_NAMES token\""));
+        assert!(
+            script.contains("if ! echo \" $CAPTURED_VAR_NAMES \" | grep -q \" file_size \"; then")
+        );
+        assert!(script.contains("CAPTURED_VAR_NAMES=\"$CAPTURED_VAR_NAMES file_size\""));
+        assert!(
+            script.contains("if ! echo \" $CAPTURED_VAR_NAMES \" | grep -q \" timestamp \"; then")
+        );
+        assert!(script.contains("CAPTURED_VAR_NAMES=\"$CAPTURED_VAR_NAMES timestamp\""));
     }
 
     #[test]

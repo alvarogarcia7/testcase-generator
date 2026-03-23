@@ -234,40 +234,40 @@ validate_with_shellcheck "$VARIABLE_SCRIPT" "Variable passing script"
 section "Test 5: Verify Script Contains Variable Capture Logic"
 
 # Check for variable storage initialization (bash 3.2+ compatible)
-if grep -q 'STEP_VAR_NAMES=""' "$VARIABLE_SCRIPT"; then
+if grep -q 'CAPTURED_VAR_NAMES=""' "$VARIABLE_SCRIPT"; then
     pass "Script declares STEP_VAR_NAMES variable"
 else
     fail "Script missing STEP_VAR_NAMES declaration"
 fi
 
 # Check for variable capture from step 1 (SESSION_ID)
-if grep -q 'STEP_VAR_SESSION_ID=' "$VARIABLE_SCRIPT"; then
+if grep -q 'SESSION_ID=' "$VARIABLE_SCRIPT"; then
     pass "Script captures SESSION_ID variable"
 else
     fail "Script doesn't capture SESSION_ID variable"
 fi
 
 # Check for variable capture from step 3 (username and token)
-if grep -q 'STEP_VAR_username=' "$VARIABLE_SCRIPT"; then
+if grep -q 'username=' "$VARIABLE_SCRIPT"; then
     pass "Script captures username variable"
 else
     fail "Script doesn't capture username variable"
 fi
 
-if grep -q 'STEP_VAR_token=' "$VARIABLE_SCRIPT"; then
+if grep -q 'token=' "$VARIABLE_SCRIPT"; then
     pass "Script captures token variable"
 else
     fail "Script doesn't capture token variable"
 fi
 
 # Check for variable capture from step 5 (server_ip and server_port)
-if grep -q 'STEP_VAR_server_ip=' "$VARIABLE_SCRIPT"; then
+if grep -q 'server_ip=' "$VARIABLE_SCRIPT"; then
     pass "Script captures server_ip variable"
 else
     fail "Script doesn't capture server_ip variable"
 fi
 
-if grep -q 'STEP_VAR_server_port=' "$VARIABLE_SCRIPT"; then
+if grep -q 'server_port=' "$VARIABLE_SCRIPT"; then
     pass "Script captures server_port variable"
 else
     fail "Script doesn't capture server_port variable"
@@ -277,7 +277,7 @@ fi
 section "Test 6: Verify Variable Substitution Logic"
 
 # Check for variable substitution loop
-if grep -q 'for var_name in $STEP_VAR_NAMES; do' "$VARIABLE_SCRIPT"; then
+if grep -q 'for var_name in $CAPTURED_VAR_NAMES; do' "$VARIABLE_SCRIPT"; then
     pass "Script contains variable substitution loop"
 else
     fail "Script missing variable substitution loop"

@@ -1,823 +1,21 @@
 {
   "title": "Test Execution Results",
   "project": "Test Case Manager - Verification Results",
-  "test_date": "2026-03-21T15:33:32.634489Z",
+  "test_date": "2026-03-23T17:36:47.227322615Z",
   "test_results": [
     {
-      "test_case_id": "TEST_PRECOMP_LONG_OUTPUT_001",
-      "description": "Precomputed verification: steps with longer multi-line output",
+      "test_case_id": "TEST_PRECOMP_TWO_FAILURES_001",
+      "description": "Precomputed verification: two steps fail in different ways",
       "sequences": [
         {
           "sequence_id": 1,
-          "name": "Long Output Sequence",
+          "name": "Two Failures Sequence",
           "step_results": [
             {
               "Pass": {
                 "step": 1,
-                "description": "Execute command with multi-line output",
-                "requirement": "TEST_PRECOMP_LONG_OUTPUT",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 2,
-                "description": "Execute command with verbose output",
-                "requirement": "TEST_PRECOMP_LONG_OUTPUT",
-                "item": 1,
-                "tc": 1
-              }
-            }
-          ],
-          "all_steps_passed": true,
-          "requirement": "TEST_PRECOMP_LONG_OUTPUT",
-          "item": 1,
-          "tc": 1
-        }
-      ],
-      "total_steps": 2,
-      "passed_steps": 2,
-      "failed_steps": 0,
-      "not_executed_steps": 0,
-      "overall_pass": true,
-      "requirement": "TEST_PRECOMP_LONG_OUTPUT",
-      "item": 1,
-      "tc": 1
-    },
-    {
-      "test_case_id": "TEST_PRECOMP_SPECIAL_CHARS_001",
-      "description": "Precomputed verification: output with special characters",
-      "sequences": [
-        {
-          "sequence_id": 1,
-          "name": "Special Characters Sequence",
-          "step_results": [
-            {
-              "Pass": {
-                "step": 1,
-                "description": "Output with quotes",
-                "requirement": "TEST_PRECOMP_SPECIAL_CHARS",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 2,
-                "description": "Output with special symbols",
-                "requirement": "TEST_PRECOMP_SPECIAL_CHARS",
-                "item": 1,
-                "tc": 1
-              }
-            }
-          ],
-          "all_steps_passed": true,
-          "requirement": "TEST_PRECOMP_SPECIAL_CHARS",
-          "item": 1,
-          "tc": 1
-        }
-      ],
-      "total_steps": 2,
-      "passed_steps": 2,
-      "failed_steps": 0,
-      "not_executed_steps": 0,
-      "overall_pass": true,
-      "requirement": "TEST_PRECOMP_SPECIAL_CHARS",
-      "item": 1,
-      "tc": 1
-    },
-    {
-      "test_case_id": "TEST_PRECOMP_ALL_PASS_001",
-      "description": "Precomputed verification: all steps pass with precomputed result and output verification",
-      "sequences": [
-        {
-          "sequence_id": 1,
-          "name": "All Pass Precomputed Sequence",
-          "step_results": [
-            {
-              "Pass": {
-                "step": 1,
-                "description": "Execute command with precomputed verification pass",
-                "requirement": "TEST_PRECOMP_ALL_PASS",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 2,
-                "description": "Execute another command with precomputed verification pass",
-                "requirement": "TEST_PRECOMP_ALL_PASS",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 3,
-                "description": "Execute final command with precomputed verification pass",
-                "requirement": "TEST_PRECOMP_ALL_PASS",
-                "item": 1,
-                "tc": 1
-              }
-            }
-          ],
-          "all_steps_passed": true,
-          "requirement": "TEST_PRECOMP_ALL_PASS",
-          "item": 1,
-          "tc": 1
-        }
-      ],
-      "total_steps": 3,
-      "passed_steps": 3,
-      "failed_steps": 0,
-      "not_executed_steps": 0,
-      "overall_pass": true,
-      "requirement": "TEST_PRECOMP_ALL_PASS",
-      "item": 1,
-      "tc": 1
-    },
-    {
-      "test_case_id": "TEST_SUCCESS_001",
-      "description": "Successful execution scenario with 3 passing steps in 1 sequence",
-      "sequences": [
-        {
-          "sequence_id": 1,
-          "name": "Successful Command Sequence",
-          "step_results": [
-            {
-              "Pass": {
-                "step": 1,
-                "description": "Echo a greeting message",
-                "requirement": "TEST_SUCCESS",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 2,
-                "description": "Echo a status message",
-                "requirement": "TEST_SUCCESS",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 3,
-                "description": "Execute true command",
-                "requirement": "TEST_SUCCESS",
-                "item": 1,
-                "tc": 1
-              }
-            }
-          ],
-          "all_steps_passed": true,
-          "requirement": "TEST_SUCCESS",
-          "item": 1,
-          "tc": 1
-        }
-      ],
-      "total_steps": 3,
-      "passed_steps": 3,
-      "failed_steps": 0,
-      "not_executed_steps": 0,
-      "overall_pass": true,
-      "requirement": "TEST_SUCCESS",
-      "item": 1,
-      "tc": 1
-    },
-    {
-      "test_case_id": "TEST_PRECOMP_SINGLE_STEP_001",
-      "description": "Precomputed verification: single step passing all verifications",
-      "sequences": [
-        {
-          "sequence_id": 1,
-          "name": "Single Step Sequence",
-          "step_results": [
-            {
-              "Pass": {
-                "step": 1,
-                "description": "Execute single command",
-                "requirement": "TEST_PRECOMP_SINGLE_STEP",
-                "item": 1,
-                "tc": 1
-              }
-            }
-          ],
-          "all_steps_passed": true,
-          "requirement": "TEST_PRECOMP_SINGLE_STEP",
-          "item": 1,
-          "tc": 1
-        }
-      ],
-      "total_steps": 1,
-      "passed_steps": 1,
-      "failed_steps": 0,
-      "not_executed_steps": 0,
-      "overall_pass": true,
-      "requirement": "TEST_PRECOMP_SINGLE_STEP",
-      "item": 1,
-      "tc": 1
-    },
-    {
-      "test_case_id": "TEST_PRECOMP_EMPTY_OUTPUT_001",
-      "description": "Precomputed verification: steps with empty output pass verification",
-      "sequences": [
-        {
-          "sequence_id": 1,
-          "name": "Empty Output Sequence",
-          "step_results": [
-            {
-              "Pass": {
-                "step": 1,
-                "description": "Execute command with no output",
-                "requirement": "TEST_PRECOMP_EMPTY_OUTPUT",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 2,
-                "description": "Execute another silent command",
-                "requirement": "TEST_PRECOMP_EMPTY_OUTPUT",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 3,
-                "description": "Execute final silent command",
-                "requirement": "TEST_PRECOMP_EMPTY_OUTPUT",
-                "item": 1,
-                "tc": 1
-              }
-            }
-          ],
-          "all_steps_passed": true,
-          "requirement": "TEST_PRECOMP_EMPTY_OUTPUT",
-          "item": 1,
-          "tc": 1
-        }
-      ],
-      "total_steps": 3,
-      "passed_steps": 3,
-      "failed_steps": 0,
-      "not_executed_steps": 0,
-      "overall_pass": true,
-      "requirement": "TEST_PRECOMP_EMPTY_OUTPUT",
-      "item": 1,
-      "tc": 1
-    },
-    {
-      "test_case_id": "TEST_PRECOMP_FIVE_STEPS_001",
-      "description": "Precomputed verification: five steps all passing",
-      "sequences": [
-        {
-          "sequence_id": 1,
-          "name": "Five Steps Sequence",
-          "step_results": [
-            {
-              "Pass": {
-                "step": 1,
-                "description": "First step",
-                "requirement": "TEST_PRECOMP_FIVE_STEPS",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 2,
-                "description": "Second step",
-                "requirement": "TEST_PRECOMP_FIVE_STEPS",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 3,
-                "description": "Third step",
-                "requirement": "TEST_PRECOMP_FIVE_STEPS",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 4,
-                "description": "Fourth step",
-                "requirement": "TEST_PRECOMP_FIVE_STEPS",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 5,
-                "description": "Fifth step",
-                "requirement": "TEST_PRECOMP_FIVE_STEPS",
-                "item": 1,
-                "tc": 1
-              }
-            }
-          ],
-          "all_steps_passed": true,
-          "requirement": "TEST_PRECOMP_FIVE_STEPS",
-          "item": 1,
-          "tc": 1
-        }
-      ],
-      "total_steps": 5,
-      "passed_steps": 5,
-      "failed_steps": 0,
-      "not_executed_steps": 0,
-      "overall_pass": true,
-      "requirement": "TEST_PRECOMP_FIVE_STEPS",
-      "item": 1,
-      "tc": 1
-    },
-    {
-      "test_case_id": "TEST_EDGE_ALL_MISSING_001",
-      "description": "Edge case: test case defined but no steps in execution log",
-      "sequences": [
-        {
-          "sequence_id": 1,
-          "name": "All Steps Missing Sequence",
-          "step_results": [
-            {
-              "NotExecuted": {
-                "step": 1,
-                "description": "Missing step 1",
-                "requirement": "EDGE_ALL_MISSING",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "NotExecuted": {
-                "step": 2,
-                "description": "Missing step 2",
-                "requirement": "EDGE_ALL_MISSING",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "NotExecuted": {
-                "step": 3,
-                "description": "Missing step 3",
-                "requirement": "EDGE_ALL_MISSING",
-                "item": 1,
-                "tc": 1
-              }
-            }
-          ],
-          "all_steps_passed": false,
-          "requirement": "EDGE_ALL_MISSING",
-          "item": 1,
-          "tc": 1
-        }
-      ],
-      "total_steps": 3,
-      "passed_steps": 0,
-      "failed_steps": 0,
-      "not_executed_steps": 3,
-      "overall_pass": false,
-      "requirement": "EDGE_ALL_MISSING",
-      "item": 1,
-      "tc": 1
-    },
-    {
-      "test_case_id": "TEST_EDGE_PARTIAL_SEQ2_001",
-      "description": "Edge case: multi-sequence with seq 1 complete, seq 2 step 1 only",
-      "sequences": [
-        {
-          "sequence_id": 1,
-          "name": "First Sequence Complete",
-          "step_results": [
-            {
-              "Pass": {
-                "step": 1,
-                "description": "Execute first step",
-                "requirement": "EDGE_PARTIAL_SEQ2",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 2,
-                "description": "Execute second step",
-                "requirement": "EDGE_PARTIAL_SEQ2",
-                "item": 1,
-                "tc": 1
-              }
-            }
-          ],
-          "all_steps_passed": true,
-          "requirement": "EDGE_PARTIAL_SEQ2",
-          "item": 1,
-          "tc": 1
-        },
-        {
-          "sequence_id": 2,
-          "name": "Second Sequence Partial",
-          "step_results": [
-            {
-              "Pass": {
-                "step": 1,
-                "description": "Execute first step",
-                "requirement": "EDGE_PARTIAL_SEQ2",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "NotExecuted": {
-                "step": 2,
-                "description": "Missing second step",
-                "requirement": "EDGE_PARTIAL_SEQ2",
-                "item": 1,
-                "tc": 1
-              }
-            }
-          ],
-          "all_steps_passed": false,
-          "requirement": "EDGE_PARTIAL_SEQ2",
-          "item": 1,
-          "tc": 1
-        }
-      ],
-      "total_steps": 4,
-      "passed_steps": 3,
-      "failed_steps": 0,
-      "not_executed_steps": 1,
-      "overall_pass": false,
-      "requirement": "EDGE_PARTIAL_SEQ2",
-      "item": 1,
-      "tc": 1
-    },
-    {
-      "test_case_id": "TEST_EDGE_MISSING_FIRST_001",
-      "description": "Edge case: first step missing from log while others executed",
-      "sequences": [
-        {
-          "sequence_id": 1,
-          "name": "Missing First Step Sequence",
-          "step_results": [
-            {
-              "NotExecuted": {
-                "step": 1,
-                "description": "Missing step - never executed",
-                "requirement": "EDGE_MISSING_FIRST",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 2,
-                "description": "Execute step 2",
-                "requirement": "EDGE_MISSING_FIRST",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 3,
-                "description": "Execute step 3",
-                "requirement": "EDGE_MISSING_FIRST",
-                "item": 1,
-                "tc": 1
-              }
-            }
-          ],
-          "all_steps_passed": false,
-          "requirement": "EDGE_MISSING_FIRST",
-          "item": 1,
-          "tc": 1
-        }
-      ],
-      "total_steps": 3,
-      "passed_steps": 2,
-      "failed_steps": 0,
-      "not_executed_steps": 1,
-      "overall_pass": false,
-      "requirement": "EDGE_MISSING_FIRST",
-      "item": 1,
-      "tc": 1
-    },
-    {
-      "test_case_id": "TEST_PRECOMP_NUMERIC_OUTPUT_001",
-      "description": "Precomputed verification: steps with numeric output values",
-      "sequences": [
-        {
-          "sequence_id": 1,
-          "name": "Numeric Output Sequence",
-          "step_results": [
-            {
-              "Pass": {
-                "step": 1,
-                "description": "Output simple number",
-                "requirement": "TEST_PRECOMP_NUMERIC_OUTPUT",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 2,
-                "description": "Output decimal number",
-                "requirement": "TEST_PRECOMP_NUMERIC_OUTPUT",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 3,
-                "description": "Output negative number",
-                "requirement": "TEST_PRECOMP_NUMERIC_OUTPUT",
-                "item": 1,
-                "tc": 1
-              }
-            }
-          ],
-          "all_steps_passed": true,
-          "requirement": "TEST_PRECOMP_NUMERIC_OUTPUT",
-          "item": 1,
-          "tc": 1
-        }
-      ],
-      "total_steps": 3,
-      "passed_steps": 3,
-      "failed_steps": 0,
-      "not_executed_steps": 0,
-      "overall_pass": true,
-      "requirement": "TEST_PRECOMP_NUMERIC_OUTPUT",
-      "item": 1,
-      "tc": 1
-    },
-    {
-      "test_case_id": "TEST_PRECOMP_ONLY_RESULT_PASS_001",
-      "description": "Precomputed verification: only result_verification_pass field set",
-      "sequences": [
-        {
-          "sequence_id": 1,
-          "name": "Only Result Pass Sequence",
-          "step_results": [
-            {
-              "Pass": {
-                "step": 1,
-                "description": "Step with only result verification passing",
-                "requirement": "TEST_PRECOMP_ONLY_RESULT_PASS",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 2,
-                "description": "Another step with only result verification passing",
-                "requirement": "TEST_PRECOMP_ONLY_RESULT_PASS",
-                "item": 1,
-                "tc": 1
-              }
-            }
-          ],
-          "all_steps_passed": true,
-          "requirement": "TEST_PRECOMP_ONLY_RESULT_PASS",
-          "item": 1,
-          "tc": 1
-        }
-      ],
-      "total_steps": 2,
-      "passed_steps": 2,
-      "failed_steps": 0,
-      "not_executed_steps": 0,
-      "overall_pass": true,
-      "requirement": "TEST_PRECOMP_ONLY_RESULT_PASS",
-      "item": 1,
-      "tc": 1
-    },
-    {
-      "test_case_id": "TEST_EDGE_PARTIAL_SEQ1_001",
-      "description": "Edge case: multi-sequence with only seq 1 step 1 executed",
-      "sequences": [
-        {
-          "sequence_id": 1,
-          "name": "First Sequence Partial",
-          "step_results": [
-            {
-              "Pass": {
-                "step": 1,
-                "description": "Execute first step",
-                "requirement": "EDGE_PARTIAL_SEQ1",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "NotExecuted": {
-                "step": 2,
-                "description": "Missing second step",
-                "requirement": "EDGE_PARTIAL_SEQ1",
-                "item": 1,
-                "tc": 1
-              }
-            }
-          ],
-          "all_steps_passed": false,
-          "requirement": "EDGE_PARTIAL_SEQ1",
-          "item": 1,
-          "tc": 1
-        },
-        {
-          "sequence_id": 2,
-          "name": "Second Sequence Not Executed",
-          "step_results": [
-            {
-              "NotExecuted": {
-                "step": 1,
-                "description": "Missing first step",
-                "requirement": "EDGE_PARTIAL_SEQ1",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "NotExecuted": {
-                "step": 2,
-                "description": "Missing second step",
-                "requirement": "EDGE_PARTIAL_SEQ1",
-                "item": 1,
-                "tc": 1
-              }
-            }
-          ],
-          "all_steps_passed": false,
-          "requirement": "EDGE_PARTIAL_SEQ1",
-          "item": 1,
-          "tc": 1
-        }
-      ],
-      "total_steps": 4,
-      "passed_steps": 1,
-      "failed_steps": 0,
-      "not_executed_steps": 3,
-      "overall_pass": false,
-      "requirement": "EDGE_PARTIAL_SEQ1",
-      "item": 1,
-      "tc": 1
-    },
-    {
-      "test_case_id": "TEST_EDGE_ALL_PASS_ONE_MISSING_001",
-      "description": "Edge case: all executed steps pass but one step missing from middle",
-      "sequences": [
-        {
-          "sequence_id": 1,
-          "name": "All Pass One Missing Sequence",
-          "step_results": [
-            {
-              "Pass": {
-                "step": 1,
-                "description": "Execute and pass step 1",
-                "requirement": "EDGE_ALL_PASS_ONE_MISSING",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 2,
-                "description": "Execute and pass step 2",
-                "requirement": "EDGE_ALL_PASS_ONE_MISSING",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "NotExecuted": {
-                "step": 3,
-                "description": "Missing step 3",
-                "requirement": "EDGE_ALL_PASS_ONE_MISSING",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 4,
-                "description": "Execute and pass step 4",
-                "requirement": "EDGE_ALL_PASS_ONE_MISSING",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 5,
-                "description": "Execute and pass step 5",
-                "requirement": "EDGE_ALL_PASS_ONE_MISSING",
-                "item": 1,
-                "tc": 1
-              }
-            }
-          ],
-          "all_steps_passed": false,
-          "requirement": "EDGE_ALL_PASS_ONE_MISSING",
-          "item": 1,
-          "tc": 1
-        }
-      ],
-      "total_steps": 5,
-      "passed_steps": 4,
-      "failed_steps": 0,
-      "not_executed_steps": 1,
-      "overall_pass": false,
-      "requirement": "EDGE_ALL_PASS_ONE_MISSING",
-      "item": 1,
-      "tc": 1
-    },
-    {
-      "test_case_id": "TEST_EDGE_EXTRA_STEPS_001",
-      "description": "Edge case: execution log has steps not in test case",
-      "sequences": [
-        {
-          "sequence_id": 1,
-          "name": "Extra Steps Sequence",
-          "step_results": [
-            {
-              "Pass": {
-                "step": 1,
-                "description": "Execute step 1",
-                "requirement": "EDGE_EXTRA_STEPS",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 2,
-                "description": "Execute step 2",
-                "requirement": "EDGE_EXTRA_STEPS",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 3,
-                "description": "Execute step 3",
-                "requirement": "EDGE_EXTRA_STEPS",
-                "item": 1,
-                "tc": 1
-              }
-            }
-          ],
-          "all_steps_passed": true,
-          "requirement": "EDGE_EXTRA_STEPS",
-          "item": 1,
-          "tc": 1
-        }
-      ],
-      "total_steps": 3,
-      "passed_steps": 3,
-      "failed_steps": 0,
-      "not_executed_steps": 0,
-      "overall_pass": true,
-      "requirement": "EDGE_EXTRA_STEPS",
-      "item": 1,
-      "tc": 1
-    },
-    {
-      "test_case_id": "TEST_EDGE_ALL_FAIL_001",
-      "description": "Edge case: all steps executed but all failed verification",
-      "sequences": [
-        {
-          "sequence_id": 1,
-          "name": "All Failures Sequence",
-          "step_results": [
-            {
-              "Fail": {
-                "step": 1,
-                "description": "Step 1 fails verification",
-                "expected": {
-                  "success": true,
-                  "result": "0",
-                  "output": "Expected output 1"
-                },
-                "actual_result": "0",
-                "actual_output": "Wrong output 1",
-                "reason": "Output mismatch: expected 'Expected output 1', got 'Wrong output 1'",
-                "requirement": "EDGE_ALL_FAIL",
+                "description": "First step passes",
+                "requirement": "TEST_PRECOMP_TWO_FAILURES",
                 "item": 1,
                 "tc": 1
               }
@@ -825,841 +23,7 @@
             {
               "Fail": {
                 "step": 2,
-                "description": "Step 2 fails verification",
-                "expected": {
-                  "success": true,
-                  "result": "0",
-                  "output": "Expected output 2"
-                },
-                "actual_result": "0",
-                "actual_output": "Wrong output 2",
-                "reason": "Output mismatch: expected 'Expected output 2', got 'Wrong output 2'",
-                "requirement": "EDGE_ALL_FAIL",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Fail": {
-                "step": 3,
-                "description": "Step 3 fails verification",
-                "expected": {
-                  "success": true,
-                  "result": "0",
-                  "output": "Expected output 3"
-                },
-                "actual_result": "0",
-                "actual_output": "Wrong output 3",
-                "reason": "Output mismatch: expected 'Expected output 3', got 'Wrong output 3'",
-                "requirement": "EDGE_ALL_FAIL",
-                "item": 1,
-                "tc": 1
-              }
-            }
-          ],
-          "all_steps_passed": false,
-          "requirement": "EDGE_ALL_FAIL",
-          "item": 1,
-          "tc": 1
-        }
-      ],
-      "total_steps": 3,
-      "passed_steps": 0,
-      "failed_steps": 3,
-      "not_executed_steps": 0,
-      "overall_pass": false,
-      "requirement": "EDGE_ALL_FAIL",
-      "item": 1,
-      "tc": 1
-    },
-    {
-      "test_case_id": "TEST_EDGE_MISSING_MIDDLE_001",
-      "description": "Edge case: middle step missing with first and last present",
-      "sequences": [
-        {
-          "sequence_id": 1,
-          "name": "Missing Middle Step Sequence",
-          "step_results": [
-            {
-              "Pass": {
-                "step": 1,
-                "description": "Execute step 1",
-                "requirement": "EDGE_MISSING_MIDDLE",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "NotExecuted": {
-                "step": 2,
-                "description": "Missing step - never executed",
-                "requirement": "EDGE_MISSING_MIDDLE",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 3,
-                "description": "Execute step 3",
-                "requirement": "EDGE_MISSING_MIDDLE",
-                "item": 1,
-                "tc": 1
-              }
-            }
-          ],
-          "all_steps_passed": false,
-          "requirement": "EDGE_MISSING_MIDDLE",
-          "item": 1,
-          "tc": 1
-        }
-      ],
-      "total_steps": 3,
-      "passed_steps": 2,
-      "failed_steps": 0,
-      "not_executed_steps": 1,
-      "overall_pass": false,
-      "requirement": "EDGE_MISSING_MIDDLE",
-      "item": 1,
-      "tc": 1
-    },
-    {
-      "test_case_id": "TEST_EDGE_WRONG_SEQUENCE_001",
-      "description": "Edge case: steps executed in wrong sequence order",
-      "sequences": [
-        {
-          "sequence_id": 1,
-          "name": "Wrong Order Sequence",
-          "step_results": [
-            {
-              "Pass": {
-                "step": 1,
-                "description": "Execute step 1",
-                "requirement": "EDGE_WRONG_SEQUENCE",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 2,
-                "description": "Execute step 2",
-                "requirement": "EDGE_WRONG_SEQUENCE",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 3,
-                "description": "Execute step 3",
-                "requirement": "EDGE_WRONG_SEQUENCE",
-                "item": 1,
-                "tc": 1
-              }
-            }
-          ],
-          "all_steps_passed": true,
-          "requirement": "EDGE_WRONG_SEQUENCE",
-          "item": 1,
-          "tc": 1
-        }
-      ],
-      "total_steps": 3,
-      "passed_steps": 3,
-      "failed_steps": 0,
-      "not_executed_steps": 0,
-      "overall_pass": true,
-      "requirement": "EDGE_WRONG_SEQUENCE",
-      "item": 1,
-      "tc": 1
-    },
-    {
-      "test_case_id": "TEST_PRECOMP_MIXED_RESULTS_001",
-      "description": "Precomputed verification: mixed pass and fail results across steps",
-      "sequences": [
-        {
-          "sequence_id": 1,
-          "name": "Mixed Results Sequence",
-          "step_results": [
-            {
-              "Pass": {
-                "step": 1,
-                "description": "Step 1 - pass both verifications",
-                "requirement": "TEST_PRECOMP_MIXED_RESULTS",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 2,
-                "description": "Step 2 - fail result verification",
-                "requirement": "TEST_PRECOMP_MIXED_RESULTS",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 3,
-                "description": "Step 3 - pass both verifications",
-                "requirement": "TEST_PRECOMP_MIXED_RESULTS",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Fail": {
-                "step": 4,
-                "description": "Step 4 - fail output verification",
-                "expected": {
-                  "success": true,
-                  "result": "0",
-                  "output": "Expected text"
-                },
-                "actual_result": "0",
-                "actual_output": "Output mismatch",
-                "reason": "Output mismatch: expected 'Expected text', got 'Output mismatch'",
-                "requirement": "TEST_PRECOMP_MIXED_RESULTS",
-                "item": 1,
-                "tc": 1
-              }
-            }
-          ],
-          "all_steps_passed": false,
-          "requirement": "TEST_PRECOMP_MIXED_RESULTS",
-          "item": 1,
-          "tc": 1
-        }
-      ],
-      "total_steps": 4,
-      "passed_steps": 3,
-      "failed_steps": 1,
-      "not_executed_steps": 0,
-      "overall_pass": false,
-      "requirement": "TEST_PRECOMP_MIXED_RESULTS",
-      "item": 1,
-      "tc": 1
-    },
-    {
-      "test_case_id": "TEST_PRECOMP_PARTIAL_EXEC_001",
-      "description": "Precomputed verification: partial execution with missing steps",
-      "sequences": [
-        {
-          "sequence_id": 1,
-          "name": "Partial Execution Sequence",
-          "step_results": [
-            {
-              "Pass": {
-                "step": 1,
-                "description": "Execute first step",
-                "requirement": "TEST_PRECOMP_PARTIAL_EXEC",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "NotExecuted": {
-                "step": 2,
-                "description": "Missing step - not executed",
-                "requirement": "TEST_PRECOMP_PARTIAL_EXEC",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 3,
-                "description": "Execute third step",
-                "requirement": "TEST_PRECOMP_PARTIAL_EXEC",
-                "item": 1,
-                "tc": 1
-              }
-            }
-          ],
-          "all_steps_passed": false,
-          "requirement": "TEST_PRECOMP_PARTIAL_EXEC",
-          "item": 1,
-          "tc": 1
-        }
-      ],
-      "total_steps": 3,
-      "passed_steps": 2,
-      "failed_steps": 0,
-      "not_executed_steps": 1,
-      "overall_pass": false,
-      "requirement": "TEST_PRECOMP_PARTIAL_EXEC",
-      "item": 1,
-      "tc": 1
-    },
-    {
-      "test_case_id": "TEST_EDGE_ONE_CORRECT_REST_MISSING_001",
-      "description": "Edge case: single step passes, all others missing",
-      "sequences": [
-        {
-          "sequence_id": 1,
-          "name": "One Correct Rest Missing Sequence",
-          "step_results": [
-            {
-              "NotExecuted": {
-                "step": 1,
-                "description": "Missing step 1",
-                "requirement": "EDGE_ONE_CORRECT_REST_MISSING",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 2,
-                "description": "Only passing step",
-                "requirement": "EDGE_ONE_CORRECT_REST_MISSING",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "NotExecuted": {
-                "step": 3,
-                "description": "Missing step 3",
-                "requirement": "EDGE_ONE_CORRECT_REST_MISSING",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "NotExecuted": {
-                "step": 4,
-                "description": "Missing step 4",
-                "requirement": "EDGE_ONE_CORRECT_REST_MISSING",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "NotExecuted": {
-                "step": 5,
-                "description": "Missing step 5",
-                "requirement": "EDGE_ONE_CORRECT_REST_MISSING",
-                "item": 1,
-                "tc": 1
-              }
-            }
-          ],
-          "all_steps_passed": false,
-          "requirement": "EDGE_ONE_CORRECT_REST_MISSING",
-          "item": 1,
-          "tc": 1
-        }
-      ],
-      "total_steps": 5,
-      "passed_steps": 1,
-      "failed_steps": 0,
-      "not_executed_steps": 4,
-      "overall_pass": false,
-      "requirement": "EDGE_ONE_CORRECT_REST_MISSING",
-      "item": 1,
-      "tc": 1
-    },
-    {
-      "test_case_id": "TEST_EDGE_DUPLICATE_STEPS_001",
-      "description": "Edge case: execution log has duplicate step entries",
-      "sequences": [
-        {
-          "sequence_id": 1,
-          "name": "Duplicate Steps Sequence",
-          "step_results": [
-            {
-              "Pass": {
-                "step": 1,
-                "description": "Execute step 1",
-                "requirement": "EDGE_DUPLICATE_STEPS",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 2,
-                "description": "Execute step 2",
-                "requirement": "EDGE_DUPLICATE_STEPS",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 3,
-                "description": "Execute step 3",
-                "requirement": "EDGE_DUPLICATE_STEPS",
-                "item": 1,
-                "tc": 1
-              }
-            }
-          ],
-          "all_steps_passed": true,
-          "requirement": "EDGE_DUPLICATE_STEPS",
-          "item": 1,
-          "tc": 1
-        }
-      ],
-      "total_steps": 3,
-      "passed_steps": 3,
-      "failed_steps": 0,
-      "not_executed_steps": 0,
-      "overall_pass": true,
-      "requirement": "EDGE_DUPLICATE_STEPS",
-      "item": 1,
-      "tc": 1
-    },
-    {
-      "test_case_id": "TEST_PRECOMP_ALL_FAIL_001",
-      "description": "Precomputed verification: all steps fail verification",
-      "sequences": [
-        {
-          "sequence_id": 1,
-          "name": "All Fail Sequence",
-          "step_results": [
-            {
-              "Fail": {
-                "step": 1,
-                "description": "First step fails result verification",
-                "expected": {
-                  "success": true,
-                  "result": "0",
-                  "output": "Fail 1"
-                },
-                "actual_result": "1",
-                "actual_output": "Fail 1",
-                "reason": "Success mismatch: expected true, got false",
-                "requirement": "TEST_PRECOMP_ALL_FAIL",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Fail": {
-                "step": 2,
-                "description": "Second step fails output verification",
-                "expected": {
-                  "success": true,
-                  "result": "0",
-                  "output": "Fail 2"
-                },
-                "actual_result": "0",
-                "actual_output": "Wrong output 2",
-                "reason": "Output mismatch: expected 'Fail 2', got 'Wrong output 2'",
-                "requirement": "TEST_PRECOMP_ALL_FAIL",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Fail": {
-                "step": 3,
-                "description": "Third step fails both verifications",
-                "expected": {
-                  "success": true,
-                  "result": "0",
-                  "output": "Fail 3"
-                },
-                "actual_result": "1",
-                "actual_output": "Wrong output 3",
-                "reason": "Success mismatch: expected true, got false",
-                "requirement": "TEST_PRECOMP_ALL_FAIL",
-                "item": 1,
-                "tc": 1
-              }
-            }
-          ],
-          "all_steps_passed": false,
-          "requirement": "TEST_PRECOMP_ALL_FAIL",
-          "item": 1,
-          "tc": 1
-        }
-      ],
-      "total_steps": 3,
-      "passed_steps": 0,
-      "failed_steps": 3,
-      "not_executed_steps": 0,
-      "overall_pass": false,
-      "requirement": "TEST_PRECOMP_ALL_FAIL",
-      "item": 1,
-      "tc": 1
-    },
-    {
-      "test_case_id": "TEST_EDGE_LAST_STEP_ONLY_001",
-      "description": "Edge case: only last step executed, earlier steps missing",
-      "sequences": [
-        {
-          "sequence_id": 1,
-          "name": "Last Step Only Sequence",
-          "step_results": [
-            {
-              "NotExecuted": {
-                "step": 1,
-                "description": "Missing step 1",
-                "requirement": "EDGE_LAST_STEP_ONLY",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "NotExecuted": {
-                "step": 2,
-                "description": "Missing step 2",
-                "requirement": "EDGE_LAST_STEP_ONLY",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "NotExecuted": {
-                "step": 3,
-                "description": "Missing step 3",
-                "requirement": "EDGE_LAST_STEP_ONLY",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 4,
-                "description": "Only executed step",
-                "requirement": "EDGE_LAST_STEP_ONLY",
-                "item": 1,
-                "tc": 1
-              }
-            }
-          ],
-          "all_steps_passed": false,
-          "requirement": "EDGE_LAST_STEP_ONLY",
-          "item": 1,
-          "tc": 1
-        }
-      ],
-      "total_steps": 4,
-      "passed_steps": 1,
-      "failed_steps": 0,
-      "not_executed_steps": 3,
-      "overall_pass": false,
-      "requirement": "EDGE_LAST_STEP_ONLY",
-      "item": 1,
-      "tc": 1
-    },
-    {
-      "test_case_id": "TEST_EDGE_SPARSE_EXECUTION_001",
-      "description": "Edge case: steps 1, 3, 5 executed; 2, 4, 6 missing",
-      "sequences": [
-        {
-          "sequence_id": 1,
-          "name": "Sparse Execution Sequence",
-          "step_results": [
-            {
-              "Pass": {
-                "step": 1,
-                "description": "Execute step 1",
-                "requirement": "EDGE_SPARSE_EXECUTION",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "NotExecuted": {
-                "step": 2,
-                "description": "Missing step 2",
-                "requirement": "EDGE_SPARSE_EXECUTION",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 3,
-                "description": "Execute step 3",
-                "requirement": "EDGE_SPARSE_EXECUTION",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "NotExecuted": {
-                "step": 4,
-                "description": "Missing step 4",
-                "requirement": "EDGE_SPARSE_EXECUTION",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 5,
-                "description": "Execute step 5",
-                "requirement": "EDGE_SPARSE_EXECUTION",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "NotExecuted": {
-                "step": 6,
-                "description": "Missing step 6",
-                "requirement": "EDGE_SPARSE_EXECUTION",
-                "item": 1,
-                "tc": 1
-              }
-            }
-          ],
-          "all_steps_passed": false,
-          "requirement": "EDGE_SPARSE_EXECUTION",
-          "item": 1,
-          "tc": 1
-        }
-      ],
-      "total_steps": 6,
-      "passed_steps": 3,
-      "failed_steps": 0,
-      "not_executed_steps": 3,
-      "overall_pass": false,
-      "requirement": "EDGE_SPARSE_EXECUTION",
-      "item": 1,
-      "tc": 1
-    },
-    {
-      "test_case_id": "TEST_EDGE_MISSING_LAST_001",
-      "description": "Edge case: last step missing with previous steps executed",
-      "sequences": [
-        {
-          "sequence_id": 1,
-          "name": "Missing Last Step Sequence",
-          "step_results": [
-            {
-              "Pass": {
-                "step": 1,
-                "description": "Execute step 1",
-                "requirement": "EDGE_MISSING_LAST",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 2,
-                "description": "Execute step 2",
-                "requirement": "EDGE_MISSING_LAST",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "NotExecuted": {
-                "step": 3,
-                "description": "Missing step - never executed",
-                "requirement": "EDGE_MISSING_LAST",
-                "item": 1,
-                "tc": 1
-              }
-            }
-          ],
-          "all_steps_passed": false,
-          "requirement": "EDGE_MISSING_LAST",
-          "item": 1,
-          "tc": 1
-        }
-      ],
-      "total_steps": 3,
-      "passed_steps": 2,
-      "failed_steps": 0,
-      "not_executed_steps": 1,
-      "overall_pass": false,
-      "requirement": "EDGE_MISSING_LAST",
-      "item": 1,
-      "tc": 1
-    },
-    {
-      "test_case_id": "TEST_EDGE_MIXED_PASS_FAIL_001",
-      "description": "Edge case: alternating pass/fail pattern across steps",
-      "sequences": [
-        {
-          "sequence_id": 1,
-          "name": "Alternating Pass/Fail Sequence",
-          "step_results": [
-            {
-              "Pass": {
-                "step": 1,
-                "description": "Pass verification",
-                "requirement": "EDGE_MIXED_PASS_FAIL",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Fail": {
-                "step": 2,
-                "description": "Fail verification",
-                "expected": {
-                  "success": true,
-                  "result": "0",
-                  "output": "Step 2 expected"
-                },
-                "actual_result": "0",
-                "actual_output": "Step 2 wrong",
-                "reason": "Output mismatch: expected 'Step 2 expected', got 'Step 2 wrong'",
-                "requirement": "EDGE_MIXED_PASS_FAIL",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 3,
-                "description": "Pass verification",
-                "requirement": "EDGE_MIXED_PASS_FAIL",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Fail": {
-                "step": 4,
-                "description": "Fail verification",
-                "expected": {
-                  "success": true,
-                  "result": "0",
-                  "output": "Step 4 expected"
-                },
-                "actual_result": "0",
-                "actual_output": "Step 4 wrong",
-                "reason": "Output mismatch: expected 'Step 4 expected', got 'Step 4 wrong'",
-                "requirement": "EDGE_MIXED_PASS_FAIL",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 5,
-                "description": "Pass verification",
-                "requirement": "EDGE_MIXED_PASS_FAIL",
-                "item": 1,
-                "tc": 1
-              }
-            }
-          ],
-          "all_steps_passed": false,
-          "requirement": "EDGE_MIXED_PASS_FAIL",
-          "item": 1,
-          "tc": 1
-        }
-      ],
-      "total_steps": 5,
-      "passed_steps": 3,
-      "failed_steps": 2,
-      "not_executed_steps": 0,
-      "overall_pass": false,
-      "requirement": "EDGE_MIXED_PASS_FAIL",
-      "item": 1,
-      "tc": 1
-    },
-    {
-      "test_case_id": "TEST_FAILED_LAST_001",
-      "description": "Test case demonstrating failed last step scenario where steps 1-3 pass successfully but step 4 fails due to output mismatch (expected SUCCESS but got FAILURE)",
-      "sequences": [
-        {
-          "sequence_id": 1,
-          "name": "Failed Last Step Sequence",
-          "step_results": [
-            {
-              "Pass": {
-                "step": 1,
-                "description": "Create a temporary directory",
-                "requirement": "FAILED_LAST_STEP",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 2,
-                "description": "Create a status file with initial content",
-                "requirement": "FAILED_LAST_STEP",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 3,
-                "description": "Verify the file was created",
-                "requirement": "FAILED_LAST_STEP",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Fail": {
-                "step": 4,
-                "description": "Check final status (fails with output mismatch)",
-                "expected": {
-                  "success": true,
-                  "result": "0",
-                  "output": "SUCCESS"
-                },
-                "actual_result": "0",
-                "actual_output": "FAILURE",
-                "reason": "Output mismatch: expected 'SUCCESS', got 'FAILURE'",
-                "requirement": "FAILED_LAST_STEP",
-                "item": 1,
-                "tc": 1
-              }
-            }
-          ],
-          "all_steps_passed": false,
-          "requirement": "FAILED_LAST_STEP",
-          "item": 1,
-          "tc": 1
-        }
-      ],
-      "total_steps": 4,
-      "passed_steps": 3,
-      "failed_steps": 1,
-      "not_executed_steps": 0,
-      "overall_pass": false,
-      "requirement": "FAILED_LAST_STEP",
-      "item": 1,
-      "tc": 1
-    },
-    {
-      "test_case_id": "TEST_PRECOMP_LAST_FAIL_001",
-      "description": "Precomputed verification: last step fails verification",
-      "sequences": [
-        {
-          "sequence_id": 1,
-          "name": "Last Step Fail Sequence",
-          "step_results": [
-            {
-              "Pass": {
-                "step": 1,
-                "description": "Execute first command successfully",
-                "requirement": "TEST_PRECOMP_LAST_FAIL",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 2,
-                "description": "Execute second command successfully",
-                "requirement": "TEST_PRECOMP_LAST_FAIL",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Fail": {
-                "step": 3,
-                "description": "Execute final command with failure",
+                "description": "Second step fails result verification",
                 "expected": {
                   "success": false,
                   "result": "1",
@@ -1668,14 +32,99 @@
                 "actual_result": "0",
                 "actual_output": "",
                 "reason": "Success mismatch: expected false, got true",
-                "requirement": "TEST_PRECOMP_LAST_FAIL",
+                "requirement": "TEST_PRECOMP_TWO_FAILURES",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 3,
+                "description": "Third step passes",
+                "requirement": "TEST_PRECOMP_TWO_FAILURES",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Fail": {
+                "step": 4,
+                "description": "Fourth step fails output verification",
+                "expected": {
+                  "success": true,
+                  "result": "0",
+                  "output": "Expected output"
+                },
+                "actual_result": "0",
+                "actual_output": "Different output",
+                "reason": "Output mismatch: expected 'Expected output', got 'Different output'",
+                "requirement": "TEST_PRECOMP_TWO_FAILURES",
                 "item": 1,
                 "tc": 1
               }
             }
           ],
           "all_steps_passed": false,
-          "requirement": "TEST_PRECOMP_LAST_FAIL",
+          "requirement": "TEST_PRECOMP_TWO_FAILURES",
+          "item": 1,
+          "tc": 1
+        }
+      ],
+      "total_steps": 4,
+      "passed_steps": 2,
+      "failed_steps": 2,
+      "not_executed_steps": 0,
+      "overall_pass": false,
+      "requirement": "TEST_PRECOMP_TWO_FAILURES",
+      "item": 1,
+      "tc": 1
+    },
+    {
+      "test_case_id": "TEST_PRECOMP_MID_FAIL_001",
+      "description": "Precomputed verification: middle step fails verification",
+      "sequences": [
+        {
+          "sequence_id": 1,
+          "name": "Middle Step Fail Sequence",
+          "step_results": [
+            {
+              "Pass": {
+                "step": 1,
+                "description": "Execute first command successfully",
+                "requirement": "TEST_PRECOMP_MID_FAIL",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Fail": {
+                "step": 2,
+                "description": "Execute middle command with output mismatch",
+                "expected": {
+                  "success": true,
+                  "result": "0",
+                  "output": "Expected output"
+                },
+                "actual_result": "0",
+                "actual_output": "Wrong output",
+                "reason": "Output mismatch: expected 'Expected output', got 'Wrong output'",
+                "requirement": "TEST_PRECOMP_MID_FAIL",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 3,
+                "description": "Execute final command successfully",
+                "requirement": "TEST_PRECOMP_MID_FAIL",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": false,
+          "requirement": "TEST_PRECOMP_MID_FAIL",
           "item": 1,
           "tc": 1
         }
@@ -1685,31 +134,23 @@
       "failed_steps": 1,
       "not_executed_steps": 0,
       "overall_pass": false,
-      "requirement": "TEST_PRECOMP_LAST_FAIL",
+      "requirement": "TEST_PRECOMP_MID_FAIL",
       "item": 1,
       "tc": 1
     },
     {
-      "test_case_id": "TEST_PRECOMP_RESULT_FAIL_001",
-      "description": "Precomputed verification: first step fails result verification",
+      "test_case_id": "TEST_FAILED_INTERMEDIATE_001",
+      "description": "Test case demonstrating failed intermediate step scenario where steps 1-2 pass, step 3 fails with exit code 127, and steps 4-5 are not executed",
       "sequences": [
         {
           "sequence_id": 1,
-          "name": "Result Verification Fail Sequence",
+          "name": "Failed Intermediate Step Sequence",
           "step_results": [
             {
-              "Fail": {
+              "Pass": {
                 "step": 1,
-                "description": "Execute command with failed result verification",
-                "expected": {
-                  "success": true,
-                  "result": "0",
-                  "output": "Testing result failure"
-                },
-                "actual_result": "1",
-                "actual_output": "Testing result failure",
-                "reason": "Success mismatch: expected true, got false",
-                "requirement": "TEST_PRECOMP_RESULT_FAIL",
+                "description": "Create a temporary directory",
+                "requirement": "FAILED_INTERMEDIATE_STEP",
                 "item": 1,
                 "tc": 1
               }
@@ -1717,167 +158,25 @@
             {
               "Pass": {
                 "step": 2,
-                "description": "Execute command with passing verification",
-                "requirement": "TEST_PRECOMP_RESULT_FAIL",
-                "item": 1,
-                "tc": 1
-              }
-            }
-          ],
-          "all_steps_passed": false,
-          "requirement": "TEST_PRECOMP_RESULT_FAIL",
-          "item": 1,
-          "tc": 1
-        }
-      ],
-      "total_steps": 2,
-      "passed_steps": 1,
-      "failed_steps": 1,
-      "not_executed_steps": 0,
-      "overall_pass": false,
-      "requirement": "TEST_PRECOMP_RESULT_FAIL",
-      "item": 1,
-      "tc": 1
-    },
-    {
-      "test_case_id": "TEST_PRECOMP_OUTPUT_FAIL_001",
-      "description": "Precomputed verification: first step fails output verification",
-      "sequences": [
-        {
-          "sequence_id": 1,
-          "name": "Output Verification Fail Sequence",
-          "step_results": [
-            {
-              "Fail": {
-                "step": 1,
-                "description": "Execute command with failed output verification",
-                "expected": {
-                  "success": true,
-                  "result": "0",
-                  "output": "Expected output"
-                },
-                "actual_result": "0",
-                "actual_output": "Unexpected output",
-                "reason": "Output mismatch: expected 'Expected output', got 'Unexpected output'",
-                "requirement": "TEST_PRECOMP_OUTPUT_FAIL",
+                "description": "Create a test file",
+                "requirement": "FAILED_INTERMEDIATE_STEP",
                 "item": 1,
                 "tc": 1
               }
             },
             {
-              "Pass": {
-                "step": 2,
-                "description": "Execute command with passing verification",
-                "requirement": "TEST_PRECOMP_OUTPUT_FAIL",
-                "item": 1,
-                "tc": 1
-              }
-            }
-          ],
-          "all_steps_passed": false,
-          "requirement": "TEST_PRECOMP_OUTPUT_FAIL",
-          "item": 1,
-          "tc": 1
-        }
-      ],
-      "total_steps": 2,
-      "passed_steps": 1,
-      "failed_steps": 1,
-      "not_executed_steps": 0,
-      "overall_pass": false,
-      "requirement": "TEST_PRECOMP_OUTPUT_FAIL",
-      "item": 1,
-      "tc": 1
-    },
-    {
-      "test_case_id": "TEST_PRECOMP_BOTH_FAIL_001",
-      "description": "Precomputed verification: first step fails both result and output verification",
-      "sequences": [
-        {
-          "sequence_id": 1,
-          "name": "Both Verifications Fail Sequence",
-          "step_results": [
-            {
               "Fail": {
-                "step": 1,
-                "description": "Execute command with both verifications failing",
-                "expected": {
-                  "success": false,
-                  "result": "1",
-                  "output": "Error message"
-                },
-                "actual_result": "127",
-                "actual_output": "command not found",
-                "reason": "Result mismatch: expected '1', got '127'",
-                "requirement": "TEST_PRECOMP_BOTH_FAIL",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 2,
-                "description": "Execute command with passing verification",
-                "requirement": "TEST_PRECOMP_BOTH_FAIL",
-                "item": 1,
-                "tc": 1
-              }
-            }
-          ],
-          "all_steps_passed": false,
-          "requirement": "TEST_PRECOMP_BOTH_FAIL",
-          "item": 1,
-          "tc": 1
-        }
-      ],
-      "total_steps": 2,
-      "passed_steps": 1,
-      "failed_steps": 1,
-      "not_executed_steps": 0,
-      "overall_pass": false,
-      "requirement": "TEST_PRECOMP_BOTH_FAIL",
-      "item": 1,
-      "tc": 1
-    },
-    {
-      "test_case_id": "TEST_FAILED_FIRST_001",
-      "description": "Test case demonstrating failed first step scenario where step 1 fails and remaining steps are not executed",
-      "sequences": [
-        {
-          "sequence_id": 1,
-          "name": "Failed First Step Sequence",
-          "step_results": [
-            {
-              "Fail": {
-                "step": 1,
-                "description": "Attempt to create directory (fails)",
+                "step": 3,
+                "description": "Execute non-existent command (fails with exit code 127)",
                 "expected": {
                   "success": true,
                   "result": "0",
                   "output": ""
                 },
-                "actual_result": "1",
-                "actual_output": "mkdir: cannot create directory '/invalid/path/directory': No such file or directory",
+                "actual_result": "127",
+                "actual_output": "bash: nonexistent_command_xyz: command not found",
                 "reason": "Success mismatch: expected true, got false",
-                "requirement": "FAILED_FIRST_STEP",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "NotExecuted": {
-                "step": 2,
-                "description": "Create a file (not executed)",
-                "requirement": "FAILED_FIRST_STEP",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "NotExecuted": {
-                "step": 3,
-                "description": "Read the file (not executed)",
-                "requirement": "FAILED_FIRST_STEP",
+                "requirement": "FAILED_INTERMEDIATE_STEP",
                 "item": 1,
                 "tc": 1
               }
@@ -1885,113 +184,34 @@
             {
               "NotExecuted": {
                 "step": 4,
-                "description": "Clean up the file (not executed)",
-                "requirement": "FAILED_FIRST_STEP",
+                "description": "Process the test file (not executed)",
+                "requirement": "FAILED_INTERMEDIATE_STEP",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "NotExecuted": {
+                "step": 5,
+                "description": "Clean up temporary directory (not executed)",
+                "requirement": "FAILED_INTERMEDIATE_STEP",
                 "item": 1,
                 "tc": 1
               }
             }
           ],
           "all_steps_passed": false,
-          "requirement": "FAILED_FIRST_STEP",
+          "requirement": "FAILED_INTERMEDIATE_STEP",
           "item": 1,
           "tc": 1
         }
       ],
-      "total_steps": 4,
-      "passed_steps": 0,
-      "failed_steps": 1,
-      "not_executed_steps": 3,
-      "overall_pass": false,
-      "requirement": "FAILED_FIRST_STEP",
-      "item": 1,
-      "tc": 1
-    },
-    {
-      "test_case_id": "TEST_HOOK_AFTER_STEP_001",
-      "description": "Hook error scenario for after_step hook - script exits with error code after second step",
-      "sequences": [
-        {
-          "sequence_id": 1,
-          "name": "First Sequence - After Step Hook Fails After Step 2",
-          "step_results": [
-            {
-              "Pass": {
-                "step": 1,
-                "description": "Execute first step - after_step hook succeeds",
-                "requirement": "HOOK_AFTER_STEP_ERROR",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 2,
-                "description": "Execute second step - after_step hook fails after this",
-                "requirement": "HOOK_AFTER_STEP_ERROR",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "NotExecuted": {
-                "step": 3,
-                "description": "This step should not execute - after_step hook failed",
-                "requirement": "HOOK_AFTER_STEP_ERROR",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "NotExecuted": {
-                "step": 4,
-                "description": "This step should not execute - test terminated",
-                "requirement": "HOOK_AFTER_STEP_ERROR",
-                "item": 1,
-                "tc": 1
-              }
-            }
-          ],
-          "all_steps_passed": false,
-          "requirement": "HOOK_AFTER_STEP_ERROR",
-          "item": 1,
-          "tc": 1
-        },
-        {
-          "sequence_id": 2,
-          "name": "Second Sequence - Not Executed",
-          "step_results": [
-            {
-              "NotExecuted": {
-                "step": 1,
-                "description": "This step should not execute",
-                "requirement": "HOOK_AFTER_STEP_ERROR",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "NotExecuted": {
-                "step": 2,
-                "description": "This step should not execute",
-                "requirement": "HOOK_AFTER_STEP_ERROR",
-                "item": 1,
-                "tc": 1
-              }
-            }
-          ],
-          "all_steps_passed": false,
-          "requirement": "HOOK_AFTER_STEP_ERROR",
-          "item": 1,
-          "tc": 1
-        }
-      ],
-      "total_steps": 6,
+      "total_steps": 5,
       "passed_steps": 2,
-      "failed_steps": 0,
-      "not_executed_steps": 4,
+      "failed_steps": 1,
+      "not_executed_steps": 2,
       "overall_pass": false,
-      "requirement": "HOOK_AFTER_STEP_ERROR",
+      "requirement": "FAILED_INTERMEDIATE_STEP",
       "item": 1,
       "tc": 1
     },
@@ -2043,6 +263,95 @@
       "not_executed_steps": 3,
       "overall_pass": false,
       "requirement": "HOOK_SETUP_TEST_ERROR",
+      "item": 1,
+      "tc": 1
+    },
+    {
+      "test_case_id": "TEST_HOOK_TEARDOWN_001",
+      "description": "Hook error scenario for teardown_test hook - script exits with error code during test cleanup",
+      "sequences": [
+        {
+          "sequence_id": 1,
+          "name": "First Sequence - Completes Successfully",
+          "step_results": [
+            {
+              "Pass": {
+                "step": 1,
+                "description": "Execute first step of sequence 1",
+                "requirement": "HOOK_TEARDOWN_TEST_ERROR",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 2,
+                "description": "Execute second step of sequence 1",
+                "requirement": "HOOK_TEARDOWN_TEST_ERROR",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": true,
+          "requirement": "HOOK_TEARDOWN_TEST_ERROR",
+          "item": 1,
+          "tc": 1
+        },
+        {
+          "sequence_id": 2,
+          "name": "Second Sequence - Completes Successfully",
+          "step_results": [
+            {
+              "Pass": {
+                "step": 1,
+                "description": "Execute first step of sequence 2",
+                "requirement": "HOOK_TEARDOWN_TEST_ERROR",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 2,
+                "description": "Execute second step of sequence 2",
+                "requirement": "HOOK_TEARDOWN_TEST_ERROR",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": true,
+          "requirement": "HOOK_TEARDOWN_TEST_ERROR",
+          "item": 1,
+          "tc": 1
+        },
+        {
+          "sequence_id": 3,
+          "name": "Third Sequence - Completes Successfully",
+          "step_results": [
+            {
+              "Pass": {
+                "step": 1,
+                "description": "Execute final step",
+                "requirement": "HOOK_TEARDOWN_TEST_ERROR",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": true,
+          "requirement": "HOOK_TEARDOWN_TEST_ERROR",
+          "item": 1,
+          "tc": 1
+        }
+      ],
+      "total_steps": 5,
+      "passed_steps": 5,
+      "failed_steps": 0,
+      "not_executed_steps": 0,
+      "overall_pass": true,
+      "requirement": "HOOK_TEARDOWN_TEST_ERROR",
       "item": 1,
       "tc": 1
     },
@@ -2141,6 +450,94 @@
       "not_executed_steps": 3,
       "overall_pass": false,
       "requirement": "HOOK_AFTER_SEQUENCE_ERROR",
+      "item": 1,
+      "tc": 1
+    },
+    {
+      "test_case_id": "TEST_HOOK_AFTER_STEP_001",
+      "description": "Hook error scenario for after_step hook - script exits with error code after second step",
+      "sequences": [
+        {
+          "sequence_id": 1,
+          "name": "First Sequence - After Step Hook Fails After Step 2",
+          "step_results": [
+            {
+              "Pass": {
+                "step": 1,
+                "description": "Execute first step - after_step hook succeeds",
+                "requirement": "HOOK_AFTER_STEP_ERROR",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 2,
+                "description": "Execute second step - after_step hook fails after this",
+                "requirement": "HOOK_AFTER_STEP_ERROR",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "NotExecuted": {
+                "step": 3,
+                "description": "This step should not execute - after_step hook failed",
+                "requirement": "HOOK_AFTER_STEP_ERROR",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "NotExecuted": {
+                "step": 4,
+                "description": "This step should not execute - test terminated",
+                "requirement": "HOOK_AFTER_STEP_ERROR",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": false,
+          "requirement": "HOOK_AFTER_STEP_ERROR",
+          "item": 1,
+          "tc": 1
+        },
+        {
+          "sequence_id": 2,
+          "name": "Second Sequence - Not Executed",
+          "step_results": [
+            {
+              "NotExecuted": {
+                "step": 1,
+                "description": "This step should not execute",
+                "requirement": "HOOK_AFTER_STEP_ERROR",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "NotExecuted": {
+                "step": 2,
+                "description": "This step should not execute",
+                "requirement": "HOOK_AFTER_STEP_ERROR",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": false,
+          "requirement": "HOOK_AFTER_STEP_ERROR",
+          "item": 1,
+          "tc": 1
+        }
+      ],
+      "total_steps": 6,
+      "passed_steps": 2,
+      "failed_steps": 0,
+      "not_executed_steps": 4,
+      "overall_pass": false,
+      "requirement": "HOOK_AFTER_STEP_ERROR",
       "item": 1,
       "tc": 1
     },
@@ -2444,18 +841,18 @@
       "tc": 1
     },
     {
-      "test_case_id": "TEST_HOOK_TEARDOWN_001",
-      "description": "Hook error scenario for teardown_test hook - script exits with error code during test cleanup",
+      "test_case_id": "TEST_PRECOMP_MULTI_SEQ_001",
+      "description": "Precomputed verification: multiple sequences with mixed results",
       "sequences": [
         {
           "sequence_id": 1,
-          "name": "First Sequence - Completes Successfully",
+          "name": "First Sequence - All Pass",
           "step_results": [
             {
               "Pass": {
                 "step": 1,
-                "description": "Execute first step of sequence 1",
-                "requirement": "HOOK_TEARDOWN_TEST_ERROR",
+                "description": "Execute first command in sequence 1",
+                "requirement": "TEST_PRECOMP_MULTI_SEQ",
                 "item": 1,
                 "tc": 1
               }
@@ -2463,27 +860,27 @@
             {
               "Pass": {
                 "step": 2,
-                "description": "Execute second step of sequence 1",
-                "requirement": "HOOK_TEARDOWN_TEST_ERROR",
+                "description": "Execute second command in sequence 1",
+                "requirement": "TEST_PRECOMP_MULTI_SEQ",
                 "item": 1,
                 "tc": 1
               }
             }
           ],
           "all_steps_passed": true,
-          "requirement": "HOOK_TEARDOWN_TEST_ERROR",
+          "requirement": "TEST_PRECOMP_MULTI_SEQ",
           "item": 1,
           "tc": 1
         },
         {
           "sequence_id": 2,
-          "name": "Second Sequence - Completes Successfully",
+          "name": "Second Sequence - One Failure",
           "step_results": [
             {
               "Pass": {
                 "step": 1,
-                "description": "Execute first step of sequence 2",
-                "requirement": "HOOK_TEARDOWN_TEST_ERROR",
+                "description": "Execute first command in sequence 2",
+                "requirement": "TEST_PRECOMP_MULTI_SEQ",
                 "item": 1,
                 "tc": 1
               }
@@ -2491,256 +888,25 @@
             {
               "Pass": {
                 "step": 2,
-                "description": "Execute second step of sequence 2",
-                "requirement": "HOOK_TEARDOWN_TEST_ERROR",
+                "description": "Execute second command in sequence 2 with failure",
+                "requirement": "TEST_PRECOMP_MULTI_SEQ",
                 "item": 1,
                 "tc": 1
               }
             }
           ],
           "all_steps_passed": true,
-          "requirement": "HOOK_TEARDOWN_TEST_ERROR",
-          "item": 1,
-          "tc": 1
-        },
-        {
-          "sequence_id": 3,
-          "name": "Third Sequence - Completes Successfully",
-          "step_results": [
-            {
-              "Pass": {
-                "step": 1,
-                "description": "Execute final step",
-                "requirement": "HOOK_TEARDOWN_TEST_ERROR",
-                "item": 1,
-                "tc": 1
-              }
-            }
-          ],
-          "all_steps_passed": true,
-          "requirement": "HOOK_TEARDOWN_TEST_ERROR",
-          "item": 1,
-          "tc": 1
-        }
-      ],
-      "total_steps": 5,
-      "passed_steps": 5,
-      "failed_steps": 0,
-      "not_executed_steps": 0,
-      "overall_pass": true,
-      "requirement": "HOOK_TEARDOWN_TEST_ERROR",
-      "item": 1,
-      "tc": 1
-    },
-    {
-      "test_case_id": "TEST_PRECOMP_MID_FAIL_001",
-      "description": "Precomputed verification: middle step fails verification",
-      "sequences": [
-        {
-          "sequence_id": 1,
-          "name": "Middle Step Fail Sequence",
-          "step_results": [
-            {
-              "Pass": {
-                "step": 1,
-                "description": "Execute first command successfully",
-                "requirement": "TEST_PRECOMP_MID_FAIL",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Fail": {
-                "step": 2,
-                "description": "Execute middle command with output mismatch",
-                "expected": {
-                  "success": true,
-                  "result": "0",
-                  "output": "Expected output"
-                },
-                "actual_result": "0",
-                "actual_output": "Wrong output",
-                "reason": "Output mismatch: expected 'Expected output', got 'Wrong output'",
-                "requirement": "TEST_PRECOMP_MID_FAIL",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 3,
-                "description": "Execute final command successfully",
-                "requirement": "TEST_PRECOMP_MID_FAIL",
-                "item": 1,
-                "tc": 1
-              }
-            }
-          ],
-          "all_steps_passed": false,
-          "requirement": "TEST_PRECOMP_MID_FAIL",
-          "item": 1,
-          "tc": 1
-        }
-      ],
-      "total_steps": 3,
-      "passed_steps": 2,
-      "failed_steps": 1,
-      "not_executed_steps": 0,
-      "overall_pass": false,
-      "requirement": "TEST_PRECOMP_MID_FAIL",
-      "item": 1,
-      "tc": 1
-    },
-    {
-      "test_case_id": "TEST_FAILED_INTERMEDIATE_001",
-      "description": "Test case demonstrating failed intermediate step scenario where steps 1-2 pass, step 3 fails with exit code 127, and steps 4-5 are not executed",
-      "sequences": [
-        {
-          "sequence_id": 1,
-          "name": "Failed Intermediate Step Sequence",
-          "step_results": [
-            {
-              "Pass": {
-                "step": 1,
-                "description": "Create a temporary directory",
-                "requirement": "FAILED_INTERMEDIATE_STEP",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 2,
-                "description": "Create a test file",
-                "requirement": "FAILED_INTERMEDIATE_STEP",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Fail": {
-                "step": 3,
-                "description": "Execute non-existent command (fails with exit code 127)",
-                "expected": {
-                  "success": true,
-                  "result": "0",
-                  "output": ""
-                },
-                "actual_result": "127",
-                "actual_output": "bash: nonexistent_command_xyz: command not found",
-                "reason": "Success mismatch: expected true, got false",
-                "requirement": "FAILED_INTERMEDIATE_STEP",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "NotExecuted": {
-                "step": 4,
-                "description": "Process the test file (not executed)",
-                "requirement": "FAILED_INTERMEDIATE_STEP",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "NotExecuted": {
-                "step": 5,
-                "description": "Clean up temporary directory (not executed)",
-                "requirement": "FAILED_INTERMEDIATE_STEP",
-                "item": 1,
-                "tc": 1
-              }
-            }
-          ],
-          "all_steps_passed": false,
-          "requirement": "FAILED_INTERMEDIATE_STEP",
-          "item": 1,
-          "tc": 1
-        }
-      ],
-      "total_steps": 5,
-      "passed_steps": 2,
-      "failed_steps": 1,
-      "not_executed_steps": 2,
-      "overall_pass": false,
-      "requirement": "FAILED_INTERMEDIATE_STEP",
-      "item": 1,
-      "tc": 1
-    },
-    {
-      "test_case_id": "TEST_PRECOMP_TWO_FAILURES_001",
-      "description": "Precomputed verification: two steps fail in different ways",
-      "sequences": [
-        {
-          "sequence_id": 1,
-          "name": "Two Failures Sequence",
-          "step_results": [
-            {
-              "Pass": {
-                "step": 1,
-                "description": "First step passes",
-                "requirement": "TEST_PRECOMP_TWO_FAILURES",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Fail": {
-                "step": 2,
-                "description": "Second step fails result verification",
-                "expected": {
-                  "success": false,
-                  "result": "1",
-                  "output": ""
-                },
-                "actual_result": "0",
-                "actual_output": "",
-                "reason": "Success mismatch: expected false, got true",
-                "requirement": "TEST_PRECOMP_TWO_FAILURES",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 3,
-                "description": "Third step passes",
-                "requirement": "TEST_PRECOMP_TWO_FAILURES",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Fail": {
-                "step": 4,
-                "description": "Fourth step fails output verification",
-                "expected": {
-                  "success": true,
-                  "result": "0",
-                  "output": "Expected output"
-                },
-                "actual_result": "0",
-                "actual_output": "Different output",
-                "reason": "Output mismatch: expected 'Expected output', got 'Different output'",
-                "requirement": "TEST_PRECOMP_TWO_FAILURES",
-                "item": 1,
-                "tc": 1
-              }
-            }
-          ],
-          "all_steps_passed": false,
-          "requirement": "TEST_PRECOMP_TWO_FAILURES",
+          "requirement": "TEST_PRECOMP_MULTI_SEQ",
           "item": 1,
           "tc": 1
         }
       ],
       "total_steps": 4,
-      "passed_steps": 2,
-      "failed_steps": 2,
+      "passed_steps": 4,
+      "failed_steps": 0,
       "not_executed_steps": 0,
-      "overall_pass": false,
-      "requirement": "TEST_PRECOMP_TWO_FAILURES",
+      "overall_pass": true,
+      "requirement": "TEST_PRECOMP_MULTI_SEQ",
       "item": 1,
       "tc": 1
     },
@@ -2851,76 +1017,6 @@
       "tc": 1
     },
     {
-      "test_case_id": "TEST_PRECOMP_MULTI_SEQ_001",
-      "description": "Precomputed verification: multiple sequences with mixed results",
-      "sequences": [
-        {
-          "sequence_id": 1,
-          "name": "First Sequence - All Pass",
-          "step_results": [
-            {
-              "Pass": {
-                "step": 1,
-                "description": "Execute first command in sequence 1",
-                "requirement": "TEST_PRECOMP_MULTI_SEQ",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 2,
-                "description": "Execute second command in sequence 1",
-                "requirement": "TEST_PRECOMP_MULTI_SEQ",
-                "item": 1,
-                "tc": 1
-              }
-            }
-          ],
-          "all_steps_passed": true,
-          "requirement": "TEST_PRECOMP_MULTI_SEQ",
-          "item": 1,
-          "tc": 1
-        },
-        {
-          "sequence_id": 2,
-          "name": "Second Sequence - One Failure",
-          "step_results": [
-            {
-              "Pass": {
-                "step": 1,
-                "description": "Execute first command in sequence 2",
-                "requirement": "TEST_PRECOMP_MULTI_SEQ",
-                "item": 1,
-                "tc": 1
-              }
-            },
-            {
-              "Pass": {
-                "step": 2,
-                "description": "Execute second command in sequence 2 with failure",
-                "requirement": "TEST_PRECOMP_MULTI_SEQ",
-                "item": 1,
-                "tc": 1
-              }
-            }
-          ],
-          "all_steps_passed": true,
-          "requirement": "TEST_PRECOMP_MULTI_SEQ",
-          "item": 1,
-          "tc": 1
-        }
-      ],
-      "total_steps": 4,
-      "passed_steps": 4,
-      "failed_steps": 0,
-      "not_executed_steps": 0,
-      "overall_pass": true,
-      "requirement": "TEST_PRECOMP_MULTI_SEQ",
-      "item": 1,
-      "tc": 1
-    },
-    {
       "test_case_id": "TEST_PRECOMP_THREE_SEQ_001",
       "description": "Precomputed verification: three sequences with varying results",
       "sequences": [
@@ -2997,6 +1093,1910 @@
       "not_executed_steps": 0,
       "overall_pass": true,
       "requirement": "TEST_PRECOMP_THREE_SEQ",
+      "item": 1,
+      "tc": 1
+    },
+    {
+      "test_case_id": "TEST_PRECOMP_BOTH_FAIL_001",
+      "description": "Precomputed verification: first step fails both result and output verification",
+      "sequences": [
+        {
+          "sequence_id": 1,
+          "name": "Both Verifications Fail Sequence",
+          "step_results": [
+            {
+              "Fail": {
+                "step": 1,
+                "description": "Execute command with both verifications failing",
+                "expected": {
+                  "success": false,
+                  "result": "1",
+                  "output": "Error message"
+                },
+                "actual_result": "127",
+                "actual_output": "command not found",
+                "reason": "Result mismatch: expected '1', got '127'",
+                "requirement": "TEST_PRECOMP_BOTH_FAIL",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 2,
+                "description": "Execute command with passing verification",
+                "requirement": "TEST_PRECOMP_BOTH_FAIL",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": false,
+          "requirement": "TEST_PRECOMP_BOTH_FAIL",
+          "item": 1,
+          "tc": 1
+        }
+      ],
+      "total_steps": 2,
+      "passed_steps": 1,
+      "failed_steps": 1,
+      "not_executed_steps": 0,
+      "overall_pass": false,
+      "requirement": "TEST_PRECOMP_BOTH_FAIL",
+      "item": 1,
+      "tc": 1
+    },
+    {
+      "test_case_id": "TEST_FAILED_FIRST_001",
+      "description": "Test case demonstrating failed first step scenario where step 1 fails and remaining steps are not executed",
+      "sequences": [
+        {
+          "sequence_id": 1,
+          "name": "Failed First Step Sequence",
+          "step_results": [
+            {
+              "Fail": {
+                "step": 1,
+                "description": "Attempt to create directory (fails)",
+                "expected": {
+                  "success": true,
+                  "result": "0",
+                  "output": ""
+                },
+                "actual_result": "1",
+                "actual_output": "mkdir: cannot create directory '/invalid/path/directory': No such file or directory",
+                "reason": "Success mismatch: expected true, got false",
+                "requirement": "FAILED_FIRST_STEP",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "NotExecuted": {
+                "step": 2,
+                "description": "Create a file (not executed)",
+                "requirement": "FAILED_FIRST_STEP",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "NotExecuted": {
+                "step": 3,
+                "description": "Read the file (not executed)",
+                "requirement": "FAILED_FIRST_STEP",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "NotExecuted": {
+                "step": 4,
+                "description": "Clean up the file (not executed)",
+                "requirement": "FAILED_FIRST_STEP",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": false,
+          "requirement": "FAILED_FIRST_STEP",
+          "item": 1,
+          "tc": 1
+        }
+      ],
+      "total_steps": 4,
+      "passed_steps": 0,
+      "failed_steps": 1,
+      "not_executed_steps": 3,
+      "overall_pass": false,
+      "requirement": "FAILED_FIRST_STEP",
+      "item": 1,
+      "tc": 1
+    },
+    {
+      "test_case_id": "TEST_PRECOMP_OUTPUT_FAIL_001",
+      "description": "Precomputed verification: first step fails output verification",
+      "sequences": [
+        {
+          "sequence_id": 1,
+          "name": "Output Verification Fail Sequence",
+          "step_results": [
+            {
+              "Fail": {
+                "step": 1,
+                "description": "Execute command with failed output verification",
+                "expected": {
+                  "success": true,
+                  "result": "0",
+                  "output": "Expected output"
+                },
+                "actual_result": "0",
+                "actual_output": "Unexpected output",
+                "reason": "Output mismatch: expected 'Expected output', got 'Unexpected output'",
+                "requirement": "TEST_PRECOMP_OUTPUT_FAIL",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 2,
+                "description": "Execute command with passing verification",
+                "requirement": "TEST_PRECOMP_OUTPUT_FAIL",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": false,
+          "requirement": "TEST_PRECOMP_OUTPUT_FAIL",
+          "item": 1,
+          "tc": 1
+        }
+      ],
+      "total_steps": 2,
+      "passed_steps": 1,
+      "failed_steps": 1,
+      "not_executed_steps": 0,
+      "overall_pass": false,
+      "requirement": "TEST_PRECOMP_OUTPUT_FAIL",
+      "item": 1,
+      "tc": 1
+    },
+    {
+      "test_case_id": "TEST_PRECOMP_RESULT_FAIL_001",
+      "description": "Precomputed verification: first step fails result verification",
+      "sequences": [
+        {
+          "sequence_id": 1,
+          "name": "Result Verification Fail Sequence",
+          "step_results": [
+            {
+              "Fail": {
+                "step": 1,
+                "description": "Execute command with failed result verification",
+                "expected": {
+                  "success": true,
+                  "result": "0",
+                  "output": "Testing result failure"
+                },
+                "actual_result": "1",
+                "actual_output": "Testing result failure",
+                "reason": "Success mismatch: expected true, got false",
+                "requirement": "TEST_PRECOMP_RESULT_FAIL",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 2,
+                "description": "Execute command with passing verification",
+                "requirement": "TEST_PRECOMP_RESULT_FAIL",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": false,
+          "requirement": "TEST_PRECOMP_RESULT_FAIL",
+          "item": 1,
+          "tc": 1
+        }
+      ],
+      "total_steps": 2,
+      "passed_steps": 1,
+      "failed_steps": 1,
+      "not_executed_steps": 0,
+      "overall_pass": false,
+      "requirement": "TEST_PRECOMP_RESULT_FAIL",
+      "item": 1,
+      "tc": 1
+    },
+    {
+      "test_case_id": "TEST_EDGE_ALL_PASS_ONE_MISSING_001",
+      "description": "Edge case: all executed steps pass but one step missing from middle",
+      "sequences": [
+        {
+          "sequence_id": 1,
+          "name": "All Pass One Missing Sequence",
+          "step_results": [
+            {
+              "Pass": {
+                "step": 1,
+                "description": "Execute and pass step 1",
+                "requirement": "EDGE_ALL_PASS_ONE_MISSING",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 2,
+                "description": "Execute and pass step 2",
+                "requirement": "EDGE_ALL_PASS_ONE_MISSING",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "NotExecuted": {
+                "step": 3,
+                "description": "Missing step 3",
+                "requirement": "EDGE_ALL_PASS_ONE_MISSING",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 4,
+                "description": "Execute and pass step 4",
+                "requirement": "EDGE_ALL_PASS_ONE_MISSING",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 5,
+                "description": "Execute and pass step 5",
+                "requirement": "EDGE_ALL_PASS_ONE_MISSING",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": false,
+          "requirement": "EDGE_ALL_PASS_ONE_MISSING",
+          "item": 1,
+          "tc": 1
+        }
+      ],
+      "total_steps": 5,
+      "passed_steps": 4,
+      "failed_steps": 0,
+      "not_executed_steps": 1,
+      "overall_pass": false,
+      "requirement": "EDGE_ALL_PASS_ONE_MISSING",
+      "item": 1,
+      "tc": 1
+    },
+    {
+      "test_case_id": "TEST_PRECOMP_ALL_FAIL_001",
+      "description": "Precomputed verification: all steps fail verification",
+      "sequences": [
+        {
+          "sequence_id": 1,
+          "name": "All Fail Sequence",
+          "step_results": [
+            {
+              "Fail": {
+                "step": 1,
+                "description": "First step fails result verification",
+                "expected": {
+                  "success": true,
+                  "result": "0",
+                  "output": "Fail 1"
+                },
+                "actual_result": "1",
+                "actual_output": "Fail 1",
+                "reason": "Success mismatch: expected true, got false",
+                "requirement": "TEST_PRECOMP_ALL_FAIL",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Fail": {
+                "step": 2,
+                "description": "Second step fails output verification",
+                "expected": {
+                  "success": true,
+                  "result": "0",
+                  "output": "Fail 2"
+                },
+                "actual_result": "0",
+                "actual_output": "Wrong output 2",
+                "reason": "Output mismatch: expected 'Fail 2', got 'Wrong output 2'",
+                "requirement": "TEST_PRECOMP_ALL_FAIL",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Fail": {
+                "step": 3,
+                "description": "Third step fails both verifications",
+                "expected": {
+                  "success": true,
+                  "result": "0",
+                  "output": "Fail 3"
+                },
+                "actual_result": "1",
+                "actual_output": "Wrong output 3",
+                "reason": "Success mismatch: expected true, got false",
+                "requirement": "TEST_PRECOMP_ALL_FAIL",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": false,
+          "requirement": "TEST_PRECOMP_ALL_FAIL",
+          "item": 1,
+          "tc": 1
+        }
+      ],
+      "total_steps": 3,
+      "passed_steps": 0,
+      "failed_steps": 3,
+      "not_executed_steps": 0,
+      "overall_pass": false,
+      "requirement": "TEST_PRECOMP_ALL_FAIL",
+      "item": 1,
+      "tc": 1
+    },
+    {
+      "test_case_id": "TEST_EDGE_PARTIAL_SEQ1_001",
+      "description": "Edge case: multi-sequence with only seq 1 step 1 executed",
+      "sequences": [
+        {
+          "sequence_id": 1,
+          "name": "First Sequence Partial",
+          "step_results": [
+            {
+              "Pass": {
+                "step": 1,
+                "description": "Execute first step",
+                "requirement": "EDGE_PARTIAL_SEQ1",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "NotExecuted": {
+                "step": 2,
+                "description": "Missing second step",
+                "requirement": "EDGE_PARTIAL_SEQ1",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": false,
+          "requirement": "EDGE_PARTIAL_SEQ1",
+          "item": 1,
+          "tc": 1
+        },
+        {
+          "sequence_id": 2,
+          "name": "Second Sequence Not Executed",
+          "step_results": [
+            {
+              "NotExecuted": {
+                "step": 1,
+                "description": "Missing first step",
+                "requirement": "EDGE_PARTIAL_SEQ1",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "NotExecuted": {
+                "step": 2,
+                "description": "Missing second step",
+                "requirement": "EDGE_PARTIAL_SEQ1",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": false,
+          "requirement": "EDGE_PARTIAL_SEQ1",
+          "item": 1,
+          "tc": 1
+        }
+      ],
+      "total_steps": 4,
+      "passed_steps": 1,
+      "failed_steps": 0,
+      "not_executed_steps": 3,
+      "overall_pass": false,
+      "requirement": "EDGE_PARTIAL_SEQ1",
+      "item": 1,
+      "tc": 1
+    },
+    {
+      "test_case_id": "TEST_EDGE_LAST_STEP_ONLY_001",
+      "description": "Edge case: only last step executed, earlier steps missing",
+      "sequences": [
+        {
+          "sequence_id": 1,
+          "name": "Last Step Only Sequence",
+          "step_results": [
+            {
+              "NotExecuted": {
+                "step": 1,
+                "description": "Missing step 1",
+                "requirement": "EDGE_LAST_STEP_ONLY",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "NotExecuted": {
+                "step": 2,
+                "description": "Missing step 2",
+                "requirement": "EDGE_LAST_STEP_ONLY",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "NotExecuted": {
+                "step": 3,
+                "description": "Missing step 3",
+                "requirement": "EDGE_LAST_STEP_ONLY",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 4,
+                "description": "Only executed step",
+                "requirement": "EDGE_LAST_STEP_ONLY",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": false,
+          "requirement": "EDGE_LAST_STEP_ONLY",
+          "item": 1,
+          "tc": 1
+        }
+      ],
+      "total_steps": 4,
+      "passed_steps": 1,
+      "failed_steps": 0,
+      "not_executed_steps": 3,
+      "overall_pass": false,
+      "requirement": "EDGE_LAST_STEP_ONLY",
+      "item": 1,
+      "tc": 1
+    },
+    {
+      "test_case_id": "TEST_EDGE_SPARSE_EXECUTION_001",
+      "description": "Edge case: steps 1, 3, 5 executed; 2, 4, 6 missing",
+      "sequences": [
+        {
+          "sequence_id": 1,
+          "name": "Sparse Execution Sequence",
+          "step_results": [
+            {
+              "Pass": {
+                "step": 1,
+                "description": "Execute step 1",
+                "requirement": "EDGE_SPARSE_EXECUTION",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "NotExecuted": {
+                "step": 2,
+                "description": "Missing step 2",
+                "requirement": "EDGE_SPARSE_EXECUTION",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 3,
+                "description": "Execute step 3",
+                "requirement": "EDGE_SPARSE_EXECUTION",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "NotExecuted": {
+                "step": 4,
+                "description": "Missing step 4",
+                "requirement": "EDGE_SPARSE_EXECUTION",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 5,
+                "description": "Execute step 5",
+                "requirement": "EDGE_SPARSE_EXECUTION",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "NotExecuted": {
+                "step": 6,
+                "description": "Missing step 6",
+                "requirement": "EDGE_SPARSE_EXECUTION",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": false,
+          "requirement": "EDGE_SPARSE_EXECUTION",
+          "item": 1,
+          "tc": 1
+        }
+      ],
+      "total_steps": 6,
+      "passed_steps": 3,
+      "failed_steps": 0,
+      "not_executed_steps": 3,
+      "overall_pass": false,
+      "requirement": "EDGE_SPARSE_EXECUTION",
+      "item": 1,
+      "tc": 1
+    },
+    {
+      "test_case_id": "TEST_EDGE_ALL_MISSING_001",
+      "description": "Edge case: test case defined but no steps in execution log",
+      "sequences": [
+        {
+          "sequence_id": 1,
+          "name": "All Steps Missing Sequence",
+          "step_results": [
+            {
+              "NotExecuted": {
+                "step": 1,
+                "description": "Missing step 1",
+                "requirement": "EDGE_ALL_MISSING",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "NotExecuted": {
+                "step": 2,
+                "description": "Missing step 2",
+                "requirement": "EDGE_ALL_MISSING",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "NotExecuted": {
+                "step": 3,
+                "description": "Missing step 3",
+                "requirement": "EDGE_ALL_MISSING",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": false,
+          "requirement": "EDGE_ALL_MISSING",
+          "item": 1,
+          "tc": 1
+        }
+      ],
+      "total_steps": 3,
+      "passed_steps": 0,
+      "failed_steps": 0,
+      "not_executed_steps": 3,
+      "overall_pass": false,
+      "requirement": "EDGE_ALL_MISSING",
+      "item": 1,
+      "tc": 1
+    },
+    {
+      "test_case_id": "TEST_PRECOMP_PARTIAL_EXEC_001",
+      "description": "Precomputed verification: partial execution with missing steps",
+      "sequences": [
+        {
+          "sequence_id": 1,
+          "name": "Partial Execution Sequence",
+          "step_results": [
+            {
+              "Pass": {
+                "step": 1,
+                "description": "Execute first step",
+                "requirement": "TEST_PRECOMP_PARTIAL_EXEC",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "NotExecuted": {
+                "step": 2,
+                "description": "Missing step - not executed",
+                "requirement": "TEST_PRECOMP_PARTIAL_EXEC",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 3,
+                "description": "Execute third step",
+                "requirement": "TEST_PRECOMP_PARTIAL_EXEC",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": false,
+          "requirement": "TEST_PRECOMP_PARTIAL_EXEC",
+          "item": 1,
+          "tc": 1
+        }
+      ],
+      "total_steps": 3,
+      "passed_steps": 2,
+      "failed_steps": 0,
+      "not_executed_steps": 1,
+      "overall_pass": false,
+      "requirement": "TEST_PRECOMP_PARTIAL_EXEC",
+      "item": 1,
+      "tc": 1
+    },
+    {
+      "test_case_id": "TEST_PRECOMP_ONLY_RESULT_PASS_001",
+      "description": "Precomputed verification: only result_verification_pass field set",
+      "sequences": [
+        {
+          "sequence_id": 1,
+          "name": "Only Result Pass Sequence",
+          "step_results": [
+            {
+              "Pass": {
+                "step": 1,
+                "description": "Step with only result verification passing",
+                "requirement": "TEST_PRECOMP_ONLY_RESULT_PASS",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 2,
+                "description": "Another step with only result verification passing",
+                "requirement": "TEST_PRECOMP_ONLY_RESULT_PASS",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": true,
+          "requirement": "TEST_PRECOMP_ONLY_RESULT_PASS",
+          "item": 1,
+          "tc": 1
+        }
+      ],
+      "total_steps": 2,
+      "passed_steps": 2,
+      "failed_steps": 0,
+      "not_executed_steps": 0,
+      "overall_pass": true,
+      "requirement": "TEST_PRECOMP_ONLY_RESULT_PASS",
+      "item": 1,
+      "tc": 1
+    },
+    {
+      "test_case_id": "TEST_EDGE_MISSING_FIRST_001",
+      "description": "Edge case: first step missing from log while others executed",
+      "sequences": [
+        {
+          "sequence_id": 1,
+          "name": "Missing First Step Sequence",
+          "step_results": [
+            {
+              "NotExecuted": {
+                "step": 1,
+                "description": "Missing step - never executed",
+                "requirement": "EDGE_MISSING_FIRST",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 2,
+                "description": "Execute step 2",
+                "requirement": "EDGE_MISSING_FIRST",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 3,
+                "description": "Execute step 3",
+                "requirement": "EDGE_MISSING_FIRST",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": false,
+          "requirement": "EDGE_MISSING_FIRST",
+          "item": 1,
+          "tc": 1
+        }
+      ],
+      "total_steps": 3,
+      "passed_steps": 2,
+      "failed_steps": 0,
+      "not_executed_steps": 1,
+      "overall_pass": false,
+      "requirement": "EDGE_MISSING_FIRST",
+      "item": 1,
+      "tc": 1
+    },
+    {
+      "test_case_id": "TEST_EDGE_MISSING_LAST_001",
+      "description": "Edge case: last step missing with previous steps executed",
+      "sequences": [
+        {
+          "sequence_id": 1,
+          "name": "Missing Last Step Sequence",
+          "step_results": [
+            {
+              "Pass": {
+                "step": 1,
+                "description": "Execute step 1",
+                "requirement": "EDGE_MISSING_LAST",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 2,
+                "description": "Execute step 2",
+                "requirement": "EDGE_MISSING_LAST",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "NotExecuted": {
+                "step": 3,
+                "description": "Missing step - never executed",
+                "requirement": "EDGE_MISSING_LAST",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": false,
+          "requirement": "EDGE_MISSING_LAST",
+          "item": 1,
+          "tc": 1
+        }
+      ],
+      "total_steps": 3,
+      "passed_steps": 2,
+      "failed_steps": 0,
+      "not_executed_steps": 1,
+      "overall_pass": false,
+      "requirement": "EDGE_MISSING_LAST",
+      "item": 1,
+      "tc": 1
+    },
+    {
+      "test_case_id": "TEST_PRECOMP_NUMERIC_OUTPUT_001",
+      "description": "Precomputed verification: steps with numeric output values",
+      "sequences": [
+        {
+          "sequence_id": 1,
+          "name": "Numeric Output Sequence",
+          "step_results": [
+            {
+              "Pass": {
+                "step": 1,
+                "description": "Output simple number",
+                "requirement": "TEST_PRECOMP_NUMERIC_OUTPUT",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 2,
+                "description": "Output decimal number",
+                "requirement": "TEST_PRECOMP_NUMERIC_OUTPUT",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 3,
+                "description": "Output negative number",
+                "requirement": "TEST_PRECOMP_NUMERIC_OUTPUT",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": true,
+          "requirement": "TEST_PRECOMP_NUMERIC_OUTPUT",
+          "item": 1,
+          "tc": 1
+        }
+      ],
+      "total_steps": 3,
+      "passed_steps": 3,
+      "failed_steps": 0,
+      "not_executed_steps": 0,
+      "overall_pass": true,
+      "requirement": "TEST_PRECOMP_NUMERIC_OUTPUT",
+      "item": 1,
+      "tc": 1
+    },
+    {
+      "test_case_id": "TEST_EDGE_EXTRA_STEPS_001",
+      "description": "Edge case: execution log has steps not in test case",
+      "sequences": [
+        {
+          "sequence_id": 1,
+          "name": "Extra Steps Sequence",
+          "step_results": [
+            {
+              "Pass": {
+                "step": 1,
+                "description": "Execute step 1",
+                "requirement": "EDGE_EXTRA_STEPS",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 2,
+                "description": "Execute step 2",
+                "requirement": "EDGE_EXTRA_STEPS",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 3,
+                "description": "Execute step 3",
+                "requirement": "EDGE_EXTRA_STEPS",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": true,
+          "requirement": "EDGE_EXTRA_STEPS",
+          "item": 1,
+          "tc": 1
+        }
+      ],
+      "total_steps": 3,
+      "passed_steps": 3,
+      "failed_steps": 0,
+      "not_executed_steps": 0,
+      "overall_pass": true,
+      "requirement": "EDGE_EXTRA_STEPS",
+      "item": 1,
+      "tc": 1
+    },
+    {
+      "test_case_id": "TEST_EDGE_WRONG_SEQUENCE_001",
+      "description": "Edge case: steps executed in wrong sequence order",
+      "sequences": [
+        {
+          "sequence_id": 1,
+          "name": "Wrong Order Sequence",
+          "step_results": [
+            {
+              "Pass": {
+                "step": 1,
+                "description": "Execute step 1",
+                "requirement": "EDGE_WRONG_SEQUENCE",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 2,
+                "description": "Execute step 2",
+                "requirement": "EDGE_WRONG_SEQUENCE",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 3,
+                "description": "Execute step 3",
+                "requirement": "EDGE_WRONG_SEQUENCE",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": true,
+          "requirement": "EDGE_WRONG_SEQUENCE",
+          "item": 1,
+          "tc": 1
+        }
+      ],
+      "total_steps": 3,
+      "passed_steps": 3,
+      "failed_steps": 0,
+      "not_executed_steps": 0,
+      "overall_pass": true,
+      "requirement": "EDGE_WRONG_SEQUENCE",
+      "item": 1,
+      "tc": 1
+    },
+    {
+      "test_case_id": "TEST_EDGE_MISSING_MIDDLE_001",
+      "description": "Edge case: middle step missing with first and last present",
+      "sequences": [
+        {
+          "sequence_id": 1,
+          "name": "Missing Middle Step Sequence",
+          "step_results": [
+            {
+              "Pass": {
+                "step": 1,
+                "description": "Execute step 1",
+                "requirement": "EDGE_MISSING_MIDDLE",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "NotExecuted": {
+                "step": 2,
+                "description": "Missing step - never executed",
+                "requirement": "EDGE_MISSING_MIDDLE",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 3,
+                "description": "Execute step 3",
+                "requirement": "EDGE_MISSING_MIDDLE",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": false,
+          "requirement": "EDGE_MISSING_MIDDLE",
+          "item": 1,
+          "tc": 1
+        }
+      ],
+      "total_steps": 3,
+      "passed_steps": 2,
+      "failed_steps": 0,
+      "not_executed_steps": 1,
+      "overall_pass": false,
+      "requirement": "EDGE_MISSING_MIDDLE",
+      "item": 1,
+      "tc": 1
+    },
+    {
+      "test_case_id": "TEST_EDGE_MIXED_PASS_FAIL_001",
+      "description": "Edge case: alternating pass/fail pattern across steps",
+      "sequences": [
+        {
+          "sequence_id": 1,
+          "name": "Alternating Pass/Fail Sequence",
+          "step_results": [
+            {
+              "Pass": {
+                "step": 1,
+                "description": "Pass verification",
+                "requirement": "EDGE_MIXED_PASS_FAIL",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Fail": {
+                "step": 2,
+                "description": "Fail verification",
+                "expected": {
+                  "success": true,
+                  "result": "0",
+                  "output": "Step 2 expected"
+                },
+                "actual_result": "0",
+                "actual_output": "Step 2 wrong",
+                "reason": "Output mismatch: expected 'Step 2 expected', got 'Step 2 wrong'",
+                "requirement": "EDGE_MIXED_PASS_FAIL",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 3,
+                "description": "Pass verification",
+                "requirement": "EDGE_MIXED_PASS_FAIL",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Fail": {
+                "step": 4,
+                "description": "Fail verification",
+                "expected": {
+                  "success": true,
+                  "result": "0",
+                  "output": "Step 4 expected"
+                },
+                "actual_result": "0",
+                "actual_output": "Step 4 wrong",
+                "reason": "Output mismatch: expected 'Step 4 expected', got 'Step 4 wrong'",
+                "requirement": "EDGE_MIXED_PASS_FAIL",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 5,
+                "description": "Pass verification",
+                "requirement": "EDGE_MIXED_PASS_FAIL",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": false,
+          "requirement": "EDGE_MIXED_PASS_FAIL",
+          "item": 1,
+          "tc": 1
+        }
+      ],
+      "total_steps": 5,
+      "passed_steps": 3,
+      "failed_steps": 2,
+      "not_executed_steps": 0,
+      "overall_pass": false,
+      "requirement": "EDGE_MIXED_PASS_FAIL",
+      "item": 1,
+      "tc": 1
+    },
+    {
+      "test_case_id": "TEST_EDGE_DUPLICATE_STEPS_001",
+      "description": "Edge case: execution log has duplicate step entries",
+      "sequences": [
+        {
+          "sequence_id": 1,
+          "name": "Duplicate Steps Sequence",
+          "step_results": [
+            {
+              "Pass": {
+                "step": 1,
+                "description": "Execute step 1",
+                "requirement": "EDGE_DUPLICATE_STEPS",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 2,
+                "description": "Execute step 2",
+                "requirement": "EDGE_DUPLICATE_STEPS",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 3,
+                "description": "Execute step 3",
+                "requirement": "EDGE_DUPLICATE_STEPS",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": true,
+          "requirement": "EDGE_DUPLICATE_STEPS",
+          "item": 1,
+          "tc": 1
+        }
+      ],
+      "total_steps": 3,
+      "passed_steps": 3,
+      "failed_steps": 0,
+      "not_executed_steps": 0,
+      "overall_pass": true,
+      "requirement": "EDGE_DUPLICATE_STEPS",
+      "item": 1,
+      "tc": 1
+    },
+    {
+      "test_case_id": "TEST_PRECOMP_MIXED_RESULTS_001",
+      "description": "Precomputed verification: mixed pass and fail results across steps",
+      "sequences": [
+        {
+          "sequence_id": 1,
+          "name": "Mixed Results Sequence",
+          "step_results": [
+            {
+              "Pass": {
+                "step": 1,
+                "description": "Step 1 - pass both verifications",
+                "requirement": "TEST_PRECOMP_MIXED_RESULTS",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 2,
+                "description": "Step 2 - fail result verification",
+                "requirement": "TEST_PRECOMP_MIXED_RESULTS",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 3,
+                "description": "Step 3 - pass both verifications",
+                "requirement": "TEST_PRECOMP_MIXED_RESULTS",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Fail": {
+                "step": 4,
+                "description": "Step 4 - fail output verification",
+                "expected": {
+                  "success": true,
+                  "result": "0",
+                  "output": "Expected text"
+                },
+                "actual_result": "0",
+                "actual_output": "Output mismatch",
+                "reason": "Output mismatch: expected 'Expected text', got 'Output mismatch'",
+                "requirement": "TEST_PRECOMP_MIXED_RESULTS",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": false,
+          "requirement": "TEST_PRECOMP_MIXED_RESULTS",
+          "item": 1,
+          "tc": 1
+        }
+      ],
+      "total_steps": 4,
+      "passed_steps": 3,
+      "failed_steps": 1,
+      "not_executed_steps": 0,
+      "overall_pass": false,
+      "requirement": "TEST_PRECOMP_MIXED_RESULTS",
+      "item": 1,
+      "tc": 1
+    },
+    {
+      "test_case_id": "TEST_EDGE_PARTIAL_SEQ2_001",
+      "description": "Edge case: multi-sequence with seq 1 complete, seq 2 step 1 only",
+      "sequences": [
+        {
+          "sequence_id": 1,
+          "name": "First Sequence Complete",
+          "step_results": [
+            {
+              "Pass": {
+                "step": 1,
+                "description": "Execute first step",
+                "requirement": "EDGE_PARTIAL_SEQ2",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 2,
+                "description": "Execute second step",
+                "requirement": "EDGE_PARTIAL_SEQ2",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": true,
+          "requirement": "EDGE_PARTIAL_SEQ2",
+          "item": 1,
+          "tc": 1
+        },
+        {
+          "sequence_id": 2,
+          "name": "Second Sequence Partial",
+          "step_results": [
+            {
+              "Pass": {
+                "step": 1,
+                "description": "Execute first step",
+                "requirement": "EDGE_PARTIAL_SEQ2",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "NotExecuted": {
+                "step": 2,
+                "description": "Missing second step",
+                "requirement": "EDGE_PARTIAL_SEQ2",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": false,
+          "requirement": "EDGE_PARTIAL_SEQ2",
+          "item": 1,
+          "tc": 1
+        }
+      ],
+      "total_steps": 4,
+      "passed_steps": 3,
+      "failed_steps": 0,
+      "not_executed_steps": 1,
+      "overall_pass": false,
+      "requirement": "EDGE_PARTIAL_SEQ2",
+      "item": 1,
+      "tc": 1
+    },
+    {
+      "test_case_id": "TEST_EDGE_ONE_CORRECT_REST_MISSING_001",
+      "description": "Edge case: single step passes, all others missing",
+      "sequences": [
+        {
+          "sequence_id": 1,
+          "name": "One Correct Rest Missing Sequence",
+          "step_results": [
+            {
+              "NotExecuted": {
+                "step": 1,
+                "description": "Missing step 1",
+                "requirement": "EDGE_ONE_CORRECT_REST_MISSING",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 2,
+                "description": "Only passing step",
+                "requirement": "EDGE_ONE_CORRECT_REST_MISSING",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "NotExecuted": {
+                "step": 3,
+                "description": "Missing step 3",
+                "requirement": "EDGE_ONE_CORRECT_REST_MISSING",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "NotExecuted": {
+                "step": 4,
+                "description": "Missing step 4",
+                "requirement": "EDGE_ONE_CORRECT_REST_MISSING",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "NotExecuted": {
+                "step": 5,
+                "description": "Missing step 5",
+                "requirement": "EDGE_ONE_CORRECT_REST_MISSING",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": false,
+          "requirement": "EDGE_ONE_CORRECT_REST_MISSING",
+          "item": 1,
+          "tc": 1
+        }
+      ],
+      "total_steps": 5,
+      "passed_steps": 1,
+      "failed_steps": 0,
+      "not_executed_steps": 4,
+      "overall_pass": false,
+      "requirement": "EDGE_ONE_CORRECT_REST_MISSING",
+      "item": 1,
+      "tc": 1
+    },
+    {
+      "test_case_id": "TEST_EDGE_ALL_FAIL_001",
+      "description": "Edge case: all steps executed but all failed verification",
+      "sequences": [
+        {
+          "sequence_id": 1,
+          "name": "All Failures Sequence",
+          "step_results": [
+            {
+              "Fail": {
+                "step": 1,
+                "description": "Step 1 fails verification",
+                "expected": {
+                  "success": true,
+                  "result": "0",
+                  "output": "Expected output 1"
+                },
+                "actual_result": "0",
+                "actual_output": "Wrong output 1",
+                "reason": "Output mismatch: expected 'Expected output 1', got 'Wrong output 1'",
+                "requirement": "EDGE_ALL_FAIL",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Fail": {
+                "step": 2,
+                "description": "Step 2 fails verification",
+                "expected": {
+                  "success": true,
+                  "result": "0",
+                  "output": "Expected output 2"
+                },
+                "actual_result": "0",
+                "actual_output": "Wrong output 2",
+                "reason": "Output mismatch: expected 'Expected output 2', got 'Wrong output 2'",
+                "requirement": "EDGE_ALL_FAIL",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Fail": {
+                "step": 3,
+                "description": "Step 3 fails verification",
+                "expected": {
+                  "success": true,
+                  "result": "0",
+                  "output": "Expected output 3"
+                },
+                "actual_result": "0",
+                "actual_output": "Wrong output 3",
+                "reason": "Output mismatch: expected 'Expected output 3', got 'Wrong output 3'",
+                "requirement": "EDGE_ALL_FAIL",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": false,
+          "requirement": "EDGE_ALL_FAIL",
+          "item": 1,
+          "tc": 1
+        }
+      ],
+      "total_steps": 3,
+      "passed_steps": 0,
+      "failed_steps": 3,
+      "not_executed_steps": 0,
+      "overall_pass": false,
+      "requirement": "EDGE_ALL_FAIL",
+      "item": 1,
+      "tc": 1
+    },
+    {
+      "test_case_id": "TEST_PRECOMP_ALL_PASS_001",
+      "description": "Precomputed verification: all steps pass with precomputed result and output verification",
+      "sequences": [
+        {
+          "sequence_id": 1,
+          "name": "All Pass Precomputed Sequence",
+          "step_results": [
+            {
+              "Pass": {
+                "step": 1,
+                "description": "Execute command with precomputed verification pass",
+                "requirement": "TEST_PRECOMP_ALL_PASS",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 2,
+                "description": "Execute another command with precomputed verification pass",
+                "requirement": "TEST_PRECOMP_ALL_PASS",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 3,
+                "description": "Execute final command with precomputed verification pass",
+                "requirement": "TEST_PRECOMP_ALL_PASS",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": true,
+          "requirement": "TEST_PRECOMP_ALL_PASS",
+          "item": 1,
+          "tc": 1
+        }
+      ],
+      "total_steps": 3,
+      "passed_steps": 3,
+      "failed_steps": 0,
+      "not_executed_steps": 0,
+      "overall_pass": true,
+      "requirement": "TEST_PRECOMP_ALL_PASS",
+      "item": 1,
+      "tc": 1
+    },
+    {
+      "test_case_id": "TEST_PRECOMP_SPECIAL_CHARS_001",
+      "description": "Precomputed verification: output with special characters",
+      "sequences": [
+        {
+          "sequence_id": 1,
+          "name": "Special Characters Sequence",
+          "step_results": [
+            {
+              "Pass": {
+                "step": 1,
+                "description": "Output with quotes",
+                "requirement": "TEST_PRECOMP_SPECIAL_CHARS",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 2,
+                "description": "Output with special symbols",
+                "requirement": "TEST_PRECOMP_SPECIAL_CHARS",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": true,
+          "requirement": "TEST_PRECOMP_SPECIAL_CHARS",
+          "item": 1,
+          "tc": 1
+        }
+      ],
+      "total_steps": 2,
+      "passed_steps": 2,
+      "failed_steps": 0,
+      "not_executed_steps": 0,
+      "overall_pass": true,
+      "requirement": "TEST_PRECOMP_SPECIAL_CHARS",
+      "item": 1,
+      "tc": 1
+    },
+    {
+      "test_case_id": "TEST_PRECOMP_EMPTY_OUTPUT_001",
+      "description": "Precomputed verification: steps with empty output pass verification",
+      "sequences": [
+        {
+          "sequence_id": 1,
+          "name": "Empty Output Sequence",
+          "step_results": [
+            {
+              "Pass": {
+                "step": 1,
+                "description": "Execute command with no output",
+                "requirement": "TEST_PRECOMP_EMPTY_OUTPUT",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 2,
+                "description": "Execute another silent command",
+                "requirement": "TEST_PRECOMP_EMPTY_OUTPUT",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 3,
+                "description": "Execute final silent command",
+                "requirement": "TEST_PRECOMP_EMPTY_OUTPUT",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": true,
+          "requirement": "TEST_PRECOMP_EMPTY_OUTPUT",
+          "item": 1,
+          "tc": 1
+        }
+      ],
+      "total_steps": 3,
+      "passed_steps": 3,
+      "failed_steps": 0,
+      "not_executed_steps": 0,
+      "overall_pass": true,
+      "requirement": "TEST_PRECOMP_EMPTY_OUTPUT",
+      "item": 1,
+      "tc": 1
+    },
+    {
+      "test_case_id": "TEST_PRECOMP_FIVE_STEPS_001",
+      "description": "Precomputed verification: five steps all passing",
+      "sequences": [
+        {
+          "sequence_id": 1,
+          "name": "Five Steps Sequence",
+          "step_results": [
+            {
+              "Pass": {
+                "step": 1,
+                "description": "First step",
+                "requirement": "TEST_PRECOMP_FIVE_STEPS",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 2,
+                "description": "Second step",
+                "requirement": "TEST_PRECOMP_FIVE_STEPS",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 3,
+                "description": "Third step",
+                "requirement": "TEST_PRECOMP_FIVE_STEPS",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 4,
+                "description": "Fourth step",
+                "requirement": "TEST_PRECOMP_FIVE_STEPS",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 5,
+                "description": "Fifth step",
+                "requirement": "TEST_PRECOMP_FIVE_STEPS",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": true,
+          "requirement": "TEST_PRECOMP_FIVE_STEPS",
+          "item": 1,
+          "tc": 1
+        }
+      ],
+      "total_steps": 5,
+      "passed_steps": 5,
+      "failed_steps": 0,
+      "not_executed_steps": 0,
+      "overall_pass": true,
+      "requirement": "TEST_PRECOMP_FIVE_STEPS",
+      "item": 1,
+      "tc": 1
+    },
+    {
+      "test_case_id": "TEST_PRECOMP_LONG_OUTPUT_001",
+      "description": "Precomputed verification: steps with longer multi-line output",
+      "sequences": [
+        {
+          "sequence_id": 1,
+          "name": "Long Output Sequence",
+          "step_results": [
+            {
+              "Pass": {
+                "step": 1,
+                "description": "Execute command with multi-line output",
+                "requirement": "TEST_PRECOMP_LONG_OUTPUT",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 2,
+                "description": "Execute command with verbose output",
+                "requirement": "TEST_PRECOMP_LONG_OUTPUT",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": true,
+          "requirement": "TEST_PRECOMP_LONG_OUTPUT",
+          "item": 1,
+          "tc": 1
+        }
+      ],
+      "total_steps": 2,
+      "passed_steps": 2,
+      "failed_steps": 0,
+      "not_executed_steps": 0,
+      "overall_pass": true,
+      "requirement": "TEST_PRECOMP_LONG_OUTPUT",
+      "item": 1,
+      "tc": 1
+    },
+    {
+      "test_case_id": "TEST_PRECOMP_SINGLE_STEP_001",
+      "description": "Precomputed verification: single step passing all verifications",
+      "sequences": [
+        {
+          "sequence_id": 1,
+          "name": "Single Step Sequence",
+          "step_results": [
+            {
+              "Pass": {
+                "step": 1,
+                "description": "Execute single command",
+                "requirement": "TEST_PRECOMP_SINGLE_STEP",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": true,
+          "requirement": "TEST_PRECOMP_SINGLE_STEP",
+          "item": 1,
+          "tc": 1
+        }
+      ],
+      "total_steps": 1,
+      "passed_steps": 1,
+      "failed_steps": 0,
+      "not_executed_steps": 0,
+      "overall_pass": true,
+      "requirement": "TEST_PRECOMP_SINGLE_STEP",
+      "item": 1,
+      "tc": 1
+    },
+    {
+      "test_case_id": "TEST_SUCCESS_001",
+      "description": "Successful execution scenario with 3 passing steps in 1 sequence",
+      "sequences": [
+        {
+          "sequence_id": 1,
+          "name": "Successful Command Sequence",
+          "step_results": [
+            {
+              "Pass": {
+                "step": 1,
+                "description": "Echo a greeting message",
+                "requirement": "TEST_SUCCESS",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 2,
+                "description": "Echo a status message",
+                "requirement": "TEST_SUCCESS",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 3,
+                "description": "Execute true command",
+                "requirement": "TEST_SUCCESS",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": true,
+          "requirement": "TEST_SUCCESS",
+          "item": 1,
+          "tc": 1
+        }
+      ],
+      "total_steps": 3,
+      "passed_steps": 3,
+      "failed_steps": 0,
+      "not_executed_steps": 0,
+      "overall_pass": true,
+      "requirement": "TEST_SUCCESS",
+      "item": 1,
+      "tc": 1
+    },
+    {
+      "test_case_id": "TEST_FAILED_LAST_001",
+      "description": "Test case demonstrating failed last step scenario where steps 1-3 pass successfully but step 4 fails due to output mismatch (expected SUCCESS but got FAILURE)",
+      "sequences": [
+        {
+          "sequence_id": 1,
+          "name": "Failed Last Step Sequence",
+          "step_results": [
+            {
+              "Pass": {
+                "step": 1,
+                "description": "Create a temporary directory",
+                "requirement": "FAILED_LAST_STEP",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 2,
+                "description": "Create a status file with initial content",
+                "requirement": "FAILED_LAST_STEP",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 3,
+                "description": "Verify the file was created",
+                "requirement": "FAILED_LAST_STEP",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Fail": {
+                "step": 4,
+                "description": "Check final status (fails with output mismatch)",
+                "expected": {
+                  "success": true,
+                  "result": "0",
+                  "output": "SUCCESS"
+                },
+                "actual_result": "0",
+                "actual_output": "FAILURE",
+                "reason": "Output mismatch: expected 'SUCCESS', got 'FAILURE'",
+                "requirement": "FAILED_LAST_STEP",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": false,
+          "requirement": "FAILED_LAST_STEP",
+          "item": 1,
+          "tc": 1
+        }
+      ],
+      "total_steps": 4,
+      "passed_steps": 3,
+      "failed_steps": 1,
+      "not_executed_steps": 0,
+      "overall_pass": false,
+      "requirement": "FAILED_LAST_STEP",
+      "item": 1,
+      "tc": 1
+    },
+    {
+      "test_case_id": "TEST_PRECOMP_LAST_FAIL_001",
+      "description": "Precomputed verification: last step fails verification",
+      "sequences": [
+        {
+          "sequence_id": 1,
+          "name": "Last Step Fail Sequence",
+          "step_results": [
+            {
+              "Pass": {
+                "step": 1,
+                "description": "Execute first command successfully",
+                "requirement": "TEST_PRECOMP_LAST_FAIL",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 2,
+                "description": "Execute second command successfully",
+                "requirement": "TEST_PRECOMP_LAST_FAIL",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Fail": {
+                "step": 3,
+                "description": "Execute final command with failure",
+                "expected": {
+                  "success": false,
+                  "result": "1",
+                  "output": ""
+                },
+                "actual_result": "0",
+                "actual_output": "",
+                "reason": "Success mismatch: expected false, got true",
+                "requirement": "TEST_PRECOMP_LAST_FAIL",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": false,
+          "requirement": "TEST_PRECOMP_LAST_FAIL",
+          "item": 1,
+          "tc": 1
+        }
+      ],
+      "total_steps": 3,
+      "passed_steps": 2,
+      "failed_steps": 1,
+      "not_executed_steps": 0,
+      "overall_pass": false,
+      "requirement": "TEST_PRECOMP_LAST_FAIL",
       "item": 1,
       "tc": 1
     }

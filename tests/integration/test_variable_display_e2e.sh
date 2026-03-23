@@ -8,7 +8,7 @@
 # 3. Variable extraction from command output using regex patterns (capture field)
 # 4. Variable extraction from command execution results (command field)
 # 5. Variable display in execution output showing captured values
-# 6. STEP_VAR_* variables are set correctly in generated bash script
+# 6. CAPTURED_VAR_ variables are set correctly in generated bash script
 # 7. JSON execution log contains captured variable names and values
 # 8. Error messages when variable capture fails are clear and actionable
 #
@@ -243,62 +243,62 @@ else
 fi
 validate_with_shellcheck "$VARIABLE_SCRIPT" "Variable display script"
 
-# Test 5: Verify STEP_VAR_* variables are set correctly in generated script
-section "Test 5: Verify STEP_VAR_* Variables in Generated Script"
+# Test 5: Verify CAPTURED_VAR_ variables are set correctly in generated script
+section "Test 5: Verify CAPTURED_VAR_ Variables in Generated Script"
 
 # Check for variable storage initialization
-if grep -q 'STEP_VAR_NAMES=""' "$VARIABLE_SCRIPT"; then
+if grep -q 'CAPTURED_VAR_NAMES=""' "$VARIABLE_SCRIPT"; then
     pass "Script declares STEP_VAR_NAMES variable"
 else
     fail "Script missing STEP_VAR_NAMES declaration"
 fi
 
 # Check for regex-based captures from step 1
-if grep -q 'STEP_VAR_auth_token=' "$VARIABLE_SCRIPT"; then
+if grep -q 'auth_token=' "$VARIABLE_SCRIPT"; then
     pass "Script captures auth_token variable (regex-based)"
 else
     fail "Script doesn't capture auth_token variable"
 fi
 
-if grep -q 'STEP_VAR_user_id=' "$VARIABLE_SCRIPT"; then
+if grep -q 'user_id=' "$VARIABLE_SCRIPT"; then
     pass "Script captures user_id variable (regex-based)"
 else
     fail "Script doesn't capture user_id variable"
 fi
 
-if grep -q 'STEP_VAR_status=' "$VARIABLE_SCRIPT"; then
+if grep -q 'status=' "$VARIABLE_SCRIPT"; then
     pass "Script captures status variable (regex-based)"
 else
     fail "Script doesn't capture status variable"
 fi
 
 # Check for command-based captures from step 2
-if grep -q 'STEP_VAR_current_date=' "$VARIABLE_SCRIPT"; then
+if grep -q 'current_date=' "$VARIABLE_SCRIPT"; then
     pass "Script captures current_date variable (command-based)"
 else
     fail "Script doesn't capture current_date variable"
 fi
 
-if grep -q 'STEP_VAR_hostname=' "$VARIABLE_SCRIPT"; then
+if grep -q 'hostname=' "$VARIABLE_SCRIPT"; then
     pass "Script captures hostname variable (command-based)"
 else
     fail "Script doesn't capture hostname variable"
 fi
 
-if grep -q 'STEP_VAR_word_count=' "$VARIABLE_SCRIPT"; then
+if grep -q 'word_count=' "$VARIABLE_SCRIPT"; then
     pass "Script captures word_count variable (command-based)"
 else
     fail "Script doesn't capture word_count variable"
 fi
 
 # Check for failed captures from steps 4 and 5
-if grep -q 'STEP_VAR_missing_var=' "$VARIABLE_SCRIPT"; then
+if grep -q 'missing_var=' "$VARIABLE_SCRIPT"; then
     pass "Script includes missing_var capture attempt"
 else
     fail "Script doesn't include missing_var capture"
 fi
 
-if grep -q 'STEP_VAR_failed_capture=' "$VARIABLE_SCRIPT"; then
+if grep -q 'failed_capture=' "$VARIABLE_SCRIPT"; then
     pass "Script includes failed_capture command attempt"
 else
     fail "Script doesn't include failed_capture command"
@@ -308,7 +308,7 @@ fi
 section "Test 6: Verify Variable Substitution Logic"
 
 # Check for variable substitution loop
-if grep -q 'for var_name in $STEP_VAR_NAMES; do' "$VARIABLE_SCRIPT"; then
+if grep -q 'for var_name in $CAPTURED_VAR_NAMES; do' "$VARIABLE_SCRIPT"; then
     pass "Script contains variable substitution loop"
 else
     fail "Script missing variable substitution loop"
@@ -562,13 +562,13 @@ else
 fi
 
 # Verify that the generated script handles empty captures gracefully
-if grep -q 'STEP_VAR_missing_var=.*|| echo ""' "$VARIABLE_SCRIPT"; then
+if grep -q 'missing_var=.*|| echo ""' "$VARIABLE_SCRIPT"; then
     pass "Script handles non-matching regex with fallback to empty string"
 else
     info "Script may handle non-matching regex differently (acceptable)"
 fi
 
-if grep -q 'STEP_VAR_failed_capture=.*|| echo ""' "$VARIABLE_SCRIPT"; then
+if grep -q 'failed_capture=.*|| echo ""' "$VARIABLE_SCRIPT"; then
     pass "Script handles failing command with fallback to empty string"
 else
     info "Script may handle failing command differently (acceptable)"
