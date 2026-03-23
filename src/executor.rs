@@ -193,94 +193,8 @@ fn convert_verification_expr_hydration(expr: &VerificationExpression) -> Verific
 
 /// Generate verification script with variable substitution support
 fn generate_verification_with_var_subst(expr: &VerificationExpression, var_name: &str) -> String {
-    match expr {
-        VerificationExpression::Simple(s) => {
-            // For simple expressions with potential variables, perform substitution
-            let mut script = String::new();
-            let escaped_expr = s
-                .replace("\\", "\\\\")
-                .replace("$", "\\$")
-                .replace("\"", "\\\"");
-            script.push_str(&format!("EXPR=\"{}\"\n", escaped_expr));
-            script.push_str("if [ -n \"$CAPTURED_VAR_NAMES\" ]; then\n");
-            script.push_str("    for var_name in $CAPTURED_VAR_NAMES; do\n");
-            script.push_str("        eval \"var_value=\\$$var_name\"\n");
-            script.push_str("        # Escape special characters for sed\n");
-            script.push_str(
-                "        escaped_value=$(printf '%s' \"$var_value\" | sed 's/[&/\\]/\\\\&/g')\n",
-            );
-            script.push_str("        # Replace ${var_name} pattern\n");
-            script.push_str(
-                "        EXPR=$(echo \"$EXPR\" | sed \"s/\\${$var_name}/$escaped_value/g\")\n",
-            );
-            script.push_str("    done\n");
-            script.push_str("fi\n");
-            script.push_str(&format!(
-                "if eval \"$EXPR\"; then\n    {}=true\nfi\n",
-                var_name
-            ));
-            script
-        }
-        VerificationExpression::Conditional {
-            condition,
-            if_true,
-            if_false,
-            always,
-        } => {
-            // For conditional expressions, substitute variables in all parts
-            let mut script = String::new();
-
-            // Prepare condition with variable substitution
-            let escaped_condition = condition
-                .replace("\\", "\\\\")
-                .replace("$", "\\$")
-                .replace("\"", "\\\"");
-            script.push_str(&format!("COND_EXPR=\"{}\"\n", escaped_condition));
-            script.push_str("if [ -n \"$CAPTURED_VAR_NAMES\" ]; then\n");
-            script.push_str("    for var_name in $CAPTURED_VAR_NAMES; do\n");
-            script.push_str("        eval \"var_value=\\$$var_name\"\n");
-            script.push_str(
-                "        escaped_value=$(printf '%s' \"$var_value\" | sed 's/[&/\\]/\\\\&/g')\n",
-            );
-            script.push_str("        COND_EXPR=$(echo \"$COND_EXPR\" | sed \"s/\\${$var_name}/$escaped_value/g\")\n");
-            script.push_str("    done\n");
-            script.push_str("fi\n");
-
-            script.push_str("if eval \"$COND_EXPR\"; then\n");
-            script.push_str(&format!("    {}=true\n", var_name));
-
-            // Execute if_true commands
-            if let Some(commands) = if_true {
-                for cmd in commands {
-                    script.push_str(&format!("    {}\n", cmd));
-                }
-            } else {
-                script.push_str("    true # empty so bash does not fail\n");
-            }
-
-            script.push_str("else\n");
-
-            // Execute if_false commands
-            if let Some(commands) = if_false {
-                for cmd in commands {
-                    script.push_str(&format!("    {}\n", cmd));
-                }
-            } else {
-                script.push_str("    true # empty so bash does not fail\n");
-            }
-
-            script.push_str("fi\n");
-
-            // Always execute commands
-            if let Some(commands) = always {
-                for cmd in commands {
-                    script.push_str(&format!("{}\n", cmd));
-                }
-            }
-
-            script
-        }
-    }
+    let bash_expr: bash_eval::BashExpression = expr.into();
+    bash_eval::generate_verification_with_var_subst(&bash_expr, var_name)
 }
 
 impl TestExecutor {
@@ -370,56 +284,8 @@ impl TestExecutor {
     /// For Conditional expressions, generates bash code to evaluate the condition
     /// and execute the appropriate commands based on the result
     fn generate_verification_script(expr: &VerificationExpression, var_name: &str) -> String {
-        match expr {
-            VerificationExpression::Simple(s) => {
-                // For simple expressions, just evaluate and set the variable
-                format!("if {}; then\n    {}=true\nfi\n", s, var_name)
-            }
-            VerificationExpression::Conditional {
-                condition,
-                if_true,
-                if_false,
-                always,
-            } => {
-                let mut script = String::new();
-
-                // Evaluate the condition and execute appropriate branch
-                script.push_str(&format!("if {}; then\n", condition));
-                // Set the variable to true when condition is met
-                script.push_str(&format!("    {}=true\n", var_name));
-
-                // Execute if_true commands
-                if let Some(commands) = if_true {
-                    for cmd in commands {
-                        script.push_str(&format!("    {}\n", cmd));
-                    }
-                } else {
-                    script.push_str("    true # empty so bash does not fail\n");
-                }
-
-                script.push_str("else\n");
-
-                // Execute if_false commands
-                if let Some(commands) = if_false {
-                    for cmd in commands {
-                        script.push_str(&format!("    {}\n", cmd));
-                    }
-                } else {
-                    script.push_str("    true # empty so bash does not fail\n");
-                }
-
-                script.push_str("fi\n");
-
-                // Always execute commands in always array
-                if let Some(commands) = always {
-                    for cmd in commands {
-                        script.push_str(&format!("{}\n", cmd));
-                    }
-                }
-
-                script
-            }
-        }
+        let bash_expr: bash_eval::BashExpression = expr.into();
+        bash_eval::generate_verification_script(&bash_expr, var_name)
     }
 
     /// Generate bash code to execute a hook
@@ -1837,61 +1703,13 @@ impl TestExecutor {
         command_output: &str,
         step_vars: &HashMap<String, String>,
     ) -> Result<bool> {
-        // Extract the simple expression or condition from VerificationExpression
-        let expr_str = match expression {
-            VerificationExpression::Simple(s) => s.as_str(),
-            VerificationExpression::Conditional { condition, .. } => condition.as_str(),
+        let bash_expr: bash_eval::BashExpression = expression.into();
+        let context = bash_eval::BashEvalContext {
+            exit_code,
+            command_output: command_output.to_string(),
+            variables: step_vars.clone(),
         };
-
-        // Handle simple true/false cases
-        let trimmed = expr_str.trim();
-        if trimmed == "true" {
-            return Ok(true);
-        }
-        if trimmed == "false" {
-            return Ok(false);
-        }
-
-        // Build a bash script that evaluates the verification expression
-        // We need to set EXIT_CODE, COMMAND_OUTPUT, and step variables, then evaluate the expression
-        let mut script = String::new();
-        script.push_str(&format!("EXIT_CODE={}\n", exit_code));
-        script.push_str(&format!(
-            "COMMAND_OUTPUT=\"{}\"\n",
-            command_output
-                .replace("\\", "\\\\")
-                .replace("\"", "\\\"")
-                .replace("`", "\\`")
-                .replace("\n", "\\n")
-        ));
-
-        // Set captured variables as bash variables
-        for (var_name, var_value) in step_vars {
-            script.push_str(&format!(
-                "{}=\"{}\"\n",
-                var_name,
-                var_value
-                    .replace("\\", "\\\\")
-                    .replace("\"", "\\\"")
-                    .replace("`", "\\`")
-                    .replace("\n", "\\n")
-            ));
-        }
-
-        // Evaluate the expression using bash -c
-        script.push_str(&format!(
-            r#"if {}; then
-    exit 0
-else
-    exit 1
-fi"#,
-            expr_str
-        ));
-
-        match Command::new("bash").arg("-c").arg(&script).output() {
-            Ok(output) => Ok(output.status.success()),
-            Err(_) => Ok(false),
-        }
+        bash_eval::evaluate(&bash_expr, &context)
     }
 
     fn write_execution_log(

@@ -14,6 +14,7 @@ pub enum MatchStrategy {
     Regex,
     Contains,
     Precomputed,
+    BashEvaluation,
 }
 
 /// Result of verifying a single step (struct-based, for backward compatibility with tests)
@@ -1034,6 +1035,7 @@ impl TestVerifier {
         tc: Option<i64>,
     ) -> Vec<StepVerificationResultEnum> {
         let mut results = Vec::new();
+        let mut captured_vars: HashMap<String, String> = HashMap::new();
 
         for step in &sequence.steps {
             let result = if let Some(log) = log_map.get(&(sequence.id, step.step)) {
@@ -1042,7 +1044,7 @@ impl TestVerifier {
                     sequence.id,
                     step.step
                 );
-                self.verify_step_new(step, log, requirement, item, tc)
+                self.verify_step_new(step, log, requirement, item, tc, &captured_vars)
             } else {
                 log::debug!(
                     "No execution log found for sequence {} step {} - marking as NotExecuted",
@@ -1057,6 +1059,18 @@ impl TestVerifier {
                     tc,
                 }
             };
+
+            // After step verification, extract captured variables for BashEvaluation if step passed
+            if result.is_pass() {
+                if let Some(log) = log_map.get(&(sequence.id, step.step)) {
+                    if self.result_strategy == MatchStrategy::BashEvaluation
+                        || self.output_strategy == MatchStrategy::BashEvaluation
+                    {
+                        self.extract_captured_vars_from_step(step, log, &mut captured_vars);
+                    }
+                }
+            }
+
             results.push(result);
         }
 
@@ -1071,8 +1085,78 @@ impl TestVerifier {
         requirement: Option<&String>,
         item: Option<i64>,
         tc: Option<i64>,
+        captured_vars: &HashMap<String, String>,
     ) -> StepVerificationResultEnum {
         let expected = &step.expected;
+
+        // BashEvaluation mode: evaluate verification expressions via bash
+        if self.result_strategy == MatchStrategy::BashEvaluation
+            || self.output_strategy == MatchStrategy::BashEvaluation
+        {
+            // Parse exit_code from log.actual_result (it's stored as a string like "0")
+            let exit_code: i32 = log.actual_result.parse().unwrap_or(-1);
+
+            let context = bash_eval::BashEvalContext {
+                exit_code,
+                command_output: log.actual_output.clone(),
+                variables: captured_vars.clone(),
+            };
+
+            // Evaluate result verification if using BashEvaluation
+            if self.result_strategy == MatchStrategy::BashEvaluation {
+                let expr: bash_eval::BashExpression = (&step.verification.result).into();
+                match bash_eval::evaluate(&expr, &context) {
+                    Ok(true) => {
+                        log::debug!("Result verification passed (bash evaluation)");
+                    }
+                    _ => {
+                        return StepVerificationResultEnum::Fail {
+                            step: step.step,
+                            description: step.description.clone(),
+                            expected: expected.clone(),
+                            actual_result: log.actual_result.clone(),
+                            actual_output: log.actual_output.clone(),
+                            reason: "Result verification failed (bash evaluation)".to_string(),
+                            requirement: requirement.cloned(),
+                            item,
+                            tc,
+                        };
+                    }
+                }
+            }
+
+            // Evaluate output verification if using BashEvaluation
+            if self.output_strategy == MatchStrategy::BashEvaluation {
+                let expr: bash_eval::BashExpression = (&step.verification.output).into();
+                match bash_eval::evaluate(&expr, &context) {
+                    Ok(true) => {
+                        log::debug!("Output verification passed (bash evaluation)");
+                    }
+                    _ => {
+                        return StepVerificationResultEnum::Fail {
+                            step: step.step,
+                            description: step.description.clone(),
+                            expected: expected.clone(),
+                            actual_result: log.actual_result.clone(),
+                            actual_output: log.actual_output.clone(),
+                            reason: "Output verification failed (bash evaluation)".to_string(),
+                            requirement: requirement.cloned(),
+                            item,
+                            tc,
+                        };
+                    }
+                }
+            }
+
+            // In BashEvaluation mode, skip success field check and pass
+            return StepVerificationResultEnum::Pass {
+                step: step.step,
+                description: step.description.clone(),
+                requirement: requirement.cloned(),
+                item,
+                tc,
+            };
+        }
 
         // Precomputed mode: check precomputed verification fields
         if self.result_strategy == MatchStrategy::Precomputed
@@ -1236,6 +1320,48 @@ impl TestVerifier {
         }
     }
 
+    /// Extract captured variables from a step's execution log
+    /// Uses regex-based capture patterns to extract values from the output
+    /// Command-based captures are skipped with a warning
+    fn extract_captured_vars_from_step(
+        &self,
+        step: &Step,
+        log: &TestExecutionLog,
+        captured_vars: &mut HashMap<String, String>,
+    ) {
+        if let Some(ref capture_vars) = step.capture_vars {
+            let capture_list = match capture_vars {
+                crate::models::CaptureVarsFormat::Legacy(map) => map
+                    .iter()
+                    .map(|(name, pattern)| (name.clone(), Some(pattern.clone()), None))
+                    .collect::<Vec<_>>(),
+                crate::models::CaptureVarsFormat::New(vec) => vec
+                    .iter()
+                    .map(|cv| (cv.name.clone(), cv.capture.clone(), cv.command.clone()))
+                    .collect::<Vec<_>>(),
+            };
+
+            for (var_name, capture_pattern, command) in capture_list {
+                if let Some(pattern) = capture_pattern {
+                    // Regex-based capture
+                    if let Some(value) = bash_eval::extract_capture(&log.actual_output, &pattern) {
+                        log::debug!("Captured variable {}: {}", var_name, value);
+                        captured_vars.insert(var_name, value);
+                    } else {
+                        log::debug!(
+                            "Failed to capture variable {} with pattern {}",
+                            var_name,
+                            pattern
+                        );
+                    }
+                } else if command.is_some() {
+                    // Command-based capture - cannot replay at verify time
+                    log::warn!("Skipping command-based capture of variable {} (cannot replay at verify-time with BashEvaluation strategy)", var_name);
+                }
+            }
+        }
+    }
+
     fn matches(&self, expected: &str, actual: &str, strategy: MatchStrategy) -> bool {
         let result = match strategy {
             MatchStrategy::Exact => {
@@ -1276,9 +1402,9 @@ impl TestVerifier {
                     false
                 }
             }
-            MatchStrategy::Precomputed => {
-                // Precomputed strategy should not be used with matches()
-                // This should be handled separately in verify_step_new
+            MatchStrategy::Precomputed | MatchStrategy::BashEvaluation => {
+                // These strategies should not be used with matches()
+                // They are handled separately in verify_step_new
                 false
             }
         };
@@ -1451,6 +1577,7 @@ impl TestVerifier {
             MatchStrategy::Regex => "Regex",
             MatchStrategy::Contains => "Contains",
             MatchStrategy::Precomputed => "Precomputed",
+            MatchStrategy::BashEvaluation => "BashEvaluation",
         }
     }
 
