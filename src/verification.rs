@@ -29,6 +29,7 @@ pub struct StepVerificationResult {
 
 /// Result of verifying a single step (enum-based, for batch verification)
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "PascalCase")]
 pub enum StepVerificationResultEnum {
     /// Step passed verification
     Pass {
@@ -370,6 +371,14 @@ pub struct ContainerReportConfig {
 /// Container report for batch verification with enhanced metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ContainerReport {
+    /// Document type (envelope field)
+    #[serde(rename = "type", default, skip_serializing_if = "Option::is_none")]
+    pub doc_type: Option<String>,
+
+    /// Schema reference (envelope field)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub schema: Option<String>,
+
     /// Report title
     pub title: String,
 
@@ -398,6 +407,8 @@ impl ContainerReport {
         execution_duration: f64,
     ) -> Self {
         Self {
+            doc_type: None,
+            schema: None,
             title,
             project,
             test_date: batch_report.generated_at,
@@ -762,6 +773,24 @@ impl TestVerifier {
 
         log::debug!("Successfully parsed {} JSON entries", entries.len());
 
+        // Check for type/schema fields in the first entry (if any)
+        if let Some(first_entry) = entries.first() {
+            if first_entry.doc_type.is_none() {
+                log::warn!(
+                    "Missing 'type' field in execution log: {}",
+                    log_path.display()
+                );
+            }
+            if first_entry.schema.is_none() {
+                log::warn!(
+                    "Missing 'schema' field in execution log: {}",
+                    log_path.display()
+                );
+            } else if let Some(ref schema) = first_entry.schema {
+                log::debug!("Execution log schema: {}", schema);
+            }
+        }
+
         let mut logs = Vec::new();
         for entry in entries {
             // Derive success from exit_code (0 = success, non-zero = failure)
@@ -796,8 +825,8 @@ impl TestVerifier {
                 actual_output: entry.output.clone(),
                 timestamp,
                 log_file_path: log_path.to_path_buf(),
-                result_verification_pass: entry.result_verification_pass,
-                output_verification_pass: entry.output_verification_pass,
+                result_verification_pass: Some(entry.result_verification_pass),
+                output_verification_pass: Some(entry.output_verification_pass),
             });
         }
 
@@ -830,6 +859,24 @@ impl TestVerifier {
             log_path.display()
         );
         log::debug!("Successfully parsed {} JSON entries", entries.len());
+
+        // Check for type/schema fields in the first entry (if any)
+        if let Some(first_entry) = entries.first() {
+            if first_entry.doc_type.is_none() {
+                log::warn!(
+                    "Missing 'type' field in execution log: {}",
+                    log_path.display()
+                );
+            }
+            if first_entry.schema.is_none() {
+                log::warn!(
+                    "Missing 'schema' field in execution log: {}",
+                    log_path.display()
+                );
+            } else if let Some(ref schema) = first_entry.schema {
+                log::debug!("Execution log schema: {}", schema);
+            }
+        }
 
         let mut logs = Vec::new();
         for entry in entries {
@@ -865,8 +912,8 @@ impl TestVerifier {
                 actual_output: entry.output.clone(),
                 timestamp,
                 log_file_path: log_path.to_path_buf(),
-                result_verification_pass: entry.result_verification_pass,
-                output_verification_pass: entry.output_verification_pass,
+                result_verification_pass: Some(entry.result_verification_pass),
+                output_verification_pass: Some(entry.output_verification_pass),
             });
         }
 

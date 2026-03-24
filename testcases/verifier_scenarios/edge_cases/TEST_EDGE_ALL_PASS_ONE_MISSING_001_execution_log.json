@@ -1,0 +1,50 @@
+[
+  {
+    "type": "test_execution",
+    "schema": "tcms/execution-log.schema.v1.json",
+    "test_sequence": 1,
+    "step": 1,
+    "command": "echo \"Step 1 passed\"",
+    "exit_code": 0,
+    "output": "Step 1 passed",
+    "timestamp": "2026-02-28T10:00:00.123456+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": true
+  },
+  {
+    "type": "test_execution",
+    "schema": "tcms/execution-log.schema.v1.json",
+    "test_sequence": 1,
+    "step": 2,
+    "command": "echo \"Step 2 passed\"",
+    "exit_code": 0,
+    "output": "Step 2 passed",
+    "timestamp": "2026-02-28T10:00:00.234567+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": true
+  },
+  {
+    "type": "test_execution",
+    "schema": "tcms/execution-log.schema.v1.json",
+    "test_sequence": 1,
+    "step": 4,
+    "command": "echo \"Step 4 passed\"",
+    "exit_code": 0,
+    "output": "Step 4 passed",
+    "timestamp": "2026-02-28T10:00:00.456789+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": true
+  },
+  {
+    "type": "test_execution",
+    "schema": "tcms/execution-log.schema.v1.json",
+    "test_sequence": 1,
+    "step": 5,
+    "command": "echo \"Step 5 passed\"",
+    "exit_code": 0,
+    "output": "Step 5 passed",
+    "timestamp": "2026-02-28T10:00:00.567890+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": true
+  }
+]

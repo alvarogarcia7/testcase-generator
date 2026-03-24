@@ -1,0 +1,55 @@
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: TEST_PRECOMP_MID_FAIL
+item: 1
+tc: 1
+id: TEST_PRECOMP_MID_FAIL_001
+description: 'Precomputed verification: middle step fails verification'
+general_initial_conditions:
+  system:
+  - Shell environment is available
+initial_conditions:
+  system:
+  - All commands can be executed
+test_sequences:
+- id: 1
+  name: Middle Step Fail Sequence
+  description: 'Test sequence where the middle step fails verification.
+
+    Step 2 has output_verification_pass=false.
+
+    '
+  initial_conditions:
+    system:
+    - Shell is ready
+  steps:
+  - step: 1
+    description: Execute first command successfully
+    command: echo "Step 1 complete"
+    expected:
+      success: true
+      result: 0
+      output: Step 1 complete
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Step 1 complete' <<< "$COMMAND_OUTPUT"
+  - step: 2
+    description: Execute middle command with output mismatch
+    command: echo "Wrong output"
+    expected:
+      success: true
+      result: 0
+      output: Expected output
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Expected output' <<< "$COMMAND_OUTPUT"
+  - step: 3
+    description: Execute final command successfully
+    command: echo "Step 3 complete"
+    expected:
+      success: true
+      result: 0
+      output: Step 3 complete
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Step 3 complete' <<< "$COMMAND_OUTPUT"

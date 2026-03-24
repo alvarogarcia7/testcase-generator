@@ -1,0 +1,409 @@
+requirement: "COMPLEX_BDD_INITIAL_CONDITIONS"
+item: 1
+tc: 3
+id: 'TC_COMPLEX_BDD_HOOKS_VARS_001'
+description: 'BDD-style test with comprehensive initial conditions, hooks, and variable capture - behavior-driven testing pattern'
+
+hooks:
+  script_start:
+    command: "test-acceptance/scripts/hooks/script_start_init.sh"
+    on_error: "fail"
+  setup_test:
+    command: "test-acceptance/scripts/hooks/setup_test_workspace.sh"
+    on_error: "fail"
+  before_sequence:
+    command: "test-acceptance/scripts/hooks/before_sequence_log.sh"
+    on_error: "continue"
+  after_sequence:
+    command: "test-acceptance/scripts/hooks/after_sequence_cleanup.sh"
+    on_error: "continue"
+  teardown_test:
+    command: "test-acceptance/scripts/hooks/teardown_test_final.sh"
+    on_error: "continue"
+  script_end:
+    command: "test-acceptance/scripts/hooks/script_end_summary.sh"
+    on_error: "continue"
+
+hydration_vars:
+  USER_NAME:
+    name: "USER_NAME"
+    description: "User name for authentication scenarios"
+    default_value: "testuser"
+    required: true
+  
+  USER_ROLE:
+    name: "USER_ROLE"
+    description: "User role (admin, user, guest)"
+    default_value: "user"
+    required: true
+  
+  API_ENDPOINT:
+    name: "API_ENDPOINT"
+    description: "API endpoint base URL"
+    default_value: "http://localhost:8080/api"
+    required: false
+  
+  FEATURE_FLAG_ENABLED:
+    name: "FEATURE_FLAG_ENABLED"
+    description: "Feature flag state (true/false)"
+    default_value: "true"
+    required: false
+
+general_initial_conditions:
+  system:
+    - "Test execution environment is properly configured"
+    - "All required utilities are installed and accessible"
+  environment:
+    - "Environment variables are correctly set"
+    - "Test data fixtures are available"
+  documentation:
+    - "BDD scenarios are documented in test plan"
+    - "Acceptance criteria are clearly defined"
+
+initial_conditions:
+  given:
+    - "A test system with user authentication capability"
+    - "A simulated API environment for testing"
+    - "Test data generation utilities available"
+  system:
+    - "Bash shell version 3.2 or higher"
+    - "File system write permissions in /tmp"
+  assumptions:
+    - "Test execution is isolated from production"
+    - "Test data does not affect real systems"
+
+test_sequences:
+  - id: 1
+    name: "Given: User Authentication Context"
+    description: "Establish authenticated user context with proper credentials (BDD: Given)"
+    initial_conditions:
+      given:
+        - "System is in a known clean state"
+        - "No previous user sessions exist"
+      and:
+        - "Authentication system is available"
+        - "User database can be accessed"
+    steps:
+      - step: 1
+        description: "GIVEN: System generates unique user session"
+        command: "echo 'user_'$(date +%s%N | md5sum 2>/dev/null | cut -c1-8 || date +%s | md5 2>/dev/null | cut -c1-8 || echo $RANDOM)"
+        capture_vars:
+          - name: session_token
+            capture: '(user_[a-z0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "user_"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" =~ ^user_[a-z0-9]+ ]]"
+          general:
+            - name: verify_session_token_captured
+              condition: "[[ -n \"$session_token\" ]]"
+            - name: verify_session_token_format
+              condition: "[[ $session_token =~ ^user_[a-z0-9]+ ]]"
+
+      - step: 2
+        description: "GIVEN: User profile is created with role"
+        command: "cat > /tmp/user_profile_${session_token}.txt << EOF
+username=${USER_NAME}
+role=${USER_ROLE}
+session=${session_token}
+authenticated=true
+feature_access=${FEATURE_FLAG_ENABLED}
+EOF
+cat /tmp/user_profile_${session_token}.txt"
+        expected:
+          success: true
+          result: 0
+          output: "username="
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'username=${USER_NAME}' <<< \"$COMMAND_OUTPUT\" && grep -q 'authenticated=true' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 3
+        description: "GIVEN: System records user login timestamp"
+        command: "date +%s"
+        capture_vars:
+          - name: login_timestamp
+            capture: '([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "timestamp"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
+          general:
+            - name: verify_timestamp_captured
+              condition: "[[ $login_timestamp =~ ^[0-9]+$ ]]"
+
+      - step: 4
+        description: "GIVEN: Authentication log entry is created"
+        command: "mkdir -p /tmp/bdd_test_logs && echo '[${login_timestamp}] User ${USER_NAME} authenticated with session ${session_token}' >> /tmp/bdd_test_logs/auth.log && tail -1 /tmp/bdd_test_logs/auth.log"
+        expected:
+          success: true
+          result: 0
+          output: "authenticated with session"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'authenticated with session' <<< \"$COMMAND_OUTPUT\""
+
+  - id: 2
+    name: "When: User Performs Actions"
+    description: "Execute user actions based on authenticated context (BDD: When)"
+    initial_conditions:
+      when:
+        - "User is authenticated with valid session"
+        - "User profile exists with correct role"
+      and:
+        - "System is ready to process user requests"
+    steps:
+      - step: 1
+        description: "WHEN: User requests resource list based on role"
+        command: "case ${USER_ROLE} in
+  admin)
+    echo 'resources: [all, users, settings, logs]'
+    ;;
+  user)
+    echo 'resources: [profile, documents, reports]'
+    ;;
+  guest)
+    echo 'resources: [public, help]'
+    ;;
+  *)
+    echo 'resources: [public]'
+    ;;
+esac"
+        capture_vars:
+          - name: resource_list
+            capture: 'resources: (\\[[^]]+\\])'
+        expected:
+          success: true
+          result: 0
+          output: "resources:"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output:
+            condition: "[[ \"${USER_ROLE}\" == \"admin\" ]]"
+            if_true:
+              - "grep -q 'all' <<< \"$COMMAND_OUTPUT\""
+              - "grep -q 'users' <<< \"$COMMAND_OUTPUT\""
+            if_false:
+              - "grep -q 'resources:' <<< \"$COMMAND_OUTPUT\""
+            always:
+              - "echo 'Resources granted based on role: ${USER_ROLE}'"
+          general:
+            - name: verify_resource_list_captured
+              condition: "[[ -n \"$resource_list\" ]]"
+
+      - step: 2
+        description: "WHEN: User attempts to access a resource"
+        command: "echo 'Access request: documents for ${USER_NAME}'"
+        capture_vars:
+          - name: resource_requested
+            capture: 'Access request: ([a-z]+)'
+        expected:
+          success: true
+          result: 0
+          output: "Access request:"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Access request: documents' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 3
+        description: "WHEN: System validates access based on role and feature flag"
+        command: "if [[ \"${USER_ROLE}\" == \"admin\" ]] || [[ \"${USER_ROLE}\" == \"user\" ]]; then
+  if [[ \"${FEATURE_FLAG_ENABLED}\" == \"true\" ]]; then
+    echo 'ACCESS_GRANTED: Enhanced features enabled'
+  else
+    echo 'ACCESS_GRANTED: Standard features only'
+  fi
+else
+  echo 'ACCESS_DENIED: Insufficient permissions'
+fi"
+        capture_vars:
+          - name: access_decision
+            capture: '(ACCESS_[A-Z]+)'
+        expected:
+          success: true
+          result: 0
+          output: "ACCESS_"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output:
+            condition: "[[ \"$access_decision\" == \"ACCESS_GRANTED\" ]]"
+            if_true:
+              - "echo 'User granted access to resource'"
+            if_false:
+              - "echo 'User denied access to resource'"
+            always:
+              - "echo \"Access decision: ${access_decision}\""
+          general:
+            - name: verify_access_decision_captured
+              condition: "[[ -n \"$access_decision\" ]]"
+            - name: verify_access_decision_format
+              condition: "[[ $access_decision =~ ^ACCESS_(GRANTED|DENIED)$ ]]"
+
+      - step: 4
+        description: "WHEN: System logs the access attempt"
+        command: "date +%s"
+        capture_vars:
+          - name: access_timestamp
+            capture: '([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "timestamp"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
+
+      - step: 5
+        description: "WHEN: Access log entry is recorded"
+        command: "echo '[${access_timestamp}] ${session_token} - ${USER_NAME} (${USER_ROLE}) - Resource: ${resource_requested} - ${access_decision}' >> /tmp/bdd_test_logs/access.log && tail -1 /tmp/bdd_test_logs/access.log"
+        expected:
+          success: true
+          result: 0
+          output: "Resource:"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q '${session_token}' <<< \"$COMMAND_OUTPUT\" && grep -q '${access_decision}' <<< \"$COMMAND_OUTPUT\""
+
+  - id: 3
+    name: "Then: System Behavior Verification"
+    description: "Verify expected system behavior and state (BDD: Then)"
+    initial_conditions:
+      then:
+        - "User actions have been completed"
+        - "System logs contain all events"
+      and:
+        - "System state reflects user actions"
+        - "All captured variables are available for verification"
+    steps:
+      - step: 1
+        description: "THEN: User profile still exists with correct data"
+        command: "test -f /tmp/user_profile_${session_token}.txt && cat /tmp/user_profile_${session_token}.txt"
+        expected:
+          success: true
+          result: 0
+          output: "username="
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'session=${session_token}' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 2
+        description: "THEN: Authentication log contains login event"
+        command: "grep '${session_token}' /tmp/bdd_test_logs/auth.log | head -1"
+        expected:
+          success: true
+          result: 0
+          output: "authenticated"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'authenticated' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 3
+        description: "THEN: Access log contains the access decision"
+        command: "grep '${session_token}' /tmp/bdd_test_logs/access.log | head -1"
+        expected:
+          success: true
+          result: 0
+          output: "Resource:"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q '${access_decision}' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 4
+        description: "THEN: Calculate total session duration"
+        command: "echo $((${access_timestamp} - ${login_timestamp}))"
+        capture_vars:
+          - name: session_duration
+            capture: '([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "duration"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output:
+            condition: "[[ $session_duration -ge 0 ]]"
+            if_true:
+              - "echo 'Session duration is valid'"
+            if_false:
+              - "echo 'Session duration calculation error'"
+            always:
+              - "echo \"Session duration: ${session_duration} seconds\""
+          general:
+            - name: verify_duration_numeric
+              condition: "[[ $session_duration =~ ^[0-9]+$ ]]"
+            - name: verify_duration_valid
+              condition: "[[ $session_duration -ge 0 ]]"
+
+      - step: 5
+        description: "THEN: Generate BDD test report with all captured data"
+        command: "cat > /tmp/bdd_test_report_${session_token}.txt << EOF
+BDD Test Execution Report
+=========================
+
+GIVEN (Initial Context):
+- User: ${USER_NAME}
+- Role: ${USER_ROLE}
+- Session: ${session_token}
+- Login Time: ${login_timestamp}
+
+WHEN (Actions):
+- Resource Requested: ${resource_requested}
+- Access Decision: ${access_decision}
+- Access Time: ${access_timestamp}
+
+THEN (Verification):
+- Session Duration: ${session_duration} seconds
+- Feature Flag: ${FEATURE_FLAG_ENABLED}
+- Test Status: PASSED
+
+Summary:
+- All BDD criteria verified successfully
+- User behavior matches expected patterns
+- System state is consistent with actions
+EOF
+cat /tmp/bdd_test_report_${session_token}.txt"
+        expected:
+          success: true
+          result: 0
+          output: "BDD Test Execution Report"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Test Status: PASSED' <<< \"$COMMAND_OUTPUT\" && grep -q 'GIVEN' <<< \"$COMMAND_OUTPUT\" && grep -q 'WHEN' <<< \"$COMMAND_OUTPUT\" && grep -q 'THEN' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 6
+        description: "THEN: Verify all test artifacts exist"
+        command: "ls /tmp/user_profile_${session_token}.txt /tmp/bdd_test_logs/auth.log /tmp/bdd_test_logs/access.log /tmp/bdd_test_report_${session_token}.txt 2>/dev/null | wc -l"
+        capture_vars:
+          - name: artifact_count
+            capture: '([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "4"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output:
+            condition: "[[ $artifact_count -eq 4 ]]"
+            if_true:
+              - "echo 'All test artifacts present'"
+            if_false:
+              - "echo 'Some test artifacts missing'"
+            always:
+              - "echo \"Artifact count: ${artifact_count}\""
+
+      - step: 7
+        description: "THEN: Cleanup test artifacts"
+        command: "rm -f /tmp/user_profile_${session_token}.txt /tmp/bdd_test_report_${session_token}.txt && rm -rf /tmp/bdd_test_logs && echo 'BDD test cleanup complete'"
+        expected:
+          success: true
+          result: 0
+          output: "cleanup complete"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'cleanup complete' <<< \"$COMMAND_OUTPUT\""

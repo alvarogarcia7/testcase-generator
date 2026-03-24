@@ -1,75 +1,75 @@
-requirement: "DEPENDENCY_MISSING"
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: DEPENDENCY_MISSING
 item: 1
 tc: 1
-id: 'TC_DEPENDENCY_MISSING_001'
-description: 'Missing dependency error handling test - references non-existent test case IDs to test error handling'
-
+id: TC_DEPENDENCY_MISSING_001
+description: Missing dependency error handling test - references non-existent test
+  case IDs to test error handling
 general_initial_conditions:
   include:
-    - id: 'TC_NONEXISTENT_999'
-    - id: 'TC_DOES_NOT_EXIST_001'
+  - id: TC_NONEXISTENT_999
+  - id: TC_DOES_NOT_EXIST_001
   system:
-    - "Bash shell is available"
-    - "Dependency validation detects missing test cases"
-
+  - Bash shell is available
+  - Dependency validation detects missing test cases
 initial_conditions:
   filesystem:
-    - "Temporary directory /tmp is writable"
+  - Temporary directory /tmp is writable
   system:
-    - "This test references non-existent test cases"
-    - "Referenced test cases TC_NONEXISTENT_999 and TC_DOES_NOT_EXIST_001 do not exist"
-
+  - This test references non-existent test cases
+  - Referenced test cases TC_NONEXISTENT_999 and TC_DOES_NOT_EXIST_001 do not exist
 test_sequences:
-  - id: 1
-    name: "Missing Dependency Test"
-    description: "Test with references to non-existent test cases"
-    initial_conditions:
-      system:
-        - "Missing dependencies should be detected during validation"
-    steps:
-      - step: 1
-        manual: true
-        description: "Attempt to execute with missing dependencies (marked manual - expected to fail)"
-        command: "echo 'This should not execute due to missing dependencies'"
-        expected:
-          success: false
-          result: '1'
-          output: "Missing dependency"
-        verification:
-          result: "[[ $EXIT_CODE -ne 0 ]]"
-          output: "grep -q 'Missing dependency' <<< \"$COMMAND_OUTPUT\" || true"
-
-      - step: 2
-        manual: true
-        description: "Verify missing dependency error (marked manual - expected to fail)"
-        command: "echo 'Missing dependency error should have been raised'"
-        expected:
-          success: false
-          result: '1'
-          output: "Error"
-        verification:
-          result: "[[ $EXIT_CODE -ne 0 ]]"
-          output: "true"
-
-  - id: 2
-    name: "Missing Sequence Dependency"
-    description: "Test with reference to non-existent test sequence"
-    initial_conditions:
-      include:
-        - id: 'TC_SUCCESS_SIMPLE_001'
-          test_sequence: '999'
-      system:
-        - "Missing sequence should be detected"
-        - "TC_SUCCESS_SIMPLE_001 exists but sequence 999 does not"
-    steps:
-      - step: 1
-        manual: true
-        description: "Attempt to execute with missing sequence dependency (marked manual - expected to fail)"
-        command: "echo 'This should not execute due to missing sequence'"
-        expected:
-          success: false
-          result: '1'
-          output: "Missing sequence"
-        verification:
-          result: "[[ $EXIT_CODE -ne 0 ]]"
-          output: "grep -q 'Missing sequence' <<< \"$COMMAND_OUTPUT\" || true"
+- id: 1
+  name: Missing Dependency Test
+  description: Test with references to non-existent test cases
+  initial_conditions:
+    system:
+    - Missing dependencies should be detected during validation
+  steps:
+  - step: 1
+    manual: true
+    description: Attempt to execute with missing dependencies (marked manual - expected
+      to fail)
+    command: echo 'This should not execute due to missing dependencies'
+    expected:
+      success: false
+      result: '1'
+      output: Missing dependency
+    verification:
+      result: '[[ $EXIT_CODE -ne 0 ]]'
+      output: grep -q 'Missing dependency' <<< "$COMMAND_OUTPUT" || true
+  - step: 2
+    manual: true
+    description: Verify missing dependency error (marked manual - expected to fail)
+    command: echo 'Missing dependency error should have been raised'
+    expected:
+      success: false
+      result: '1'
+      output: Error
+    verification:
+      result: '[[ $EXIT_CODE -ne 0 ]]'
+      output: 'true'
+- id: 2
+  name: Missing Sequence Dependency
+  description: Test with reference to non-existent test sequence
+  initial_conditions:
+    include:
+    - id: TC_SUCCESS_SIMPLE_001
+      test_sequence: '999'
+    system:
+    - Missing sequence should be detected
+    - TC_SUCCESS_SIMPLE_001 exists but sequence 999 does not
+  steps:
+  - step: 1
+    manual: true
+    description: Attempt to execute with missing sequence dependency (marked manual
+      - expected to fail)
+    command: echo 'This should not execute due to missing sequence'
+    expected:
+      success: false
+      result: '1'
+      output: Missing sequence
+    verification:
+      result: '[[ $EXIT_CODE -ne 0 ]]'
+      output: grep -q 'Missing sequence' <<< "$COMMAND_OUTPUT" || true

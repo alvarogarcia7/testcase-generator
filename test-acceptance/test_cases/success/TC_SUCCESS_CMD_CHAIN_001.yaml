@@ -1,82 +1,82 @@
-requirement: "COMMAND_CHAINING"
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: COMMAND_CHAINING
 item: 1
 tc: 1
-id: 'TC_SUCCESS_CMD_CHAIN_001'
-description: 'Command chaining with && operator - demonstrates sequential command execution with dependency'
-
+id: TC_SUCCESS_CMD_CHAIN_001
+description: Command chaining with && operator - demonstrates sequential command execution
+  with dependency
 general_initial_conditions:
   system:
-    - "Bash shell with command chaining support is available"
-
+  - Bash shell with command chaining support is available
 initial_conditions:
   filesystem:
-    - "Temporary directory is writable"
-
+  - Temporary directory is writable
 test_sequences:
-  - id: 1
-    name: "Command Chaining Tests"
-    description: "Execute multiple commands in sequence using && operator"
-    initial_conditions:
-      system:
-        - "Command chaining works correctly"
-    steps:
-      - step: 1
-        description: "Chain directory creation and file creation"
-        command: "mkdir -p /tmp/chain_test && echo 'chained' > /tmp/chain_test/file.txt && cat /tmp/chain_test/file.txt"
-        expected:
-          success: true
-          result: '0'
-          output: "chained"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "grep -q 'chained' <<< \"$COMMAND_OUTPUT\""
-
-      - step: 2
-        description: "Chain file operations - create, modify, read"
-        command: "echo 'line1' > /tmp/chain_test/multi.txt && echo 'line2' >> /tmp/chain_test/multi.txt && echo 'line3' >> /tmp/chain_test/multi.txt && wc -l /tmp/chain_test/multi.txt"
-        expected:
-          success: true
-          result: '0'
-          output: "3"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "grep -q '3' <<< \"$COMMAND_OUTPUT\""
-
-      - step: 3
-        description: "Chain grep and awk operations"
-        command: "echo 'data:12345' > /tmp/chain_test/data.txt && grep 'data:' /tmp/chain_test/data.txt && awk -F: '{print $2}' /tmp/chain_test/data.txt"
-        capture_vars:
-          - name: extracted_value
-            capture: '^([0-9]+)$'
-        expected:
-          success: true
-          result: '0'
-          output: "12345"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "grep -q '12345' <<< \"$COMMAND_OUTPUT\""
-          general:
-            - name: verify_extracted_value
-              condition: "[[ $extracted_value -eq 12345 ]]"
-
-      - step: 4
-        description: "Chain with directory navigation and operations"
-        command: "cd /tmp/chain_test && pwd && ls -1 | wc -l"
-        expected:
-          success: true
-          result: '0'
-          output: "3"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "grep -q '3' <<< \"$COMMAND_OUTPUT\""
-
-      - step: 5
-        description: "Cleanup with chained removal"
-        command: "rm -f /tmp/chain_test/*.txt && rmdir /tmp/chain_test && echo 'cleanup complete'"
-        expected:
-          success: true
-          result: '0'
-          output: "cleanup complete"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "grep -q 'cleanup complete' <<< \"$COMMAND_OUTPUT\""
+- id: 1
+  name: Command Chaining Tests
+  description: Execute multiple commands in sequence using && operator
+  initial_conditions:
+    system:
+    - Command chaining works correctly
+  steps:
+  - step: 1
+    description: Chain directory creation and file creation
+    command: mkdir -p /tmp/chain_test && echo 'chained' > /tmp/chain_test/file.txt
+      && cat /tmp/chain_test/file.txt
+    expected:
+      success: true
+      result: '0'
+      output: chained
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: grep -q 'chained' <<< "$COMMAND_OUTPUT"
+  - step: 2
+    description: Chain file operations - create, modify, read
+    command: echo 'line1' > /tmp/chain_test/multi.txt && echo 'line2' >> /tmp/chain_test/multi.txt
+      && echo 'line3' >> /tmp/chain_test/multi.txt && wc -l /tmp/chain_test/multi.txt
+    expected:
+      success: true
+      result: '0'
+      output: '3'
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: grep -q '3' <<< "$COMMAND_OUTPUT"
+  - step: 3
+    description: Chain grep and awk operations
+    command: 'echo ''data:12345'' > /tmp/chain_test/data.txt && grep ''data:'' /tmp/chain_test/data.txt
+      && awk -F: ''{print $2}'' /tmp/chain_test/data.txt'
+    capture_vars:
+    - name: extracted_value
+      capture: ^([0-9]+)$
+    expected:
+      success: true
+      result: '0'
+      output: '12345'
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: grep -q '12345' <<< "$COMMAND_OUTPUT"
+      general:
+      - name: verify_extracted_value
+        condition: '[[ $extracted_value -eq 12345 ]]'
+  - step: 4
+    description: Chain with directory navigation and operations
+    command: cd /tmp/chain_test && pwd && ls -1 | wc -l
+    expected:
+      success: true
+      result: '0'
+      output: '3'
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: grep -q '3' <<< "$COMMAND_OUTPUT"
+  - step: 5
+    description: Cleanup with chained removal
+    command: rm -f /tmp/chain_test/*.txt && rmdir /tmp/chain_test && echo 'cleanup
+      complete'
+    expected:
+      success: true
+      result: '0'
+      output: cleanup complete
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: grep -q 'cleanup complete' <<< "$COMMAND_OUTPUT"

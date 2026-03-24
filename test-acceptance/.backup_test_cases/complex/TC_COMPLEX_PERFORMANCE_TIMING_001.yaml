@@ -1,0 +1,474 @@
+requirement: "COMPLEX_PERFORMANCE_TIMING"
+item: 1
+tc: 7
+id: 'TC_COMPLEX_PERFORMANCE_TIMING_001'
+description: 'Performance test with timing capture and validation - demonstrates performance metrics collection and analysis'
+
+hooks:
+  script_start:
+    command: "test-acceptance/scripts/hooks/script_start_init.sh"
+    on_error: "fail"
+  before_sequence:
+    command: "test-acceptance/scripts/hooks/before_sequence_log.sh"
+    on_error: "continue"
+  after_sequence:
+    command: "test-acceptance/scripts/hooks/after_sequence_cleanup.sh"
+    on_error: "continue"
+  script_end:
+    command: "test-acceptance/scripts/hooks/script_end_summary.sh"
+    on_error: "continue"
+
+hydration_vars:
+  PERF_TEST_ITERATIONS:
+    name: "PERF_TEST_ITERATIONS"
+    description: "Number of performance test iterations"
+    default_value: "5"
+    required: false
+  
+  PERF_THRESHOLD_MS:
+    name: "PERF_THRESHOLD_MS"
+    description: "Performance threshold in milliseconds"
+    default_value: "1000"
+    required: false
+  
+  PERF_WORKLOAD_SIZE:
+    name: "PERF_WORKLOAD_SIZE"
+    description: "Size of workload for testing"
+    default_value: "100"
+    required: false
+
+general_initial_conditions:
+  system:
+    - "High-resolution timing is available"
+    - "Performance metrics can be captured"
+  environment:
+    - "System is not under heavy load"
+    - "Test environment is consistent for accurate measurements"
+
+initial_conditions:
+  performance:
+    - "Baseline performance can be established"
+    - "Timing measurements are accurate to milliseconds"
+  filesystem:
+    - "Temporary directory available for performance test data"
+
+test_sequences:
+  - id: 1
+    name: "Baseline Performance Measurement"
+    description: "Establish baseline performance metrics"
+    initial_conditions:
+      performance:
+        - "System is in idle state"
+        - "No background tasks interfering"
+    steps:
+      - step: 1
+        description: "Capture baseline start timestamp"
+        command: "date +%s%N"
+        capture_vars:
+          - name: baseline_start_ns
+            capture: '([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "timestamp"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
+          general:
+            - name: verify_baseline_start_captured
+              condition: "[[ -n \"$baseline_start_ns\" ]]"
+
+      - step: 2
+        description: "Execute baseline operation (simple echo)"
+        command: "for i in $(seq 1 ${PERF_TEST_ITERATIONS}); do echo \"Iteration $i\"; done | wc -l"
+        capture_vars:
+          - name: baseline_iteration_count
+            capture: '([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "count"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" -eq ${PERF_TEST_ITERATIONS} ]]"
+
+      - step: 3
+        description: "Capture baseline end timestamp"
+        command: "date +%s%N"
+        capture_vars:
+          - name: baseline_end_ns
+            capture: '([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "timestamp"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
+
+      - step: 4
+        description: "Calculate baseline duration in milliseconds"
+        command: "echo $(( (${baseline_end_ns} - ${baseline_start_ns}) / 1000000 ))"
+        capture_vars:
+          - name: baseline_duration_ms
+            capture: '([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "duration"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output:
+            condition: "[[ $baseline_duration_ms -ge 0 ]]"
+            if_true:
+              - "echo 'Baseline duration calculated successfully'"
+            if_false:
+              - "echo 'Baseline duration calculation error'"
+            always:
+              - "echo \"Baseline: ${baseline_duration_ms}ms\""
+          general:
+            - name: verify_baseline_duration_numeric
+              condition: "[[ $baseline_duration_ms =~ ^[0-9]+$ ]]"
+            - name: verify_baseline_duration_valid
+              condition: "[[ $baseline_duration_ms -ge 0 ]]"
+
+      - step: 5
+        description: "Record baseline metrics"
+        command: "mkdir -p /tmp/perf_test_metrics && cat > /tmp/perf_test_metrics/baseline.txt << EOF
+Baseline Performance Metrics
+============================
+Start: ${baseline_start_ns}
+End: ${baseline_end_ns}
+Duration: ${baseline_duration_ms}ms
+Iterations: ${baseline_iteration_count}
+Avg per iteration: $(echo \"scale=2; ${baseline_duration_ms} / ${baseline_iteration_count}\" | bc 2>/dev/null || echo 'N/A')ms
+EOF
+cat /tmp/perf_test_metrics/baseline.txt"
+        expected:
+          success: true
+          result: 0
+          output: "Baseline Performance Metrics"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Duration: ${baseline_duration_ms}ms' <<< \"$COMMAND_OUTPUT\""
+
+  - id: 2
+    name: "File I/O Performance Test"
+    description: "Measure file creation and read performance"
+    initial_conditions:
+      performance:
+        - "Baseline has been established"
+      filesystem:
+        - "Performance test directory is available"
+    steps:
+      - step: 1
+        description: "Capture file I/O test start timestamp"
+        command: "date +%s%N"
+        capture_vars:
+          - name: fileio_start_ns
+            capture: '([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "timestamp"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
+
+      - step: 2
+        description: "Create test files with measured workload"
+        command: "for i in $(seq 1 ${PERF_WORKLOAD_SIZE}); do echo \"Test data line $i\" >> /tmp/perf_test_metrics/test_data.txt; done && wc -l /tmp/perf_test_metrics/test_data.txt | awk '{print $1}'"
+        capture_vars:
+          - name: lines_written
+            capture: '([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "line count"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" -eq ${PERF_WORKLOAD_SIZE} ]]"
+
+      - step: 3
+        description: "Capture file I/O test end timestamp"
+        command: "date +%s%N"
+        capture_vars:
+          - name: fileio_end_ns
+            capture: '([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "timestamp"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
+
+      - step: 4
+        description: "Calculate file I/O duration"
+        command: "echo $(( (${fileio_end_ns} - ${fileio_start_ns}) / 1000000 ))"
+        capture_vars:
+          - name: fileio_duration_ms
+            capture: '([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "duration"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output:
+            condition: "[[ $fileio_duration_ms -lt ${PERF_THRESHOLD_MS} ]]"
+            if_true:
+              - "echo 'File I/O performance within threshold'"
+            if_false:
+              - "echo 'WARNING: File I/O performance exceeded threshold'"
+            always:
+              - "echo \"File I/O: ${fileio_duration_ms}ms (threshold: ${PERF_THRESHOLD_MS}ms)\""
+          general:
+            - name: verify_fileio_duration_numeric
+              condition: "[[ $fileio_duration_ms =~ ^[0-9]+$ ]]"
+
+      - step: 5
+        description: "Record file I/O metrics"
+        command: "cat > /tmp/perf_test_metrics/fileio.txt << EOF
+File I/O Performance Metrics
+============================
+Start: ${fileio_start_ns}
+End: ${fileio_end_ns}
+Duration: ${fileio_duration_ms}ms
+Lines Written: ${lines_written}
+Workload Size: ${PERF_WORKLOAD_SIZE}
+Throughput: $(echo \"scale=2; ${lines_written} * 1000 / ${fileio_duration_ms}\" | bc 2>/dev/null || echo 'N/A') lines/sec
+Threshold: ${PERF_THRESHOLD_MS}ms
+Status: $([ ${fileio_duration_ms} -lt ${PERF_THRESHOLD_MS} ] && echo 'PASS' || echo 'WARN')
+EOF
+cat /tmp/perf_test_metrics/fileio.txt"
+        expected:
+          success: true
+          result: 0
+          output: "File I/O Performance Metrics"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Duration: ${fileio_duration_ms}ms' <<< \"$COMMAND_OUTPUT\""
+
+  - id: 3
+    name: "Processing Performance Test"
+    description: "Measure data processing and computation performance"
+    initial_conditions:
+      performance:
+        - "File I/O test completed"
+        - "Test data file is available"
+    steps:
+      - step: 1
+        description: "Capture processing test start timestamp"
+        command: "date +%s%N"
+        capture_vars:
+          - name: processing_start_ns
+            capture: '([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "timestamp"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
+
+      - step: 2
+        description: "Process test data (grep, sort, count operations)"
+        command: "grep 'Test data' /tmp/perf_test_metrics/test_data.txt | sort | uniq | wc -l"
+        capture_vars:
+          - name: unique_lines
+            capture: '([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "count"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
+
+      - step: 3
+        description: "Capture processing test end timestamp"
+        command: "date +%s%N"
+        capture_vars:
+          - name: processing_end_ns
+            capture: '([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "timestamp"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
+
+      - step: 4
+        description: "Calculate processing duration"
+        command: "echo $(( (${processing_end_ns} - ${processing_start_ns}) / 1000000 ))"
+        capture_vars:
+          - name: processing_duration_ms
+            capture: '([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "duration"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output:
+            condition: "[[ $processing_duration_ms -lt ${PERF_THRESHOLD_MS} ]]"
+            if_true:
+              - "echo 'Processing performance within threshold'"
+            if_false:
+              - "echo 'WARNING: Processing performance exceeded threshold'"
+            always:
+              - "echo \"Processing: ${processing_duration_ms}ms\""
+
+      - step: 5
+        description: "Record processing metrics"
+        command: "cat > /tmp/perf_test_metrics/processing.txt << EOF
+Processing Performance Metrics
+==============================
+Start: ${processing_start_ns}
+End: ${processing_end_ns}
+Duration: ${processing_duration_ms}ms
+Unique Lines: ${unique_lines}
+Operations: grep, sort, uniq, wc
+Threshold: ${PERF_THRESHOLD_MS}ms
+Status: $([ ${processing_duration_ms} -lt ${PERF_THRESHOLD_MS} ] && echo 'PASS' || echo 'WARN')
+EOF
+cat /tmp/perf_test_metrics/processing.txt"
+        expected:
+          success: true
+          result: 0
+          output: "Processing Performance Metrics"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Duration: ${processing_duration_ms}ms' <<< \"$COMMAND_OUTPUT\""
+
+  - id: 4
+    name: "Performance Analysis and Reporting"
+    description: "Analyze collected metrics and generate performance report"
+    initial_conditions:
+      performance:
+        - "All performance tests have completed"
+        - "All metrics files are available"
+    steps:
+      - step: 1
+        description: "Calculate total test execution time"
+        command: "echo $(( (${processing_end_ns} - ${baseline_start_ns}) / 1000000 ))"
+        capture_vars:
+          - name: total_duration_ms
+            capture: '([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "duration"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output:
+            condition: "[[ $total_duration_ms -gt 0 ]]"
+            if_true:
+              - "echo 'Total duration is valid'"
+            if_false:
+              - "echo 'Total duration calculation error'"
+            always:
+              - "echo \"Total: ${total_duration_ms}ms\""
+
+      - step: 2
+        description: "Determine performance test status"
+        command: "if [[ $fileio_duration_ms -lt ${PERF_THRESHOLD_MS} && $processing_duration_ms -lt ${PERF_THRESHOLD_MS} ]]; then
+  echo 'OVERALL_STATUS=PASS'
+else
+  echo 'OVERALL_STATUS=WARN'
+fi"
+        capture_vars:
+          - name: overall_status
+            capture: 'OVERALL_STATUS=([A-Z]+)'
+        expected:
+          success: true
+          result: 0
+          output: "OVERALL_STATUS="
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'OVERALL_STATUS=' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 3
+        description: "Generate comprehensive performance report"
+        command: "cat > /tmp/perf_test_metrics/performance_report.txt << EOF
+Performance Test Summary Report
+================================
+
+Test Configuration:
+- Iterations: ${PERF_TEST_ITERATIONS}
+- Workload Size: ${PERF_WORKLOAD_SIZE}
+- Threshold: ${PERF_THRESHOLD_MS}ms
+
+Performance Results:
+-------------------
+1. Baseline Test:
+   Duration: ${baseline_duration_ms}ms
+   Iterations: ${baseline_iteration_count}
+   
+2. File I/O Test:
+   Duration: ${fileio_duration_ms}ms
+   Lines Written: ${lines_written}
+   Status: $([ ${fileio_duration_ms} -lt ${PERF_THRESHOLD_MS} ] && echo 'PASS' || echo 'WARN')
+   
+3. Processing Test:
+   Duration: ${processing_duration_ms}ms
+   Unique Lines: ${unique_lines}
+   Status: $([ ${processing_duration_ms} -lt ${PERF_THRESHOLD_MS} ] && echo 'PASS' || echo 'WARN')
+
+Overall Summary:
+---------------
+Total Execution Time: ${total_duration_ms}ms
+Overall Status: ${overall_status}
+
+Performance Breakdown:
+- Baseline: ${baseline_duration_ms}ms ($(echo \"scale=1; ${baseline_duration_ms} * 100 / ${total_duration_ms}\" | bc 2>/dev/null || echo 'N/A')%)
+- File I/O: ${fileio_duration_ms}ms ($(echo \"scale=1; ${fileio_duration_ms} * 100 / ${total_duration_ms}\" | bc 2>/dev/null || echo 'N/A')%)
+- Processing: ${processing_duration_ms}ms ($(echo \"scale=1; ${processing_duration_ms} * 100 / ${total_duration_ms}\" | bc 2>/dev/null || echo 'N/A')%)
+
+Conclusion:
+$([ \"${overall_status}\" == \"PASS\" ] && echo 'All performance tests passed within threshold limits.' || echo 'Some performance tests exceeded threshold limits.')
+EOF
+cat /tmp/perf_test_metrics/performance_report.txt"
+        expected:
+          success: true
+          result: 0
+          output: "Performance Test Summary Report"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Performance Test Summary Report' <<< \"$COMMAND_OUTPUT\" && grep -q 'Overall Status: ${overall_status}' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 4
+        description: "Validate performance metrics quality"
+        command: "cat << EOF
+Baseline: ${baseline_duration_ms}ms
+File I/O: ${fileio_duration_ms}ms
+Processing: ${processing_duration_ms}ms
+Total: ${total_duration_ms}ms
+EOF"
+        expected:
+          success: true
+          result: 0
+          output: "Baseline:"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"
+          general:
+            - name: verify_all_metrics_numeric
+              condition: "[[ $baseline_duration_ms =~ ^[0-9]+$ && $fileio_duration_ms =~ ^[0-9]+$ && $processing_duration_ms =~ ^[0-9]+$ && $total_duration_ms =~ ^[0-9]+$ ]]"
+            - name: verify_metrics_valid
+              condition: "[[ $baseline_duration_ms -ge 0 && $fileio_duration_ms -ge 0 && $processing_duration_ms -ge 0 && $total_duration_ms -gt 0 ]]"
+            - name: verify_total_duration_consistent
+              condition: "[[ $total_duration_ms -ge $baseline_duration_ms ]]"
+
+      - step: 5
+        description: "Cleanup performance test artifacts"
+        command: "rm -rf /tmp/perf_test_metrics && echo 'Performance test cleanup complete'"
+        expected:
+          success: true
+          result: 0
+          output: "cleanup complete"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'cleanup complete' <<< \"$COMMAND_OUTPUT\""

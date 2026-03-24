@@ -44,7 +44,10 @@ verification-results/
 logs/
 
 # Generated reports
-reports/
+reports/validation_report.txt
+reports/*.html
+reports/*.pdf
+reports/loc/
 
 
 .crates.toml

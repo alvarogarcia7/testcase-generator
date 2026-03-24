@@ -4,6 +4,16 @@
   "description": "Schema for test execution log entries",
   "type": "object",
   "properties": {
+    "type": {
+      "type": "string",
+      "enum": ["test_execution"],
+      "description": "Document type (optional, for envelope support)"
+    },
+    "schema": {
+      "type": "string",
+      "pattern": "^tcms/.*\\.schema\\.v\\d+\\.json$",
+      "description": "Schema reference (optional, for envelope support)"
+    },
     "test_sequence": {
       "type": "integer",
       "description": "Sequence number of the test"
@@ -22,7 +32,7 @@
     },
     "output": {
       "type": "string",
-      "description": "Output from the command execution"
+      "description": "Output from the command execution (for manual steps, typically 'Manual step confirmed by user')"
     },
     "timestamp": {
       "type": "string",
@@ -41,6 +51,14 @@
         "teardown_test",
         "script_end"
       ]
+    },
+    "result_verification_pass": {
+      "type": "boolean",
+      "description": "Whether result verification passed"
+    },
+    "output_verification_pass": {
+      "type": "boolean",
+      "description": "Whether output verification passed"
     }
   },
   "required": [
@@ -48,6 +66,8 @@
     "step",
     "command",
     "exit_code",
-    "output"
+    "output",
+    "result_verification_pass",
+    "output_verification_pass"
   ]
 }

@@ -1,0 +1,69 @@
+description: Hook error scenario for after_sequence hook - script exits with error code after first sequence
+failed_steps: 0
+item: 1
+not_executed_steps: 3
+overall_pass: false
+passed_steps: 3
+requirement: HOOK_AFTER_SEQUENCE_ERROR
+sequences:
+- all_steps_passed: true
+  item: 1
+  name: First Sequence - After Hook Fails
+  requirement: HOOK_AFTER_SEQUENCE_ERROR
+  sequence_id: 1
+  step_results:
+  - Pass:
+      description: Execute first step of sequence 1
+      item: 1
+      requirement: HOOK_AFTER_SEQUENCE_ERROR
+      step: 1
+      tc: 1
+  - Pass:
+      description: Execute second step of sequence 1
+      item: 1
+      requirement: HOOK_AFTER_SEQUENCE_ERROR
+      step: 2
+      tc: 1
+  - Pass:
+      description: Execute third step of sequence 1
+      item: 1
+      requirement: HOOK_AFTER_SEQUENCE_ERROR
+      step: 3
+      tc: 1
+  tc: 1
+- all_steps_passed: false
+  item: 1
+  name: Second Sequence - Not Executed
+  requirement: HOOK_AFTER_SEQUENCE_ERROR
+  sequence_id: 2
+  step_results:
+  - NotExecuted:
+      description: This step should not execute
+      item: 1
+      requirement: HOOK_AFTER_SEQUENCE_ERROR
+      step: 1
+      tc: 1
+  - NotExecuted:
+      description: This step should not execute
+      item: 1
+      requirement: HOOK_AFTER_SEQUENCE_ERROR
+      step: 2
+      tc: 1
+  tc: 1
+- all_steps_passed: false
+  item: 1
+  name: Third Sequence - Not Executed
+  requirement: HOOK_AFTER_SEQUENCE_ERROR
+  sequence_id: 3
+  step_results:
+  - NotExecuted:
+      description: This step should not execute
+      item: 1
+      requirement: HOOK_AFTER_SEQUENCE_ERROR
+      step: 1
+      tc: 1
+  tc: 1
+tc: 1
+test_case_id: TEST_HOOK_AFTER_SEQ_001
+total_steps: 6
+type: result

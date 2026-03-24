@@ -437,6 +437,14 @@ impl fmt::Display for TestSequence {
 /// A complete test case following the GSMA schema
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TestCase {
+    /// Document type (envelope field)
+    #[serde(rename = "type", default, skip_serializing_if = "Option::is_none")]
+    pub doc_type: Option<String>,
+
+    /// Schema reference (envelope field)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub schema: Option<String>,
+
     /// Requirement identifier
     pub requirement: String,
 
@@ -496,6 +504,8 @@ impl TestCase {
     /// Create a new test case with required fields
     pub fn new(requirement: String, item: i64, tc: i64, id: String, description: String) -> Self {
         Self {
+            doc_type: None,
+            schema: None,
             requirement,
             item,
             tc,
@@ -859,6 +869,14 @@ impl fmt::Display for HookType {
 /// Test step execution entry following the test execution log schema
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TestStepExecutionEntry {
+    /// Document type (envelope field)
+    #[serde(rename = "type", default, skip_serializing_if = "Option::is_none")]
+    pub doc_type: Option<String>,
+
+    /// Schema reference (envelope field)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub schema: Option<String>,
+
     /// Sequence number of the test
     pub test_sequence: i64,
 
@@ -886,25 +904,28 @@ pub struct TestStepExecutionEntry {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub hook_path: Option<String>,
 
-    /// Whether result verification passed (optional)
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub result_verification_pass: Option<bool>,
+    /// Whether result verification passed
+    pub result_verification_pass: bool,
 
-    /// Whether output verification passed (optional)
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub output_verification_pass: Option<bool>,
+    /// Whether output verification passed
+    pub output_verification_pass: bool,
 }
 
 impl TestStepExecutionEntry {
     /// Create a new test step execution entry
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         test_sequence: i64,
         step: i64,
         command: String,
         exit_code: i32,
         output: String,
+        result_verification_pass: bool,
+        output_verification_pass: bool,
     ) -> Self {
         Self {
+            doc_type: None,
+            schema: None,
             test_sequence,
             step,
             command,
@@ -913,12 +934,13 @@ impl TestStepExecutionEntry {
             timestamp: None,
             hook_type: None,
             hook_path: None,
-            result_verification_pass: None,
-            output_verification_pass: None,
+            result_verification_pass,
+            output_verification_pass,
         }
     }
 
     /// Create a new test step execution entry with timestamp
+    #[allow(clippy::too_many_arguments)]
     pub fn with_timestamp(
         test_sequence: i64,
         step: i64,
@@ -926,8 +948,12 @@ impl TestStepExecutionEntry {
         exit_code: i32,
         output: String,
         timestamp: String,
+        result_verification_pass: bool,
+        output_verification_pass: bool,
     ) -> Self {
         Self {
+            doc_type: None,
+            schema: None,
             test_sequence,
             step,
             command,
@@ -936,8 +962,8 @@ impl TestStepExecutionEntry {
             timestamp: Some(timestamp),
             hook_type: None,
             hook_path: None,
-            result_verification_pass: None,
-            output_verification_pass: None,
+            result_verification_pass,
+            output_verification_pass,
         }
     }
 
@@ -1587,6 +1613,8 @@ mod tests {
             "echo test".to_string(),
             0,
             "test output".to_string(),
+            true,
+            true,
         );
 
         assert_eq!(entry.test_sequence, 1);
@@ -1595,6 +1623,8 @@ mod tests {
         assert_eq!(entry.exit_code, 0);
         assert_eq!(entry.output, "test output");
         assert_eq!(entry.timestamp, None);
+        assert!(entry.result_verification_pass);
+        assert!(entry.output_verification_pass);
     }
 
     #[test]
@@ -1606,6 +1636,8 @@ mod tests {
             0,
             "test output".to_string(),
             "2024-01-15T10:30:00Z".to_string(),
+            true,
+            true,
         );
 
         assert_eq!(entry.test_sequence, 1);
@@ -1614,32 +1646,62 @@ mod tests {
         assert_eq!(entry.exit_code, 0);
         assert_eq!(entry.output, "test output");
         assert_eq!(entry.timestamp, Some("2024-01-15T10:30:00Z".to_string()));
+        assert!(entry.result_verification_pass);
+        assert!(entry.output_verification_pass);
     }
 
     #[test]
     fn test_test_step_execution_entry_is_success() {
-        let success_entry =
-            TestStepExecutionEntry::new(1, 1, "cmd".to_string(), 0, "output".to_string());
+        let success_entry = TestStepExecutionEntry::new(
+            1,
+            1,
+            "cmd".to_string(),
+            0,
+            "output".to_string(),
+            true,
+            true,
+        );
         assert!(success_entry.is_success());
         assert!(!success_entry.is_failure());
 
-        let failure_entry =
-            TestStepExecutionEntry::new(1, 1, "cmd".to_string(), 1, "error".to_string());
+        let failure_entry = TestStepExecutionEntry::new(
+            1,
+            1,
+            "cmd".to_string(),
+            1,
+            "error".to_string(),
+            false,
+            false,
+        );
         assert!(!failure_entry.is_success());
         assert!(failure_entry.is_failure());
     }
 
     #[test]
     fn test_test_step_execution_entry_validate_success() {
-        let entry =
-            TestStepExecutionEntry::new(1, 2, "echo test".to_string(), 0, "output".to_string());
+        let entry = TestStepExecutionEntry::new(
+            1,
+            2,
+            "echo test".to_string(),
+            0,
+            "output".to_string(),
+            true,
+            true,
+        );
         assert!(entry.validate().is_ok());
     }
 
     #[test]
     fn test_test_step_execution_entry_validate_negative_sequence() {
-        let entry =
-            TestStepExecutionEntry::new(-1, 2, "echo test".to_string(), 0, "output".to_string());
+        let entry = TestStepExecutionEntry::new(
+            -1,
+            2,
+            "echo test".to_string(),
+            0,
+            "output".to_string(),
+            true,
+            true,
+        );
         let result = entry.validate();
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), "test_sequence must be non-negative");
@@ -1647,8 +1709,15 @@ mod tests {
 
     #[test]
     fn test_test_step_execution_entry_validate_negative_step() {
-        let entry =
-            TestStepExecutionEntry::new(1, -1, "echo test".to_string(), 0, "output".to_string());
+        let entry = TestStepExecutionEntry::new(
+            1,
+            -1,
+            "echo test".to_string(),
+            0,
+            "output".to_string(),
+            true,
+            true,
+        );
         let result = entry.validate();
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), "step must be non-negative");
@@ -1656,7 +1725,8 @@ mod tests {
 
     #[test]
     fn test_test_step_execution_entry_validate_empty_command() {
-        let entry = TestStepExecutionEntry::new(1, 2, "".to_string(), 0, "output".to_string());
+        let entry =
+            TestStepExecutionEntry::new(1, 2, "".to_string(), 0, "output".to_string(), true, true);
         let result = entry.validate();
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), "command must not be empty");
@@ -1664,7 +1734,15 @@ mod tests {
 
     #[test]
     fn test_test_step_execution_entry_matches() {
-        let entry = TestStepExecutionEntry::new(3, 5, "cmd".to_string(), 0, "output".to_string());
+        let entry = TestStepExecutionEntry::new(
+            3,
+            5,
+            "cmd".to_string(),
+            0,
+            "output".to_string(),
+            true,
+            true,
+        );
 
         assert!(entry.matches(3, 5));
         assert!(!entry.matches(3, 6));
@@ -1674,15 +1752,29 @@ mod tests {
 
     #[test]
     fn test_test_step_execution_entry_result_summary() {
-        let success_entry =
-            TestStepExecutionEntry::new(1, 2, "cmd".to_string(), 0, "output".to_string());
+        let success_entry = TestStepExecutionEntry::new(
+            1,
+            2,
+            "cmd".to_string(),
+            0,
+            "output".to_string(),
+            true,
+            true,
+        );
         assert_eq!(
             success_entry.result_summary(),
             "Sequence 1, Step 2: SUCCESS (exit code: 0)"
         );
 
-        let failure_entry =
-            TestStepExecutionEntry::new(3, 4, "cmd".to_string(), 127, "error".to_string());
+        let failure_entry = TestStepExecutionEntry::new(
+            3,
+            4,
+            "cmd".to_string(),
+            127,
+            "error".to_string(),
+            false,
+            false,
+        );
         assert_eq!(
             failure_entry.result_summary(),
             "Sequence 3, Step 4: FAILURE (exit code: 127)"
@@ -1698,14 +1790,23 @@ mod tests {
             0,
             "output".to_string(),
             "2024-01-15T10:30:00Z".to_string(),
+            true,
+            true,
         );
         let parsed = entry_with_timestamp.parse_timestamp();
         assert!(parsed.is_some());
         let timestamp = parsed.unwrap();
         assert_eq!(timestamp.to_rfc3339(), "2024-01-15T10:30:00+00:00");
 
-        let entry_without_timestamp =
-            TestStepExecutionEntry::new(1, 1, "cmd".to_string(), 0, "output".to_string());
+        let entry_without_timestamp = TestStepExecutionEntry::new(
+            1,
+            1,
+            "cmd".to_string(),
+            0,
+            "output".to_string(),
+            true,
+            true,
+        );
         assert!(entry_without_timestamp.parse_timestamp().is_none());
 
         let entry_with_invalid_timestamp = TestStepExecutionEntry::with_timestamp(
@@ -1715,6 +1816,8 @@ mod tests {
             0,
             "output".to_string(),
             "invalid timestamp".to_string(),
+            true,
+            true,
         );
         assert!(entry_with_invalid_timestamp.parse_timestamp().is_none());
     }
@@ -1727,6 +1830,8 @@ mod tests {
             "echo test".to_string(),
             0,
             "test output".to_string(),
+            true,
+            true,
         );
         assert_eq!(
             format!("{}", entry),
@@ -1742,6 +1847,8 @@ mod tests {
             "echo test".to_string(),
             0,
             "test output".to_string(),
+            true,
+            true,
         );
 
         let json = serde_json::to_string(&entry).unwrap();
@@ -1759,6 +1866,8 @@ mod tests {
             0,
             "test output".to_string(),
             "2024-01-15T10:30:00Z".to_string(),
+            true,
+            true,
         );
 
         let json = serde_json::to_string(&entry).unwrap();
@@ -1776,6 +1885,8 @@ mod tests {
             "echo test".to_string(),
             0,
             "test output".to_string(),
+            true,
+            true,
         );
 
         let json = serde_json::to_string(&entry).unwrap();
@@ -1790,6 +1901,8 @@ mod tests {
             "echo test".to_string(),
             0,
             "test output".to_string(),
+            true,
+            true,
         );
 
         let yaml = serde_yaml::to_string(&entry).unwrap();

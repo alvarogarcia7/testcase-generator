@@ -8,6 +8,7 @@ pub mod database;
 pub mod dependency_resolver;
 pub mod dependency_validator;
 pub mod editor;
+pub mod envelope;
 pub mod executor;
 pub mod fuzzy;
 pub mod git;

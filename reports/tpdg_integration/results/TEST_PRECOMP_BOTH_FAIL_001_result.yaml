@@ -1,0 +1,38 @@
+description: 'Precomputed verification: first step fails both result and output verification'
+failed_steps: 1
+item: 1
+not_executed_steps: 0
+overall_pass: false
+passed_steps: 1
+requirement: TEST_PRECOMP_BOTH_FAIL
+sequences:
+- all_steps_passed: false
+  item: 1
+  name: Both Verifications Fail Sequence
+  requirement: TEST_PRECOMP_BOTH_FAIL
+  sequence_id: 1
+  step_results:
+  - Fail:
+      actual_output: command not found
+      actual_result: '127'
+      description: Execute command with both verifications failing
+      expected:
+        output: Error message
+        result: '1'
+        success: false
+      item: 1
+      reason: 'Result mismatch: expected ''1'', got ''127'''
+      requirement: TEST_PRECOMP_BOTH_FAIL
+      step: 1
+      tc: 1
+  - Pass:
+      description: Execute command with passing verification
+      item: 1
+      requirement: TEST_PRECOMP_BOTH_FAIL
+      step: 2
+      tc: 1
+  tc: 1
+tc: 1
+test_case_id: TEST_PRECOMP_BOTH_FAIL_001
+total_steps: 2
+type: result

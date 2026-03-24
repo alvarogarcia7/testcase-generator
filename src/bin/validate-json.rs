@@ -2,6 +2,7 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use std::fs;
 use std::path::PathBuf;
+use testcase_manager::envelope::resolve_schema_from_payload;
 
 #[derive(Parser)]
 #[command(name = "validate-json")]
@@ -14,9 +15,13 @@ struct Cli {
     #[arg(value_name = "JSON_FILE")]
     json_file: PathBuf,
 
-    /// Path to the JSON schema file
+    /// Path to the JSON schema file (optional, auto-resolved from 'schema' field if not provided)
     #[arg(value_name = "SCHEMA_FILE")]
-    schema_file: PathBuf,
+    schema_file: Option<PathBuf>,
+
+    /// Root directory containing schema files for auto-resolution
+    #[arg(long, value_name = "SCHEMAS_ROOT", default_value = "schemas/")]
+    schemas_root: String,
 
     /// Set log level (trace, debug, info, warn, error)
     #[arg(long, value_name = "LEVEL", default_value = "warn")]
@@ -33,6 +38,21 @@ fn main() -> Result<()> {
     let log_level = if cli.verbose { "info" } else { &cli.log_level };
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(log_level)).init();
 
+    // Resolve schema path
+    let schema_path = if let Some(explicit_schema) = cli.schema_file {
+        log::debug!("Using explicit schema: {}", explicit_schema.display());
+        explicit_schema
+    } else {
+        log::debug!(
+            "Auto-resolving schema from payload with schemas root: {}",
+            cli.schemas_root
+        );
+        resolve_schema_from_payload(&cli.json_file, &cli.schemas_root)
+            .context("Failed to auto-resolve schema from payload")?
+    };
+
+    log::info!("Using schema: {}", schema_path.display());
+
     // Read the JSON file
     let json_content = fs::read_to_string(&cli.json_file).context(format!(
         "Failed to read JSON file: {}",
@@ -40,9 +60,9 @@ fn main() -> Result<()> {
     ))?;
 
     // Read the JSON schema file
-    let schema_content = fs::read_to_string(&cli.schema_file).context(format!(
+    let schema_content = fs::read_to_string(&schema_path).context(format!(
         "Failed to read schema file: {}",
-        cli.schema_file.display()
+        schema_path.display()
     ))?;
 
     // Parse the schema

@@ -1,59 +1,60 @@
-requirement: "DEPENDENCY_SELF_REF"
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: DEPENDENCY_SELF_REF
 item: 1
 tc: 1
-id: 'TC_DEPENDENCY_SELF_REF_001'
-description: 'Self-reference dependency test - detects when a test case includes itself (direct circular dependency)'
-
+id: TC_DEPENDENCY_SELF_REF_001
+description: Self-reference dependency test - detects when a test case includes itself
+  (direct circular dependency)
 general_initial_conditions:
   include:
-    - id: 'TC_DEPENDENCY_SELF_REF_001'
+  - id: TC_DEPENDENCY_SELF_REF_001
   system:
-    - "Bash shell is available"
-    - "Self-reference detection is enabled"
-
+  - Bash shell is available
+  - Self-reference detection is enabled
 initial_conditions:
   filesystem:
-    - "Temporary directory /tmp is writable"
+  - Temporary directory /tmp is writable
   system:
-    - "This test includes itself - should be detected as circular dependency"
-    - "TC_DEPENDENCY_SELF_REF_001 -> TC_DEPENDENCY_SELF_REF_001 (SELF REFERENCE!)"
-
+  - This test includes itself - should be detected as circular dependency
+  - TC_DEPENDENCY_SELF_REF_001 -> TC_DEPENDENCY_SELF_REF_001 (SELF REFERENCE!)
 test_sequences:
-  - id: 1
-    name: "Self Reference Test"
-    description: "Test that references itself in dependencies"
-    initial_conditions:
-      system:
-        - "Self-reference should be detected immediately"
-    steps:
-      - step: 1
-        description: "Attempt to execute with self-reference"
-        command: "echo 'This should not execute due to self-reference'"
-        expected:
-          success: false
-          result: '1'
-          output: "Self-reference detected"
-        verification:
-          result: "[[ $EXIT_CODE -ne 0 ]]"
-          output: "grep -q 'Self-reference\\|Circular dependency' <<< \"$COMMAND_OUTPUT\" || true"
-
-  - id: 2
-    name: "Sequence Self Reference"
-    description: "Test sequence that references itself"
-    initial_conditions:
-      include:
-        - id: 'TC_DEPENDENCY_SELF_REF_001'
-          test_sequence: '2'
-      system:
-        - "Sequence-level self-reference should also be detected"
-    steps:
-      - step: 1
-        description: "Attempt to execute with sequence self-reference"
-        command: "echo 'This should not execute due to sequence self-reference'"
-        expected:
-          success: false
-          result: '1'
-          output: "Self-reference detected"
-        verification:
-          result: "[[ $EXIT_CODE -ne 0 ]]"
-          output: "grep -q 'Self-reference\\|Circular dependency' <<< \"$COMMAND_OUTPUT\" || true"
+- id: 1
+  name: Self Reference Test
+  description: Test that references itself in dependencies
+  initial_conditions:
+    system:
+    - Self-reference should be detected immediately
+  steps:
+  - step: 1
+    description: Attempt to execute with self-reference
+    command: echo 'This should not execute due to self-reference'
+    expected:
+      success: false
+      result: '1'
+      output: Self-reference detected
+    verification:
+      result: '[[ $EXIT_CODE -ne 0 ]]'
+      output: grep -q 'Self-reference\|Circular dependency' <<< "$COMMAND_OUTPUT"
+        || true
+- id: 2
+  name: Sequence Self Reference
+  description: Test sequence that references itself
+  initial_conditions:
+    include:
+    - id: TC_DEPENDENCY_SELF_REF_001
+      test_sequence: '2'
+    system:
+    - Sequence-level self-reference should also be detected
+  steps:
+  - step: 1
+    description: Attempt to execute with sequence self-reference
+    command: echo 'This should not execute due to sequence self-reference'
+    expected:
+      success: false
+      result: '1'
+      output: Self-reference detected
+    verification:
+      result: '[[ $EXIT_CODE -ne 0 ]]'
+      output: grep -q 'Self-reference\|Circular dependency' <<< "$COMMAND_OUTPUT"
+        || true

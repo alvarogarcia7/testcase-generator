@@ -1,187 +1,149 @@
-requirement: "DOC_GEN_DATA_VALIDATION"
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: DOC_GEN_DATA_VALIDATION
 item: 1
 tc: 1
-id: 'DOC_GEN_DATA_VALIDATION_001'
-description: 'Comprehensive data validation including format checking, boundary testing, and constraint verification'
-
+id: DOC_GEN_DATA_VALIDATION_001
+description: Comprehensive data validation including format checking, boundary testing,
+  and constraint verification
 general_initial_conditions:
   system:
-    - "Validation tools are available"
-
+  - Validation tools are available
 initial_conditions:
   system:
-    - "Test data sets are prepared"
-
+  - Test data sets are prepared
 test_sequences:
-  - id: 1
-    name: "Format and Type Validation"
-    description: |
-                   Validate data formats, types, and structure
-                   against expected schemas.
-    steps:
-      - step: 1
-        description: "Validate email format - valid case"
-        command: |
-          EMAIL="user@example.com"
-          if [[ "$EMAIL" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
-            echo "VALID_EMAIL"
-          else
-            echo "INVALID_EMAIL"
-          fi
-        expected:
-          success: true
-          result: 0
-          output: "VALID_EMAIL"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'VALID_EMAIL' <<< \"$COMMAND_OUTPUT\""
-      - step: 2
-        description: "Validate email format - invalid case"
-        command: |
-          EMAIL="invalid.email"
-          if [[ "$EMAIL" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
-            echo "VALID_EMAIL"
-          else
-            echo "INVALID_EMAIL"
-          fi
-        expected:
-          success: true
-          result: 0
-          output: "INVALID_EMAIL"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'INVALID_EMAIL' <<< \"$COMMAND_OUTPUT\""
-      - step: 3
-        description: "Validate numeric range (1-100)"
-        command: |
-          NUM=50
-          if [[ $NUM -ge 1 && $NUM -le 100 ]]; then
-            echo "IN_RANGE"
-          else
-            echo "OUT_OF_RANGE"
-          fi
-        expected:
-          success: true
-          result: 0
-          output: "IN_RANGE"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'IN_RANGE' <<< \"$COMMAND_OUTPUT\""
-      - step: 4
-        description: "Validate string length (max 50 chars)"
-        command: |
-          STR="This is a test string"
-          if [[ ${#STR} -le 50 ]]; then
-            echo "LENGTH_OK: ${#STR} chars"
-          else
-            echo "LENGTH_EXCEEDED"
-          fi
-        expected:
-          success: true
-          result: 0
-          output: "LENGTH_OK:"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'LENGTH_OK:' <<< \"$COMMAND_OUTPUT\""
-      - step: 5
-        description: "Validate date format (YYYY-MM-DD)"
-        command: |
-          DATE="2024-03-15"
-          if [[ "$DATE" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
-            echo "VALID_DATE"
-          else
-            echo "INVALID_DATE"
-          fi
-        expected:
-          success: true
-          result: 0
-          output: "VALID_DATE"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'VALID_DATE' <<< \"$COMMAND_OUTPUT\""
-  - id: 2
-    name: "Boundary and Edge Case Testing"
-    description: |
-                   Test boundary conditions, edge cases,
-                   and limit scenarios.
-    steps:
-      - step: 1
-        description: "Test minimum boundary (0)"
-        command: |
-          VAL=0
-          if [[ $VAL -ge 0 ]]; then
-            echo "VALID_BOUNDARY"
-          else
-            echo "INVALID"
-          fi
-        expected:
-          success: true
-          result: 0
-          output: "VALID_BOUNDARY"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'VALID_BOUNDARY' <<< \"$COMMAND_OUTPUT\""
-      - step: 2
-        description: "Test maximum boundary (999)"
-        command: |
-          VAL=999
-          if [[ $VAL -le 999 ]]; then
-            echo "VALID_BOUNDARY"
-          else
-            echo "EXCEEDED"
-          fi
-        expected:
-          success: true
-          result: 0
-          output: "VALID_BOUNDARY"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'VALID_BOUNDARY' <<< \"$COMMAND_OUTPUT\""
-      - step: 3
-        description: "Test empty string handling"
-        command: |
-          STR=""
-          if [[ -z "$STR" ]]; then
-            echo "EMPTY_STRING_DETECTED"
-          else
-            echo "HAS_CONTENT"
-          fi
-        expected:
-          success: true
-          result: 0
-          output: "EMPTY_STRING_DETECTED"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'EMPTY_STRING_DETECTED' <<< \"$COMMAND_OUTPUT\""
-      - step: 4
-        description: "Test null value handling"
-        command: |
-          VAL=""
-          if [[ -n "$VAL" ]]; then
-            echo "HAS_VALUE"
-          else
-            echo "NULL_OR_EMPTY"
-          fi
-        expected:
-          success: true
-          result: 0
-          output: "NULL_OR_EMPTY"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'NULL_OR_EMPTY' <<< \"$COMMAND_OUTPUT\""
-      - step: 5
-        description: "Test special characters in string"
-        command: |
-          STR="Test@#$%"
-          if [[ "$STR" =~ ^[a-zA-Z0-9@#$%]+$ ]]; then
-            echo "SPECIAL_CHARS_ALLOWED"
-          else
-            echo "INVALID_CHARS"
-          fi
-        expected:
-          success: true
-          result: 0
-          output: "SPECIAL_CHARS_ALLOWED"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'SPECIAL_CHARS_ALLOWED' <<< \"$COMMAND_OUTPUT\""
+- id: 1
+  name: Format and Type Validation
+  description: 'Validate data formats, types, and structure
+
+    against expected schemas.
+
+    '
+  initial_conditions:
+    system:
+    - Validation environment ready
+  steps:
+  - step: 1
+    description: Validate email format - valid case
+    command: "EMAIL=\"user@example.com\"\nif [[ \"$EMAIL\" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\\
+      .[a-zA-Z]{2,}$ ]]; then\n  echo \"VALID_EMAIL\"\nelse\n  echo \"INVALID_EMAIL\"\
+      \nfi\n"
+    expected:
+      success: true
+      result: 0
+      output: VALID_EMAIL
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'VALID_EMAIL' <<< "$COMMAND_OUTPUT"
+  - step: 2
+    description: Validate email format - invalid case
+    command: "EMAIL=\"invalid.email\"\nif [[ \"$EMAIL\" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\\
+      .[a-zA-Z]{2,}$ ]]; then\n  echo \"VALID_EMAIL\"\nelse\n  echo \"INVALID_EMAIL\"\
+      \nfi\n"
+    expected:
+      success: true
+      result: 0
+      output: INVALID_EMAIL
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'INVALID_EMAIL' <<< "$COMMAND_OUTPUT"
+  - step: 3
+    description: Validate numeric range (1-100)
+    command: "NUM=50\nif [[ $NUM -ge 1 && $NUM -le 100 ]]; then\n  echo \"IN_RANGE\"\
+      \nelse\n  echo \"OUT_OF_RANGE\"\nfi\n"
+    expected:
+      success: true
+      result: 0
+      output: IN_RANGE
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'IN_RANGE' <<< "$COMMAND_OUTPUT"
+  - step: 4
+    description: Validate string length (max 50 chars)
+    command: "STR=\"This is a test string\"\nif [[ ${#STR} -le 50 ]]; then\n  echo\
+      \ \"LENGTH_OK: ${#STR} chars\"\nelse\n  echo \"LENGTH_EXCEEDED\"\nfi\n"
+    expected:
+      success: true
+      result: 0
+      output: 'LENGTH_OK:'
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'LENGTH_OK:' <<< "$COMMAND_OUTPUT"
+  - step: 5
+    description: Validate date format (YYYY-MM-DD)
+    command: "DATE=\"2024-03-15\"\nif [[ \"$DATE\" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$\
+      \ ]]; then\n  echo \"VALID_DATE\"\nelse\n  echo \"INVALID_DATE\"\nfi\n"
+    expected:
+      success: true
+      result: 0
+      output: VALID_DATE
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'VALID_DATE' <<< "$COMMAND_OUTPUT"
+- id: 2
+  name: Boundary and Edge Case Testing
+  description: 'Test boundary conditions, edge cases,
+
+    and limit scenarios.
+
+    '
+  initial_conditions:
+    system:
+    - Test environment configured
+  steps:
+  - step: 1
+    description: Test minimum boundary (0)
+    command: "VAL=0\nif [[ $VAL -ge 0 ]]; then\n  echo \"VALID_BOUNDARY\"\nelse\n\
+      \  echo \"INVALID\"\nfi\n"
+    expected:
+      success: true
+      result: 0
+      output: VALID_BOUNDARY
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'VALID_BOUNDARY' <<< "$COMMAND_OUTPUT"
+  - step: 2
+    description: Test maximum boundary (999)
+    command: "VAL=999\nif [[ $VAL -le 999 ]]; then\n  echo \"VALID_BOUNDARY\"\nelse\n\
+      \  echo \"EXCEEDED\"\nfi\n"
+    expected:
+      success: true
+      result: 0
+      output: VALID_BOUNDARY
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'VALID_BOUNDARY' <<< "$COMMAND_OUTPUT"
+  - step: 3
+    description: Test empty string handling
+    command: "STR=\"\"\nif [[ -z \"$STR\" ]]; then\n  echo \"EMPTY_STRING_DETECTED\"\
+      \nelse\n  echo \"HAS_CONTENT\"\nfi\n"
+    expected:
+      success: true
+      result: 0
+      output: EMPTY_STRING_DETECTED
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'EMPTY_STRING_DETECTED' <<< "$COMMAND_OUTPUT"
+  - step: 4
+    description: Test null value handling
+    command: "VAL=\"\"\nif [[ -n \"$VAL\" ]]; then\n  echo \"HAS_VALUE\"\nelse\n \
+      \ echo \"NULL_OR_EMPTY\"\nfi\n"
+    expected:
+      success: true
+      result: 0
+      output: NULL_OR_EMPTY
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'NULL_OR_EMPTY' <<< "$COMMAND_OUTPUT"
+  - step: 5
+    description: Test special characters in string
+    command: "STR=\"Test@#$%\"\nif [[ \"$STR\" =~ ^[a-zA-Z0-9@#$%]+$ ]]; then\n  echo\
+      \ \"SPECIAL_CHARS_ALLOWED\"\nelse\n  echo \"INVALID_CHARS\"\nfi\n"
+    expected:
+      success: true
+      result: 0
+      output: SPECIAL_CHARS_ALLOWED
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'SPECIAL_CHARS_ALLOWED' <<< "$COMMAND_OUTPUT"

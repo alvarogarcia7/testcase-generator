@@ -202,9 +202,9 @@ fn generate_verification_with_var_subst(expr: &VerificationExpression, var_name:
                 .replace("$", "\\$")
                 .replace("\"", "\\\"");
             script.push_str(&format!("EXPR=\"{}\"\n", escaped_expr));
-            script.push_str("if [ -n \"$STEP_VAR_NAMES\" ]; then\n");
-            script.push_str("    for var_name in $STEP_VAR_NAMES; do\n");
-            script.push_str("        eval \"var_value=\\$STEP_VAR_$var_name\"\n");
+            script.push_str("if [ -n \"$CAPTURED_VAR_NAMES\" ]; then\n");
+            script.push_str("    for var_name in $CAPTURED_VAR_NAMES; do\n");
+            script.push_str("        eval \"var_value=\\$$var_name\"\n");
             script.push_str("        # Escape special characters for sed\n");
             script.push_str(
                 "        escaped_value=$(printf '%s' \"$var_value\" | sed 's/[&/\\]/\\\\&/g')\n",
@@ -236,9 +236,9 @@ fn generate_verification_with_var_subst(expr: &VerificationExpression, var_name:
                 .replace("$", "\\$")
                 .replace("\"", "\\\"");
             script.push_str(&format!("COND_EXPR=\"{}\"\n", escaped_condition));
-            script.push_str("if [ -n \"$STEP_VAR_NAMES\" ]; then\n");
-            script.push_str("    for var_name in $STEP_VAR_NAMES; do\n");
-            script.push_str("        eval \"var_value=\\$STEP_VAR_$var_name\"\n");
+            script.push_str("if [ -n \"$CAPTURED_VAR_NAMES\" ]; then\n");
+            script.push_str("    for var_name in $CAPTURED_VAR_NAMES; do\n");
+            script.push_str("        eval \"var_value=\\$$var_name\"\n");
             script.push_str(
                 "        escaped_value=$(printf '%s' \"$var_value\" | sed 's/[&/\\]/\\\\&/g')\n",
             );
@@ -338,8 +338,8 @@ impl TestExecutor {
             }
             JsonEscapingMethod::ShellFallback => {
                 // Use sed/awk fallback directly
-                script.push_str("# Shell fallback: escape backslashes, quotes, tabs, carriage returns, and convert newlines to \\n\n");
-                script.push_str("OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g; s/\\t/\\\\t/g; s/\\r/\\\\r/g' | awk '{printf \"%s%s\", (NR>1?\"\\\\n\":\"\"), $0}')\n");
+                script.push_str("# Shell fallback: escape backslashes, quotes, tabs, and convert newlines to \\n\n");
+                script.push_str("OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g; s/\\t/\\\\t/g' | awk '{printf \"%s%s\", (NR>1?\"\\\\n\":\"\"), $0}')\n");
             }
             JsonEscapingMethod::Auto => {
                 // Try json-escape binary first, fallback to sed/awk
@@ -356,8 +356,8 @@ impl TestExecutor {
                     bin_path
                 ));
                 script.push_str("else\n");
-                script.push_str("    # Shell fallback: escape backslashes, quotes, tabs, carriage returns, and convert newlines to \\n\n");
-                script.push_str("    OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g; s/\\t/\\\\t/g; s/\\r/\\\\r/g' | awk '{printf \"%s%s\", (NR>1?\"\\\\n\":\"\"), $0}')\n");
+                script.push_str("    # Shell fallback: escape backslashes, quotes, tabs, and convert newlines to \\n\n");
+                script.push_str("    OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g; s/\\t/\\\\t/g' | awk '{printf \"%s%s\", (NR>1?\"\\\\n\":\"\"), $0}')\n");
                 script.push_str("fi\n");
             }
         }
@@ -581,7 +581,7 @@ impl TestExecutor {
             script.push_str(
                 "# Initialize variable storage for captured variables (bash 3.2+ compatible)\n",
             );
-            script.push_str("STEP_VAR_NAMES=\"\"\n\n");
+            script.push_str("CAPTURED_VAR_NAMES=\"\"\n\n");
         }
 
         // Add trap to ensure JSON file is properly closed on any exit
@@ -858,13 +858,9 @@ impl TestExecutor {
                 if !variables.is_empty() {
                     script.push_str("# Initialize sequence variables\n");
                     for (var_name, var_value) in variables {
+                        script.push_str(&format!("{}={}\n", var_name, bash_escape(var_value)));
                         script.push_str(&format!(
-                            "STEP_VAR_{}={}\n",
-                            var_name,
-                            bash_escape(var_value)
-                        ));
-                        script.push_str(&format!(
-                            "if ! echo \" $STEP_VAR_NAMES \" | grep -q \" {} \"; then STEP_VAR_NAMES=\"$STEP_VAR_NAMES {}\"; fi\n",
+                            "if ! echo \" $CAPTURED_VAR_NAMES \" | grep -q \" {} \"; then CAPTURED_VAR_NAMES=\"$CAPTURED_VAR_NAMES {}\"; fi\n",
                             var_name, var_name
                         ));
                     }
@@ -909,15 +905,16 @@ impl TestExecutor {
                     if has_verification {
                         // Generate interactive prompt for action using read_true_false
                         script.push_str("# Prompt user to confirm manual action completion\n");
+                        script.push_str("MANUAL_STEP_CONFIRMED=false\n");
                         script.push_str(
                             "if read_true_false \"Have you completed the manual action?\"; then\n",
                         );
                         script
                             .push_str("    # User confirmed (read_true_false returns 0 for yes)\n");
-                        script.push_str("    :\n");
+                        script.push_str("    MANUAL_STEP_CONFIRMED=true\n");
                         script.push_str("else\n");
-                        script.push_str("    echo \"Manual action not completed. Exiting.\" >&2\n");
-                        script.push_str("    exit 1\n");
+                        script.push_str("    # User rejected (read_true_false returns 1 for no)\n");
+                        script.push_str("    MANUAL_STEP_CONFIRMED=false\n");
                         script.push_str("fi\n\n");
 
                         // Convert hydration placeholders in verification expressions
@@ -998,17 +995,84 @@ impl TestExecutor {
                     } else {
                         // No verification fields - just prompt to continue using read_true_false
                         script.push_str("# Prompt user to confirm they want to continue\n");
+                        script.push_str("MANUAL_STEP_CONFIRMED=false\n");
                         script.push_str(
                             "if read_true_false \"Have you completed the manual step?\"; then\n",
                         );
                         script
                             .push_str("    # User confirmed (read_true_false returns 0 for yes)\n");
-                        script.push_str("    :\n");
+                        script.push_str("    MANUAL_STEP_CONFIRMED=true\n");
                         script.push_str("else\n");
-                        script.push_str("    echo \"Manual step not completed. Exiting.\" >&2\n");
-                        script.push_str("    exit 1\n");
+                        script.push_str("    # User rejected (read_true_false returns 1 for no)\n");
+                        script.push_str("    MANUAL_STEP_CONFIRMED=false\n");
+                        script.push_str("fi\n\n");
+
+                        // Set verification variables for logging (no explicit verification)
+                        script.push_str("if [ \"$MANUAL_STEP_CONFIRMED\" = true ]; then\n");
+                        script.push_str("    USER_VERIFICATION_RESULT=true\n");
+                        script.push_str("    USER_VERIFICATION_OUTPUT=true\n");
+                        script.push_str("else\n");
+                        script.push_str("    USER_VERIFICATION_RESULT=false\n");
+                        script.push_str("    USER_VERIFICATION_OUTPUT=false\n");
                         script.push_str("fi\n\n");
                     }
+
+                    // Log manual step to JSON execution log
+                    script.push_str("# Log manual step to execution log\n");
+                    script.push_str("if [ \"$FIRST_ENTRY\" = false ]; then\n");
+                    script.push_str("    echo ',' >> \"$JSON_LOG\"\n");
+                    script.push_str("fi\n");
+                    script.push_str("FIRST_ENTRY=false\n\n");
+
+                    // Escape command for JSON
+                    let escaped_command = step
+                        .command
+                        .replace("\\", "\\\\")
+                        .replace("'", "\"")
+                        .replace("\"", "\\\"")
+                        .replace("\n", "\\n")
+                        .replace("\r", "\\r")
+                        .replace("\t", "\\t");
+
+                    script.push_str("# Write manual step JSON entry\n");
+                    script.push_str("{\n");
+                    script.push_str("    echo '  {\'\n");
+                    script.push_str(&format!(
+                        "    echo '    \"test_sequence\": {},'\n",
+                        sequence.id
+                    ));
+                    script.push_str(&format!("    echo '    \"step\": {},'\n", step.step));
+                    script.push_str(&format!(
+                        "    echo '    \"command\": \"{}\",'\n",
+                        escaped_command
+                    ));
+                    script.push_str("    echo \"    \\\"exit_code\\\": 0,\"\n");
+                    script.push_str("    if [ \"$MANUAL_STEP_CONFIRMED\" = true ]; then\n");
+                    script.push_str(
+                        "        echo \"    \\\"output\\\": \\\"Manual step confirmed by user\\\",\"\n",
+                    );
+                    script.push_str("    else\n");
+                    script.push_str(
+                        "        echo \"    \\\"output\\\": \\\"Manual step rejected by user\\\",\"\n",
+                    );
+                    script.push_str("    fi\n");
+                    script.push_str("    echo \"    \\\"timestamp\\\": \\\"$TIMESTAMP\\\",\"\n");
+
+                    if has_verification {
+                        script.push_str("    echo \"    \\\"result_verification_pass\\\": $USER_VERIFICATION_RESULT,\"\n");
+                        script.push_str("    echo \"    \\\"output_verification_pass\\\": $USER_VERIFICATION_OUTPUT\"\n");
+                    } else {
+                        script.push_str("    echo '    \"result_verification_pass\": true,'\n");
+                        script.push_str("    echo '    \"output_verification_pass\": true'\n");
+                    }
+                    script.push_str("    echo '  }'\n");
+                    script.push_str("} >> \"$JSON_LOG\"\n\n");
+
+                    // Check if manual step was confirmed and handle rejection
+                    script.push_str("if [ \"$MANUAL_STEP_CONFIRMED\" = false ]; then\n");
+                    script.push_str("    echo \"Manual step not completed. Exiting.\" >&2\n");
+                    script.push_str("    exit 1\n");
+                    script.push_str("fi\n\n");
 
                     // Execute after_step hook for manual step
                     if let Some(ref hooks) = test_case.hooks {
@@ -1050,9 +1114,9 @@ impl TestExecutor {
 
                     // Perform variable substitution: replace ${var_name} patterns using eval
                     script.push_str("SUBSTITUTED_COMMAND=\"$ORIGINAL_COMMAND\"\n");
-                    script.push_str("if [ -n \"$STEP_VAR_NAMES\" ]; then\n");
-                    script.push_str("    for var_name in $STEP_VAR_NAMES; do\n");
-                    script.push_str("        eval \"var_value=\\$STEP_VAR_$var_name\"\n");
+                    script.push_str("if [ -n \"$CAPTURED_VAR_NAMES\" ]; then\n");
+                    script.push_str("    for var_name in $CAPTURED_VAR_NAMES; do\n");
+                    script.push_str("        eval \"var_value=\\$$var_name\"\n");
                     script.push_str("        # Escape special characters for sed\n");
                     script.push_str(
                         "        escaped_value=$(printf '%s' \"$var_value\" | sed 's/[&/\\]/\\\\&/g')\n",
@@ -1089,7 +1153,7 @@ impl TestExecutor {
                                 // Capture from COMMAND_OUTPUT using regex pattern
                                 let sed_pattern = convert_pcre_to_sed_pattern(&pattern);
                                 script.push_str(&format!(
-                                    "STEP_VAR_{}=$(echo \"$COMMAND_OUTPUT\" | sed -n {} | head -n 1 || echo \"\")\n",
+                                    "{}=$(echo \"$COMMAND_OUTPUT\" | sed -n {} | head -n 1 || echo \"\")\n",
                                     var_name,
                                     bash_escape(&sed_pattern)
                                 ));
@@ -1099,17 +1163,17 @@ impl TestExecutor {
                                 // Both stdout and stderr are captured (2>&1)
                                 // Fallback to empty string if command fails (|| echo "")
                                 script.push_str(&format!(
-                                    "STEP_VAR_{}=$({} 2>&1 || echo \"\")\n",
+                                    "{}=$({} 2>&1 || echo \"\")\n",
                                     var_name, cmd
                                 ));
                             }
                             // Add to string-based list only if not already present (avoid duplicates)
                             script.push_str(&format!(
-                                "if ! echo \" $STEP_VAR_NAMES \" | grep -q \" {} \"; then\n",
+                                "if ! echo \" $CAPTURED_VAR_NAMES \" | grep -q \" {} \"; then\n",
                                 var_name
                             ));
                             script.push_str(&format!(
-                                "    STEP_VAR_NAMES=\"$STEP_VAR_NAMES {}\"\n",
+                                "    CAPTURED_VAR_NAMES=\"$CAPTURED_VAR_NAMES {}\"\n",
                                 var_name
                             ));
                             script.push_str("fi\n");
@@ -1326,7 +1390,7 @@ impl TestExecutor {
 
         script.push_str("exit 0\n");
 
-        script
+        script.replace("\\r", "")
     }
 
     pub fn generate_test_script(&self, test_case: &TestCase) -> String {
@@ -1593,18 +1657,6 @@ impl TestExecutor {
                             .trim_end()
                             .to_string();
 
-                        let timestamp = Local::now().to_rfc3339();
-                        let entry = TestStepExecutionEntry::with_timestamp(
-                            sequence.id,
-                            step.step,
-                            step.command.clone(),
-                            exit_code,
-                            command_output.clone(),
-                            timestamp,
-                        );
-
-                        execution_entries.push(entry);
-
                         // Capture variables from output or command execution
                         if let Some(ref capture_vars) = step.capture_vars {
                             for (var_name, capture_pattern, command) in
@@ -1690,6 +1742,20 @@ impl TestExecutor {
                             }
                         }
 
+                        // Create execution entry with verification results
+                        let timestamp = Local::now().to_rfc3339();
+                        let entry = TestStepExecutionEntry::with_timestamp(
+                            sequence.id,
+                            step.step,
+                            step.command.clone(),
+                            exit_code,
+                            command_output.clone(),
+                            timestamp,
+                            result_verification_passed,
+                            output_verification_passed,
+                        );
+                        execution_entries.push(entry);
+
                         if result_verification_passed
                             && output_verification_passed
                             && general_verifications_passed
@@ -1731,6 +1797,8 @@ impl TestExecutor {
                             -1,
                             format!("Failed to execute: {}", e),
                             timestamp,
+                            false,
+                            false,
                         );
                         execution_entries.push(entry);
 
@@ -1895,6 +1963,8 @@ fi"#,
 
                 // Create a template entry with expected values
                 let entry = TestStepExecutionEntry {
+                    doc_type: None,
+                    schema: None,
                     test_sequence: sequence.id,
                     step: step.step,
                     command: step.command.clone(),
@@ -1903,8 +1973,8 @@ fi"#,
                     timestamp: Some(timestamp.to_rfc3339()),
                     hook_type: None,
                     hook_path: None,
-                    result_verification_pass: None,
-                    output_verification_pass: None,
+                    result_verification_pass: false,
+                    output_verification_pass: false,
                 };
 
                 template_entries.push(entry);
@@ -2992,8 +3062,8 @@ mod tests {
         let script = executor.generate_test_script(&test_case);
 
         assert!(script.contains("# Capture variables from output"));
-        assert!(script.contains("STEP_VAR_user_id=$(echo \"$COMMAND_OUTPUT\" | sed -n"));
-        assert!(script.contains("STEP_VAR_token=$(echo \"$COMMAND_OUTPUT\" | sed -n"));
+        assert!(script.contains("user_id=$(echo \"$COMMAND_OUTPUT\" | sed -n"));
+        assert!(script.contains("token=$(echo \"$COMMAND_OUTPUT\" | sed -n"));
         assert!(script.contains("| head -n 1 || echo \"\")"));
     }
 
@@ -3041,12 +3111,12 @@ mod tests {
         let script = executor.generate_test_script(&test_case);
 
         // Verify variable storage initialization (bash 3.2+ compatible - uses string instead of array)
-        assert!(script.contains("STEP_VAR_NAMES=\"\""));
+        assert!(script.contains("CAPTURED_VAR_NAMES=\"\""));
         assert!(script.contains("# Initialize variable storage for captured variables"));
 
         // Verify capture code generation
         assert!(script.contains("# Capture variables from output"));
-        assert!(script.contains("STEP_VAR_session_id=$(echo \"$COMMAND_OUTPUT\" | sed -n"));
+        assert!(script.contains("session_id=$(echo \"$COMMAND_OUTPUT\" | sed -n"));
         assert!(script.contains("| head -n 1 || echo \"\")"));
     }
 
@@ -3090,8 +3160,8 @@ mod tests {
         // Verify substitution logic is present
         assert!(script.contains("ORIGINAL_COMMAND="));
         assert!(script.contains("SUBSTITUTED_COMMAND=\"$ORIGINAL_COMMAND\""));
-        assert!(script.contains("for var_name in $STEP_VAR_NAMES; do"));
-        assert!(script.contains("eval \"var_value=\\$STEP_VAR_$var_name\""));
+        assert!(script.contains("for var_name in $CAPTURED_VAR_NAMES; do"));
+        assert!(script.contains("eval \"var_value=\\$$var_name\""));
         assert!(script.contains("# Replace ${var_name} pattern"));
         assert!(script.contains("SUBSTITUTED_COMMAND=$(echo \"$SUBSTITUTED_COMMAND\" | sed \"s/\\${$var_name}/$escaped_value/g\")"));
         assert!(script.contains(
@@ -3142,8 +3212,8 @@ mod tests {
 
         // Verify substitution in result expression
         assert!(script.contains("EXPR="));
-        assert!(script.contains("for var_name in $STEP_VAR_NAMES; do"));
-        assert!(script.contains("eval \"var_value=\\$STEP_VAR_$var_name\""));
+        assert!(script.contains("for var_name in $CAPTURED_VAR_NAMES; do"));
+        assert!(script.contains("eval \"var_value=\\$$var_name\""));
         assert!(
             script.contains("EXPR=$(echo \"$EXPR\" | sed \"s/\\${$var_name}/$escaped_value/g\")")
         );
@@ -3201,9 +3271,9 @@ mod tests {
 
         // Verify all three variables are captured
         assert!(script.contains("# Capture variables from output"));
-        assert!(script.contains("STEP_VAR_user_id=$(echo \"$COMMAND_OUTPUT\" | sed -n"));
-        assert!(script.contains("STEP_VAR_session_token=$(echo \"$COMMAND_OUTPUT\" | sed -n"));
-        assert!(script.contains("STEP_VAR_timestamp=$(echo \"$COMMAND_OUTPUT\" | sed -n"));
+        assert!(script.contains("user_id=$(echo \"$COMMAND_OUTPUT\" | sed -n"));
+        assert!(script.contains("session_token=$(echo \"$COMMAND_OUTPUT\" | sed -n"));
+        assert!(script.contains("timestamp=$(echo \"$COMMAND_OUTPUT\" | sed -n"));
 
         // Verify the capture block appears exactly once for this step
         let capture_count = script.matches("# Capture variables from output").count();
@@ -3518,24 +3588,26 @@ mod tests {
         assert!(script.contains("# Capture variables from output"));
 
         // Verify regex-based capture (token) uses sed
-        assert!(script.contains("STEP_VAR_token=$(echo \"$COMMAND_OUTPUT\" | sed -n"));
+        assert!(script.contains("token=$(echo \"$COMMAND_OUTPUT\" | sed -n"));
         assert!(script.contains("| head -n 1 || echo \"\")"));
 
         // Verify command-based capture (file_size) executes the command
-        assert!(
-            script.contains("STEP_VAR_file_size=$(cat /tmp/output.txt | wc -c 2>&1 || echo \"\")")
-        );
+        assert!(script.contains("file_size=$(cat /tmp/output.txt | wc -c 2>&1 || echo \"\")"));
 
         // Verify command-based capture (timestamp) executes the command
-        assert!(script.contains("STEP_VAR_timestamp=$(date +%s 2>&1 || echo \"\")"));
+        assert!(script.contains("timestamp=$(date +%s 2>&1 || echo \"\")"));
 
-        // Verify all variables are added to STEP_VAR_NAMES
-        assert!(script.contains("if ! echo \" $STEP_VAR_NAMES \" | grep -q \" token \"; then"));
-        assert!(script.contains("STEP_VAR_NAMES=\"$STEP_VAR_NAMES token\""));
-        assert!(script.contains("if ! echo \" $STEP_VAR_NAMES \" | grep -q \" file_size \"; then"));
-        assert!(script.contains("STEP_VAR_NAMES=\"$STEP_VAR_NAMES file_size\""));
-        assert!(script.contains("if ! echo \" $STEP_VAR_NAMES \" | grep -q \" timestamp \"; then"));
-        assert!(script.contains("STEP_VAR_NAMES=\"$STEP_VAR_NAMES timestamp\""));
+        // Verify all variables are added to CAPTURED_VAR_NAMES
+        assert!(script.contains("if ! echo \" $CAPTURED_VAR_NAMES \" | grep -q \" token \"; then"));
+        assert!(script.contains("CAPTURED_VAR_NAMES=\"$CAPTURED_VAR_NAMES token\""));
+        assert!(
+            script.contains("if ! echo \" $CAPTURED_VAR_NAMES \" | grep -q \" file_size \"; then")
+        );
+        assert!(script.contains("CAPTURED_VAR_NAMES=\"$CAPTURED_VAR_NAMES file_size\""));
+        assert!(
+            script.contains("if ! echo \" $CAPTURED_VAR_NAMES \" | grep -q \" timestamp \"; then")
+        );
+        assert!(script.contains("CAPTURED_VAR_NAMES=\"$CAPTURED_VAR_NAMES timestamp\""));
     }
 
     #[test]

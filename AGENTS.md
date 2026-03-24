@@ -40,6 +40,7 @@ See the [Hooks](#hooks) section for detailed documentation and examples.
 - **Build**: make build
 - **Lint**: make lint
 - **Test**: make test
+- **Test Verifier Edge Cases**: make test-verifier-edge-cases (run verifier edge case unit tests and integration tests)
 - **Coverage**: make coverage (run unit tests with coverage analysis, 50% threshold)
 - **Coverage E2E**: make coverage-e2e (run unit + e2e tests with coverage analysis, 70% threshold)
 - **Coverage HTML**: make coverage-html (generate HTML coverage report)
@@ -52,12 +53,13 @@ See the [Hooks](#hooks) section for detailed documentation and examples.
 - **sccache Clean**: make sccache-clean (clear sccache compilation cache)
 - **Verify Scripts**: make verify-scripts (verify syntax of all shell scripts)
 - **Validate Output Schemas**: make validate-output-schemas (validate expected output samples against schemas)
+- **Validate Test Cases Report**: make validate-testcases-report (generate detailed validation report for all test case YAML files in testcases/ directory, output saved to reports/validation_report.txt)
 - **Watch Mode**: make watch (monitors testcases/ for changes and auto-validates)
 - **Generate Docs**: make generate-docs (generate documentation reports using test-plan-documentation-generator)
 - **Generate Docs All**: make generate-docs-all (generate documentation reports for all test scenarios using test-plan-documentation-generator)
 - **Generate Docs Coverage**: make generate-docs-coverage (run documentation generation with tarpaulin coverage analysis)
 - **Test Container Compatibility**: make test-container-compat (verify container YAML compatibility with test-plan-doc-gen)
-- **Acceptance Tests**: make acceptance-test (run full acceptance test suite with validation, generation, execution, verification, and documentation)
+- **Acceptance Tests**: make acceptance-test (run full acceptance test suite with 7 stages: validation, generation, execution, verification, container validation, per-test documentation, and consolidated documentation)
 - **Acceptance Suite E2E Tests**: make test-e2e-acceptance (run E2E integration tests for the acceptance suite orchestrator)
 - **Install LOC**: make install-loc (install tokei/loc lines of code counter)
 - **LOC Statistics**: make loc (compute lines of code statistics for Rust, Python, Shell, and documentation)
@@ -815,14 +817,15 @@ This target executes the full acceptance test suite, which includes:
 
 ### Acceptance Test Stages
 
-The acceptance test suite runs six stages:
+The acceptance test suite runs seven stages:
 
 1. **YAML Validation** - Validates all test case YAMLs against schema
 2. **Script Generation** - Generates executable bash scripts from test cases
 3. **Test Execution** - Executes all automated tests (skips manual tests by default)
 4. **Verification** - Runs verifier on execution logs to generate container YAMLs
 5. **Container Validation** - Validates container YAMLs against schema
-6. **Documentation** - Generates AsciiDoc and Markdown documentation using TPDG
+6. **Per-Test Documentation** - Generates individual AsciiDoc and Markdown documentation for each test using TPDG
+7. **Consolidated Documentation** - Generates unified AsciiDoc and Markdown documentation combining all test results using TPDG
 
 ### Manual Test Suite Execution
 
@@ -843,6 +846,7 @@ For advanced usage, run the acceptance suite script directly:
 ./test-acceptance/run_acceptance_suite.sh --skip-execution
 ./test-acceptance/run_acceptance_suite.sh --skip-verification
 ./test-acceptance/run_acceptance_suite.sh --skip-documentation
+./test-acceptance/run_acceptance_suite.sh --skip-consolidated-docs
 ```
 
 ### CI/CD Integration
@@ -861,10 +865,10 @@ The `acceptance-test` target is included in the `pre-commit` checks to ensure al
 The acceptance suite E2E tests validate that the `run_acceptance_suite.sh` orchestrator works correctly by running it on a subset of test cases and verifying all stages complete successfully.
 
 **Test Coverage**:
-- Validates all 6 stages complete successfully
-- Checks expected files are created at each stage (scripts, logs, containers, documentation)
+- Validates all 7 stages complete successfully
+- Checks expected files are created at each stage (scripts, logs, containers, per-test documentation, consolidated documentation)
 - Validates final report is generated with correct statistics
-- Tests all `--skip-*` flags work correctly (generation, execution, verification, documentation)
+- Tests all `--skip-*` flags work correctly (generation, execution, verification, documentation, consolidated-docs)
 - Ensures `--verbose` flag increases logging detail
 - Verifies error handling for missing dependencies (TPDG not available)
 - Tests timeout handling for long-running scripts
@@ -1065,6 +1069,95 @@ make validate-output-schemas
 - `schemas/verification-output.schema.json` - Complete verification output schema
 - `schemas/execution-log.schema.json` - Test execution log schema
 - `schemas/test-case.schema.json` - Test case definition schema
+
+### Test Case Validation Report
+
+The project provides a comprehensive validation reporting tool that validates all test case YAML files and generates a detailed report.
+
+**Command**: `make validate-testcases-report`
+
+**Purpose**:
+- Validates all test case YAML files in the `testcases/` directory against the JSON schema
+- Generates a detailed validation report with file-by-file results
+- Provides summary statistics showing total files, valid files, and invalid files
+- Helps identify schema compliance issues across the entire test suite
+
+**Output Location**: `reports/validation_report.txt`
+
+**Usage**:
+```bash
+# Generate validation report for all test cases
+make validate-testcases-report
+
+# View the generated report
+cat reports/validation_report.txt
+```
+
+**Report Contents**:
+The validation report includes:
+1. **Header** - Report title and timestamp
+2. **File-by-File Results** - For each test case YAML file:
+   - File path relative to project root
+   - Validation status (✓ VALID or ✗ INVALID)
+   - Detailed error messages for invalid files (schema violations, parsing errors)
+3. **Summary Statistics**:
+   - Total number of YAML files validated
+   - Number of valid files
+   - Number of invalid files
+   - Overall validation success rate
+
+**Interpreting the Report**:
+- **Valid Files**: Files marked with `✓ VALID` comply with the test case schema and are ready for execution
+- **Invalid Files**: Files marked with `✗ INVALID` have schema violations or syntax errors that must be fixed
+- **Error Messages**: Detailed error messages indicate the specific schema property or constraint that was violated
+- **Summary**: The summary section provides a quick overview of validation health across the entire test suite
+
+**Example Report Format**:
+```
+========================================
+Test Case Validation Report
+Generated: 2024-01-15 14:30:00
+========================================
+
+Validating YAML files in: testcases/
+
+File: testcases/verifier-scenarios/TEST_SUCCESS_001.yaml
+Status: ✓ VALID
+
+File: testcases/examples/TC_EXAMPLE_001.yaml
+Status: ✗ INVALID
+Errors:
+  - Missing required property: 'test_case_id'
+  - Invalid value for 'sequences[0].steps[0].expected.exit_code': expected integer, got string
+
+========================================
+Summary
+========================================
+Total files validated: 42
+Valid files: 40
+Invalid files: 2
+Success rate: 95.24%
+```
+
+**Integration with Workflow**:
+- Run this command before committing changes to test case YAML files
+- Use in CI/CD pipelines to catch schema violations early
+- Helps maintain consistency and quality across all test cases
+- Complements the `validate-output-schemas` command which validates verification output
+
+**Common Validation Errors**:
+- Missing required properties (test_case_id, title, sequences)
+- Invalid data types (string instead of integer for exit_code)
+- Invalid enum values (unknown prerequisite types)
+- Malformed YAML syntax (indentation, quotes, special characters)
+- Schema constraint violations (empty sequences, invalid regex patterns)
+
+**Fixing Validation Errors**:
+1. Locate the invalid file in the report
+2. Review the specific error messages
+3. Consult the test case schema: `schemas/test-case.schema.json`
+4. Make corrections to the YAML file
+5. Re-run validation to confirm fixes: `make validate-testcases-report`
 
 ## Testing Requirements
 

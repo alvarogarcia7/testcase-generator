@@ -1,0 +1,47 @@
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: TEST_PRECOMP_LONG_OUTPUT
+item: 1
+tc: 1
+id: TEST_PRECOMP_LONG_OUTPUT_001
+description: 'Precomputed verification: steps with longer multi-line output'
+general_initial_conditions:
+  system:
+  - Shell environment is available
+initial_conditions:
+  system:
+  - All commands can be executed
+test_sequences:
+- id: 1
+  name: Long Output Sequence
+  description: 'Test sequence with commands producing longer output.
+
+    '
+  initial_conditions:
+    system:
+    - Shell is ready
+  steps:
+  - step: 1
+    description: Execute command with multi-line output
+    command: printf "Line 1\nLine 2\nLine 3"
+    expected:
+      success: true
+      result: 0
+      output: 'Line 1
+
+        Line 2
+
+        Line 3'
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Line 1' <<< "$COMMAND_OUTPUT"
+  - step: 2
+    description: Execute command with verbose output
+    command: echo "This is a longer output message with multiple words"
+    expected:
+      success: true
+      result: 0
+      output: This is a longer output message with multiple words
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'longer output message' <<< "$COMMAND_OUTPUT"

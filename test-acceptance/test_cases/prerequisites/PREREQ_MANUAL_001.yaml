@@ -1,74 +1,74 @@
-requirement: "PREREQ_MANUAL"
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: PREREQ_MANUAL
 item: 1
 tc: 1
-id: 'PREREQ_MANUAL_001'
-description: 'Test case with manual prerequisites requiring user confirmation'
-
+id: PREREQ_MANUAL_001
+description: Test case with manual prerequisites requiring user confirmation
 prerequisites:
-  - type: manual
-    description: "Ensure you have network connectivity to the internet"
-  - type: manual
-    description: "Verify that you have appropriate permissions to create files in /tmp"
-  - type: manual
-    description: "Confirm that no other test processes are currently running"
-
+- type: manual
+  description: Ensure you have network connectivity to the internet
+- type: manual
+  description: Verify that you have appropriate permissions to create files in /tmp
+- type: manual
+  description: Confirm that no other test processes are currently running
 general_initial_conditions:
   system:
-    - "User has reviewed and confirmed all manual prerequisites"
-    - "Test environment is properly configured"
-
+  - User has reviewed and confirmed all manual prerequisites
+  - Test environment is properly configured
 initial_conditions:
   system:
-    - "All manual checks have been completed"
-
+  - All manual checks have been completed
 test_sequences:
-  - id: 1
-    name: "Manual Prerequisite Test Sequence"
-    description: |
-                   This test sequence executes after user has manually
-                   confirmed all prerequisites.
-    initial_conditions:
-      system:
-        - "User is ready to proceed with test execution"
-    steps:
-      - step: 1
-        description: "Create a test file in /tmp"
-        command: echo "manual prereq test" > /tmp/manual_prereq_test.txt
-        expected:
-          success: true
-          result: 0
-          output: ""
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "true"
-      - step: 2
-        description: "Verify file creation"
-        command: test -f /tmp/manual_prereq_test.txt && cat /tmp/manual_prereq_test.txt
-        expected:
-          success: true
-          result: 0
-          output: "manual prereq test"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'manual prereq test' <<< \"$COMMAND_OUTPUT\""
-      - step: 3
-        description: "Remove test file"
-        command: rm -f /tmp/manual_prereq_test.txt
-        expected:
-          success: true
-          result: 0
-          output: ""
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "true"
-      - step: 4
-        manual: true
-        description: "Manually verify that the test file was removed"
-        command: test ! -f /tmp/manual_prereq_test.txt && echo "file removed"
-        expected:
-          success: true
-          result: 0
-          output: "file removed"
-        verification:
-          result: "true"
-          output: "Confirm that the test file no longer exists in /tmp"
+- id: 1
+  name: Manual Prerequisite Test Sequence
+  description: 'This test sequence executes after user has manually
+
+    confirmed all prerequisites.
+
+    '
+  initial_conditions:
+    system:
+    - User is ready to proceed with test execution
+  steps:
+  - step: 1
+    description: Create a test file in /tmp
+    command: echo "manual prereq test" > /tmp/manual_prereq_test.txt
+    expected:
+      success: true
+      result: 0
+      output: ''
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: 'true'
+  - step: 2
+    description: Verify file creation
+    command: test -f /tmp/manual_prereq_test.txt && cat /tmp/manual_prereq_test.txt
+    expected:
+      success: true
+      result: 0
+      output: manual prereq test
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'manual prereq test' <<< "$COMMAND_OUTPUT"
+  - step: 3
+    description: Remove test file
+    command: rm -f /tmp/manual_prereq_test.txt
+    expected:
+      success: true
+      result: 0
+      output: ''
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: 'true'
+  - step: 4
+    manual: true
+    description: Manually verify that the test file was removed
+    command: test ! -f /tmp/manual_prereq_test.txt && echo "file removed"
+    expected:
+      success: true
+      result: 0
+      output: file removed
+    verification:
+      result: 'true'
+      output: Confirm that the test file no longer exists in /tmp

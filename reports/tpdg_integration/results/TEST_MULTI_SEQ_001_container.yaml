@@ -1,0 +1,87 @@
+title: 'Test Execution Results - TEST_MULTI_SEQ_001'
+date: '2026-03-21'
+product: 'Test Case Manager'
+description: 'Integration test results for TEST_MULTI_SEQ_001'
+project: 'Test Case Manager - Integration Test'
+test_date: '2026-03-21T19:33:37'
+test_results:
+  description: 'Multiple sequences scenario with mixed results: sequence 1 passes, sequence 2 fails on step 2, sequence 3 not executed'
+  failed_steps: 1
+  item: 1
+  not_executed_steps: 2
+  overall_pass: false
+  passed_steps: 3
+  requirement: MULTI_SEQUENCE_MIXED_RESULTS
+  sequences:
+  - all_steps_passed: true
+    item: 1
+    name: Successful Sequence
+    requirement: MULTI_SEQUENCE_MIXED_RESULTS
+    sequence_id: 1
+    step_results:
+    - Pass:
+        description: Initialize test environment
+        item: 1
+        requirement: MULTI_SEQUENCE_MIXED_RESULTS
+        step: 1
+        tc: 1
+    - Pass:
+        description: Complete first sequence
+        item: 1
+        requirement: MULTI_SEQUENCE_MIXED_RESULTS
+        step: 2
+        tc: 1
+    tc: 1
+  - all_steps_passed: false
+    item: 1
+    name: Failing Sequence
+    requirement: MULTI_SEQUENCE_MIXED_RESULTS
+    sequence_id: 2
+    step_results:
+    - Pass:
+        description: Initialize second sequence
+        item: 1
+        requirement: MULTI_SEQUENCE_MIXED_RESULTS
+        step: 1
+        tc: 1
+    - Fail:
+        actual_output: UNEXPECTED_OUTPUT
+        actual_result: '0'
+        description: Fails with output mismatch
+        expected:
+          output: EXPECTED_OUTPUT
+          result: '0'
+          success: true
+        item: 1
+        reason: 'Output mismatch: expected ''EXPECTED_OUTPUT'', got ''UNEXPECTED_OUTPUT'''
+        requirement: MULTI_SEQUENCE_MIXED_RESULTS
+        step: 2
+        tc: 1
+    tc: 1
+  - all_steps_passed: false
+    item: 1
+    name: Not Executed Sequence
+    requirement: MULTI_SEQUENCE_MIXED_RESULTS
+    sequence_id: 3
+    step_results:
+    - NotExecuted:
+        description: Would initialize third sequence
+        item: 1
+        requirement: MULTI_SEQUENCE_MIXED_RESULTS
+        step: 1
+        tc: 1
+    - NotExecuted:
+        description: Would complete third sequence
+        item: 1
+        requirement: MULTI_SEQUENCE_MIXED_RESULTS
+        step: 2
+        tc: 1
+    tc: 1
+  tc: 1
+  test_case_id: TEST_MULTI_SEQ_001
+  total_steps: 6
+metadata:
+  environment: 'Integration Test Environment'
+  platform: 'Test Case Manager Integration Tests'
+  executor: 'validate_tpdg_integration.sh'
+  total_test_cases: 1

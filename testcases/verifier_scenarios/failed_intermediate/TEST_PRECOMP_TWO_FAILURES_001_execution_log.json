@@ -1,0 +1,50 @@
+[
+  {
+    "type": "test_execution",
+    "schema": "tcms/execution-log.schema.v1.json",
+    "test_sequence": 1,
+    "step": 1,
+    "command": "echo \"Pass 1\"",
+    "exit_code": 0,
+    "output": "Pass 1",
+    "timestamp": "2026-03-01T10:00:00.123456+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": true
+  },
+  {
+    "type": "test_execution",
+    "schema": "tcms/execution-log.schema.v1.json",
+    "test_sequence": 1,
+    "step": 2,
+    "command": "exit 1",
+    "exit_code": 0,
+    "output": "",
+    "timestamp": "2026-03-01T10:00:00.234567+00:00",
+    "result_verification_pass": false,
+    "output_verification_pass": true
+  },
+  {
+    "type": "test_execution",
+    "schema": "tcms/execution-log.schema.v1.json",
+    "test_sequence": 1,
+    "step": 3,
+    "command": "echo \"Pass 3\"",
+    "exit_code": 0,
+    "output": "Pass 3",
+    "timestamp": "2026-03-01T10:00:00.345678+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": true
+  },
+  {
+    "type": "test_execution",
+    "schema": "tcms/execution-log.schema.v1.json",
+    "test_sequence": 1,
+    "step": 4,
+    "command": "echo \"Different output\"",
+    "exit_code": 0,
+    "output": "Different output",
+    "timestamp": "2026-03-01T10:00:00.456789+00:00",
+    "result_verification_pass": false,
+    "output_verification_pass": false
+  }
+]

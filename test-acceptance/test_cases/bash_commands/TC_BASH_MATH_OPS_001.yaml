@@ -1,210 +1,200 @@
-requirement: "BASH_MATH_OPERATIONS"
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: BASH_MATH_OPERATIONS
 item: 1
 tc: 1
-id: 'TC_BASH_MATH_OPS_001'
-description: 'Bash arithmetic operations - addition, subtraction, multiplication, division, modulo with strict validation'
-
+id: TC_BASH_MATH_OPS_001
+description: Bash arithmetic operations - addition, subtraction, multiplication, division,
+  modulo with strict validation
 general_initial_conditions:
   system:
-    - "Bash shell with arithmetic expansion is available"
-
+  - Bash shell with arithmetic expansion is available
 initial_conditions:
   environment:
-    - "Arithmetic operations are supported"
-
+  - Arithmetic operations are supported
 test_sequences:
-  - id: 1
-    name: "Arithmetic Operations"
-    description: "Test bash arithmetic with various operators and validation"
-    initial_conditions:
-      system:
-        - "Arithmetic expansion works"
-    steps:
-      - step: 1
-        description: "Addition operation"
-        command: "echo $((5 + 3))"
-        capture_vars:
-          - name: sum
-            capture: '^([0-9]+)$'
-        expected:
-          success: true
-          result: 0
-          output: "8"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" == '8' ]]"
-          general:
-            - name: sum_correct
-              condition: "[[ $sum -eq 8 ]]"
-
-      - step: 2
-        description: "Subtraction operation"
-        command: "echo $((20 - 7))"
-        capture_vars:
-          - name: difference
-            capture: '^([0-9]+)$'
-        expected:
-          success: true
-          result: 0
-          output: "13"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" == '13' ]]"
-          general:
-            - name: difference_correct
-              condition: "[[ $difference -eq 13 ]]"
-
-      - step: 3
-        description: "Multiplication operation"
-        command: "echo $((6 * 7))"
-        capture_vars:
-          - name: product
-            capture: '^([0-9]+)$'
-        expected:
-          success: true
-          result: 0
-          output: "42"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" == '42' ]]"
-          general:
-            - name: product_correct
-              condition: "[[ $product -eq 42 ]]"
-
-      - step: 4
-        description: "Division operation"
-        command: "echo $((100 / 4))"
-        capture_vars:
-          - name: quotient
-            capture: '^([0-9]+)$'
-        expected:
-          success: true
-          result: 0
-          output: "25"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" == '25' ]]"
-          general:
-            - name: quotient_correct
-              condition: "[[ $quotient -eq 25 ]]"
-
-      - step: 5
-        description: "Modulo operation"
-        command: "echo $((17 % 5))"
-        capture_vars:
-          - name: remainder
-            capture: '^([0-9]+)$'
-        expected:
-          success: true
-          result: 0
-          output: "2"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" == '2' ]]"
-          general:
-            - name: remainder_correct
-              condition: "[[ $remainder -eq 2 ]]"
-
-      - step: 6
-        description: "Order of operations"
-        command: "echo $((2 + 3 * 4))"
-        capture_vars:
-          - name: order_result
-            capture: '^([0-9]+)$'
-        expected:
-          success: true
-          result: 0
-          output: "14"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" == '14' ]]"
-          general:
-            - name: order_correct
-              condition: "[[ $order_result -eq 14 ]]"
-            - name: not_twenty
-              condition: "[[ $order_result -ne 20 ]]"
-
-      - step: 7
-        description: "Parentheses for precedence"
-        command: "echo $(((2 + 3) * 4))"
-        capture_vars:
-          - name: paren_result
-            capture: '^([0-9]+)$'
-        expected:
-          success: true
-          result: 0
-          output: "20"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" == '20' ]]"
-          general:
-            - name: precedence_correct
-              condition: "[[ $paren_result -eq 20 ]]"
-
-      - step: 8
-        description: "Increment operation"
-        command: "x=5; echo $((++x))"
-        capture_vars:
-          - name: incremented
-            capture: '^([0-9]+)$'
-        expected:
-          success: true
-          result: 0
-          output: "6"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" == '6' ]]"
-          general:
-            - name: increment_correct
-              condition: "[[ $incremented -eq 6 ]]"
-
-      - step: 9
-        description: "Decrement operation"
-        command: "y=10; echo $((--y))"
-        capture_vars:
-          - name: decremented
-            capture: '^([0-9]+)$'
-        expected:
-          success: true
-          result: 0
-          output: "9"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" == '9' ]]"
-          general:
-            - name: decrement_correct
-              condition: "[[ $decremented -eq 9 ]]"
-
-      - step: 10
-        description: "Complex arithmetic expression"
-        command: "echo $(( (10 + 5) * 2 / 3 ))"
-        capture_vars:
-          - name: complex_result
-            capture: '^([0-9]+)$'
-        expected:
-          success: true
-          result: 0
-          output: "10"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" == '10' ]]"
-          general:
-            - name: complex_correct
-              condition: "[[ $complex_result -eq 10 ]]"
-
-      - step: 11
-        description: "Power operation using bc"
-        command: "echo '2^10' | bc"
-        capture_vars:
-          - name: power_result
-            capture: '^([0-9]+)$'
-        expected:
-          success: true
-          result: 0
-          output: "1024"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" == '1024' ]]"
-          general:
-            - name: power_correct
-              condition: "[[ $power_result -eq 1024 ]]"
+- id: 1
+  name: Arithmetic Operations
+  description: Test bash arithmetic with various operators and validation
+  initial_conditions:
+    system:
+    - Arithmetic expansion works
+  steps:
+  - step: 1
+    description: Addition operation
+    command: echo $((5 + 3))
+    capture_vars:
+    - name: sum
+      capture: ^([0-9]+)$
+    expected:
+      success: true
+      result: 0
+      output: '8'
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" == ''8'' ]]'
+      general:
+      - name: sum_correct
+        condition: '[[ $sum -eq 8 ]]'
+  - step: 2
+    description: Subtraction operation
+    command: echo $((20 - 7))
+    capture_vars:
+    - name: difference
+      capture: ^([0-9]+)$
+    expected:
+      success: true
+      result: 0
+      output: '13'
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" == ''13'' ]]'
+      general:
+      - name: difference_correct
+        condition: '[[ $difference -eq 13 ]]'
+  - step: 3
+    description: Multiplication operation
+    command: echo $((6 * 7))
+    capture_vars:
+    - name: product
+      capture: ^([0-9]+)$
+    expected:
+      success: true
+      result: 0
+      output: '42'
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" == ''42'' ]]'
+      general:
+      - name: product_correct
+        condition: '[[ $product -eq 42 ]]'
+  - step: 4
+    description: Division operation
+    command: echo $((100 / 4))
+    capture_vars:
+    - name: quotient
+      capture: ^([0-9]+)$
+    expected:
+      success: true
+      result: 0
+      output: '25'
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" == ''25'' ]]'
+      general:
+      - name: quotient_correct
+        condition: '[[ $quotient -eq 25 ]]'
+  - step: 5
+    description: Modulo operation
+    command: echo $((17 % 5))
+    capture_vars:
+    - name: remainder
+      capture: ^([0-9]+)$
+    expected:
+      success: true
+      result: 0
+      output: '2'
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" == ''2'' ]]'
+      general:
+      - name: remainder_correct
+        condition: '[[ $remainder -eq 2 ]]'
+  - step: 6
+    description: Order of operations
+    command: echo $((2 + 3 * 4))
+    capture_vars:
+    - name: order_result
+      capture: ^([0-9]+)$
+    expected:
+      success: true
+      result: 0
+      output: '14'
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" == ''14'' ]]'
+      general:
+      - name: order_correct
+        condition: '[[ $order_result -eq 14 ]]'
+      - name: not_twenty
+        condition: '[[ $order_result -ne 20 ]]'
+  - step: 7
+    description: Parentheses for precedence
+    command: echo $(((2 + 3) * 4))
+    capture_vars:
+    - name: paren_result
+      capture: ^([0-9]+)$
+    expected:
+      success: true
+      result: 0
+      output: '20'
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" == ''20'' ]]'
+      general:
+      - name: precedence_correct
+        condition: '[[ $paren_result -eq 20 ]]'
+  - step: 8
+    description: Increment operation
+    command: x=5; echo $((++x))
+    capture_vars:
+    - name: incremented
+      capture: ^([0-9]+)$
+    expected:
+      success: true
+      result: 0
+      output: '6'
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" == ''6'' ]]'
+      general:
+      - name: increment_correct
+        condition: '[[ $incremented -eq 6 ]]'
+  - step: 9
+    description: Decrement operation
+    command: y=10; echo $((--y))
+    capture_vars:
+    - name: decremented
+      capture: ^([0-9]+)$
+    expected:
+      success: true
+      result: 0
+      output: '9'
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" == ''9'' ]]'
+      general:
+      - name: decrement_correct
+        condition: '[[ $decremented -eq 9 ]]'
+  - step: 10
+    description: Complex arithmetic expression
+    command: echo $(( (10 + 5) * 2 / 3 ))
+    capture_vars:
+    - name: complex_result
+      capture: ^([0-9]+)$
+    expected:
+      success: true
+      result: 0
+      output: '10'
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" == ''10'' ]]'
+      general:
+      - name: complex_correct
+        condition: '[[ $complex_result -eq 10 ]]'
+  - step: 11
+    description: Power operation using bc
+    command: echo '2^10' | bc
+    capture_vars:
+    - name: power_result
+      capture: ^([0-9]+)$
+    expected:
+      success: true
+      result: 0
+      output: '1024'
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" == ''1024'' ]]'
+      general:
+      - name: power_correct
+        condition: '[[ $power_result -eq 1024 ]]'

@@ -1,0 +1,151 @@
+requirement: "PREREQ_COMPLEX"
+item: 1
+tc: 1
+id: 'PREREQ_COMPLEX_001'
+description: 'Complex test case with multiple automatic prerequisites testing various system conditions'
+
+prerequisites:
+  - type: automatic
+    description: "Verify bash shell is available"
+    verification_command: "which bash > /dev/null 2>&1"
+  - type: automatic
+    description: "Check that temporary directory exists and is writable"
+    verification_command: "test -d /tmp && test -w /tmp"
+  - type: automatic
+    description: "Confirm echo command works correctly"
+    verification_command: "echo 'test' | grep -q 'test'"
+  - type: automatic
+    description: "Verify test command is available"
+    verification_command: "which test > /dev/null 2>&1 || which [ > /dev/null 2>&1"
+  - type: automatic
+    description: "Check that grep supports extended regex"
+    verification_command: "echo 'test123' | grep -qE '[0-9]+'"
+  - type: automatic
+    description: "Verify sed is available for text processing"
+    verification_command: "which sed > /dev/null 2>&1"
+  - type: automatic
+    description: "Confirm awk is available for text processing"
+    verification_command: "which awk > /dev/null 2>&1"
+
+general_initial_conditions:
+  system:
+    - "UNIX-like operating system is running"
+    - "Standard POSIX utilities are available"
+    - "File system is accessible and writable"
+
+initial_conditions:
+  system:
+    - "All prerequisite system checks have passed"
+  environment:
+    - "Shell utilities are verified and functional"
+
+test_sequences:
+  - id: 1
+    name: "Text Processing Operations"
+    description: |
+                   This test sequence performs text processing operations
+                   that require the utilities verified in prerequisites.
+    initial_conditions:
+      system:
+        - "Text processing utilities are available"
+    steps:
+      - step: 1
+        description: "Use echo and grep together"
+        command: echo "Hello World" | grep "World"
+        expected:
+          success: true
+          result: 0
+          output: "Hello World"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Hello World' <<< \"$COMMAND_OUTPUT\""
+      - step: 2
+        description: "Use sed for text substitution"
+        command: echo "test data" | sed 's/test/modified/'
+        expected:
+          success: true
+          result: 0
+          output: "modified data"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'modified data' <<< \"$COMMAND_OUTPUT\""
+      - step: 3
+        description: "Use awk for field extraction"
+        command: echo "field1 field2 field3" | awk '{print $2}'
+        expected:
+          success: true
+          result: 0
+          output: "field2"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'field2' <<< \"$COMMAND_OUTPUT\""
+      - step: 4
+        description: "Use grep with extended regex"
+        command: echo "value123" | grep -E '[0-9]+'
+        expected:
+          success: true
+          result: 0
+          output: "value123"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'value123' <<< \"$COMMAND_OUTPUT\""
+
+  - id: 2
+    name: "File Operations"
+    description: |
+                   This test sequence performs file operations in the
+                   temporary directory verified in prerequisites.
+    initial_conditions:
+      filesystem:
+        - "/tmp is writable"
+    steps:
+      - step: 1
+        description: "Create test file with echo"
+        command: echo "complex test data" > /tmp/prereq_complex_test.txt
+        expected:
+          success: true
+          result: 0
+          output: ""
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"
+      - step: 2
+        description: "Verify file exists using test"
+        command: test -f /tmp/prereq_complex_test.txt && echo "file exists"
+        expected:
+          success: true
+          result: 0
+          output: "file exists"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'file exists' <<< \"$COMMAND_OUTPUT\""
+      - step: 3
+        description: "Read and process file content with multiple utilities"
+        command: cat /tmp/prereq_complex_test.txt | sed 's/complex/advanced/' | awk '{print toupper($0)}'
+        expected:
+          success: true
+          result: 0
+          output: "ADVANCED"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'ADVANCED' <<< \"$COMMAND_OUTPUT\""
+      - step: 4
+        description: "Remove test file"
+        command: rm -f /tmp/prereq_complex_test.txt
+        expected:
+          success: true
+          result: 0
+          output: ""
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"
+      - step: 5
+        description: "Verify file is removed"
+        command: test ! -f /tmp/prereq_complex_test.txt && echo "cleanup successful"
+        expected:
+          success: true
+          result: 0
+          output: "cleanup successful"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'cleanup successful' <<< \"$COMMAND_OUTPUT\""

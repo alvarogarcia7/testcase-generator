@@ -4,6 +4,16 @@
   "description": "JSON schema for validating test case result container YAML/JSON output from the verifier",
   "type": "object",
   "properties": {
+    "type": {
+      "type": "string",
+      "enum": ["test_results_container"],
+      "description": "Document type (optional, for envelope support)"
+    },
+    "schema": {
+      "type": "string",
+      "pattern": "^tcms/.*\\.schema\\.v\\d+\\.json$",
+      "description": "Schema reference (optional, for envelope support)"
+    },
     "title": {
       "type": "string",
       "description": "Title of the test report",

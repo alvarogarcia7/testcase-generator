@@ -1,3 +1,5 @@
+type: test_case
+schema: tcms/test-case.schema.v1.json
 requirement: res1
 item: 1
 tc: 1
@@ -12,9 +14,9 @@ initial_conditions:
 test_sequences:
 - id: 1
   name: name
-  description: |-
-    his test case verifies that the eUICC correctly processes an ES6.UpdateMetadata command to unset PPR1
-                       when the profile is in the operational state and PPR1 is currently set.
+  description: "his test case verifies that the eUICC correctly processes an ES6.UpdateMetadata\
+    \ command to unset PPR1\n                   when the profile is in the operational\
+    \ state and PPR1 is currently set."
   initial_conditions:
     eUICC:
     - The PROFILE_OPERATIONAL3 is Enabled.

@@ -1,3 +1,4 @@
-# Minimal container report configuration file - only required fields
-title: "Minimal Test Report"
-project: "Minimal Test Project"
+type: test_results_container
+schema: tcms/testcase_results_container.schema.v1.json
+title: Minimal Test Report
+project: Minimal Test Project

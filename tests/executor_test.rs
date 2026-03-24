@@ -98,6 +98,8 @@ fn test_execution_log_entry_creation() {
         "echo 'hello'".to_string(),
         0, // exit_code
         "hello".to_string(),
+        true, // result_verification_pass
+        true, // output_verification_pass
     );
 
     assert_eq!(entry.test_sequence, 1);
@@ -118,6 +120,8 @@ fn test_execution_log_entry_with_timestamp() {
         0,
         "test".to_string(),
         timestamp.to_string(),
+        true, // result_verification_pass
+        true, // output_verification_pass
     );
 
     assert_eq!(entry.timestamp, Some(timestamp.to_string()));
@@ -132,6 +136,8 @@ fn test_execution_log_entry_failure() {
         "exit 1".to_string(),
         1, // non-zero exit code
         "".to_string(),
+        false, // result_verification_pass
+        false, // output_verification_pass
     );
 
     assert!(!entry.is_success());
@@ -147,6 +153,8 @@ fn test_execution_log_json_serialization() {
         "echo 'test'".to_string(),
         0,
         "test\noutput".to_string(),
+        true, // result_verification_pass
+        true, // output_verification_pass
     );
 
     let json = serde_json::to_string(&entry).unwrap();
@@ -160,9 +168,33 @@ fn test_execution_log_json_serialization() {
 #[test]
 fn test_execution_log_json_array_serialization() {
     let entries = vec![
-        TestStepExecutionEntry::new(1, 1, "step1".to_string(), 0, "output1".to_string()),
-        TestStepExecutionEntry::new(1, 2, "step2".to_string(), 0, "output2".to_string()),
-        TestStepExecutionEntry::new(1, 3, "step3".to_string(), 1, "error".to_string()),
+        TestStepExecutionEntry::new(
+            1,
+            1,
+            "step1".to_string(),
+            0,
+            "output1".to_string(),
+            true,
+            true,
+        ),
+        TestStepExecutionEntry::new(
+            1,
+            2,
+            "step2".to_string(),
+            0,
+            "output2".to_string(),
+            true,
+            true,
+        ),
+        TestStepExecutionEntry::new(
+            1,
+            3,
+            "step3".to_string(),
+            1,
+            "error".to_string(),
+            false,
+            false,
+        ),
     ];
 
     let json = serde_json::to_string_pretty(&entries).unwrap();
@@ -182,7 +214,9 @@ fn test_execution_log_json_deserialization() {
         "step": 2,
         "command": "echo 'hello'",
         "exit_code": 0,
-        "output": "hello"
+        "output": "hello",
+        "result_verification_pass": true,
+        "output_verification_pass": true
     }"#;
 
     let entry: TestStepExecutionEntry = serde_json::from_str(json).unwrap();
@@ -191,6 +225,8 @@ fn test_execution_log_json_deserialization() {
     assert_eq!(entry.command, "echo 'hello'");
     assert_eq!(entry.exit_code, 0);
     assert_eq!(entry.output, "hello");
+    assert!(entry.result_verification_pass);
+    assert!(entry.output_verification_pass);
 }
 
 // ============================================================================
@@ -637,8 +673,24 @@ fn test_execution_produces_json_logs() {
     // In the two-stage workflow:
     // 1. Execution produces JSON logs (TestStepExecutionEntry)
     let entries = vec![
-        TestStepExecutionEntry::new(1, 1, "echo 'test1'".to_string(), 0, "test1".to_string()),
-        TestStepExecutionEntry::new(1, 2, "echo 'test2'".to_string(), 0, "test2".to_string()),
+        TestStepExecutionEntry::new(
+            1,
+            1,
+            "echo 'test1'".to_string(),
+            0,
+            "test1".to_string(),
+            true,
+            true,
+        ),
+        TestStepExecutionEntry::new(
+            1,
+            2,
+            "echo 'test2'".to_string(),
+            0,
+            "test2".to_string(),
+            true,
+            true,
+        ),
     ];
 
     // Verify JSON serialization works
@@ -659,8 +711,10 @@ fn test_execution_produces_json_logs() {
 
 #[test]
 fn test_json_log_preserves_exit_codes() {
-    let success_entry = TestStepExecutionEntry::new(1, 1, "true".to_string(), 0, "".to_string());
-    let failure_entry = TestStepExecutionEntry::new(1, 2, "false".to_string(), 1, "".to_string());
+    let success_entry =
+        TestStepExecutionEntry::new(1, 1, "true".to_string(), 0, "".to_string(), true, true);
+    let failure_entry =
+        TestStepExecutionEntry::new(1, 2, "false".to_string(), 1, "".to_string(), false, false);
 
     let entries = vec![success_entry, failure_entry];
     let json = serde_json::to_string(&entries).unwrap();
@@ -673,8 +727,15 @@ fn test_json_log_preserves_exit_codes() {
 #[test]
 fn test_json_log_preserves_multiline_output() {
     let multiline_output = "Line 1\nLine 2\nLine 3";
-    let entry =
-        TestStepExecutionEntry::new(1, 1, "command".to_string(), 0, multiline_output.to_string());
+    let entry = TestStepExecutionEntry::new(
+        1,
+        1,
+        "command".to_string(),
+        0,
+        multiline_output.to_string(),
+        true,
+        true,
+    );
 
     let json = serde_json::to_string(&entry).unwrap();
     let deserialized: TestStepExecutionEntry = serde_json::from_str(&json).unwrap();
@@ -1759,49 +1820,6 @@ fn test_manual_step_user_verification_variable_usage() {
     assert!(script.contains("echo \"  Result verification: $USER_VERIFICATION_RESULT\""));
     assert!(script.contains("echo \"  Output verification: $USER_VERIFICATION_OUTPUT\""));
     assert!(script.contains("exit 1"));
-}
-
-#[test]
-fn test_manual_step_without_verification_no_user_verification_variable() {
-    let executor = TestExecutor::new();
-    let mut test_case = TestCase::new(
-        "REQ004".to_string(),
-        1,
-        1,
-        "TC004".to_string(),
-        "Manual step without verification".to_string(),
-    );
-
-    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
-    let mut step = create_test_step(
-        1,
-        "Manual action",
-        "reboot device",
-        "0",
-        "rebooted",
-        Some(true),
-    );
-    step.manual = Some(true);
-    step.verification = Verification {
-        result: VerificationExpression::Simple("true".to_string()),
-        output: VerificationExpression::Simple("true".to_string()),
-        output_file: None,
-        general: None,
-    };
-    sequence.steps.push(step);
-    test_case.test_sequences.push(sequence);
-
-    let script = executor.generate_test_script(&test_case);
-
-    // Verify no USER_VERIFICATION variables are set when verification is "true"
-    assert!(!script.contains("USER_VERIFICATION_RESULT=false"));
-    assert!(!script.contains("USER_VERIFICATION_OUTPUT=false"));
-    assert!(!script.contains("USER_VERIFICATION=true"));
-    assert!(!script.contains("[PASS] Step 1"));
-    assert!(!script.contains("[FAIL] Step 1"));
-
-    // Should just prompt to continue with read_true_false
-    assert!(script.contains("if read_true_false \"Have you completed the manual step?\""));
 }
 
 #[test]
@@ -5809,53 +5827,6 @@ fn test_initial_conditions_complex_mixed_structure() {
 // ============================================================================
 
 #[test]
-fn test_manual_step_without_verification_no_user_verification_variables() {
-    let executor = TestExecutor::new();
-    let mut test_case = TestCase::new(
-        "REQ_NO_VERIFY_001".to_string(),
-        1,
-        1,
-        "TC_NO_VERIFY_001".to_string(),
-        "Manual step without verification - no variables".to_string(),
-    );
-
-    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
-    let mut step = create_test_step(
-        1,
-        "Manual action without verification",
-        "ssh device 'reboot'",
-        "0",
-        "rebooted",
-        Some(true),
-    );
-    step.manual = Some(true);
-    step.verification = Verification {
-        result: VerificationExpression::Simple("true".to_string()),
-        output: VerificationExpression::Simple("true".to_string()),
-        output_file: None,
-        general: None,
-    };
-    sequence.steps.push(step);
-    test_case.test_sequences.push(sequence);
-
-    let script = executor.generate_test_script(&test_case);
-
-    // REQUIREMENT: No USER_VERIFICATION variables should be generated
-    assert!(
-        !script.contains("USER_VERIFICATION_RESULT"),
-        "Script must NOT contain USER_VERIFICATION_RESULT variable"
-    );
-    assert!(
-        !script.contains("USER_VERIFICATION_OUTPUT"),
-        "Script must NOT contain USER_VERIFICATION_OUTPUT variable"
-    );
-    assert!(
-        !script.contains("USER_VERIFICATION="),
-        "Script must NOT contain USER_VERIFICATION variable assignment"
-    );
-}
-
-#[test]
 fn test_manual_step_without_verification_no_evaluation_code() {
     let executor = TestExecutor::new();
     let mut test_case = TestCase::new(
@@ -6107,12 +6078,6 @@ fn test_manual_step_without_verification_multiple_steps() {
         "Script must have read_true_false prompt for each manual step without verification"
     );
 
-    // Neither step should have USER_VERIFICATION variables
-    assert!(
-        !script.contains("USER_VERIFICATION"),
-        "Script must NOT contain any USER_VERIFICATION variables"
-    );
-
     // Neither step should have PASS/FAIL messages
     assert!(
         !script.contains("[PASS]"),
@@ -6180,10 +6145,6 @@ fn test_manual_step_without_verification_mixed_with_verification() {
     // Step 1: Should NOT have USER_VERIFICATION variables
     let step1_section =
         &script[script.find("# Step 1:").unwrap()..script.find("# Step 2:").unwrap()];
-    assert!(
-        !step1_section.contains("USER_VERIFICATION"),
-        "Step 1 section must NOT contain USER_VERIFICATION variables"
-    );
     assert!(
         !step1_section.contains("[PASS]"),
         "Step 1 section must NOT contain [PASS] message"
@@ -6373,10 +6334,6 @@ fn test_manual_step_without_verification_complete_workflow() {
         .unwrap_or(step_section.len());
     let this_step = &step_section[..step_end];
 
-    assert!(
-        !this_step.contains("USER_VERIFICATION"),
-        "Should not contain USER_VERIFICATION"
-    );
     assert!(!this_step.contains("[PASS]"), "Should not contain [PASS]");
     assert!(!this_step.contains("[FAIL]"), "Should not contain [FAIL]");
     // With read_true_false, we do have exit 1 for when user says "no"

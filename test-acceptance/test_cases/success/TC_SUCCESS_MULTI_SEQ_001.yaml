@@ -1,159 +1,151 @@
-requirement: "MULTI_SEQUENCE"
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: MULTI_SEQUENCE
 item: 1
 tc: 1
-id: 'TC_SUCCESS_MULTI_SEQ_001'
-description: 'Multi-sequence test with 3 sequences containing 2-4 steps each - demonstrates test organization and complex workflows'
-
+id: TC_SUCCESS_MULTI_SEQ_001
+description: Multi-sequence test with 3 sequences containing 2-4 steps each - demonstrates
+  test organization and complex workflows
 general_initial_conditions:
   system:
-    - "Bash shell is available"
-    - "File manipulation utilities are available"
-
+  - Bash shell is available
+  - File manipulation utilities are available
 initial_conditions:
   filesystem:
-    - "Temporary directory /tmp is writable"
+  - Temporary directory /tmp is writable
   system:
-    - "Test can create and manipulate files"
-
+  - Test can create and manipulate files
 test_sequences:
-  - id: 1
-    name: "File Creation Sequence"
-    description: "Create test files for subsequent operations"
-    initial_conditions:
-      filesystem:
-        - "No conflicting test files exist"
-    steps:
-      - step: 1
-        description: "Create first test file"
-        command: "echo 'File 1 content' > /tmp/test_file_1.txt"
-        expected:
-          success: true
-          result: '0'
-          output: ""
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "true"
-
-      - step: 2
-        description: "Create second test file"
-        command: "echo 'File 2 content' > /tmp/test_file_2.txt"
-        expected:
-          success: true
-          result: '0'
-          output: ""
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "true"
-
-      - step: 3
-        description: "Verify files exist"
-        command: "ls /tmp/test_file_*.txt | wc -l"
-        expected:
-          success: true
-          result: '0'
-          output: "2"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" -eq 2 ]]"
-
-  - id: 2
-    name: "File Content Processing"
-    description: "Read and process file contents"
-    initial_conditions:
-      filesystem:
-        - "Test files from sequence 1 exist"
-    steps:
-      - step: 1
-        description: "Read first file content"
-        command: "cat /tmp/test_file_1.txt"
-        expected:
-          success: true
-          result: '0'
-          output: "File 1 content"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "grep -q 'File 1 content' <<< \"$COMMAND_OUTPUT\""
-
-      - step: 2
-        description: "Read second file content"
-        command: "cat /tmp/test_file_2.txt"
-        expected:
-          success: true
-          result: '0'
-          output: "File 2 content"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "grep -q 'File 2 content' <<< \"$COMMAND_OUTPUT\""
-
-      - step: 3
-        description: "Count total characters in both files"
-        command: "cat /tmp/test_file_*.txt | wc -c"
-        expected:
-          success: true
-          result: '0'
-          output: "30"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" -gt 20 ]]"
-
-      - step: 4
-        description: "Concatenate files"
-        command: "cat /tmp/test_file_1.txt /tmp/test_file_2.txt > /tmp/combined.txt && cat /tmp/combined.txt"
-        expected:
-          success: true
-          result: '0'
-          output: "File 1 content"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "grep -q 'File 1 content' <<< \"$COMMAND_OUTPUT\" && grep -q 'File 2 content' <<< \"$COMMAND_OUTPUT\""
-
-  - id: 3
-    name: "File Cleanup Sequence"
-    description: "Remove test files and verify cleanup"
-    initial_conditions:
-      filesystem:
-        - "Test files exist and need to be cleaned up"
-    steps:
-      - step: 1
-        description: "Remove first test file"
-        command: "rm -f /tmp/test_file_1.txt"
-        expected:
-          success: true
-          result: '0'
-          output: ""
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "true"
-
-      - step: 2
-        description: "Remove second test file"
-        command: "rm -f /tmp/test_file_2.txt"
-        expected:
-          success: true
-          result: '0'
-          output: ""
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "true"
-
-      - step: 3
-        description: "Remove combined file"
-        command: "rm -f /tmp/combined.txt"
-        expected:
-          success: true
-          result: '0'
-          output: ""
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "true"
-
-      - step: 4
-        description: "Verify all test files removed"
-        command: "ls /tmp/test_file_*.txt /tmp/combined.txt 2>/dev/null | wc -l"
-        expected:
-          success: true
-          result: '0'
-          output: "0"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" -eq 0 ]]"
+- id: 1
+  name: File Creation Sequence
+  description: Create test files for subsequent operations
+  initial_conditions:
+    filesystem:
+    - No conflicting test files exist
+  steps:
+  - step: 1
+    description: Create first test file
+    command: echo 'File 1 content' > /tmp/test_file_1.txt
+    expected:
+      success: true
+      result: '0'
+      output: ''
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: 'true'
+  - step: 2
+    description: Create second test file
+    command: echo 'File 2 content' > /tmp/test_file_2.txt
+    expected:
+      success: true
+      result: '0'
+      output: ''
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: 'true'
+  - step: 3
+    description: Verify files exist
+    command: ls /tmp/test_file_*.txt | wc -l
+    expected:
+      success: true
+      result: '0'
+      output: '2'
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" -eq 2 ]]'
+- id: 2
+  name: File Content Processing
+  description: Read and process file contents
+  initial_conditions:
+    filesystem:
+    - Test files from sequence 1 exist
+  steps:
+  - step: 1
+    description: Read first file content
+    command: cat /tmp/test_file_1.txt
+    expected:
+      success: true
+      result: '0'
+      output: File 1 content
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: grep -q 'File 1 content' <<< "$COMMAND_OUTPUT"
+  - step: 2
+    description: Read second file content
+    command: cat /tmp/test_file_2.txt
+    expected:
+      success: true
+      result: '0'
+      output: File 2 content
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: grep -q 'File 2 content' <<< "$COMMAND_OUTPUT"
+  - step: 3
+    description: Count total characters in both files
+    command: cat /tmp/test_file_*.txt | wc -c
+    expected:
+      success: true
+      result: '0'
+      output: '30'
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" -gt 20 ]]'
+  - step: 4
+    description: Concatenate files
+    command: cat /tmp/test_file_1.txt /tmp/test_file_2.txt > /tmp/combined.txt &&
+      cat /tmp/combined.txt
+    expected:
+      success: true
+      result: '0'
+      output: File 1 content
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: grep -q 'File 1 content' <<< "$COMMAND_OUTPUT" && grep -q 'File 2 content'
+        <<< "$COMMAND_OUTPUT"
+- id: 3
+  name: File Cleanup Sequence
+  description: Remove test files and verify cleanup
+  initial_conditions:
+    filesystem:
+    - Test files exist and need to be cleaned up
+  steps:
+  - step: 1
+    description: Remove first test file
+    command: rm -f /tmp/test_file_1.txt
+    expected:
+      success: true
+      result: '0'
+      output: ''
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: 'true'
+  - step: 2
+    description: Remove second test file
+    command: rm -f /tmp/test_file_2.txt
+    expected:
+      success: true
+      result: '0'
+      output: ''
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: 'true'
+  - step: 3
+    description: Remove combined file
+    command: rm -f /tmp/combined.txt
+    expected:
+      success: true
+      result: '0'
+      output: ''
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: 'true'
+  - step: 4
+    description: Verify all test files removed
+    command: ls /tmp/test_file_*.txt /tmp/combined.txt 2>/dev/null | wc -l
+    expected:
+      success: true
+      result: '0'
+      output: '0'
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" -eq 0 ]]'

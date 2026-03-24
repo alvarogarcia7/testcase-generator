@@ -1,0 +1,119 @@
+{
+  "title": "Test Execution Results",
+  "project": "Test Case Manager - Verification Results",
+  "test_date": "2026-03-21T15:33:37.709571Z",
+  "test_results": [
+    {
+      "test_case_id": "TEST_MULTI_SEQ_001",
+      "description": "Multiple sequences scenario with mixed results: sequence 1 passes, sequence 2 fails on step 2, sequence 3 not executed",
+      "sequences": [
+        {
+          "sequence_id": 1,
+          "name": "Successful Sequence",
+          "step_results": [
+            {
+              "Pass": {
+                "step": 1,
+                "description": "Initialize test environment",
+                "requirement": "MULTI_SEQUENCE_MIXED_RESULTS",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 2,
+                "description": "Complete first sequence",
+                "requirement": "MULTI_SEQUENCE_MIXED_RESULTS",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": true,
+          "requirement": "MULTI_SEQUENCE_MIXED_RESULTS",
+          "item": 1,
+          "tc": 1
+        },
+        {
+          "sequence_id": 2,
+          "name": "Failing Sequence",
+          "step_results": [
+            {
+              "Pass": {
+                "step": 1,
+                "description": "Initialize second sequence",
+                "requirement": "MULTI_SEQUENCE_MIXED_RESULTS",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Fail": {
+                "step": 2,
+                "description": "Fails with output mismatch",
+                "expected": {
+                  "success": true,
+                  "result": "0",
+                  "output": "EXPECTED_OUTPUT"
+                },
+                "actual_result": "0",
+                "actual_output": "UNEXPECTED_OUTPUT",
+                "reason": "Output mismatch: expected 'EXPECTED_OUTPUT', got 'UNEXPECTED_OUTPUT'",
+                "requirement": "MULTI_SEQUENCE_MIXED_RESULTS",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": false,
+          "requirement": "MULTI_SEQUENCE_MIXED_RESULTS",
+          "item": 1,
+          "tc": 1
+        },
+        {
+          "sequence_id": 3,
+          "name": "Not Executed Sequence",
+          "step_results": [
+            {
+              "NotExecuted": {
+                "step": 1,
+                "description": "Would initialize third sequence",
+                "requirement": "MULTI_SEQUENCE_MIXED_RESULTS",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "NotExecuted": {
+                "step": 2,
+                "description": "Would complete third sequence",
+                "requirement": "MULTI_SEQUENCE_MIXED_RESULTS",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": false,
+          "requirement": "MULTI_SEQUENCE_MIXED_RESULTS",
+          "item": 1,
+          "tc": 1
+        }
+      ],
+      "total_steps": 6,
+      "passed_steps": 3,
+      "failed_steps": 1,
+      "not_executed_steps": 2,
+      "overall_pass": false,
+      "requirement": "MULTI_SEQUENCE_MIXED_RESULTS",
+      "item": 1,
+      "tc": 1
+    }
+  ],
+  "metadata": {
+    "execution_duration": 0.0,
+    "total_test_cases": 1,
+    "passed_test_cases": 0,
+    "failed_test_cases": 1
+  }
+}

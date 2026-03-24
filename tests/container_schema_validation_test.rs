@@ -379,6 +379,8 @@ fn test_container_report_with_step_verification_enum_validates() -> Result<()> {
 
     // Create a ContainerReport with all three StepVerificationResultEnum variants
     let container_report = ContainerReport {
+        doc_type: None,
+        schema: None,
         title: "Test Execution Results".to_string(),
         project: "Test Case Manager - Verification Results".to_string(),
         test_date: Utc::now(),

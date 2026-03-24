@@ -28,7 +28,7 @@ test_sequences:
         command: |-
           echo "HELLO" > /tmp/file.txt
         expected:
-          result:
+          result: 0
           output: ""
         verification:
           result: |-

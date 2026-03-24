@@ -50,6 +50,13 @@
 #       echo "Report generation failed"
 #   fi
 #   
+#   # Generate documentation from container YAML (single attempt)
+#   if invoke_test_plan_doc_gen --input "container.yaml" --output "output.md" --format markdown; then
+#       echo "Report generated from container successfully"
+#   else
+#       echo "Report generation from container failed"
+#   fi
+#   
 #   # Generate documentation with automatic retry on transient failures
 #   if invoke_test_plan_doc_gen_with_retry --test-case "test.yaml" --output "output.md" --format markdown; then
 #       echo "Report generated (possibly after retries)"
@@ -439,7 +446,7 @@ invoke_test_plan_doc_gen() {
     local testcase_files=()
     
     for arg in "$@"; do
-        if [[ "$arg" == "--container" ]]; then
+        if [[ "$arg" == "--container" ]] || [[ "$arg" == "--input" ]]; then
             checking_container=1
             checking_testcase=0
             continue
@@ -550,7 +557,7 @@ invoke_test_plan_doc_gen() {
                 ;;
             2)
                 log_error "Common causes:"
-                log_error "  - Missing required arguments (--container, --test-case, --output)"
+                log_error "  - Missing required arguments (--input/--container, --test-case, --output)"
                 log_error "  - Invalid argument format or combination"
                 log_error "  - Conflicting options provided"
                 log_error ""

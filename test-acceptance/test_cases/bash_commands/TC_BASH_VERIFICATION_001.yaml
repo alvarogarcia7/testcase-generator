@@ -1,136 +1,137 @@
-requirement: "BASH_VERIFICATION_AS_COMMANDS"
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: BASH_VERIFICATION_AS_COMMANDS
 item: 1
 tc: 1
-id: 'TC_BASH_VERIFICATION_001'
-description: 'Bash commands in verification expressions - use bash commands in result and output verification with strict validation'
-
+id: TC_BASH_VERIFICATION_001
+description: Bash commands in verification expressions - use bash commands in result
+  and output verification with strict validation
 general_initial_conditions:
   system:
-    - "Bash shell with full command support in verification is available"
-
+  - Bash shell with full command support in verification is available
 initial_conditions:
   environment:
-    - "Verification commands execute correctly"
-
+  - Verification commands execute correctly
 test_sequences:
-  - id: 1
-    name: "Verification with Bash Commands"
-    description: "Use bash commands within verification expressions for dynamic validation"
-    initial_conditions:
-      system:
-        - "Commands in verification work correctly"
-    steps:
-      - step: 1
-        description: "Verify output using grep command"
-        command: "echo 'SUCCESS: Operation completed'"
-        expected:
-          success: true
-          result: 0
-          output: "SUCCESS"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ $(echo \"$COMMAND_OUTPUT\" | grep -c 'SUCCESS') -eq 1 ]]"
-          general:
-            - name: grep_finds_success
-              condition: "[[ $(echo \"$COMMAND_OUTPUT\" | grep -o 'SUCCESS' | wc -l | awk '{print $1}') -eq 1 ]]"
-            - name: contains_completed
-              condition: "[[ $(echo \"$COMMAND_OUTPUT\" | grep -c 'completed') -eq 1 ]]"
-
-      - step: 2
-        description: "Verify numeric output with arithmetic"
-        command: "echo '42'"
-        capture_vars:
-          - name: number_value
-            capture: '^([0-9]+)$'
-        expected:
-          success: true
-          result: 0
-          output: "42"
-        verification:
-          result: "[[ $? -eq 0 && $(echo \"$COMMAND_OUTPUT\" | grep -E '^[0-9]+$' | wc -l | awk '{print $1}') -eq 1 ]]"
-          output: "[[ $(echo \"$COMMAND_OUTPUT\") -eq 42 ]]"
-          general:
-            - name: is_even_number
-              condition: "[[ $((number_value % 2)) -eq 0 ]]"
-            - name: in_range
-              condition: "[[ $(echo \"$number_value\") -ge 40 && $(echo \"$number_value\") -le 50 ]]"
-            - name: double_is_84
-              condition: "[[ $((number_value * 2)) -eq 84 ]]"
-
-      - step: 3
-        description: "Verify file content with cat and grep"
-        command: "echo 'test content' > /tmp/verify_test.txt && cat /tmp/verify_test.txt"
-        expected:
-          success: true
-          result: 0
-          output: "test content"
-        verification:
-          result: "[[ $? -eq 0 && -f /tmp/verify_test.txt ]]"
-          output: "[[ $(cat /tmp/verify_test.txt) == 'test content' ]]"
-          general:
-            - name: file_exists
-              condition: "[[ -f /tmp/verify_test.txt ]]"
-            - name: file_not_empty
-              condition: "[[ -s /tmp/verify_test.txt ]]"
-            - name: content_matches
-              condition: "[[ $(cat /tmp/verify_test.txt | grep -c 'test') -eq 1 ]]"
-            - name: word_count_correct
-              condition: "[[ $(cat /tmp/verify_test.txt | wc -w | awk '{print $1}') -eq 2 ]]"
-
-      - step: 4
-        description: "Verify timestamp with date command"
-        command: "date +%s"
-        capture_vars:
-          - name: timestamp
-            capture: '^([0-9]+)$'
-        expected:
-          success: true
-          result: 0
-          output: "unix timestamp"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
-          general:
-            - name: timestamp_recent
-              condition: "[[ $timestamp -gt 1704067200 ]]"
-            - name: timestamp_not_future
-              condition: "[[ $timestamp -le $(date +%s) ]]"
-            - name: timestamp_reasonable
-              condition: "[[ $(($(date +%s) - timestamp)) -lt 10 ]]"
-
-      - step: 5
-        description: "Verify with complex sed extraction"
-        command: "echo 'version: 1.2.3-beta'"
-        capture_vars:
-          - name: version_string
-            capture: 'version: (.+)'
-        expected:
-          success: true
-          result: 0
-          output: "version string"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ $(echo \"$COMMAND_OUTPUT\" | sed -n 's/.*version: //p') == '1.2.3-beta' ]]"
-          general:
-            - name: version_extracted
-              condition: "[[ \"$version_string\" == '1.2.3-beta' ]]"
-            - name: version_has_major
-              condition: "[[ $(echo \"$version_string\" | cut -d. -f1) -eq 1 ]]"
-            - name: version_has_minor
-              condition: "[[ $(echo \"$version_string\" | cut -d. -f2) -eq 2 ]]"
-            - name: version_has_patch
-              condition: "[[ $(echo \"$version_string\" | cut -d. -f3 | cut -d- -f1) -eq 3 ]]"
-
-      - step: 6
-        description: "Cleanup verification test file"
-        command: "rm -f /tmp/verify_test.txt && echo 'removed'"
-        expected:
-          success: true
-          result: 0
-          output: "removed"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "[[ \"$COMMAND_OUTPUT\" == 'removed' ]]"
-          general:
-            - name: file_deleted
-              condition: "[[ ! -f /tmp/verify_test.txt ]]"
+- id: 1
+  name: Verification with Bash Commands
+  description: Use bash commands within verification expressions for dynamic validation
+  initial_conditions:
+    system:
+    - Commands in verification work correctly
+  steps:
+  - step: 1
+    description: Verify output using grep command
+    command: 'echo ''SUCCESS: Operation completed'''
+    expected:
+      success: true
+      result: 0
+      output: SUCCESS
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ $(echo "$COMMAND_OUTPUT" | grep -c ''SUCCESS'') -eq 1 ]]'
+      general:
+      - name: grep_finds_success
+        condition: '[[ $(echo "$COMMAND_OUTPUT" | grep -o ''SUCCESS'' | wc -l | awk
+          ''{print $1}'') -eq 1 ]]'
+      - name: contains_completed
+        condition: '[[ $(echo "$COMMAND_OUTPUT" | grep -c ''completed'') -eq 1 ]]'
+  - step: 2
+    description: Verify numeric output with arithmetic
+    command: echo '42'
+    capture_vars:
+    - name: number_value
+      capture: ^([0-9]+)$
+    expected:
+      success: true
+      result: 0
+      output: '42'
+    verification:
+      result: '[[ $? -eq 0 && $(echo "$COMMAND_OUTPUT" | grep -E ''^[0-9]+$'' | wc
+        -l | awk ''{print $1}'') -eq 1 ]]'
+      output: '[[ $(echo "$COMMAND_OUTPUT") -eq 42 ]]'
+      general:
+      - name: is_even_number
+        condition: '[[ $((number_value % 2)) -eq 0 ]]'
+      - name: in_range
+        condition: '[[ $(echo "$number_value") -ge 40 && $(echo "$number_value") -le
+          50 ]]'
+      - name: double_is_84
+        condition: '[[ $((number_value * 2)) -eq 84 ]]'
+  - step: 3
+    description: Verify file content with cat and grep
+    command: echo 'test content' > /tmp/verify_test.txt && cat /tmp/verify_test.txt
+    expected:
+      success: true
+      result: 0
+      output: test content
+    verification:
+      result: '[[ $? -eq 0 && -f /tmp/verify_test.txt ]]'
+      output: '[[ $(cat /tmp/verify_test.txt) == ''test content'' ]]'
+      general:
+      - name: file_exists
+        condition: '[[ -f /tmp/verify_test.txt ]]'
+      - name: file_not_empty
+        condition: '[[ -s /tmp/verify_test.txt ]]'
+      - name: content_matches
+        condition: '[[ $(cat /tmp/verify_test.txt | grep -c ''test'') -eq 1 ]]'
+      - name: word_count_correct
+        condition: '[[ $(cat /tmp/verify_test.txt | wc -w | awk ''{print $1}'') -eq
+          2 ]]'
+  - step: 4
+    description: Verify timestamp with date command
+    command: date +%s
+    capture_vars:
+    - name: timestamp
+      capture: ^([0-9]+)$
+    expected:
+      success: true
+      result: 0
+      output: unix timestamp
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" =~ ^[0-9]+$ ]]'
+      general:
+      - name: timestamp_recent
+        condition: '[[ $timestamp -gt 1704067200 ]]'
+      - name: timestamp_not_future
+        condition: '[[ $timestamp -le $(date +%s) ]]'
+      - name: timestamp_reasonable
+        condition: '[[ $(($(date +%s) - timestamp)) -lt 10 ]]'
+  - step: 5
+    description: Verify with complex sed extraction
+    command: 'echo ''version: 1.2.3-beta'''
+    capture_vars:
+    - name: version_string
+      capture: 'version: (.+)'
+    expected:
+      success: true
+      result: 0
+      output: version string
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ $(echo "$COMMAND_OUTPUT" | sed -n ''s/.*version: //p'') == ''1.2.3-beta''
+        ]]'
+      general:
+      - name: version_extracted
+        condition: '[[ "$version_string" == ''1.2.3-beta'' ]]'
+      - name: version_has_major
+        condition: '[[ $(echo "$version_string" | cut -d. -f1) -eq 1 ]]'
+      - name: version_has_minor
+        condition: '[[ $(echo "$version_string" | cut -d. -f2) -eq 2 ]]'
+      - name: version_has_patch
+        condition: '[[ $(echo "$version_string" | cut -d. -f3 | cut -d- -f1) -eq 3
+          ]]'
+  - step: 6
+    description: Cleanup verification test file
+    command: rm -f /tmp/verify_test.txt && echo 'removed'
+    expected:
+      success: true
+      result: 0
+      output: removed
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: '[[ "$COMMAND_OUTPUT" == ''removed'' ]]'
+      general:
+      - name: file_deleted
+        condition: '[[ ! -f /tmp/verify_test.txt ]]'

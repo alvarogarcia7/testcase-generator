@@ -1,0 +1,101 @@
+{
+  "title": "Test Execution Results",
+  "project": "Test Case Manager - Verification Results",
+  "test_date": "2026-03-21T15:33:37.305651Z",
+  "test_results": [
+    {
+      "test_case_id": "TEST_HOOK_AFTER_STEP_001",
+      "description": "Hook error scenario for after_step hook - script exits with error code after second step",
+      "sequences": [
+        {
+          "sequence_id": 1,
+          "name": "First Sequence - After Step Hook Fails After Step 2",
+          "step_results": [
+            {
+              "Pass": {
+                "step": 1,
+                "description": "Execute first step - after_step hook succeeds",
+                "requirement": "HOOK_AFTER_STEP_ERROR",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "Pass": {
+                "step": 2,
+                "description": "Execute second step - after_step hook fails after this",
+                "requirement": "HOOK_AFTER_STEP_ERROR",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "NotExecuted": {
+                "step": 3,
+                "description": "This step should not execute - after_step hook failed",
+                "requirement": "HOOK_AFTER_STEP_ERROR",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "NotExecuted": {
+                "step": 4,
+                "description": "This step should not execute - test terminated",
+                "requirement": "HOOK_AFTER_STEP_ERROR",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": false,
+          "requirement": "HOOK_AFTER_STEP_ERROR",
+          "item": 1,
+          "tc": 1
+        },
+        {
+          "sequence_id": 2,
+          "name": "Second Sequence - Not Executed",
+          "step_results": [
+            {
+              "NotExecuted": {
+                "step": 1,
+                "description": "This step should not execute",
+                "requirement": "HOOK_AFTER_STEP_ERROR",
+                "item": 1,
+                "tc": 1
+              }
+            },
+            {
+              "NotExecuted": {
+                "step": 2,
+                "description": "This step should not execute",
+                "requirement": "HOOK_AFTER_STEP_ERROR",
+                "item": 1,
+                "tc": 1
+              }
+            }
+          ],
+          "all_steps_passed": false,
+          "requirement": "HOOK_AFTER_STEP_ERROR",
+          "item": 1,
+          "tc": 1
+        }
+      ],
+      "total_steps": 6,
+      "passed_steps": 2,
+      "failed_steps": 0,
+      "not_executed_steps": 4,
+      "overall_pass": false,
+      "requirement": "HOOK_AFTER_STEP_ERROR",
+      "item": 1,
+      "tc": 1
+    }
+  ],
+  "metadata": {
+    "execution_duration": 0.0,
+    "total_test_cases": 1,
+    "passed_test_cases": 0,
+    "failed_test_cases": 1
+  }
+}

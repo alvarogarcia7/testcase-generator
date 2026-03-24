@@ -1,0 +1,38 @@
+description: 'Precomputed verification: first step fails output verification'
+failed_steps: 1
+item: 1
+not_executed_steps: 0
+overall_pass: false
+passed_steps: 1
+requirement: TEST_PRECOMP_OUTPUT_FAIL
+sequences:
+- all_steps_passed: false
+  item: 1
+  name: Output Verification Fail Sequence
+  requirement: TEST_PRECOMP_OUTPUT_FAIL
+  sequence_id: 1
+  step_results:
+  - Fail:
+      actual_output: Unexpected output
+      actual_result: '0'
+      description: Execute command with failed output verification
+      expected:
+        output: Expected output
+        result: '0'
+        success: true
+      item: 1
+      reason: 'Output mismatch: expected ''Expected output'', got ''Unexpected output'''
+      requirement: TEST_PRECOMP_OUTPUT_FAIL
+      step: 1
+      tc: 1
+  - Pass:
+      description: Execute command with passing verification
+      item: 1
+      requirement: TEST_PRECOMP_OUTPUT_FAIL
+      step: 2
+      tc: 1
+  tc: 1
+tc: 1
+test_case_id: TEST_PRECOMP_OUTPUT_FAIL_001
+total_steps: 2
+type: result

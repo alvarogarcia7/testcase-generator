@@ -1,0 +1,120 @@
+requirement: "MANUAL_MIXED_AUTO"
+item: 1
+tc: 2
+id: 'TC_MANUAL_MIXED_001'
+description: 'Test case with mixed automated and manual steps - demonstrates hybrid testing workflow'
+
+general_initial_conditions:
+  system:
+    - "Bash shell is available"
+    - "Test operator is available for manual steps"
+  environment:
+    - "Test system has network connectivity"
+
+initial_conditions:
+  filesystem:
+    - "Temporary directory /tmp is writable"
+  system:
+    - "Basic Unix utilities are installed"
+
+test_sequences:
+  - id: 1
+    name: "Hybrid Manual and Automated Testing"
+    description: |
+                  This test sequence demonstrates alternating between automated
+                  and manual steps for comprehensive system validation.
+    initial_conditions:
+      system:
+        - "System is ready for hybrid testing"
+    steps:
+      - step: 1
+        description: "Automated system check"
+        command: "echo 'System check started' && uname -s && echo 'System check complete'"
+        expected:
+          success: true
+          result: 0
+          output: "System check complete"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'System check complete' <<< \"$COMMAND_OUTPUT\""
+      
+      - step: 2
+        manual: true
+        description: "Manually start the application GUI"
+        command: "Click the application icon to launch the GUI"
+        expected:
+          success: true
+          result: 0
+          output: "Application window opens and displays main interface"
+        verification:
+          result: "true"
+          output: "Did the application window open successfully? (Y/n)"
+      
+      - step: 3
+        description: "Automated process verification"
+        command: "sleep 2 && echo 'Process running simulation' && echo 'Process running'"
+        expected:
+          success: true
+          result: 0
+          output: "Process running"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'running' <<< \"$COMMAND_OUTPUT\""
+      
+      - step: 4
+        manual: true
+        description: "Manually test UI responsiveness"
+        command: "Click various menu items and buttons in the application"
+        expected:
+          success: true
+          result: 0
+          output: "UI responds to all clicks without lag"
+        verification:
+          result: "true"
+          output: "Is the UI responsive to all clicks without lag? (Y/n)"
+      
+      - step: 5
+        description: "Automated log file check"
+        command: "echo 'Log check initiated' > /tmp/manual_test_log.txt && cat /tmp/manual_test_log.txt"
+        expected:
+          success: true
+          result: 0
+          output: "Log check initiated"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Log check initiated' <<< \"$COMMAND_OUTPUT\""
+      
+      - step: 6
+        manual: true
+        description: "Manually verify visual elements"
+        command: "Inspect the application window for correct colors and layout"
+        expected:
+          success: true
+          result: 0
+          output: "All visual elements display correctly with proper styling"
+        verification:
+          result: "true"
+          output: "Are all visual elements displaying correctly? (Y/n)"
+      
+      - step: 7
+        description: "Automated cleanup"
+        command: "rm -f /tmp/manual_test_log.txt && echo 'Cleanup complete'"
+        expected:
+          success: true
+          result: 0
+          output: "Cleanup complete"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Cleanup complete' <<< \"$COMMAND_OUTPUT\""
+      
+      - step: 8
+        manual: true
+        description: "Manually close the application"
+        command: "Click File > Exit or use the window close button"
+        expected:
+          success: true
+          result: 0
+          output: "Application closes cleanly without errors"
+        verification:
+          result: "true"
+          output: "Did the application close cleanly without error dialogs? (Y/n)"

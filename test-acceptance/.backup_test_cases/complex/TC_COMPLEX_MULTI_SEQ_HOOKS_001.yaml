@@ -1,0 +1,312 @@
+requirement: "COMPLEX_MULTI_SEQUENCE_HOOKS"
+item: 1
+tc: 1
+id: 'TC_COMPLEX_MULTI_SEQ_HOOKS_001'
+description: 'Multi-sequence test with hooks, variables, and manual steps - comprehensive workflow with lifecycle management'
+
+hooks:
+  script_start:
+    command: "test-acceptance/scripts/hooks/script_start_init.sh"
+    on_error: "fail"
+  setup_test:
+    command: "test-acceptance/scripts/hooks/setup_test_workspace.sh"
+    on_error: "fail"
+  before_sequence:
+    command: "test-acceptance/scripts/hooks/before_sequence_log.sh"
+    on_error: "continue"
+  after_sequence:
+    command: "test-acceptance/scripts/hooks/after_sequence_cleanup.sh"
+    on_error: "continue"
+  before_step:
+    command: "test-acceptance/scripts/hooks/before_step_validate.sh"
+    on_error: "continue"
+  after_step:
+    command: "test-acceptance/scripts/hooks/after_step_metrics.sh"
+    on_error: "continue"
+  teardown_test:
+    command: "test-acceptance/scripts/hooks/teardown_test_final.sh"
+    on_error: "continue"
+  script_end:
+    command: "test-acceptance/scripts/hooks/script_end_summary.sh"
+    on_error: "continue"
+
+hydration_vars:
+  TEST_WORKSPACE:
+    name: "TEST_WORKSPACE"
+    description: "Base workspace directory for test execution"
+    default_value: "/tmp/complex_test_workspace"
+    required: true
+  
+  TEST_ENVIRONMENT:
+    name: "TEST_ENVIRONMENT"
+    description: "Target test environment"
+    default_value: "staging"
+    required: true
+  
+  MAX_RETRIES:
+    name: "MAX_RETRIES"
+    description: "Maximum retry attempts for operations"
+    default_value: "3"
+    required: false
+
+general_initial_conditions:
+  system:
+    - "Bash shell version 3.2 or higher is available"
+    - "Test hooks infrastructure is properly configured"
+    - "File system operations are permitted"
+  environment:
+    - "Environment variables are properly hydrated"
+
+initial_conditions:
+  filesystem:
+    - "Temporary directory is writable"
+    - "Test workspace can be created"
+  system:
+    - "All hook scripts are executable and accessible"
+
+test_sequences:
+  - id: 1
+    name: "Automated Setup and Configuration"
+    description: "Initialize test environment with variable capture and validation"
+    initial_conditions:
+      system:
+        - "Hooks have initialized global context"
+        - "Workspace directory is available"
+    steps:
+      - step: 1
+        description: "Create test workspace with captured timestamp"
+        command: "date +%s"
+        capture_vars:
+          - name: test_start_time
+            capture: '([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "timestamp"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
+          general:
+            - name: verify_timestamp_captured
+              condition: "[[ -n \"$test_start_time\" ]]"
+            - name: verify_timestamp_numeric
+              condition: "[[ $test_start_time =~ ^[0-9]+$ ]]"
+
+      - step: 2
+        description: "Initialize workspace structure with environment variable"
+        command: "mkdir -p ${TEST_WORKSPACE}/run_${test_start_time} && echo ${TEST_WORKSPACE}/run_${test_start_time}"
+        capture_vars:
+          - name: run_directory
+            capture: '(/tmp/[^\s]+)'
+        expected:
+          success: true
+          result: 0
+          output: "/tmp/"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q '/tmp/' <<< \"$COMMAND_OUTPUT\""
+          general:
+            - name: verify_run_directory_captured
+              condition: "[[ -n \"$run_directory\" ]]"
+            - name: verify_directory_exists
+              condition: "[[ -d \"$run_directory\" ]]"
+
+      - step: 3
+        description: "Generate test configuration file"
+        command: "cat > ${run_directory}/config.txt << EOF
+environment=${TEST_ENVIRONMENT}
+workspace=${TEST_WORKSPACE}
+start_time=${test_start_time}
+max_retries=${MAX_RETRIES}
+EOF
+cat ${run_directory}/config.txt"
+        expected:
+          success: true
+          result: 0
+          output: "environment="
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'environment=' <<< \"$COMMAND_OUTPUT\" && grep -q 'workspace=' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 4
+        description: "Extract and verify configuration values"
+        command: "grep 'max_retries=' ${run_directory}/config.txt | cut -d= -f2"
+        capture_vars:
+          - name: configured_retries
+            capture: '([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "number"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
+          general:
+            - name: verify_retries_configured
+              condition: "[[ $configured_retries -gt 0 ]]"
+
+  - id: 2
+    name: "Manual Verification and Data Processing"
+    description: "Manual steps interspersed with automated processing and variable usage"
+    initial_conditions:
+      filesystem:
+        - "Run directory and config file exist from sequence 1"
+      system:
+        - "Captured variables are available for use"
+    steps:
+      - step: 1
+        manual: true
+        description: "Verify test workspace was created correctly"
+        command: "Navigate to the test workspace directory and verify config.txt exists"
+        expected:
+          success: true
+          result: 0
+          output: "config.txt file is present with correct content"
+        verification:
+          result: "true"
+          output: "Can you confirm config.txt exists in the workspace? (Y/n)"
+
+      - step: 2
+        description: "Create test data file with sequence information"
+        command: "echo 'Sequence: 2' > ${run_directory}/sequence_2_data.txt && echo 'Timestamp: '${test_start_time} >> ${run_directory}/sequence_2_data.txt && cat ${run_directory}/sequence_2_data.txt"
+        expected:
+          success: true
+          result: 0
+          output: "Sequence: 2"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Sequence: 2' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 3
+        description: "Process data and capture results"
+        command: "wc -l ${run_directory}/*.txt | tail -1 | awk '{print $1}'"
+        capture_vars:
+          - name: total_lines
+            capture: '([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "number"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
+          general:
+            - name: verify_lines_counted
+              condition: "[[ $total_lines -gt 0 ]]"
+
+      - step: 4
+        manual: true
+        description: "Verify file count and content manually"
+        command: "List files in run directory and verify their contents"
+        expected:
+          success: true
+          result: 0
+          output: "Both config.txt and sequence_2_data.txt are present and readable"
+        verification:
+          result: "true"
+          output: "Are both files present with readable content? (Y/n)"
+
+  - id: 3
+    name: "Conditional Verification and Cleanup"
+    description: "Complex conditional logic with captured variables and final cleanup"
+    initial_conditions:
+      filesystem:
+        - "All data files from previous sequences exist"
+      variables:
+        - "All captured variables are in scope"
+    steps:
+      - step: 1
+        description: "Calculate test duration"
+        command: "date +%s"
+        capture_vars:
+          - name: test_end_time
+            capture: '([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "timestamp"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "[[ \"$COMMAND_OUTPUT\" =~ ^[0-9]+$ ]]"
+
+      - step: 2
+        description: "Verify test execution duration with conditional logic"
+        command: "echo $((${test_end_time} - ${test_start_time}))"
+        capture_vars:
+          - name: test_duration
+            capture: '([0-9]+)'
+        expected:
+          success: true
+          result: 0
+          output: "duration"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output:
+            condition: "[[ $test_duration -lt 300 ]]"
+            if_true:
+              - "echo 'Test completed within acceptable time (<5 minutes)'"
+            if_false:
+              - "echo 'Warning: Test took longer than expected'"
+            always:
+              - "echo \"Total duration: ${test_duration} seconds\""
+          general:
+            - name: verify_duration_numeric
+              condition: "[[ $test_duration =~ ^[0-9]+$ ]]"
+            - name: verify_duration_positive
+              condition: "[[ $test_duration -ge 0 ]]"
+
+      - step: 3
+        description: "Create test summary report"
+        command: "cat > ${run_directory}/summary.txt << EOF
+Test Execution Summary
+======================
+Start Time: ${test_start_time}
+End Time: ${test_end_time}
+Duration: ${test_duration} seconds
+Total Lines: ${total_lines}
+Environment: ${TEST_ENVIRONMENT}
+Retries Configured: ${configured_retries}
+Status: COMPLETE
+EOF
+cat ${run_directory}/summary.txt"
+        expected:
+          success: true
+          result: 0
+          output: "Test Execution Summary"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Test Execution Summary' <<< \"$COMMAND_OUTPUT\" && grep -q 'Status: COMPLETE' <<< \"$COMMAND_OUTPUT\""
+
+      - step: 4
+        manual: true
+        description: "Review and verify test summary"
+        command: "Review the summary.txt file for accuracy and completeness"
+        expected:
+          success: true
+          result: 0
+          output: "Summary contains all expected information with correct values"
+        verification:
+          result: "true"
+          output: "Does the summary show complete and accurate test information? (Y/n)"
+
+      - step: 5
+        description: "Archive test results"
+        command: "tar -czf ${TEST_WORKSPACE}/test_results_${test_start_time}.tar.gz -C ${TEST_WORKSPACE} run_${test_start_time} 2>&1 | head -1 || echo 'Archive created'"
+        expected:
+          success: true
+          result: 0
+          output: "created"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "true"
+
+      - step: 6
+        description: "Verify archive and cleanup workspace"
+        command: "test -f ${TEST_WORKSPACE}/test_results_${test_start_time}.tar.gz && echo 'Archive verified' && rm -rf ${run_directory} && echo 'Cleanup complete'"
+        expected:
+          success: true
+          result: 0
+          output: "Cleanup complete"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Archive verified' <<< \"$COMMAND_OUTPUT\" && grep -q 'Cleanup complete' <<< \"$COMMAND_OUTPUT\""

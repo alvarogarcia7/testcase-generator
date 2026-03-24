@@ -1,145 +1,140 @@
-requirement: "MANUAL_CONDITIONAL_VERIFICATION"
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: MANUAL_CONDITIONAL_VERIFICATION
 item: 1
 tc: 6
-id: 'TC_MANUAL_CONDITIONAL_001'
-description: 'Test case with manual step using conditional verification - demonstrates branching logic based on manual observation'
-
+id: TC_MANUAL_CONDITIONAL_001
+description: Test case with manual step using conditional verification - demonstrates
+  branching logic based on manual observation
 general_initial_conditions:
   system:
-    - "Conditional testing framework is available"
-    - "Test operator can make conditional decisions"
-
+  - Conditional testing framework is available
+  - Test operator can make conditional decisions
 initial_conditions:
   environment:
-    - "System state is known and stable"
-
+  - System state is known and stable
 test_sequences:
-  - id: 1
-    name: "Manual Conditional Verification Testing"
-    description: |
-                  This test sequence demonstrates conditional verification
-                  where different checks apply based on observed conditions.
-    initial_conditions:
-      system:
-        - "System is ready for conditional testing"
-    variables:
-      device_type: "unknown"
-      has_display: "false"
-      init_system: "other"
-      network_status: "offline"
-    steps:
-      - step: 1
-        description: "Initialize test environment"
-        command: "echo 'Test environment initialized' && uname -s"
-        expected:
-          success: true
-          result: 0
-          output: "Test environment initialized"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'initialized' <<< \"$COMMAND_OUTPUT\""
-      
-      - step: 2
-        manual: true
-        description: "Identify device type"
-        command: "Observe device and determine if it is headless or has display"
-        expected:
-          success: true
-          result: 0
-          output: "Device type is identified as headless or display-equipped"
-        verification:
-          result: "true"
-          output: "Does the device have a physical display? (Y/n)"
-      
-      - step: 3
-        manual: true
-        description: "Conditional UI test based on device type"
-        command: "If device has display, test GUI; otherwise, test CLI"
-        expected:
-          success: true
-          result: 0
-          output: "Appropriate interface tested based on device type"
-        verification:
-          result: "true"
-          output:
-            condition: "$has_display == true"
-            if_true:
-              - "Did the GUI display correctly with all visual elements? (Y/n)"
-            if_false:
-              - "Did the CLI prompt appear and accept commands? (Y/n)"
-      
-      - step: 4
-        description: "Capture system capabilities"
-        command: "command -v systemctl >/dev/null 2>&1 && echo 'systemd' || echo 'other'"
-        capture_vars:
-          - name: init_system
-            capture: "(systemd|other)"
-        expected:
-          success: true
-          result: 0
-          output: "init system detected"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "true"
-      
-      - step: 5
-        manual: true
-        description: "Conditional service management test"
-        command: "Start test service using appropriate method for init system"
-        expected:
-          success: true
-          result: 0
-          output: "Service started successfully"
-        verification:
-          result: "true"
-          output:
-            condition: "[[ \"$init_system\" == \"systemd\" ]]"
-            if_true:
-              - "Did systemctl start command execute successfully? (Y/n)"
-            if_false:
-              - "Did the service init script start successfully? (Y/n)"
-      
-      - step: 6
-        description: "Check network availability"
-        command: "ping -c 1 -W 2 127.0.0.1 >/dev/null 2>&1 && echo 'online' || echo 'offline'"
-        capture_vars:
-          - name: network_status
-            capture: "(online|offline)"
-        expected:
-          success: true
-          result: 0
-          output: "Network status determined"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "true"
-      
-      - step: 7
-        manual: true
-        description: "Conditional network-dependent test"
-        command: "Perform network-dependent or offline operation"
-        expected:
-          success: true
-          result: 0
-          output: "Operation appropriate for network status completed"
-        verification:
-          result: "true"
-          output:
-            condition: "[[ \"$network_status\" == \"online\" ]]"
-            if_true:
-              - "Was the online update/sync operation successful? (Y/n)"
-            if_false:
-              - "Did the offline mode operation complete successfully? (Y/n)"
-            always:
-              - "Did the operation complete without errors? (Y/n)"
-      
-      - step: 8
-        manual: true
-        description: "Final conditional verification"
-        command: "Review all test results and verify system state"
-        expected:
-          success: true
-          result: 0
-          output: "All conditional tests passed based on system configuration"
-        verification:
-          result: "true"
-          output: "Did all conditional tests pass for the detected configuration? (Y/n)"
+- id: 1
+  name: Manual Conditional Verification Testing
+  description: 'This test sequence demonstrates conditional verification
+
+    where different checks apply based on observed conditions.
+
+    '
+  initial_conditions:
+    system:
+    - System is ready for conditional testing
+  variables:
+    device_type: unknown
+    has_display: 'false'
+    init_system: other
+    network_status: offline
+  steps:
+  - step: 1
+    description: Initialize test environment
+    command: echo 'Test environment initialized' && uname -s
+    expected:
+      success: true
+      result: 0
+      output: Test environment initialized
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'initialized' <<< "$COMMAND_OUTPUT"
+  - step: 2
+    manual: true
+    description: Identify device type
+    command: Observe device and determine if it is headless or has display
+    expected:
+      success: true
+      result: 0
+      output: Device type is identified as headless or display-equipped
+    verification:
+      result: 'true'
+      output: Does the device have a physical display? (Y/n)
+  - step: 3
+    manual: true
+    description: Conditional UI test based on device type
+    command: If device has display, test GUI; otherwise, test CLI
+    expected:
+      success: true
+      result: 0
+      output: Appropriate interface tested based on device type
+    verification:
+      result: 'true'
+      output:
+        condition: $has_display == true
+        if_true:
+        - Did the GUI display correctly with all visual elements? (Y/n)
+        if_false:
+        - Did the CLI prompt appear and accept commands? (Y/n)
+  - step: 4
+    description: Capture system capabilities
+    command: command -v systemctl >/dev/null 2>&1 && echo 'systemd' || echo 'other'
+    capture_vars:
+    - name: init_system
+      capture: (systemd|other)
+    expected:
+      success: true
+      result: 0
+      output: init system detected
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: 'true'
+  - step: 5
+    manual: true
+    description: Conditional service management test
+    command: Start test service using appropriate method for init system
+    expected:
+      success: true
+      result: 0
+      output: Service started successfully
+    verification:
+      result: 'true'
+      output:
+        condition: '[[ "$init_system" == "systemd" ]]'
+        if_true:
+        - Did systemctl start command execute successfully? (Y/n)
+        if_false:
+        - Did the service init script start successfully? (Y/n)
+  - step: 6
+    description: Check network availability
+    command: ping -c 1 -W 2 127.0.0.1 >/dev/null 2>&1 && echo 'online' || echo 'offline'
+    capture_vars:
+    - name: network_status
+      capture: (online|offline)
+    expected:
+      success: true
+      result: 0
+      output: Network status determined
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: 'true'
+  - step: 7
+    manual: true
+    description: Conditional network-dependent test
+    command: Perform network-dependent or offline operation
+    expected:
+      success: true
+      result: 0
+      output: Operation appropriate for network status completed
+    verification:
+      result: 'true'
+      output:
+        condition: '[[ "$network_status" == "online" ]]'
+        if_true:
+        - Was the online update/sync operation successful? (Y/n)
+        if_false:
+        - Did the offline mode operation complete successfully? (Y/n)
+        always:
+        - Did the operation complete without errors? (Y/n)
+  - step: 8
+    manual: true
+    description: Final conditional verification
+    command: Review all test results and verify system state
+    expected:
+      success: true
+      result: 0
+      output: All conditional tests passed based on system configuration
+    verification:
+      result: 'true'
+      output: Did all conditional tests pass for the detected configuration? (Y/n)

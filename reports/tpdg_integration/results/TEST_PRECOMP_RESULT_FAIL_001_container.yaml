@@ -1,0 +1,49 @@
+title: 'Test Execution Results - TEST_PRECOMP_RESULT_FAIL_001'
+date: '2026-03-21'
+product: 'Test Case Manager'
+description: 'Integration test results for TEST_PRECOMP_RESULT_FAIL_001'
+project: 'Test Case Manager - Integration Test'
+test_date: '2026-03-21T19:33:37'
+test_results:
+  description: 'Precomputed verification: first step fails result verification'
+  failed_steps: 1
+  item: 1
+  not_executed_steps: 0
+  overall_pass: false
+  passed_steps: 1
+  requirement: TEST_PRECOMP_RESULT_FAIL
+  sequences:
+  - all_steps_passed: false
+    item: 1
+    name: Result Verification Fail Sequence
+    requirement: TEST_PRECOMP_RESULT_FAIL
+    sequence_id: 1
+    step_results:
+    - Fail:
+        actual_output: Testing result failure
+        actual_result: '1'
+        description: Execute command with failed result verification
+        expected:
+          output: Testing result failure
+          result: '0'
+          success: true
+        item: 1
+        reason: 'Success mismatch: expected true, got false'
+        requirement: TEST_PRECOMP_RESULT_FAIL
+        step: 1
+        tc: 1
+    - Pass:
+        description: Execute command with passing verification
+        item: 1
+        requirement: TEST_PRECOMP_RESULT_FAIL
+        step: 2
+        tc: 1
+    tc: 1
+  tc: 1
+  test_case_id: TEST_PRECOMP_RESULT_FAIL_001
+  total_steps: 2
+metadata:
+  environment: 'Integration Test Environment'
+  platform: 'Test Case Manager Integration Tests'
+  executor: 'validate_tpdg_integration.sh'
+  total_test_cases: 1

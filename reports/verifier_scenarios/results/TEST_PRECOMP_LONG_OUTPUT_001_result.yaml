@@ -1,0 +1,31 @@
+type: result
+test_case_id: TEST_PRECOMP_LONG_OUTPUT_001
+description: 'Precomputed verification: steps with longer multi-line output'
+sequences:
+- sequence_id: 1
+  name: Long Output Sequence
+  step_results:
+  - Pass:
+      step: 1
+      description: Execute command with multi-line output
+      requirement: TEST_PRECOMP_LONG_OUTPUT
+      item: 1
+      tc: 1
+  - Pass:
+      step: 2
+      description: Execute command with verbose output
+      requirement: TEST_PRECOMP_LONG_OUTPUT
+      item: 1
+      tc: 1
+  all_steps_passed: true
+  requirement: TEST_PRECOMP_LONG_OUTPUT
+  item: 1
+  tc: 1
+total_steps: 2
+passed_steps: 2
+failed_steps: 0
+not_executed_steps: 0
+overall_pass: true
+requirement: TEST_PRECOMP_LONG_OUTPUT
+item: 1
+tc: 1

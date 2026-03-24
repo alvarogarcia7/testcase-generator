@@ -139,6 +139,8 @@ FAILED_COUNT=0
 # Step 1: Build required binaries
 # ============================================================================
 
+source .venv/bin/activate
+
 section "Step 1: Build Required Binaries"
 
 if [[ $SKIP_BUILD -eq 0 ]]; then
@@ -153,17 +155,37 @@ if [[ $SKIP_BUILD -eq 0 ]]; then
         exit 1
     fi
     
+    log_info "Building json-to-yaml binary..."
+    if cargo build --release --bin json-to-yaml 2>&1 | while IFS= read -r line; do
+        log_verbose "$line"
+    done; then
+        pass "json-to-yaml binary built successfully"
+    else
+        fail "Failed to build json-to-yaml binary"
+        exit 1
+    fi
+    
     VERIFIER_BIN="$PROJECT_ROOT/target/release/verifier"
+    JSON_TO_YAML_BIN="$PROJECT_ROOT/target/release/json-to-yaml"
 else
     log_info "Skipping binary build (--skip-build)"
     VERIFIER_BIN="$PROJECT_ROOT/target/release/verifier"
+    JSON_TO_YAML_BIN="$PROJECT_ROOT/target/release/json-to-yaml"
     
     if [[ ! -f "$VERIFIER_BIN" ]]; then
         fail "Verifier binary not found: $VERIFIER_BIN"
         log_error "Run without --skip-build or build manually"
         exit 1
     fi
+    
+    if [[ ! -f "$JSON_TO_YAML_BIN" ]]; then
+        fail "json-to-yaml binary not found: $JSON_TO_YAML_BIN"
+        log_error "Run without --skip-build or build manually"
+        exit 1
+    fi
+    
     pass "Using existing verifier binary"
+    pass "Using existing json-to-yaml binary"
 fi
 
 # Resolve test-plan-doc-gen directory path
@@ -302,19 +324,6 @@ for test_case_file in "${TEST_SCENARIOS[@]}"; do
     
     # Convert verification JSON to result YAML using Rust binary
     log_verbose "Converting to result YAML..."
-
-    # Use the compiled Rust binary for better performance
-    JSON_TO_YAML_BIN="$PROJECT_ROOT/target/release/json-to-yaml"
-
-    # Fall back to debug build if release not available
-    if [[ ! -f "$JSON_TO_YAML_BIN" ]]; then
-        JSON_TO_YAML_BIN="$PROJECT_ROOT/target/debug/json-to-yaml"
-    fi
-
-    if [[ ! -f "$JSON_TO_YAML_BIN" ]]; then
-        fail "json-to-yaml binary not found - ensure project is built with: cargo build --release"
-        exit 1
-    fi
 
     if "$JSON_TO_YAML_BIN" "$verification_json" -o "$OUTPUT_DIR/results" > /tmp/conversion_output.txt 2>&1; then
         cat /tmp/conversion_output.txt | while IFS= read -r line; do

@@ -1,82 +1,80 @@
-requirement: "LONG_RUNNING"
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: LONG_RUNNING
 item: 1
 tc: 1
-id: 'TC_SUCCESS_LONG_RUNNING_001'
-description: 'Long-running commands - demonstrates handling commands that take time to execute'
-
+id: TC_SUCCESS_LONG_RUNNING_001
+description: Long-running commands - demonstrates handling commands that take time
+  to execute
 general_initial_conditions:
   system:
-    - "Bash shell is available"
-    - "Sleep command is available"
-
+  - Bash shell is available
+  - Sleep command is available
 initial_conditions:
   system:
-    - "System can handle delayed operations"
-
+  - System can handle delayed operations
 test_sequences:
-  - id: 1
-    name: "Long Running Operations"
-    description: "Execute commands that take time and verify they complete successfully"
-    initial_conditions:
-      system:
-        - "Sleep and timing commands work"
-    steps:
-      - step: 1
-        description: "Execute 2-second delay and verify completion"
-        command: "sleep 2 && echo 'Completed after 2 seconds'"
-        expected:
-          success: true
-          result: '0'
-          output: "Completed after 2 seconds"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "grep -q 'Completed after 2 seconds' <<< \"$COMMAND_OUTPUT\""
-
-      - step: 2
-        description: "Measure time for operation"
-        command: "start=$(date +%s) && sleep 1 && end=$(date +%s) && echo \"Duration: $((end - start)) seconds\""
-        capture_vars:
-          - name: duration
-            capture: 'Duration: ([0-9]+) seconds'
-        expected:
-          success: true
-          result: '0'
-          output: "Duration:"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "grep -q 'Duration:' <<< \"$COMMAND_OUTPUT\""
-          general:
-            - name: verify_duration_captured
-              condition: "[[ $duration -ge 1 ]]"
-
-      - step: 3
-        description: "Process data over time with progress updates"
-        command: "echo 'Start' && sleep 1 && echo 'Progress: 33%' && sleep 1 && echo 'Progress: 66%' && sleep 1 && echo 'Complete: 100%'"
-        expected:
-          success: true
-          result: '0'
-          output: "Complete: 100%"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "grep -q 'Start' <<< \"$COMMAND_OUTPUT\" && grep -q 'Progress: 33%' <<< \"$COMMAND_OUTPUT\" && grep -q 'Complete: 100%' <<< \"$COMMAND_OUTPUT\""
-
-      - step: 4
-        description: "Simulate batch processing with timestamps"
-        command: |
-          for i in 1 2 3; do
-            echo "Batch $i: $(date +%H:%M:%S)"
-            sleep 1
-          done
-        capture_vars:
-          - name: batch_count
-            command: "echo 3"
-        expected:
-          success: true
-          result: '0'
-          output: "Batch"
-        verification:
-          result: "[[ $? -eq 0 ]]"
-          output: "grep -q 'Batch 1:' <<< \"$COMMAND_OUTPUT\" && grep -q 'Batch 2:' <<< \"$COMMAND_OUTPUT\" && grep -q 'Batch 3:' <<< \"$COMMAND_OUTPUT\""
-          general:
-            - name: verify_batch_count
-              condition: "[[ $batch_count -eq 3 ]]"
+- id: 1
+  name: Long Running Operations
+  description: Execute commands that take time and verify they complete successfully
+  initial_conditions:
+    system:
+    - Sleep and timing commands work
+  steps:
+  - step: 1
+    description: Execute 2-second delay and verify completion
+    command: sleep 2 && echo 'Completed after 2 seconds'
+    expected:
+      success: true
+      result: '0'
+      output: Completed after 2 seconds
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: grep -q 'Completed after 2 seconds' <<< "$COMMAND_OUTPUT"
+  - step: 2
+    description: Measure time for operation
+    command: 'start=$(date +%s) && sleep 1 && end=$(date +%s) && echo "Duration: $((end
+      - start)) seconds"'
+    capture_vars:
+    - name: duration
+      capture: 'Duration: ([0-9]+) seconds'
+    expected:
+      success: true
+      result: '0'
+      output: 'Duration:'
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: grep -q 'Duration:' <<< "$COMMAND_OUTPUT"
+      general:
+      - name: verify_duration_captured
+        condition: '[[ $duration -ge 1 ]]'
+  - step: 3
+    description: Process data over time with progress updates
+    command: 'echo ''Start'' && sleep 1 && echo ''Progress: 33%'' && sleep 1 && echo
+      ''Progress: 66%'' && sleep 1 && echo ''Complete: 100%'''
+    expected:
+      success: true
+      result: '0'
+      output: 'Complete: 100%'
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: 'grep -q ''Start'' <<< "$COMMAND_OUTPUT" && grep -q ''Progress: 33%''
+        <<< "$COMMAND_OUTPUT" && grep -q ''Complete: 100%'' <<< "$COMMAND_OUTPUT"'
+  - step: 4
+    description: Simulate batch processing with timestamps
+    command: "for i in 1 2 3; do\n  echo \"Batch $i: $(date +%H:%M:%S)\"\n  sleep\
+      \ 1\ndone\n"
+    capture_vars:
+    - name: batch_count
+      command: echo 3
+    expected:
+      success: true
+      result: '0'
+      output: Batch
+    verification:
+      result: '[[ $? -eq 0 ]]'
+      output: grep -q 'Batch 1:' <<< "$COMMAND_OUTPUT" && grep -q 'Batch 2:' <<< "$COMMAND_OUTPUT"
+        && grep -q 'Batch 3:' <<< "$COMMAND_OUTPUT"
+      general:
+      - name: verify_batch_count
+        condition: '[[ $batch_count -eq 3 ]]'

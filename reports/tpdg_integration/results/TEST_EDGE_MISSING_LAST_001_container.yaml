@@ -1,0 +1,48 @@
+title: 'Test Execution Results - TEST_EDGE_MISSING_LAST_001'
+date: '2026-03-21'
+product: 'Test Case Manager'
+description: 'Integration test results for TEST_EDGE_MISSING_LAST_001'
+project: 'Test Case Manager - Integration Test'
+test_date: '2026-03-21T19:33:36'
+test_results:
+  description: 'Edge case: last step missing with previous steps executed'
+  failed_steps: 0
+  item: 1
+  not_executed_steps: 1
+  overall_pass: false
+  passed_steps: 2
+  requirement: EDGE_MISSING_LAST
+  sequences:
+  - all_steps_passed: false
+    item: 1
+    name: Missing Last Step Sequence
+    requirement: EDGE_MISSING_LAST
+    sequence_id: 1
+    step_results:
+    - Pass:
+        description: Execute step 1
+        item: 1
+        requirement: EDGE_MISSING_LAST
+        step: 1
+        tc: 1
+    - Pass:
+        description: Execute step 2
+        item: 1
+        requirement: EDGE_MISSING_LAST
+        step: 2
+        tc: 1
+    - NotExecuted:
+        description: Missing step - never executed
+        item: 1
+        requirement: EDGE_MISSING_LAST
+        step: 3
+        tc: 1
+    tc: 1
+  tc: 1
+  test_case_id: TEST_EDGE_MISSING_LAST_001
+  total_steps: 3
+metadata:
+  environment: 'Integration Test Environment'
+  platform: 'Test Case Manager Integration Tests'
+  executor: 'validate_tpdg_integration.sh'
+  total_test_cases: 1

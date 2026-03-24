@@ -3,6 +3,7 @@ use clap::Parser;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process;
+use testcase_manager::envelope::resolve_schema_from_payload;
 use testcase_manager::models::TestCase;
 use testcase_manager::validate_cross_file_dependencies;
 use testcase_manager::yaml_utils::log_yaml_parse_error;
@@ -27,9 +28,13 @@ struct Cli {
     #[arg(value_name = "YAML_FILES", required = true, num_args = 1..)]
     yaml_files: Vec<PathBuf>,
 
-    /// Path to the JSON schema file
+    /// Path to the JSON schema file (optional, auto-resolved from 'schema' field if not provided)
     #[arg(short, long, value_name = "SCHEMA_FILE")]
-    schema: PathBuf,
+    schema: Option<PathBuf>,
+
+    /// Root directory containing schema files for auto-resolution
+    #[arg(long, value_name = "SCHEMAS_ROOT", default_value = "schemas/")]
+    schemas_root: String,
 
     /// Watch mode - monitor YAML files for changes and re-validate
     #[cfg(not(target_os = "windows"))]
@@ -50,6 +55,7 @@ struct ValidationResult {
     success: bool,
     error_messages: Vec<String>,
     test_case: Option<TestCase>,
+    resolved_schema: Option<PathBuf>,
 }
 
 const COLOR_GREEN: &str = "\x1b[32m";
@@ -109,11 +115,57 @@ pub fn validate_single_file<P: AsRef<Path>, S: AsRef<Path>>(
     Ok(())
 }
 
-fn validate_files(yaml_files: &[PathBuf], schema_path: &Path) -> Vec<ValidationResult> {
+fn resolve_schema_for_file(
+    yaml_file: &Path,
+    explicit_schema: Option<&Path>,
+    schemas_root: &str,
+) -> Result<PathBuf> {
+    if let Some(schema) = explicit_schema {
+        log::debug!(
+            "Using explicit schema '{}' for file '{}'",
+            schema.display(),
+            yaml_file.display()
+        );
+        return Ok(schema.to_path_buf());
+    }
+
+    log::debug!(
+        "Auto-resolving schema for file '{}' from schemas root '{}'",
+        yaml_file.display(),
+        schemas_root
+    );
+    resolve_schema_from_payload(yaml_file, schemas_root)
+}
+
+fn validate_files(
+    yaml_files: &[PathBuf],
+    explicit_schema: Option<&Path>,
+    schemas_root: &str,
+) -> Vec<ValidationResult> {
     let mut results = Vec::new();
 
     for yaml_file in yaml_files {
-        let validation_result = validate_single_file(yaml_file, schema_path);
+        let schema_resolution = resolve_schema_for_file(yaml_file, explicit_schema, schemas_root);
+
+        let (schema_path, resolved_schema) = match schema_resolution {
+            Ok(path) => (Some(path.clone()), Some(path)),
+            Err(e) => {
+                results.push(ValidationResult {
+                    file_path: yaml_file.clone(),
+                    success: false,
+                    error_messages: vec![format!("Schema resolution failed: {}", e)],
+                    test_case: None,
+                    resolved_schema: None,
+                });
+                continue;
+            }
+        };
+
+        let validation_result = if let Some(ref schema) = schema_path {
+            validate_single_file(yaml_file, schema)
+        } else {
+            Err(anyhow::anyhow!("No schema available for validation"))
+        };
 
         let result = match validation_result {
             Ok(_) => {
@@ -123,6 +175,7 @@ fn validate_files(yaml_files: &[PathBuf], schema_path: &Path) -> Vec<ValidationR
                     success: true,
                     error_messages: Vec::new(),
                     test_case,
+                    resolved_schema,
                 }
             }
             Err(e) => ValidationResult {
@@ -130,6 +183,7 @@ fn validate_files(yaml_files: &[PathBuf], schema_path: &Path) -> Vec<ValidationR
                 success: false,
                 error_messages: e.to_string().lines().map(String::from).collect(),
                 test_case: None,
+                resolved_schema,
             },
         };
 
@@ -174,10 +228,16 @@ fn validate_dependencies(results: &[ValidationResult]) -> Result<(), Vec<String>
 fn print_results(results: &[ValidationResult]) {
     for result in results {
         if result.success {
+            let schema_info = if let Some(ref schema) = result.resolved_schema {
+                format!(" (schema: {})", schema.display())
+            } else {
+                String::new()
+            };
             println!(
-                "{}{COLOR_GREEN}✓{COLOR_RESET} {}",
+                "{}{COLOR_GREEN}✓{COLOR_RESET} {}{}",
                 COLOR_BOLD,
-                result.file_path.display()
+                result.file_path.display(),
+                schema_info
             );
         } else {
             println!(
@@ -293,9 +353,23 @@ fn find_external_refs(
 }
 
 #[cfg(not(target_os = "windows"))]
-fn run_watch_mode(yaml_files: Vec<PathBuf>, schema_path: PathBuf) -> Result<()> {
+fn run_watch_mode(
+    yaml_files: Vec<PathBuf>,
+    explicit_schema: Option<PathBuf>,
+    schemas_root: String,
+) -> Result<()> {
     const COLOR_BLUE: &str = "\x1b[34m";
     const COLOR_YELLOW: &str = "\x1b[33m";
+
+    // For watch mode, we need to determine the schema to monitor
+    // If explicit schema is provided, use it; otherwise resolve from first file
+    let schema_path = if let Some(ref schema) = explicit_schema {
+        schema.clone()
+    } else if !yaml_files.is_empty() {
+        resolve_schema_for_file(&yaml_files[0], None, &schemas_root)?
+    } else {
+        return Err(anyhow::anyhow!("No files to watch"));
+    };
 
     // Discover all schema dependencies
     let schema_files = discover_schema_dependencies(&schema_path)?;
@@ -311,7 +385,7 @@ fn run_watch_mode(yaml_files: Vec<PathBuf>, schema_path: PathBuf) -> Result<()> 
     );
 
     println!("{}Initial validation:{}", COLOR_BOLD, COLOR_RESET);
-    let results = validate_files(&yaml_files, &schema_path);
+    let results = validate_files(&yaml_files, explicit_schema.as_deref(), &schemas_root);
     print_results(&results);
 
     let dependency_errors = validate_dependencies(&results).err();
@@ -410,7 +484,8 @@ fn run_watch_mode(yaml_files: Vec<PathBuf>, schema_path: PathBuf) -> Result<()> 
                             "{}Schema changed - re-validating all YAML files:{}",
                             COLOR_BOLD, COLOR_RESET
                         );
-                        let full_results = validate_files(&yaml_files, &schema_path);
+                        let full_results =
+                            validate_files(&yaml_files, explicit_schema.as_deref(), &schemas_root);
                         print_results(&full_results);
                         let dependency_errors = validate_dependencies(&full_results).err();
                         print_summary(&full_results, dependency_errors.as_ref());
@@ -429,7 +504,11 @@ fn run_watch_mode(yaml_files: Vec<PathBuf>, schema_path: PathBuf) -> Result<()> 
                             .collect();
 
                         println!("{}Validating changed files:{}", COLOR_BOLD, COLOR_RESET);
-                        let changed_results = validate_files(&changed_yaml_files, &schema_path);
+                        let changed_results = validate_files(
+                            &changed_yaml_files,
+                            explicit_schema.as_deref(),
+                            &schemas_root,
+                        );
                         print_results(&changed_results);
 
                         let all_changed_passed = changed_results.iter().all(|r| r.success);
@@ -442,7 +521,11 @@ fn run_watch_mode(yaml_files: Vec<PathBuf>, schema_path: PathBuf) -> Result<()> 
                             );
                             println!();
 
-                            let full_results = validate_files(&yaml_files, &schema_path);
+                            let full_results = validate_files(
+                                &yaml_files,
+                                explicit_schema.as_deref(),
+                                &schemas_root,
+                            );
                             print_results(&full_results);
                             let dependency_errors = validate_dependencies(&full_results).err();
                             print_summary(&full_results, dependency_errors.as_ref());
@@ -478,10 +561,10 @@ fn main() -> Result<()> {
 
     #[cfg(not(target_os = "windows"))]
     if cli.watch {
-        return run_watch_mode(cli.yaml_files, cli.schema);
+        return run_watch_mode(cli.yaml_files, cli.schema, cli.schemas_root);
     }
 
-    let results = validate_files(&cli.yaml_files, &cli.schema);
+    let results = validate_files(&cli.yaml_files, cli.schema.as_deref(), &cli.schemas_root);
     print_results(&results);
 
     let dependency_validation = validate_dependencies(&results);

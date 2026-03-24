@@ -1,0 +1,37 @@
+description: 'Precomputed verification: steps with empty output pass verification'
+failed_steps: 0
+item: 1
+not_executed_steps: 0
+overall_pass: true
+passed_steps: 3
+requirement: TEST_PRECOMP_EMPTY_OUTPUT
+sequences:
+- all_steps_passed: true
+  item: 1
+  name: Empty Output Sequence
+  requirement: TEST_PRECOMP_EMPTY_OUTPUT
+  sequence_id: 1
+  step_results:
+  - Pass:
+      description: Execute command with no output
+      item: 1
+      requirement: TEST_PRECOMP_EMPTY_OUTPUT
+      step: 1
+      tc: 1
+  - Pass:
+      description: Execute another silent command
+      item: 1
+      requirement: TEST_PRECOMP_EMPTY_OUTPUT
+      step: 2
+      tc: 1
+  - Pass:
+      description: Execute final silent command
+      item: 1
+      requirement: TEST_PRECOMP_EMPTY_OUTPUT
+      step: 3
+      tc: 1
+  tc: 1
+tc: 1
+test_case_id: TEST_PRECOMP_EMPTY_OUTPUT_001
+total_steps: 3
+type: result

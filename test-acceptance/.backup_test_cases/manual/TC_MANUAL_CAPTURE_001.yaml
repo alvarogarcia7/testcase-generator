@@ -1,0 +1,163 @@
+requirement: "MANUAL_VARIABLE_CAPTURE"
+item: 1
+tc: 9
+id: 'TC_MANUAL_CAPTURE_001'
+description: 'Test case with manual steps using variable capture - demonstrates capturing values from manual operations for use in subsequent steps'
+
+general_initial_conditions:
+  system:
+    - "Variable capture mechanisms are available"
+    - "Test operator can record observed values"
+
+initial_conditions:
+  environment:
+    - "System is ready for variable capture testing"
+
+test_sequences:
+  - id: 1
+    name: "Manual Variable Capture and Verification"
+    description: |
+                  This test sequence demonstrates capturing variables from
+                  manual steps and using them in automated verification.
+    initial_conditions:
+      system:
+        - "System is ready for manual value capture"
+    variables:
+      device_id: ""
+      session_token: ""
+      config_version: ""
+    steps:
+      - step: 1
+        description: "Generate test device identifier"
+        command: "echo \"DEV-$(date +%s)\" | tee /tmp/device_id.txt"
+        capture_vars:
+          - name: device_id
+            capture: "(DEV-[0-9]+)"
+        expected:
+          success: true
+          result: 0
+          output: "DEV-"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'DEV-' <<< \"$COMMAND_OUTPUT\""
+      
+      - step: 2
+        manual: true
+        description: "Register device ID in system UI"
+        command: "Navigate to Device Registration, enter captured device ID, click Register"
+        expected:
+          success: true
+          result: 0
+          output: "Device registered successfully with confirmation message"
+        verification:
+          result: "true"
+          output: "Did the system display a successful registration message for device ID? (Y/n)"
+      
+      - step: 3
+        description: "Generate session token for testing"
+        command: "echo \"TOKEN-$(openssl rand -hex 8 2>/dev/null || echo 'abc123def456')\" | tee /tmp/session_token.txt"
+        capture_vars:
+          - name: session_token
+            capture: "(TOKEN-[a-f0-9]+)"
+        expected:
+          success: true
+          result: 0
+          output: "TOKEN-"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'TOKEN-' <<< \"$COMMAND_OUTPUT\""
+      
+      - step: 4
+        manual: true
+        description: "Enter session token in authentication dialog"
+        command: "Open authentication dialog, paste session token, click Authenticate"
+        expected:
+          success: true
+          result: 0
+          output: "Authentication succeeds, session established"
+        verification:
+          result: "true"
+          output: "Did authentication succeed with the session token? (Y/n)"
+      
+      - step: 5
+        description: "Retrieve current configuration version"
+        command: "echo 'v1.2.3' | tee /tmp/config_version.txt"
+        capture_vars:
+          - name: config_version
+            capture: "(v[0-9]+\\.[0-9]+\\.[0-9]+)"
+        expected:
+          success: true
+          result: 0
+          output: "v"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -qE 'v[0-9]+\\.[0-9]+\\.[0-9]+' <<< \"$COMMAND_OUTPUT\""
+      
+      - step: 6
+        manual: true
+        description: "Verify configuration version in system display"
+        command: "Navigate to System > About and observe version number"
+        expected:
+          success: true
+          result: 0
+          output: "Version number matches captured value"
+        verification:
+          result: "true"
+          output: "Does the displayed version match the captured version? (Y/n)"
+      
+      - step: 7
+        description: "Display all captured values for verification"
+        command: "echo \"Device: $device_id, Token: ${session_token:0:16}..., Version: $config_version\""
+        expected:
+          success: true
+          result: 0
+          output: "Device:"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Device:.*Token:.*Version:' <<< \"$COMMAND_OUTPUT\""
+      
+      - step: 8
+        manual: true
+        description: "Verify all captured values in system summary"
+        command: "Open System Summary and verify all captured identifiers are displayed"
+        expected:
+          success: true
+          result: 0
+          output: "Summary shows device ID, active session, and version"
+        verification:
+          result: "true"
+          output: "Does the summary display all three captured values correctly? (Y/n)"
+      
+      - step: 9
+        description: "Log captured values to test results"
+        command: "echo \"Test Results: device_id=$device_id, session_token=$session_token, config_version=$config_version\" > /tmp/manual_capture_results.txt && cat /tmp/manual_capture_results.txt"
+        expected:
+          success: true
+          result: 0
+          output: "Test Results:"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Test Results:' <<< \"$COMMAND_OUTPUT\""
+      
+      - step: 10
+        manual: true
+        description: "Verify test results file contains all captured data"
+        command: "Open /tmp/manual_capture_results.txt in text editor"
+        expected:
+          success: true
+          result: 0
+          output: "File contains all three captured variables with correct values"
+        verification:
+          result: "true"
+          output: "Does the file contain all three variables with their values? (Y/n)"
+      
+      - step: 11
+        description: "Cleanup test files"
+        command: "rm -f /tmp/device_id.txt /tmp/session_token.txt /tmp/config_version.txt /tmp/manual_capture_results.txt && echo 'Cleanup complete'"
+        expected:
+          success: true
+          result: 0
+          output: "Cleanup complete"
+        verification:
+          result: "[[ $EXIT_CODE -eq 0 ]]"
+          output: "grep -q 'Cleanup complete' <<< \"$COMMAND_OUTPUT\""

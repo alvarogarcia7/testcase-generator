@@ -1,0 +1,31 @@
+description: 'Precomputed verification: output with special characters'
+failed_steps: 0
+item: 1
+not_executed_steps: 0
+overall_pass: true
+passed_steps: 2
+requirement: TEST_PRECOMP_SPECIAL_CHARS
+sequences:
+- all_steps_passed: true
+  item: 1
+  name: Special Characters Sequence
+  requirement: TEST_PRECOMP_SPECIAL_CHARS
+  sequence_id: 1
+  step_results:
+  - Pass:
+      description: Output with quotes
+      item: 1
+      requirement: TEST_PRECOMP_SPECIAL_CHARS
+      step: 1
+      tc: 1
+  - Pass:
+      description: Output with special symbols
+      item: 1
+      requirement: TEST_PRECOMP_SPECIAL_CHARS
+      step: 2
+      tc: 1
+  tc: 1
+tc: 1
+test_case_id: TEST_PRECOMP_SPECIAL_CHARS_001
+total_steps: 2
+type: result
