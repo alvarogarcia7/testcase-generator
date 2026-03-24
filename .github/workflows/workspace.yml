@@ -6,12 +6,6 @@ on:
   pull_request:
     branches: [ "master", "main", "feature/**", "f69c-*" ]
   workflow_dispatch:
-    inputs:
-      tpdg_ref:
-        description: 'TPDG Git ref (branch/tag/commit) to use'
-        required: false
-        default: 'main'
-        type: string
 
 env:
   CARGO_INCREMENTAL: 0
@@ -97,21 +91,7 @@ jobs:
 #          path: target/llvm-cov/
 #          retention-days: 30
 
-      - name: Clone and Build Test Plan Documentation Generator
-        env:
-          TPDG_REPO: https://github.com/alvarogarcia7/test-plan-documentation-generator
-          TPDG_REF: ${{ github.event.inputs.tpdg_ref || 'main' }}
-        run: |
-          echo "Cloning TPDG from $TPDG_REPO (ref: $TPDG_REF)"
-          git clone "$TPDG_REPO" /tmp/test-plan-documentation-generator
-          cd /tmp/test-plan-documentation-generator
-          git checkout "$TPDG_REF"
-          echo "Building TPDG..."
-          RUSTC_WRAPPER="" cargo build --release
-          echo "TPDG built successfully at: /tmp/test-plan-documentation-generator/target/release/test-plan-documentation-generator"
-
       - name: Run E2E tests
         run: |
           export PATH="$HOME/.cargo/bin:$PATH"
-          export TPDG_PATH=/tmp/test-plan-documentation-generator
           make test-e2e
