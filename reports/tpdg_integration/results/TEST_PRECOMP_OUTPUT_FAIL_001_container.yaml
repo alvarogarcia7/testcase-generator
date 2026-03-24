@@ -1,8 +1,10 @@
-title: 'Test Execution Results - TEST_PRECOMP_OUTPUT_FAIL_001'
+type: test_case_verification_result
+schema: tcms/test-case-verification-result.schema.v1.json
+title: Test Execution Results - TEST_PRECOMP_OUTPUT_FAIL_001
 date: '2026-03-21'
-product: 'Test Case Manager'
-description: 'Integration test results for TEST_PRECOMP_OUTPUT_FAIL_001'
-project: 'Test Case Manager - Integration Test'
+product: Test Case Manager
+description: Integration test results for TEST_PRECOMP_OUTPUT_FAIL_001
+project: Test Case Manager - Integration Test
 test_date: '2026-03-21T19:33:37'
 test_results:
   description: 'Precomputed verification: first step fails output verification'
@@ -19,31 +21,18 @@ test_results:
     requirement: TEST_PRECOMP_OUTPUT_FAIL
     sequence_id: 1
     step_results:
-    - Fail:
-        actual_output: Unexpected output
-        actual_result: '0'
-        description: Execute command with failed output verification
-        expected:
-          output: Expected output
-          result: '0'
-          success: true
-        item: 1
-        reason: 'Output mismatch: expected ''Expected output'', got ''Unexpected output'''
-        requirement: TEST_PRECOMP_OUTPUT_FAIL
-        step: 1
-        tc: 1
-    - Pass:
-        description: Execute command with passing verification
-        item: 1
-        requirement: TEST_PRECOMP_OUTPUT_FAIL
-        step: 2
-        tc: 1
+    - step: 1
+      status: fail
+      description: Execute command with failed output verification
+    - step: 2
+      status: pass
+      description: Execute command with passing verification
     tc: 1
   tc: 1
   test_case_id: TEST_PRECOMP_OUTPUT_FAIL_001
   total_steps: 2
 metadata:
-  environment: 'Integration Test Environment'
-  platform: 'Test Case Manager Integration Tests'
-  executor: 'validate_tpdg_integration.sh'
+  environment: Integration Test Environment
+  platform: Test Case Manager Integration Tests
+  executor: validate_tpdg_integration.sh
   total_test_cases: 1

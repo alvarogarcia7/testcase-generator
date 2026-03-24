@@ -21,6 +21,9 @@ RUN rustup component add llvm-tools-preview && \
 # Copy manifests
 COPY Cargo.toml Cargo.lock ./
 
+# Copy workspace member crates (bash-eval)
+COPY bash-eval ./bash-eval
+
 # Copy scripts directory early so include_str! macros can find the files
 COPY scripts ./scripts
 
