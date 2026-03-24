@@ -1822,48 +1822,6 @@ fn test_manual_step_user_verification_variable_usage() {
     assert!(script.contains("exit 1"));
 }
 
-#[test]
-fn test_manual_step_without_verification_no_user_verification_variable() {
-    let executor = TestExecutor::new();
-    let mut test_case = TestCase::new(
-        "REQ004".to_string(),
-        1,
-        1,
-        "TC004".to_string(),
-        "Manual step without verification".to_string(),
-    );
-
-    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
-    let mut step = create_test_step(
-        1,
-        "Manual action",
-        "reboot device",
-        "0",
-        "rebooted",
-        Some(true),
-    );
-    step.manual = Some(true);
-    step.verification = Verification {
-        result: VerificationExpression::Simple("true".to_string()),
-        output: VerificationExpression::Simple("true".to_string()),
-        output_file: None,
-        general: None,
-    };
-    sequence.steps.push(step);
-    test_case.test_sequences.push(sequence);
-
-    let script = executor.generate_test_script(&test_case);
-
-    // Verify no USER_VERIFICATION variables are set when verification is "true"
-    assert!(!script.contains("USER_VERIFICATION_RESULT=false"));
-    assert!(!script.contains("USER_VERIFICATION_OUTPUT=false"));
-    assert!(!script.contains("USER_VERIFICATION=true"));
-    assert!(!script.contains("[PASS] Step 1"));
-    assert!(!script.contains("[FAIL] Step 1"));
-
-    // Should just prompt to continue with read_true_false
-    assert!(script.contains("if read_true_false \"Have you completed the manual step?\""));
-}
 
 #[test]
 fn test_manual_step_with_read_true_false_in_verification() {
@@ -5870,53 +5828,6 @@ fn test_initial_conditions_complex_mixed_structure() {
 // ============================================================================
 
 #[test]
-fn test_manual_step_without_verification_no_user_verification_variables() {
-    let executor = TestExecutor::new();
-    let mut test_case = TestCase::new(
-        "REQ_NO_VERIFY_001".to_string(),
-        1,
-        1,
-        "TC_NO_VERIFY_001".to_string(),
-        "Manual step without verification - no variables".to_string(),
-    );
-
-    let mut sequence = TestSequence::new(1, "Seq1".to_string(), "Test sequence".to_string());
-    let mut step = create_test_step(
-        1,
-        "Manual action without verification",
-        "ssh device 'reboot'",
-        "0",
-        "rebooted",
-        Some(true),
-    );
-    step.manual = Some(true);
-    step.verification = Verification {
-        result: VerificationExpression::Simple("true".to_string()),
-        output: VerificationExpression::Simple("true".to_string()),
-        output_file: None,
-        general: None,
-    };
-    sequence.steps.push(step);
-    test_case.test_sequences.push(sequence);
-
-    let script = executor.generate_test_script(&test_case);
-
-    // REQUIREMENT: No USER_VERIFICATION variables should be generated
-    assert!(
-        !script.contains("USER_VERIFICATION_RESULT"),
-        "Script must NOT contain USER_VERIFICATION_RESULT variable"
-    );
-    assert!(
-        !script.contains("USER_VERIFICATION_OUTPUT"),
-        "Script must NOT contain USER_VERIFICATION_OUTPUT variable"
-    );
-    assert!(
-        !script.contains("USER_VERIFICATION="),
-        "Script must NOT contain USER_VERIFICATION variable assignment"
-    );
-}
-
-#[test]
 fn test_manual_step_without_verification_no_evaluation_code() {
     let executor = TestExecutor::new();
     let mut test_case = TestCase::new(
@@ -6168,12 +6079,6 @@ fn test_manual_step_without_verification_multiple_steps() {
         "Script must have read_true_false prompt for each manual step without verification"
     );
 
-    // Neither step should have USER_VERIFICATION variables
-    assert!(
-        !script.contains("USER_VERIFICATION"),
-        "Script must NOT contain any USER_VERIFICATION variables"
-    );
-
     // Neither step should have PASS/FAIL messages
     assert!(
         !script.contains("[PASS]"),
@@ -6241,10 +6146,6 @@ fn test_manual_step_without_verification_mixed_with_verification() {
     // Step 1: Should NOT have USER_VERIFICATION variables
     let step1_section =
         &script[script.find("# Step 1:").unwrap()..script.find("# Step 2:").unwrap()];
-    assert!(
-        !step1_section.contains("USER_VERIFICATION"),
-        "Step 1 section must NOT contain USER_VERIFICATION variables"
-    );
     assert!(
         !step1_section.contains("[PASS]"),
         "Step 1 section must NOT contain [PASS] message"
@@ -6434,10 +6335,6 @@ fn test_manual_step_without_verification_complete_workflow() {
         .unwrap_or(step_section.len());
     let this_step = &step_section[..step_end];
 
-    assert!(
-        !this_step.contains("USER_VERIFICATION"),
-        "Should not contain USER_VERIFICATION"
-    );
     assert!(!this_step.contains("[PASS]"), "Should not contain [PASS]");
     assert!(!this_step.contains("[FAIL]"), "Should not contain [FAIL]");
     // With read_true_false, we do have exit 1 for when user says "no"

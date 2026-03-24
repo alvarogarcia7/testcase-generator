@@ -1036,7 +1036,7 @@ impl TestExecutor {
 
                     script.push_str("# Write manual step JSON entry\n");
                     script.push_str("{\n");
-                    script.push_str("    echo '  {{\'\n");
+                    script.push_str("    echo '  {\'\n");
                     script.push_str(&format!(
                         "    echo '    \"test_sequence\": {},'\n",
                         sequence.id
