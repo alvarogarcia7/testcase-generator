@@ -171,9 +171,9 @@ main() {
             continue
         fi
         
-        ((total++))
+        total=$((total+1))
         if ! validate_yaml_file "$yaml_file" "$TEST_CASE_RESULT_SCHEMA"; then
-            ((failed++))
+            failed=$((failed+1))
         fi
     done
     
@@ -195,9 +195,9 @@ main() {
                 continue
             fi
             
-            ((total++))
+	    total=$((total+1))
             if ! validate_yaml_file "$yaml_file" "$CONTAINER_SCHEMA"; then
-                ((failed++))
+                failed=$((failed+1))
             fi
         done
     fi
