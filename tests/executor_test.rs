@@ -1822,7 +1822,6 @@ fn test_manual_step_user_verification_variable_usage() {
     assert!(script.contains("exit 1"));
 }
 
-
 #[test]
 fn test_manual_step_with_read_true_false_in_verification() {
     let executor = TestExecutor::new();
