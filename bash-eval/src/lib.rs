@@ -11,8 +11,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::process::Command;
 
-
-
 /// Represents a verification expression to evaluate via bash
 ///
 /// This is independent of any test framework models to avoid tight coupling.
@@ -154,7 +152,7 @@ pub fn generate_verification_script(expression: &BashExpression, var_name: &str)
 /// This generates a script that iterates through `STEP_VAR_NAMES` and performs
 /// sed-based substitution of `${var_name}` patterns.
 pub fn generate_verification_with_var_subst(expression: &BashExpression, var_name: &str) -> String {
-       match expression {
+    match expression {
         BashExpression::Simple(s) => {
             // For simple expressions with potential variables, perform substitution
             let mut script = String::new();
@@ -420,4 +418,3 @@ mod tests {
         assert_eq!(result, None);
     }
 }
-
