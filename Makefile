@@ -217,13 +217,58 @@ install-sccache:
 	./scripts/install-sccache.sh --local
 .PHONY: install-sccache
 
+enable-sccache:
+	@echo "To enable sccache, run:"
+	@echo "  source ./scripts/enable-sccache.sh"
+	@echo ""
+	@echo "Or for permanent setup:"
+	@echo "  source ./scripts/enable-sccache.sh --permanent"
+	@echo ""
+	@echo "To check if sccache is enabled:"
+	@echo "  source ./scripts/enable-sccache.sh --check"
+.PHONY: enable-sccache
+
+disable-sccache:
+	@echo "To disable sccache, run:"
+	@echo "  source ./scripts/disable-sccache.sh"
+	@echo ""
+	@echo "Or manually:"
+	@echo "  unset RUSTC_WRAPPER"
+.PHONY: disable-sccache
+
 sccache-stats:
 	@sccache --show-stats
 .PHONY: sccache-stats
 
+sccache-check:
+	@if [ -z "$$RUSTC_WRAPPER" ]; then \
+		echo "❌ sccache is NOT enabled"; \
+		echo ""; \
+		echo "To enable sccache:"; \
+		echo "  source ./scripts/enable-sccache.sh"; \
+		echo ""; \
+		echo "Or add to your shell profile:"; \
+		echo "  export RUSTC_WRAPPER=sccache"; \
+		exit 1; \
+	elif [ "$$RUSTC_WRAPPER" != "sccache" ]; then \
+		echo "⚠️  RUSTC_WRAPPER is set to '$$RUSTC_WRAPPER' (expected: 'sccache')"; \
+		exit 1; \
+	else \
+		echo "✅ sccache is enabled (RUSTC_WRAPPER=sccache)"; \
+		echo ""; \
+		echo "Cache directory: ~/.cache/sccache/testcase-manager"; \
+		if command -v sccache >/dev/null 2>&1; then \
+			echo ""; \
+			sccache --show-stats; \
+		fi; \
+	fi
+.PHONY: sccache-check
+
 sccache-clean:
 	@sccache --stop-server || true
-	@echo "sccache cache cleared"
+	@echo "sccache server stopped"
+	@echo "Note: Global cache directory preserved at ~/.cache/sccache/testcase-manager"
+	@echo "To manually remove cache: rm -rf ~/.cache/sccache/testcase-manager"
 .PHONY: sccache-clean
 
 verify-scripts:

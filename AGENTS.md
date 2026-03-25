@@ -49,8 +49,11 @@ See the [Hooks](#hooks) section for detailed documentation and examples.
 - **Coverage Report E2E**: make coverage-report-e2e (display coverage summary with e2e tests)
 - **Install Coverage Tools**: make install-coverage-tools (install cargo-llvm-cov and related tools)
 - **Install sccache**: make install-sccache (install sccache compilation cache)
+- **Enable sccache**: make enable-sccache (show instructions to enable sccache for current session)
+- **Disable sccache**: make disable-sccache (show instructions to disable sccache if causing compilation issues)
+- **Check sccache**: make sccache-check (verify if sccache is properly configured and enabled)
 - **sccache Stats**: make sccache-stats (display sccache compilation cache statistics)
-- **sccache Clean**: make sccache-clean (clear sccache compilation cache)
+- **sccache Clean**: make sccache-clean (stop sccache server, preserve cache)
 - **Verify Scripts**: make verify-scripts (verify syntax of all shell scripts)
 - **Validate Output Schemas**: make validate-output-schemas (validate expected output samples against schemas)
 - **Validate Test Cases Report**: make validate-testcases-report (generate detailed validation report for all test case YAML files in testcases/ directory, output saved to reports/validation_report.txt)
@@ -70,6 +73,87 @@ See the [Hooks](#hooks) section for detailed documentation and examples.
 - **Setup Python**: make setup-python (install and configure Python 3.14 with uv package manager)
 - **Verify Python**: make verify-python (verify Python 3.14 environment is properly configured)
 - **Dev Server**: N/A
+
+### Sccache Configuration
+
+**⚠️ IMPORTANT**: If you're experiencing build failures with exit status 254, immediately disable sccache:
+```bash
+unset RUSTC_WRAPPER
+cargo clean && cargo build
+```
+
+The project uses **sccache** (Shared Compilation Cache) to accelerate Rust compilation by caching build artifacts. The cache is configured to use a **global directory in the user's home folder** to enable cache sharing across multiple worktrees and git checkouts.
+
+**Global Cache Directory**: `~/.cache/sccache/testcase-manager`
+
+**Benefits**:
+- **Worktree Sharing**: Multiple worktrees of the same repository share the same cache
+- **Persistent Cache**: Cache survives repository deletion and recreation
+- **Faster Builds**: Reduced compilation time across all worktrees
+- **Disk Efficiency**: Single cache location instead of per-worktree caches
+
+**Configuration**:
+The cache directory is configured in `.cargo/config.toml`:
+```toml
+[env]
+SCCACHE_DIR = { value = "$HOME/.cache/sccache/testcase-manager", force = true, relative = false }
+```
+
+**Setup (Required for sccache to work)**:
+```bash
+# 1. Install sccache (one-time)
+make install-sccache
+
+# 2. Enable sccache for current shell session
+source ./scripts/enable-sccache.sh
+
+# 3. (Optional) Enable permanently (adds to ~/.bashrc or ~/.zshrc)
+source ./scripts/enable-sccache.sh --permanent
+
+# 4. Verify sccache is enabled
+make sccache-check
+```
+
+**Usage Commands**:
+```bash
+# Check if sccache is enabled
+make sccache-check
+
+# View cache statistics
+make sccache-stats
+
+# Disable sccache (if causing compilation issues)
+source ./scripts/disable-sccache.sh
+
+# Stop sccache server (preserves cache)
+make sccache-clean
+
+# Manually clear cache (if needed)
+rm -rf ~/.cache/sccache/testcase-manager
+```
+
+**Troubleshooting Compilation Issues**:
+
+If you encounter compilation errors with sccache (exit status 254), disable it:
+```bash
+# Disable sccache for current session
+source ./scripts/disable-sccache.sh
+
+# Clean and rebuild
+cargo clean
+cargo build
+```
+
+See [docs/SCCACHE_SETUP.md](docs/SCCACHE_SETUP.md) for detailed troubleshooting.
+
+**Docker Environment**:
+In Docker builds, sccache uses `/root/.cache/sccache/testcase-manager` as the cache directory. This can be persisted across builds using Docker cache mounts.
+
+**Manual Override**:
+To use a custom cache location, set the `SCCACHE_DIR` environment variable (overrides `.cargo/config.toml`):
+```bash
+export SCCACHE_DIR=/my/custom/cache
+```
 
 ### Report Generation
 

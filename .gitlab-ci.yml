@@ -16,6 +16,8 @@ variables:
   DOCKER_DRIVER: overlay2
   DOCKER_TLS_CERTDIR: "/certs"
   # sccache configuration for build caching
+  # In CI: Use project directory for GitLab Runner cache compatibility
+  # In local dev: Uses ~/.cache/sccache/testcase-manager (configured in .cargo/config.toml)
   RUSTC_WRAPPER: sccache
   SCCACHE_DIR: ${CI_PROJECT_DIR}/.sccache
   SCCACHE_CACHE_SIZE: 5G

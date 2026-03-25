@@ -49,6 +49,25 @@ make test
 make lint
 ```
 
+### Performance: Enable sccache (Optional but Recommended)
+
+To speed up Rust compilation (especially for rebuilds), install and enable sccache:
+
+```bash
+# 1. Install sccache
+make install-sccache
+
+# 2. Enable for current session
+source ./scripts/enable-sccache.sh
+
+# 3. Verify it's working
+make sccache-check
+```
+
+This enables a global compilation cache shared across all worktrees. See [docs/SCCACHE.md](docs/SCCACHE.md) for details.
+
+**⚠️ If builds fail with sccache**: Disable it with `unset RUSTC_WRAPPER` then run `cargo clean && cargo build`. See [docs/SCCACHE_SETUP.md](docs/SCCACHE_SETUP.md) for troubleshooting.
+
 ## Executables
 
 This project provides multiple executable binaries for comprehensive test case management

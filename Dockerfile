@@ -8,11 +8,12 @@ RUN apt update && \
     rm -rf /var/lib/apt/lists/*
 
 # Set sccache environment variables
+# Use a global cache directory that can be shared across builds via Docker cache mount
 ENV RUSTC_WRAPPER=sccache
-ENV SCCACHE_DIR=/app/.sccache/docker
+ENV SCCACHE_DIR=/root/.cache/sccache/testcase-manager
 
-# Create cache directory and copy host cache if it exists
-RUN mkdir -p /app/.sccache/docker
+# Create cache directory
+RUN mkdir -p /root/.cache/sccache/testcase-manager
 
 # Install coverage tools for CI/CD
 RUN rustup component add llvm-tools-preview && \
