@@ -209,12 +209,10 @@ validate_schema_file() {
 find_verifier_binary() {
     local verifier_path
     
-    # Check if verifier is built
-    if [[ -f "$REPO_ROOT/target/release/verifier" ]]; then
-        verifier_path="$REPO_ROOT/target/release/verifier"
-    elif [[ -f "$REPO_ROOT/target/debug/verifier" ]]; then
-        verifier_path="$REPO_ROOT/target/debug/verifier"
-    else
+    # Find verifier binary using workspace-aware search
+    cd "$REPO_ROOT"
+    verifier_path=$(find_binary "verifier")
+    if [[ -z "$verifier_path" ]]; then
         log_error "Verifier binary not found. Please build it first with: cargo build --bin verifier --release"
         exit 1
     fi

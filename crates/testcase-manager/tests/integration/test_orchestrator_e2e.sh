@@ -16,10 +16,19 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-TEST_ORCHESTRATOR_BINARY="$PROJECT_ROOT/target/debug/test-orchestrator"
 
-# Source logger library
-source "$SCRIPT_DIR/../../scripts/lib/logger.sh" || exit 1
+# Source shared libraries
+source "$PROJECT_ROOT/scripts/lib/find-binary.sh" || exit 1
+source "$PROJECT_ROOT/scripts/lib/logger.sh" || exit 1
+
+# Find test-orchestrator binary using workspace-aware search
+cd "$PROJECT_ROOT"
+TEST_ORCHESTRATOR_BINARY=$(find_binary "test-orchestrator")
+if [[ -z "$TEST_ORCHESTRATOR_BINARY" ]]; then
+    echo "[ERROR] test-orchestrator binary not found" >&2
+    echo "[ERROR] Please build it with: cargo build --bin test-orchestrator" >&2
+    exit 1
+fi
 
 # Handle --no-remove flag
 REMOVE_TEMP=1

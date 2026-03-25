@@ -5,9 +5,10 @@
 # Note: We do NOT use 'set -e' here because we want to run all stages
 # and collect comprehensive failure information before exiting
 
-# Get script directory and source logger
+# Get script directory and source shared libraries
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+source "$PROJECT_ROOT/scripts/lib/find-binary.sh" || exit 1
 source "$PROJECT_ROOT/scripts/lib/logger.sh" || exit 1
 
 # Default configuration
@@ -28,11 +29,12 @@ REPORTS_DIR="$SCRIPT_DIR/reports"
 SCHEMA_DIR="$PROJECT_ROOT/schemas"
 CONTAINER_SCHEMA="$PROJECT_ROOT/data/testcase_results_container/schema.json"
 
-# Binaries
-VALIDATE_YAML="${PROJECT_ROOT}/target/debug/validate-yaml"
-TEST_EXECUTOR="${PROJECT_ROOT}/target/debug/test-executor"
-VERIFIER="${PROJECT_ROOT}/target/debug/verifier"
-VALIDATE_JSON="${PROJECT_ROOT}/target/debug/validate-json"
+# Find binaries using workspace-aware search (will be validated in verify_binaries)
+cd "$PROJECT_ROOT"
+VALIDATE_YAML=$(find_binary "validate-yaml")
+TEST_EXECUTOR=$(find_binary "test-executor")
+VERIFIER=$(find_binary "verifier")
+VALIDATE_JSON=$(find_binary "validate-json")
 
 # TPDG binary location
 TPDG_BIN="${TEST_PLAN_DOC_GEN:-test-plan-documentation-generator}"

@@ -15,11 +15,26 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-TRM_BINARY="$PROJECT_ROOT/target/debug/trm"
-TCM_BINARY="$PROJECT_ROOT/target/debug/tcm"
 
-# Source logger library
-source "$SCRIPT_DIR/../../scripts/lib/logger.sh" || exit 1
+# Source shared libraries
+source "$PROJECT_ROOT/scripts/lib/find-binary.sh" || exit 1
+source "$PROJECT_ROOT/scripts/lib/logger.sh" || exit 1
+
+# Find binaries using workspace-aware search
+cd "$PROJECT_ROOT"
+TRM_BINARY=$(find_binary "trm")
+if [[ -z "$TRM_BINARY" ]]; then
+    echo "[ERROR] trm binary not found" >&2
+    echo "[ERROR] Please build it with: cargo build --bin trm" >&2
+    exit 1
+fi
+
+TCM_BINARY=$(find_binary "tcm")
+if [[ -z "$TCM_BINARY" ]]; then
+    echo "[ERROR] tcm binary not found" >&2
+    echo "[ERROR] Please build it with: cargo build --bin tcm" >&2
+    exit 1
+fi
 
 # Handle --no-remove flag
 REMOVE_TEMP=1

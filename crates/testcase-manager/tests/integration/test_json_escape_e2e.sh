@@ -67,9 +67,14 @@ else
     exit 1
 fi
 
-JSON_ESCAPE_BIN="$PROJECT_ROOT/target/debug/json-escape"
-if [[ ! -f "$JSON_ESCAPE_BIN" ]]; then
-    fail "json-escape binary not found at $JSON_ESCAPE_BIN"
+# Source shared libraries for finding binaries
+source "$PROJECT_ROOT/scripts/lib/find-binary.sh" || exit 1
+
+# Find json-escape binary using workspace-aware search
+cd "$PROJECT_ROOT"
+JSON_ESCAPE_BIN=$(find_binary "json-escape")
+if [[ -z "$JSON_ESCAPE_BIN" ]]; then
+    fail "json-escape binary not found after build"
     ((TESTS_FAILED++))
     exit 1
 fi

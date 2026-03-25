@@ -222,12 +222,10 @@ check_schema_file() {
 find_verifier_binary() {
     local verifier_path
     
-    # Check if verifier is built
-    if [[ -f "$REPO_ROOT/target/release/verifier" ]]; then
-        verifier_path="$REPO_ROOT/target/release/verifier"
-    elif [[ -f "$REPO_ROOT/target/debug/verifier" ]]; then
-        verifier_path="$REPO_ROOT/target/debug/verifier"
-    else
+    # Find verifier binary using workspace-aware search
+    cd "$REPO_ROOT"
+    verifier_path=$(find_binary "verifier")
+    if [[ -z "$verifier_path" ]]; then
         log_error "Verifier binary not found. Please build it first with: cargo build --bin verifier"
         exit 1
     fi
@@ -323,13 +321,11 @@ validate_container_exists() {
 validate_container_schema() {
     log_verbose "Validating container YAML against schema..."
     
-    # Use validate-yaml binary
+    # Find validate-yaml binary using workspace-aware search
     local validate_yaml
-    if [[ -f "$REPO_ROOT/target/release/validate-yaml" ]]; then
-        validate_yaml="$REPO_ROOT/target/release/validate-yaml"
-    elif [[ -f "$REPO_ROOT/target/debug/validate-yaml" ]]; then
-        validate_yaml="$REPO_ROOT/target/debug/validate-yaml"
-    else
+    cd "$REPO_ROOT"
+    validate_yaml=$(find_binary "validate-yaml")
+    if [[ -z "$validate_yaml" ]]; then
         log_warning "validate-yaml binary not found, skipping schema validation"
         return 0
     fi

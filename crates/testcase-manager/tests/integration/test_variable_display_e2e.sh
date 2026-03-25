@@ -19,13 +19,28 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-TEST_EXECUTOR_BIN="$PROJECT_ROOT/target/debug/test-executor"
-VALIDATE_YAML_BIN="$PROJECT_ROOT/target/debug/validate-yaml"
 SCHEMA_FILE="$PROJECT_ROOT/schemas/test-case.schema.json"
 
-# Source logger library
-source "$SCRIPT_DIR/../../scripts/lib/logger.sh" || exit 1
-source "$SCRIPT_DIR/../../scripts/lib/shellcheck-helper.sh" || true
+# Source shared libraries
+source "$PROJECT_ROOT/scripts/lib/find-binary.sh" || exit 1
+source "$PROJECT_ROOT/scripts/lib/logger.sh" || exit 1
+source "$PROJECT_ROOT/scripts/lib/shellcheck-helper.sh" || true
+
+# Find binaries using workspace-aware search
+cd "$PROJECT_ROOT"
+TEST_EXECUTOR_BIN=$(find_binary "test-executor")
+if [[ -z "$TEST_EXECUTOR_BIN" ]]; then
+    echo "[ERROR] test-executor binary not found" >&2
+    echo "[ERROR] Please build it with: cargo build --bin test-executor" >&2
+    exit 1
+fi
+
+VALIDATE_YAML_BIN=$(find_binary "validate-yaml")
+if [[ -z "$VALIDATE_YAML_BIN" ]]; then
+    echo "[ERROR] validate-yaml binary not found" >&2
+    echo "[ERROR] Please build it with: cargo build --bin validate-yaml" >&2
+    exit 1
+fi
 
 # Handle --no-remove flag
 REMOVE_TEMP=1

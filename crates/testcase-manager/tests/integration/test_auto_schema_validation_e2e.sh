@@ -7,6 +7,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
+# Source shared libraries
+source "$PROJECT_ROOT/scripts/lib/find-binary.sh" || exit 1
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -177,8 +180,19 @@ EOF
 log_info "Building validate-yaml and validate-json binaries..."
 cd "${PROJECT_ROOT}"
 cargo build --bin validate-yaml --bin validate-json --quiet
-VALIDATE_YAML="${PROJECT_ROOT}/target/debug/validate-yaml"
-VALIDATE_JSON="${PROJECT_ROOT}/target/debug/validate-json"
+
+# Find binaries using workspace-aware search
+VALIDATE_YAML=$(find_binary "validate-yaml")
+if [[ -z "$VALIDATE_YAML" ]]; then
+    echo "[ERROR] validate-yaml binary not found after build" >&2
+    exit 1
+fi
+
+VALIDATE_JSON=$(find_binary "validate-json")
+if [[ -z "$VALIDATE_JSON" ]]; then
+    echo "[ERROR] validate-json binary not found after build" >&2
+    exit 1
+fi
 
 # Test 1: validate-yaml with auto-resolution (test_case schema)
 run_test "validate-yaml: Auto-resolve test_case schema"
@@ -373,7 +387,13 @@ assert_success "validate-yaml with custom schemas-root"
 
 # Test 11: Test verifier with execution log auto-resolution (warn on missing schema)
 run_test "verifier: Execution log without schema field (should warn)"
-VERIFIER="${PROJECT_ROOT}/target/debug/verifier"
+
+# Find verifier binary using workspace-aware search
+VERIFIER=$(find_binary "verifier")
+if [[ -z "$VERIFIER" ]]; then
+    echo "[ERROR] verifier binary not found" >&2
+    exit 1
+fi
 
 # Create a test case for verifier
 TESTCASES_DIR="${TEST_DIR}/testcases"

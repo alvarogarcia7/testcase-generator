@@ -9,8 +9,9 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-# Source logger library
-source "$SCRIPT_DIR/../../scripts/lib/logger.sh" || exit 1
+# Source shared libraries
+source "$PROJECT_ROOT/scripts/lib/find-binary.sh" || exit 1
+source "$PROJECT_ROOT/scripts/lib/logger.sh" || exit 1
 
 section "Container YAML Compatibility E2E Test"
 
@@ -18,7 +19,13 @@ section "Container YAML Compatibility E2E Test"
 log_info "Building test-plan-documentation-generator-compat binary..."
 cargo build --bin test-plan-documentation-generator-compat
 
-COMPAT_BIN="$PROJECT_ROOT/target/debug/test-plan-documentation-generator-compat"
+# Find binary using workspace-aware search
+cd "$PROJECT_ROOT"
+COMPAT_BIN=$(find_binary "test-plan-documentation-generator-compat")
+if [[ -z "$COMPAT_BIN" ]]; then
+    log_error "Binary not found after build"
+    exit 1
+fi
 
 if [ ! -f "$COMPAT_BIN" ]; then
     log_error "Binary not found: $COMPAT_BIN"
