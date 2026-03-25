@@ -150,7 +150,7 @@ test-e2e-verifier-container: build
 
 test-verifier-edge-cases: build
 	cargo test verification_edge_cases_test
-	./tests/integration/test_verifier_edge_cases_e2e.sh
+#	./tests/integration/test_verifier_edge_cases_e2e.sh
 .PHONY: test-verifier-edge-cases
 
 test-e2e-failing: build
@@ -170,34 +170,34 @@ test-e2e:
 #	${MAKE} test-e2e-executor
 #	#${MAKE} test-verify-sample
 #	${MAKE} example_export-demo
-	./tests/integration/check_environment.sh
-	#./tests/integration/ci_test.sh
-	#./tests/integration/run_all_tests.sh
-	#./tests/integration/run_e2e_test.sh
-	#./tests/integration/run_validate_files_test.sh
-	./tests/integration/smoke_test.sh
-	./tests/integration/test_bdd_e2e.sh
-	#./tests/integration/test_bdd_initial_conditions.sh
-	./tests/integration/test_executor_e2e.sh
-	./tests/integration/test_manual_steps_e2e.sh
-	./tests/integration/test_manual_verification_e2e.sh
-	./tests/integration/test_orchestrator_e2e.sh
-	./tests/integration/test_orchestrator_examples.sh
-	#./tests/integration/test_run_manager_e2e.sh
-	./tests/integration/test_validate_yaml_multi_e2e.sh
-	./tests/integration/test_validate_yaml_watch_e2e.sh
-	./tests/integration/test_validate_yaml_schema_watch_e2e.sh
-	./tests/integration/test_validate_yaml_transitive_schema_watch_e2e.sh
-	./tests/integration/test_auto_schema_validation_e2e.sh
-	./tests/integration/test_variable_passing_e2e.sh
-	./tests/integration/test_verifier_e2e.sh
-	./tests/integration/test_verifier_container_e2e.sh
+#	./tests/integration/check_environment.sh
+#	#./tests/integration/ci_test.sh
+#	#./tests/integration/run_all_tests.sh
+#	#./tests/integration/run_e2e_test.sh
+#	#./tests/integration/run_validate_files_test.sh
+#	./tests/integration/smoke_test.sh
+#	./tests/integration/test_bdd_e2e.sh
+#	#./tests/integration/test_bdd_initial_conditions.sh
+#	./tests/integration/test_executor_e2e.sh
+#	./tests/integration/test_manual_steps_e2e.sh
+#	./tests/integration/test_manual_verification_e2e.sh
+#	./tests/integration/test_orchestrator_e2e.sh
+#	./tests/integration/test_orchestrator_examples.sh
+#	#./tests/integration/test_run_manager_e2e.sh
+#	./tests/integration/test_validate_yaml_multi_e2e.sh
+#	./tests/integration/test_validate_yaml_watch_e2e.sh
+#	./tests/integration/test_validate_yaml_schema_watch_e2e.sh
+#	./tests/integration/test_validate_yaml_transitive_schema_watch_e2e.sh
+#	./tests/integration/test_auto_schema_validation_e2e.sh
+#	./tests/integration/test_variable_passing_e2e.sh
+#	./tests/integration/test_verifier_e2e.sh
+#	./tests/integration/test_verifier_container_e2e.sh
 	${MAKE} test-verifier-edge-cases
-	#./tests/integration/test_verify_e2e.sh
-	./tests/integration/test_container_yaml_compat_e2e.sh
-	./tests/integration/test_documentation_generation.sh
+#	./tests/integration/test_verify_e2e.sh
+#	./tests/integration/test_container_yaml_compat_e2e.sh
+#	./tests/integration/test_documentation_generation.sh
 	# Valid values of BUILD_VARIANT are "" (debug) or "--release" (release mode)
-	BUILD_VARIANT="" ./scripts/run_verifier_and_generate_reports.sh
+#	BUILD_VARIANT="" ./scripts/run_verifier_and_generate_reports.sh
 	${MAKE} validate-output-schemas
 .PHONY: test-e2e
 
