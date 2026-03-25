@@ -1,5 +1,4 @@
 use crate::complex_structure_editor::ComplexStructureEditor;
-use crate::git::GitManager;
 use crate::oracle::Oracle;
 use crate::prompts::{Prompts, TestCaseMetadata};
 use crate::validation::SchemaValidator;
@@ -9,6 +8,7 @@ use serde_yaml::Value;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use testcase_common::EditorConfig;
+use testcase_git::GitManager;
 use testcase_models::{
     Expected, HookConfig, Hooks, OnError, Prerequisite, PrerequisiteType, Step, TestSequence,
 };

@@ -8,6 +8,7 @@ bash-eval = { path = "../bash-eval" }
 testcase-models = { path = "../testcase-models" }
 testcase-common = { path = "../testcase-common" }
 testcase-execution = { path = "../testcase-execution" }
+testcase-git = { path = "../testcase-git" }
 testcase-orchestration = { path = "../testcase-orchestration" }
 testcase-storage = { path = "../testcase-storage" }
 testcase-ui = { path = "../testcase-ui" }
@@ -20,7 +21,6 @@ serde_path_to_error = { workspace = true }
 skim = { workspace = true }
 dialoguer = { workspace = true }
 edit = { workspace = true }
-git2 = { workspace = true }
 jsonschema = { workspace = true }
 anyhow = { workspace = true }
 chrono = { workspace = true }

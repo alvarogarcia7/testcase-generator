@@ -8,6 +8,7 @@ testcase-models = { path = "../testcase-models" }
 testcase-storage = { path = "../testcase-storage" }
 testcase-common = { path = "../testcase-common" }
 testcase-verification = { path = "../testcase-verification" }
+testcase-git = { path = "../testcase-git" }
 skim = { workspace = true }
 dialoguer = { workspace = true }
 edit = { workspace = true }
@@ -19,6 +20,4 @@ log = { workspace = true }
 tempfile = { workspace = true }
 regex = { workspace = true }
 jsonschema = { workspace = true }
-git2 = { workspace = true }
 serde_json = { workspace = true }
-chrono = { workspace = true }

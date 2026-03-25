@@ -1,5 +1,4 @@
 use crate::creator::TestCaseCreator;
-use crate::git::GitManager;
 use crate::oracle::Oracle;
 use crate::prompts::{Prompts, TestCaseMetadata};
 use crate::recovery_extensions::RecoveryManagerPromptsExt;
@@ -11,6 +10,7 @@ use serde_yaml::Value;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use testcase_common::EditorConfig;
+use testcase_git::GitManager;
 use testcase_models::Step;
 use testcase_storage::ConditionDatabase;
 use testcase_storage::{RecoveryManager, RecoveryState, SampleData};

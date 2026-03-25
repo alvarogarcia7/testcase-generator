@@ -1,6 +1,6 @@
 use crate::complex_structure_editor::ComplexStructureEditor;
-use crate::git::GitManager;
 use crate::oracle::Oracle;
+use testcase_git::GitManager;
 use crate::prompts::Prompts;
 use crate::validation::SchemaValidator;
 use crate::TestCaseMetadata;

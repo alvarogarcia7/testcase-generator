@@ -4,6 +4,7 @@ members = [
     "crates/testcase-models",
     "crates/testcase-common",
     "crates/testcase-execution",
+    "crates/testcase-git",
     "crates/testcase-manager",
     "crates/testcase-orchestration",
     "crates/testcase-storage",

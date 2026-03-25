@@ -1,6 +1,6 @@
 use crate::creator::TestCaseCreator;
-use crate::git::GitManager;
 use crate::oracle::Oracle;
+use testcase_git::GitManager;
 use crate::prompts::Prompts;
 use crate::recovery_extensions::RecoveryManagerPromptsExt;
 use crate::ui::{print_title, TitleStyle};

@@ -3,12 +3,14 @@ pub mod complex_structure_editor;
 pub mod creator;
 pub mod editor;
 pub mod fuzzy;
-pub mod git;
 pub mod oracle;
 pub mod prompts;
 pub mod recovery_extensions;
 pub mod ui;
 pub mod validation;
+
+// Re-export git functionality from testcase-git crate
+pub use testcase_git::{CommitInfo, GitManager};
 
 // Export main items as requested
 pub use builder::TestCaseBuilder;

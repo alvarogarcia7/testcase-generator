@@ -7,9 +7,12 @@ pub mod verification;
 
 // Re-export UI modules from testcase-ui crate
 pub use testcase_ui::{
-    builder, complex_structure_editor, creator, editor, fuzzy, git, oracle, prompts,
+    builder, complex_structure_editor, creator, editor, fuzzy, oracle, prompts,
     recovery_extensions, ui, validation,
 };
+
+// Re-export from testcase-git crate
+pub use testcase_git::{CommitInfo, GitManager};
 
 // Re-export from testcase-execution crate
 pub use builder::TestCaseBuilder;
@@ -22,7 +25,6 @@ pub use dependency_validator::{
 };
 pub use editor::TestCaseEditor;
 pub use fuzzy::TestCaseFuzzyFinder;
-pub use git::{CommitInfo, GitManager};
 pub use junit_xml_validator::validate_junit_xml;
 pub use oracle::{AnswerVariant, HardcodedOracle, MenuCliOracle, Oracle, TtyCliOracle};
 pub use prompts::{Prompts, TestCaseMetadata};
