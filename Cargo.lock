@@ -2143,6 +2143,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "test-verify"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap 4.5.56",
+ "env_logger 0.11.8",
+ "log",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "testcase-manager",
+ "testcase-models",
+ "testcase-storage",
+ "testcase-verification",
+]
+
+[[package]]
 name = "testcase-cli"
 version = "0.1.0"
 dependencies = [

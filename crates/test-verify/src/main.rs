@@ -2,11 +2,10 @@ use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use std::fs;
 use std::path::PathBuf;
-use testcase_manager::BatchVerificationReport;
-use testcase_manager::LogCleaner;
-use testcase_manager::StorageTestVerifier;
-use testcase_manager::TestCaseStorage;
-use testcase_manager::VerificationTestExecutionLog;
+use testcase_manager::{StorageTestVerifier, TestCaseStorage};
+use testcase_verification::{
+    BatchVerificationReport, LogCleaner, TestExecutionLog as VerificationTestExecutionLog,
+};
 
 #[derive(Parser)]
 #[command(name = "test-verify")]
@@ -139,10 +138,10 @@ fn verify_command(log_file: PathBuf, test_case_file: PathBuf) -> Result<()> {
         test_case_file.display()
     ))?;
 
-    let mut execution_log: testcase_manager::TestExecutionLog =
+    let mut execution_log: testcase_models::TestExecutionLog =
         serde_yaml::from_str(&log_content).context("Failed to parse execution log YAML")?;
 
-    let test_case: testcase_manager::TestCase =
+    let test_case: testcase_models::TestCase =
         serde_yaml::from_str(&test_case_content).context("Failed to parse test case YAML")?;
 
     let cleaner = LogCleaner::new();
@@ -164,7 +163,7 @@ fn clean_command(log_file: PathBuf) -> Result<()> {
     let log_content = fs::read_to_string(&log_file)
         .context(format!("Failed to read log file: {}", log_file.display()))?;
 
-    let execution_log: testcase_manager::TestExecutionLog =
+    let execution_log: testcase_models::TestExecutionLog =
         serde_yaml::from_str(&log_content).context("Failed to parse execution log YAML")?;
 
     let cleaner = LogCleaner::new();
@@ -217,7 +216,7 @@ fn handle_parse_log(log_path: PathBuf, format: String) -> Result<()> {
     Ok(())
 }
 
-fn print_verification_result(result: &testcase_manager::TestCaseVerificationResult) {
+fn print_verification_result(result: &testcase_verification::TestCaseVerificationResult) {
     println!("═══════════════════════════════════════════════════════════");
     println!("Test Case: {}", result.test_case_id);
     println!("Description: {}", result.description);
@@ -254,12 +253,14 @@ fn print_verification_result(result: &testcase_manager::TestCaseVerificationResu
 
         for step_result in &seq_result.step_results {
             match step_result {
-                testcase_manager::StepVerificationResultEnum::Pass {
-                    step, description, ..
+                testcase_verification::StepVerificationResultEnum::Pass {
+                    step,
+                    description,
+                    ..
                 } => {
                     println!("  ✓ Step {}: {} - PASS", step, description);
                 }
-                testcase_manager::StepVerificationResultEnum::Fail {
+                testcase_verification::StepVerificationResultEnum::Fail {
                     step,
                     description,
                     expected,
@@ -280,7 +281,7 @@ fn print_verification_result(result: &testcase_manager::TestCaseVerificationResu
                     println!("      Result: {}", actual_result);
                     println!("      Output: {}", actual_output);
                 }
-                testcase_manager::StepVerificationResultEnum::NotExecuted {
+                testcase_verification::StepVerificationResultEnum::NotExecuted {
                     step,
                     description,
                     ..
@@ -294,8 +295,8 @@ fn print_verification_result(result: &testcase_manager::TestCaseVerificationResu
 }
 
 fn print_verification_result_verbose(
-    result: &testcase_manager::TestCaseVerificationResult,
-    test_case: &testcase_manager::TestCase,
+    result: &testcase_verification::TestCaseVerificationResult,
+    test_case: &testcase_models::TestCase,
     execution_logs: &[VerificationTestExecutionLog],
 ) {
     use std::collections::HashMap;
@@ -343,7 +344,7 @@ fn print_verification_result_verbose(
             );
 
             match step_result {
-                testcase_manager::StepVerificationResultEnum::Pass { description, .. } => {
+                testcase_verification::StepVerificationResultEnum::Pass { description, .. } => {
                     println!("│ Description: {}", description);
                     println!("│ Status: ✓ PASS");
                     println!("│");
@@ -393,7 +394,7 @@ fn print_verification_result_verbose(
                     println!("│ ✓ All comparisons PASSED");
                 }
 
-                testcase_manager::StepVerificationResultEnum::Fail {
+                testcase_verification::StepVerificationResultEnum::Fail {
                     description,
                     expected,
                     actual_result,
@@ -489,8 +490,9 @@ fn print_verification_result_verbose(
                     }
                 }
 
-                testcase_manager::StepVerificationResultEnum::NotExecuted {
-                    description, ..
+                testcase_verification::StepVerificationResultEnum::NotExecuted {
+                    description,
+                    ..
                 } => {
                     println!("│ Description: {}", description);
                     println!("│ Status: ○ NOT EXECUTED");
@@ -629,7 +631,7 @@ fn format_batch_report_text(report: &BatchVerificationReport) -> String {
 
                 for step_result in &seq_result.step_results {
                     match step_result {
-                        testcase_manager::StepVerificationResultEnum::Fail {
+                        testcase_verification::StepVerificationResultEnum::Fail {
                             step,
                             description,
                             reason,
@@ -640,7 +642,7 @@ fn format_batch_report_text(report: &BatchVerificationReport) -> String {
                                 step, description, reason
                             ));
                         }
-                        testcase_manager::StepVerificationResultEnum::NotExecuted {
+                        testcase_verification::StepVerificationResultEnum::NotExecuted {
                             step,
                             description,
                             ..
@@ -741,8 +743,9 @@ fn format_batch_report_verbose(
                     ));
 
                     match step_result {
-                        testcase_manager::StepVerificationResultEnum::Pass {
-                            description, ..
+                        testcase_verification::StepVerificationResultEnum::Pass {
+                            description,
+                            ..
                         } => {
                             output.push_str(&format!("  │ Description: {}\n", description));
                             output.push_str("  │ Status: ✓ PASS\n");
@@ -783,7 +786,7 @@ fn format_batch_report_verbose(
                             output.push_str("  │ ✓ All comparisons PASSED\n");
                         }
 
-                        testcase_manager::StepVerificationResultEnum::Fail {
+                        testcase_verification::StepVerificationResultEnum::Fail {
                             description,
                             expected,
                             actual_result,
@@ -863,7 +866,7 @@ fn format_batch_report_verbose(
                             }
                         }
 
-                        testcase_manager::StepVerificationResultEnum::NotExecuted {
+                        testcase_verification::StepVerificationResultEnum::NotExecuted {
                             description,
                             ..
                         } => {
