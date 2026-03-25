@@ -2583,6 +2583,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "validate-json"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap 4.5.56",
+ "env_logger 0.11.8",
+ "jsonschema",
+ "log",
+ "serde_json",
+ "testcase-common",
+ "testcase-validation",
+]
+
+[[package]]
 name = "validate-yaml"
 version = "0.1.0"
 dependencies = [
