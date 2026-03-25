@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 bash-eval = { path = "../bash-eval" }
 testcase-models = { path = "../testcase-models" }
+testcase-cli = { path = "../testcase-cli" }
 testcase-common = { path = "../testcase-common" }
 testcase-execution = { path = "../testcase-execution" }
 testcase-git = { path = "../testcase-git" }

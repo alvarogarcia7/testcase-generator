@@ -1,4 +1,3 @@
-pub mod cli;
 pub mod dependency_resolver;
 pub mod dependency_validator;
 pub mod junit_xml_validator;
@@ -14,9 +13,11 @@ pub use testcase_ui::{
 // Re-export from testcase-git crate
 pub use testcase_git::{CommitInfo, GitManager};
 
+// Re-export from testcase-cli crate
+pub use testcase_cli::{Cli, Commands, GitCommands};
+
 // Re-export from testcase-execution crate
 pub use builder::TestCaseBuilder;
-pub use cli::Cli;
 pub use complex_structure_editor::ComplexStructureEditor;
 pub use creator::TestCaseCreator;
 pub use dependency_resolver::{DependencyResolver, ResolutionError};
