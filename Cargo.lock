@@ -2157,6 +2157,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "test-run-manager"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "clap 4.5.56",
+ "env_logger 0.11.8",
+ "testcase-models",
+ "testcase-storage",
+ "testcase-ui",
+]
+
+[[package]]
 name = "test-verify"
 version = "0.1.0"
 dependencies = [

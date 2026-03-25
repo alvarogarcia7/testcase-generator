@@ -4,10 +4,10 @@ use clap::{Parser, Subcommand};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
-use testcase_manager::fuzzy::TestCaseFuzzyFinder;
-use testcase_manager::prompts::Prompts;
-use testcase_manager::{TestCaseStorage, TestRunStorage};
 use testcase_models::{TestRun, TestRunStatus};
+use testcase_storage::{TestCaseStorage, TestRunStorage};
+use testcase_ui::fuzzy::TestCaseFuzzyFinder;
+use testcase_ui::prompts::Prompts;
 
 #[derive(Parser)]
 #[command(name = "test-run-manager")]
