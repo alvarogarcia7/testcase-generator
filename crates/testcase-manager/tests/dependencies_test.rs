@@ -10,7 +10,15 @@ use testcase_models::{
 
 #[test]
 fn test_deserialize_dependencies_example_1() {
-    let yaml_path = PathBuf::from("testcases/examples/dependencies/1.yaml");
+    // Build path relative to workspace root
+    let mut yaml_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    yaml_path.push(".."); // Go to crates/
+    yaml_path.push(".."); // Go to workspace root
+    yaml_path.push("testcases");
+    yaml_path.push("examples");
+    yaml_path.push("dependencies");
+    yaml_path.push("1.yaml");
+    
     assert!(
         yaml_path.exists(),
         "Test file not found: {}",
@@ -90,7 +98,15 @@ fn test_deserialize_dependencies_example_1() {
 
 #[test]
 fn test_deserialize_dependencies_example_2() {
-    let yaml_path = PathBuf::from("testcases/examples/dependencies/2.yaml");
+    // Build path relative to workspace root
+    let mut yaml_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    yaml_path.push(".."); // Go to crates/
+    yaml_path.push(".."); // Go to workspace root
+    yaml_path.push("testcases");
+    yaml_path.push("examples");
+    yaml_path.push("dependencies");
+    yaml_path.push("2.yaml");
+    
     assert!(
         yaml_path.exists(),
         "Test file not found: {}",
@@ -1785,7 +1801,10 @@ fn test_dependency_validator_cross_file_validation_with_100_test_cases() {
 use std::process::Command;
 
 fn get_validate_yaml_binary_path() -> PathBuf {
+    // CARGO_MANIFEST_DIR points to crates/testcase-manager, so go up to workspace root
     let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    path.push(".."); // Go to crates/
+    path.push(".."); // Go to workspace root
     path.push("target");
     path.push("debug");
     path.push("validate-yaml");
@@ -1793,7 +1812,10 @@ fn get_validate_yaml_binary_path() -> PathBuf {
 }
 
 fn get_schema_path() -> PathBuf {
+    // CARGO_MANIFEST_DIR points to crates/testcase-manager, so go up to workspace root
     let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    path.push(".."); // Go to crates/
+    path.push(".."); // Go to workspace root
     path.push("schemas");
     path.push("test-case.schema.json");
     path
