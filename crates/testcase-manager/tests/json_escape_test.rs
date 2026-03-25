@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::process::Command;
 use tempfile::TempDir;
 use testcase_common::{Config, JsonEscapingConfig, JsonEscapingMethod, ScriptGenerationConfig};
-use testcase_manager::executor::TestExecutor;
+use testcase_manager::TestExecutor;
 use testcase_models::{
     Expected, Step, TestCase, TestSequence, Verification, VerificationExpression,
 };

@@ -1,20 +1,15 @@
-pub mod builder;
 pub mod cli;
-pub mod complex_structure_editor;
-pub mod creator;
 pub mod dependency_resolver;
 pub mod dependency_validator;
-pub mod editor;
-pub mod fuzzy;
-pub mod git;
 pub mod junit_xml_validator;
-pub mod oracle;
-pub mod prompts;
-pub mod recovery_extensions;
 pub mod sample_extensions;
-pub mod ui;
-pub mod validation;
 pub mod verification;
+
+// Re-export UI modules from testcase-ui crate
+pub use testcase_ui::{
+    builder, complex_structure_editor, creator, editor, fuzzy, git, oracle, prompts,
+    recovery_extensions, ui, validation,
+};
 
 // Re-export from testcase-execution crate
 pub use builder::TestCaseBuilder;
