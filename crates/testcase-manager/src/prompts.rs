@@ -1,8 +1,6 @@
-use crate::database::ConditionDatabase;
 use crate::editor::EditorFlow;
 use crate::fuzzy::TestCaseFuzzyFinder;
 use crate::oracle::{Oracle, TtyCliOracle};
-use crate::sample::SampleData;
 use crate::validation::SchemaValidator;
 use crate::TestCaseEditor;
 use anyhow::{Context, Result};
@@ -11,6 +9,8 @@ use serde_yaml::Value;
 use std::path::Path;
 use std::sync::Arc;
 use testcase_common::EditorConfig;
+use testcase_storage::ConditionDatabase;
+use testcase_storage::SampleData;
 
 /// Interactive prompt utilities
 pub struct Prompts<'a> {
@@ -484,7 +484,7 @@ eUICC:
     pub fn prompt_general_initial_conditions_with_search(
         defaults: Option<&Value>,
         validator: &SchemaValidator,
-        storage: &crate::storage::TestCaseStorage,
+        storage: &testcase_storage::TestCaseStorage,
         editor_config: &EditorConfig,
     ) -> Result<Value> {
         let oracle: Arc<dyn Oracle> = Arc::new(TtyCliOracle::new());
@@ -501,7 +501,7 @@ eUICC:
     pub fn prompt_general_initial_conditions_with_search_oracle(
         defaults: Option<&Value>,
         validator: &SchemaValidator,
-        storage: &crate::storage::TestCaseStorage,
+        storage: &testcase_storage::TestCaseStorage,
         editor_config: &EditorConfig,
         oracle: &Arc<dyn Oracle>,
     ) -> Result<Value> {

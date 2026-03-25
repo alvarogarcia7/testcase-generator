@@ -1,4 +1,3 @@
-use crate::database::ConditionDatabase;
 use crate::editor::EditorFlow;
 use crate::oracle::Oracle;
 use crate::validation::SchemaValidator;
@@ -6,6 +5,7 @@ use anyhow::{anyhow, Context, Result};
 use std::fmt::Display;
 use std::io::{self, IsTerminal};
 use testcase_common::EditorConfig;
+use testcase_storage::ConditionDatabase;
 
 /// Generic editor for complex structures with fuzzy search, TTY fallback, and validation
 pub struct ComplexStructureEditor<T> {

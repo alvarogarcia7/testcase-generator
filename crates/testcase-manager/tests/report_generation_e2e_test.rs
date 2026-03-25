@@ -2,7 +2,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 use tempfile::TempDir;
-use testcase_manager::storage::TestCaseStorage;
+use testcase_manager::TestCaseStorage;
 use testcase_manager::{
     BatchVerificationReport, ContainerReport, ContainerReportConfig, SequenceVerificationResult,
     StepVerificationResultEnum, TestCaseVerificationResult, TestVerifier,

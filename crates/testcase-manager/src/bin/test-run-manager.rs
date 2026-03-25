@@ -6,8 +6,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use testcase_manager::fuzzy::TestCaseFuzzyFinder;
 use testcase_manager::prompts::Prompts;
-use testcase_manager::storage::TestCaseStorage;
-use testcase_manager::test_run_storage::TestRunStorage;
+use testcase_manager::{TestCaseStorage, TestRunStorage};
 use testcase_models::{TestRun, TestRunStatus};
 
 #[derive(Parser)]

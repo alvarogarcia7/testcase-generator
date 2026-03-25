@@ -5,6 +5,7 @@ members = [
     "crates/testcase-common",
     "crates/testcase-execution",
     "crates/testcase-manager",
+    "crates/testcase-storage",
     "crates/testcase-validation",
     "crates/testcase-verification",
 ]

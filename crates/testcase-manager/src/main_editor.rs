@@ -7,9 +7,9 @@ use testcase_manager::fuzzy::MultiInput;
 use testcase_manager::fuzzy::MultiInput::Input;
 use testcase_manager::{
     cli::{Cli, Commands, GitCommands},
-    print_title, ConditionDatabase, GitManager, Oracle, Prompts, SampleData, TestCase,
-    TestCaseBuilder, TestCaseEditor, TestCaseFuzzyFinder, TestCaseMetadata, TestCaseStorage,
-    TestSuite, TitleStyle, TtyCliOracle,
+    print_title, ConditionDatabase, GitManager, Oracle, Prompts, SampleData, SampleDataOracleExt,
+    TestCase, TestCaseBuilder, TestCaseEditor, TestCaseFuzzyFinder, TestCaseMetadata,
+    TestCaseStorage, TestSuite, TitleStyle, TtyCliOracle,
 };
 
 fn main() -> Result<()> {

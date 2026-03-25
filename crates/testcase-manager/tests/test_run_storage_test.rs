@@ -3,7 +3,7 @@ use std::fs;
 use std::thread;
 use std::time::Duration as StdDuration;
 use tempfile::TempDir;
-use testcase_manager::test_run_storage::TestRunStorage;
+use testcase_manager::TestRunStorage;
 use testcase_models::{TestRun, TestRunStatus};
 
 fn create_test_run(test_case_id: &str, duration_s: f64) -> TestRun {

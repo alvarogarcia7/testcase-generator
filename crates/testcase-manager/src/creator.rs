@@ -1,9 +1,7 @@
 use crate::complex_structure_editor::ComplexStructureEditor;
-use crate::database::ConditionDatabase;
 use crate::git::GitManager;
 use crate::oracle::Oracle;
 use crate::prompts::Prompts;
-use crate::sample::SampleData;
 use crate::validation::SchemaValidator;
 use crate::TestCaseMetadata;
 use anyhow::{Context, Result};
@@ -15,6 +13,8 @@ use testcase_common::EditorConfig;
 use testcase_models::{
     Expected, HookConfig, Hooks, OnError, Prerequisite, PrerequisiteType, Step, TestSequence,
 };
+use testcase_storage::ConditionDatabase;
+use testcase_storage::SampleData;
 
 /// Encapsulates all test case creation logic with injected dependencies
 pub struct TestCaseCreator {
@@ -215,7 +215,7 @@ impl TestCaseCreator {
         &self,
         structure: &mut IndexMap<String, Value>,
         defaults: Option<&Value>,
-        storage: &crate::storage::TestCaseStorage,
+        storage: &testcase_storage::TestCaseStorage,
     ) -> Result<()> {
         let conditions = Prompts::prompt_general_initial_conditions_with_search_oracle(
             defaults,

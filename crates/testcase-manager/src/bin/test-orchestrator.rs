@@ -3,8 +3,7 @@ use clap::{CommandFactory, Parser, Subcommand};
 use std::path::PathBuf;
 use testcase_manager::fuzzy::TestCaseFuzzyFinder;
 use testcase_manager::orchestrator::{RetryPolicy, TestOrchestrator, WorkerConfig};
-use testcase_manager::storage::{TestCaseFilter, TestCaseFilterer, TestCaseStorage};
-use testcase_manager::test_run_storage::TestRunStorage;
+use testcase_manager::{TestCaseFilter, TestCaseFilterer, TestCaseStorage, TestRunStorage};
 
 #[derive(Parser)]
 #[command(name = "test-orchestrator")]

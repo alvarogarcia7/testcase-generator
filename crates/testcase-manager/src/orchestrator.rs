@@ -1,5 +1,3 @@
-use crate::storage::TestCaseStorage;
-use crate::test_run_storage::TestRunStorage;
 use anyhow::{Context, Result};
 use chrono::Local;
 use std::collections::HashMap;
@@ -12,6 +10,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 use testcase_execution::TestExecutor;
 use testcase_models::{TestCase, TestRun, TestRunStatus};
+use testcase_storage::{TestCaseStorage, TestRunStorage};
 use testcase_verification::{
     MatchStrategy, TestCaseVerificationResult, TestExecutionLog, TestVerifier,
 };

@@ -1,6 +1,6 @@
-use crate::storage::TestCaseStorage;
 use anyhow::Result;
 use std::path::Path;
+use testcase_storage::TestCaseStorage;
 use testcase_verification::{
     BatchVerificationReport, ContainerReportConfig, MatchStrategy, TestVerifier,
 };

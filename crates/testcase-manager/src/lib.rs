@@ -2,7 +2,6 @@ pub mod builder;
 pub mod cli;
 pub mod complex_structure_editor;
 pub mod creator;
-pub mod database;
 pub mod dependency_resolver;
 pub mod dependency_validator;
 pub mod editor;
@@ -11,12 +10,9 @@ pub mod git;
 pub mod junit_xml_validator;
 pub mod oracle;
 pub mod orchestrator;
-pub mod parser;
 pub mod prompts;
-pub mod recovery;
-pub mod sample;
-pub mod storage;
-pub mod test_run_storage;
+pub mod recovery_extensions;
+pub mod sample_extensions;
 pub mod ui;
 pub mod validation;
 pub mod verification;
@@ -26,7 +22,6 @@ pub use builder::TestCaseBuilder;
 pub use cli::Cli;
 pub use complex_structure_editor::ComplexStructureEditor;
 pub use creator::TestCaseCreator;
-pub use database::ConditionDatabase;
 pub use dependency_resolver::{DependencyResolver, ResolutionError};
 pub use dependency_validator::{
     validate_cross_file_dependencies, DependencyError, DependencyErrorType, DependencyValidator,
@@ -36,12 +31,11 @@ pub use fuzzy::TestCaseFuzzyFinder;
 pub use git::{CommitInfo, GitManager};
 pub use junit_xml_validator::validate_junit_xml;
 pub use oracle::{AnswerVariant, HardcodedOracle, MenuCliOracle, Oracle, TtyCliOracle};
-pub use parser::{SearchableCollections, TestCaseParser};
 pub use prompts::{Prompts, TestCaseMetadata};
-pub use recovery::{RecoveryManager, RecoveryState};
-pub use sample::SampleData;
-pub use storage::{TestCaseFilter, TestCaseFilterer, TestCaseStorage};
-pub use test_run_storage::TestRunStorage;
+pub use recovery_extensions::RecoveryManagerPromptsExt;
+pub use sample_extensions::SampleDataOracleExt;
+
+// Re-export from testcase-storage crate
 pub use testcase_common::{
     log_yaml_parse_error, resolve_schema_from_payload, CommitMessageTemplates, Config,
     EditorConfig, GitAuthorInfo, JsonEscapingConfig, JsonEscapingMethod, ScriptGenerationConfig,
@@ -88,6 +82,11 @@ pub use testcase_models::Verification;
 pub use testcase_models::VerificationExpression;
 pub use testcase_models::VerificationReport;
 pub use testcase_models::VerificationStatus;
+pub use testcase_storage::{
+    ConditionDatabase, RecoveryManager, RecoveryState, SampleData, SearchableCollections,
+    TestCaseFilter, TestCaseFilterer, TestCaseParser, TestCaseStorage, TestRunStorage,
+    ValidationError as RecoveryValidationError,
+};
 pub use ui::{print_title, TitleStyle};
 pub use validation::SchemaValidator;
 pub use verification::StorageTestVerifier;

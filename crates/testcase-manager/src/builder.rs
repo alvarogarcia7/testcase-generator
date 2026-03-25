@@ -1,10 +1,8 @@
 use crate::creator::TestCaseCreator;
-use crate::database::ConditionDatabase;
 use crate::git::GitManager;
 use crate::oracle::Oracle;
 use crate::prompts::Prompts;
-use crate::recovery::{RecoveryManager, RecoveryState};
-use crate::sample::SampleData;
+use crate::recovery_extensions::RecoveryManagerPromptsExt;
 use crate::ui::{print_title, TitleStyle};
 use crate::validation::SchemaValidator;
 use crate::TestCaseMetadata;
@@ -15,6 +13,8 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use testcase_common::EditorConfig;
 use testcase_models::Step;
+use testcase_storage::ConditionDatabase;
+use testcase_storage::{RecoveryManager, RecoveryState, SampleData};
 
 /// Builder for creating test cases interactively
 /// This struct now delegates to TestCaseCreator for all test case creation logic
@@ -228,7 +228,7 @@ impl TestCaseBuilder {
     pub fn add_general_initial_conditions_with_search(
         &mut self,
         defaults: Option<&Value>,
-        storage: &crate::storage::TestCaseStorage,
+        storage: &testcase_storage::TestCaseStorage,
     ) -> Result<&mut Self> {
         self.creator.add_general_initial_conditions_with_search(
             &mut self.structure,

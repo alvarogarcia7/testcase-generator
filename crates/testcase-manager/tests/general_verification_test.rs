@@ -1,5 +1,5 @@
 use std::collections::BTreeMap;
-use testcase_manager::executor::TestExecutor;
+use testcase_manager::TestExecutor;
 use testcase_models::{
     Expected, GeneralVerification, Step, TestCase, TestSequence, Verification,
     VerificationExpression,

@@ -1,5 +1,5 @@
 use std::fs;
-use testcase_manager::storage::TestCaseStorage;
+use testcase_manager::TestCaseStorage;
 use testcase_manager::{MatchStrategy, StorageTestVerifier};
 use testcase_models::TestCase;
 

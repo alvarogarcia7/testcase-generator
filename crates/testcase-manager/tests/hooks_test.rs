@@ -1,4 +1,4 @@
-use testcase_manager::executor::TestExecutor;
+use testcase_manager::TestExecutor;
 use testcase_models::{
     Expected, HookConfig, HookType, Hooks, InitialConditions, OnError, Step, TestCase,
     TestSequence, TestStepExecutionEntry, Verification, VerificationExpression,
