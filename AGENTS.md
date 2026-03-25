@@ -1,5 +1,489 @@
 # AGENTS.md
 
+## Workspace Structure
+
+This project uses a **Cargo workspace** to organize multiple related crates under the `crates/` directory. This provides better modularity, shared dependencies, and parallel compilation.
+
+### Directory Organization
+
+```
+.
+├── Cargo.toml                 # Workspace root configuration
+├── crates/                    # All Rust crates organized here
+│   ├── bash-eval/             # Bash evaluation library
+│   ├── editor/                # Interactive editor
+│   ├── json-escape/           # JSON escaping utility
+│   ├── json-to-yaml/          # JSON to YAML converter
+│   ├── script-cleanup/        # Script cleanup tool
+│   ├── testcase-cli/          # CLI utilities
+│   ├── testcase-common/       # Shared common code
+│   ├── testcase-execution/    # Test execution logic
+│   ├── testcase-git/          # Git integration
+│   ├── testcase-manager/      # Main test case manager
+│   ├── testcase-models/       # Data models
+│   ├── testcase-orchestration/# Test orchestration
+│   ├── testcase-storage/      # Storage and persistence
+│   ├── testcase-ui/           # UI components
+│   ├── testcase-validation/   # Validation logic
+│   ├── testcase-verification/ # Verification logic
+│   ├── test-executor/         # Test execution engine
+│   ├── test-orchestrator/     # Test orchestrator
+│   ├── test-run-manager/      # Test run management
+│   ├── test-verify/           # Test verification tool
+│   ├── tpdg-compat/           # TPDG compatibility layer
+│   ├── validate-json/         # JSON validator
+│   ├── validate-yaml/         # YAML validator
+│   └── verifier/              # Verifier binary
+├── testcases/                 # Test case YAML files
+├── schemas/                   # JSON schemas
+├── scripts/                   # Build and utility scripts
+├── tests/                     # Integration tests
+├── data/                      # Sample data
+└── examples/                  # Example code
+```
+
+### Workspace Benefits
+
+- **Shared Dependencies**: Common dependencies defined once in workspace root `[workspace.dependencies]`
+- **Consistent Versions**: All crates use identical dependency versions
+- **Parallel Builds**: Cargo can build multiple crates simultaneously
+- **Better Organization**: Clear separation between binaries, libraries, and shared code
+- **Easier Maintenance**: Dependency updates managed centrally
+- **Incremental Compilation**: Only changed crates and their dependents rebuild
+
+### Build Commands
+
+The project supports both workspace-wide and per-crate build commands:
+
+**Workspace-wide builds:**
+```bash
+# Build all crates in workspace
+make build                    # Debug mode
+make build-release            # Release mode
+
+# Equivalent cargo commands
+cargo build --workspace       # Debug mode
+cargo build --workspace --release
+```
+
+**Per-crate builds:**
+```bash
+# Build specific crate by package name
+cargo build -p <crate-name>
+cargo build --package <crate-name>
+
+# Build specific binary
+cargo build --bin <binary-name>
+
+# Make targets for common crates
+make build-validate-yaml      # cargo build -p validate-yaml
+make build-verifier           # cargo build -p verifier
+make build-test-executor      # cargo build -p test-executor
+make build-json-escape        # cargo build -p json-escape
+make build-testcase-manager   # cargo build -p testcase-manager
+```
+
+See **Per-Crate Development Workflow** section below for detailed per-crate commands.
+
+### Selective Compilation in CI/CD
+
+The workspace structure enables intelligent selective compilation when dependencies change:
+
+**When to Rebuild:**
+- **Crate source changes**: Only rebuild the modified crate and its dependents
+- **Shared dependency changes**: Rebuild all crates using that dependency
+- **Workspace dependency version bump**: Rebuild affected crates only
+
+**CI/CD Optimization Strategies:**
+
+1. **Dependency-Based Rebuilding:**
+```bash
+# Check which crates depend on a specific crate
+cargo tree -p testcase-models --invert
+
+# Build only affected crates after testcase-models changes
+cargo build -p testcase-models
+cargo build -p testcase-manager  # Depends on testcase-models
+cargo build -p test-executor     # Depends on testcase-models
+```
+
+2. **Change Detection:**
+```yaml
+# Example GitLab CI strategy
+build:
+  script:
+    # Detect changed crates
+    - CHANGED_CRATES=$(git diff --name-only HEAD~1 | grep "^crates/" | cut -d'/' -f2 | sort -u)
+    # Build only changed crates and workspace
+    - for crate in $CHANGED_CRATES; do cargo build -p $crate; done
+    - cargo build --workspace  # Full workspace build to verify integration
+```
+
+3. **Caching Strategy:**
+```yaml
+# Cache cargo target directory between builds
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - target/
+    - .cargo/
+```
+
+**Common Scenarios:**
+
+| Change Type | What to Rebuild | Command |
+|-------------|----------------|---------|
+| Single crate source | Changed crate + dependents | `cargo build -p <crate>` |
+| Shared code (testcase-common) | All crates | `cargo build --workspace` |
+| Workspace dependency version | Affected crates only | Automatic via Cargo |
+| New crate added | New crate + workspace | `cargo build --workspace` |
+| Integration test changes | No recompilation needed | `cargo test` |
+
+**Build Time Optimization:**
+- Use `sccache` for compilation caching: `make install-sccache`
+- Leverage parallel builds: `cargo build --workspace -j<N>`
+- Build only necessary targets: `cargo build --workspace --tests` (excludes examples)
+
+### Per-Crate Development Workflow
+
+When working on a specific crate, use targeted commands for faster iteration:
+
+**Building:**
+```bash
+# Build specific crate
+cargo build -p testcase-models
+cargo build -p verifier --release
+
+# Build with features
+cargo build -p testcase-validation --all-features
+```
+
+**Testing:**
+```bash
+# Run tests for specific crate
+cargo test -p testcase-models
+cargo test -p verifier --all-features
+
+# Run specific test
+cargo test -p testcase-validation test_schema_validation
+```
+
+**Linting and Formatting:**
+```bash
+# Lint specific crate
+cargo clippy -p testcase-manager -- -D warnings
+
+# Format specific crate
+cargo fmt -p testcase-models
+
+# Workspace-wide (recommended before commit)
+make lint     # Runs fmt + clippy on all crates
+```
+
+**Running Binaries:**
+```bash
+# Run binary from specific crate
+cargo run -p validate-yaml -- --help
+cargo run -p test-executor -- generate test.yml
+cargo run -p verifier -- -f logs/ --format yaml
+
+# Or use make targets
+make run-verifier
+make run-test-executor
+```
+
+**Checking Dependencies:**
+```bash
+# View crate dependency tree
+cargo tree -p testcase-models
+
+# View reverse dependencies (what depends on this crate)
+cargo tree -p testcase-models --invert
+
+# Check for duplicate dependencies
+cargo tree --duplicates
+```
+
+**Development Cycle Example:**
+```bash
+# 1. Make changes to testcase-models crate
+vim crates/testcase-models/src/lib.rs
+
+# 2. Build and test only that crate
+cargo build -p testcase-models
+cargo test -p testcase-models
+
+# 3. Build dependent crates to verify integration
+cargo build -p testcase-manager
+cargo build -p test-executor
+
+# 4. Run full workspace tests before commit
+make test
+
+# 5. Lint and format
+make lint
+```
+
+### Workspace Troubleshooting
+
+Common workspace-related issues and solutions:
+
+#### Issue: Dependency Version Conflicts
+
+**Symptoms:**
+```
+error: failed to select a version for `serde`
+  required by package `testcase-models v0.1.0`
+  versions that meet the requirements `^1.0` are: 1.0.210, 1.0.209, ...
+```
+
+**Solution:**
+```bash
+# Check workspace dependency definition
+grep -A2 "\[workspace.dependencies\]" Cargo.toml
+
+# Ensure crate uses workspace dependency
+# In crate Cargo.toml:
+[dependencies]
+serde = { workspace = true }  # ✓ Correct
+# NOT: serde = "1.0"          # ✗ Wrong - version conflict
+
+# Update all workspace dependencies
+cargo update
+```
+
+#### Issue: Crate Not Found
+
+**Symptoms:**
+```
+error: package ID specification `testcase-foo` did not match any packages
+```
+
+**Solution:**
+```bash
+# List all workspace members
+cargo metadata --format-version 1 | jq '.workspace_members'
+
+# Or check Cargo.toml
+grep -A30 "\[workspace\]" Cargo.toml
+
+# Verify crate is listed in workspace members
+# Add if missing:
+[workspace]
+members = [
+    "crates/testcase-foo",  # Add this line
+]
+```
+
+#### Issue: Build Cache Issues
+
+**Symptoms:**
+```
+error: failed to compile `testcase-manager`, intermediate artifacts are out of date
+```
+
+**Solution:**
+```bash
+# Clean and rebuild
+cargo clean
+cargo build --workspace
+
+# Or clean specific crate
+cargo clean -p testcase-manager
+cargo build -p testcase-manager
+
+# Clean coverage artifacts if present
+make coverage-clean
+```
+
+#### Issue: Circular Dependencies
+
+**Symptoms:**
+```
+error: cyclic package dependency: package `testcase-a` depends on itself
+```
+
+**Solution:**
+```bash
+# Visualize dependency graph
+cargo tree -p testcase-a
+
+# Check for circular references in Cargo.toml files
+# Refactor to break circular dependency:
+# Option 1: Extract shared code to new crate
+# Option 2: Use dependency injection or traits
+# Option 3: Reorganize crate boundaries
+```
+
+#### Issue: Feature Flag Conflicts
+
+**Symptoms:**
+```
+error: feature `my-feature` is not present in package `testcase-models`
+```
+
+**Solution:**
+```bash
+# Check available features in target crate
+grep -A10 "\[features\]" crates/testcase-models/Cargo.toml
+
+# Use correct feature name in dependent crate
+[dependencies]
+testcase-models = { workspace = true, features = ["correct-feature-name"] }
+
+# Build with all features to test
+cargo build -p testcase-models --all-features
+```
+
+#### Issue: Workspace vs Package Confusion
+
+**Symptoms:**
+```bash
+# Command runs on wrong scope
+cargo build  # Only builds root package, not workspace
+```
+
+**Solution:**
+```bash
+# Explicit workspace commands
+cargo build --workspace        # ✓ Builds all crates
+cargo test --workspace         # ✓ Tests all crates
+cargo clippy --workspace       # ✓ Lints all crates
+
+# Use make targets (already workspace-aware)
+make build    # Runs: cargo build --workspace
+make test     # Runs: cargo test --workspace
+make lint     # Runs: cargo clippy --workspace
+```
+
+#### Issue: Binary Name Conflicts
+
+**Symptoms:**
+```
+warning: output filename collision: bin `validate-yaml` already exists
+```
+
+**Solution:**
+```bash
+# Check for duplicate binary names in workspace
+find crates -name Cargo.toml -exec grep -H "name.*=.*\"validate-yaml\"" {} \;
+
+# Rename one of the binaries
+[[bin]]
+name = "validate-yaml-v2"  # Give unique name
+path = "src/bin/validate_yaml.rs"
+```
+
+#### Issue: Path Dependency Errors
+
+**Symptoms:**
+```
+error: failed to load manifest for workspace member `crates/testcase-foo`
+```
+
+**Solution:**
+```bash
+# Verify directory structure
+ls -la crates/testcase-foo/Cargo.toml
+
+# Check path in workspace members list
+[workspace]
+members = [
+    "crates/testcase-foo",  # Must match actual directory name
+]
+
+# Verify no typos in path
+find crates -name Cargo.toml -type f
+```
+
+#### Issue: Incremental Compilation Issues
+
+**Symptoms:**
+```
+error: could not compile `testcase-manager` due to previous error
+# But no clear error shown
+```
+
+**Solution:**
+```bash
+# Disable incremental compilation temporarily
+CARGO_INCREMENTAL=0 cargo build --workspace
+
+# Or clean incremental artifacts
+rm -rf target/debug/incremental/
+cargo build --workspace
+
+# Permanently disable in .cargo/config.toml (not recommended)
+[build]
+incremental = false
+```
+
+#### Issue: Out of Sync Cargo.lock
+
+**Symptoms:**
+```
+error: the lock file needs to be updated
+```
+
+**Solution:**
+```bash
+# Update lock file
+cargo update
+
+# Or regenerate from scratch
+rm Cargo.lock
+cargo build --workspace
+
+# Commit updated Cargo.lock
+git add Cargo.lock
+git commit -m "Update Cargo.lock"
+```
+
+#### Issue: Documentation Build Failures
+
+**Symptoms:**
+```
+error[E0432]: unresolved import `testcase_models::TestCase`
+# When running: cargo doc --workspace
+```
+
+**Solution:**
+```bash
+# Build docs for specific crate first
+cargo doc -p testcase-models
+
+# Check for doc-only dependencies
+[dev-dependencies]
+# May need to add:
+testcase-models = { workspace = true }
+
+# Build workspace docs with private items
+cargo doc --workspace --document-private-items --no-deps
+```
+
+#### Getting Help
+
+If workspace issues persist:
+
+1. **Check workspace metadata:**
+```bash
+cargo metadata --format-version 1 | jq '.'
+```
+
+2. **Verify workspace structure:**
+```bash
+cargo tree --workspace
+```
+
+3. **Review build logs:**
+```bash
+cargo build --workspace -vv  # Very verbose output
+```
+
+4. **Consult workspace documentation:**
+- [Cargo Workspaces Documentation](https://doc.rust-lang.org/cargo/reference/workspaces.html)
+- Project-specific: `WORKSPACE_STRUCTURE.md`
+
 ## Feature Overview
 
 This project is a YAML-based test harness that converts declarative test case definitions into executable bash scripts. Key features include:
@@ -37,16 +521,41 @@ Hooks provide optional extensibility points throughout the test execution lifecy
 See the [Hooks](#hooks) section for detailed documentation and examples.
 
 ## Commands
-- **Build**: make build
-- **Lint**: make lint
-- **Test**: make test
+
+### Workspace Build Commands
+- **Build**: make build (builds all workspace crates: `cargo build --workspace`)
+- **Build Release**: make build-release (release mode: `cargo build --workspace --release`)
+- **Build Debug**: make build-debug (debug mode, same as `make build`)
+- **Lint**: make lint (runs fmt + clippy on all workspace crates)
+- **Test**: make test (runs unit tests, e2e tests, and verification across workspace)
+
+### Per-Crate Build Commands
+Build individual crates for faster development iteration:
+- **Build Validate YAML**: make build-validate-yaml (`cargo build -p validate-yaml`)
+- **Build Validate JSON**: make build-validate-json (`cargo build -p validate-json`)
+- **Build Verifier**: make build-verifier (`cargo build -p verifier`)
+- **Build Test Executor**: make build-test-executor (`cargo build -p test-executor`)
+- **Build Test Orchestrator**: make build-test-orchestrator (`cargo build -p test-orchestrator`)
+- **Build Test Run Manager**: make build-test-run-manager (`cargo build -p test-run-manager`)
+- **Build Test Verify**: make build-test-verify (`cargo build -p test-verify`)
+- **Build Script Cleanup**: make build-script-cleanup (`cargo build -p script-cleanup`)
+- **Build JSON Escape**: make build-json-escape (`cargo build -p json-escape`)
+- **Build JSON to YAML**: make build-json-to-yaml (`cargo build -p json-to-yaml`)
+- **Build Editor**: make build-editor (`cargo build -p editor`)
+- **Build Testcase Manager**: make build-testcase-manager (`cargo build -p testcase-manager`)
+- **Build TPDG Compat**: make build-tpdg-compat (`cargo build -p tpdg-compat`)
+- **Build Bash Eval**: make build-bash-eval (`cargo build -p bash-eval`)
+
+### Test Commands
 - **Test Verifier Edge Cases**: make test-verifier-edge-cases (run verifier edge case unit tests and integration tests)
-- **Coverage**: make coverage (run unit tests with coverage analysis, 50% threshold)
-- **Coverage E2E**: make coverage-e2e (run unit + e2e tests with coverage analysis, 70% threshold)
-- **Coverage HTML**: make coverage-html (generate HTML coverage report)
+- **Coverage**: make coverage (run unit tests with workspace coverage analysis, 50% threshold)
+- **Coverage E2E**: make coverage-e2e (run unit + e2e tests with workspace coverage, 70% threshold)
+- **Coverage HTML**: make coverage-html (generate HTML coverage report for workspace)
 - **Coverage HTML E2E**: make coverage-html-e2e (generate HTML coverage report with e2e tests)
-- **Coverage Report**: make coverage-report (display coverage summary)
-- **Coverage Report E2E**: make coverage-report-e2e (display coverage summary with e2e tests)
+- **Coverage Report**: make coverage-report (display workspace coverage summary)
+- **Coverage Report E2E**: make coverage-report-e2e (display workspace coverage summary with e2e tests)
+
+### Build Tool Commands
 - **Install Coverage Tools**: make install-coverage-tools (install cargo-llvm-cov and related tools)
 - **Install sccache**: make install-sccache (install sccache compilation cache)
 - **Enable sccache**: make enable-sccache (show instructions to enable sccache for current session)
@@ -54,6 +563,11 @@ See the [Hooks](#hooks) section for detailed documentation and examples.
 - **Check sccache**: make sccache-check (verify if sccache is properly configured and enabled)
 - **sccache Stats**: make sccache-stats (display sccache compilation cache statistics)
 - **sccache Clean**: make sccache-clean (stop sccache server, preserve cache)
+- **Install sccache**: make install-sccache (install sccache compilation cache for faster workspace builds)
+- **sccache Stats**: make sccache-stats (display sccache compilation cache statistics)
+- **sccache Clean**: make sccache-clean (clear sccache compilation cache)
+
+### Validation and Verification Commands
 - **Verify Scripts**: make verify-scripts (verify syntax of all shell scripts)
 - **Validate Output Schemas**: make validate-output-schemas (validate expected output samples against schemas)
 - **Validate Test Cases Report**: make validate-testcases-report (generate detailed validation report for all test case YAML files in testcases/ directory, output saved to reports/validation_report.txt)
