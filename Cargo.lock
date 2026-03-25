@@ -2583,6 +2583,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "validate-yaml"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap 4.5.56",
+ "env_logger 0.11.8",
+ "jsonschema",
+ "log",
+ "notify",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "testcase-common",
+ "testcase-manager",
+ "testcase-models",
+ "testcase-validation",
+ "walkdir",
+]
+
+[[package]]
 name = "vcpkg"
 version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
