@@ -48,6 +48,8 @@ reports/validation_report.txt
 reports/*.html
 reports/*.pdf
 reports/loc/
+reports/verifier_scenarios/
+reports/tpdg_integration/
 
 
 .crates.toml
