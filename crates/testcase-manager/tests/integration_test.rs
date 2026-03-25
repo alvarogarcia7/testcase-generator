@@ -525,7 +525,13 @@ use testcase_manager::TestExecutor;
 
 /// Helper function to load a test case from a file
 fn load_test_case_from_file(path: &str) -> Result<TestCase> {
-    let yaml_path = PathBuf::from(path);
+    // Use CARGO_MANIFEST_DIR to get the workspace root
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let mut workspace_root = PathBuf::from(manifest_dir);
+    workspace_root.pop(); // Go up from crate dir
+    workspace_root.pop(); // Go up from crates dir
+
+    let yaml_path = workspace_root.join(path);
     assert!(
         yaml_path.exists(),
         "Test file not found: {}",
@@ -543,7 +549,13 @@ fn load_test_case_from_file(path: &str) -> Result<TestCase> {
 
 /// Helper function to validate schema for a YAML file
 fn validate_yaml_schema(path: &str) -> Result<()> {
-    let yaml_path = PathBuf::from(path);
+    // Use CARGO_MANIFEST_DIR to get the workspace root
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let mut workspace_root = PathBuf::from(manifest_dir);
+    workspace_root.pop(); // Go up from crate dir
+    workspace_root.pop(); // Go up from crates dir
+
+    let yaml_path = workspace_root.join(path);
     let yaml_content = fs::read_to_string(&yaml_path)?;
 
     let validator = SchemaValidator::new()?;

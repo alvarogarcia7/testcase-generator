@@ -588,15 +588,14 @@ impl TestExecutor {
         }
 
         // Instantiate BDD step registry
-        let bdd_registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml")
-            .unwrap_or_else(|e| {
-                eprintln!(
-                    "Warning: Failed to load BDD step definitions from data/bdd_step_definitions.toml: {}",
-                    e
-                );
-                eprintln!("BDD patterns will not be available. Initial conditions will be treated as comments.");
-                BddStepRegistry::new()
-            });
+        let bdd_registry = BddStepRegistry::load_from_default_paths().unwrap_or_else(|e| {
+            eprintln!(
+                "Warning: Failed to load BDD step definitions: {}",
+                e
+            );
+            eprintln!("BDD patterns will not be available. Initial conditions will be treated as comments.");
+            BddStepRegistry::new()
+        });
 
         if !test_case.general_initial_conditions.is_empty() {
             script.push_str("# General Initial Conditions\n");

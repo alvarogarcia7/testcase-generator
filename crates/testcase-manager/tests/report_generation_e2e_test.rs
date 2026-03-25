@@ -9,8 +9,18 @@ use testcase_manager::{
 };
 use testcase_models::TestCase;
 
+/// Helper function to get the workspace root path
+fn get_workspace_root() -> PathBuf {
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let mut workspace_root = PathBuf::from(manifest_dir);
+    workspace_root.pop(); // Go up from crate dir
+    workspace_root.pop(); // Go up from crates dir
+    workspace_root
+}
+
 fn load_test_case(filename: &str) -> TestCase {
-    let path = PathBuf::from("testcases").join(filename);
+    let workspace_root = get_workspace_root();
+    let path = workspace_root.join("testcases").join(filename);
     let content = fs::read_to_string(&path)
         .unwrap_or_else(|_| panic!("Failed to read test case: {}", path.display()));
     serde_yaml::from_str(&content)
@@ -755,7 +765,8 @@ fn test_e2e_container_format_json_output() {
 fn test_e2e_container_format_matches_template_structure() {
     // Verify the template exists - we can't directly deserialize it since it uses
     // a different YAML format (tagged enums), but we can verify the structure
-    let template_path = PathBuf::from("testcases/expected_output_reports/container_data.yml");
+    let workspace_root = get_workspace_root();
+    let template_path = workspace_root.join("testcases/expected_output_reports/container_data.yml");
     let template_content =
         fs::read_to_string(&template_path).expect("Failed to read container_data.yml template");
 
@@ -915,7 +926,7 @@ fn test_e2e_verifier_with_config_file_only() {
     .unwrap();
 
     // Use the full container config file
-    let config_path = PathBuf::from("testcases/verifier_scenarios/full_container_config.yml");
+    let config_path = get_workspace_root().join("testcases/verifier_scenarios/full_container_config.yml");
 
     // Run verifier with config file, no CLI overrides
     let output = Command::new("cargo")
@@ -1058,7 +1069,7 @@ fn test_e2e_verifier_with_config_and_cli_overrides() {
     )
     .unwrap();
 
-    let config_path = PathBuf::from("testcases/verifier_scenarios/container_config.yml");
+    let config_path = get_workspace_root().join("testcases/verifier_scenarios/container_config.yml");
 
     // Run verifier with config file AND CLI overrides
     let output = Command::new("cargo")
@@ -1199,7 +1210,7 @@ fn test_e2e_verifier_with_minimal_config_file() {
     )
     .unwrap();
 
-    let config_path = PathBuf::from("testcases/verifier_scenarios/minimal_container_config.yml");
+    let config_path = get_workspace_root().join("testcases/verifier_scenarios/minimal_container_config.yml");
 
     // Run verifier with minimal config file (only required fields)
     let output = Command::new("cargo")
@@ -1265,7 +1276,7 @@ fn test_e2e_verifier_json_format_with_config() {
     )
     .unwrap();
 
-    let config_path = PathBuf::from("testcases/verifier_scenarios/container_config.yml");
+    let config_path = get_workspace_root().join("testcases/verifier_scenarios/container_config.yml");
 
     // Run verifier with JSON format and config file
     let output = Command::new("cargo")

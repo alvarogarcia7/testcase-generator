@@ -1,10 +1,20 @@
 use anyhow::Result;
 use std::collections::HashMap;
 use std::fs;
+use std::path::PathBuf;
 use testcase_manager::{DependencyResolver, TestCase};
 
 fn load_test_case(file_path: &str) -> Result<TestCase> {
-    let yaml_content = fs::read_to_string(file_path)?;
+    // Use CARGO_MANIFEST_DIR to get the workspace root
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let mut workspace_root = PathBuf::from(manifest_dir);
+    workspace_root.pop(); // Go up from crate dir
+    workspace_root.pop(); // Go up from crates dir
+
+    let full_path = workspace_root.join(file_path);
+
+    let yaml_content = fs::read_to_string(&full_path)
+        .map_err(|e| anyhow::anyhow!("Failed to read {}: {}", full_path.display(), e))?;
     let test_case: TestCase = serde_yaml::from_str(&yaml_content)?;
     Ok(test_case)
 }

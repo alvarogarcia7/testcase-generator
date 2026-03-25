@@ -115,6 +115,25 @@ impl BddStepRegistry {
         }
     }
 
+    /// Loads BDD step definitions from a TOML file, trying multiple paths
+    /// This helper method tries to load from common locations and is useful for tests
+    pub fn load_from_default_paths() -> Result<Self, Box<dyn std::error::Error>> {
+        let paths = vec![
+            "data/bdd_step_definitions.toml",
+            "./data/bdd_step_definitions.toml",
+            "../data/bdd_step_definitions.toml",
+            "../../data/bdd_step_definitions.toml",
+        ];
+
+        for path in paths {
+            if let Ok(registry) = Self::load_from_toml(path) {
+                return Ok(registry);
+            }
+        }
+
+        Err("Could not find bdd_step_definitions.toml in any known location".into())
+    }
+
     /// Loads BDD step definitions from a TOML file
     ///
     /// # Arguments
@@ -374,7 +393,7 @@ mod tests {
 
     #[test]
     fn test_bdd_step_registry_load_from_toml() {
-        let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml");
+        let registry = BddStepRegistry::load_from_default_paths();
         assert!(registry.is_ok());
         let registry = registry.unwrap();
         assert!(!registry.step_definitions.is_empty());
@@ -382,21 +401,21 @@ mod tests {
 
     #[test]
     fn test_bdd_step_registry_try_parse_create_directory() {
-        let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+        let registry = BddStepRegistry::load_from_default_paths().unwrap();
         let result = registry.try_parse_as_bdd("create directory \"/tmp/test\"");
         assert_eq!(result, Some("mkdir -p \"/tmp/test\"".to_string()));
     }
 
     #[test]
     fn test_bdd_step_registry_try_parse_wait_for_seconds() {
-        let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+        let registry = BddStepRegistry::load_from_default_paths().unwrap();
         let result = registry.try_parse_as_bdd("wait for 5 seconds");
         assert_eq!(result, Some("sleep 5".to_string()));
     }
 
     #[test]
     fn test_bdd_step_registry_try_parse_set_env_var() {
-        let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+        let registry = BddStepRegistry::load_from_default_paths().unwrap();
         let result =
             registry.try_parse_as_bdd("set environment variable \"PATH\" to \"/usr/local/bin\"");
         assert_eq!(result, Some("export PATH=/usr/local/bin".to_string()));
@@ -404,21 +423,21 @@ mod tests {
 
     #[test]
     fn test_bdd_step_registry_try_parse_no_match() {
-        let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+        let registry = BddStepRegistry::load_from_default_paths().unwrap();
         let result = registry.try_parse_as_bdd("this is not a valid BDD statement");
         assert_eq!(result, None);
     }
 
     #[test]
     fn test_bdd_step_registry_try_parse_ping_device() {
-        let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+        let registry = BddStepRegistry::load_from_default_paths().unwrap();
         let result = registry.try_parse_as_bdd("ping device \"192.168.1.1\" with 3 retries");
         assert_eq!(result, Some("ping -c 3 \"192.168.1.1\"".to_string()));
     }
 
     #[test]
     fn test_bdd_step_registry_try_parse_check_file_exists() {
-        let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+        let registry = BddStepRegistry::load_from_default_paths().unwrap();
         let result = registry.try_parse_as_bdd("file \"/etc/hosts\" should exist");
         assert_eq!(result, Some("test -f \"/etc/hosts\"".to_string()));
     }
@@ -520,7 +539,7 @@ mod tests {
 
     #[test]
     fn test_file_creation_step_basic() {
-        let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+        let registry = BddStepRegistry::load_from_default_paths().unwrap();
         let result = registry.try_parse_as_bdd(r#"create file "/tmp/test.txt" with content:"#);
         assert!(result.is_some());
         let cmd = result.unwrap();
@@ -530,7 +549,7 @@ mod tests {
 
     #[test]
     fn test_file_creation_step_with_path() {
-        let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+        let registry = BddStepRegistry::load_from_default_paths().unwrap();
         let result =
             registry.try_parse_as_bdd(r#"create file "/var/www/html/index.html" with content:"#);
         assert!(result.is_some());
@@ -540,28 +559,28 @@ mod tests {
 
     #[test]
     fn test_ping_step_with_retries_basic() {
-        let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+        let registry = BddStepRegistry::load_from_default_paths().unwrap();
         let result = registry.try_parse_as_bdd(r#"ping device "192.168.1.1" with 3 retries"#);
         assert_eq!(result, Some("ping -c 3 \"192.168.1.1\"".to_string()));
     }
 
     #[test]
     fn test_ping_step_with_retries_single() {
-        let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+        let registry = BddStepRegistry::load_from_default_paths().unwrap();
         let result = registry.try_parse_as_bdd(r#"ping device "10.0.0.1" with 1 retries"#);
         assert_eq!(result, Some("ping -c 1 \"10.0.0.1\"".to_string()));
     }
 
     #[test]
     fn test_ping_step_with_retries_large_number() {
-        let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+        let registry = BddStepRegistry::load_from_default_paths().unwrap();
         let result = registry.try_parse_as_bdd(r#"ping device "8.8.8.8" with 100 retries"#);
         assert_eq!(result, Some("ping -c 100 \"8.8.8.8\"".to_string()));
     }
 
     #[test]
     fn test_ping_step_with_retries_hostname() {
-        let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+        let registry = BddStepRegistry::load_from_default_paths().unwrap();
         let result = registry.try_parse_as_bdd(r#"ping device "localhost" with 5 retries"#);
         assert_eq!(result, Some("ping -c 5 \"localhost\"".to_string()));
     }
