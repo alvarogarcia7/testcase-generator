@@ -1,22 +1,38 @@
 use std::fs;
+use std::path::PathBuf;
 use testcase_manager::TestCaseStorage;
 use testcase_manager::{MatchStrategy, StorageTestVerifier};
 use testcase_models::TestCase;
 
+/// Helper function to get the workspace root path
+fn get_workspace_root() -> PathBuf {
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let mut workspace_root = PathBuf::from(manifest_dir);
+    workspace_root.pop(); // Go up from crate dir
+    workspace_root.pop(); // Go up from crates dir
+    workspace_root
+}
+
 /// Helper function to load a test case YAML file
 fn load_test_case(yaml_path: &str) -> TestCase {
-    let content = fs::read_to_string(yaml_path)
-        .unwrap_or_else(|e| panic!("Failed to read test case file {}: {}", yaml_path, e));
+    let workspace_root = get_workspace_root();
+    let full_path = workspace_root.join(yaml_path);
+    let content = fs::read_to_string(&full_path)
+        .unwrap_or_else(|e| panic!("Failed to read test case file {}: {}", full_path.display(), e));
     serde_yaml::from_str(&content)
         .unwrap_or_else(|e| panic!("Failed to parse test case YAML {}: {}", yaml_path, e))
 }
 
 /// Helper function to get base path for edge case test files
 fn get_edge_case_path(test_id: &str) -> (String, String) {
-    let base_path = "testcases/verifier_scenarios/edge_cases";
-    let yaml_path = format!("{}/{}.yml", base_path, test_id);
-    let json_path = format!("{}/{}_execution_log.json", base_path, test_id);
-    (yaml_path, json_path)
+    let workspace_root = get_workspace_root();
+    let base_path = workspace_root.join("testcases/verifier_scenarios/edge_cases");
+    let yaml_path = base_path.join(format!("{}.yml", test_id));
+    let json_path = base_path.join(format!("{}_execution_log.json", test_id));
+    (
+        yaml_path.to_string_lossy().to_string(),
+        json_path.to_string_lossy().to_string(),
+    )
 }
 
 // ============================================================================

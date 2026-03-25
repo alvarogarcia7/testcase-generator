@@ -1,5 +1,15 @@
 use std::fs;
+use std::path::PathBuf;
 use tempfile::TempDir;
+
+/// Helper function to get the schema path for verifier
+fn get_schema_path() -> PathBuf {
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let mut workspace_root = PathBuf::from(manifest_dir);
+    workspace_root.pop(); // Go up from crate dir
+    workspace_root.pop(); // Go up from crates dir
+    workspace_root.join("data/testcase_results_container/schema.json")
+}
 
 /// Helper to create a minimal valid test case YAML file
 fn create_test_case_yaml(dir: &std::path::Path, test_case_id: &str) {
@@ -734,6 +744,8 @@ fn test_folder_mode_success_with_logs() {
     fs::create_dir_all(&folder_path).unwrap();
     create_execution_log(&log_file, "TC001");
 
+    let schema_path = get_schema_path();
+
     let output = std::process::Command::new("cargo")
         .args([
             "run",
@@ -744,6 +756,8 @@ fn test_folder_mode_success_with_logs() {
             folder_path.to_str().unwrap(),
             "-d",
             test_case_dir.to_str().unwrap(),
+            "--schema",
+            schema_path.to_str().unwrap(),
         ])
         .output()
         .unwrap();
@@ -816,6 +830,8 @@ fn test_short_flags_folder_mode() {
     create_test_case_yaml(&test_case_dir, "TC001");
     fs::create_dir_all(&folder_path).unwrap();
 
+    let schema_path = get_schema_path();
+
     // Use short flags: -f (folder), -F (format), -o (output), -d (test-case-dir)
     let output = std::process::Command::new("cargo")
         .args([
@@ -831,6 +847,8 @@ fn test_short_flags_folder_mode() {
             output_file.to_str().unwrap(),
             "-d",
             test_case_dir.to_str().unwrap(),
+            "--schema",
+            schema_path.to_str().unwrap(),
         ])
         .output()
         .unwrap();

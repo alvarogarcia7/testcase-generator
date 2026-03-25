@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use jsonschema::JSONSchema;
 use serde_json::Value as JsonValue;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use testcase_common::log_yaml_parse_error;
 use testcase_models::ValidationErrorDetail;
 
@@ -11,11 +11,29 @@ pub struct SchemaValidator {
     schema_value: JsonValue,
 }
 
+/// Helper function to find the schema file by trying multiple paths
+fn find_schema_file() -> Result<String> {
+    let paths = vec![
+        PathBuf::from("schemas/test-case.schema.json"),
+        PathBuf::from("./schemas/test-case.schema.json"),
+        PathBuf::from("../schemas/test-case.schema.json"),
+        PathBuf::from("../../schemas/test-case.schema.json"),
+    ];
+
+    for path in paths {
+        if let Ok(content) = fs::read_to_string(&path) {
+            return Ok(content);
+        }
+    }
+
+    Err(anyhow::anyhow!(
+        "Failed to find schemas/test-case.schema.json in any known location"
+    ))
+}
+
 impl SchemaValidator {
     pub fn new() -> Result<Self> {
-        let schema_path = Path::new("schemas/test-case.schema.json");
-        let schema_content =
-            fs::read_to_string(schema_path).context(format!("Failed to read {:?}", schema_path))?;
+        let schema_content = find_schema_file()?;
 
         let schema_value: JsonValue =
             serde_json::from_str(&schema_content).context("Failed to parse schema file")?;

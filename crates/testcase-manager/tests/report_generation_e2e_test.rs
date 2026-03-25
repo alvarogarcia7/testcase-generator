@@ -18,6 +18,11 @@ fn get_workspace_root() -> PathBuf {
     workspace_root
 }
 
+/// Get the full path to the schema file for verifier
+fn get_schema_path() -> PathBuf {
+    get_workspace_root().join("data/testcase_results_container/schema.json")
+}
+
 fn load_test_case(filename: &str) -> TestCase {
     let workspace_root = get_workspace_root();
     let path = workspace_root.join("testcases").join(filename);
@@ -228,6 +233,8 @@ fn test_e2e_container_format_yaml_structure() {
     .unwrap();
 
     // Run verifier binary (folder mode) - now always produces container format
+    let schema_path = get_schema_path();
+
     let output = Command::new("cargo")
         .args([
             "run",
@@ -250,6 +257,8 @@ fn test_e2e_container_format_yaml_structure() {
             "Test Platform",
             "--executor",
             "Test Executor",
+            "--schema",
+            schema_path.to_str().unwrap(),
         ])
         .output()
         .expect("Failed to execute verifier");
@@ -930,6 +939,7 @@ fn test_e2e_verifier_with_config_file_only() {
         get_workspace_root().join("testcases/verifier_scenarios/full_container_config.yml");
 
     // Run verifier with config file, no CLI overrides
+    let schema_path = get_schema_path();
     let output = Command::new("cargo")
         .args([
             "run",
@@ -944,6 +954,8 @@ fn test_e2e_verifier_with_config_file_only() {
             "yaml",
             "--config",
             config_path.to_str().unwrap(),
+            "--schema",
+            schema_path.to_str().unwrap(),
         ])
         .output()
         .expect("Failed to execute verifier");
@@ -995,6 +1007,7 @@ fn test_e2e_verifier_with_cli_flags_only() {
     .unwrap();
 
     // Run verifier with CLI flags only, no config file
+    let schema_path = get_schema_path();
     let output = Command::new("cargo")
         .args([
             "run",
@@ -1017,6 +1030,8 @@ fn test_e2e_verifier_with_cli_flags_only() {
             "CLI Platform",
             "--executor",
             "CLI Executor",
+            "--schema",
+            schema_path.to_str().unwrap(),
         ])
         .output()
         .expect("Failed to execute verifier");
@@ -1074,6 +1089,7 @@ fn test_e2e_verifier_with_config_and_cli_overrides() {
         get_workspace_root().join("testcases/verifier_scenarios/container_config.yml");
 
     // Run verifier with config file AND CLI overrides
+    let schema_path = get_schema_path();
     let output = Command::new("cargo")
         .args([
             "run",
@@ -1092,6 +1108,8 @@ fn test_e2e_verifier_with_config_and_cli_overrides() {
             "CLI Override Title",
             "--environment",
             "CLI Override Environment",
+            "--schema",
+            schema_path.to_str().unwrap(),
         ])
         .output()
         .expect("Failed to execute verifier");
@@ -1151,6 +1169,7 @@ fn test_e2e_verifier_with_defaults_fallback() {
     .unwrap();
 
     // Run verifier with NO config file and NO CLI flags (use defaults)
+    let schema_path = get_schema_path();
     let output = Command::new("cargo")
         .args([
             "run",
@@ -1163,6 +1182,8 @@ fn test_e2e_verifier_with_defaults_fallback() {
             "testcases",
             "--format",
             "yaml",
+            "--schema",
+            schema_path.to_str().unwrap(),
         ])
         .output()
         .expect("Failed to execute verifier");
@@ -1216,6 +1237,7 @@ fn test_e2e_verifier_with_minimal_config_file() {
         get_workspace_root().join("testcases/verifier_scenarios/minimal_container_config.yml");
 
     // Run verifier with minimal config file (only required fields)
+    let schema_path = get_schema_path();
     let output = Command::new("cargo")
         .args([
             "run",
@@ -1230,6 +1252,8 @@ fn test_e2e_verifier_with_minimal_config_file() {
             "yaml",
             "--config",
             config_path.to_str().unwrap(),
+            "--schema",
+            schema_path.to_str().unwrap(),
         ])
         .output()
         .expect("Failed to execute verifier");
@@ -1283,6 +1307,7 @@ fn test_e2e_verifier_json_format_with_config() {
         get_workspace_root().join("testcases/verifier_scenarios/container_config.yml");
 
     // Run verifier with JSON format and config file
+    let schema_path = get_schema_path();
     let output = Command::new("cargo")
         .args([
             "run",
@@ -1297,6 +1322,8 @@ fn test_e2e_verifier_json_format_with_config() {
             "json",
             "--config",
             config_path.to_str().unwrap(),
+            "--schema",
+            schema_path.to_str().unwrap(),
         ])
         .output()
         .expect("Failed to execute verifier");
