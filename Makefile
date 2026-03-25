@@ -17,16 +17,77 @@ lint: fmt clippy
 .PHONY: lint
 
 fmt:
-	cargo fmt
+	cargo fmt --all
 .PHONY: fmt
 
 build:
-	cargo build --all
+	cargo build --workspace
 .PHONY: build
 
 build-debug:
-	cargo build --all
+	cargo build --workspace
 .PHONY: build-debug
+
+build-release:
+	cargo build --workspace --release
+.PHONY: build-release
+
+# Per-crate build targets
+build-validate-yaml:
+	cargo build --package validate-yaml
+.PHONY: build-validate-yaml
+
+build-validate-json:
+	cargo build --package validate-json
+.PHONY: build-validate-json
+
+build-verifier:
+	cargo build --package verifier
+.PHONY: build-verifier
+
+build-test-executor:
+	cargo build --package test-executor
+.PHONY: build-test-executor
+
+build-test-orchestrator:
+	cargo build --package test-orchestrator
+.PHONY: build-test-orchestrator
+
+build-test-run-manager:
+	cargo build --package test-run-manager
+.PHONY: build-test-run-manager
+
+build-test-verify:
+	cargo build --package test-verify
+.PHONY: build-test-verify
+
+build-script-cleanup:
+	cargo build --package script-cleanup
+.PHONY: build-script-cleanup
+
+build-json-escape:
+	cargo build --package json-escape
+.PHONY: build-json-escape
+
+build-json-to-yaml:
+	cargo build --package json-to-yaml
+.PHONY: build-json-to-yaml
+
+build-editor:
+	cargo build --package editor
+.PHONY: build-editor
+
+build-testcase-manager:
+	cargo build --package testcase-manager
+.PHONY: build-testcase-manager
+
+build-tpdg-compat:
+	cargo build --package tpdg-compat
+.PHONY: build-tpdg-compat
+
+build-bash-eval:
+	cargo build --package bash-eval
+.PHONY: build-bash-eval
 
 setup-python-for-test:
 	@if command -v uv > /dev/null 2>&1; then \
@@ -48,48 +109,36 @@ test: setup-python-for-test
 .PHONY: test
 
 test-unit: build
-	cargo test --all --all-features --tests
+	cargo test --workspace --all-features --tests
 .PHONY: test-unit
 
 test-doc:
-	cargo test --doc
+	cargo test --workspace --doc
 .PHONY: test-doc
 
 clippy:
-	cargo clippy --all --all-features --tests -- -D warnings
+	cargo clippy --workspace --all-features --tests -- -D warnings
 .PHONY: clippy
 
 run: build
 	./target/debug/testcase-manager
 .PHONY: run
 
-run-trm: build
+run-trm: build-test-run-manager
 	./target/debug/trm
 .PHONY: run-trm
 
-run-test-verify: build
+run-test-verify: build-test-verify
 	./target/debug/test-verify
 .PHONY: run-test-verify
-
-build-script-cleanup:
-	cargo build --bin script-cleanup
-.PHONY: build-script-cleanup
 
 run-script-cleanup: build-script-cleanup
 	./target/debug/script-cleanup
 .PHONY: run-script-cleanup
 
-build-json-escape:
-	cargo build --bin json-escape
-.PHONY: build-json-escape
-
 run-json-escape: build-json-escape
 	./target/debug/json-escape
 .PHONY: run-json-escape
-
-build-verifier:
-	cargo build --bin verifier
-.PHONY: build-verifier
 
 run-verifier: build-verifier
 	./target/debug/verifier
@@ -317,7 +366,7 @@ shellcheck:
 	fi
 .PHONY: shellcheck
 
-test-e2e-validate-yaml: build
+test-e2e-validate-yaml: build-validate-yaml
 	cargo run --bin validate-yaml -- --schema schemas/test-case.schema.json tests/sample/gsma_4.4.2.2_TC.yml >/dev/null 2>&1
 	! cargo run --bin validate-yaml -- --schema schemas/test-case.schema.json tests/sample/data.yml >/dev/null 2>&1
 	./tests/integration/test_validate_yaml_multi_e2e.sh
@@ -341,14 +390,13 @@ test-verify-sample: build
 	./tests/integration/test_verify_e2e.sh
 .PHONY: test-verify-sample
 
-validate-all-testcases: build
+validate-all-testcases: build-validate-yaml
 	SCHEMA_FILE=schemas/test-case.schema.json ./scripts/validate-files.sh --pattern '\.ya?ml$$' --validator ./scripts/validate-yaml-wrapper.sh
 .PHONY: validate-all-testcases
 
-verify-testcases: build
+verify-testcases: build-validate-yaml
 	@echo "Verifying test case files against schema..."
 	@FAILED=0; \
-	cargo build --bin validate-yaml; \
 	for file in $$(find testcases tests/sample data -type f \( -name "*.yml" -o -name "*.yaml" \) -not \( -path "*/expected_output_reports/*" -o -path "*/testcase_results_container/*" -o -path "*/generated_samples/*" -o -path "*/verifier_scenarios_incorrect/*" -o -name "*te.y*" -o -iname "sample_test_runs.yaml" -o -name "*wrong*" -o -name "data.yml" -o -name "steps-in-json.yml" -o -name "1.yaml" -o -name "SGP.22_4.4.2.yaml" -o -name "conditional_verification_example.yml" -o -name "doc_gen_*.yml" -o -name "*container*" -o -path "*test_case_result*" -o -path "*test_result_01*" \) 2>/dev/null); do \
 		echo "Validating: $$file"; \
 		if ./target/debug/validate-yaml --schema schemas/test-case.schema.json "$$file" >/dev/null 2>&1; then \
@@ -373,7 +421,7 @@ verify-testcases: build
 # - Summary statistics (total files, passed count, failed count)
 # - Troubleshooting commands for failed validations
 # The report is saved to reports/validation_report.txt and displayed to stdout
-validate-testcases-report: build
+validate-testcases-report: build-validate-yaml
 	@mkdir -p reports
 	@uv run python3.14 scripts/generate_validation_report.py
 	@echo ""
@@ -393,11 +441,11 @@ validate-envelope-schemas:
 	./scripts/validate_envelope_schemas.sh
 .PHONY: validate-envelope-schemas
 
-watch: build
+watch: build-validate-yaml
 	./scripts/watch-yaml-files.sh
 .PHONY: watch
 
-watch-verbose: build
+watch-verbose: build-validate-yaml
 	SCHEMA_FILE=schemas/test-case.schema.json ./scripts/validate-files.sh --pattern '\.ya?ml$$' --validator ./scripts/validate-yaml-wrapper.sh --watch --verbose
 .PHONY: watch-verbose
 
@@ -405,11 +453,11 @@ clean-validation-cache:
 	rm -rf .validation-cache/
 .PHONY: clean-validation-cache
 
-run-test-executor: build
+run-test-executor: build-test-executor
 	cargo run --bin test-executor
 .PHONY: run-test-executor
 
-test-executor-sample: build
+test-executor-sample: build-test-executor
 	@echo "Testing test-executor against sample test cases..."
 	@echo "Generating script from gsma_4.4.2.2_TC.yml..."
 	cargo run --bin test-executor -- generate tests/sample/gsma_4.4.2.2_TC.yml >/dev/null
@@ -513,9 +561,9 @@ test-e2e-acceptance: build-acceptance-binaries
 
 build-acceptance-binaries:
 	@echo "Building required binaries for acceptance tests..."
-	@cargo build --bin test-executor
-	@cargo build --bin verifier
-	@cargo build --bin validate-yaml
+	@cargo build --package test-executor
+	@cargo build --package verifier
+	@cargo build --package validate-yaml
 	@echo "✓ All required binaries built successfully"
 	@echo ""
 .PHONY: build-acceptance-binaries
@@ -552,4 +600,3 @@ setup-python:
 verify-python:
 	./scripts/verify_python_env.sh
 .PHONY: verify-python
-
