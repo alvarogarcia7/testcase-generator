@@ -27,6 +27,21 @@ members = [
 ]
 resolver = "2"
 
+[package]
+name = "testcase-generator"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+testcase-models = { path = "crates/testcase-models" }
+testcase-ui = { path = "crates/testcase-ui" }
+testcase-verification = { path = "crates/testcase-verification" }
+testcase-storage = { path = "crates/testcase-storage" }
+anyhow = { workspace = true }
+env_logger = { workspace = true }
+tempfile = { workspace = true }
+serde_json = { workspace = true }
+
 [workspace.dependencies]
 # Core serialization and deserialization
 serde = { version = "1.0", features = ["derive"] }
@@ -75,3 +90,15 @@ strip-ansi-escapes = "0.2"
 
 # HTTP client (dev dependency)
 reqwest = { version = "0.11", features = ["blocking"] }
+
+[[example]]
+name = "tty_fallback_demo"
+path = "examples/tty_fallback_demo.rs"
+
+[[example]]
+name = "test_verify_demo"
+path = "examples/test_verify_demo.rs"
+
+[[example]]
+name = "test_verify_integration"
+path = "examples/test_verify_integration.rs"

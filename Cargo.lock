@@ -2278,6 +2278,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "testcase-generator"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "env_logger 0.11.8",
+ "serde_json",
+ "tempfile",
+ "testcase-models",
+ "testcase-storage",
+ "testcase-ui",
+ "testcase-verification",
+]
+
+[[package]]
 name = "testcase-git"
 version = "0.1.0"
 dependencies = [
