@@ -2127,6 +2127,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "test-executor"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap 4.5.56",
+ "env_logger 0.11.8",
+ "serde",
+ "serde_yaml",
+ "tempfile",
+ "testcase-execution",
+ "testcase-models",
+ "testcase-storage",
+ "testcase-validation",
+]
+
+[[package]]
 name = "testcase-cli"
 version = "0.1.0"
 dependencies = [

@@ -12,6 +12,7 @@ members = [
     "crates/testcase-ui",
     "crates/testcase-validation",
     "crates/testcase-verification",
+    "crates/test-executor",
     "crates/validate-json",
     "crates/validate-yaml",
 ]

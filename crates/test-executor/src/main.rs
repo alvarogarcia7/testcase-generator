@@ -3,10 +3,10 @@ use clap::{Parser, Subcommand};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
-use testcase_manager::{
-    DependencyResolver, TestCase, TestCaseFilter, TestCaseFilterer, TestCaseStorage, TestExecutor,
-    VarHydrator,
-};
+use testcase_execution::{TestExecutor, VarHydrator};
+use testcase_models::TestCase;
+use testcase_storage::{TestCaseFilter, TestCaseFilterer, TestCaseStorage};
+use testcase_validation::DependencyResolver;
 
 #[derive(Parser)]
 #[command(name = "test-executor")]
