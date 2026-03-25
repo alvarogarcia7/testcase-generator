@@ -1,4 +1,3 @@
-use crate::executor::TestExecutor;
 use crate::storage::TestCaseStorage;
 use crate::test_run_storage::TestRunStorage;
 use anyhow::{Context, Result};
@@ -11,6 +10,7 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
+use testcase_execution::TestExecutor;
 use testcase_models::{TestCase, TestRun, TestRunStatus};
 use testcase_verification::{
     MatchStrategy, TestCaseVerificationResult, TestExecutionLog, TestVerifier,

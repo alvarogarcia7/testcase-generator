@@ -1,6 +1,5 @@
 use crate::bdd_parser::BddStepRegistry;
 use crate::hydration::VarHydrator;
-use crate::prompts::Prompts;
 use anyhow::{Context, Result};
 use chrono::Local;
 use regex::Regex;
@@ -12,6 +11,29 @@ use testcase_common::{Config, JsonEscapingMethod};
 use testcase_models::{
     CaptureVarsFormat, TestCase, TestStepExecutionEntry, VerificationExpression,
 };
+
+/// Trait for prompting user for confirmation
+pub trait ConfirmPrompt {
+    fn confirm(&self, prompt: &str) -> Result<bool>;
+}
+
+/// Default implementation that uses stdin/stdout
+pub struct DefaultConfirmPrompt;
+
+impl ConfirmPrompt for DefaultConfirmPrompt {
+    fn confirm(&self, prompt: &str) -> Result<bool> {
+        use std::io::{self, Write};
+
+        print!("{} [y/N]: ", prompt);
+        io::stdout().flush()?;
+
+        let mut input = String::new();
+        io::stdin().read_line(&mut input)?;
+
+        let response = input.trim().to_lowercase();
+        Ok(response == "y" || response == "yes")
+    }
+}
 
 pub struct TestExecutor {
     output_dir: Option<PathBuf>,
@@ -1412,7 +1434,8 @@ impl TestExecutor {
                         "Have you completed the manual action for Step {}?",
                         step.step
                     );
-                    let action_completed = match Prompts::confirm(&prompt) {
+                    let prompter = DefaultConfirmPrompt;
+                    let action_completed = match prompter.confirm(&prompt) {
                         Ok(confirmed) => confirmed,
                         Err(e) => {
                             println!(

@@ -3,6 +3,7 @@ members = [
     "crates/bash-eval",
     "crates/testcase-models",
     "crates/testcase-common",
+    "crates/testcase-execution",
     "crates/testcase-manager",
     "crates/testcase-validation",
     "crates/testcase-verification",

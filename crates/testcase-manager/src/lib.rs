@@ -1,4 +1,3 @@
-pub mod bdd_parser;
 pub mod builder;
 pub mod cli;
 pub mod complex_structure_editor;
@@ -7,10 +6,8 @@ pub mod database;
 pub mod dependency_resolver;
 pub mod dependency_validator;
 pub mod editor;
-pub mod executor;
 pub mod fuzzy;
 pub mod git;
-pub mod hydration;
 pub mod junit_xml_validator;
 pub mod oracle;
 pub mod orchestrator;
@@ -24,7 +21,7 @@ pub mod ui;
 pub mod validation;
 pub mod verification;
 
-pub use bdd_parser::{parse_bdd_statement, BddStepDefinition, BddStepMatcher, BddStepRegistry};
+// Re-export from testcase-execution crate
 pub use builder::TestCaseBuilder;
 pub use cli::Cli;
 pub use complex_structure_editor::ComplexStructureEditor;
@@ -35,10 +32,8 @@ pub use dependency_validator::{
     validate_cross_file_dependencies, DependencyError, DependencyErrorType, DependencyValidator,
 };
 pub use editor::TestCaseEditor;
-pub use executor::TestExecutor;
 pub use fuzzy::TestCaseFuzzyFinder;
 pub use git::{CommitInfo, GitManager};
-pub use hydration::VarHydrator;
 pub use junit_xml_validator::validate_junit_xml;
 pub use oracle::{AnswerVariant, HardcodedOracle, MenuCliOracle, Oracle, TtyCliOracle};
 pub use parser::{SearchableCollections, TestCaseParser};
@@ -50,6 +45,10 @@ pub use test_run_storage::TestRunStorage;
 pub use testcase_common::{
     log_yaml_parse_error, resolve_schema_from_payload, CommitMessageTemplates, Config,
     EditorConfig, GitAuthorInfo, JsonEscapingConfig, JsonEscapingMethod, ScriptGenerationConfig,
+};
+pub use testcase_execution::{
+    parse_bdd_statement, BddStepDefinition, BddStepMatcher, BddStepRegistry, ConfirmPrompt,
+    DefaultConfirmPrompt, TestExecutor, VarHydrator,
 };
 pub use testcase_models::ActualResult;
 pub use testcase_models::CaptureVar;

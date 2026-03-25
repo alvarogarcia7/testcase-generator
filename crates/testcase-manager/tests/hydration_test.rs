@@ -4,7 +4,7 @@ use std::fs;
 use std::io::Write;
 use std::process::Command;
 use tempfile::{NamedTempFile, TempDir};
-use testcase_manager::hydration::VarHydrator;
+use testcase_manager::VarHydrator;
 use testcase_manager::TestExecutor;
 use testcase_models::{
     EnvVariable, Expected, Step, TestCase, TestSequence, Verification, VerificationExpression,

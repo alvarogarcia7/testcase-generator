@@ -2142,6 +2142,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "testcase-execution"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bash-eval",
+ "chrono",
+ "regex",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "testcase-common",
+ "testcase-models",
+ "toml",
+]
+
+[[package]]
 name = "testcase-manager"
 version = "0.1.0"
 dependencies = [
@@ -2169,6 +2185,7 @@ dependencies = [
  "strip-ansi-escapes",
  "tempfile",
  "testcase-common",
+ "testcase-execution",
  "testcase-models",
  "testcase-verification",
  "toml",
