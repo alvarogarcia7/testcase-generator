@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "crates/bash-eval",
+    "crates/script-cleanup",
     "crates/testcase-models",
     "crates/testcase-cli",
     "crates/testcase-common",

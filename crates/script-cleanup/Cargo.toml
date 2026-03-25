@@ -1,0 +1,15 @@
+[package]
+name = "script-cleanup"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "script-cleanup"
+path = "src/main.rs"
+
+[dependencies]
+testcase-verification = { path = "../testcase-verification" }
+clap = { workspace = true }
+anyhow = { workspace = true }
+log = { workspace = true }
+env_logger = { workspace = true }
