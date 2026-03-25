@@ -1,8 +1,8 @@
-use crate::config::EditorConfig;
-use crate::yaml_utils::log_yaml_parse_error;
 use anyhow::{anyhow, Context, Result};
 use std::fs;
 use std::process::Command;
+use testcase_common::log_yaml_parse_error;
+use testcase_common::EditorConfig;
 use testcase_models::TestCase;
 
 /// Editor integration with validation loop

@@ -1,5 +1,4 @@
 use crate::complex_structure_editor::ComplexStructureEditor;
-use crate::config::EditorConfig;
 use crate::database::ConditionDatabase;
 use crate::git::GitManager;
 use crate::oracle::Oracle;
@@ -12,6 +11,7 @@ use indexmap::IndexMap;
 use serde_yaml::Value;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use testcase_common::EditorConfig;
 use testcase_models::{
     Expected, HookConfig, Hooks, OnError, Prerequisite, PrerequisiteType, Step, TestSequence,
 };

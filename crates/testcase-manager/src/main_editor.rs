@@ -2,9 +2,9 @@ use std::sync::Arc;
 
 use anyhow::{Context, Error, Result};
 use clap::Parser;
+use testcase_common::log_yaml_parse_error;
 use testcase_manager::fuzzy::MultiInput;
 use testcase_manager::fuzzy::MultiInput::Input;
-use testcase_manager::yaml_utils::log_yaml_parse_error;
 use testcase_manager::{
     cli::{Cli, Commands, GitCommands},
     print_title, ConditionDatabase, GitManager, Oracle, Prompts, SampleData, TestCase,

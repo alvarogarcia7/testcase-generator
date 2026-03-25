@@ -3,9 +3,8 @@ use clap::Parser;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process;
-use testcase_manager::envelope::resolve_schema_from_payload;
+use testcase_common::{log_yaml_parse_error, resolve_schema_from_payload};
 use testcase_manager::validate_cross_file_dependencies;
-use testcase_manager::yaml_utils::log_yaml_parse_error;
 use testcase_models::TestCase;
 
 #[cfg(not(target_os = "windows"))]

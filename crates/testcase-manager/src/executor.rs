@@ -1,5 +1,4 @@
 use crate::bdd_parser::BddStepRegistry;
-use crate::config::{Config, JsonEscapingMethod};
 use crate::hydration::VarHydrator;
 use crate::prompts::Prompts;
 use anyhow::{Context, Result};
@@ -9,6 +8,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use testcase_common::{Config, JsonEscapingMethod};
 use testcase_models::{
     CaptureVarsFormat, TestCase, TestStepExecutionEntry, VerificationExpression,
 };

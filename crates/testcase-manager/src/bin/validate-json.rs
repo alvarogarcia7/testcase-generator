@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use std::fs;
 use std::path::PathBuf;
-use testcase_manager::envelope::resolve_schema_from_payload;
+use testcase_common::resolve_schema_from_payload;
 
 #[derive(Parser)]
 #[command(name = "validate-json")]

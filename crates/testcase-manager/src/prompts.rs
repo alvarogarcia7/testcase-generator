@@ -4,12 +4,13 @@ use crate::fuzzy::TestCaseFuzzyFinder;
 use crate::oracle::{Oracle, TtyCliOracle};
 use crate::sample::SampleData;
 use crate::validation::SchemaValidator;
-use crate::{config::EditorConfig, TestCaseEditor};
+use crate::TestCaseEditor;
 use anyhow::{Context, Result};
 use indexmap::IndexMap;
 use serde_yaml::Value;
 use std::path::Path;
 use std::sync::Arc;
+use testcase_common::EditorConfig;
 
 /// Interactive prompt utilities
 pub struct Prompts<'a> {

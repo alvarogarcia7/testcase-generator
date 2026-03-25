@@ -2,13 +2,11 @@ pub mod bdd_parser;
 pub mod builder;
 pub mod cli;
 pub mod complex_structure_editor;
-pub mod config;
 pub mod creator;
 pub mod database;
 pub mod dependency_resolver;
 pub mod dependency_validator;
 pub mod editor;
-pub mod envelope;
 pub mod executor;
 pub mod fuzzy;
 pub mod git;
@@ -27,16 +25,11 @@ pub mod ui;
 pub mod validation;
 pub mod verification;
 pub mod verification_templates;
-pub mod yaml_utils;
 
 pub use bdd_parser::{parse_bdd_statement, BddStepDefinition, BddStepMatcher, BddStepRegistry};
 pub use builder::TestCaseBuilder;
 pub use cli::Cli;
 pub use complex_structure_editor::ComplexStructureEditor;
-pub use config::{
-    CommitMessageTemplates, Config, EditorConfig, GitAuthorInfo, JsonEscapingConfig,
-    JsonEscapingMethod, ScriptGenerationConfig,
-};
 pub use creator::TestCaseCreator;
 pub use database::ConditionDatabase;
 pub use dependency_resolver::{DependencyResolver, ResolutionError};
@@ -57,6 +50,10 @@ pub use recovery::{RecoveryManager, RecoveryState};
 pub use sample::SampleData;
 pub use storage::{TestCaseFilter, TestCaseFilterer, TestCaseStorage};
 pub use test_run_storage::TestRunStorage;
+pub use testcase_common::{
+    log_yaml_parse_error, resolve_schema_from_payload, CommitMessageTemplates, Config,
+    EditorConfig, GitAuthorInfo, JsonEscapingConfig, JsonEscapingMethod, ScriptGenerationConfig,
+};
 pub use testcase_models::ActualResult;
 pub use testcase_models::CaptureVar;
 pub use testcase_models::CaptureVarsFormat;

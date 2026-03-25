@@ -1,9 +1,9 @@
-use crate::yaml_utils::log_yaml_parse_error;
 use anyhow::{Context, Result};
 use jsonschema::JSONSchema;
 use serde_json::Value as JsonValue;
 use std::fs;
 use std::path::Path;
+use testcase_common::log_yaml_parse_error;
 use testcase_models::ValidationErrorDetail;
 
 pub struct SchemaValidator {

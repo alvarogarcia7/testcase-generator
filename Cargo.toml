@@ -2,6 +2,7 @@
 members = [
     "crates/bash-eval",
     "crates/testcase-models",
+    "crates/testcase-common",
     "crates/testcase-manager",
 ]
 resolver = "2"

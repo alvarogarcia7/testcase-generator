@@ -1,8 +1,8 @@
 use crate::validation::SchemaValidator;
-use crate::yaml_utils::log_yaml_parse_error;
 use anyhow::{Context, Result};
 use std::fs;
 use std::path::{Path, PathBuf};
+use testcase_common::log_yaml_parse_error;
 use testcase_models::{FileValidationStatus, TestCase, TestCaseFileInfo, TestSuite};
 
 /// Supported YAML file extensions

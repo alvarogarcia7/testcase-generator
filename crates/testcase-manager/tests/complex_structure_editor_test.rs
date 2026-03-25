@@ -2,9 +2,9 @@ use anyhow::Result;
 use std::collections::VecDeque;
 use std::sync::Arc;
 use tempfile::{NamedTempFile, TempDir};
+use testcase_common::EditorConfig;
 use testcase_manager::{
     complex_structure_editor::ComplexStructureEditor,
-    config::EditorConfig,
     oracle::{AnswerVariant, HardcodedOracle, Oracle},
     validation::SchemaValidator,
 };
