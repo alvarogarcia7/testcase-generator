@@ -586,6 +586,8 @@ Build individual crates for faster development iteration:
 - **LOC Report**: make loc-report (generate lines of code statistics report to reports/loc/loc_statistics.txt)
 - **Setup Python**: make setup-python (install and configure Python 3.14 with uv package manager)
 - **Verify Python**: make verify-python (verify Python 3.14 environment is properly configured)
+- **Test Comparison Report**: make test-comparison-report (generate JSON report comparing test execution before and after crate splitting, includes test counts, execution times, and per-crate test organization)
+- **Test Comparison From Files**: make test-comparison-from-files BEFORE=before.txt AFTER=after.txt (generate test comparison report from pre-saved cargo test outputs)
 - **Dev Server**: N/A
 
 ### Sccache Configuration

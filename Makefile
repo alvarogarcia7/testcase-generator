@@ -441,6 +441,48 @@ validate-envelope-schemas:
 	./scripts/validate_envelope_schemas.sh
 .PHONY: validate-envelope-schemas
 
+# Generate a JSON report comparing test execution before and after crate splitting
+# This target runs cargo tests on both the 'main' and 'split-binaries-into-crates' branches
+# and generates a comprehensive comparison report including:
+# - Which tests were executed before and after the change
+# - After splitting, in which crate is each test located
+# - Total execution time before and after with percentage change
+# - New, removed, and common tests between the two states
+# The report is saved to reports/test_comparison_report.json
+test-comparison-report:
+	@mkdir -p reports
+	@echo "Generating test comparison report..."
+	@uv run python3.14 scripts/test_comparison_report.py \
+		--run-tests \
+		--before-ref main \
+		--after-ref split-binaries-into-crates \
+		--output reports/test_comparison_report.json \
+		--verbose
+	@echo ""
+	@echo "Report saved to: reports/test_comparison_report.json"
+	@echo "View with: cat reports/test_comparison_report.json | jq ."
+.PHONY: test-comparison-report
+
+# Generate test comparison report from pre-saved test outputs
+# Usage: make test-comparison-from-files BEFORE=before.txt AFTER=after.txt
+test-comparison-from-files:
+	@mkdir -p reports
+	@if [ -z "$(BEFORE)" ] || [ -z "$(AFTER)" ]; then \
+		echo "Error: BEFORE and AFTER variables must be set"; \
+		echo "Usage: make test-comparison-from-files BEFORE=before.txt AFTER=after.txt"; \
+		exit 1; \
+	fi
+	@echo "Generating test comparison report from saved outputs..."
+	@uv run python3.14 scripts/test_comparison_report.py \
+		--before $(BEFORE) \
+		--after $(AFTER) \
+		--output reports/test_comparison_report.json \
+		--verbose
+	@echo ""
+	@echo "Report saved to: reports/test_comparison_report.json"
+	@echo "View with: cat reports/test_comparison_report.json | jq ."
+.PHONY: test-comparison-from-files
+
 watch: build-validate-yaml
 	./scripts/watch-yaml-files.sh
 .PHONY: watch

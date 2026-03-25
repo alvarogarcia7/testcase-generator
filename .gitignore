@@ -50,6 +50,7 @@ reports/*.pdf
 reports/loc/
 reports/verifier_scenarios/
 reports/tpdg_integration/
+reports/test_comparison_report.json
 
 
 .crates.toml
