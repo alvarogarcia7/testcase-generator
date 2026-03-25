@@ -18,7 +18,7 @@ fn test_deserialize_dependencies_example_1() {
     yaml_path.push("examples");
     yaml_path.push("dependencies");
     yaml_path.push("1.yaml");
-    
+
     assert!(
         yaml_path.exists(),
         "Test file not found: {}",
@@ -106,7 +106,7 @@ fn test_deserialize_dependencies_example_2() {
     yaml_path.push("examples");
     yaml_path.push("dependencies");
     yaml_path.push("2.yaml");
-    
+
     assert!(
         yaml_path.exists(),
         "Test file not found: {}",

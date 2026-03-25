@@ -926,7 +926,8 @@ fn test_e2e_verifier_with_config_file_only() {
     .unwrap();
 
     // Use the full container config file
-    let config_path = get_workspace_root().join("testcases/verifier_scenarios/full_container_config.yml");
+    let config_path =
+        get_workspace_root().join("testcases/verifier_scenarios/full_container_config.yml");
 
     // Run verifier with config file, no CLI overrides
     let output = Command::new("cargo")
@@ -1069,7 +1070,8 @@ fn test_e2e_verifier_with_config_and_cli_overrides() {
     )
     .unwrap();
 
-    let config_path = get_workspace_root().join("testcases/verifier_scenarios/container_config.yml");
+    let config_path =
+        get_workspace_root().join("testcases/verifier_scenarios/container_config.yml");
 
     // Run verifier with config file AND CLI overrides
     let output = Command::new("cargo")
@@ -1210,7 +1212,8 @@ fn test_e2e_verifier_with_minimal_config_file() {
     )
     .unwrap();
 
-    let config_path = get_workspace_root().join("testcases/verifier_scenarios/minimal_container_config.yml");
+    let config_path =
+        get_workspace_root().join("testcases/verifier_scenarios/minimal_container_config.yml");
 
     // Run verifier with minimal config file (only required fields)
     let output = Command::new("cargo")
@@ -1276,7 +1279,8 @@ fn test_e2e_verifier_json_format_with_config() {
     )
     .unwrap();
 
-    let config_path = get_workspace_root().join("testcases/verifier_scenarios/container_config.yml");
+    let config_path =
+        get_workspace_root().join("testcases/verifier_scenarios/container_config.yml");
 
     // Run verifier with JSON format and config file
     let output = Command::new("cargo")

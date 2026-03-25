@@ -160,14 +160,14 @@ impl BddStepRegistry {
         pattern: &str,
         param_names: &[String],
     ) -> Result<String, Box<dyn std::error::Error>> {
-//        // Check for optional non-capturing groups when there are multiple parameters
-//        // Optional non-capturing groups are problematic because they can cause parameter misalignment
-//        // Pattern: (?:...)?  where ... may contain capture groups
-//        if param_names.len() > 1 {
-//            // Look for patterns like (?:...)? which indicate optional non-capturing groups
-//            // This is more specific than just )? to avoid false positives with patterns like (\d+)?
-//            if pattern.contains("(?:") && pattern.contains(")?") {
-//                return Err("Pattern with optional non-capturing groups and multiple parameters is not supported. Optional groups can cause parameter misalignment.".into());
+        //        // Check for optional non-capturing groups when there are multiple parameters
+        //        // Optional non-capturing groups are problematic because they can cause parameter misalignment
+        //        // Pattern: (?:...)?  where ... may contain capture groups
+        //        if param_names.len() > 1 {
+        //            // Look for patterns like (?:...)? which indicate optional non-capturing groups
+        //            // This is more specific than just )? to avoid false positives with patterns like (\d+)?
+        //            if pattern.contains("(?:") && pattern.contains(")?") {
+        //                return Err("Pattern with optional non-capturing groups and multiple parameters is not supported. Optional groups can cause parameter misalignment.".into());
         // Validate that optional groups don't contain capture groups when multiple parameters are defined
         if param_names.len() > 1 {
             // Check for optional non-capturing groups that contain capture groups
@@ -177,16 +177,20 @@ impl BddStepRegistry {
             let chars: Vec<char> = pattern.chars().collect();
             while i < chars.len() {
                 // Look for (?:
-                if i + 2 < chars.len() && chars[i] == '(' && chars[i+1] == '?' && chars[i+2] == ':' {
+                if i + 2 < chars.len()
+                    && chars[i] == '('
+                    && chars[i + 1] == '?'
+                    && chars[i + 2] == ':'
+                {
                     // Find the matching closing paren and check if followed by ?
                     let mut depth = 1;
                     let mut j = i + 3;
                     let mut has_capture = false;
-                    
+
                     while j < chars.len() && depth > 0 {
                         if chars[j] == '(' {
                             // Check if it's not a special group
-                            if j + 1 >= chars.len() || chars[j+1] != '?' {
+                            if j + 1 >= chars.len() || chars[j + 1] != '?' {
                                 has_capture = true;
                             }
                             depth += 1;
@@ -195,7 +199,7 @@ impl BddStepRegistry {
                         }
                         j += 1;
                     }
-                    
+
                     // Check if this group is followed by ?
                     if depth == 0 && j < chars.len() && chars[j] == '?' && has_capture {
                         return Err(

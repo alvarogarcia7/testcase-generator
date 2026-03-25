@@ -23,17 +23,14 @@ fn find_schema_file() -> Result<PathBuf> {
         }
     }
 
-    anyhow::bail!(
-        "Could not find schema file. Tried: {:?}",
-        possible_paths
-    )
+    anyhow::bail!("Could not find schema file. Tried: {:?}", possible_paths)
 }
 
 impl SchemaValidator {
     pub fn new() -> Result<Self> {
         let schema_path = find_schema_file().context("Failed to locate schema file")?;
-        let schema_content =
-            fs::read_to_string(&schema_path).context(format!("Failed to read {:?}", schema_path))?;
+        let schema_content = fs::read_to_string(&schema_path)
+            .context(format!("Failed to read {:?}", schema_path))?;
 
         let schema_value: JsonValue =
             serde_json::from_str(&schema_content).context("Failed to parse schema file")?;
