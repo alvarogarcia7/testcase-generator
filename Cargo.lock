@@ -1144,6 +1144,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "json-to-yaml"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap 4.5.56",
+ "serde_json",
+ "serde_yaml",
+]
+
+[[package]]
 name = "jsonschema"
 version = "0.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

@@ -2,6 +2,7 @@
 members = [
     "crates/bash-eval",
     "crates/json-escape",
+    "crates/json-to-yaml",
     "crates/script-cleanup",
     "crates/testcase-models",
     "crates/testcase-cli",
