@@ -5,7 +5,7 @@ use tempfile::TempDir;
 use testcase_manager::TestCaseStorage;
 use testcase_manager::{
     BatchVerificationReport, ContainerReport, ContainerReportConfig, SequenceVerificationResult,
-    StepVerificationResultEnum, TestCaseVerificationResult, TestVerifier,
+    StepVerificationResultEnum, StorageTestVerifier, TestCaseVerificationResult, TestVerifier,
 };
 use testcase_models::TestCase;
 
@@ -331,7 +331,7 @@ fn test_e2e_container_format_yaml_structure() {
 fn test_e2e_container_format_test_results_structure() {
     let temp_dir = TempDir::new().unwrap();
     let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
-    let verifier = TestVerifier::from_storage(storage);
+    let verifier = StorageTestVerifier::from_storage(storage);
 
     // Create comprehensive test results with all step statuses
     let mut report = BatchVerificationReport::new();
@@ -608,7 +608,7 @@ fn test_e2e_container_format_test_results_structure() {
 fn test_e2e_container_format_metadata_accuracy() {
     let temp_dir = TempDir::new().unwrap();
     let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
-    let verifier = TestVerifier::from_storage(storage);
+    let verifier = StorageTestVerifier::from_storage(storage);
 
     let mut report = BatchVerificationReport::new();
 
@@ -687,7 +687,7 @@ fn test_e2e_container_format_metadata_accuracy() {
 fn test_e2e_container_format_json_output() {
     let temp_dir = TempDir::new().unwrap();
     let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
-    let verifier = TestVerifier::from_storage(storage);
+    let verifier = StorageTestVerifier::from_storage(storage);
 
     let mut report = BatchVerificationReport::new();
     report.add_test_case_result(TestCaseVerificationResult {
@@ -784,7 +784,7 @@ fn test_e2e_container_format_matches_template_structure() {
     // Create a report with similar structure
     let temp_dir = TempDir::new().unwrap();
     let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
-    let verifier = TestVerifier::from_storage(storage);
+    let verifier = StorageTestVerifier::from_storage(storage);
 
     let mut report = BatchVerificationReport::new();
     report.add_test_case_result(TestCaseVerificationResult {

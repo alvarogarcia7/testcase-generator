@@ -1,8 +1,8 @@
 use chrono::{Local, Utc};
 use std::path::PathBuf;
 use testcase_manager::{
-    DiffDetail, MatchStrategy, StepVerificationResult, TestCaseVerificationResult,
-    TestExecutionLog, TestVerifier, VerificationDiff,
+    DiffDetail, MatchStrategy, StepVerificationResult, TestCaseVerificationResult, TestVerifier,
+    VerificationDiff, VerificationTestExecutionLog as TestExecutionLog,
 };
 use testcase_models::{
     Expected, Step, TestCase, TestSequence, Verification, VerificationExpression,
@@ -2845,12 +2845,13 @@ fn test_precomputed_strategy_name() {
 #[test]
 fn test_container_report_config_defaults_only() {
     use tempfile::TempDir;
-    use testcase_manager::storage::TestCaseStorage;
-    use testcase_manager::{BatchVerificationReport, ContainerReportConfig};
+    use testcase_manager::{
+        BatchVerificationReport, ContainerReportConfig, StorageTestVerifier, TestCaseStorage,
+    };
 
     let temp_dir = TempDir::new().unwrap();
     let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
-    let verifier = TestVerifier::from_storage(storage);
+    let verifier = StorageTestVerifier::from_storage(storage);
 
     let mut report = BatchVerificationReport::new();
     report.add_test_case_result(TestCaseVerificationResult {
@@ -2908,12 +2909,13 @@ fn test_container_report_config_defaults_only() {
 #[test]
 fn test_container_report_config_cli_flags_only() {
     use tempfile::TempDir;
-    use testcase_manager::storage::TestCaseStorage;
-    use testcase_manager::{BatchVerificationReport, ContainerReportConfig};
+    use testcase_manager::{
+        BatchVerificationReport, ContainerReportConfig, StorageTestVerifier, TestCaseStorage,
+    };
 
     let temp_dir = TempDir::new().unwrap();
     let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
-    let verifier = TestVerifier::from_storage(storage);
+    let verifier = StorageTestVerifier::from_storage(storage);
 
     let mut report = BatchVerificationReport::new();
     report.add_test_case_result(TestCaseVerificationResult {
@@ -2963,12 +2965,13 @@ fn test_container_report_config_cli_flags_only() {
 #[test]
 fn test_container_report_config_file_only() {
     use tempfile::TempDir;
-    use testcase_manager::storage::TestCaseStorage;
-    use testcase_manager::{BatchVerificationReport, ContainerReportConfig};
+    use testcase_manager::{
+        BatchVerificationReport, ContainerReportConfig, StorageTestVerifier, TestCaseStorage,
+    };
 
     let temp_dir = TempDir::new().unwrap();
     let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
-    let verifier = TestVerifier::from_storage(storage);
+    let verifier = StorageTestVerifier::from_storage(storage);
 
     let mut report = BatchVerificationReport::new();
     report.add_test_case_result(TestCaseVerificationResult {
@@ -3018,12 +3021,13 @@ fn test_container_report_config_file_only() {
 #[test]
 fn test_container_report_config_file_with_cli_overrides() {
     use tempfile::TempDir;
-    use testcase_manager::storage::TestCaseStorage;
-    use testcase_manager::{BatchVerificationReport, ContainerReportConfig};
+    use testcase_manager::{
+        BatchVerificationReport, ContainerReportConfig, StorageTestVerifier, TestCaseStorage,
+    };
 
     let temp_dir = TempDir::new().unwrap();
     let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
-    let verifier = TestVerifier::from_storage(storage);
+    let verifier = StorageTestVerifier::from_storage(storage);
 
     let mut report = BatchVerificationReport::new();
     report.add_test_case_result(TestCaseVerificationResult {
@@ -3077,12 +3081,13 @@ fn test_container_report_config_file_with_cli_overrides() {
 #[test]
 fn test_container_report_partial_config_with_defaults() {
     use tempfile::TempDir;
-    use testcase_manager::storage::TestCaseStorage;
-    use testcase_manager::{BatchVerificationReport, ContainerReportConfig};
+    use testcase_manager::{
+        BatchVerificationReport, ContainerReportConfig, StorageTestVerifier, TestCaseStorage,
+    };
 
     let temp_dir = TempDir::new().unwrap();
     let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
-    let verifier = TestVerifier::from_storage(storage);
+    let verifier = StorageTestVerifier::from_storage(storage);
 
     let mut report = BatchVerificationReport::new();
     report.add_test_case_result(TestCaseVerificationResult {
@@ -3457,12 +3462,13 @@ fn test_step_verification_result_enum_json_all_variants_externally_tagged() {
 #[test]
 fn test_container_report_config_json_format() {
     use tempfile::TempDir;
-    use testcase_manager::storage::TestCaseStorage;
-    use testcase_manager::{BatchVerificationReport, ContainerReportConfig};
+    use testcase_manager::{
+        BatchVerificationReport, ContainerReportConfig, StorageTestVerifier, TestCaseStorage,
+    };
 
     let temp_dir = TempDir::new().unwrap();
     let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
-    let verifier = TestVerifier::from_storage(storage);
+    let verifier = StorageTestVerifier::from_storage(storage);
 
     let mut report = BatchVerificationReport::new();
     report.add_test_case_result(TestCaseVerificationResult {

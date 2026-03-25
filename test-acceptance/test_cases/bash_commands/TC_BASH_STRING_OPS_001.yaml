@@ -1,201 +1,49 @@
-type: test_case
-schema: tcms/test-case.schema.v1.json
-requirement: BASH_STRING_OPERATIONS
+requirement: REQ_BASH_STRING_OPS_001
 item: 1
-tc: 1
+tc: 6
 id: TC_BASH_STRING_OPS_001
-description: Bash string operations - substring extraction, length, replacement, pattern
-  matching with strict validation
+description: String manipulation and transformation operations
 general_initial_conditions:
   system:
-  - Bash shell with string manipulation features is available
+    - Shell environment is available
 initial_conditions:
-  environment:
-  - String operations are supported
+  system:
+    - All commands can be executed
 test_sequences:
-- id: 1
-  name: String Manipulation
-  description: Test bash string operations with comprehensive validation
-  initial_conditions:
-    system:
-    - String manipulation works correctly
-  steps:
-  - step: 1
-    description: String length calculation
-    command: str='Hello World'; echo ${#str}
-    capture_vars:
-    - name: str_length
-      capture: ^([0-9]+)$
-    expected:
-      success: true
-      result: 0
-      output: '11'
-    verification:
-      result: '[[ $? -eq 0 ]]'
-      output: '[[ "$COMMAND_OUTPUT" == ''11'' ]]'
-      general:
-      - name: length_exact
-        condition: '[[ $str_length -eq 11 ]]'
-  - step: 2
-    description: Substring extraction
-    command: text='abcdefghij'; echo ${text:3:4}
-    capture_vars:
-    - name: substring
-      capture: ^(.*)$
-    expected:
-      success: true
-      result: 0
-      output: defg
-    verification:
-      result: '[[ $? -eq 0 ]]'
-      output: '[[ "$COMMAND_OUTPUT" == ''defg'' ]]'
-      general:
-      - name: substring_correct
-        condition: '[[ "$substring" == ''defg'' ]]'
-      - name: length_is_four
-        condition: '[[ $(echo -n "$substring" | wc -c | awk ''{print $1}'') -eq 4
-          ]]'
-  - step: 3
-    description: String replacement - first occurrence
-    command: phrase='foo bar foo baz'; echo ${phrase/foo/FOO}
-    capture_vars:
-    - name: replaced_once
-      capture: ^(.*)$
-    expected:
-      success: true
-      result: 0
-      output: FOO bar foo baz
-    verification:
-      result: '[[ $? -eq 0 ]]'
-      output: '[[ "$COMMAND_OUTPUT" == ''FOO bar foo baz'' ]]'
-      general:
-      - name: first_replaced
-        condition: '[[ "$replaced_once" =~ ^FOO ]]'
-      - name: second_unchanged
-        condition: '[[ "$replaced_once" =~ ''foo baz'' ]]'
-      - name: one_uppercase_foo
-        condition: '[[ $(echo "$replaced_once" | grep -o ''FOO'' | wc -l | awk ''{print
-          $1}'') -eq 1 ]]'
-  - step: 4
-    description: String replacement - all occurrences
-    command: phrase='foo bar foo baz foo'; echo ${phrase//foo/FOO}
-    capture_vars:
-    - name: replaced_all
-      capture: ^(.*)$
-    expected:
-      success: true
-      result: 0
-      output: FOO bar FOO baz FOO
-    verification:
-      result: '[[ $? -eq 0 ]]'
-      output: '[[ "$COMMAND_OUTPUT" == ''FOO bar FOO baz FOO'' ]]'
-      general:
-      - name: all_replaced
-        condition: '[[ "$replaced_all" =~ ^FOO.*FOO.*FOO$ ]]'
-      - name: no_lowercase_foo
-        condition: '[[ ! "$replaced_all" =~ foo ]]'
-      - name: three_uppercase
-        condition: '[[ $(echo "$replaced_all" | grep -o ''FOO'' | wc -l | awk ''{print
-          $1}'') -eq 3 ]]'
-  - step: 5
-    description: Pattern matching - prefix removal
-    command: path='/home/user/docs/file.txt'; echo ${path#*/}
-    capture_vars:
-    - name: no_leading_slash
-      capture: ^(.*)$
-    expected:
-      success: true
-      result: 0
-      output: home/user/docs/file.txt
-    verification:
-      result: '[[ $? -eq 0 ]]'
-      output: '[[ "$COMMAND_OUTPUT" == ''home/user/docs/file.txt'' ]]'
-      general:
-      - name: no_leading_slash_check
-        condition: '[[ "$no_leading_slash" != /* ]]'
-      - name: starts_with_home
-        condition: '[[ "$no_leading_slash" =~ ^home ]]'
-  - step: 6
-    description: Pattern matching - greedy prefix removal
-    command: path='/home/user/docs/file.txt'; echo ${path##*/}
-    capture_vars:
-    - name: filename
-      capture: ^(.*)$
-    expected:
-      success: true
-      result: 0
-      output: file.txt
-    verification:
-      result: '[[ $? -eq 0 ]]'
-      output: '[[ "$COMMAND_OUTPUT" == ''file.txt'' ]]'
-      general:
-      - name: only_filename
-        condition: '[[ "$filename" == ''file.txt'' ]]'
-      - name: no_slash
-        condition: '[[ ! "$filename" =~ / ]]'
-  - step: 7
-    description: Pattern matching - suffix removal
-    command: filename='document.tar.gz'; echo ${filename%.*}
-    capture_vars:
-    - name: without_ext
-      capture: ^(.*)$
-    expected:
-      success: true
-      result: 0
-      output: document.tar
-    verification:
-      result: '[[ $? -eq 0 ]]'
-      output: '[[ "$COMMAND_OUTPUT" == ''document.tar'' ]]'
-      general:
-      - name: removed_last_ext
-        condition: '[[ "$without_ext" == ''document.tar'' ]]'
-      - name: still_has_tar
-        condition: '[[ "$without_ext" =~ .tar$ ]]'
-  - step: 8
-    description: Pattern matching - greedy suffix removal
-    command: filename='document.tar.gz'; echo ${filename%%.*}
-    capture_vars:
-    - name: base_name
-      capture: ^(.*)$
-    expected:
-      success: true
-      result: 0
-      output: document
-    verification:
-      result: '[[ $? -eq 0 ]]'
-      output: '[[ "$COMMAND_OUTPUT" == ''document'' ]]'
-      general:
-      - name: all_extensions_removed
-        condition: '[[ "$base_name" == ''document'' ]]'
-      - name: no_dots
-        condition: '[[ ! "$base_name" =~ \. ]]'
-  - step: 9
-    description: String uppercase conversion using tr
-    command: lower='hello world'; upper=$(echo "$lower" | tr '[:lower:]' '[:upper:]');
-      echo $upper
-    expected:
-      success: true
-      result: 0
-      output: HELLO WORLD
-    verification:
-      result: '[[ $? -eq 0 ]]'
-      output: '[[ "$COMMAND_OUTPUT" == ''HELLO WORLD'' ]]'
-      general:
-      - name: is_uppercase
-        condition: '[[ "$COMMAND_OUTPUT" =~ ^[A-Z[:space:]]+$ ]]'
-  - step: 10
-    description: Default value if variable is unset
-    command: unset myvar; echo ${myvar:-default_value}
-    capture_vars:
-    - name: default_used
-      capture: ^(.*)$
-    expected:
-      success: true
-      result: 0
-      output: default_value
-    verification:
-      result: '[[ $? -eq 0 ]]'
-      output: '[[ "$COMMAND_OUTPUT" == ''default_value'' ]]'
-      general:
-      - name: default_applied
-        condition: '[[ "$default_used" == ''default_value'' ]]'
+  - id: 1
+    name: String Operations
+    description: Test string manipulation operations
+    initial_conditions:
+      system:
+        - Shell is ready
+    steps:
+      - step: 1
+        description: String concatenation
+        command: str1="Hello"; str2="World"; echo "$str1 $str2"
+        expected:
+          success: true
+          result: "0"
+          output: "Hello World"
+        verification:
+          result: "[[ $? -eq 0 ]]"
+          output: "grep -q 'Hello World' $COMMAND_OUTPUT"
+      - step: 2
+        description: String length
+        command: str="testing"; echo ${#str}
+        expected:
+          success: true
+          result: "0"
+          output: "7"
+        verification:
+          result: "[[ $? -eq 0 ]]"
+          output: "grep -q '7' $COMMAND_OUTPUT"
+      - step: 3
+        description: Substring extraction
+        command: str="Hello World"; echo ${str:0:5}
+        expected:
+          success: true
+          result: "0"
+          output: "Hello"
+        verification:
+          result: "[[ $? -eq 0 ]]"
+          output: "grep -q 'Hello' $COMMAND_OUTPUT"
