@@ -1,0 +1,16 @@
+[package]
+name = "tpdg-compat"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "test-plan-documentation-generator-compat"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = { workspace = true }
+clap = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+walkdir = { workspace = true }

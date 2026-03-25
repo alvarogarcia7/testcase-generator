@@ -19,6 +19,7 @@ members = [
     "crates/test-orchestrator",
     "crates/test-run-manager",
     "crates/test-verify",
+    "crates/tpdg-compat",
     "crates/validate-json",
     "crates/validate-yaml",
     "crates/verifier",
