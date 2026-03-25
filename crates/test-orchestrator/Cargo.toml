@@ -1,0 +1,18 @@
+[package]
+name = "test-orchestrator"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "test-orchestrator"
+path = "src/main.rs"
+
+[dependencies]
+testcase-orchestration = { path = "../testcase-orchestration" }
+testcase-storage = { path = "../testcase-storage" }
+testcase-ui = { path = "../testcase-ui" }
+testcase-verification = { path = "../testcase-verification" }
+anyhow = { workspace = true }
+clap = { workspace = true }
+env_logger = { workspace = true }
+log = { workspace = true }

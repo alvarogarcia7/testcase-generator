@@ -1,9 +1,9 @@
 use anyhow::{Context, Result};
 use clap::{CommandFactory, Parser, Subcommand};
 use std::path::PathBuf;
-use testcase_manager::fuzzy::TestCaseFuzzyFinder;
-use testcase_manager::{RetryPolicy, TestOrchestrator, WorkerConfig};
-use testcase_manager::{TestCaseFilter, TestCaseFilterer, TestCaseStorage, TestRunStorage};
+use testcase_orchestration::{RetryPolicy, TestOrchestrator, WorkerConfig};
+use testcase_storage::{TestCaseFilter, TestCaseFilterer, TestCaseStorage, TestRunStorage};
+use testcase_ui::TestCaseFuzzyFinder;
 
 #[derive(Parser)]
 #[command(name = "test-orchestrator")]
@@ -441,7 +441,7 @@ fn main() -> Result<()> {
                         println!("  {}", "-".repeat(60));
 
                         for step_result in &sequence.step_results {
-                            use testcase_manager::StepVerificationResultEnum;
+                            use testcase_verification::StepVerificationResultEnum;
 
                             match step_result {
                                 StepVerificationResultEnum::Pass {
@@ -543,7 +543,7 @@ fn main() -> Result<()> {
                             println!("  {}", "-".repeat(60));
 
                             for step_result in &sequence.step_results {
-                                use testcase_manager::StepVerificationResultEnum;
+                                use testcase_verification::StepVerificationResultEnum;
 
                                 match step_result {
                                     StepVerificationResultEnum::Pass {

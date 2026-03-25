@@ -2143,6 +2143,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "test-orchestrator"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap 4.5.56",
+ "env_logger 0.11.8",
+ "log",
+ "testcase-orchestration",
+ "testcase-storage",
+ "testcase-ui",
+ "testcase-verification",
+]
+
+[[package]]
 name = "test-verify"
 version = "0.1.0"
 dependencies = [
