@@ -515,6 +515,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "editor"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap 4.5.56",
+ "env_logger 0.11.8",
+ "jsonschema",
+ "log",
+ "serde_json",
+ "serde_yaml",
+ "testcase-cli",
+ "testcase-common",
+ "testcase-git",
+ "testcase-manager",
+ "testcase-models",
+ "testcase-storage",
+ "testcase-ui",
+]
+
+[[package]]
 name = "either"
 version = "1.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

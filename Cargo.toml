@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "crates/bash-eval",
+    "crates/editor",
     "crates/json-escape",
     "crates/json-to-yaml",
     "crates/script-cleanup",
