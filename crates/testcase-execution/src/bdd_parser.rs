@@ -145,17 +145,24 @@ impl BddStepRegistry {
         let capture_pattern = r"\([^)]+\)";
         let re = Regex::new(capture_pattern)?;
 
-        // Find all capture groups first
+        // Find all capture groups first (filtering out already-named and special groups)
         let mut captures: Vec<(usize, usize, String)> = Vec::new();
         for mat in re.find_iter(pattern) {
             let captured = mat.as_str();
-            if !captured.starts_with("(?P<") {
+            // Skip already named groups and non-capturing groups
+            if !captured.starts_with("(?P<")
+                && !captured.starts_with("(?:")
+                && !captured.starts_with("(?=")
+                && !captured.starts_with("(?!")
+                && !captured.starts_with("(?<")
+            {
                 let inner = captured[1..captured.len() - 1].to_string();
                 captures.push((mat.start(), mat.end(), inner));
             }
         }
 
         // Replace from end to start to maintain positions
+        // But assign param names from start to end (index 0 gets params[0])
         for (i, (start, end, inner)) in captures.iter().enumerate().rev() {
             if i < param_names.len() {
                 let param_name = &param_names[i];
@@ -1076,12 +1083,11 @@ mod tests {
     #[test]
     fn test_convert_to_named_groups_non_capturing_groups() {
         // Pattern with non-capturing groups (?:...) mixed with capturing groups
-        // The current implementation has limitations with special group syntax
         let pattern = r"^match (?:prefix|suffix) (\w+)$";
         let params = vec!["word".to_string()];
         let result = BddStepRegistry::convert_to_named_groups(pattern, &params).unwrap();
-        // Current behavior: the simple regex matches any (content) pattern
-        assert_eq!(result, r"^match (?P<word>?:prefix|suffix) (\w+)$");
+        // Non-capturing groups should be skipped, only capturing groups get named
+        assert_eq!(result, r"^match (?:prefix|suffix) (?P<word>\w+)$");
     }
 
     #[test]

@@ -1466,6 +1466,15 @@ impl TestVerifier {
         Self::new(MatchStrategy::Exact, MatchStrategy::Exact)
     }
 
+    /// Create verifier from storage (for backward compatibility with existing tests)
+    ///
+    /// This method accepts a TestCaseStorage parameter for API consistency but does not
+    /// actually use it, as TestVerifier does not require storage access for verification.
+    /// The verifier is created with default exact matching strategies.
+    pub fn from_storage<S>(_storage: S) -> Self {
+        Self::with_exact_matching()
+    }
+
     /// Verify a single step against an execution log (new two-stage workflow)
     pub fn verify_step_from_log(
         &self,
