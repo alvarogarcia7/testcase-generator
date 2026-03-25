@@ -1133,6 +1133,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "json-escape"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap 4.5.56",
+ "env_logger 0.11.8",
+ "log",
+ "serde_json",
+]
+
+[[package]]
 name = "jsonschema"
 version = "0.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
