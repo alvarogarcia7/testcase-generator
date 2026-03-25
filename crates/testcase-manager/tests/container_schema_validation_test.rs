@@ -4,9 +4,12 @@ use serde_json::Value;
 use std::fs;
 use std::path::PathBuf;
 
+const SCHEMA_PATH: &str = "../../data/testcase_results_container/schema.json";
+const SAMPLE_PATH: &str = "../../data/testcase_results_container/data_sample.yml";
+
 /// Helper function to load and compile schema
 fn load_schema() -> Result<(Value, JSONSchema)> {
-    let schema_path = PathBuf::from("data/testcase_results_container/schema.json");
+    let schema_path = PathBuf::from(SCHEMA_PATH);
     let schema_content = fs::read_to_string(&schema_path)?;
     let schema_json: Value = serde_json::from_str(&schema_content)?;
     let compiled_schema = JSONSchema::options()
@@ -18,7 +21,7 @@ fn load_schema() -> Result<(Value, JSONSchema)> {
 /// Test that the container schema file is valid JSON Schema
 #[test]
 fn test_schema_is_valid_json_schema() -> Result<()> {
-    let schema_path = PathBuf::from("data/testcase_results_container/schema.json");
+    let schema_path = PathBuf::from(SCHEMA_PATH);
     assert!(
         schema_path.exists(),
         "Schema file should exist at {}",
@@ -33,7 +36,7 @@ fn test_schema_is_valid_json_schema() -> Result<()> {
 /// Test that the sample data file validates against the schema
 #[test]
 fn test_sample_data_validates() -> Result<()> {
-    let sample_path = PathBuf::from("data/testcase_results_container/data_sample.yml");
+    let sample_path = PathBuf::from(SAMPLE_PATH);
 
     assert!(
         sample_path.exists(),

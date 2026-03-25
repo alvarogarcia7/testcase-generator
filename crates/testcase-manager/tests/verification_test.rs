@@ -2,7 +2,7 @@ use chrono::{Local, Utc};
 use std::path::PathBuf;
 use testcase_manager::{
     DiffDetail, MatchStrategy, StepVerificationResult, TestCaseVerificationResult, TestVerifier,
-    VerificationDiff, VerificationTestExecutionLog as TestExecutionLog,
+    VerificationDiff, VerificationTestExecutionLog,
 };
 use testcase_models::{
     Expected, Step, TestCase, TestSequence, Verification, VerificationExpression,
@@ -39,8 +39,8 @@ fn create_execution_log(
     actual_result: &str,
     actual_output: &str,
     success: Option<bool>,
-) -> TestExecutionLog {
-    TestExecutionLog {
+) -> VerificationTestExecutionLog {
+    VerificationTestExecutionLog {
         test_case_id: test_case_id.to_string(),
         sequence_id,
         step_number,
@@ -64,8 +64,8 @@ fn create_execution_log_with_precomputed(
     success: Option<bool>,
     result_verification_pass: Option<bool>,
     output_verification_pass: Option<bool>,
-) -> TestExecutionLog {
-    TestExecutionLog {
+) -> VerificationTestExecutionLog {
+    VerificationTestExecutionLog {
         test_case_id: test_case_id.to_string(),
         sequence_id,
         step_number,

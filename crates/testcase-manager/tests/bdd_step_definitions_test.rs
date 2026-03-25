@@ -1,9 +1,11 @@
 use std::io::Write;
 use testcase_manager::BddStepRegistry;
 
+const BDD_TOML_PATH: &str = "../../data/bdd_step_definitions.toml";
+
 #[test]
 fn test_all_23_step_definitions_loaded() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml")
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH)
         .expect("Failed to load BDD step definitions");
 
     assert!(registry
@@ -13,7 +15,7 @@ fn test_all_23_step_definitions_loaded() {
 
 #[test]
 fn test_01_create_file_with_content_valid() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     let result = registry.try_parse_as_bdd(r#"create file "/tmp/test.txt" with content:"#);
     assert_eq!(result, Some("touch \"/tmp/test.txt\"".to_string()));
@@ -31,7 +33,7 @@ fn test_01_create_file_with_content_valid() {
 
 #[test]
 fn test_01_create_file_with_content_invalid() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     assert_eq!(
         registry.try_parse_as_bdd("create file without content:"),
@@ -46,7 +48,7 @@ fn test_01_create_file_with_content_invalid() {
 
 #[test]
 fn test_02_ping_device_valid() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     let result = registry.try_parse_as_bdd(r#"ping device "192.168.1.1" with 3 retries"#);
     assert_eq!(result, Some("ping -c 3 \"192.168.1.1\"".to_string()));
@@ -60,7 +62,7 @@ fn test_02_ping_device_valid() {
 
 #[test]
 fn test_02_ping_device_invalid() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     assert_eq!(
         registry.try_parse_as_bdd(r#"ping device "192.168.1.1""#),
@@ -78,7 +80,7 @@ fn test_02_ping_device_invalid() {
 
 #[test]
 fn test_03_check_file_exists_valid() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     let result = registry.try_parse_as_bdd(r#"file "/etc/hosts" should exist"#);
     assert_eq!(result, Some("test -f \"/etc/hosts\"".to_string()));
@@ -92,7 +94,7 @@ fn test_03_check_file_exists_valid() {
 
 #[test]
 fn test_03_check_file_exists_invalid() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     assert_eq!(registry.try_parse_as_bdd(r#"file should exist"#), None);
     assert_eq!(
@@ -107,7 +109,7 @@ fn test_03_check_file_exists_invalid() {
 
 #[test]
 fn test_04_create_directory_valid() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     let result = registry.try_parse_as_bdd(r#"create directory "/tmp/test""#);
     assert_eq!(result, Some("mkdir -p \"/tmp/test\"".to_string()));
@@ -121,7 +123,7 @@ fn test_04_create_directory_valid() {
 
 #[test]
 fn test_04_create_directory_invalid() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     assert_eq!(registry.try_parse_as_bdd("create directory"), None);
     assert_eq!(registry.try_parse_as_bdd("create /tmp/test"), None);
@@ -130,7 +132,7 @@ fn test_04_create_directory_invalid() {
 
 #[test]
 fn test_05_remove_directory_valid() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     let result = registry.try_parse_as_bdd(r#"remove directory "/tmp/test""#);
     assert_eq!(result, Some("rm -rf \"/tmp/test\"".to_string()));
@@ -144,7 +146,7 @@ fn test_05_remove_directory_valid() {
 
 #[test]
 fn test_05_remove_directory_invalid() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     assert_eq!(registry.try_parse_as_bdd("remove directory"), None);
     assert_eq!(
@@ -156,7 +158,7 @@ fn test_05_remove_directory_invalid() {
 
 #[test]
 fn test_06_list_directory_contents_valid() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     let result = registry.try_parse_as_bdd(r#"list contents of directory "/tmp""#);
     assert_eq!(result, Some("ls -la \"/tmp\"".to_string()));
@@ -170,7 +172,7 @@ fn test_06_list_directory_contents_valid() {
 
 #[test]
 fn test_06_list_directory_contents_invalid() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     assert_eq!(registry.try_parse_as_bdd("list directory \"/tmp\""), None);
     assert_eq!(registry.try_parse_as_bdd("list contents of /tmp"), None);
@@ -179,7 +181,7 @@ fn test_06_list_directory_contents_invalid() {
 
 #[test]
 fn test_07_set_environment_variable_valid() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     let result =
         registry.try_parse_as_bdd(r#"set environment variable "PATH" to "/usr/local/bin""#);
@@ -194,7 +196,7 @@ fn test_07_set_environment_variable_valid() {
 
 #[test]
 fn test_07_set_environment_variable_invalid() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     assert_eq!(
         registry.try_parse_as_bdd("set environment variable \"PATH\""),
@@ -212,7 +214,7 @@ fn test_07_set_environment_variable_invalid() {
 
 #[test]
 fn test_08_unset_environment_variable_valid() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     let result = registry.try_parse_as_bdd(r#"unset environment variable "DEBUG""#);
     assert_eq!(result, Some("unset DEBUG".to_string()));
@@ -226,7 +228,7 @@ fn test_08_unset_environment_variable_valid() {
 
 #[test]
 fn test_08_unset_environment_variable_invalid() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     assert_eq!(
         registry.try_parse_as_bdd("unset environment variable"),
@@ -241,7 +243,7 @@ fn test_08_unset_environment_variable_invalid() {
 
 #[test]
 fn test_09_check_process_running_valid() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     let result = registry.try_parse_as_bdd(r#"process "nginx" should be running"#);
     assert_eq!(result, Some("pgrep -f \"nginx\"".to_string()));
@@ -255,7 +257,7 @@ fn test_09_check_process_running_valid() {
 
 #[test]
 fn test_09_check_process_running_invalid() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     assert_eq!(registry.try_parse_as_bdd("process should be running"), None);
     assert_eq!(registry.try_parse_as_bdd("nginx should be running"), None);
@@ -267,7 +269,7 @@ fn test_09_check_process_running_invalid() {
 
 #[test]
 fn test_10_kill_process_valid() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     let result = registry.try_parse_as_bdd(r#"kill process "nginx""#);
     assert_eq!(result, Some("pkill -f \"nginx\"".to_string()));
@@ -281,7 +283,7 @@ fn test_10_kill_process_valid() {
 
 #[test]
 fn test_10_kill_process_invalid() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     assert_eq!(registry.try_parse_as_bdd("kill process"), None);
     assert_eq!(registry.try_parse_as_bdd("kill nginx"), None);
@@ -293,7 +295,7 @@ fn test_10_kill_process_invalid() {
 
 #[test]
 fn test_11_change_file_permissions_valid() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     let result = registry.try_parse_as_bdd(r#"change permissions of "/tmp/test.sh" to 755"#);
     assert_eq!(result, Some("chmod 755 \"/tmp/test.sh\"".to_string()));
@@ -307,7 +309,7 @@ fn test_11_change_file_permissions_valid() {
 
 #[test]
 fn test_11_change_file_permissions_invalid() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     assert_eq!(
         registry.try_parse_as_bdd(r#"change permissions of "/tmp/test.sh""#),
@@ -325,7 +327,7 @@ fn test_11_change_file_permissions_invalid() {
 
 #[test]
 fn test_12_check_file_contains_valid() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     let result = registry.try_parse_as_bdd(r#"file "/var/log/app.log" should contain "ERROR""#);
     assert_eq!(
@@ -348,7 +350,7 @@ fn test_12_check_file_contains_valid() {
 
 #[test]
 fn test_12_check_file_contains_invalid() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     assert_eq!(
         registry.try_parse_as_bdd(r#"file "/var/log/app.log" should contain"#),
@@ -366,7 +368,7 @@ fn test_12_check_file_contains_invalid() {
 
 #[test]
 fn test_13_append_to_file_valid() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     let result = registry.try_parse_as_bdd(r#"append "Hello World" to file "/tmp/test.txt""#);
     assert_eq!(
@@ -389,7 +391,7 @@ fn test_13_append_to_file_valid() {
 
 #[test]
 fn test_13_append_to_file_invalid() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     assert_eq!(
         registry.try_parse_as_bdd(r#"append to file "/tmp/test.txt""#),
@@ -404,7 +406,7 @@ fn test_13_append_to_file_invalid() {
 
 #[test]
 fn test_14_replace_in_file_valid() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     let result = registry.try_parse_as_bdd(r#"replace "old" with "new" in file "/tmp/test.txt""#);
     assert_eq!(
@@ -428,7 +430,7 @@ fn test_14_replace_in_file_valid() {
 
 #[test]
 fn test_14_replace_in_file_invalid() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     assert_eq!(
         registry.try_parse_as_bdd(r#"replace "old" in file "/tmp/test.txt""#),
@@ -446,7 +448,7 @@ fn test_14_replace_in_file_invalid() {
 
 #[test]
 fn test_15_wait_for_seconds_valid() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     let result = registry.try_parse_as_bdd("wait for 5 seconds");
     assert_eq!(result, Some("sleep 5".to_string()));
@@ -460,7 +462,7 @@ fn test_15_wait_for_seconds_valid() {
 
 #[test]
 fn test_15_wait_for_seconds_invalid() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     assert_eq!(registry.try_parse_as_bdd("wait for seconds"), None);
     assert_eq!(registry.try_parse_as_bdd("wait 5 seconds"), None);
@@ -469,7 +471,7 @@ fn test_15_wait_for_seconds_invalid() {
 
 #[test]
 fn test_16_wait_until_file_exists_valid() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     let result =
         registry.try_parse_as_bdd(r#"wait until file "/tmp/ready" exists with timeout 30 seconds"#);
@@ -498,7 +500,7 @@ fn test_16_wait_until_file_exists_valid() {
 
 #[test]
 fn test_16_wait_until_file_exists_invalid() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     assert_eq!(
         registry.try_parse_as_bdd(r#"wait until file "/tmp/ready" exists"#),
@@ -516,7 +518,7 @@ fn test_16_wait_until_file_exists_invalid() {
 
 #[test]
 fn test_17_check_port_open_valid() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     let result = registry.try_parse_as_bdd(r#"port 80 on "localhost" should be open"#);
     assert_eq!(result, Some("nc -z \"localhost\" 80".to_string()));
@@ -530,7 +532,7 @@ fn test_17_check_port_open_valid() {
 
 #[test]
 fn test_17_check_port_open_invalid() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     assert_eq!(registry.try_parse_as_bdd(r#"port 80 should be open"#), None);
     assert_eq!(
@@ -545,7 +547,7 @@ fn test_17_check_port_open_invalid() {
 
 #[test]
 fn test_18_http_request_valid() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     let result = registry.try_parse_as_bdd(r#"send GET request to "http://example.com""#);
     assert_eq!(
@@ -576,7 +578,7 @@ fn test_18_http_request_valid() {
 
 #[test]
 fn test_18_http_request_invalid() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     assert_eq!(
         registry.try_parse_as_bdd(r#"send request to "http://example.com""#),
@@ -594,7 +596,7 @@ fn test_18_http_request_invalid() {
 
 #[test]
 fn test_19_create_user_valid() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     let result = registry.try_parse_as_bdd(r#"create user "testuser" with uid 1001"#);
     assert_eq!(result, Some("useradd -u 1001 \"testuser\"".to_string()));
@@ -608,7 +610,7 @@ fn test_19_create_user_valid() {
 
 #[test]
 fn test_19_create_user_invalid() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     assert_eq!(registry.try_parse_as_bdd(r#"create user "testuser""#), None);
     assert_eq!(
@@ -623,7 +625,7 @@ fn test_19_create_user_invalid() {
 
 #[test]
 fn test_20_delete_user_valid() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     let result = registry.try_parse_as_bdd(r#"delete user "testuser""#);
     assert_eq!(result, Some("userdel \"testuser\"".to_string()));
@@ -637,7 +639,7 @@ fn test_20_delete_user_valid() {
 
 #[test]
 fn test_20_delete_user_invalid() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     assert_eq!(registry.try_parse_as_bdd("delete user"), None);
     assert_eq!(registry.try_parse_as_bdd("remove user \"testuser\""), None);
@@ -646,7 +648,7 @@ fn test_20_delete_user_invalid() {
 
 #[test]
 fn test_21_restart_service_valid() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     let result = registry.try_parse_as_bdd(r#"restart service "nginx""#);
     assert_eq!(result, Some("systemctl restart \"nginx\"".to_string()));
@@ -660,7 +662,7 @@ fn test_21_restart_service_valid() {
 
 #[test]
 fn test_21_restart_service_invalid() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     assert_eq!(registry.try_parse_as_bdd("restart service"), None);
     assert_eq!(registry.try_parse_as_bdd("restart nginx"), None);
@@ -669,7 +671,7 @@ fn test_21_restart_service_invalid() {
 
 #[test]
 fn test_22_extract_archive_valid() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     let result =
         registry.try_parse_as_bdd(r#"extract archive "/tmp/backup.tar.gz" to "/var/restore""#);
@@ -693,7 +695,7 @@ fn test_22_extract_archive_valid() {
 
 #[test]
 fn test_22_extract_archive_invalid() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     assert_eq!(
         registry.try_parse_as_bdd(r#"extract archive "/tmp/backup.tar.gz""#),
@@ -711,7 +713,7 @@ fn test_22_extract_archive_invalid() {
 
 #[test]
 fn test_23_create_archive_valid() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     let result = registry
         .try_parse_as_bdd(r#"create archive "/tmp/backup.tar.gz" from directory "/var/www""#);
@@ -737,7 +739,7 @@ fn test_23_create_archive_valid() {
 
 #[test]
 fn test_23_create_archive_invalid() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     assert_eq!(
         registry.try_parse_as_bdd(r#"create archive "/tmp/backup.tar.gz""#),
@@ -755,7 +757,7 @@ fn test_23_create_archive_invalid() {
 
 #[test]
 fn test_all_steps_reject_malformed_input() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     assert_eq!(registry.try_parse_as_bdd(""), None);
     assert_eq!(registry.try_parse_as_bdd("invalid command"), None);
@@ -769,7 +771,7 @@ fn test_all_steps_reject_malformed_input() {
 
 #[test]
 fn test_registry_count_and_load() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml")
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH)
         .expect("Failed to load BDD step definitions from TOML");
 
     let test_cases = vec![
@@ -839,7 +841,7 @@ fn test_registry_count_and_load() {
 
 #[test]
 fn test_edge_cases_special_characters_in_paths() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     let result =
         registry.try_parse_as_bdd(r#"create file "/tmp/test file with spaces.txt" with content:"#);
@@ -857,7 +859,7 @@ fn test_edge_cases_special_characters_in_paths() {
 
 #[test]
 fn test_edge_cases_numeric_values() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     let result = registry.try_parse_as_bdd("wait for 0 seconds");
     assert_eq!(result, Some("sleep 0".to_string()));
@@ -874,7 +876,7 @@ fn test_edge_cases_numeric_values() {
 
 #[test]
 fn test_edge_cases_empty_strings() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     let result = registry.try_parse_as_bdd(r#"append " " to file "/tmp/test.txt""#);
     assert_eq!(result, Some("echo \" \" >> \"/tmp/test.txt\"".to_string()));
@@ -885,7 +887,7 @@ fn test_edge_cases_empty_strings() {
 
 #[test]
 fn test_case_sensitivity() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     assert_eq!(
         registry.try_parse_as_bdd(r#"CREATE FILE "/tmp/test.txt" with content:"#),
@@ -900,7 +902,7 @@ fn test_case_sensitivity() {
 
 #[test]
 fn test_pattern_boundaries() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     assert_eq!(
         registry.try_parse_as_bdd(r#"prefix create file "/tmp/test.txt" with content:"#),
@@ -915,7 +917,7 @@ fn test_pattern_boundaries() {
 
 #[test]
 fn test_unicode_in_parameters() {
-    let registry = BddStepRegistry::load_from_toml("data/bdd_step_definitions.toml").unwrap();
+    let registry = BddStepRegistry::load_from_toml(BDD_TOML_PATH).unwrap();
 
     let result = registry.try_parse_as_bdd(r#"create file "/tmp/测试.txt" with content:"#);
     assert_eq!(result, Some("touch \"/tmp/测试.txt\"".to_string()));
