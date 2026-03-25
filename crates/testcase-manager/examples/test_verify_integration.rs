@@ -1,7 +1,7 @@
 /// Integration example showing how to use test-verify with real test case files
 /// This demonstrates the complete workflow from test case creation to verification
 use std::fs;
-use testcase_manager::{Step, TestCase, TestCaseStorage, TestSequence, TestVerifier};
+use testcase_manager::{Step, TestCase, TestCaseStorage, TestSequence, StorageTestVerifier};
 
 fn main() -> anyhow::Result<()> {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
@@ -144,7 +144,7 @@ fn main() -> anyhow::Result<()> {
 
     // Step 3: Single verification
     println!("Step 3: Single Test Verification...");
-    let verifier = TestVerifier::from_storage(storage);
+    let verifier = StorageTestVerifier::from_storage(storage);
 
     let logs = verifier.parse_log_file(&log1_path)?;
     let result = verifier.verify_test_case(&tc1, &logs);

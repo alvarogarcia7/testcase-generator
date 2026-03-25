@@ -141,6 +141,17 @@ impl BddStepRegistry {
         pattern: &str,
         param_names: &[String],
     ) -> Result<String, Box<dyn std::error::Error>> {
+        // Check for optional non-capturing groups when there are multiple parameters
+        // Optional non-capturing groups are problematic because they can cause parameter misalignment
+        // Pattern: (?:...)?  where ... may contain capture groups
+        if param_names.len() > 1 {
+            // Look for patterns like (?:...)? which indicate optional non-capturing groups
+            // This is more specific than just )? to avoid false positives with patterns like (\d+)?
+            if pattern.contains("(?:") && pattern.contains(")?") {
+                return Err("Pattern with optional non-capturing groups and multiple parameters is not supported. Optional groups can cause parameter misalignment.".into());
+            }
+        }
+
         let mut result = pattern.to_string();
         let capture_pattern = r"\([^)]+\)";
         let re = Regex::new(capture_pattern)?;
