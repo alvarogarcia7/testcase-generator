@@ -17,8 +17,13 @@ fn get_workspace_root() -> PathBuf {
 fn load_test_case(yaml_path: &str) -> TestCase {
     let workspace_root = get_workspace_root();
     let full_path = workspace_root.join(yaml_path);
-    let content = fs::read_to_string(&full_path)
-        .unwrap_or_else(|e| panic!("Failed to read test case file {}: {}", full_path.display(), e));
+    let content = fs::read_to_string(&full_path).unwrap_or_else(|e| {
+        panic!(
+            "Failed to read test case file {}: {}",
+            full_path.display(),
+            e
+        )
+    });
     serde_yaml::from_str(&content)
         .unwrap_or_else(|e| panic!("Failed to parse test case YAML {}: {}", yaml_path, e))
 }
