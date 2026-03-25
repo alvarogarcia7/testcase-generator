@@ -2187,6 +2187,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "testcase-validation"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "jsonschema",
+ "log",
+ "roxmltree",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "testcase-common",
+ "testcase-models",
+]
+
+[[package]]
 name = "textwrap"
 version = "0.16.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
