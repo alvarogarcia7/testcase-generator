@@ -16,6 +16,7 @@ members = [
     "crates/test-verify",
     "crates/validate-json",
     "crates/validate-yaml",
+    "crates/verifier",
 ]
 resolver = "2"
 
