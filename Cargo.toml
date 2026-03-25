@@ -1,98 +1,56 @@
 [workspace]
-members = ["bash-eval"]
+members = [
+    "crates/bash-eval",
+    "crates/testcase-models",
+    "crates/testcase-manager",
+]
+resolver = "2"
 
-[package]
-name = "testcase-manager"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-bash-eval = { path = "bash-eval" }
-clap = { version = "4.4", features = ["derive"] }
+[workspace.dependencies]
+# Core serialization and deserialization
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_yaml = "0.9"
 serde_path_to_error = "*"
+
+# CLI and UI
+clap = { version = "4.4", features = ["derive"] }
 skim = "0.10"
 dialoguer = "0.12.0"
 edit = "0.1"
-git2 = "0.20.3"
-jsonschema = "0.17"
+
+# Error handling and utilities
 anyhow = "=1.0.99"
-chrono = { version = "0.4", features = ["serde"] }
-indexmap = { version = "2.1", features = ["serde"] }
-dotenvy = "0.15"
-tempfile = "3.8"
-toml = "0.9.11"
 log = "0.4"
 env_logger = "0.11"
 regex = "1.10"
-roxmltree = "0.20"
-strip-ansi-escapes = "0.2"
+
+# Date and time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Data structures
+indexmap = { version = "2.1", features = ["serde"] }
+
+# Git integration
+git2 = "0.20.3"
+
+# Validation and schemas
+jsonschema = "0.17"
+
+# Configuration and environment
+dotenvy = "0.15"
+toml = "0.9.11"
+
+# File system and I/O
+tempfile = "3.8"
 notify = "8.2"
 walkdir = "2.4"
 
-[dev-dependencies]
-tempfile = "3.8"
-reqwest = { version = "0.11", features = ["blocking"] }
+# XML processing
 roxmltree = "0.20"
 
-[[bin]]
-name = "validate-yaml"
-path = "src/bin/validate-yaml.rs"
+# Terminal and text processing
+strip-ansi-escapes = "0.2"
 
-[[bin]]
-name = "validate-json"
-path = "src/bin/validate-json.rs"
-
-[[bin]]
-name = "trm"
-path = "src/bin/test-run-manager.rs"
-
-[[bin]]
-name = "test-verify"
-path = "src/bin/test-verify.rs"
-
-[[bin]]
-name = "test-executor"
-path = "src/bin/test-executor.rs"
-
-[[bin]]
-name = "editor"
-path = "src/main_editor.rs"
-
-[[bin]]
-name = "test-orchestrator"
-path = "src/bin/test-orchestrator.rs"
-
-[[bin]]
-name = "script-cleanup"
-path = "src/bin/script-cleanup.rs"
-
-[[bin]]
-name = "json-escape"
-path = "src/bin/json-escape.rs"
-
-[[bin]]
-name = "verifier"
-path = "src/bin/verifier.rs"
-
-[[bin]]
-name = "test-plan-documentation-generator-compat"
-path = "src/bin/test-plan-documentation-generator-compat.rs"
-
-[[bin]]
-name = "json-to-yaml"
-path = "src/bin/json-to-yaml.rs"
-
-[[example]]
-name = "tty_fallback_demo"
-path = "examples/tty_fallback_demo.rs"
-
-[[example]]
-name = "test_verify_demo"
-path = "examples/test_verify_demo.rs"
-
-[[example]]
-name = "test_verify_integration"
-path = "examples/test_verify_integration.rs"
+# HTTP client (dev dependency)
+reqwest = { version = "0.11", features = ["blocking"] }

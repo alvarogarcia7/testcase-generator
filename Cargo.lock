@@ -2153,8 +2153,21 @@ dependencies = [
  "skim",
  "strip-ansi-escapes",
  "tempfile",
+ "testcase-models",
  "toml",
  "walkdir",
+]
+
+[[package]]
+name = "testcase-models"
+version = "0.1.0"
+dependencies = [
+ "bash-eval",
+ "chrono",
+ "indexmap 2.13.0",
+ "serde",
+ "serde_json",
+ "serde_yaml",
 ]
 
 [[package]]

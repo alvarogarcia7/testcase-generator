@@ -160,7 +160,7 @@ test-all: test test-e2e
 .PHONY: test-all
 
 # Coverage exclusion pattern - escapes dots for regex
-COVERAGE_EXCLUDE_REGEX = (fuzzy\\.rs|prompts\\.rs|main_editor\\.rs)
+COVERAGE_EXCLUDE_REGEX = (crates/testcase-manager/src/fuzzy\\.rs|crates/testcase-manager/src/prompts\\.rs|crates/testcase-manager/src/main_editor\\.rs)
 
 coverage:
 	cargo llvm-cov --all-features --workspace --tests --ignore-filename-regex '$(COVERAGE_EXCLUDE_REGEX)' --fail-under-lines 50

@@ -168,16 +168,16 @@ mkdir -p "$COVERAGE_DATA_DIR"
 
 # Define modules to track for coverage
 # Focus on document generation and template rendering modules
-INCLUDE_MODULES="src/lib.rs,src/verification.rs,src/verification_templates.rs,src/parser.rs,src/models.rs,src/bin/verifier.rs,src/bin/test-plan-documentation-generator-compat.rs"
+INCLUDE_MODULES="crates/testcase-manager/src/lib.rs,crates/testcase-manager/src/verification.rs,crates/testcase-manager/src/verification_templates.rs,crates/testcase-manager/src/parser.rs,crates/testcase-manager/src/models.rs,crates/testcase-manager/src/bin/verifier.rs,crates/testcase-manager/src/bin/test-plan-documentation-generator-compat.rs"
 
 log_info "Tracking coverage for modules:"
-log_info "  - src/lib.rs (library exports)"
-log_info "  - src/verification.rs (verification and report generation)"
-log_info "  - src/verification_templates.rs (template rendering)"
-log_info "  - src/parser.rs (YAML parsing)"
-log_info "  - src/models.rs (data models)"
-log_info "  - src/bin/verifier.rs (verifier binary)"
-log_info "  - src/bin/test-plan-documentation-generator-compat.rs (documentation generator compatibility)"
+log_info "  - crates/testcase-manager/src/lib.rs (library exports)"
+log_info "  - crates/testcase-manager/src/verification.rs (verification and report generation)"
+log_info "  - crates/testcase-manager/src/verification_templates.rs (template rendering)"
+log_info "  - crates/testcase-manager/src/parser.rs (YAML parsing)"
+log_info "  - crates/testcase-manager/src/models.rs (data models)"
+log_info "  - crates/testcase-manager/src/bin/verifier.rs (verifier binary)"
+log_info "  - crates/testcase-manager/src/bin/test-plan-documentation-generator-compat.rs (documentation generator compatibility)"
 echo ""
 
 # Build tarpaulin command
@@ -186,9 +186,9 @@ TARPAULIN_CMD=(
     --out Json
     --out Stdout
     --output-dir "$OUTPUT_DIR"
-    --exclude-files "src/fuzzy.rs"
-    --exclude-files "src/prompts.rs"
-    --exclude-files "src/main_editor.rs"
+    --exclude-files "crates/testcase-manager/src/fuzzy.rs"
+    --exclude-files "crates/testcase-manager/src/prompts.rs"
+    --exclude-files "crates/testcase-manager/src/main_editor.rs"
     --workspace
     --bins
     --no-fail-fast
@@ -372,13 +372,13 @@ Configuration:
   Output Directory: $OUTPUT_DIR
 
 Modules Tracked:
-  - src/lib.rs (library exports)
-  - src/verification.rs (verification and report generation)
-  - src/verification_templates.rs (template rendering)
-  - src/parser.rs (YAML parsing)
-  - src/models.rs (data models)
-  - src/bin/verifier.rs (verifier binary)
-  - src/bin/test-plan-documentation-generator-compat.rs (documentation generator)
+  - crates/testcase-manager/src/lib.rs (library exports)
+  - crates/testcase-manager/src/verification.rs (verification and report generation)
+  - crates/testcase-manager/src/verification_templates.rs (template rendering)
+  - crates/testcase-manager/src/parser.rs (YAML parsing)
+  - crates/testcase-manager/src/models.rs (data models)
+  - crates/testcase-manager/src/bin/verifier.rs (verifier binary)
+  - crates/testcase-manager/src/bin/test-plan-documentation-generator-compat.rs (documentation generator)
 
 Coverage Tool: cargo-tarpaulin $(cargo-tarpaulin --version 2>/dev/null || echo "version unknown")
 

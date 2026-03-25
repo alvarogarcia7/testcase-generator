@@ -1,0 +1,96 @@
+[package]
+name = "testcase-manager"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bash-eval = { path = "../bash-eval" }
+testcase-models = { path = "../testcase-models" }
+clap = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+serde_path_to_error = { workspace = true }
+skim = { workspace = true }
+dialoguer = { workspace = true }
+edit = { workspace = true }
+git2 = { workspace = true }
+jsonschema = { workspace = true }
+anyhow = { workspace = true }
+chrono = { workspace = true }
+indexmap = { workspace = true }
+dotenvy = { workspace = true }
+tempfile = { workspace = true }
+toml = { workspace = true }
+log = { workspace = true }
+env_logger = { workspace = true }
+regex = { workspace = true }
+roxmltree = { workspace = true }
+strip-ansi-escapes = { workspace = true }
+notify = { workspace = true }
+walkdir = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+reqwest = { workspace = true }
+roxmltree = { workspace = true }
+
+[[bin]]
+name = "validate-yaml"
+path = "src/bin/validate-yaml.rs"
+
+[[bin]]
+name = "validate-json"
+path = "src/bin/validate-json.rs"
+
+[[bin]]
+name = "trm"
+path = "src/bin/test-run-manager.rs"
+
+[[bin]]
+name = "test-verify"
+path = "src/bin/test-verify.rs"
+
+[[bin]]
+name = "test-executor"
+path = "src/bin/test-executor.rs"
+
+[[bin]]
+name = "editor"
+path = "src/main_editor.rs"
+
+[[bin]]
+name = "test-orchestrator"
+path = "src/bin/test-orchestrator.rs"
+
+[[bin]]
+name = "script-cleanup"
+path = "src/bin/script-cleanup.rs"
+
+[[bin]]
+name = "json-escape"
+path = "src/bin/json-escape.rs"
+
+[[bin]]
+name = "verifier"
+path = "src/bin/verifier.rs"
+
+[[bin]]
+name = "test-plan-documentation-generator-compat"
+path = "src/bin/test-plan-documentation-generator-compat.rs"
+
+[[bin]]
+name = "json-to-yaml"
+path = "src/bin/json-to-yaml.rs"
+
+[[example]]
+name = "tty_fallback_demo"
+path = "examples/tty_fallback_demo.rs"
+
+[[example]]
+name = "test_verify_demo"
+path = "examples/test_verify_demo.rs"
+
+[[example]]
+name = "test_verify_integration"
+path = "examples/test_verify_integration.rs"
