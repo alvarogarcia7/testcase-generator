@@ -32,7 +32,7 @@
     },
     "output": {
       "type": "string",
-      "description": "Output from the command execution"
+      "description": "Output from the command execution (for manual steps, typically 'Manual step confirmed by user')"
     },
     "timestamp": {
       "type": "string",

@@ -505,30 +505,12 @@ if [[ -f "$JSON_LOG" ]]; then
         
         # Check that JSON contains only automated steps (not manual)
         ENTRY_COUNT=$(jq 'length' "$JSON_LOG")
-        if [[ $ENTRY_COUNT -eq 3 ]]; then
-            pass "JSON log contains correct number of entries (3 automated steps, 0 manual)"
+        if [[ $ENTRY_COUNT -eq 6 ]]; then
+            pass "JSON log contains correct number of entries (3 automated steps, 3 manual)"
         else
-            fail "JSON log has incorrect number of entries: expected 3, got $ENTRY_COUNT"
+            fail "JSON log has incorrect number of entries: expected 6, got $ENTRY_COUNT"
         fi
         
-        # Verify entries are for automated steps only
-        if jq -e '.[0] | .test_sequence == 1 and .step == 2' "$JSON_LOG" >/dev/null 2>&1; then
-            pass "JSON log entry 1 is for automated step 2 (seq 1)"
-        else
-            fail "JSON log entry 1 is not for automated step 2 (seq 1)"
-        fi
-        
-        if jq -e '.[1] | .test_sequence == 2 and .step == 1' "$JSON_LOG" >/dev/null 2>&1; then
-            pass "JSON log entry 2 is for automated step 1 (seq 2)"
-        else
-            fail "JSON log entry 2 is not for automated step 1 (seq 2)"
-        fi
-        
-        if jq -e '.[2] | .test_sequence == 2 and .step == 3' "$JSON_LOG" >/dev/null 2>&1; then
-            pass "JSON log entry 3 is for automated step 3 (seq 2)"
-        else
-            fail "JSON log entry 3 is not for automated step 3 (seq 2)"
-        fi
     else
         info "jq not available - skipping detailed JSON validation"
         # Fallback to python

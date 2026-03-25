@@ -747,8 +747,9 @@ fn parse_match_strategy(strategy: &str) -> Result<MatchStrategy> {
         "regex" => Ok(MatchStrategy::Regex),
         "contains" => Ok(MatchStrategy::Contains),
         "precomputed" => Ok(MatchStrategy::Precomputed),
+        "bash-evaluation" | "bash" => Ok(MatchStrategy::BashEvaluation),
         _ => anyhow::bail!(
-            "Invalid match strategy '{}'. Must be one of: exact, regex, contains, precomputed",
+            "Invalid match strategy '{}'. Must be one of: exact, regex, contains, precomputed, bash-evaluation",
             strategy
         ),
     }

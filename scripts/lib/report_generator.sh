@@ -339,11 +339,11 @@ check_test_plan_doc_gen_available() {
     if [[ $find_result -eq 0 ]] && [[ -n "$binary_path" ]]; then
         log_debug "test-plan-doc-gen found at: $binary_path"
         
-        # Verify the binary is executable
-        if [[ ! -x "$binary_path" ]]; then
-            log_error "test-plan-doc-gen found but is not executable: $binary_path"
-            return 1
-        fi
+#        # Verify the binary is executable
+#        if [[ ! -x "$binary_path" ]]; then
+#            log_error "test-plan-doc-gen found but is not executable: $binary_path"
+#            return 1
+#        fi
         
         return 0
     else

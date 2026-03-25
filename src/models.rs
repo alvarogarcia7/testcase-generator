@@ -161,6 +161,25 @@ impl VerificationExpression {
     }
 }
 
+impl From<&VerificationExpression> for bash_eval::BashExpression {
+    fn from(expr: &VerificationExpression) -> Self {
+        match expr {
+            VerificationExpression::Simple(s) => bash_eval::BashExpression::Simple(s.clone()),
+            VerificationExpression::Conditional {
+                condition,
+                if_true,
+                if_false,
+                always,
+            } => bash_eval::BashExpression::Conditional {
+                condition: condition.clone(),
+                if_true: if_true.clone(),
+                if_false: if_false.clone(),
+                always: always.clone(),
+            },
+        }
+    }
+}
+
 /// Capture variable configuration
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct CaptureVar {

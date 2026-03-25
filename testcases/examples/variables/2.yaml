@@ -41,10 +41,10 @@ test_sequences:
       output: HELLO WORLD
     verification:
       result: '[[ $EXIT_CODE -eq 0 ]]'
-      output: '[[ $STEP_VAR_output_len -gt 11 ]] && [[ $(grep -c "HELLO" <<< "$COMMAND_OUTPUT")
+      output: '[[ $output_len -gt 11 ]] && [[ $(grep -c "HELLO" <<< "$COMMAND_OUTPUT")
         -eq 1 ]]'
       general:
       - name: verify output_len is numeric
-        condition: '[[ $STEP_VAR_output_len =~ ^[0-9]+$ ]]'
+        condition: '[[ $output_len =~ ^[0-9]+$ ]]'
       - name: verify output_len value
-        condition: '[[ $STEP_VAR_output_len -ge 5 ]]'
+        condition: '[[ $output_len -ge 5 ]]'

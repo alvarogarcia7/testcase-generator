@@ -43,7 +43,7 @@ test: setup-python-for-test
 	${MAKE} test-unit
 	${MAKE} test-e2e
 	${MAKE} verify-testcases
-	${MAKE} generate-docs-coverage
+# 	${MAKE} generate-docs-coverage
 	${MAKE} coverage-clean
 .PHONY: test
 

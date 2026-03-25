@@ -348,7 +348,7 @@ check_variable_code() {
     local script_file="$1"
     
     # Look for variable capture or substitution patterns
-    if grep -q 'STEP_VAR_' "$script_file" || grep -q 'capture_vars' "$script_file" || grep -q 'SUBSTITUTED_COMMAND' "$script_file"; then
+    if grep -q 'CAPTURED_VAR_NAMES' "$script_file" || grep -q 'capture_vars' "$script_file" || grep -q 'SUBSTITUTED_COMMAND' "$script_file"; then
         return 0
     else
         return 1
