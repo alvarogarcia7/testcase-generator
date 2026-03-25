@@ -9,7 +9,6 @@ pub mod fuzzy;
 pub mod git;
 pub mod junit_xml_validator;
 pub mod oracle;
-pub mod orchestrator;
 pub mod prompts;
 pub mod recovery_extensions;
 pub mod sample_extensions;
@@ -97,6 +96,9 @@ pub use testcase_verification::{
     LogCleaner, MatchStrategy, SequenceVerificationResult, StepVerificationResultEnum,
     TemplateCategory, TestVerifier, VerificationTemplate, VerificationTemplateLibrary,
 };
+
+// Re-export from testcase-orchestration crate
+pub use testcase_orchestration::{RetryPolicy, TestOrchestrator, WorkerConfig};
 
 // Legacy exports (for backward compatibility)
 pub use testcase_verification::DiffDetail;

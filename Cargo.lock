@@ -2187,6 +2187,7 @@ dependencies = [
  "testcase-common",
  "testcase-execution",
  "testcase-models",
+ "testcase-orchestration",
  "testcase-storage",
  "testcase-verification",
  "toml",
@@ -2203,6 +2204,23 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
+]
+
+[[package]]
+name = "testcase-orchestration"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "log",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "tempfile",
+ "testcase-execution",
+ "testcase-models",
+ "testcase-storage",
+ "testcase-verification",
 ]
 
 [[package]]

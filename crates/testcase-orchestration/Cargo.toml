@@ -1,0 +1,19 @@
+[package]
+name = "testcase-orchestration"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+testcase-models = { path = "../testcase-models" }
+testcase-execution = { path = "../testcase-execution" }
+testcase-storage = { path = "../testcase-storage" }
+testcase-verification = { path = "../testcase-verification" }
+anyhow = { workspace = true }
+chrono = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+log = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

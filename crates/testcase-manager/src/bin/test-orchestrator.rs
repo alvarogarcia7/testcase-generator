@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use clap::{CommandFactory, Parser, Subcommand};
 use std::path::PathBuf;
 use testcase_manager::fuzzy::TestCaseFuzzyFinder;
-use testcase_manager::orchestrator::{RetryPolicy, TestOrchestrator, WorkerConfig};
+use testcase_manager::{RetryPolicy, TestOrchestrator, WorkerConfig};
 use testcase_manager::{TestCaseFilter, TestCaseFilterer, TestCaseStorage, TestRunStorage};
 
 #[derive(Parser)]

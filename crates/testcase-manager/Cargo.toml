@@ -8,6 +8,7 @@ bash-eval = { path = "../bash-eval" }
 testcase-models = { path = "../testcase-models" }
 testcase-common = { path = "../testcase-common" }
 testcase-execution = { path = "../testcase-execution" }
+testcase-orchestration = { path = "../testcase-orchestration" }
 testcase-storage = { path = "../testcase-storage" }
 testcase-verification = { path = "../testcase-verification" }
 clap = { workspace = true }
