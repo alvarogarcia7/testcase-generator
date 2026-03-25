@@ -1,8 +1,6 @@
 use crate::executor::TestExecutor;
 use crate::storage::TestCaseStorage;
 use crate::test_run_storage::TestRunStorage;
-use crate::verification::{TestCaseVerificationResult, TestExecutionLog, TestVerifier};
-use crate::MatchStrategy::{Contains, Exact};
 use anyhow::{Context, Result};
 use chrono::Local;
 use std::collections::HashMap;
@@ -14,6 +12,10 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 use testcase_models::{TestCase, TestRun, TestRunStatus};
+use testcase_verification::{
+    MatchStrategy, TestCaseVerificationResult, TestExecutionLog, TestVerifier,
+};
+use MatchStrategy::{Contains, Exact};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RetryStrategy {

@@ -368,7 +368,7 @@ fn test_additional_properties_not_allowed() -> Result<()> {
 #[test]
 fn test_container_report_with_step_verification_enum_validates() -> Result<()> {
     use chrono::Utc;
-    use testcase_manager::verification::ContainerReportMetadata;
+    use testcase_manager::ContainerReportMetadata;
     use testcase_manager::{
         ContainerReport, Expected, SequenceVerificationResult, StepVerificationResultEnum,
         TestCaseVerificationResult,

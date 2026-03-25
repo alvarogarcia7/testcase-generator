@@ -8,8 +8,8 @@ use testcase_manager::BatchVerificationReport;
 use testcase_manager::ContainerReport;
 use testcase_manager::ContainerReportConfig;
 use testcase_manager::MatchStrategy;
+use testcase_manager::StorageTestVerifier;
 use testcase_manager::TestCaseStorage;
-use testcase_manager::TestVerifier;
 
 /// Configuration for the verifier report output
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -184,7 +184,7 @@ fn main() -> Result<()> {
     // Initialize storage and verifier
     let storage = TestCaseStorage::new(&cli.test_case_dir)
         .context("Failed to initialize test case storage")?;
-    let verifier = TestVerifier::with_strategies(storage, match_strategy, match_strategy);
+    let verifier = StorageTestVerifier::with_strategies(storage, match_strategy, match_strategy);
 
     // Execute appropriate mode
     let report = match mode {
@@ -290,7 +290,7 @@ fn validate_args(cli: &Cli) -> Result<ValidationResult> {
 }
 
 fn handle_single_file_mode(
-    verifier: &TestVerifier,
+    verifier: &StorageTestVerifier,
     log_path: &PathBuf,
     test_case_id: &str,
 ) -> Result<BatchVerificationReport> {
@@ -348,7 +348,7 @@ fn handle_single_file_mode(
 }
 
 fn handle_folder_mode(
-    verifier: &TestVerifier,
+    verifier: &StorageTestVerifier,
     folder_path: &PathBuf,
 ) -> Result<BatchVerificationReport> {
     log::debug!(
@@ -633,7 +633,7 @@ fn load_configuration(cli: &Cli) -> Result<VerifierConfig> {
 }
 
 fn generate_output(
-    verifier: &TestVerifier,
+    verifier: &StorageTestVerifier,
     report: &BatchVerificationReport,
     format: &str,
     config: &VerifierConfig,

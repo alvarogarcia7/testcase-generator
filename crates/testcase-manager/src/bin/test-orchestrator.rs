@@ -442,7 +442,7 @@ fn main() -> Result<()> {
                         println!("  {}", "-".repeat(60));
 
                         for step_result in &sequence.step_results {
-                            use testcase_manager::verification::StepVerificationResultEnum;
+                            use testcase_manager::StepVerificationResultEnum;
 
                             match step_result {
                                 StepVerificationResultEnum::Pass {
@@ -544,7 +544,7 @@ fn main() -> Result<()> {
                             println!("  {}", "-".repeat(60));
 
                             for step_result in &sequence.step_results {
-                                use testcase_manager::verification::StepVerificationResultEnum;
+                                use testcase_manager::StepVerificationResultEnum;
 
                                 match step_result {
                                     StepVerificationResultEnum::Pass {

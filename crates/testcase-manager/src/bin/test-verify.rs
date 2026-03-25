@@ -4,8 +4,8 @@ use std::fs;
 use std::path::PathBuf;
 use testcase_manager::BatchVerificationReport;
 use testcase_manager::LogCleaner;
+use testcase_manager::StorageTestVerifier;
 use testcase_manager::TestCaseStorage;
-use testcase_manager::TestVerifier;
 use testcase_manager::VerificationTestExecutionLog;
 
 #[derive(Parser)]
@@ -181,7 +181,7 @@ fn clean_command(log_file: PathBuf) -> Result<()> {
 fn handle_parse_log(log_path: PathBuf, format: String) -> Result<()> {
     let storage =
         TestCaseStorage::new("testcases").context("Failed to initialize test case storage")?;
-    let verifier = TestVerifier::from_storage(storage);
+    let verifier = StorageTestVerifier::from_storage(storage);
 
     let logs = verifier
         .parse_log_file(&log_path)
@@ -667,7 +667,7 @@ fn format_batch_report_text(report: &BatchVerificationReport) -> String {
 
 fn format_batch_report_verbose(
     report: &BatchVerificationReport,
-    verifier: &TestVerifier,
+    verifier: &StorageTestVerifier,
     log_paths: &[PathBuf],
 ) -> String {
     use std::collections::HashMap;
@@ -993,7 +993,7 @@ fn handle_single_verify(
 ) -> Result<()> {
     let storage =
         TestCaseStorage::new(&test_case_dir).context("Failed to initialize test case storage")?;
-    let verifier = TestVerifier::from_storage(storage);
+    let verifier = StorageTestVerifier::from_storage(storage);
 
     // Parse log file
     let logs = verifier
@@ -1043,7 +1043,7 @@ fn handle_batch_verify(
 ) -> Result<()> {
     let storage =
         TestCaseStorage::new(&test_case_dir).context("Failed to initialize test case storage")?;
-    let verifier = TestVerifier::from_storage(storage);
+    let verifier = StorageTestVerifier::from_storage(storage);
 
     log::info!("Processing {} log file(s)...", log_paths.len());
 

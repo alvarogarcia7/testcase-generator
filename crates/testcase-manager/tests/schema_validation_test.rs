@@ -1,5 +1,5 @@
 use jsonschema::JSONSchema;
-use testcase_manager::verification::{
+use testcase_manager::{
     SequenceVerificationResult, StepVerificationResultEnum, TestCaseVerificationResult,
 };
 use testcase_models::Expected;

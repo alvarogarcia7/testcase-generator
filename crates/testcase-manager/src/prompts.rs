@@ -1013,7 +1013,7 @@ eUICC:
         oracle: &Arc<dyn Oracle>,
     ) -> Result<testcase_models::Verification> {
         use crate::fuzzy::TestCaseFuzzyFinder;
-        use crate::verification_templates::VerificationTemplateLibrary;
+        use crate::VerificationTemplateLibrary;
 
         println!("\n=== Verification Expressions ===");
 
@@ -1102,7 +1102,7 @@ eUICC:
         oracle: &Arc<dyn Oracle>,
     ) -> Result<testcase_models::Verification> {
         use crate::fuzzy::TestCaseFuzzyFinder;
-        use crate::verification_templates::VerificationTemplateLibrary;
+        use crate::VerificationTemplateLibrary;
 
         println!("\n=== Verification Expressions ===");
 
@@ -1323,7 +1323,7 @@ eUICC:
 
     /// Helper to apply a selected template with optional editing
     fn apply_selected_template(
-        template: &crate::verification_templates::VerificationTemplate,
+        template: &crate::VerificationTemplate,
         oracle: &Arc<dyn Oracle>,
     ) -> Result<testcase_models::Verification> {
         println!("\n✓ Selected template: {}", template.name);

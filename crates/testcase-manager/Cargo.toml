@@ -7,6 +7,7 @@ edition = "2021"
 bash-eval = { path = "../bash-eval" }
 testcase-models = { path = "../testcase-models" }
 testcase-common = { path = "../testcase-common" }
+testcase-verification = { path = "../testcase-verification" }
 clap = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

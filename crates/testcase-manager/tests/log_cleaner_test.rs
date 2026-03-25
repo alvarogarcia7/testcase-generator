@@ -1,4 +1,4 @@
-use testcase_manager::log_cleaner::LogCleaner;
+use testcase_manager::LogCleaner;
 use testcase_models::TestExecutionLog;
 
 // ============================================================================

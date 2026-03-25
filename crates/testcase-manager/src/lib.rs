@@ -12,7 +12,6 @@ pub mod fuzzy;
 pub mod git;
 pub mod hydration;
 pub mod junit_xml_validator;
-pub mod log_cleaner;
 pub mod oracle;
 pub mod orchestrator;
 pub mod parser;
@@ -24,7 +23,6 @@ pub mod test_run_storage;
 pub mod ui;
 pub mod validation;
 pub mod verification;
-pub mod verification_templates;
 
 pub use bdd_parser::{parse_bdd_statement, BddStepDefinition, BddStepMatcher, BddStepRegistry};
 pub use builder::TestCaseBuilder;
@@ -42,7 +40,6 @@ pub use fuzzy::TestCaseFuzzyFinder;
 pub use git::{CommitInfo, GitManager};
 pub use hydration::VarHydrator;
 pub use junit_xml_validator::validate_junit_xml;
-pub use log_cleaner::LogCleaner;
 pub use oracle::{AnswerVariant, HardcodedOracle, MenuCliOracle, Oracle, TtyCliOracle};
 pub use parser::{SearchableCollections, TestCaseParser};
 pub use prompts::{Prompts, TestCaseMetadata};
@@ -94,16 +91,19 @@ pub use testcase_models::VerificationReport;
 pub use testcase_models::VerificationStatus;
 pub use ui::{print_title, TitleStyle};
 pub use validation::SchemaValidator;
-pub use verification::BatchVerificationReport;
-pub use verification::ContainerReport;
-pub use verification::ContainerReportConfig;
-pub use verification::DiffDetail;
-pub use verification::ExecutionVerificationResult;
-pub use verification::MatchStrategy;
-pub use verification::SequenceVerificationResult;
-pub use verification::StepVerificationResult;
-pub use verification::StepVerificationResultEnum;
-pub use verification::TestCaseVerificationResult;
-pub use verification::TestExecutionLog as VerificationTestExecutionLog;
-pub use verification::TestVerifier;
-pub use verification::VerificationDiff;
+pub use verification::StorageTestVerifier;
+
+// Re-export from testcase-verification crate
+pub use testcase_verification::{
+    BatchVerificationReport, ContainerReport, ContainerReportConfig, ContainerReportMetadata,
+    LogCleaner, MatchStrategy, SequenceVerificationResult, StepVerificationResultEnum,
+    TemplateCategory, TestVerifier, VerificationTemplate, VerificationTemplateLibrary,
+};
+
+// Legacy exports (for backward compatibility)
+pub use testcase_verification::DiffDetail;
+pub use testcase_verification::ExecutionVerificationResult;
+pub use testcase_verification::StepVerificationResult;
+pub use testcase_verification::TestCaseVerificationResult;
+pub use testcase_verification::TestExecutionLog as VerificationTestExecutionLog;
+pub use testcase_verification::VerificationDiff;

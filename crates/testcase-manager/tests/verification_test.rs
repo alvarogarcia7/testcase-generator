@@ -1,6 +1,6 @@
 use chrono::{Local, Utc};
 use std::path::PathBuf;
-use testcase_manager::verification::{
+use testcase_manager::{
     DiffDetail, MatchStrategy, StepVerificationResult, TestCaseVerificationResult,
     TestExecutionLog, TestVerifier, VerificationDiff,
 };
@@ -1163,7 +1163,7 @@ fn test_match_strategy_serialization() {
 
 #[test]
 fn test_generate_report_yaml_basic() {
-    use testcase_manager::verification::{TestCaseVerificationResult, TestVerifier};
+    use testcase_manager::{TestCaseVerificationResult, TestVerifier};
 
     let verifier = TestVerifier::with_exact_matching();
 
@@ -1194,7 +1194,7 @@ fn test_generate_report_yaml_basic() {
 
 #[test]
 fn test_generate_report_yaml_with_sequences() {
-    use testcase_manager::verification::{
+    use testcase_manager::{
         SequenceVerificationResult, StepVerificationResultEnum, TestCaseVerificationResult,
         TestVerifier,
     };
@@ -1264,7 +1264,7 @@ fn test_generate_report_yaml_with_sequences() {
 
 #[test]
 fn test_generate_report_yaml_not_executed_steps() {
-    use testcase_manager::verification::{
+    use testcase_manager::{
         SequenceVerificationResult, StepVerificationResultEnum, TestCaseVerificationResult,
         TestVerifier,
     };
@@ -1319,7 +1319,7 @@ fn test_generate_report_yaml_not_executed_steps() {
 
 #[test]
 fn test_generate_report_json_basic() {
-    use testcase_manager::verification::{TestCaseVerificationResult, TestVerifier};
+    use testcase_manager::{TestCaseVerificationResult, TestVerifier};
 
     let verifier = TestVerifier::with_exact_matching();
 
@@ -1356,7 +1356,7 @@ fn test_generate_report_json_basic() {
 
 #[test]
 fn test_generate_report_json_with_sequences() {
-    use testcase_manager::verification::{
+    use testcase_manager::{
         SequenceVerificationResult, StepVerificationResultEnum, TestCaseVerificationResult,
         TestVerifier,
     };
@@ -1417,7 +1417,7 @@ fn test_generate_report_json_with_sequences() {
 
 #[test]
 fn test_generate_report_yaml_roundtrip() {
-    use testcase_manager::verification::{TestCaseVerificationResult, TestVerifier};
+    use testcase_manager::{TestCaseVerificationResult, TestVerifier};
 
     let verifier = TestVerifier::with_exact_matching();
 
@@ -1449,7 +1449,7 @@ fn test_generate_report_yaml_roundtrip() {
 
 #[test]
 fn test_generate_report_json_roundtrip() {
-    use testcase_manager::verification::{TestCaseVerificationResult, TestVerifier};
+    use testcase_manager::{TestCaseVerificationResult, TestVerifier};
 
     let verifier = TestVerifier::with_exact_matching();
 
@@ -1479,7 +1479,7 @@ fn test_generate_report_json_roundtrip() {
 
 #[test]
 fn test_report_generation_special_characters() {
-    use testcase_manager::verification::{TestCaseVerificationResult, TestVerifier};
+    use testcase_manager::{TestCaseVerificationResult, TestVerifier};
 
     let verifier = TestVerifier::with_exact_matching();
 
@@ -1516,7 +1516,7 @@ fn test_report_generation_special_characters() {
 
 #[test]
 fn test_report_generation_unicode() {
-    use testcase_manager::verification::{TestCaseVerificationResult, TestVerifier};
+    use testcase_manager::{TestCaseVerificationResult, TestVerifier};
 
     let verifier = TestVerifier::with_exact_matching();
 
@@ -1547,7 +1547,7 @@ fn test_report_generation_unicode() {
 
 #[test]
 fn test_report_generation_empty_sequences() {
-    use testcase_manager::verification::{TestCaseVerificationResult, TestVerifier};
+    use testcase_manager::{TestCaseVerificationResult, TestVerifier};
 
     let verifier = TestVerifier::with_exact_matching();
 
@@ -1574,7 +1574,7 @@ fn test_report_generation_empty_sequences() {
 
 #[test]
 fn test_report_generation_optional_fields() {
-    use testcase_manager::verification::{TestCaseVerificationResult, TestVerifier};
+    use testcase_manager::{TestCaseVerificationResult, TestVerifier};
 
     let verifier = TestVerifier::with_exact_matching();
 
@@ -1625,7 +1625,7 @@ fn test_report_generation_optional_fields() {
 
 #[test]
 fn test_generate_report_yaml_complex_sequences() {
-    use testcase_manager::verification::{
+    use testcase_manager::{
         SequenceVerificationResult, StepVerificationResultEnum, TestCaseVerificationResult,
         TestVerifier,
     };
@@ -1731,7 +1731,7 @@ fn test_generate_report_yaml_complex_sequences() {
 
 #[test]
 fn test_generate_report_json_complex_sequences() {
-    use testcase_manager::verification::{
+    use testcase_manager::{
         SequenceVerificationResult, StepVerificationResultEnum, TestCaseVerificationResult,
         TestVerifier,
     };
@@ -1804,7 +1804,7 @@ fn test_generate_report_json_complex_sequences() {
 
 #[test]
 fn test_generate_report_multiline_descriptions() {
-    use testcase_manager::verification::{
+    use testcase_manager::{
         SequenceVerificationResult, StepVerificationResultEnum, TestCaseVerificationResult,
         TestVerifier,
     };
@@ -1857,7 +1857,7 @@ fn test_generate_report_multiline_descriptions() {
 
 #[test]
 fn test_generate_report_large_numbers() {
-    use testcase_manager::verification::{TestCaseVerificationResult, TestVerifier};
+    use testcase_manager::{TestCaseVerificationResult, TestVerifier};
 
     let verifier = TestVerifier::with_exact_matching();
 
@@ -1893,12 +1893,12 @@ fn test_generate_report_large_numbers() {
 
 #[test]
 fn test_report_generation_error_handling() {
-    use testcase_manager::verification::TestVerifier;
+    use testcase_manager::TestVerifier;
 
     let verifier = TestVerifier::with_exact_matching();
 
     // Test that report generation doesn't panic with empty data
-    let empty_result = testcase_manager::verification::TestCaseVerificationResult {
+    let empty_result = testcase_manager::TestCaseVerificationResult {
         test_case_id: "".to_string(),
         description: "".to_string(),
         sequences: vec![],
@@ -1921,7 +1921,7 @@ fn test_report_generation_error_handling() {
 
 #[test]
 fn test_step_verification_result_enum_methods() {
-    use testcase_manager::verification::StepVerificationResultEnum;
+    use testcase_manager::StepVerificationResultEnum;
 
     let pass = StepVerificationResultEnum::Pass {
         step: 1,
@@ -1976,7 +1976,7 @@ fn test_step_verification_result_enum_methods() {
 #[test]
 fn test_container_report_from_batch_report_constructor() {
     use chrono::{TimeZone, Utc};
-    use testcase_manager::verification::{BatchVerificationReport, ContainerReport};
+    use testcase_manager::{BatchVerificationReport, ContainerReport};
 
     let mut batch_report = BatchVerificationReport::new();
     let fixed_time = Utc.with_ymd_and_hms(2024, 3, 15, 14, 30, 0).unwrap();
@@ -2052,7 +2052,7 @@ fn test_container_report_from_batch_report_constructor() {
 #[test]
 fn test_container_report_yaml_serialization_structure() {
     use chrono::{TimeZone, Utc};
-    use testcase_manager::verification::{BatchVerificationReport, ContainerReport};
+    use testcase_manager::{BatchVerificationReport, ContainerReport};
 
     let mut batch_report = BatchVerificationReport::new();
     let fixed_time = Utc.with_ymd_and_hms(2024, 3, 15, 14, 30, 0).unwrap();
@@ -2116,7 +2116,7 @@ fn test_container_report_yaml_serialization_structure() {
 
 #[test]
 fn test_container_report_metadata_aggregation() {
-    use testcase_manager::verification::{BatchVerificationReport, ContainerReport};
+    use testcase_manager::{BatchVerificationReport, ContainerReport};
 
     let mut batch_report = BatchVerificationReport::new();
 
@@ -2199,7 +2199,7 @@ fn test_container_report_metadata_aggregation() {
 
 #[test]
 fn test_container_report_yaml_deserialization() {
-    use testcase_manager::verification::ContainerReport;
+    use testcase_manager::ContainerReport;
 
     // YAML matching the container_data.yml structure
     let yaml = r#"
@@ -2256,7 +2256,7 @@ metadata:
 #[test]
 fn test_container_report_roundtrip_serialization() {
     use chrono::{TimeZone, Utc};
-    use testcase_manager::verification::{BatchVerificationReport, ContainerReport};
+    use testcase_manager::{BatchVerificationReport, ContainerReport};
 
     let mut batch_report = BatchVerificationReport::new();
     let fixed_time = Utc.with_ymd_and_hms(2024, 3, 15, 14, 30, 0).unwrap();
@@ -2331,7 +2331,7 @@ fn test_container_report_roundtrip_serialization() {
 
 #[test]
 fn test_container_report_with_sequences_yaml_structure() {
-    use testcase_manager::verification::{
+    use testcase_manager::{
         BatchVerificationReport, ContainerReport, SequenceVerificationResult,
         StepVerificationResultEnum,
     };
@@ -2433,7 +2433,7 @@ fn test_container_report_with_sequences_yaml_structure() {
 
 #[test]
 fn test_container_report_optional_metadata_fields() {
-    use testcase_manager::verification::{BatchVerificationReport, ContainerReport};
+    use testcase_manager::{BatchVerificationReport, ContainerReport};
 
     let batch_report = BatchVerificationReport::new();
 
@@ -2502,7 +2502,7 @@ fn test_container_report_optional_metadata_fields() {
 
 #[test]
 fn test_container_report_empty_test_results() {
-    use testcase_manager::verification::{BatchVerificationReport, ContainerReport};
+    use testcase_manager::{BatchVerificationReport, ContainerReport};
 
     let batch_report = BatchVerificationReport::new();
 
@@ -2846,7 +2846,7 @@ fn test_precomputed_strategy_name() {
 fn test_container_report_config_defaults_only() {
     use tempfile::TempDir;
     use testcase_manager::storage::TestCaseStorage;
-    use testcase_manager::verification::{BatchVerificationReport, ContainerReportConfig};
+    use testcase_manager::{BatchVerificationReport, ContainerReportConfig};
 
     let temp_dir = TempDir::new().unwrap();
     let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
@@ -2889,7 +2889,7 @@ fn test_container_report_config_defaults_only() {
 
     // Verify optional fields are handled correctly when None
     // They should either not appear or be explicitly null
-    let parsed: testcase_manager::verification::ContainerReport =
+    let parsed: testcase_manager::ContainerReport =
         serde_yaml::from_str(&yaml).expect("Failed to parse YAML");
     assert_eq!(parsed.title, "Test Execution Results");
     assert_eq!(parsed.project, "Test Case Manager - Verification Results");
@@ -2899,7 +2899,7 @@ fn test_container_report_config_defaults_only() {
 
     // Test JSON format as well
     let json = verifier.generate_report(&[report], "json", config).unwrap();
-    let parsed_json: testcase_manager::verification::ContainerReport =
+    let parsed_json: testcase_manager::ContainerReport =
         serde_json::from_str(&json).expect("Failed to parse JSON");
     assert_eq!(parsed_json.title, "Test Execution Results");
     assert!(parsed_json.metadata.environment.is_none());
@@ -2909,7 +2909,7 @@ fn test_container_report_config_defaults_only() {
 fn test_container_report_config_cli_flags_only() {
     use tempfile::TempDir;
     use testcase_manager::storage::TestCaseStorage;
-    use testcase_manager::verification::{BatchVerificationReport, ContainerReportConfig};
+    use testcase_manager::{BatchVerificationReport, ContainerReportConfig};
 
     let temp_dir = TempDir::new().unwrap();
     let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
@@ -2948,7 +2948,7 @@ fn test_container_report_config_cli_flags_only() {
     assert!(yaml.contains("platform: CLI Platform"));
     assert!(yaml.contains("executor: CLI Executor"));
 
-    let parsed: testcase_manager::verification::ContainerReport =
+    let parsed: testcase_manager::ContainerReport =
         serde_yaml::from_str(&yaml).expect("Failed to parse YAML");
     assert_eq!(parsed.title, "CLI Test Report");
     assert_eq!(parsed.project, "CLI Test Project");
@@ -2964,7 +2964,7 @@ fn test_container_report_config_cli_flags_only() {
 fn test_container_report_config_file_only() {
     use tempfile::TempDir;
     use testcase_manager::storage::TestCaseStorage;
-    use testcase_manager::verification::{BatchVerificationReport, ContainerReportConfig};
+    use testcase_manager::{BatchVerificationReport, ContainerReportConfig};
 
     let temp_dir = TempDir::new().unwrap();
     let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
@@ -3003,7 +3003,7 @@ fn test_container_report_config_file_only() {
     assert!(yaml.contains("platform: Linux x86_64"));
     assert!(yaml.contains("executor: CI Pipeline v1.0"));
 
-    let parsed: testcase_manager::verification::ContainerReport =
+    let parsed: testcase_manager::ContainerReport =
         serde_yaml::from_str(&yaml).expect("Failed to parse YAML");
     assert_eq!(parsed.title, "Container Config Test Report");
     assert_eq!(parsed.project, "Container Config Test Project");
@@ -3019,7 +3019,7 @@ fn test_container_report_config_file_only() {
 fn test_container_report_config_file_with_cli_overrides() {
     use tempfile::TempDir;
     use testcase_manager::storage::TestCaseStorage;
-    use testcase_manager::verification::{BatchVerificationReport, ContainerReportConfig};
+    use testcase_manager::{BatchVerificationReport, ContainerReportConfig};
 
     let temp_dir = TempDir::new().unwrap();
     let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
@@ -3062,7 +3062,7 @@ fn test_container_report_config_file_with_cli_overrides() {
     assert!(yaml.contains("platform: Linux x86_64"));
     assert!(yaml.contains("executor: CI Pipeline v1.0"));
 
-    let parsed: testcase_manager::verification::ContainerReport =
+    let parsed: testcase_manager::ContainerReport =
         serde_yaml::from_str(&yaml).expect("Failed to parse YAML");
     assert_eq!(parsed.title, "Overridden Title");
     assert_eq!(parsed.project, "Container Config Test Project");
@@ -3078,7 +3078,7 @@ fn test_container_report_config_file_with_cli_overrides() {
 fn test_container_report_partial_config_with_defaults() {
     use tempfile::TempDir;
     use testcase_manager::storage::TestCaseStorage;
-    use testcase_manager::verification::{BatchVerificationReport, ContainerReportConfig};
+    use testcase_manager::{BatchVerificationReport, ContainerReportConfig};
 
     let temp_dir = TempDir::new().unwrap();
     let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
@@ -3117,7 +3117,7 @@ fn test_container_report_partial_config_with_defaults() {
     // Verify provided optional field is present
     assert!(yaml.contains("platform: macOS ARM64"));
 
-    let parsed: testcase_manager::verification::ContainerReport =
+    let parsed: testcase_manager::ContainerReport =
         serde_yaml::from_str(&yaml).expect("Failed to parse YAML");
     assert_eq!(parsed.title, "Minimal Test Report");
     assert_eq!(parsed.project, "Minimal Test Project");
@@ -3132,7 +3132,7 @@ fn test_container_report_partial_config_with_defaults() {
 
 #[test]
 fn test_step_verification_result_enum_yaml_externally_tagged_pass() {
-    use testcase_manager::verification::StepVerificationResultEnum;
+    use testcase_manager::StepVerificationResultEnum;
 
     let pass_variant = StepVerificationResultEnum::Pass {
         step: 1,
@@ -3163,7 +3163,7 @@ fn test_step_verification_result_enum_yaml_externally_tagged_pass() {
 
 #[test]
 fn test_step_verification_result_enum_yaml_externally_tagged_fail() {
-    use testcase_manager::verification::StepVerificationResultEnum;
+    use testcase_manager::StepVerificationResultEnum;
     use testcase_models::Expected;
 
     let fail_variant = StepVerificationResultEnum::Fail {
@@ -3205,7 +3205,7 @@ fn test_step_verification_result_enum_yaml_externally_tagged_fail() {
 
 #[test]
 fn test_step_verification_result_enum_yaml_externally_tagged_not_executed() {
-    use testcase_manager::verification::StepVerificationResultEnum;
+    use testcase_manager::StepVerificationResultEnum;
 
     let not_executed_variant = StepVerificationResultEnum::NotExecuted {
         step: 3,
@@ -3234,7 +3234,7 @@ fn test_step_verification_result_enum_yaml_externally_tagged_not_executed() {
 
 #[test]
 fn test_step_verification_result_enum_json_externally_tagged_pass() {
-    use testcase_manager::verification::StepVerificationResultEnum;
+    use testcase_manager::StepVerificationResultEnum;
 
     let pass_variant = StepVerificationResultEnum::Pass {
         step: 1,
@@ -3265,7 +3265,7 @@ fn test_step_verification_result_enum_json_externally_tagged_pass() {
 
 #[test]
 fn test_step_verification_result_enum_json_externally_tagged_fail() {
-    use testcase_manager::verification::StepVerificationResultEnum;
+    use testcase_manager::StepVerificationResultEnum;
     use testcase_models::Expected;
 
     let fail_variant = StepVerificationResultEnum::Fail {
@@ -3307,7 +3307,7 @@ fn test_step_verification_result_enum_json_externally_tagged_fail() {
 
 #[test]
 fn test_step_verification_result_enum_json_externally_tagged_not_executed() {
-    use testcase_manager::verification::StepVerificationResultEnum;
+    use testcase_manager::StepVerificationResultEnum;
 
     let not_executed_variant = StepVerificationResultEnum::NotExecuted {
         step: 3,
@@ -3337,7 +3337,7 @@ fn test_step_verification_result_enum_json_externally_tagged_not_executed() {
 
 #[test]
 fn test_step_verification_result_enum_yaml_all_variants_externally_tagged() {
-    use testcase_manager::verification::StepVerificationResultEnum;
+    use testcase_manager::StepVerificationResultEnum;
     use testcase_models::Expected;
 
     let variants = vec![
@@ -3396,7 +3396,7 @@ fn test_step_verification_result_enum_yaml_all_variants_externally_tagged() {
 
 #[test]
 fn test_step_verification_result_enum_json_all_variants_externally_tagged() {
-    use testcase_manager::verification::StepVerificationResultEnum;
+    use testcase_manager::StepVerificationResultEnum;
     use testcase_models::Expected;
 
     let variants = vec![
@@ -3458,7 +3458,7 @@ fn test_step_verification_result_enum_json_all_variants_externally_tagged() {
 fn test_container_report_config_json_format() {
     use tempfile::TempDir;
     use testcase_manager::storage::TestCaseStorage;
-    use testcase_manager::verification::{BatchVerificationReport, ContainerReportConfig};
+    use testcase_manager::{BatchVerificationReport, ContainerReportConfig};
 
     let temp_dir = TempDir::new().unwrap();
     let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
@@ -3497,7 +3497,7 @@ fn test_container_report_config_json_format() {
     assert!(json.contains("\"executor\": \"Test Executor\""));
 
     // Verify it can be deserialized
-    let parsed: testcase_manager::verification::ContainerReport =
+    let parsed: testcase_manager::ContainerReport =
         serde_json::from_str(&json).expect("Failed to parse JSON");
     assert_eq!(parsed.title, "JSON Config Test");
     assert_eq!(parsed.project, "JSON Config Project");

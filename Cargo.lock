@@ -2170,6 +2170,7 @@ dependencies = [
  "tempfile",
  "testcase-common",
  "testcase-models",
+ "testcase-verification",
  "toml",
  "walkdir",
 ]
@@ -2197,6 +2198,24 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
+ "testcase-common",
+ "testcase-models",
+]
+
+[[package]]
+name = "testcase-verification"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bash-eval",
+ "chrono",
+ "log",
+ "regex",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "strip-ansi-escapes",
+ "tempfile",
  "testcase-common",
  "testcase-models",
 ]

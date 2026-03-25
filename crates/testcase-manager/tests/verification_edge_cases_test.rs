@@ -1,6 +1,6 @@
 use std::fs;
 use testcase_manager::storage::TestCaseStorage;
-use testcase_manager::verification::{MatchStrategy, TestVerifier};
+use testcase_manager::{MatchStrategy, StorageTestVerifier};
 use testcase_models::TestCase;
 
 /// Helper function to load a test case YAML file
@@ -33,7 +33,7 @@ fn test_edge_all_fail_001() {
     let temp_dir = tempfile::TempDir::new().unwrap();
     let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
     let verifier =
-        TestVerifier::with_strategies(storage, MatchStrategy::Exact, MatchStrategy::Exact);
+        StorageTestVerifier::with_strategies(storage, MatchStrategy::Exact, MatchStrategy::Exact);
 
     // Parse execution log
     let logs = verifier.parse_log_file(&json_path).unwrap();
@@ -74,7 +74,7 @@ fn test_edge_all_missing_001() {
     let temp_dir = tempfile::TempDir::new().unwrap();
     let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
     let verifier =
-        TestVerifier::with_strategies(storage, MatchStrategy::Exact, MatchStrategy::Exact);
+        StorageTestVerifier::with_strategies(storage, MatchStrategy::Exact, MatchStrategy::Exact);
 
     let logs = verifier.parse_log_file(&json_path).unwrap();
     let result = verifier.verify_test_case(&test_case, &logs);
@@ -111,7 +111,7 @@ fn test_edge_all_pass_one_missing_001() {
     let temp_dir = tempfile::TempDir::new().unwrap();
     let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
     let verifier =
-        TestVerifier::with_strategies(storage, MatchStrategy::Exact, MatchStrategy::Exact);
+        StorageTestVerifier::with_strategies(storage, MatchStrategy::Exact, MatchStrategy::Exact);
 
     let logs = verifier.parse_log_file(&json_path).unwrap();
     let result = verifier.verify_test_case(&test_case, &logs);
@@ -148,7 +148,7 @@ fn test_edge_duplicate_steps_001() {
     let temp_dir = tempfile::TempDir::new().unwrap();
     let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
     let verifier =
-        TestVerifier::with_strategies(storage, MatchStrategy::Exact, MatchStrategy::Exact);
+        StorageTestVerifier::with_strategies(storage, MatchStrategy::Exact, MatchStrategy::Exact);
 
     let logs = verifier.parse_log_file(&json_path).unwrap();
     let result = verifier.verify_test_case(&test_case, &logs);
@@ -183,7 +183,7 @@ fn test_edge_extra_steps_001() {
     let temp_dir = tempfile::TempDir::new().unwrap();
     let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
     let verifier =
-        TestVerifier::with_strategies(storage, MatchStrategy::Exact, MatchStrategy::Exact);
+        StorageTestVerifier::with_strategies(storage, MatchStrategy::Exact, MatchStrategy::Exact);
 
     let logs = verifier.parse_log_file(&json_path).unwrap();
     let result = verifier.verify_test_case(&test_case, &logs);
@@ -218,7 +218,7 @@ fn test_edge_last_step_only_001() {
     let temp_dir = tempfile::TempDir::new().unwrap();
     let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
     let verifier =
-        TestVerifier::with_strategies(storage, MatchStrategy::Exact, MatchStrategy::Exact);
+        StorageTestVerifier::with_strategies(storage, MatchStrategy::Exact, MatchStrategy::Exact);
 
     let logs = verifier.parse_log_file(&json_path).unwrap();
     let result = verifier.verify_test_case(&test_case, &logs);
@@ -255,7 +255,7 @@ fn test_edge_missing_first_001() {
     let temp_dir = tempfile::TempDir::new().unwrap();
     let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
     let verifier =
-        TestVerifier::with_strategies(storage, MatchStrategy::Exact, MatchStrategy::Exact);
+        StorageTestVerifier::with_strategies(storage, MatchStrategy::Exact, MatchStrategy::Exact);
 
     let logs = verifier.parse_log_file(&json_path).unwrap();
     let result = verifier.verify_test_case(&test_case, &logs);
@@ -292,7 +292,7 @@ fn test_edge_missing_last_001() {
     let temp_dir = tempfile::TempDir::new().unwrap();
     let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
     let verifier =
-        TestVerifier::with_strategies(storage, MatchStrategy::Exact, MatchStrategy::Exact);
+        StorageTestVerifier::with_strategies(storage, MatchStrategy::Exact, MatchStrategy::Exact);
 
     let logs = verifier.parse_log_file(&json_path).unwrap();
     let result = verifier.verify_test_case(&test_case, &logs);
@@ -329,7 +329,7 @@ fn test_edge_missing_middle_001() {
     let temp_dir = tempfile::TempDir::new().unwrap();
     let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
     let verifier =
-        TestVerifier::with_strategies(storage, MatchStrategy::Exact, MatchStrategy::Exact);
+        StorageTestVerifier::with_strategies(storage, MatchStrategy::Exact, MatchStrategy::Exact);
 
     let logs = verifier.parse_log_file(&json_path).unwrap();
     let result = verifier.verify_test_case(&test_case, &logs);
@@ -366,7 +366,7 @@ fn test_edge_mixed_pass_fail_001() {
     let temp_dir = tempfile::TempDir::new().unwrap();
     let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
     let verifier =
-        TestVerifier::with_strategies(storage, MatchStrategy::Exact, MatchStrategy::Exact);
+        StorageTestVerifier::with_strategies(storage, MatchStrategy::Exact, MatchStrategy::Exact);
 
     let logs = verifier.parse_log_file(&json_path).unwrap();
     let result = verifier.verify_test_case(&test_case, &logs);
@@ -403,7 +403,7 @@ fn test_edge_one_correct_rest_missing_001() {
     let temp_dir = tempfile::TempDir::new().unwrap();
     let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
     let verifier =
-        TestVerifier::with_strategies(storage, MatchStrategy::Exact, MatchStrategy::Exact);
+        StorageTestVerifier::with_strategies(storage, MatchStrategy::Exact, MatchStrategy::Exact);
 
     let logs = verifier.parse_log_file(&json_path).unwrap();
     let result = verifier.verify_test_case(&test_case, &logs);
@@ -443,7 +443,7 @@ fn test_edge_partial_seq1_001() {
     let temp_dir = tempfile::TempDir::new().unwrap();
     let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
     let verifier =
-        TestVerifier::with_strategies(storage, MatchStrategy::Exact, MatchStrategy::Exact);
+        StorageTestVerifier::with_strategies(storage, MatchStrategy::Exact, MatchStrategy::Exact);
 
     let logs = verifier.parse_log_file(&json_path).unwrap();
     let result = verifier.verify_test_case(&test_case, &logs);
@@ -484,7 +484,7 @@ fn test_edge_partial_seq2_001() {
     let temp_dir = tempfile::TempDir::new().unwrap();
     let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
     let verifier =
-        TestVerifier::with_strategies(storage, MatchStrategy::Exact, MatchStrategy::Exact);
+        StorageTestVerifier::with_strategies(storage, MatchStrategy::Exact, MatchStrategy::Exact);
 
     let logs = verifier.parse_log_file(&json_path).unwrap();
     let result = verifier.verify_test_case(&test_case, &logs);
@@ -525,7 +525,7 @@ fn test_edge_sparse_execution_001() {
     let temp_dir = tempfile::TempDir::new().unwrap();
     let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
     let verifier =
-        TestVerifier::with_strategies(storage, MatchStrategy::Exact, MatchStrategy::Exact);
+        StorageTestVerifier::with_strategies(storage, MatchStrategy::Exact, MatchStrategy::Exact);
 
     let logs = verifier.parse_log_file(&json_path).unwrap();
     let result = verifier.verify_test_case(&test_case, &logs);
@@ -562,7 +562,7 @@ fn test_edge_wrong_sequence_001() {
     let temp_dir = tempfile::TempDir::new().unwrap();
     let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
     let verifier =
-        TestVerifier::with_strategies(storage, MatchStrategy::Exact, MatchStrategy::Exact);
+        StorageTestVerifier::with_strategies(storage, MatchStrategy::Exact, MatchStrategy::Exact);
 
     let logs = verifier.parse_log_file(&json_path).unwrap();
     let result = verifier.verify_test_case(&test_case, &logs);
@@ -612,7 +612,7 @@ fn test_all_edge_cases_comprehensive() {
     let temp_dir = tempfile::TempDir::new().unwrap();
     let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
     let verifier =
-        TestVerifier::with_strategies(storage, MatchStrategy::Exact, MatchStrategy::Exact);
+        StorageTestVerifier::with_strategies(storage, MatchStrategy::Exact, MatchStrategy::Exact);
 
     for (test_id, expected_pass, total, passed, failed, not_executed) in edge_cases {
         let (yaml_path, json_path) = get_edge_case_path(test_id);
@@ -660,7 +660,7 @@ fn test_duplicate_steps_first_execution_counts() {
     let temp_dir = tempfile::TempDir::new().unwrap();
     let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
     let verifier =
-        TestVerifier::with_strategies(storage, MatchStrategy::Exact, MatchStrategy::Exact);
+        StorageTestVerifier::with_strategies(storage, MatchStrategy::Exact, MatchStrategy::Exact);
 
     let logs = verifier.parse_log_file(&json_path).unwrap();
 
@@ -694,7 +694,7 @@ fn test_extra_steps_are_ignored() {
     let temp_dir = tempfile::TempDir::new().unwrap();
     let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
     let verifier =
-        TestVerifier::with_strategies(storage, MatchStrategy::Exact, MatchStrategy::Exact);
+        StorageTestVerifier::with_strategies(storage, MatchStrategy::Exact, MatchStrategy::Exact);
 
     let logs = verifier.parse_log_file(&json_path).unwrap();
 
@@ -721,7 +721,7 @@ fn test_missing_step_patterns() {
     let temp_dir = tempfile::TempDir::new().unwrap();
     let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
     let verifier =
-        TestVerifier::with_strategies(storage, MatchStrategy::Exact, MatchStrategy::Exact);
+        StorageTestVerifier::with_strategies(storage, MatchStrategy::Exact, MatchStrategy::Exact);
 
     // Test missing first step
     let (yaml_path, json_path) = get_edge_case_path("TEST_EDGE_MISSING_FIRST_001");
@@ -757,7 +757,7 @@ fn test_multi_sequence_partial_execution() {
     let temp_dir = tempfile::TempDir::new().unwrap();
     let storage = TestCaseStorage::new(temp_dir.path()).unwrap();
     let verifier =
-        TestVerifier::with_strategies(storage, MatchStrategy::Exact, MatchStrategy::Exact);
+        StorageTestVerifier::with_strategies(storage, MatchStrategy::Exact, MatchStrategy::Exact);
 
     // Test partial sequence 1
     let (yaml_path, json_path) = get_edge_case_path("TEST_EDGE_PARTIAL_SEQ1_001");

@@ -5,6 +5,7 @@ members = [
     "crates/testcase-common",
     "crates/testcase-manager",
     "crates/testcase-validation",
+    "crates/testcase-verification",
 ]
 resolver = "2"
 
