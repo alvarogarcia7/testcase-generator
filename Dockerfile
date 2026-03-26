@@ -31,18 +31,20 @@ COPY scripts ./scripts
 # Copy schemas directory early so tests can find schema files
 COPY schemas ./schemas
 
-# Create dummy src files in crates to build dependencies
-RUN mkdir -p crates/bash-eval/src && \
-    echo "pub fn dummy() {}" > crates/bash-eval/src/lib.rs && \
-    mkdir -p crates/testcase-manager/src/bin crates/testcase-manager/examples && \
-    echo "fn main() {}" > crates/testcase-manager/src/lib.rs && \
-    echo "fn main() {}" > crates/testcase-manager/src/main_editor.rs && \
-    for bin in validate-yaml validate-json test-run-manager test-verify test-executor json-escape verifier test-orchestrator script-cleanup test-plan-documentation-generator-compat json-to-yaml; do \
-      echo "fn main() {}" > "crates/testcase-manager/src/bin/${bin}.rs"; \
-    done && \
-    for example in tty_fallback_demo test_verify_demo test_verify_integration junit_export_example; do \
-      echo "fn main() {}" > "crates/testcase-manager/examples/${example}.rs"; \
-    done
+COPY crates ./crates
+
+## Create dummy src files in crates to build dependencies
+#RUN mkdir -p crates/bash-eval/src && \
+#    echo "pub fn dummy() {}" > crates/bash-eval/src/lib.rs && \
+#    mkdir -p crates/testcase-manager/src/bin crates/testcase-manager/examples && \
+#    echo "fn main() {}" > crates/testcase-manager/src/lib.rs && \
+#    echo "fn main() {}" > crates/testcase-manager/src/main_editor.rs && \
+#    for bin in validate-yaml validate-json test-run-manager test-verify test-executor json-escape verifier test-orchestrator script-cleanup test-plan-documentation-generator-compat json-to-yaml; do \
+#      echo "fn main() {}" > "crates/testcase-manager/src/bin/${bin}.rs"; \
+#    done && \
+#    for example in tty_fallback_demo test_verify_demo test_verify_integration junit_export_example; do \
+#      echo "fn main() {}" > "crates/testcase-manager/examples/${example}.rs"; \
+#    done
 
 RUN mkdir -p ".cargo"; cargo vendor --locked > .cargo/config.toml
 
