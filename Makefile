@@ -1,3 +1,6 @@
+# Include modular makefiles
+include mk/python.mk
+
 pre-commit: build lint test
 .PHONY: pre-commit
 
@@ -88,17 +91,6 @@ build-tpdg-compat:
 build-bash-eval:
 	cargo build --package bash-eval
 .PHONY: build-bash-eval
-
-setup-python-for-test:
-	@if command -v uv > /dev/null 2>&1; then \
-		echo "Setting up Python environment for tests..."; \
-		uv sync > /dev/null 2>&1 || true; \
-		uv python install 3.14 > /dev/null 2>&1 || true; \
-		echo "✓ Python environment ready"; \
-	else \
-		echo "Warning: uv not installed, skipping Python setup"; \
-	fi
-.PHONY: setup-python-for-test
 
 test: setup-python-for-test
 	${MAKE} test-unit
@@ -436,23 +428,6 @@ verify-testcases: build-validate-yaml
 	fi
 .PHONY: verify-testcases
 
-# Generate a detailed validation report for all test case files
-# This target creates a comprehensive validation report that includes:
-# - Pass/fail status for each test case file
-# - Detailed error messages for any validation failures
-# - Summary statistics (total files, passed count, failed count)
-# - Troubleshooting commands for failed validations
-# The report is saved to reports/validation_report.txt and displayed to stdout
-validate-testcases-report: build-validate-yaml
-	@mkdir -p reports
-	@uv run python3.14 scripts/generate_validation_report.py
-	@echo ""
-	@echo "========================================="
-	@echo "Displaying Validation Report"
-	@echo "========================================="
-	@cat reports/validation_report.txt
-.PHONY: validate-testcases-report
-
 validate-output-schemas:
 	@echo "Validating expected output sample files against schemas..."
 	./scripts/validate-output-schemas.sh
@@ -462,48 +437,6 @@ validate-envelope-schemas:
 	@echo "Validating TCMS envelope schemas..."
 	./scripts/validate_envelope_schemas.sh
 .PHONY: validate-envelope-schemas
-
-# Generate a JSON report comparing test execution before and after crate splitting
-# This target runs cargo tests on both the 'main' and 'split-binaries-into-crates' branches
-# and generates a comprehensive comparison report including:
-# - Which tests were executed before and after the change
-# - After splitting, in which crate is each test located
-# - Total execution time before and after with percentage change
-# - New, removed, and common tests between the two states
-# The report is saved to reports/test_comparison_report.json
-test-comparison-report:
-	@mkdir -p reports
-	@echo "Generating test comparison report..."
-	@uv run python3.14 scripts/test_comparison_report.py \
-		--run-tests \
-		--before-ref main \
-		--after-ref split-binaries-into-crates \
-		--output reports/test_comparison_report.json \
-		--verbose
-	@echo ""
-	@echo "Report saved to: reports/test_comparison_report.json"
-	@echo "View with: cat reports/test_comparison_report.json | jq ."
-.PHONY: test-comparison-report
-
-# Generate test comparison report from pre-saved test outputs
-# Usage: make test-comparison-from-files BEFORE=before.txt AFTER=after.txt
-test-comparison-from-files:
-	@mkdir -p reports
-	@if [ -z "$(BEFORE)" ] || [ -z "$(AFTER)" ]; then \
-		echo "Error: BEFORE and AFTER variables must be set"; \
-		echo "Usage: make test-comparison-from-files BEFORE=before.txt AFTER=after.txt"; \
-		exit 1; \
-	fi
-	@echo "Generating test comparison report from saved outputs..."
-	@uv run python3.14 scripts/test_comparison_report.py \
-		--before $(BEFORE) \
-		--after $(AFTER) \
-		--output reports/test_comparison_report.json \
-		--verbose
-	@echo ""
-	@echo "Report saved to: reports/test_comparison_report.json"
-	@echo "View with: cat reports/test_comparison_report.json | jq ."
-.PHONY: test-comparison-from-files
 
 watch: build-validate-yaml
 	./scripts/watch-yaml-files.sh
@@ -656,11 +589,3 @@ loc-report:
 	@mkdir -p reports/loc
 	./scripts/compute-loc.sh --output reports/loc/loc_statistics.txt
 .PHONY: loc-report
-
-setup-python:
-	./scripts/setup_python_env.sh
-.PHONY: setup-python
-
-verify-python:
-	./scripts/verify_python_env.sh
-.PHONY: verify-python
