@@ -237,6 +237,9 @@ test_sequences:
     ref: internal-seq-ref-999
     name: "Internal Setup"
     description: "Internal sequence for same test case reference"
+    initial_conditions:
+      system:
+        - "Test environment is ready"
     steps:
       - step: 1
         ref: internal-step-ref-xyz
@@ -266,8 +269,7 @@ test_sequences:
     steps:
       - step: 1
         description: "Verify all dependencies"
-        command: |
-          cat /tmp/dep_test.txt | wc -l
+        command: cat /tmp/dep_test.txt | wc -l
         expected:
           success: true
           result: '0'
@@ -414,10 +416,11 @@ else
 fi
 validate_with_shellcheck "$SCRIPT_FILE_2" "TC_DEP_002 script"
 
-if bash -n "$SCRIPT_FILE_3" 2>/dev/null; then
+if bash -n "$SCRIPT_FILE_3" 2>&1 > /dev/null; then
     pass "TC_DEP_003 script has valid bash syntax"
 else
     fail "TC_DEP_003 script has invalid bash syntax"
+    bash -n "$SCRIPT_FILE_3" 2>&1 | head -5
     exit 1
 fi
 validate_with_shellcheck "$SCRIPT_FILE_3" "TC_DEP_003 script"
