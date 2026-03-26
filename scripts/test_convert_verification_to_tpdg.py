@@ -17,11 +17,9 @@ import json
 import tempfile
 import shutil
 from pathlib import Path
-from datetime import datetime
-from typing import Any
 
 try:
-    import yaml
+    import yaml  # noqa: F401
     YAML_AVAILABLE = True
 except ImportError:
     YAML_AVAILABLE = False
@@ -39,7 +37,8 @@ from convert_verification_to_tpdg import (
     create_tpdg_container,
     parse_verifier_json,
     scan_test_cases,
-    process_test_case_directory
+    process_test_case_directory,
+    transform_step_result
 )
 
 
@@ -907,6 +906,138 @@ test_sequences:
         self.assertEqual(len(results), 0)
 
 
+class TestTransformStepResult(unittest.TestCase):
+    """Tests for transform_step_result function."""
+    
+    def test_transform_internally_tagged_pass(self):
+        """Test transforming internally-tagged pass step."""
+        step_result = {
+            "status": "pass",
+            "step": 1,
+            "description": "Test step"
+        }
+        
+        result = transform_step_result(step_result)
+        
+        self.assertIn('Pass', result)
+        self.assertEqual(result['Pass']['step'], 1)
+        self.assertEqual(result['Pass']['description'], 'Test step')
+        self.assertNotIn('status', result['Pass'])
+    
+    def test_transform_internally_tagged_fail(self):
+        """Test transforming internally-tagged fail step."""
+        step_result = {
+            "status": "fail",
+            "step": 2,
+            "description": "Failed step",
+            "expected": {"result": 0},
+            "actual_result": "1"
+        }
+        
+        result = transform_step_result(step_result)
+        
+        self.assertIn('Fail', result)
+        self.assertEqual(result['Fail']['step'], 2)
+        self.assertEqual(result['Fail']['description'], 'Failed step')
+        self.assertEqual(result['Fail']['expected']['result'], 0)
+        self.assertEqual(result['Fail']['actual_result'], '1')
+        self.assertNotIn('status', result['Fail'])
+    
+    def test_transform_internally_tagged_not_executed(self):
+        """Test transforming internally-tagged not_executed step."""
+        step_result = {
+            "status": "not_executed",
+            "step": 3,
+            "description": "Not executed step"
+        }
+        
+        result = transform_step_result(step_result)
+        
+        self.assertIn('NotExecuted', result)
+        self.assertEqual(result['NotExecuted']['step'], 3)
+        self.assertEqual(result['NotExecuted']['description'], 'Not executed step')
+        self.assertNotIn('status', result['NotExecuted'])
+    
+    def test_transform_already_externally_tagged_pass(self):
+        """Test that already externally-tagged Pass remains unchanged."""
+        step_result = {
+            "Pass": {
+                "step": 1,
+                "description": "Already tagged"
+            }
+        }
+        
+        result = transform_step_result(step_result)
+        
+        self.assertEqual(result, step_result)
+    
+    def test_transform_already_externally_tagged_fail(self):
+        """Test that already externally-tagged Fail remains unchanged."""
+        step_result = {
+            "Fail": {
+                "step": 2,
+                "description": "Already tagged fail",
+                "expected": {},
+                "actual_result": "1"
+            }
+        }
+        
+        result = transform_step_result(step_result)
+        
+        self.assertEqual(result, step_result)
+    
+    def test_transform_already_externally_tagged_not_executed(self):
+        """Test that already externally-tagged NotExecuted remains unchanged."""
+        step_result = {
+            "NotExecuted": {
+                "step": 3,
+                "description": "Already tagged not executed"
+            }
+        }
+        
+        result = transform_step_result(step_result)
+        
+        self.assertEqual(result, step_result)
+    
+    def test_transform_unknown_status(self):
+        """Test handling of unknown status value."""
+        step_result = {
+            "status": "unknown",
+            "step": 4,
+            "description": "Unknown status"
+        }
+        
+        result = transform_step_result(step_result)
+        
+        # Should return as-is when status is unknown
+        self.assertEqual(result, step_result)
+    
+    def test_transform_no_status_field(self):
+        """Test handling of step result without status field."""
+        step_result = {
+            "step": 5,
+            "description": "No status field"
+        }
+        
+        result = transform_step_result(step_result)
+        
+        # Should return as-is when no status field
+        self.assertEqual(result, step_result)
+    
+    def test_transform_case_insensitive_status(self):
+        """Test that status transformation is case-insensitive."""
+        step_result = {
+            "status": "PASS",
+            "step": 1,
+            "description": "Uppercase status"
+        }
+        
+        result = transform_step_result(step_result)
+        
+        self.assertIn('Pass', result)
+        self.assertEqual(result['Pass']['step'], 1)
+
+
 class TestIntegration(unittest.TestCase):
     """Integration tests for the complete workflow."""
     
@@ -1032,6 +1163,81 @@ test_sequences:
         self.assertEqual(len(container['test_results']), 1)
         self.assertEqual(container['test_results'][0]['test_case_id'], 'TC-VER-001')
         self.assertEqual(container['metadata']['passed_test_cases'], 1)
+    
+    def test_workflow_with_internally_tagged_json(self):
+        """Test workflow with internally-tagged step results."""
+        verifier_data = {
+            "test_cases": [
+                {
+                    "test_case_id": "TC-INT-001",
+                    "description": "Internally tagged test",
+                    "sequences": [
+                        {
+                            "sequence_id": 1,
+                            "name": "Test Sequence",
+                            "step_results": [
+                                {
+                                    "status": "pass",
+                                    "step": 1,
+                                    "description": "Passed step"
+                                },
+                                {
+                                    "status": "fail",
+                                    "step": 2,
+                                    "description": "Failed step",
+                                    "expected": {"result": 0},
+                                    "actual_result": "1"
+                                },
+                                {
+                                    "status": "not_executed",
+                                    "step": 3,
+                                    "description": "Not executed step"
+                                }
+                            ],
+                            "all_steps_passed": False
+                        }
+                    ],
+                    "total_steps": 3,
+                    "passed_steps": 1,
+                    "failed_steps": 1,
+                    "not_executed_steps": 1,
+                    "overall_pass": False
+                }
+            ]
+        }
+        
+        # Parse verifier JSON
+        test_results = parse_verifier_json(verifier_data)
+        
+        # Create TPDG container (this should transform to externally-tagged)
+        container = create_tpdg_container(test_results)
+        
+        # Verify container
+        self.assertEqual(len(container['test_results']), 1)
+        test_result = container['test_results'][0]
+        self.assertEqual(test_result['test_case_id'], 'TC-INT-001')
+        
+        # Verify step results are transformed to externally-tagged
+        step_results = test_result['sequences'][0]['step_results']
+        self.assertEqual(len(step_results), 3)
+        
+        # Check Pass step
+        self.assertIn('Pass', step_results[0])
+        self.assertEqual(step_results[0]['Pass']['step'], 1)
+        self.assertEqual(step_results[0]['Pass']['description'], 'Passed step')
+        self.assertNotIn('status', step_results[0])
+        
+        # Check Fail step
+        self.assertIn('Fail', step_results[1])
+        self.assertEqual(step_results[1]['Fail']['step'], 2)
+        self.assertEqual(step_results[1]['Fail']['description'], 'Failed step')
+        self.assertNotIn('status', step_results[1])
+        
+        # Check NotExecuted step
+        self.assertIn('NotExecuted', step_results[2])
+        self.assertEqual(step_results[2]['NotExecuted']['step'], 3)
+        self.assertEqual(step_results[2]['NotExecuted']['description'], 'Not executed step')
+        self.assertNotIn('status', step_results[2])
 
 
 def run_tests():
