@@ -275,7 +275,9 @@ clean:
 
 coverage-clean:
 	@-cargo llvm-cov clean --workspace > /dev/null 2>&1 || true
-	rm -f ./*.profraw
+	mkdir -p "/tmp/coverage/"
+	find . -iname "*.profraw" -type f -exec mv "{}" /tmp/coverage \;
+	rm -f /tmp/coverage/*
 .PHONY: coverage-clean
 
 install-coverage-tools:
