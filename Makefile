@@ -178,7 +178,7 @@ test-e2e: build
 	./crates/testcase-manager/tests/integration/smoke_test.sh
 	./crates/testcase-manager/tests/integration/test_bdd_e2e.sh
 #	./crates/testcase-manager/tests/integration/test_bdd_initial_conditions.sh
-#	./crates/testcase-manager/tests/integration/test_conditional_verification_e2e.sh
+	./crates/testcase-manager/tests/integration/test_conditional_verification_e2e.sh
 #	./crates/testcase-manager/tests/integration/test_dependencies_e2e.sh
 #	./crates/testcase-manager/tests/integration/test_docker_build.sh
 	./crates/testcase-manager/tests/integration/test_executor_e2e.sh
@@ -198,7 +198,7 @@ test-e2e: build
 	./crates/testcase-manager/tests/integration/test_variable_passing_e2e.sh
 	./crates/testcase-manager/tests/integration/test_verifier_e2e.sh
 	./crates/testcase-manager/tests/integration/test_verifier_container_e2e.sh
-#	./crates/testcase-manager/tests/integration/test_verifier_edge_cases_e2e.sh
+	./crates/testcase-manager/tests/integration/test_verifier_edge_cases_e2e.sh
 	${MAKE} test-verifier-edge-cases
 #	./crates/testcase-manager/tests/integration/test_verify_e2e.sh
 #	./crates/testcase-manager/tests/integration/test_container_yaml_compat_e2e.sh
@@ -211,14 +211,12 @@ test-e2e: build
 test-e2e-f: build
 	# Failing/disabled integration tests - work in progress to fix and move back to test-e2e
 	./crates/testcase-manager/tests/integration/test_bdd_initial_conditions.sh
-	./crates/testcase-manager/tests/integration/test_conditional_verification_e2e.sh
 	./crates/testcase-manager/tests/integration/test_dependencies_e2e.sh
 	./crates/testcase-manager/tests/integration/test_docker_build.sh
 	./crates/testcase-manager/tests/integration/test_hooks_e2e.sh
 	./crates/testcase-manager/tests/integration/test_json_escape_e2e.sh
 	./crates/testcase-manager/tests/integration/test_orchestrator_examples.sh
 	./crates/testcase-manager/tests/integration/test_run_manager_e2e.sh
-	./crates/testcase-manager/tests/integration/test_verifier_edge_cases_e2e.sh
 	./crates/testcase-manager/tests/integration/test_verify_e2e.sh
 	./crates/testcase-manager/tests/integration/test_container_yaml_compat_e2e.sh
 .PHONY: test-e2e-f
