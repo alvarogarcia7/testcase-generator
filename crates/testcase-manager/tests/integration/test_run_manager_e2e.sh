@@ -25,6 +25,7 @@ cd "$PROJECT_ROOT"
 TRM_BINARY=$(find_binary "trm")
 if [[ -z "$TRM_BINARY" ]]; then
     echo "[ERROR] trm binary not found" >&2
+<<<<<<< HEAD
     echo "[ERROR] Please build it with: cargo build --bin trm" >&2
     exit 1
 fi
@@ -33,6 +34,9 @@ TCM_BINARY=$(find_binary "editor")
 if [[ -z "$TCM_BINARY" ]]; then
     echo "[ERROR] tcm binary not found" >&2
     echo "[ERROR] Please build it with: cargo build --bin tcm" >&2
+=======
+    echo "[ERROR] Please build it with: cargo build -p test-run-manager" >&2
+>>>>>>> fb98502 ([TCMS-18] Remove unused tcm dependency from test_run_manager_e2e.sh)
     exit 1
 fi
 
@@ -149,12 +153,6 @@ main() {
         exit 1
     fi
     log_info "TRM binary found"
-    
-    if [[ ! -f "$TCM_BINARY" ]]; then
-        log_error "TCM binary not found at $TCM_BINARY"
-        exit 1
-    fi
-    log_info "TCM binary found"
     
     # Create temporary test directory
     TEST_DIR=$(mktemp -d)
