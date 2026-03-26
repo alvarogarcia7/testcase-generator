@@ -42,6 +42,8 @@ verification-results/
 
 # Test executor logs
 logs/
+# Exception: keep test-acceptance/results/logs directory structure
+!test-acceptance/results/logs/
 
 # Generated reports
 reports/validation_report.txt
@@ -145,6 +147,11 @@ test-acceptance/scripts/
 test-acceptance/reports/
 test-acceptance/mock_execution_logs/
 test-acceptance/tpdg_conversion_output/
+
+# TPDG conversion logs (run_tpdg_conversion.sh)
+test-acceptance/results/logs/conversion_*.log
+test-acceptance/results/logs/conversion_*.err
+test-acceptance/results/logs/latest.log
 
 # Test case validation reports (validate_all_testcases.sh)
 testcase_validation_report.txt
