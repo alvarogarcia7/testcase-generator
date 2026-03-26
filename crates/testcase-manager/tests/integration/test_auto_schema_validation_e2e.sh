@@ -5,7 +5,7 @@ set -euo pipefail
 # Tests validate-yaml and validate-json binaries with auto-resolution of schemas
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../../../.." && pwd)"
 
 # Source shared libraries
 source "$PROJECT_ROOT/scripts/lib/find-binary.sh" || exit 1

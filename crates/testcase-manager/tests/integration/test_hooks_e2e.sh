@@ -18,7 +18,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
 SCHEMA_FILE="$PROJECT_ROOT/schemas/test-case.schema.json"
 HOOKS_YAML="$PROJECT_ROOT/testcases/examples/hooks/TC_HOOKS_001.yaml"
 
