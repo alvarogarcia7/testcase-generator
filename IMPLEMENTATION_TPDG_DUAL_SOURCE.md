@@ -246,6 +246,47 @@ To see actual test results in the container:
 
 4. View results in the updated container YAML file
 
+## Latest Updates (Session 2)
+
+### Enhanced Script with Logging
+
+Updated `scripts/generate_acceptance_tpdg_container.sh` to keep comprehensive logs:
+
+**New Features**:
+- Creates `test-acceptance/results/generation.log` with timestamped entries
+- Uses `tee` command to capture all conversion output
+- Logs include:
+  - Prerequisite checks
+  - Conversion progress and warnings
+  - Execution timing information
+  - File statistics
+  - Git operations
+- Each log entry timestamped for audit trail
+- Conversion duration tracking
+
+**Log File Details**:
+- Location: `test-acceptance/results/generation.log`
+- Size: 12KB (157 lines)
+- Contains: Complete output from conversion script execution
+- Format: Timestamped entries with operation details
+
+### Regenerated Container
+
+Re-executed the conversion script with logging:
+- Command: Same as before with output redirected to log
+- Result: Updated `acceptance_test_results_container.yaml` 
+- New timestamp: `2026-03-26T21:06:XXZ`
+- All 76 test cases processed
+- All warnings about missing execution logs captured in log file
+
+### Git Commits (Session 2)
+
+**Commit 5**: `e0d994c` - Update script to keep generation logs and regenerate container
+- Modified script to create and maintain generation.log
+- Added comprehensive logging with timestamps
+- Regenerated container with updated timestamp
+- Force-added generation.log (bypassing .gitignore)
+
 ## Conclusion
 
 Successfully implemented the requested functionality:
@@ -253,7 +294,8 @@ Successfully implemented the requested functionality:
 - ✅ Generated TPDG container YAML from acceptance test cases
 - ✅ Committed result to `test-acceptance/results/`
 - ✅ Created helper script for automation
+- ✅ **✅ Added comprehensive logging to keep all conversion output**
 - ✅ Documented the process and workflow
 - ✅ Integrated with existing acceptance test infrastructure
 
-The implementation is complete and ready for use.
+The implementation is complete and ready for use. All conversion logs are preserved in `test-acceptance/results/generation.log` for debugging and audit purposes.
