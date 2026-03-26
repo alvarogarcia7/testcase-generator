@@ -46,10 +46,10 @@ fi
 
 # Copy test files
 log_info "Copying test files..."
-cp examples/EXAMPLE_RUN_001.yml "$TEST_DIR_RUN/"
-cp examples/EXAMPLE_RUN_002.yml "$TEST_DIR_RUN/"
-cp examples/EXAMPLE_RUN_ALL_A.yml "$TEST_DIR_RUN_ALL/"
-cp examples/EXAMPLE_RUN_ALL_B.yml "$TEST_DIR_RUN_ALL/"
+cp ./crates/testcase-manager/examples/EXAMPLE_RUN_001.yml "$TEST_DIR_RUN/"
+cp ./crates/testcase-manager/examples/EXAMPLE_RUN_002.yml "$TEST_DIR_RUN/"
+cp ./crates/testcase-manager/examples/EXAMPLE_RUN_ALL_A.yml "$TEST_DIR_RUN_ALL/"
+cp ./crates/testcase-manager/examples/EXAMPLE_RUN_ALL_B.yml "$TEST_DIR_RUN_ALL/"
 
 info "Test directories created:"
 info "  - $TEST_DIR_RUN"
@@ -57,30 +57,30 @@ info "  - $TEST_DIR_RUN_ALL"
 
 # Test 1: run subcommand with single test case
 section "Test 1: 'run' subcommand - single test"
-cargo run --bin test-orchestrator -- run EXAMPLE_RUN_001 -p "$TEST_DIR_RUN"
+cargo run -p test-orchestrator --bin test-orchestrator -- run EXAMPLE_RUN_001 -p "$TEST_DIR_RUN"
 pass "Test 1 passed"
 
 # Test 2: run subcommand with multiple test cases
 section "Test 2: 'run' subcommand - multiple tests"
-cargo run --bin test-orchestrator -- run EXAMPLE_RUN_001 EXAMPLE_RUN_002 -p "$TEST_DIR_RUN"
+cargo run -p test-orchestrator --bin test-orchestrator -- run EXAMPLE_RUN_001 EXAMPLE_RUN_002 -p "$TEST_DIR_RUN"
 pass "Test 2 passed"
 
 # Test 3: run-all subcommand
 section "Test 3: 'run-all' subcommand"
-cargo run --bin test-orchestrator -- run-all -p "$TEST_DIR_RUN_ALL"
+cargo run -p test-orchestrator --bin test-orchestrator -- run-all -p "$TEST_DIR_RUN_ALL"
 pass "Test 3 passed"
 
 # 2026-01-28 T 16:37 Test is not passing - AGB
 ## Test 4: verify subcommand
 #section "Test 4: 'verify' subcommand"
-#cargo run --bin test-orchestrator -- verify \
+#cargo run -p test-orchestrator --bin test-orchestrator -- verify \
 #  --test-case examples/EXAMPLE_VERIFY_001.yml \
 #  --execution-log examples/EXAMPLE_VERIFY_001_execution_log.json
 #pass "Test 4 passed"
 
 # Test 5: info subcommand
 section "Test 5: 'info' subcommand"
-cargo run --bin test-orchestrator -- info -p "$TEST_DIR_RUN" >/dev/null
+cargo run -p test-orchestrator --bin test-orchestrator -- info -p "$TEST_DIR_RUN" >/dev/null
 pass "Test 5 passed"
 
 # Summary
