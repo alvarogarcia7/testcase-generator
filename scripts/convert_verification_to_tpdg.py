@@ -592,11 +592,12 @@ def create_tpdg_container(
     container = {
         "type": "test_results_container",
         "schema": "tcms/testcase_results_container.schema.v1.json",
-        "title": title,
-        "project": project,
-        "test_date": test_date,
+        "title": title or f"Test Results - {datetime.now().strftime('%Y-%m-%d')}",
+        "project": project or "Test Suite Execution",
+        "test_date": datetime.now().strftime('%Y-%m-%dT%H:%M:%SZ'),
         "test_results": tpdg_results,
         "metadata": {
+            "execution_duration": 0.0,
             "total_test_cases": total_test_cases,
             "passed_test_cases": passed_test_cases,
             "failed_test_cases": failed_test_cases

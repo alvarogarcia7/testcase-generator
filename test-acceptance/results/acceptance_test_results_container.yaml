@@ -2,7 +2,7 @@ type: test_results_container
 schema: tcms/testcase_results_container.schema.v1.json
 title: Acceptance Test Suite Results
 project: Test Case Manager - Acceptance Test Suite
-test_date: '2026-03-26T18:14:51.035617'
+test_date: '2026-03-26T18:24:56Z'
 test_results:
 - test_case_id: TC_COMPLEX_ALL_HOOKS_CAPTURE_001
   description: Comprehensive test with all 8 hook types and extensive variable capture
@@ -2975,6 +2975,7 @@ test_results:
   item: 1
   tc: 1
 metadata:
+  execution_duration: 0.0
   total_test_cases: 76
   passed_test_cases: 0
   failed_test_cases: 76
