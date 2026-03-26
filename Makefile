@@ -204,7 +204,7 @@ test-e2e: build
 #	./crates/testcase-manager/tests/integration/test_container_yaml_compat_e2e.sh
 	./crates/testcase-manager/tests/integration/test_documentation_generation.sh
 	# Valid values of BUILD_VARIANT are "" (debug) or "--release" (release mode)
-#	BUILD_VARIANT="" ./scripts/run_verifier_and_generate_reports.sh
+	BUILD_VARIANT="" ./scripts/run_verifier_and_generate_reports.sh
 	${MAKE} validate-output-schemas
 .PHONY: test-e2e
 
