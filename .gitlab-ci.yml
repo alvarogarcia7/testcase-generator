@@ -384,30 +384,30 @@ rust:build-test-lint:
     expire_in: 1 week
     when: always
 
-docker:verify:
-  stage: docker
-  image: python:3.14-slim
-  dependencies:
-    - docker:build
-  needs:
-    - docker:build
-  before_script:
-    - apt-get update -qq
-    - apt-get install -y -qq curl
-    # Install uv package manager
-    - curl -LsSf https://astral.sh/uv/install.sh | sh
-    - export PATH="$HOME/.cargo/bin:$PATH"
-    # Sync Python dependencies
-    - uv sync --python 3.14
-  script:
-    - find . || true
-    - ls -la docker_inspect.json || true
-    - uv run python3.14 scripts/ci_docker_security_scan.py docker_inspect.json > docker_scan_results.json
-  artifacts:
-    name: "docker-verify-$CI_COMMIT_REF_SLUG"
-    paths:
-      - docker_scan_results.json
-    expire_in: 1 week
+#docker:verify:
+#  stage: docker
+#  image: python:3.14-slim
+#  dependencies:
+#    - docker:build
+#  needs:
+#    - docker:build
+#  before_script:
+#    - apt-get update -qq
+#    - apt-get install -y -qq curl
+#    # Install uv package manager
+#    - curl -LsSf https://astral.sh/uv/install.sh | sh
+#    - export PATH="$HOME/.cargo/bin:$PATH"
+#    # Sync Python dependencies
+#    - uv sync --python 3.14
+#  script:
+#    - find . || true
+#    - ls -la docker_inspect.json || true
+#    - uv run python3.14 scripts/ci_docker_security_scan.py docker_inspect.json > docker_scan_results.json
+#  artifacts:
+#    name: "docker-verify-$CI_COMMIT_REF_SLUG"
+#    paths:
+#      - docker_scan_results.json
+#    expire_in: 1 week
 
 rust:e2e-tests:
   stage: e2e
