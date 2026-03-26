@@ -179,7 +179,7 @@ EOF
 # Build binaries
 log_info "Building validate-yaml and validate-json binaries..."
 cd "${PROJECT_ROOT}"
-cargo build --bin validate-yaml --bin validate-json --quiet
+cargo build -p validate-yaml -p validate-json --quiet
 
 # Find binaries using workspace-aware search
 VALIDATE_YAML=$(find_binary "validate-yaml")
@@ -435,7 +435,7 @@ cat > "${LOGS_DIR}/TC_VERIFIER_001_execution_log.json" <<'EOF'
 EOF
 
 # Run verifier and check for warning
-if cargo build --bin verifier --quiet && \
+if cargo build -p verifier --quiet && \
    "${VERIFIER}" --folder "${LOGS_DIR}" --test-case-dir "${TESTCASES_DIR}" --log-level=warn --success-on-completion > "${TEST_DIR}/verifier_output1.txt" 2>&1; then
     if grep -q "Missing 'schema' field in execution log" "${TEST_DIR}/verifier_output1.txt"; then
         log_info "✓ verifier warns on missing schema field - PASSED"

@@ -58,7 +58,7 @@ info "Using temporary directory: $TEMP_DIR"
 section "Test 1: Build json-escape binary"
 
 log_info "Building json-escape binary..."
-if cargo build --bin json-escape > "$TEMP_DIR/build.log" 2>&1; then
+if cargo build -p json-escape > "$TEMP_DIR/build.log" 2>&1; then
     pass "json-escape binary built successfully"
     ((TESTS_PASSED++))
 else

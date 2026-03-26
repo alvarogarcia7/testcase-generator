@@ -193,7 +193,7 @@ test-e2e: build
 	./crates/testcase-manager/tests/integration/test_validate_yaml_multi_e2e.sh
 	./crates/testcase-manager/tests/integration/test_validate_yaml_schema_watch_e2e.sh
 	./crates/testcase-manager/tests/integration/test_validate_yaml_transitive_schema_watch_e2e.sh
-#	./crates/testcase-manager/tests/integration/test_auto_schema_validation_e2e.sh
+	./crates/testcase-manager/tests/integration/test_auto_schema_validation_e2e.sh
 	./crates/testcase-manager/tests/integration/test_variable_display_e2e.sh
 	./crates/testcase-manager/tests/integration/test_variable_passing_e2e.sh
 	./crates/testcase-manager/tests/integration/test_verifier_e2e.sh
