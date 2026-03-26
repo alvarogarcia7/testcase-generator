@@ -50,6 +50,7 @@ reports/*.pdf
 reports/loc/
 reports/verifier_scenarios/
 reports/tpdg_integration/
+reports/test_comparison_report.json
 
 
 .crates.toml
@@ -70,7 +71,8 @@ tarpaulin-report.*
 cobertura.xml
 *.profdata
 
-# sccache build cache
+# sccache build cache (legacy local cache)
+# Note: Global cache is now at ~/.cache/sccache/testcase-manager (not tracked)
 .sccache/
 
 # CI/CD artifacts

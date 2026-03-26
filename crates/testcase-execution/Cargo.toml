@@ -1,0 +1,19 @@
+[package]
+name = "testcase-execution"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bash-eval = { path = "../bash-eval" }
+testcase-models = { path = "../testcase-models" }
+testcase-common = { path = "../testcase-common" }
+anyhow = { workspace = true }
+chrono = { workspace = true }
+regex = { workspace = true }
+tempfile = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+toml = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

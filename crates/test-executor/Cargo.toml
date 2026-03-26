@@ -1,0 +1,23 @@
+[package]
+name = "test-executor"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "test-executor"
+path = "src/main.rs"
+
+[dependencies]
+testcase-execution = { path = "../testcase-execution" }
+testcase-storage = { path = "../testcase-storage" }
+testcase-models = { path = "../testcase-models" }
+testcase-validation = { path = "../testcase-validation" }
+clap = { workspace = true }
+anyhow = { workspace = true }
+serde = { workspace = true }
+serde_yaml = { workspace = true }
+tempfile = { workspace = true }
+env_logger = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

@@ -515,6 +515,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "editor"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap 4.5.56",
+ "env_logger 0.11.8",
+ "jsonschema",
+ "log",
+ "serde_json",
+ "serde_yaml",
+ "testcase-cli",
+ "testcase-common",
+ "testcase-git",
+ "testcase-manager",
+ "testcase-models",
+ "testcase-storage",
+ "testcase-ui",
+]
+
+[[package]]
 name = "either"
 version = "1.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1130,6 +1150,27 @@ checksum = "8c942ebf8e95485ca0d52d97da7c5a2c387d0e7f0ba4c35e93bfcaee045955b3"
 dependencies = [
  "once_cell",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "json-escape"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap 4.5.56",
+ "env_logger 0.11.8",
+ "log",
+ "serde_json",
+]
+
+[[package]]
+name = "json-to-yaml"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap 4.5.56",
+ "serde_json",
+ "serde_yaml",
 ]
 
 [[package]]
@@ -1823,6 +1864,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
 
 [[package]]
+name = "script-cleanup"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap 4.5.56",
+ "env_logger 0.11.8",
+ "log",
+ "testcase-verification",
+]
+
+[[package]]
 name = "security-framework"
 version = "2.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2127,6 +2179,130 @@ dependencies = [
 ]
 
 [[package]]
+name = "test-executor"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap 4.5.56",
+ "env_logger 0.11.8",
+ "serde",
+ "serde_yaml",
+ "tempfile",
+ "testcase-execution",
+ "testcase-models",
+ "testcase-storage",
+ "testcase-validation",
+]
+
+[[package]]
+name = "test-orchestrator"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap 4.5.56",
+ "env_logger 0.11.8",
+ "log",
+ "testcase-orchestration",
+ "testcase-storage",
+ "testcase-ui",
+ "testcase-verification",
+]
+
+[[package]]
+name = "test-run-manager"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "clap 4.5.56",
+ "env_logger 0.11.8",
+ "testcase-models",
+ "testcase-storage",
+ "testcase-ui",
+]
+
+[[package]]
+name = "test-verify"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap 4.5.56",
+ "env_logger 0.11.8",
+ "log",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "testcase-manager",
+ "testcase-models",
+ "testcase-storage",
+ "testcase-verification",
+]
+
+[[package]]
+name = "testcase-cli"
+version = "0.1.0"
+dependencies = [
+ "clap 4.5.56",
+ "testcase-models",
+]
+
+[[package]]
+name = "testcase-common"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "dotenvy",
+ "log",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "tempfile",
+ "testcase-models",
+ "toml",
+]
+
+[[package]]
+name = "testcase-execution"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bash-eval",
+ "chrono",
+ "regex",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "testcase-common",
+ "testcase-models",
+ "toml",
+]
+
+[[package]]
+name = "testcase-generator"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "env_logger 0.11.8",
+ "serde_json",
+ "tempfile",
+ "testcase-models",
+ "testcase-storage",
+ "testcase-ui",
+ "testcase-verification",
+]
+
+[[package]]
+name = "testcase-git"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "git2",
+ "log",
+ "tempfile",
+]
+
+[[package]]
 name = "testcase-manager"
 version = "0.1.0"
 dependencies = [
@@ -2138,7 +2314,6 @@ dependencies = [
  "dotenvy",
  "edit",
  "env_logger 0.11.8",
- "git2",
  "indexmap 2.13.0",
  "jsonschema",
  "log",
@@ -2153,8 +2328,121 @@ dependencies = [
  "skim",
  "strip-ansi-escapes",
  "tempfile",
+ "testcase-cli",
+ "testcase-common",
+ "testcase-execution",
+ "testcase-git",
+ "testcase-models",
+ "testcase-orchestration",
+ "testcase-storage",
+ "testcase-ui",
+ "testcase-verification",
  "toml",
  "walkdir",
+]
+
+[[package]]
+name = "testcase-models"
+version = "0.1.0"
+dependencies = [
+ "bash-eval",
+ "chrono",
+ "indexmap 2.13.0",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+]
+
+[[package]]
+name = "testcase-orchestration"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "log",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "tempfile",
+ "testcase-execution",
+ "testcase-models",
+ "testcase-storage",
+ "testcase-verification",
+]
+
+[[package]]
+name = "testcase-storage"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "indexmap 2.13.0",
+ "log",
+ "serde",
+ "serde_json",
+ "serde_path_to_error",
+ "serde_yaml",
+ "tempfile",
+ "testcase-common",
+ "testcase-models",
+ "testcase-validation",
+ "walkdir",
+]
+
+[[package]]
+name = "testcase-ui"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "dialoguer",
+ "edit",
+ "indexmap 2.13.0",
+ "jsonschema",
+ "log",
+ "regex",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "skim",
+ "tempfile",
+ "testcase-common",
+ "testcase-git",
+ "testcase-models",
+ "testcase-storage",
+ "testcase-verification",
+]
+
+[[package]]
+name = "testcase-validation"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "jsonschema",
+ "log",
+ "roxmltree",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "testcase-common",
+ "testcase-models",
+]
+
+[[package]]
+name = "testcase-verification"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bash-eval",
+ "chrono",
+ "log",
+ "regex",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "strip-ansi-escapes",
+ "tempfile",
+ "testcase-common",
+ "testcase-models",
 ]
 
 [[package]]
@@ -2324,6 +2612,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8df9b6e13f2d32c91b9bd719c00d1958837bc7dec474d94952798cc8e69eeec3"
 
 [[package]]
+name = "tpdg-compat"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap 4.5.56",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "walkdir",
+]
+
+[[package]]
 name = "tracing"
 version = "0.1.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2421,10 +2721,61 @@ dependencies = [
 ]
 
 [[package]]
+name = "validate-json"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap 4.5.56",
+ "env_logger 0.11.8",
+ "jsonschema",
+ "log",
+ "serde_json",
+ "testcase-common",
+ "testcase-validation",
+]
+
+[[package]]
+name = "validate-yaml"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap 4.5.56",
+ "env_logger 0.11.8",
+ "jsonschema",
+ "log",
+ "notify",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "testcase-common",
+ "testcase-manager",
+ "testcase-models",
+ "testcase-validation",
+ "walkdir",
+]
+
+[[package]]
 name = "vcpkg"
 version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
+
+[[package]]
+name = "verifier"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap 4.5.56",
+ "env_logger 0.11.8",
+ "jsonschema",
+ "log",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "testcase-models",
+ "testcase-storage",
+ "testcase-verification",
+]
 
 [[package]]
 name = "version_check"

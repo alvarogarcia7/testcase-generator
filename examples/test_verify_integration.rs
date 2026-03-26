@@ -1,7 +1,9 @@
 /// Integration example showing how to use test-verify with real test case files
 /// This demonstrates the complete workflow from test case creation to verification
 use std::fs;
-use testcase_manager::{Step, TestCase, TestCaseStorage, TestSequence, TestVerifier};
+use testcase_models::{Step, TestCase, TestSequence};
+use testcase_storage::TestCaseStorage;
+use testcase_verification::{StepVerificationResultEnum, TestVerifier};
 
 fn main() -> anyhow::Result<()> {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
@@ -144,7 +146,7 @@ fn main() -> anyhow::Result<()> {
 
     // Step 3: Single verification
     println!("Step 3: Single Test Verification...");
-    let verifier = TestVerifier::from_storage(storage);
+    let verifier = TestVerifier::with_exact_matching();
 
     let logs = verifier.parse_log_file(&log1_path)?;
     let result = verifier.verify_test_case(&tc1, &logs);
@@ -167,7 +169,8 @@ fn main() -> anyhow::Result<()> {
     // Step 4: Batch verification
     println!("Step 4: Batch Verification...");
     let log_paths = vec![&log1_path, &log2_path, &log3_path];
-    let report = verifier.batch_verify(&log_paths)?;
+    let test_cases = vec![tc1.clone(), tc2.clone()];
+    let report = verifier.batch_verify(&log_paths, &test_cases)?;
 
     println!("{}", report.summary());
     println!();
@@ -187,7 +190,7 @@ fn main() -> anyhow::Result<()> {
         // Show failures
         for seq_result in &tc_result.sequences {
             for step_result in &seq_result.step_results {
-                if let testcase_manager::StepVerificationResultEnum::Fail {
+                if let StepVerificationResultEnum::Fail {
                     step,
                     description,
                     reason,

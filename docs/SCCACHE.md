@@ -18,6 +18,58 @@ This guide covers everything you need to know about using sccache to accelerate 
 
 sccache (Shared Compiler Cache) is a ccache-like compiler caching tool that dramatically speeds up Rust compilation by caching compilation results and reusing them when building the same code again.
 
+**⚠️ QUICK FIX: If Build is Failing Right Now**
+
+If you're seeing compilation errors with exit status 254:
+```bash
+unset RUSTC_WRAPPER
+cargo clean
+cargo build
+```
+See [Troubleshooting](#issue-compilation-failures-with-sccache-exit-status-254) for details.
+
+### Global Cache Configuration (This Project)
+
+**This project uses a global cache directory** shared across all worktrees and git checkouts. This is configured in `.cargo/config.toml`:
+
+```toml
+[env]
+SCCACHE_DIR = { value = "$HOME/.cache/sccache/testcase-manager", force = true, relative = false }
+```
+
+**Location**: `~/.cache/sccache/testcase-manager`
+
+**Key Benefits**:
+1. **Worktree Sharing**: Multiple worktrees share the same compilation cache
+2. **Persistent Cache**: Cache survives repository deletion and recreation
+3. **Faster Builds**: Dramatically reduced compilation time across all worktrees
+4. **Disk Efficiency**: Single cache location instead of per-worktree caches
+
+**Example Use Case**:
+```bash
+# Worktree 1: Full build (populates global cache)
+cd ~/projects/tcms-main
+cargo build --release  # Takes 2 minutes
+
+# Worktree 2: Same code, instant cache hit
+cd ~/projects/tcms-feature
+cargo build --release  # Takes 20 seconds (cache hit!)
+
+# Worktree 3: Similar code, partial cache hit
+cd ~/projects/tcms-hotfix
+cargo build --release  # Takes 30 seconds (partial cache hit)
+```
+
+**Override if Needed**: Set `SCCACHE_DIR` environment variable to use a different location (overrides `.cargo/config.toml`).
+
+**⚠️ IMPORTANT - sccache Must Be Enabled**:
+The global cache directory will remain empty until sccache is enabled. After installation, you must set `RUSTC_WRAPPER=sccache`:
+```bash
+source ./scripts/enable-sccache.sh
+# Then run a build
+cargo build
+```
+
 ### What is sccache?
 
 sccache is a compilation cache that:
@@ -107,7 +159,26 @@ sccache 0.7.7
 
 ### Enable sccache for Rust
 
-To use sccache with Rust, set the `RUSTC_WRAPPER` environment variable:
+**IMPORTANT**: After installing sccache, you must enable it by setting the `RUSTC_WRAPPER` environment variable. The global cache directory will remain empty until sccache is enabled and a build is run.
+
+#### Quick Setup (Recommended)
+
+Use the provided script for easy setup:
+
+```bash
+# Enable for current shell session
+source ./scripts/enable-sccache.sh
+
+# Or enable permanently (adds to ~/.bashrc or ~/.zshrc)
+source ./scripts/enable-sccache.sh --permanent
+
+# Verify it's enabled
+make sccache-check
+```
+
+#### Manual Setup
+
+Alternatively, set the environment variable manually:
 
 ```bash
 export RUSTC_WRAPPER=sccache
@@ -125,6 +196,20 @@ echo 'export RUSTC_WRAPPER=sccache' >> ~/.zshrc
 source ~/.zshrc
 ```
 
+#### Verify sccache is Enabled
+
+```bash
+# Check with Make
+make sccache-check
+
+# Or check manually
+echo $RUSTC_WRAPPER  # Should output: sccache
+
+# Build and verify cache is being used
+cargo build
+sccache --show-stats  # Should show compile requests and cache hits
+```
+
 ## Configuration
 
 sccache can be configured using environment variables to customize cache behavior, size, and backend.
@@ -133,16 +218,34 @@ sccache can be configured using environment variables to customize cache behavio
 
 #### Cache Directory
 
-By default, sccache stores cache data in:
+**This project uses a global cache directory** configured in `.cargo/config.toml` to enable cache sharing across multiple worktrees:
+
+```toml
+[env]
+SCCACHE_DIR = { value = "$HOME/.cache/sccache/testcase-manager", force = true, relative = false }
+```
+
+**Global Cache Location**: `~/.cache/sccache/testcase-manager`
+
+**Benefits of Global Cache**:
+- **Worktree Sharing**: Multiple worktrees of this repository share the same cache
+- **Persistent Cache**: Cache survives repository deletion and recreation  
+- **Faster Builds**: Reduced compilation time across all worktrees
+- **Disk Efficiency**: Single cache location instead of per-worktree caches
+
+**Default sccache locations** (if not configured):
 - **Linux**: `~/.cache/sccache`
 - **macOS**: `~/Library/Caches/Mozilla.sccache`
 - **Windows**: `%LOCALAPPDATA%\Mozilla\sccache\cache`
 
-To customize the cache location:
+**Override global configuration** (if needed):
 
 ```bash
-export SCCACHE_DIR=~/.cache/sccache
+# Override .cargo/config.toml setting
+export SCCACHE_DIR=/my/custom/cache
 ```
+
+**Note**: Environment variables override `.cargo/config.toml` settings.
 
 #### Cache Size
 
@@ -283,25 +386,32 @@ Max cache size                    10.0 GiB
 
 #### `make sccache-clean`
 
-**Purpose**: Stop the sccache server and clear cache statistics.
+**Purpose**: Stop the sccache server and preserve cache statistics.
 
 **Command**: `sccache --stop-server`
 
 **When to use**:
 - Freeing memory (sccache server runs in background)
 - Troubleshooting cache corruption
-- Resetting cache statistics
 - Before major system changes
 
 **Example**:
 ```bash
 $ make sccache-clean
-sccache cache cleared
+sccache server stopped
+Note: Global cache directory preserved at ~/.cache/sccache/testcase-manager
+To manually remove cache: rm -rf ~/.cache/sccache/testcase-manager
 ```
 
-**Note**: This stops the server but does NOT delete cached files. To delete cached files:
+**Note**: This stops the server but preserves the global cache directory. The cache is intentionally preserved to benefit all worktrees.
+
+**To manually delete cached files** (if needed):
 
 ```bash
+# This project's global cache
+rm -rf ~/.cache/sccache/testcase-manager
+
+# Or all sccache caches
 rm -rf ~/.cache/sccache/*          # Linux
 rm -rf ~/Library/Caches/Mozilla.sccache/*  # macOS
 ```
@@ -400,13 +510,14 @@ sccache --stop-server
 To delete all cached compilation results:
 
 ```bash
-# Linux
-rm -rf ~/.cache/sccache/*
+# This project's global cache (recommended for this project)
+rm -rf ~/.cache/sccache/testcase-manager
 
-# macOS
-rm -rf ~/Library/Caches/Mozilla.sccache/*
+# All sccache caches (if needed)
+rm -rf ~/.cache/sccache/*          # Linux
+rm -rf ~/Library/Caches/Mozilla.sccache/*  # macOS
 
-# Or use sccache itself
+# Or use sccache itself to find location
 sccache --stop-server
 rm -rf $(sccache --show-cache-location)
 ```
@@ -417,7 +528,9 @@ rm -rf $(sccache --show-cache-location)
 - After major Rust version upgrade
 - Testing clean build performance
 
-**Warning**: Clearing cached files means the next build will be slow as the cache repopulates.
+**Warning**: Clearing the global cache affects all worktrees. The next build in any worktree will be slow as the cache repopulates.
+
+**Worktree Consideration**: Since this project uses a global cache shared across worktrees, deleting the cache will affect all worktrees. Consider the impact before clearing.
 
 ### Cache Maintenance Best Practices
 
@@ -601,11 +714,18 @@ sccache can be integrated into CI/CD pipelines to speed up builds across multipl
 
 The simplest approach uses local disk caching on CI runners.
 
+**Local Development vs CI**:
+- **Local Development**: Uses global cache at `~/.cache/sccache/testcase-manager` (configured in `.cargo/config.toml`)
+- **CI/CD**: Uses project directory cache at `$CI_PROJECT_DIR/.sccache` (configured via environment variable override)
+
 #### GitLab CI
+
+This project's GitLab CI configuration (`.gitlab-ci.yml`):
 
 ```yaml
 variables:
   RUSTC_WRAPPER: sccache
+  # Override .cargo/config.toml for CI compatibility
   SCCACHE_DIR: $CI_PROJECT_DIR/.sccache
   SCCACHE_CACHE_SIZE: 5G
 
@@ -629,6 +749,7 @@ build:
 - Simple setup
 - No external dependencies
 - Works immediately
+- CI environment variable overrides local global cache setting
 
 **Limitations**:
 - Cache not shared across jobs/branches
@@ -1063,42 +1184,66 @@ Cache location                    Local disk
    sccache --show-stats
    ```
 
-### Issue: Compilation failures with sccache
+### Issue: Compilation failures with sccache (exit status 254)
 
 **Symptom**:
 ```
-error: compilation failed
-Compilation failures                 12
+error occurred in cc-rs: command did not execute successfully 
+(status code exit status: 254): env ... "sccache" "cc" ...
 ```
 
-**Cause**: sccache bug, corrupted cache, or incompatible cache entry.
+**Cause**: sccache may have issues with:
+- Native C dependencies (libssh2-sys, openssl-sys, libgit2-sys, etc.)
+- Cross-compilation scenarios
+- Certain cc-rs build configurations
+- Corrupted cache entries
 
-**Solution**:
-
-1. **Disable sccache temporarily**:
+**Solution 1 - Disable sccache temporarily**:
    ```bash
+   # Use the disable script
+   source ./scripts/disable-sccache.sh
+   
+   # Or manually
    unset RUSTC_WRAPPER
+   
+   # Clean and rebuild
    cargo clean
    cargo build
    ```
 
-2. **If build succeeds**, clear sccache and retry:
+**Solution 2 - Stop sccache server and retry**:
    ```bash
    sccache --stop-server
-   rm -rf ~/.cache/sccache/*
-   export RUSTC_WRAPPER=sccache
    cargo clean
    cargo build
    ```
 
-3. **Check sccache logs**:
+**Solution 3 - Clear sccache cache**:
+   ```bash
+   sccache --stop-server
+   rm -rf ~/.cache/sccache/testcase-manager
+   cargo clean
+   cargo build
+   ```
+
+**Solution 4 - Check sccache logs**:
    ```bash
    export SCCACHE_LOG=debug
    cargo build 2>&1 | grep -i error
    ```
 
-4. **Report bug** to sccache if issue persists:
+**Solution 5 - Report bug** to sccache if issue persists:
    - https://github.com/mozilla/sccache/issues
+
+**Working Without sccache**:
+If sccache consistently causes issues, you can disable it permanently:
+```bash
+# Remove from shell profile
+# Edit ~/.bashrc or ~/.zshrc and remove: export RUSTC_WRAPPER=sccache
+
+# Or keep it disabled for specific projects
+unset RUSTC_WRAPPER
+```
 
 ### Issue: Permission denied errors
 

@@ -1,5 +1,5 @@
 use anyhow::Result;
-use testcase_manager::{print_title, TestCaseFuzzyFinder, TitleStyle};
+use testcase_ui::{print_title, TestCaseFuzzyFinder, TitleStyle};
 
 fn main() -> Result<()> {
     print_title("TTY Fallback Demo", TitleStyle::SimpleEquals);

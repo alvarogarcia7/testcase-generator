@@ -1,0 +1,24 @@
+[package]
+name = "editor"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "editor"
+path = "src/main.rs"
+
+[dependencies]
+testcase-manager = { path = "../testcase-manager" }
+testcase-ui = { path = "../testcase-ui" }
+testcase-cli = { path = "../testcase-cli" }
+testcase-git = { path = "../testcase-git" }
+testcase-storage = { path = "../testcase-storage" }
+testcase-models = { path = "../testcase-models" }
+testcase-common = { path = "../testcase-common" }
+clap = { workspace = true }
+anyhow = { workspace = true }
+env_logger = { workspace = true }
+log = { workspace = true }
+serde_yaml = { workspace = true }
+serde_json = { workspace = true }
+jsonschema = { workspace = true }

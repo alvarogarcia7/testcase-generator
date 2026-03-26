@@ -1,0 +1,8 @@
+[package]
+name = "testcase-cli"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+testcase-models = { path = "../testcase-models" }
+clap = { workspace = true }
