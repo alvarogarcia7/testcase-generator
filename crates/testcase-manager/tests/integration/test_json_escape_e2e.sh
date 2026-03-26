@@ -60,11 +60,11 @@ section "Test 1: Build json-escape binary"
 log_info "Building json-escape binary..."
 if cargo build -p json-escape > "$TEMP_DIR/build.log" 2>&1; then
     pass "json-escape binary built successfully"
-    ((TESTS_PASSED++))
+    ((++TESTS_PASSED))
 else
     fail "Failed to build json-escape binary"
     cat "$TEMP_DIR/build.log"
-    ((TESTS_FAILED++))
+    ((++TESTS_FAILED))
     exit 1
 fi
 
@@ -76,11 +76,11 @@ cd "$PROJECT_ROOT"
 JSON_ESCAPE_BIN=$(find_binary "json-escape")
 if [[ -z "$JSON_ESCAPE_BIN" ]]; then
     fail "json-escape binary not found after build"
-    ((TESTS_FAILED++))
+    ((++TESTS_FAILED))
     exit 1
 fi
 pass "json-escape binary exists at $JSON_ESCAPE_BIN"
-((TESTS_PASSED++))
+((++TESTS_PASSED))
 
 # ============================================================================
 # Test 2: Test json-escape with special characters
@@ -94,10 +94,10 @@ EXPECTED='Hello \"world\"'
 OUTPUT=$(echo -n "$INPUT" | "$JSON_ESCAPE_BIN")
 if [[ "$OUTPUT" == "$EXPECTED" ]]; then
     pass "Basic quote escaping works"
-    ((TESTS_PASSED++))
+    ((++TESTS_PASSED))
 else
     fail "Basic quote escaping failed. Expected: $EXPECTED, Got: $OUTPUT"
-    ((TESTS_FAILED++))
+    ((++TESTS_FAILED))
 fi
 
 # Test newline escaping
@@ -106,10 +106,10 @@ INPUT=$'Line1\nLine2\nLine3'
 OUTPUT=$(printf '%s' "$INPUT" | "$JSON_ESCAPE_BIN")
 if [[ "$OUTPUT" == *"\\n"* ]]; then
     pass "Newline escaping works"
-    ((TESTS_PASSED++))
+    ((++TESTS_PASSED))
 else
     fail "Newline escaping failed. Output: $OUTPUT"
-    ((TESTS_FAILED++))
+    ((++TESTS_FAILED))
 fi
 
 # Test backslash escaping
@@ -118,10 +118,10 @@ INPUT='C:\test\path'
 OUTPUT=$(echo -n "$INPUT" | "$JSON_ESCAPE_BIN")
 if [[ "$OUTPUT" == *"\\\\"* ]]; then
     pass "Backslash escaping works"
-    ((TESTS_PASSED++))
+    ((++TESTS_PASSED))
 else
     fail "Backslash escaping failed. Output: $OUTPUT"
-    ((TESTS_FAILED++))
+    ((++TESTS_FAILED))
 fi
 
 # Test tab escaping
@@ -130,10 +130,10 @@ INPUT=$'Col1\tCol2\tCol3'
 OUTPUT=$(printf '%s' "$INPUT" | "$JSON_ESCAPE_BIN")
 if [[ "$OUTPUT" == *"\\t"* ]]; then
     pass "Tab escaping works"
-    ((TESTS_PASSED++))
+    ((++TESTS_PASSED))
 else
     fail "Tab escaping failed. Output: $OUTPUT"
-    ((TESTS_FAILED++))
+    ((++TESTS_FAILED))
 fi
 
 # ============================================================================
@@ -145,20 +145,20 @@ log_info "Testing validation mode with valid input..."
 INPUT='Simple text'
 if echo -n "$INPUT" | "$JSON_ESCAPE_BIN" --test > /dev/null 2>&1; then
     pass "Validation mode accepts valid input"
-    ((TESTS_PASSED++))
+    ((++TESTS_PASSED))
 else
     fail "Validation mode rejected valid input"
-    ((TESTS_FAILED++))
+    ((++TESTS_FAILED))
 fi
 
 log_info "Testing validation mode with special characters..."
 INPUT=$'Line1\nLine2\tTabbed\r\nCRLF'
 if printf '%s' "$INPUT" | "$JSON_ESCAPE_BIN" --test > /dev/null 2>&1; then
     pass "Validation mode accepts special characters"
-    ((TESTS_PASSED++))
+    ((++TESTS_PASSED))
 else
     fail "Validation mode rejected special characters"
-    ((TESTS_FAILED++))
+    ((++TESTS_FAILED))
 fi
 
 # ============================================================================
@@ -239,33 +239,33 @@ enabled = true
 EOF
 
 log_info "Generating test script with RustBinary mode..."
-if cargo run --bin test-executor -- \
+if cargo run -p test-executor -- \
     --config "$CONFIG_FILE" \
     --output-dir "$TEMP_DIR" \
     generate "$TEST_YAML" > "$TEMP_DIR/generate_rust_binary.log" 2>&1; then
     pass "Test script generated with RustBinary mode"
-    ((TESTS_PASSED++))
+    ((++TESTS_PASSED))
 else
     fail "Failed to generate test script with RustBinary mode"
     cat "$TEMP_DIR/generate_rust_binary.log"
-    ((TESTS_FAILED++))
+    ((++TESTS_FAILED))
 fi
 
 SCRIPT_PATH="$TEMP_DIR/TEST_RUST_BINARY_test.sh"
 if [[ ! -f "$SCRIPT_PATH" ]]; then
     fail "Generated script not found at $SCRIPT_PATH"
-    ((TESTS_FAILED++))
+    ((++TESTS_FAILED))
 else
     pass "Generated script exists"
-    ((TESTS_PASSED++))
+    ((++TESTS_PASSED))
     
     # Verify script contains json-escape usage
     if grep -q "json-escape" "$SCRIPT_PATH"; then
         pass "Script uses json-escape binary"
-        ((TESTS_PASSED++))
+        ((++TESTS_PASSED))
     else
         fail "Script does not use json-escape binary"
-        ((TESTS_FAILED++))
+        ((++TESTS_FAILED))
     fi
     
     # Make script executable and run it
@@ -273,51 +273,51 @@ else
     log_info "Executing test script with RustBinary mode..."
     if bash "$SCRIPT_PATH" > "$TEMP_DIR/execute_rust_binary.log" 2>&1; then
         pass "Test script executed successfully"
-        ((TESTS_PASSED++))
+        ((++TESTS_PASSED))
     else
         fail "Test script execution failed"
         cat "$TEMP_DIR/execute_rust_binary.log"
-        ((TESTS_FAILED++))
+        ((++TESTS_FAILED))
     fi
     
     # Verify JSON log was created
     JSON_LOG="$TEMP_DIR/TEST_RUST_BINARY_execution_log.json"
     if [[ ! -f "$JSON_LOG" ]]; then
         fail "JSON log not created at $JSON_LOG"
-        ((TESTS_FAILED++))
+        ((++TESTS_FAILED))
     else
         pass "JSON log created"
-        ((TESTS_PASSED++))
+        ((++TESTS_PASSED))
         
         # Validate JSON with jq if available
         if command -v jq >/dev/null 2>&1; then
             if jq empty "$JSON_LOG" >/dev/null 2>&1; then
                 pass "JSON log is valid (jq validation)"
-                ((TESTS_PASSED++))
+                ((++TESTS_PASSED))
             else
                 fail "JSON log is invalid"
                 cat "$JSON_LOG"
-                ((TESTS_FAILED++))
+                ((++TESTS_FAILED))
             fi
             
             # Verify JSON structure
             NUM_ENTRIES=$(jq 'length' "$JSON_LOG")
             if [[ "$NUM_ENTRIES" -eq 4 ]]; then
                 pass "JSON log contains 4 entries (4 non-manual steps)"
-                ((TESTS_PASSED++))
+                ((++TESTS_PASSED))
             else
                 fail "JSON log should contain 4 entries, got $NUM_ENTRIES"
-                ((TESTS_FAILED++))
+                ((++TESTS_FAILED))
             fi
             
             # Verify special characters are properly escaped in JSON
             FIRST_OUTPUT=$(jq -r '.[0].output' "$JSON_LOG")
             if [[ "$FIRST_OUTPUT" == *"world"* ]]; then
                 pass "First step output contains expected text"
-                ((TESTS_PASSED++))
+                ((++TESTS_PASSED))
             else
                 fail "First step output missing expected text: $FIRST_OUTPUT"
-                ((TESTS_FAILED++))
+                ((++TESTS_FAILED))
             fi
         else
             info "jq not available, skipping JSON validation"
@@ -339,46 +339,46 @@ enabled = true
 EOF
 
 log_info "Generating test script with ShellFallback mode..."
-if cargo run --bin test-executor -- \
+if cargo run -p test-executor -- \
     --config "$CONFIG_FILE_FALLBACK" \
     --output-dir "$TEMP_DIR" \
     generate "$TEST_YAML" > "$TEMP_DIR/generate_shell_fallback.log" 2>&1; then
     pass "Test script generated with ShellFallback mode"
-    ((TESTS_PASSED++))
+    ((++TESTS_PASSED))
 else
     fail "Failed to generate test script with ShellFallback mode"
     cat "$TEMP_DIR/generate_shell_fallback.log"
-    ((TESTS_FAILED++))
+    ((++TESTS_FAILED))
 fi
 
 if [[ -f "$SCRIPT_PATH" ]]; then
     # Verify script uses shell fallback (sed/awk)
     if grep -q "sed 's/" "$SCRIPT_PATH" && grep -q "awk" "$SCRIPT_PATH"; then
         pass "Script uses shell fallback (sed/awk)"
-        ((TESTS_PASSED++))
+        ((++TESTS_PASSED))
     else
         fail "Script does not use shell fallback"
-        ((TESTS_FAILED++))
+        ((++TESTS_FAILED))
     fi
     
     # Verify script does NOT check for json-escape binary
     if ! grep -q "if command -v json-escape" "$SCRIPT_PATH"; then
         pass "Script does not check for json-escape in ShellFallback mode"
-        ((TESTS_PASSED++))
+        ((++TESTS_PASSED))
     else
         fail "Script should not check for json-escape in ShellFallback mode"
-        ((TESTS_FAILED++))
+        ((++TESTS_FAILED))
     fi
     
     # Execute script
     log_info "Executing test script with ShellFallback mode..."
     if bash "$SCRIPT_PATH" > "$TEMP_DIR/execute_shell_fallback.log" 2>&1; then
         pass "Test script with ShellFallback executed successfully"
-        ((TESTS_PASSED++))
+        ((++TESTS_PASSED))
     else
         fail "Test script with ShellFallback execution failed"
         cat "$TEMP_DIR/execute_shell_fallback.log"
-        ((TESTS_FAILED++))
+        ((++TESTS_FAILED))
     fi
     
     # Verify JSON log
@@ -386,11 +386,11 @@ if [[ -f "$SCRIPT_PATH" ]]; then
         if command -v jq >/dev/null 2>&1; then
             if jq empty "$JSON_LOG" >/dev/null 2>&1; then
                 pass "JSON log from ShellFallback is valid"
-                ((TESTS_PASSED++))
+                ((++TESTS_PASSED))
             else
                 fail "JSON log from ShellFallback is invalid"
                 cat "$JSON_LOG"
-                ((TESTS_FAILED++))
+                ((++TESTS_FAILED))
             fi
         fi
     fi
@@ -410,45 +410,45 @@ enabled = true
 EOF
 
 log_info "Generating test script with Auto mode..."
-if cargo run --bin test-executor -- \
+if cargo run -p test-executor -- \
     --config "$CONFIG_FILE_AUTO" \
     --output-dir "$TEMP_DIR" \
     generate "$TEST_YAML" > "$TEMP_DIR/generate_auto.log" 2>&1; then
     pass "Test script generated with Auto mode"
-    ((TESTS_PASSED++))
+    ((++TESTS_PASSED))
 else
     fail "Failed to generate test script with Auto mode"
     cat "$TEMP_DIR/generate_auto.log"
-    ((TESTS_FAILED++))
+    ((++TESTS_FAILED))
 fi
 
 if [[ -f "$SCRIPT_PATH" ]]; then
     # Verify script has both json-escape check and fallback
     if grep -q "if command -v json-escape" "$SCRIPT_PATH"; then
         pass "Script checks for json-escape availability"
-        ((TESTS_PASSED++))
+        ((++TESTS_PASSED))
     else
         fail "Script should check for json-escape in Auto mode"
-        ((TESTS_FAILED++))
+        ((++TESTS_FAILED))
     fi
     
     if grep -q "sed 's/" "$SCRIPT_PATH" && grep -q "awk" "$SCRIPT_PATH"; then
         pass "Script contains shell fallback for Auto mode"
-        ((TESTS_PASSED++))
+        ((++TESTS_PASSED))
     else
         fail "Script should contain shell fallback in Auto mode"
-        ((TESTS_FAILED++))
+        ((++TESTS_FAILED))
     fi
     
     # Execute script with json-escape in PATH
     log_info "Executing test script with Auto mode (binary in PATH)..."
     if bash "$SCRIPT_PATH" > "$TEMP_DIR/execute_auto_with_binary.log" 2>&1; then
         pass "Test script with Auto mode executed successfully (binary available)"
-        ((TESTS_PASSED++))
+        ((++TESTS_PASSED))
     else
         fail "Test script with Auto mode execution failed"
         cat "$TEMP_DIR/execute_auto_with_binary.log"
-        ((TESTS_FAILED++))
+        ((++TESTS_FAILED))
     fi
     
     # Verify JSON log
@@ -456,11 +456,11 @@ if [[ -f "$SCRIPT_PATH" ]]; then
         if command -v jq >/dev/null 2>&1; then
             if jq empty "$JSON_LOG" >/dev/null 2>&1; then
                 pass "JSON log from Auto mode (binary available) is valid"
-                ((TESTS_PASSED++))
+                ((++TESTS_PASSED))
             else
                 fail "JSON log from Auto mode is invalid"
                 cat "$JSON_LOG"
-                ((TESTS_FAILED++))
+                ((++TESTS_FAILED))
             fi
         fi
     fi
@@ -479,11 +479,11 @@ CLEAN_PATH=$(echo "$PATH" | tr ':' '\n' | grep -v "target/debug" | tr '\n' ':' |
 # Execute script without json-escape in PATH
 if env PATH="$CLEAN_PATH" bash "$SCRIPT_PATH" > "$TEMP_DIR/execute_auto_without_binary.log" 2>&1; then
     pass "Test script with Auto mode executed successfully (binary NOT available)"
-    ((TESTS_PASSED++))
+    ((++TESTS_PASSED))
 else
     fail "Test script with Auto mode failed when binary not available"
     cat "$TEMP_DIR/execute_auto_without_binary.log"
-    ((TESTS_FAILED++))
+    ((++TESTS_FAILED))
 fi
 
 # Verify JSON log is still created and valid
@@ -491,16 +491,16 @@ if [[ -f "$JSON_LOG" ]]; then
     if command -v jq >/dev/null 2>&1; then
         if jq empty "$JSON_LOG" >/dev/null 2>&1; then
             pass "JSON log from Auto mode (fallback) is valid"
-            ((TESTS_PASSED++))
+            ((++TESTS_PASSED))
         else
             fail "JSON log from Auto mode (fallback) is invalid"
             cat "$JSON_LOG"
-            ((TESTS_FAILED++))
+            ((++TESTS_FAILED))
         fi
     fi
 else
     fail "JSON log not created when using Auto mode fallback"
-    ((TESTS_FAILED++))
+    ((++TESTS_FAILED))
 fi
 
 # ============================================================================
@@ -564,16 +564,16 @@ EOF
 
 log_info "Generating test script for complex characters..."
 COMPLEX_SCRIPT="$TEMP_DIR/TEST_COMPLEX_CHARS_test.sh"
-if cargo run --bin test-executor -- \
+if cargo run -p test-executor -- \
     --config "$CONFIG_FILE_AUTO" \
     --output-dir "$TEMP_DIR" \
     generate "$COMPLEX_YAML" > "$TEMP_DIR/generate_complex.log" 2>&1; then
     pass "Test script generated for complex characters"
-    ((TESTS_PASSED++))
+    ((++TESTS_PASSED))
 else
     fail "Failed to generate test script for complex characters"
     cat "$TEMP_DIR/generate_complex.log"
-    ((TESTS_FAILED++))
+    ((++TESTS_FAILED))
 fi
 
 if [[ -f "$COMPLEX_SCRIPT" ]]; then
@@ -581,42 +581,42 @@ if [[ -f "$COMPLEX_SCRIPT" ]]; then
     log_info "Executing test script with complex characters..."
     if bash "$COMPLEX_SCRIPT" > "$TEMP_DIR/execute_complex.log" 2>&1; then
         pass "Test script with complex characters executed successfully"
-        ((TESTS_PASSED++))
+        ((++TESTS_PASSED))
     else
         fail "Test script with complex characters execution failed"
         cat "$TEMP_DIR/execute_complex.log"
-        ((TESTS_FAILED++))
+        ((++TESTS_FAILED))
     fi
     
     # Verify JSON log
     COMPLEX_JSON="$TEMP_DIR/TEST_COMPLEX_CHARS_execution_log.json"
     if [[ -f "$COMPLEX_JSON" ]]; then
         pass "JSON log created for complex characters test"
-        ((TESTS_PASSED++))
+        ((++TESTS_PASSED))
         
         if command -v jq >/dev/null 2>&1; then
             if jq empty "$COMPLEX_JSON" >/dev/null 2>&1; then
                 pass "JSON log with complex characters is valid"
-                ((TESTS_PASSED++))
+                ((++TESTS_PASSED))
                 
                 # Verify all entries are present
                 NUM_ENTRIES=$(jq 'length' "$COMPLEX_JSON")
                 if [[ "$NUM_ENTRIES" -eq 3 ]]; then
                     pass "JSON log contains 3 entries"
-                    ((TESTS_PASSED++))
+                    ((++TESTS_PASSED))
                 else
                     fail "JSON log should contain 3 entries, got $NUM_ENTRIES"
-                    ((TESTS_FAILED++))
+                    ((++TESTS_FAILED))
                 fi
             else
                 fail "JSON log with complex characters is invalid"
                 cat "$COMPLEX_JSON"
-                ((TESTS_FAILED++))
+                ((++TESTS_FAILED))
             fi
         fi
     else
         fail "JSON log not created for complex characters test"
-        ((TESTS_FAILED++))
+        ((++TESTS_FAILED))
     fi
 fi
 
@@ -629,10 +629,10 @@ log_info "Testing json-escape with empty input..."
 OUTPUT=$(echo -n "" | "$JSON_ESCAPE_BIN")
 if [[ -z "$OUTPUT" ]]; then
     pass "json-escape handles empty input correctly"
-    ((TESTS_PASSED++))
+    ((++TESTS_PASSED))
 else
     fail "json-escape should return empty string for empty input, got: '$OUTPUT'"
-    ((TESTS_FAILED++))
+    ((++TESTS_FAILED))
 fi
 
 # ============================================================================
@@ -647,10 +647,10 @@ INPUT='C:\test\path'
 OUTPUT=$(printf '%s' "$INPUT" | sed 's/\\/\\\\/g; s/"/\\"/g; s/\t/\\t/g; s/\r/\\r/g' | awk '{printf "%s%s", (NR>1?"\\n":""), $0}')
 if [[ "$OUTPUT" == 'C:\\test\\path' ]]; then
     pass "Shell fallback escapes backslashes correctly"
-    ((TESTS_PASSED++))
+    ((++TESTS_PASSED))
 else
     fail "Shell fallback backslash escaping failed. Expected: 'C:\\\\test\\\\path', Got: '$OUTPUT'"
-    ((TESTS_FAILED++))
+    ((++TESTS_FAILED))
 fi
 
 # Test quote escaping
@@ -658,10 +658,10 @@ INPUT='He said "hello"'
 OUTPUT=$(printf '%s' "$INPUT" | sed 's/\\/\\\\/g; s/"/\\"/g; s/\t/\\t/g; s/\r/\\r/g' | awk '{printf "%s%s", (NR>1?"\\n":""), $0}')
 if [[ "$OUTPUT" == 'He said \"hello\"' ]]; then
     pass "Shell fallback escapes quotes correctly"
-    ((TESTS_PASSED++))
+    ((++TESTS_PASSED))
 else
     fail "Shell fallback quote escaping failed. Expected: 'He said \\\"hello\\\"', Got: '$OUTPUT'"
-    ((TESTS_FAILED++))
+    ((++TESTS_FAILED))
 fi
 
 # Test newline escaping
@@ -669,10 +669,10 @@ INPUT=$'Line1\nLine2\nLine3'
 OUTPUT=$(printf '%s' "$INPUT" | sed 's/\\/\\\\/g; s/"/\\"/g; s/\t/\\t/g; s/\r/\\r/g' | awk '{printf "%s%s", (NR>1?"\\n":""), $0}')
 if [[ "$OUTPUT" == 'Line1\nLine2\nLine3' ]]; then
     pass "Shell fallback escapes newlines correctly"
-    ((TESTS_PASSED++))
+    ((++TESTS_PASSED))
 else
     fail "Shell fallback newline escaping failed. Got: '$OUTPUT'"
-    ((TESTS_FAILED++))
+    ((++TESTS_FAILED))
 fi
 
 # ============================================================================

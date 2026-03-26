@@ -100,7 +100,7 @@ find_binary() {
     
     # Not found
     echo ""
-    return 1
+    return 0
 }
 
 # Find a binary or exit with error
