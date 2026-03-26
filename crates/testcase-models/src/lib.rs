@@ -2,6 +2,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::fmt;
 use std::path::PathBuf;
 
+use bash_eval;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
