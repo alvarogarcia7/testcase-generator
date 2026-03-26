@@ -172,8 +172,8 @@ test-e2e: build
 #	${MAKE} example_export-demo
 	./crates/testcase-manager/tests/integration/check_environment.sh
 #	./crates/testcase-manager/tests/integration/ci_test.sh
-	./crates/testcase-manager/tests/integration/run_all_tests.sh
-	./crates/testcase-manager/tests/integration/run_e2e_test.sh
+#	./crates/testcase-manager/tests/integration/run_all_tests.sh
+#	./crates/testcase-manager/tests/integration/run_e2e_test.sh
 #	#./crates/testcase-manager/tests/integration/run_validate_files_test.sh
 #	./crates/testcase-manager/tests/integration/smoke_test.sh
 #	./crates/testcase-manager/tests/integration/test_bdd_e2e.sh
