@@ -19,24 +19,15 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
 # Source shared libraries
 source "$PROJECT_ROOT/scripts/lib/find-binary.sh" || exit 1
 source "$PROJECT_ROOT/scripts/lib/logger.sh" || exit 1
+    
+cargo build -p test-run-manager --bin trm
 
 # Find binaries using workspace-aware search
 cd "$PROJECT_ROOT"
 TRM_BINARY=$(find_binary "trm")
 if [[ -z "$TRM_BINARY" ]]; then
     echo "[ERROR] trm binary not found" >&2
-<<<<<<< HEAD
-    echo "[ERROR] Please build it with: cargo build --bin trm" >&2
-    exit 1
-fi
-
-TCM_BINARY=$(find_binary "editor")
-if [[ -z "$TCM_BINARY" ]]; then
-    echo "[ERROR] tcm binary not found" >&2
-    echo "[ERROR] Please build it with: cargo build --bin tcm" >&2
-=======
-    echo "[ERROR] Please build it with: cargo build -p test-run-manager" >&2
->>>>>>> fb98502 ([TCMS-18] Remove unused tcm dependency from test_run_manager_e2e.sh)
+    echo "[ERROR] Please build it with: cargo build -p test-run-manager --bin trm" >&2
     exit 1
 fi
 
