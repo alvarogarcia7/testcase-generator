@@ -99,8 +99,8 @@ done
 
 # Run tests to ensure everything compiles and passes
 # Run unit tests only (skip integration tests that require binaries in specific PATH)
-RUN cargo test --lib --all-features && \
-    cargo test --doc --all-features
+RUN cargo test --workspace --lib --all-features && \
+    cargo test --workspace --doc --all-features
 
 # Make scripts executable
 RUN chmod +x scripts/*.sh && \

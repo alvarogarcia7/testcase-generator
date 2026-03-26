@@ -18,8 +18,8 @@ pub enum TitleStyle {
 ///
 /// # Examples
 /// ```
-/// use testcase_manager::print_title;
-/// use testcase_manager::ui::TitleStyle;
+/// use testcase_ui::print_title;
+/// use testcase_ui::TitleStyle;
 ///
 /// print_title("Section Title", TitleStyle::TripleEquals);
 /// print_title("Flow Title", TitleStyle::Box);

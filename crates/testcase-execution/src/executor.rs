@@ -1880,7 +1880,7 @@ impl Default for TestExecutor {
 /// # Examples
 ///
 /// ```
-/// use testcase_manager::executor::convert_pcre_to_sed_pattern;
+/// use testcase_execution::executor::convert_pcre_to_sed_pattern;
 ///
 /// // Convert \K pattern
 /// let result = convert_pcre_to_sed_pattern("SESSION_ID=\\K\\d+");
@@ -1988,7 +1988,7 @@ pub fn convert_pcre_to_sed_pattern(pattern: &str) -> String {
 ///
 /// ```
 /// use std::collections::HashMap;
-/// use testcase_manager::executor::substitute_variables;
+/// use testcase_execution::executor::substitute_variables;
 ///
 /// let mut vars = HashMap::new();
 /// vars.insert("username".to_string(), "john.doe".to_string());
@@ -2054,7 +2054,7 @@ pub fn substitute_variables(command: &str, step_vars: &HashMap<String, String>) 
 /// # Examples
 ///
 /// ```
-/// use testcase_manager::executor::bash_escape;
+/// use testcase_execution::executor::bash_escape;
 ///
 /// assert_eq!(bash_escape("hello"), "'hello'");
 /// assert_eq!(bash_escape("it's"), "'it'\\''s'");
