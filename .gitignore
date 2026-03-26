@@ -143,6 +143,8 @@ test-acceptance/execution_logs/
 test-acceptance/verification_results/
 test-acceptance/scripts/
 test-acceptance/reports/
+test-acceptance/mock_execution_logs/
+test-acceptance/tpdg_conversion_output/
 
 # Test case validation reports (validate_all_testcases.sh)
 testcase_validation_report.txt
