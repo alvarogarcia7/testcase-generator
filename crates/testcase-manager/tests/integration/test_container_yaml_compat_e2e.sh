@@ -17,7 +17,7 @@ section "Container YAML Compatibility E2E Test"
 
 # Build the binary
 log_info "Building test-plan-documentation-generator-compat binary..."
-cargo build --bin test-plan-documentation-generator-compat
+cargo build -p tpdg-compat --bin test-plan-documentation-generator-compat
 
 # Find binary using workspace-aware search
 cd "$PROJECT_ROOT"
