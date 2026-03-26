@@ -29,7 +29,7 @@ if [[ -z "$TRM_BINARY" ]]; then
     exit 1
 fi
 
-TCM_BINARY=$(find_binary "tcm")
+TCM_BINARY=$(find_binary "editor")
 if [[ -z "$TCM_BINARY" ]]; then
     echo "[ERROR] tcm binary not found" >&2
     echo "[ERROR] Please build it with: cargo build --bin tcm" >&2
