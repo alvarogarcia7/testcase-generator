@@ -19,7 +19,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
 
 # Source logger library
-source "$SCRIPT_DIR/../../scripts/lib/logger.sh" || exit 1
+source "$PROJECT_ROOT/scripts/lib/logger.sh" || exit 1
+source "$PROJECT_ROOT/scripts/lib/shellcheck-helper.sh" || true
 
 # Handle --no-remove flag
 REMOVE_TEMP=1

@@ -42,8 +42,8 @@ if [[ -z "$VALIDATE_YAML_BIN" ]]; then
 fi
 
 # Source logger library
-source "$SCRIPT_DIR/../../scripts/lib/logger.sh" || exit 1
-source "$SCRIPT_DIR/../../scripts/lib/shellcheck-helper.sh" || true
+source "$PROJECT_ROOT/scripts/lib/logger.sh" || exit 1
+source "$PROJECT_ROOT/scripts/lib/shellcheck-helper.sh" || true
 
 # Handle --no-remove flag
 REMOVE_TEMP=1
