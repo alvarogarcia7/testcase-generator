@@ -163,39 +163,39 @@ test-e2e-failing-all: build
 	./tests/integration/run_all_tests.sh
 .PHONY: test-e2e-failing-all
 
-test-e2e:
+test-e2e: build
 #	${MAKE} test-e2e-validate-yaml
 #	${MAKE} test-e2e-orchestrator
 #	${MAKE} test-e2e-orchestrator-examples
 #	${MAKE} test-e2e-executor
 #	#${MAKE} test-verify-sample
 #	${MAKE} example_export-demo
-#	./tests/integration/check_environment.sh
-#	#./tests/integration/ci_test.sh
-#	#./tests/integration/run_all_tests.sh
-#	#./tests/integration/run_e2e_test.sh
-#	#./tests/integration/run_validate_files_test.sh
-#	./tests/integration/smoke_test.sh
-#	./tests/integration/test_bdd_e2e.sh
-#	#./tests/integration/test_bdd_initial_conditions.sh
-#	./tests/integration/test_executor_e2e.sh
-#	./tests/integration/test_manual_steps_e2e.sh
-#	./tests/integration/test_manual_verification_e2e.sh
-#	./tests/integration/test_orchestrator_e2e.sh
-#	./tests/integration/test_orchestrator_examples.sh
-#	#./tests/integration/test_run_manager_e2e.sh
-#	./tests/integration/test_validate_yaml_multi_e2e.sh
-#	./tests/integration/test_validate_yaml_watch_e2e.sh
-#	./tests/integration/test_validate_yaml_schema_watch_e2e.sh
-#	./tests/integration/test_validate_yaml_transitive_schema_watch_e2e.sh
-#	./tests/integration/test_auto_schema_validation_e2e.sh
-#	./tests/integration/test_variable_passing_e2e.sh
-#	./tests/integration/test_verifier_e2e.sh
-#	./tests/integration/test_verifier_container_e2e.sh
+	./crates/testcase-manager/tests/integration/check_environment.sh
+#	./crates/testcase-manager/tests/integration/ci_test.sh
+#	#./crates/testcase-manager/tests/integration/run_all_tests.sh
+#	#./crates/testcase-manager/tests/integration/run_e2e_test.sh
+#	#./crates/testcase-manager/tests/integration/run_validate_files_test.sh
+#	./crates/testcase-manager/tests/integration/smoke_test.sh
+#	./crates/testcase-manager/tests/integration/test_bdd_e2e.sh
+#	#./crates/testcase-manager/tests/integration/test_bdd_initial_conditions.sh
+#	./crates/testcase-manager/tests/integration/test_executor_e2e.sh
+#	./crates/testcase-manager/tests/integration/test_manual_steps_e2e.sh
+#	./crates/testcase-manager/tests/integration/test_manual_verification_e2e.sh
+#	./crates/testcase-manager/tests/integration/test_orchestrator_e2e.sh
+#	./crates/testcase-manager/tests/integration/test_orchestrator_examples.sh
+#	#./crates/testcase-manager/tests/integration/test_run_manager_e2e.sh
+#	./crates/testcase-manager/tests/integration/test_validate_yaml_multi_e2e.sh
+#	./crates/testcase-manager/tests/integration/test_validate_yaml_watch_e2e.sh
+#	./crates/testcase-manager/tests/integration/test_validate_yaml_schema_watch_e2e.sh
+#	./crates/testcase-manager/tests/integration/test_validate_yaml_transitive_schema_watch_e2e.sh
+#	./crates/testcase-manager/tests/integration/test_auto_schema_validation_e2e.sh
+#	./crates/testcase-manager/tests/integration/test_variable_passing_e2e.sh
+#	./crates/testcase-manager/tests/integration/test_verifier_e2e.sh
+#	./crates/testcase-manager/tests/integration/test_verifier_container_e2e.sh
 	${MAKE} test-verifier-edge-cases
-#	./tests/integration/test_verify_e2e.sh
-#	./tests/integration/test_container_yaml_compat_e2e.sh
-#	./tests/integration/test_documentation_generation.sh
+#	./crates/testcase-manager/tests/integration/test_verify_e2e.sh
+#	./crates/testcase-manager/tests/integration/test_container_yaml_compat_e2e.sh
+#	./crates/testcase-manager/tests/integration/test_documentation_generation.sh
 	# Valid values of BUILD_VARIANT are "" (debug) or "--release" (release mode)
 #	BUILD_VARIANT="" ./scripts/run_verifier_and_generate_reports.sh
 	${MAKE} validate-output-schemas
