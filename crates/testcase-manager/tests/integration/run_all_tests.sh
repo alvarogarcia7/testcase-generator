@@ -32,7 +32,7 @@ fi
 
 # Find the binary
 cd "$PROJECT_ROOT"
-BINARY=$(find_binary "testcase-manager")
+BINARY=$(find_binary "trm")
 if [[ -z "$BINARY" ]]; then
     fail "Binary not found in target/release or target/debug"
     log_error "Run with --build flag to build first"
