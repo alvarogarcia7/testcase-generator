@@ -5035,7 +5035,7 @@ fn test_command_escaping_for_json_with_single_quotes() {
 
     // Check that the JSON output correctly converts and escapes quotes
     // The JSON line should be: echo '    "command": "echo \"hello world\"",'
-    let expected_json_line = "echo '    \"command\": \"echo \\"hello world\\"\",";
+    let expected_json_line = "echo '    \"command\": \"echo \\\"hello world\\\"\",";
     assert!(
         script.contains(expected_json_line),
         "JSON command field should convert single quotes to escaped double quotes. Expected: {}",
@@ -5132,7 +5132,7 @@ fn test_command_escaping_for_json_with_mixed_quotes() {
 
     // Final check: the generated JSON line for the command field should be:
     // echo '    "command": "echo \"test \"quoted\" value\"",'
-    let expected_json_line = "echo '    \"command\": \"echo \\"test \\"quoted\\" value\\"\",";
+    let expected_json_line = r#"echo '    "command": "echo \"test \"quoted\" value\"",',"#;
     assert!(
             script.contains(expected_json_line),
             "Script should contain the exact JSON command line with properly escaped quotes. Expected: {}",
@@ -5183,23 +5183,23 @@ echo 'line3'"),
     // In the JSON output section of the script, newlines should be escaped as 
 
     // The command in the JSON should have the newlines converted to 
- for JSON format
+// for JSON format
     // The script writes: echo '    "command": "...",
     // where the command value should have 
- instead of literal newlines
+// instead of literal newlines
 
     // Looking for the escaped form in the JSON line
     // The echo command writes the JSON with newlines escaped as 
 
     // In the bash script, within single quotes, 
- is literal, so it appears as:
+ //is literal, so it appears as:
     // echo '    "command": "echo \"line1\"
-echo \"line2\"
-echo \"line3\"",'
+//echo \"line2\"
+//echo \"line3\"",'
     // This produces JSON with 
- (which is the correct JSON escape sequence for newlines)
+// (which is the correct JSON escape sequence for newlines)
     let expected =
-        "echo '    \"command\": \"echo \\"line1\\"\necho \\"line2\\"\necho \\"line3\\"\",";
+        r#"echo '    "command": "echo \"line1\"\necho \"line2\"\necho \"line3\"",',"#;
     assert!(
         script.contains(expected),
         "JSON command field should contain newlines escaped as \n in the JSON output"
@@ -7528,7 +7528,7 @@ fn test_manual_verification_expression_env_var_pattern_match() {
     step.manual = Some(true);
     step.verification = Verification {
         result: VerificationExpression::Simple(
-            "[[ \"$APP_VERSION\" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]".to_string(),
+            r#"[[ "$APP_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]"#.to_string(),
         ),
         output: VerificationExpression::Simple("true".to_string()),
         output_file: None,
@@ -7541,7 +7541,7 @@ fn test_manual_verification_expression_env_var_pattern_match() {
 
     // Verify environment variable pattern match
     assert!(
-        script.contains("if [[ \"$APP_VERSION\" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then"),
+        script.contains(r#"if [[ "$APP_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then"#),
         "Script must check if environment variable matches pattern"
     );
 }

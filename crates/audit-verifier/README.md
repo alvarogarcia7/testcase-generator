@@ -1,262 +1,421 @@
 # Audit Verifier
 
-A tool for verifying test case YAML hashes against execution log entries, with cryptographic signature support using NIST P-521 (secp521r1) elliptic curve.
+A comprehensive audit logging and verification system with digital signatures for test case operations.
+
+## Overview
+
+This crate provides:
+
+1. **Audit Logging**: Track all test case operations (generate, execute, verify, etc.)
+2. **Digital Signatures**: Sign audit logs with P-521 ECDSA keys
+3. **Signature Verification**: Verify the integrity and authenticity of audit logs
+4. **Hash Verification**: Verify test case YAML hashes against execution logs
 
 ## Features
 
-- Verify that execution logs contain the correct SHA-256 hash of source YAML files
-- Generate or load P-521 private keys for signing
-- Sign audit verification results with ECDSA signatures
-- Output signed audit trails in JSON format with embedded public keys
-- Verify cryptographic signatures on audit outputs
+- **Complete Operation Tracking**: Logs all operations with timestamps, user info, file hashes, and metadata
+- **P-521 ECDSA Signatures**: Industry-standard elliptic curve digital signatures
+- **Tamper Detection**: Any modification to the audit log invalidates the signature
+- **File Hash Tracking**: SHA-256 hashes of input and output files
+- **Comprehensive Metadata**: Captures user, hostname, working directory, command arguments, duration, and custom metadata
 
-## Binaries
+## Components
 
-### `audit-verifier`
+### Audit Log Structure
 
-The main binary that performs hash verification and creates signed audit outputs.
+```rust
+pub struct AuditLog {
+    pub version: String,
+    pub entries: Vec<AuditLogEntry>,
+    pub created_at: DateTime<Utc>,
+    pub last_updated: DateTime<Utc>,
+}
 
-#### Usage
-
-```bash
-# Basic usage with generated key
-audit-verifier --yaml test.yml --log execution.json --output signed-audit.json
-
-# Use existing private key
-audit-verifier --yaml test.yml --log execution.json \
-  --private-key key.pem --output signed-audit.json
-
-# Generate and save a new key
-audit-verifier --yaml test.yml --log execution.json \
-  --save-key my-key.pem --output signed-audit.json
-
-# With custom key identifier
-audit-verifier --yaml test.yml --log execution.json \
-  --key-id "production-auditor-2024" --output signed-audit.json
-```
-
-#### Options
-
-- `-y, --yaml <PATH>`: Path to test case YAML file (required)
-- `-l, --log <PATH>`: Path to execution log JSON file (required)
-- `-k, --private-key <PATH>`: Path to P-521 private key PEM file (optional, generates new key if not provided)
-- `--save-key <PATH>`: Path to save generated private key (only used when no key is provided)
-- `--key-id <ID>`: Key identifier to include in signature output (default: "audit-verifier")
-- `-o, --output <PATH>`: Output file for signed audit verification results (JSON format)
-
-### `verify-audit-signature`
-
-A standalone binary for external auditors to verify cryptographic signatures on audit outputs.
-
-#### Usage
-
-```bash
-# Basic verification
-verify-audit-signature --input signed-audit.json
-
-# Verbose output with details
-verify-audit-signature --input signed-audit.json --verbose
-```
-
-#### Options
-
-- `-i, --input <PATH>`: Path to signed audit verification JSON file (required)
-- `-v, --verbose`: Display detailed information about the signature
-
-### `verify-audit-log`
-
-A standalone binary to verify an audit log signature given separate keypair, payload, and signature files.
-
-#### Usage
-
-```bash
-# Basic verification
-verify-audit-log --keypair key.pem --payload audit.json --signature audit.sig
-
-# Verbose output with details
-verify-audit-log --keypair key.pem --payload audit.json --signature audit.sig --verbose
-```
-
-#### Options
-
-- `-k, --keypair <PATH>`: Path to P-521 private key PEM file (used to derive public key) (required)
-- `-p, --payload <PATH>`: Path to payload file to verify (required)
-- `-s, --signature <PATH>`: Path to signature file (hex-encoded) (required)
-- `-v, --verbose`: Display detailed information
-
-## Cryptographic Details
-
-### Algorithm
-
-- **Elliptic Curve**: NIST P-521 (secp521r1)
-- **Signature Scheme**: ECDSA (Elliptic Curve Digital Signature Algorithm)
-- **Hash Function**: SHA-256
-- **Key Format**: PKCS#8 PEM encoding
-
-### What Gets Signed
-
-The tool creates a SHA-256 hash of the canonical JSON representation of the verification result, which includes:
-- Computed YAML hash
-- Total number of log entries
-- Number of hash mismatches
-- Number of missing hash fields
-- Overall verification pass/fail status
-
-The ECDSA signature is computed over this hash.
-
-### Output Format
-
-The signed audit output is a JSON file with the following structure:
-
-```json
-{
-  "verification_result": {
-    "computed_hash": "abc123...",
-    "total_entries": 10,
-    "hash_mismatches": 0,
-    "missing_hash_fields": 0,
-    "verification_passed": true
-  },
-  "execution_log_sha256": "def456...",
-  "signature": "hexadecimal-encoded-signature",
-  "public_key": "-----BEGIN PUBLIC KEY-----\n...",
-  "key_id": "audit-verifier",
-  "timestamp": "2024-01-01T12:00:00Z"
+pub struct AuditLogEntry {
+    pub timestamp: DateTime<Utc>,
+    pub operation: OperationType,
+    pub user: Option<String>,
+    pub hostname: Option<String>,
+    pub working_directory: Option<PathBuf>,
+    pub input_files: Vec<PathBuf>,
+    pub output_files: Vec<PathBuf>,
+    pub input_file_hashes: Vec<(PathBuf, String)>,
+    pub output_file_hashes: Vec<(PathBuf, String)>,
+    pub command_args: Vec<String>,
+    pub status: OperationStatus,
+    pub error_message: Option<String>,
+    pub duration_ms: Option<u64>,
+    pub metadata: serde_json::Value,
 }
 ```
 
-## Key Management
+### Operation Types
 
-### Generating a New Key
+- `GenerateScript`: Script generation from YAML
+- `ExecuteScript`: Script execution
+- `VerifyTest`: Test verification
+- `HydrateYaml`: YAML hydration with variables
+- `GenerateExport`: Export file generation
+- `ValidateExport`: Export file validation
+- `ListTestCases`: Test case listing
+- `ResolveDependencies`: Dependency resolution
+- `ValidateYaml`: YAML validation
+- `LoadTestCase`: Test case loading
+- `SaveTestCase`: Test case saving
+- `Other(String)`: Custom operations
+
+## CLI Tools
+
+### 1. sign-audit-log
+
+Sign an audit log file with a private key.
 
 ```bash
-# Generate and save a key during audit verification
-audit-verifier --yaml test.yml --log execution.json \
-  --save-key my-private-key.pem --output audit.json
+# Generate new key and sign
+sign-audit-log --log audit.log.json --output signed_audit.json --save-key private.pem
+
+# Sign with existing key
+sign-audit-log --log audit.log.json --output signed_audit.json --private-key private.pem --key-id "production-key"
 ```
 
-### Key Security
+**Options:**
+- `--log PATH`: Path to audit log JSON file (required)
+- `--output PATH`: Output file for signed audit log (required)
+- `--private-key PATH`: Path to P-521 private key PEM file (optional, generates new if not provided)
+- `--save-key PATH`: Path to save generated private key
+- `--key-id ID`: Key identifier (default: "audit-signer")
+- `--log-level LEVEL`: Set log level (trace, debug, info, warn, error)
+- `-v, --verbose`: Enable verbose output
 
-- **Private keys** should be stored securely and protected with appropriate file permissions
-- **Public keys** are embedded in the signed output and can be freely distributed
-- For production use, consider using a hardware security module (HSM) or key management service
+### 2. verify-audit-log
 
-### Key Persistence
+Verify a signed audit log file.
 
-If you want to use the same key across multiple audit runs:
+```bash
+# Basic verification
+verify-audit-log signed_audit.json
 
-1. Generate and save a key once:
-   ```bash
-   audit-verifier --yaml test.yml --log log.json --save-key authority.pem -o audit.json
-   ```
+# Detailed verification with report output
+verify-audit-log signed_audit.json --detailed --output verification_report.json
+```
 
-2. Reuse the key for subsequent audits:
-   ```bash
-   audit-verifier --yaml test2.yml --log log2.json --private-key authority.pem -o audit2.json
-   ```
+**Options:**
+- `SIGNED_LOG`: Path to signed audit log JSON file (required)
+- `-o, --output PATH`: Output file for verification report (JSON format)
+- `-d, --detailed`: Show detailed information about each log entry
+- `--log-level LEVEL`: Set log level
+- `-v, --verbose`: Enable verbose output
 
-## Verification Workflow
+**Exit Codes:**
+- `0`: Verification successful
+- `1`: Verification failed
 
-### For Audit Authorities
+### 3. audit-verifier
 
-1. Run the audit verifier with your private key:
-   ```bash
-   audit-verifier --yaml test.yml --log execution.json \
-     --private-key authority-key.pem \
-     --key-id "CompanyName-Auditor-2024" \
-     --output signed-audit.json
-   ```
+Verify test case YAML hash against execution log entries.
 
-2. Distribute the `signed-audit.json` to stakeholders
+```bash
+# Verify and sign
+audit-verifier --yaml test.yml --log execution.log.json --output verification.json
 
-### For External Auditors
+# With existing key
+audit-verifier --yaml test.yml --log execution.log.json --private-key key.pem --output verification.json
+```
 
-1. Receive the signed audit JSON file
-2. Verify the signature:
-   ```bash
-   verify-audit-signature --input signed-audit.json --verbose
-   ```
+**Options:**
+- `--yaml PATH`: Path to test case YAML file (required)
+- `--log PATH`: Path to execution log JSON file (required)
+- `-o, --output PATH`: Output file for signed verification results
+- `-k, --private-key PATH`: Path to P-521 private key PEM file
+- `--save-key PATH`: Path to save generated private key
+- `--key-id ID`: Key identifier (default: "audit-verifier")
+- `--log-level LEVEL`: Set log level
+- `-v, --verbose`: Enable verbose output
 
-3. Check:
-   - Signature is valid ✓
-   - Key identifier matches expected authority
-   - Timestamp is reasonable
-   - Verification result shows no hash mismatches
+## Integration with Test Executor
+
+The test executor automatically logs all operations to an audit log:
+
+```bash
+# Set audit log file via environment variable
+export AUDIT_LOG_FILE=my_audit.log.json
+
+# Or via command line
+test-executor --audit-log my_audit.log.json generate test.yml --output test.sh
+
+# Disable audit logging
+test-executor --no-audit generate test.yml --output test.sh
+```
+
+**Environment Variables:**
+- `AUDIT_LOG_FILE`: Path to audit log file (default: `audit.log.json`)
+- `AUDIT_LOG_ENABLED`: Enable/disable audit logging (default: `true`)
+
+## Workflow Example
+
+### 1. Run Operations with Audit Logging
+
+```bash
+# Enable audit logging
+export AUDIT_LOG_FILE=operations_audit.log.json
+
+# Run several operations
+test-executor generate test1.yml --output test1.sh
+test-executor execute test2.yml
+test-executor hydrate test3.yml --export-file vars.env --output hydrated.yml
+
+# Check the audit log
+cat operations_audit.log.json
+```
+
+### 2. Sign the Audit Log
+
+```bash
+# Sign with a new key
+sign-audit-log \
+  --log operations_audit.log.json \
+  --output signed_operations.json \
+  --save-key audit_key.pem \
+  --key-id "team-signing-key"
+```
+
+Output:
+```
+[INFO] Loading audit log from: operations_audit.log.json
+[INFO] Loaded audit log with 3 entries
+[INFO] Generating new P-521 private key...
+[INFO] Saving private key to: audit_key.pem
+[INFO] Signing audit log...
+[INFO] Saving signed audit log to: signed_operations.json
+[INFO] ✓ Audit log signed successfully
+[INFO]   Log hash: a3f2b8c9d4e5...
+[INFO]   Signature: 0123456789ab...
+[INFO]   Signed at: 2024-01-15T10:30:00Z
+```
+
+### 3. Verify the Signed Audit Log
+
+```bash
+# Basic verification
+verify-audit-log signed_operations.json
+
+# Detailed verification
+verify-audit-log signed_operations.json --detailed --output verification_report.json
+```
+
+Output:
+```
+=== Audit Log Verification Report ===
+
+Verification Status: ✓ VALID
+Log Hash Verified:   ✓
+Signature Verified:  ✓
+
+Key ID:        team-signing-key
+Signed At:     2024-01-15T10:30:00Z
+Verified At:   2024-01-15T14:45:00Z
+Total Entries: 3
+
+=== Audit Log Details ===
+
+Version:      1.0.0
+Created At:   2024-01-15T10:00:00Z
+Last Updated: 2024-01-15T10:15:00Z
+
+Entries:
+  1. [Success] GenerateScript
+     Timestamp: 2024-01-15T10:05:00Z
+     User: john_doe
+     Host: build-server-01
+     Input files: 1
+     Output files: 1
+     Duration: 125ms
+
+  2. [Success] ExecuteScript
+     Timestamp: 2024-01-15T10:10:00Z
+     User: john_doe
+     Host: build-server-01
+     Input files: 1
+     Duration: 3450ms
+
+  3. [Success] HydrateYaml
+     Timestamp: 2024-01-15T10:15:00Z
+     User: john_doe
+     Host: build-server-01
+     Input files: 2
+     Output files: 1
+     Duration: 89ms
+```
+
+### 4. Detect Tampering
+
+If someone modifies the audit log after signing:
+
+```bash
+verify-audit-log tampered_operations.json
+```
+
+Output:
+```
+=== Audit Log Verification Report ===
+
+Verification Status: ✗ INVALID
+Log Hash Verified:   ✗
+Signature Verified:  ✗
+
+Errors:
+  - Log hash mismatch: computed 'b8f3c9...', stored 'a3f2b8...'
+  - Signature verification failed
+```
+
+## Programmatic Usage
+
+### Creating Audit Log Entries
+
+```rust
+use audit_verifier::audit_log::{AuditLog, AuditLogEntry, OperationType, OperationStatus};
+use std::path::PathBuf;
+
+let mut log = AuditLog::new();
+
+let entry = AuditLogEntry::builder(OperationType::GenerateScript)
+    .with_input_file(PathBuf::from("test.yml"))
+    .with_output_file(PathBuf::from("test.sh"))
+    .with_metadata("test_id", "TC-001")
+    .with_metadata("version", "1.0.0")
+    .with_status(OperationStatus::Success)
+    .build();
+
+log.entries.push(entry);
+log.save_to_file("audit.log.json")?;
+```
+
+### Signing and Verifying
+
+```rust
+use audit_verifier::audit_log::AuditLog;
+use audit_verifier::audit_signer::{SignedAuditLog, SignatureVerificationReport};
+use audit_verifier::signing;
+
+// Load and sign
+let log = AuditLog::load_from_file("audit.log.json")?;
+let private_key = signing::generate_private_key();
+let signed_log = SignedAuditLog::sign_log(log, &private_key, "my-key".to_string())?;
+signed_log.save_to_file("signed_audit.json")?;
+
+// Verify
+let loaded = SignedAuditLog::load_from_file("signed_audit.json")?;
+let report = SignatureVerificationReport::verify(&loaded);
+
+if report.is_valid {
+    println!("✓ Audit log is valid and untampered");
+} else {
+    eprintln!("✗ Audit log verification failed");
+    for error in &report.errors {
+        eprintln!("  - {}", error);
+    }
+}
+```
+
+### Integration with Test Execution
+
+```rust
+use testcase_execution::AuditLogger;
+use audit_verifier::audit_log::OperationStatus;
+use std::path::PathBuf;
+
+let logger = AuditLogger::with_file("audit.log.json");
+
+// Log a script generation
+logger.log_generate_script(
+    &PathBuf::from("test.yml"),
+    Some(&PathBuf::from("test.sh")),
+    OperationStatus::Success,
+    None,
+)?;
+
+// Log script execution
+logger.log_execute_script(
+    &PathBuf::from("test.yml"),
+    OperationStatus::Success,
+    None,
+)?;
+
+// Save the audit log
+logger.save()?;
+```
 
 ## Security Considerations
 
-- **Signature Validity**: A valid signature only proves that the verification result was signed by the holder of the private key. It does not prove the original YAML or logs were authentic.
-- **Key Compromise**: If a private key is compromised, all signatures created with that key should be considered untrusted.
-- **Timestamp Trust**: The timestamp is generated by the signing system and should not be considered cryptographically secure.
-- **Chain of Trust**: Organizations should establish a documented process for key generation, storage, and distribution of public keys to stakeholders.
+1. **Private Key Protection**: Keep private keys secure. Never commit them to version control.
+2. **Key Rotation**: Regularly rotate signing keys and re-sign audit logs.
+3. **Signature Verification**: Always verify signatures before trusting audit log contents.
+4. **Hash Verification**: File hashes provide integrity guarantees for input/output files.
+5. **Timestamp Trust**: Timestamps are self-reported and should not be solely relied upon for forensic purposes.
 
-## Examples
+## File Format
 
-### Complete Audit Workflow
+### Audit Log JSON
 
-```bash
-# 1. Run tests and generate execution log
-# (This happens in your test execution system)
+```json
+{
+  "version": "1.0.0",
+  "entries": [
+    {
+      "timestamp": "2024-01-15T10:05:00Z",
+      "operation": "generate_script",
+      "user": "john_doe",
+      "hostname": "build-server-01",
+      "working_directory": "/home/john/project",
+      "input_files": ["/home/john/project/test.yml"],
+      "output_files": ["/home/john/project/test.sh"],
+      "input_file_hashes": [
+        ["/home/john/project/test.yml", "a3f2b8c9d4e5..."]
+      ],
+      "output_file_hashes": [
+        ["/home/john/project/test.sh", "b8f3c9d4e5a2..."]
+      ],
+      "command_args": ["test-executor", "generate", "test.yml"],
+      "status": "success",
+      "error_message": null,
+      "duration_ms": 125,
+      "metadata": {
+        "test_id": "TC-001"
+      }
+    }
+  ],
+  "created_at": "2024-01-15T10:00:00Z",
+  "last_updated": "2024-01-15T10:05:00Z"
+}
+```
 
-# 2. Verify hashes and create signed audit
-audit-verifier \
-  --yaml testcases/example.yml \
-  --log logs/execution-2024-01-15.json \
-  --private-key keys/auditor-2024.pem \
-  --key-id "example-org-auditor" \
-  --output audits/audit-2024-01-15.json
+### Signed Audit Log JSON
 
-# 3. External auditor verifies signature
-verify-audit-signature \
-  --input audits/audit-2024-01-15.json \
-  --verbose
+```json
+{
+  "audit_log": { /* AuditLog structure */ },
+  "log_hash": "a3f2b8c9d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1",
+  "signature": "0123456789abcdef...",
+  "public_key": "-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----",
+  "key_id": "production-key",
+  "signed_at": "2024-01-15T10:30:00Z"
+}
 ```
 
 ## Testing
 
-The audit-verifier crate includes comprehensive shell-based integration tests that validate the complete workflow of generating payloads, verifying them, signing, and verifying signatures.
-
-### Running Tests
+Run tests:
 
 ```bash
-# Run all integration tests
-./crates/audit-verifier/tests/run_all_tests.sh
-
-# Run individual test suites
-./crates/audit-verifier/tests/integration/test_audit_verifier_e2e.sh
-./crates/audit-verifier/tests/integration/test_audit_key_scenarios.sh
-
-# Keep temporary files for debugging
-./crates/audit-verifier/tests/run_all_tests.sh --no-remove
+cargo test -p audit-verifier
 ```
 
-### Test Coverage
+Run with logging:
 
-The test suite covers:
-
-- **Sample payload generation**: Creating test case YAML and execution logs
-- **Verification with generated keys**: Testing key generation on the fly
-- **Verification with existing keys**: Testing key loading and reuse
-- **Signature verification**: Validating cryptographic signatures
-- **Negative tests**: Hash mismatches, missing fields, tampered data
-- **Error handling**: Missing files, invalid JSON, etc.
-
-See [tests/README.md](tests/README.md) for detailed test documentation.
-
-## Library Usage
-
-The audit-verifier crate can also be used as a library:
-
-```rust
-use audit_verifier::signing;
-use audit_verifier::verify_signature;
-
-// Generate a key
-let private_key = signing::generate_private_key();
-
-// Sign a message
-let signature = signing::sign_message(&private_key, message_hash);
-
-// Verify a signed audit file
-let is_valid = verify_signature::verify_signed_audit(path)?;
+```bash
+RUST_LOG=debug cargo test -p audit-verifier -- --nocapture
 ```
+
+## License
+
+Same as parent project.

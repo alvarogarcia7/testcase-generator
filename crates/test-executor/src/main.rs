@@ -1,10 +1,11 @@
 use anyhow::{Context, Result};
 use audit_traceability::{AuditTraceabilityLog, StageInfo, TestCaseAudit};
+use audit_verifier::audit_log::OperationStatus;
 use clap::{Parser, Subcommand};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
-use testcase_execution::{TestExecutor, VarHydrator};
+use testcase_execution::{AuditLogger, TestExecutor, VarHydrator};
 use testcase_models::TestCase;
 use testcase_storage::{TestCaseFilter, TestCaseFilterer, TestCaseStorage};
 use testcase_validation::DependencyResolver;
@@ -16,7 +17,7 @@ use testcase_validation::DependencyResolver;
     version
 )]
 #[command(
-    after_help = "ENVIRONMENT VARIABLES:\n    RUST_LOG    Set log level (trace, debug, info, warn, error). Overrides --log-level"
+    after_help = "ENVIRONMENT VARIABLES:\n    RUST_LOG    Set log level (trace, debug, info, warn, error). Overrides --log-level\n    AUDIT_LOG_FILE    Path to audit log file (default: audit.log.json)\n    AUDIT_LOG_ENABLED    Enable/disable audit logging (default: true)"
 )]
 struct Cli {
     /// Set log level (trace, debug, info, warn, error)
@@ -26,6 +27,14 @@ struct Cli {
     /// Enable verbose output (equivalent to --log-level=info)
     #[arg(short, long, global = true)]
     verbose: bool,
+
+    /// Path to audit log file (overrides AUDIT_LOG_FILE env var)
+    #[arg(long, value_name = "PATH", global = true)]
+    audit_log: Option<PathBuf>,
+
+    /// Disable audit logging
+    #[arg(long, global = true)]
+    no_audit: bool,
 
     #[command(subcommand)]
     command: Commands,
@@ -427,6 +436,15 @@ fn main() -> Result<()> {
     let log_level = if cli.verbose { "info" } else { &cli.log_level };
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(log_level)).init();
 
+    let audit_log_path = cli.audit_log.clone()
+        .or_else(|| std::env::var("AUDIT_LOG_FILE").ok().map(PathBuf::from))
+        .unwrap_or_else(|| PathBuf::from("audit.log.json"));
+
+    let mut audit_logger = AuditLogger::with_file(&audit_log_path);
+    if cli.no_audit {
+        audit_logger.disable();
+    }
+
     match cli.command {
         Commands::Generate {
             yaml_file,
@@ -436,21 +454,24 @@ fn main() -> Result<()> {
             test_case_dir,
             audit_log,
         } => {
-            let yaml_bytes = fs::read(&yaml_file)
-                .context(format!("Failed to read YAML file: {}", yaml_file.display()))?;
-            let mut test_case = load_test_case(&yaml_file)?;
+            let result = (|| -> Result<()> {
+                let yaml_bytes = fs::read(&yaml_file)
+                    .context(format!("Failed to read YAML file: {}", yaml_file.display()))?;
+                let mut test_case = load_test_case(&yaml_file)?;
 
-            let resolver = if let Some(dir) = test_case_dir {
-                build_dependency_resolver_from_dir(&dir)?
-            } else {
-                build_dependency_resolver(&yaml_file)?
-            };
-            test_case = resolver
-                .resolve(&test_case)
-                .context("Failed to resolve dependencies")?;
+                let resolver = if let Some(dir) = test_case_dir {
+                    build_dependency_resolver_from_dir(&dir)?
+                } else {
+                    build_dependency_resolver(&yaml_file)?
+                };
+                test_case = resolver
+                    .resolve(&test_case)
+                    .context("Failed to resolve dependencies")?;
 
-            let executor = TestExecutor::new();
-            let script = executor.generate_test_script_from_yaml(&test_case, &yaml_bytes);
+                let executor = TestExecutor::new();
+                let script = executor.generate_test_script_from_yaml(&test_case, &yaml_bytes);
+            });
+
 
             if let Some(output_path) = &output {
                 fs::write(output_path, &script).context(format!(
@@ -495,61 +516,100 @@ fn main() -> Result<()> {
                         test_case.id,
                         audit_log_path.display()
                     );
+
+                if let Some(output_path) = &output {
+                    fs::write(output_path, &script).context(format!(
+                        "Failed to write script to file: {}",
+                        output_path.display()
+                    ))?;
+                    println!(
+                        "Test script generated successfully: {}",
+                        output_path.display()
+                    );
+
+                    if json_log {
+                        executor.generate_execution_log_template(&test_case, output_path)?;
+                    }
+                } else {
+                    print!("{}", script);
+                    if json_log {
+                        eprintln!("Warning: --json-log requires --output to be specified");
+                    }
+
                 }
-            } else {
-                print!("{}", script);
-                if json_log {
-                    eprintln!("Warning: --json-log requires --output to be specified");
+
+                let shellcheck_passed = run_shellcheck_validation(&script, force)?;
+                if !shellcheck_passed {
+                    std::process::exit(1);
                 }
+
                 if audit_log.is_some() {
                     eprintln!("Warning: --audit-log requires --output to be specified");
                 }
             }
 
-            let shellcheck_passed = run_shellcheck_validation(&script, force)?;
-            if !shellcheck_passed {
-                std::process::exit(1);
-            }
+                Ok(())
+            });
 
-            Ok(())
+            let status = if result.is_ok() { OperationStatus::Success } else { OperationStatus::Failed };
+            let error = result.as_ref().err().map(|e| e.to_string());
+            audit_logger.log_generate_script(&yaml_file, output.as_deref(), status, error.clone())?;
+
+            result
         }
         Commands::Execute { yaml_file } => {
-            let mut test_case = load_test_case(&yaml_file)?;
+            let result = (|| -> Result<()> {
+                let mut test_case = load_test_case(&yaml_file)?;
 
-            let resolver = build_dependency_resolver(&yaml_file)?;
-            test_case = resolver
-                .resolve(&test_case)
-                .context("Failed to resolve dependencies")?;
+                let resolver = build_dependency_resolver(&yaml_file)?;
+                test_case = resolver
+                    .resolve(&test_case)
+                    .context("Failed to resolve dependencies")?;
 
-            let executor = TestExecutor::new();
-            executor.execute_test_case(&test_case)?;
+                let executor = TestExecutor::new();
+                executor.execute_test_case(&test_case)?;
 
-            Ok(())
+                Ok(())
+            })();
+
+            let status = if result.is_ok() { OperationStatus::Success } else { OperationStatus::Failed };
+            let error = result.as_ref().err().map(|e| e.to_string());
+            audit_logger.log_execute_script(&yaml_file, status, error.clone())?;
+
+            result
         }
         Commands::Hydrate {
             yaml_file,
             export_file,
             output,
         } => {
-            let yaml_content = fs::read_to_string(&yaml_file)
-                .context(format!("Failed to read YAML file: {}", yaml_file.display()))?;
+            let result = (|| -> Result<()> {
+                let yaml_content = fs::read_to_string(&yaml_file)
+                    .context(format!("Failed to read YAML file: {}", yaml_file.display()))?;
 
-            let mut hydrator = VarHydrator::new();
-            hydrator.load_from_export_file(&export_file)?;
+                let mut hydrator = VarHydrator::new();
+                hydrator.load_from_export_file(&export_file)?;
 
-            let hydrated_content = hydrator.hydrate_yaml_content(&yaml_content);
+                let hydrated_content = hydrator.hydrate_yaml_content(&yaml_content);
 
-            if let Some(output_path) = output {
-                fs::write(&output_path, &hydrated_content).context(format!(
-                    "Failed to write hydrated YAML to file: {}",
-                    output_path.display()
-                ))?;
-                println!("Hydrated YAML written to: {}", output_path.display());
-            } else {
-                print!("{}", hydrated_content);
-            }
+                if let Some(output_path) = &output {
+                    fs::write(output_path, &hydrated_content).context(format!(
+                        "Failed to write hydrated YAML to file: {}",
+                        output_path.display()
+                    ))?;
+                    println!("Hydrated YAML written to: {}", output_path.display());
+                } else {
+                    print!("{}", hydrated_content);
+                }
 
-            Ok(())
+                Ok(())
+            })();
+
+            let status = if result.is_ok() { OperationStatus::Success } else { OperationStatus::Failed };
+            let error = result.as_ref().err().map(|e| e.to_string());
+            audit_logger.log_hydrate_yaml(&yaml_file, &export_file, output.as_deref(), status, error.clone())?;
+
+            result
         }
         Commands::GenerateExport { yaml_file, output } => {
             let test_case = load_test_case(&yaml_file)?;

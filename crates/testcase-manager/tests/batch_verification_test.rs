@@ -31,6 +31,7 @@ fn create_test_case_result(
         requirement,
         item,
         tc,
+        source_yaml_sha256: None,
     }
 }
 
@@ -73,6 +74,7 @@ fn create_test_case_with_sequences(
         requirement,
         item,
         tc,
+        source_yaml_sha256: None,
     }
 }
 

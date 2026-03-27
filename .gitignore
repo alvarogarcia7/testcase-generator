@@ -164,3 +164,17 @@ container_config.*.yml
 # Audit traceability logs (uncomment to exclude from git)
 # audit-traceability-log.json
 # **/audit-*.json
+# Audit logging artifacts (audit-verifier)
+*.audit.json
+*.audit.log.json
+audit.log.json
+audit_*.log.json
+signed_audit*.json
+*_audit.json
+*_signed.json
+verification_report*.json
+audit_key.pem
+signing_key.pem
+*_signing_key.pem
+private*.pem
+*.key.pem

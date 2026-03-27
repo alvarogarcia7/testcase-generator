@@ -1,108 +1,117 @@
 use anyhow::{Context, Result};
+use audit_verifier::audit_signer::{SignedAuditLog, SignatureVerificationReport};
 use clap::Parser;
-use p521::ecdsa::{signature::Verifier, Signature};
-use sha2::{Digest, Sha256};
 use std::fs;
 use std::path::PathBuf;
 
 #[derive(Parser)]
 #[command(name = "verify-audit-log")]
 #[command(version)]
-#[command(about = "Verify audit log signature given keypair, payload, and signature")]
+#[command(about = "Verify a signed audit log file")]
 struct Cli {
-    /// Path to private key PEM file (used to derive public key)
-    #[arg(short = 'k', long, value_name = "PATH")]
-    keypair: PathBuf,
+    /// Path to the signed audit log JSON file
+    #[arg(value_name = "SIGNED_LOG")]
+    signed_log: PathBuf,
 
-    /// Path to payload file to verify
+    /// Optional output file for verification report (JSON format)
     #[arg(short, long, value_name = "PATH")]
-    payload: PathBuf,
+    output: Option<PathBuf>,
 
-    /// Path to signature file (hex-encoded)
-    #[arg(short, long, value_name = "PATH")]
-    signature: PathBuf,
+    /// Set log level (trace, debug, info, warn, error)
+    #[arg(long, value_name = "LEVEL", default_value = "info")]
+    log_level: String,
 
-    /// Display detailed information
+    /// Enable verbose output (equivalent to --log-level=debug)
     #[arg(short, long)]
     verbose: bool,
+
+    /// Show detailed information about each log entry
+    #[arg(short = 'd', long)]
+    detailed: bool,
 }
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
-    if !cli.keypair.exists() {
-        anyhow::bail!("Keypair file does not exist: {}", cli.keypair.display());
-    }
-    if !cli.payload.exists() {
-        anyhow::bail!("Payload file does not exist: {}", cli.payload.display());
-    }
-    if !cli.signature.exists() {
-        anyhow::bail!("Signature file does not exist: {}", cli.signature.display());
+    let log_level = if cli.verbose { "debug" } else { &cli.log_level };
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(log_level)).init();
+
+    if !cli.signed_log.exists() {
+        anyhow::bail!("Signed audit log file does not exist: {}", cli.signed_log.display());
     }
 
-    if cli.verbose {
-        log::info!("Verifying audit log signature...");
-        log::info!("Keypair: {}", cli.keypair.display());
-        log::info!("Payload: {}", cli.payload.display());
-        log::info!("Signature: {}", cli.signature.display());
-        log::info!("");
-    }
+    log::info!("Loading signed audit log from: {}", cli.signed_log.display());
+    let signed_log = SignedAuditLog::load_from_file(&cli.signed_log)?;
 
-    let signing_key = audit_verifier::signing::load_private_key(&cli.keypair)
-        .context("Failed to load private key")?;
+    log::info!("Verifying signature...");
+    let report = SignatureVerificationReport::verify(&signed_log);
 
-    let verifying_key = audit_verifier::signing::get_public_key(&signing_key);
+    println!("=== Audit Log Verification Report ===");
+    println!();
+    println!("Verification Status: {}", if report.is_valid { "✓ VALID" } else { "✗ INVALID" });
+    println!("Log Hash Verified:   {}", if report.log_hash_verified { "✓" } else { "✗" });
+    println!("Signature Verified:  {}", if report.signature_verified { "✓" } else { "✗" });
+    println!();
+    println!("Key ID:        {}", report.key_id);
+    println!("Signed At:     {}", report.signed_at);
+    println!("Verified At:   {}", report.verified_at);
+    println!("Total Entries: {}", report.total_entries);
+    println!();
 
-    let payload_bytes = fs::read(&cli.payload)
-        .context(format!("Failed to read payload: {}", cli.payload.display()))?;
-
-    let mut hasher = Sha256::new();
-    hasher.update(&payload_bytes);
-    let payload_hash = hasher.finalize();
-
-    if cli.verbose {
-        log::info!("Payload SHA-256: {:x}", payload_hash);
-    }
-
-    let signature_content = fs::read_to_string(&cli.signature).context(format!(
-        "Failed to read signature: {}",
-        cli.signature.display()
-    ))?;
-    let signature_hex = signature_content.trim();
-
-    let signature_bytes = hex::decode(signature_hex).context("Failed to decode signature hex")?;
-
-    let signature = Signature::from_slice(&signature_bytes).context("Failed to parse signature")?;
-
-    if cli.verbose {
-        log::info!("Signature length: {} bytes", signature_bytes.len());
-        log::info!("");
-    }
-
-    match verifying_key.verify(&payload_hash, &signature) {
-        Ok(_) => {
-            log::info!("✓ SIGNATURE VALID");
-            if cli.verbose {
-                log::info!("");
-                log::info!("The audit log signature is valid.");
-                log::info!("The signature was created by the holder of the private key");
-                log::info!("corresponding to the provided keypair.");
-            }
-            std::process::exit(0);
+    if !report.errors.is_empty() {
+        println!("Errors:");
+        for error in &report.errors {
+            println!("  - {}", error);
         }
-        Err(e) => {
-            log::error!("✗ SIGNATURE INVALID");
-            if cli.verbose {
-                log::error!("");
-                log::error!("WARNING: The signature verification failed!");
-                log::error!("Error: {:?}", e);
-                log::error!("");
-                log::error!("This could indicate:");
-                log::error!("  - The payload has been tampered with");
-                log::error!("  - The signature was created with a different key");
-                log::error!("  - The signature or payload file has been corrupted");
+        println!();
+    }
+
+    if cli.detailed {
+        println!("=== Audit Log Details ===");
+        println!();
+        println!("Version:      {}", signed_log.audit_log.version);
+        println!("Created At:   {}", signed_log.audit_log.created_at);
+        println!("Last Updated: {}", signed_log.audit_log.last_updated);
+        println!();
+        println!("Entries:");
+        for (i, entry) in signed_log.audit_log.entries.iter().enumerate() {
+            println!("  {}. [{:?}] {:?}", i + 1, entry.status, entry.operation);
+            println!("     Timestamp: {}", entry.timestamp);
+            if let Some(user) = &entry.user {
+                println!("     User: {}", user);
             }
-            std::process::exit(1);
+            if let Some(hostname) = &entry.hostname {
+                println!("     Host: {}", hostname);
+            }
+            if !entry.input_files.is_empty() {
+                println!("     Input files: {}", entry.input_files.len());
+            }
+            if !entry.output_files.is_empty() {
+                println!("     Output files: {}", entry.output_files.len());
+            }
+            if let Some(duration) = entry.duration_ms {
+                println!("     Duration: {}ms", duration);
+            }
+            if let Some(error) = &entry.error_message {
+                println!("     Error: {}", error);
+            }
+            println!();
         }
+    }
+
+    if let Some(output_path) = &cli.output {
+        let report_json = serde_json::to_string_pretty(&report)
+            .context("Failed to serialize verification report")?;
+        fs::write(output_path, report_json)
+            .context(format!("Failed to write report to: {}", output_path.display()))?;
+        log::info!("Verification report written to: {}", output_path.display());
+    }
+
+    if report.is_valid {
+        log::info!("✓ Audit log verification successful");
+        std::process::exit(0);
+    } else {
+        log::error!("✗ Audit log verification failed");
+        std::process::exit(1);
     }
 }

@@ -19,6 +19,10 @@ path = "src/bin/verify_signature.rs"
 name = "verify-audit-log"
 path = "src/bin/verify_audit_log.rs"
 
+[[bin]]
+name = "sign-audit-log"
+path = "src/bin/sign_audit_log.rs"
+
 [dependencies]
 sha2 = { workspace = true }
 serde = { workspace = true }
@@ -35,3 +39,4 @@ base64ct = { version = "1.6", features = ["alloc"] }
 tempfile = { workspace = true }
 log = { workspace = true }
 env_logger = { workspace = true }
+hostname = "0.3"

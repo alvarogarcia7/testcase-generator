@@ -161,6 +161,26 @@ run-verifier: build-verifier
 	./target/debug/verifier
 .PHONY: run-verifier
 
+# Audit logging targets
+run-sign-audit-log: build-audit-verifier
+	./target/debug/sign-audit-log
+.PHONY: run-sign-audit-log
+
+run-verify-audit-log: build-audit-verifier
+	./target/debug/verify-audit-log
+.PHONY: run-verify-audit-log
+
+run-audit-verifier: build-audit-verifier
+	./target/debug/audit-verifier
+.PHONY: run-audit-verifier
+
+# Demo for audit logging
+demo-audit-logging: build-audit-verifier build-test-executor
+	@echo "Running audit logging demonstration..."
+	@chmod +x examples/audit_logging_demo.sh
+	@bash examples/audit_logging_demo.sh
+.PHONY: demo-audit-logging
+
 test-e2e-verifier-container: build
 	./tests/integration/test_verifier_container_e2e.sh
 .PHONY: test-e2e-verifier-container
