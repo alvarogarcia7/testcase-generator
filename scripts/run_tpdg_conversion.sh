@@ -30,6 +30,11 @@ source "$SCRIPT_DIR/lib/find-binary.sh" || {
 }
 
 TEST_EXECUTOR=$(find_binary "test-executor")
+VALIDATE_YAML=$(find_binary "validate-yaml")
+
+# Schema paths
+TEST_CASE_SCHEMA="$PROJECT_ROOT/schemas/test-case.schema.json"
+CONTAINER_SCHEMA="$PROJECT_ROOT/data/testcase_results_container/schema.json"
 
 # Log file paths
 LOG_DIR="$OUTPUT_DIR/logs"
@@ -113,6 +118,22 @@ if [[ ! -x "$TEST_EXECUTOR" ]]; then
     exit 1
 fi
 
+if [[ ! -x "$VALIDATE_YAML" ]]; then
+    echo_error "validate-yaml binary not found at: $VALIDATE_YAML"
+    echo_info "Run: cargo build --bin validate-yaml"
+    exit 1
+fi
+
+if [[ ! -f "$TEST_CASE_SCHEMA" ]]; then
+    echo_error "Test case schema not found at: $TEST_CASE_SCHEMA"
+    exit 1
+fi
+
+if [[ ! -f "$CONTAINER_SCHEMA" ]]; then
+    echo_error "Container schema not found at: $CONTAINER_SCHEMA"
+    exit 1
+fi
+
 # Check for Python
 if ! command -v python3.14 &> /dev/null && ! command -v python3 &> /dev/null; then
     echo_error "Python 3 not found. Please install Python 3.14 or Python 3."
@@ -137,24 +158,69 @@ echo ""
     echo "Configuration:"
     echo "  Python: $PYTHON_CMD"
     echo "  Test Executor: $TEST_EXECUTOR"
+    echo "  Validate YAML: $VALIDATE_YAML"
     echo "  Conversion Script: $CONVERSION_SCRIPT"
     echo "  Test Case Directory: $TEST_CASE_DIR"
     echo "  Scripts Directory: $SCRIPTS_DIR"
     echo "  Logs Directory: $LOGS_DIR"
     echo "  Output File: $OUTPUT_FILE"
+    echo "  Test Case Schema: $TEST_CASE_SCHEMA"
+    echo "  Container Schema: $CONTAINER_SCHEMA"
     echo "  Log File: $LOG_FILE"
     echo "  Error Log: $ERROR_LOG"
     echo ""
 } >> "$LOG_FILE"
 
-# Stage 1: Generate test scripts
-echo_section "Stage 1: Generating Test Scripts"
+# Stage 0: Validate input test cases
+echo_section "Stage 0: Validating Input Test Cases"
 
 # Find all test case YAML files - bash 3.2 compatible
 YAML_FILES=()
 while IFS= read -r -d $'\0' file; do
     YAML_FILES+=("$file")
 done < <(find "$TEST_CASE_DIR" -type f \( -name "*.yaml" -o -name "*.yml" \) -print0 | sort -z)
+
+VALIDATION_SUCCESS=0
+VALIDATION_FAILED=0
+VALIDATION_SKIPPED=0
+
+echo_info "Found ${#YAML_FILES[@]} YAML files to validate"
+echo ""
+
+for yaml_file in "${YAML_FILES[@]}"; do
+    basename=$(basename "$yaml_file" .yaml)
+    basename=$(basename "$basename" .yml)
+    
+    # Check if this is a test case file
+    if ! grep -q "^type: test_case" "$yaml_file" 2>/dev/null; then
+        ((VALIDATION_SKIPPED++))
+        info "$basename (not a test_case, skipped)"
+        continue
+    fi
+    
+    # Validate against schema
+    if "$VALIDATE_YAML" --schema "$TEST_CASE_SCHEMA" "$yaml_file" >> "$LOG_FILE" 2>&1; then
+        ((VALIDATION_SUCCESS++))
+        pass "$basename"
+    else
+        ((VALIDATION_FAILED++))
+        fail "$basename"
+        echo "$yaml_file" >> "$ERROR_LOG"
+    fi
+done
+
+echo ""
+echo_info "Input Validation: $VALIDATION_SUCCESS passed, $VALIDATION_FAILED failed, $VALIDATION_SKIPPED skipped"
+echo ""
+
+if [[ $VALIDATION_FAILED -gt 0 ]]; then
+    echo_error "Input validation failed for $VALIDATION_FAILED test case(s)"
+    echo_error "Fix validation errors before proceeding"
+    exit 1
+fi
+
+# Stage 1: Generate test scripts
+echo_section "Stage 1: Generating Test Scripts"
 
 TOTAL_TEST_CASES=${#YAML_FILES[@]}
 GENERATION_SUCCESS=0
@@ -346,11 +412,46 @@ if [[ -d "$LOGS_DIR" ]]; then
     } >> "$LOG_FILE"
 fi
 
+# Stage 4: Validate output container
+echo_section "Stage 4: Validating Output Container"
+
+OUTPUT_VALIDATION_SUCCESS=0
+OUTPUT_VALIDATION_FAILED=0
+
+if [[ -f "$OUTPUT_FILE" ]]; then
+    echo_info "Validating: $OUTPUT_FILE"
+    
+    if "$VALIDATE_YAML" --schema "$CONTAINER_SCHEMA" "$OUTPUT_FILE" >> "$LOG_FILE" 2>&1; then
+        ((OUTPUT_VALIDATION_SUCCESS++))
+        pass "acceptance_test_results_container.yaml"
+        echo_success "Output container schema validation passed!"
+    else
+        ((OUTPUT_VALIDATION_FAILED++))
+        fail "acceptance_test_results_container.yaml"
+        echo_error "Output container schema validation failed!"
+        {
+            echo ""
+            echo "ERROR: Output validation failed"
+            echo "File: $OUTPUT_FILE"
+            echo "Schema: $CONTAINER_SCHEMA"
+        } >> "$ERROR_LOG"
+        CONVERSION_EXIT_CODE=1
+    fi
+else
+    echo_warning "Output file not found, skipping validation"
+fi
+
+echo ""
+
 # Log script end
 {
     echo ""
     echo "========================================="
     echo "Summary:"
+    echo "  Stage 0 - Input Validation:"
+    echo "    Success: $VALIDATION_SUCCESS"
+    echo "    Failed: $VALIDATION_FAILED"
+    echo "    Skipped: $VALIDATION_SKIPPED"
     echo "  Stage 1 - Script Generation:"
     echo "    Success: $GENERATION_SUCCESS"
     echo "    Failed: $GENERATION_FAILED"
@@ -361,6 +462,9 @@ fi
     echo "    Skipped: $EXECUTION_SKIPPED"
     echo "  Stage 3 - TPDG Conversion:"
     echo "    Exit Code: $CONVERSION_EXIT_CODE"
+    echo "  Stage 4 - Output Validation:"
+    echo "    Success: $OUTPUT_VALIDATION_SUCCESS"
+    echo "    Failed: $OUTPUT_VALIDATION_FAILED"
     echo "========================================="
     echo "Completed: $(date)"
     echo "Exit Code: $CONVERSION_EXIT_CODE"
