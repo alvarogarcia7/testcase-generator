@@ -117,10 +117,10 @@ mod tests {
         let mut hasher = Sha256::new();
         hasher.update(verification_json.as_bytes());
         let message_hash = hasher.finalize();
-        
+
         let signature = signing::sign_message(&private_key, &message_hash);
         let signature_hex = hex::encode(signature);
-        
+
         // Modify the verification result to make the signature invalid
         let mut modified_verification_result = verification_result;
         modified_verification_result.computed_hash = "different_hash".to_string();

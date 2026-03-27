@@ -37,18 +37,15 @@ fn main() -> Result<()> {
         anyhow::bail!("Payload file does not exist: {}", cli.payload.display());
     }
     if !cli.signature.exists() {
-        anyhow::bail!(
-            "Signature file does not exist: {}",
-            cli.signature.display()
-        );
+        anyhow::bail!("Signature file does not exist: {}", cli.signature.display());
     }
 
     if cli.verbose {
-        println!("Verifying audit log signature...");
-        println!("Keypair: {}", cli.keypair.display());
-        println!("Payload: {}", cli.payload.display());
-        println!("Signature: {}", cli.signature.display());
-        println!();
+        log::info!("Verifying audit log signature...");
+        log::info!("Keypair: {}", cli.keypair.display());
+        log::info!("Payload: {}", cli.payload.display());
+        log::info!("Signature: {}", cli.signature.display());
+        log::info!("");
     }
 
     let signing_key = audit_verifier::signing::load_private_key(&cli.keypair)
@@ -56,53 +53,54 @@ fn main() -> Result<()> {
 
     let verifying_key = audit_verifier::signing::get_public_key(&signing_key);
 
-    let payload_bytes =
-        fs::read(&cli.payload).context(format!("Failed to read payload: {}", cli.payload.display()))?;
+    let payload_bytes = fs::read(&cli.payload)
+        .context(format!("Failed to read payload: {}", cli.payload.display()))?;
 
     let mut hasher = Sha256::new();
     hasher.update(&payload_bytes);
     let payload_hash = hasher.finalize();
 
     if cli.verbose {
-        println!("Payload SHA-256: {:x}", payload_hash);
+        log::info!("Payload SHA-256: {:x}", payload_hash);
     }
 
-    let signature_content = fs::read_to_string(&cli.signature)
-        .context(format!("Failed to read signature: {}", cli.signature.display()))?;
+    let signature_content = fs::read_to_string(&cli.signature).context(format!(
+        "Failed to read signature: {}",
+        cli.signature.display()
+    ))?;
     let signature_hex = signature_content.trim();
 
     let signature_bytes = hex::decode(signature_hex).context("Failed to decode signature hex")?;
 
-    let signature =
-        Signature::from_slice(&signature_bytes).context("Failed to parse signature")?;
+    let signature = Signature::from_slice(&signature_bytes).context("Failed to parse signature")?;
 
     if cli.verbose {
-        println!("Signature length: {} bytes", signature_bytes.len());
-        println!();
+        log::info!("Signature length: {} bytes", signature_bytes.len());
+        log::info!("");
     }
 
     match verifying_key.verify(&payload_hash, &signature) {
         Ok(_) => {
-            println!("✓ SIGNATURE VALID");
+            log::info!("✓ SIGNATURE VALID");
             if cli.verbose {
-                println!();
-                println!("The audit log signature is valid.");
-                println!("The signature was created by the holder of the private key");
-                println!("corresponding to the provided keypair.");
+                log::info!("");
+                log::info!("The audit log signature is valid.");
+                log::info!("The signature was created by the holder of the private key");
+                log::info!("corresponding to the provided keypair.");
             }
             std::process::exit(0);
         }
         Err(e) => {
-            println!("✗ SIGNATURE INVALID");
+            log::error!("✗ SIGNATURE INVALID");
             if cli.verbose {
-                println!();
-                println!("WARNING: The signature verification failed!");
-                println!("Error: {:?}", e);
-                println!();
-                println!("This could indicate:");
-                println!("  - The payload has been tampered with");
-                println!("  - The signature was created with a different key");
-                println!("  - The signature or payload file has been corrupted");
+                log::error!("");
+                log::error!("WARNING: The signature verification failed!");
+                log::error!("Error: {:?}", e);
+                log::error!("");
+                log::error!("This could indicate:");
+                log::error!("  - The payload has been tampered with");
+                log::error!("  - The signature was created with a different key");
+                log::error!("  - The signature or payload file has been corrupted");
             }
             std::process::exit(1);
         }

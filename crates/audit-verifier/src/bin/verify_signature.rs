@@ -23,8 +23,8 @@ fn main() -> Result<()> {
         anyhow::bail!("Input file does not exist: {}", cli.input.display());
     }
 
-    println!("Verifying signed audit output: {}", cli.input.display());
-    println!();
+    log::info!("Verifying signed audit output: {}", cli.input.display());
+    log::info!("");
 
     let is_valid = audit_verifier::verify_signature::verify_signed_audit(&cli.input)
         .context("Failed to verify signature")?;
@@ -34,70 +34,70 @@ fn main() -> Result<()> {
         let signed_output: audit_verifier::verify_signature::SignedAuditOutput =
             serde_json::from_str(&content).context("Failed to parse signed output JSON")?;
 
-        println!("=== Audit Information ===");
-        println!("Key ID: {}", signed_output.key_id);
-        println!("Timestamp: {}", signed_output.timestamp);
-        println!(
+        log::info!("=== Audit Information ===");
+        log::info!("Key ID: {}", signed_output.key_id);
+        log::info!("Timestamp: {}", signed_output.timestamp);
+        log::info!(
             "Execution Log SHA-256: {}",
             signed_output.execution_log_sha256
         );
-        println!();
-        println!("=== Verification Result ===");
-        println!(
+        log::info!("");
+        log::info!("=== Verification Result ===");
+        log::info!(
             "Computed Hash: {}",
             signed_output.verification_result.computed_hash
         );
-        println!(
+        log::info!(
             "Total Entries: {}",
             signed_output.verification_result.total_entries
         );
-        println!(
+        log::info!(
             "Hash Mismatches: {}",
             signed_output.verification_result.hash_mismatches
         );
-        println!(
+        log::info!(
             "Missing Hash Fields: {}",
             signed_output.verification_result.missing_hash_fields
         );
-        println!(
+        log::info!(
             "Verification Passed: {}",
             signed_output.verification_result.verification_passed
         );
-        println!();
-        println!("=== Signature ===");
-        println!(
+        log::info!("");
+        log::info!("=== Signature ===");
+        log::info!(
             "Signature (first 64 chars): {}...",
             &signed_output.signature[..64.min(signed_output.signature.len())]
         );
-        println!();
-        println!("=== Public Key ===");
+        log::info!("");
+        log::info!("=== Public Key ===");
         let lines: Vec<&str> = signed_output.public_key.lines().collect();
         if lines.len() > 5 {
-            println!("{}", lines[0]);
-            println!("  ... ({} lines total)", lines.len());
-            println!("{}", lines[lines.len() - 1]);
+            log::info!("{}", lines[0]);
+            log::info!("  ... ({} lines total)", lines.len());
+            log::info!("{}", lines[lines.len() - 1]);
         } else {
-            println!("{}", signed_output.public_key);
+            log::info!("{}", signed_output.public_key);
         }
-        println!();
+        log::info!("");
     }
 
-    println!("=== Signature Verification Result ===");
+    log::info!("=== Signature Verification Result ===");
     if is_valid {
-        println!("✓ SIGNATURE VALID");
-        println!();
-        println!("The audit verification output has a valid cryptographic signature.");
-        println!("The signature was created by the holder of the private key corresponding");
-        println!("to the public key included in this output.");
+        log::info!("✓ SIGNATURE VALID");
+        log::info!("");
+        log::info!("The audit verification output has a valid cryptographic signature.");
+        log::info!("The signature was created by the holder of the private key corresponding");
+        log::info!("to the public key included in this output.");
         std::process::exit(0);
     } else {
-        println!("✗ SIGNATURE INVALID");
-        println!();
-        println!("WARNING: The signature verification failed!");
-        println!("This could indicate:");
-        println!("  - The audit output has been tampered with");
-        println!("  - The signature was created with a different key");
-        println!("  - The file has been corrupted");
+        log::error!("✗ SIGNATURE INVALID");
+        log::error!("");
+        log::error!("WARNING: The signature verification failed!");
+        log::error!("This could indicate:");
+        log::error!("  - The audit output has been tampered with");
+        log::error!("  - The signature was created with a different key");
+        log::error!("  - The file has been corrupted");
         std::process::exit(1);
     }
 }

@@ -489,11 +489,14 @@ fn handle_folder_mode(
                         );
 
                         // Compute source hash and verify if requested
-                        let source_hash_result = compute_test_case_source_hash(verifier.storage(), &test_case_id);
+                        let source_hash_result =
+                            compute_test_case_source_hash(verifier.storage(), &test_case_id);
                         let source_hash = match source_hash_result {
                             Ok(hash) => {
                                 if verify_source_hash {
-                                    if let Err(e) = verify_hash_against_logs(&logs, &test_case_id, &hash) {
+                                    if let Err(e) =
+                                        verify_hash_against_logs(&logs, &test_case_id, &hash)
+                                    {
                                         log::error!(
                                             "Source hash verification failed for test case '{}': {}",
                                             test_case_id,
@@ -839,7 +842,7 @@ fn write_output(content: &str, output_path: Option<&PathBuf>) -> Result<()> {
             .context(format!("Failed to write output to {}", path.display()))?;
         log::info!("Report written to {}", path.display());
     } else {
-        println!("{}", content);
+        log::info!("{}", content);
     }
 
     Ok(())
@@ -859,30 +862,37 @@ fn parse_match_strategy(strategy: &str) -> Result<MatchStrategy> {
 }
 
 fn compute_test_case_source_hash(storage: &TestCaseStorage, test_case_id: &str) -> Result<String> {
-    let yaml_path = find_test_case_file_path(storage, test_case_id)
-        .context(format!("Failed to find test case file for ID: {}", test_case_id))?;
-    
-    log::debug!("Computing SHA-256 hash for test case file: {}", yaml_path.display());
-    
-    let file_bytes = fs::read(&yaml_path)
-        .context(format!("Failed to read test case file: {}", yaml_path.display()))?;
-    
+    let yaml_path = find_test_case_file_path(storage, test_case_id).context(format!(
+        "Failed to find test case file for ID: {}",
+        test_case_id
+    ))?;
+
+    log::debug!(
+        "Computing SHA-256 hash for test case file: {}",
+        yaml_path.display()
+    );
+
+    let file_bytes = fs::read(&yaml_path).context(format!(
+        "Failed to read test case file: {}",
+        yaml_path.display()
+    ))?;
+
     let mut hasher = Sha256::new();
     hasher.update(&file_bytes);
     let hash_result = hasher.finalize();
     let hash_hex = format!("{:x}", hash_result);
-    
+
     log::debug!("Computed SHA-256 hash for '{}': {}", test_case_id, hash_hex);
-    
+
     Ok(hash_hex)
 }
 
 fn find_test_case_file_path(storage: &TestCaseStorage, test_case_id: &str) -> Result<PathBuf> {
     const YAML_EXTENSIONS: &[&str] = &["yaml", "yml"];
-    
+
     let base_path = storage.base_path();
     let id_path = Path::new(test_case_id);
-    
+
     if let Some(ext) = id_path.extension() {
         if YAML_EXTENSIONS.contains(&ext.to_string_lossy().as_ref()) {
             let file_path = base_path.join(test_case_id);
@@ -894,16 +904,16 @@ fn find_test_case_file_path(storage: &TestCaseStorage, test_case_id: &str) -> Re
             }
         }
     }
-    
+
     for ext in YAML_EXTENSIONS {
         let file_name = format!("{}.{}", test_case_id, ext);
         let file_path = base_path.join(&file_name);
-        
+
         if file_path.exists() {
             return Ok(file_path);
         }
     }
-    
+
     for ext in YAML_EXTENSIONS {
         let file_name = format!("{}.{}", test_case_id, ext);
         if let Ok(entries) = fs::read_dir(base_path) {
@@ -917,7 +927,7 @@ fn find_test_case_file_path(storage: &TestCaseStorage, test_case_id: &str) -> Re
             }
         }
     }
-    
+
     anyhow::bail!("Test case file not found for ID: {}", test_case_id)
 }
 
