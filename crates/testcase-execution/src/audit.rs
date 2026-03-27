@@ -1,5 +1,5 @@
 use anyhow::Result;
-use audit_verifier::audit_log::{AuditLog, AuditLogEntry, OperationType, OperationStatus};
+use audit_verifier::audit_log::{AuditLog, AuditLogEntry, OperationStatus, OperationType};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
@@ -29,7 +29,7 @@ impl AuditLogger {
 
     pub fn with_file<P: AsRef<Path>>(path: P) -> Self {
         let log_file = path.as_ref().to_path_buf();
-        
+
         let log = if log_file.exists() {
             match AuditLog::load_from_file(&log_file) {
                 Ok(existing_log) => Arc::new(Mutex::new(existing_log)),
@@ -245,10 +245,10 @@ mod tests {
     fn test_audit_logger_enable_disable() {
         let mut logger = AuditLogger::new();
         assert!(logger.is_enabled());
-        
+
         logger.disable();
         assert!(!logger.is_enabled());
-        
+
         logger.enable();
         assert!(logger.is_enabled());
     }
@@ -259,12 +259,14 @@ mod tests {
         let logger = AuditLogger::with_file(temp_file.path());
 
         let yaml_path = PathBuf::from("/tmp/test.yaml");
-        logger.log_generate_script(
-            &yaml_path,
-            Some(&PathBuf::from("/tmp/test.sh")),
-            OperationStatus::Success,
-            None,
-        ).unwrap();
+        logger
+            .log_generate_script(
+                &yaml_path,
+                Some(&PathBuf::from("/tmp/test.sh")),
+                OperationStatus::Success,
+                None,
+            )
+            .unwrap();
 
         let log = logger.get_log().unwrap();
         assert_eq!(log.entries.len(), 1);
@@ -277,12 +279,9 @@ mod tests {
         logger.disable();
 
         let yaml_path = PathBuf::from("/tmp/test.yaml");
-        logger.log_generate_script(
-            &yaml_path,
-            None,
-            OperationStatus::Success,
-            None,
-        ).unwrap();
+        logger
+            .log_generate_script(&yaml_path, None, OperationStatus::Success, None)
+            .unwrap();
 
         let log = logger.get_log().unwrap();
         assert_eq!(log.entries.len(), 0);

@@ -49,10 +49,7 @@ test_sequences:
     println!("=== Step 1: Create Audit Log ===\n");
 
     let mut log = AuditTraceabilityLog::new("demo-witness".to_string());
-    println!(
-        "✓ Created audit log with witness key: {}",
-        log.witness_key
-    );
+    println!("✓ Created audit log with witness key: {}", log.witness_key);
     println!("  Timestamp: {}", log.date);
     println!();
 
@@ -96,10 +93,7 @@ test_sequences:
 
     let loaded_log = AuditTraceabilityLog::load_from_file(&log_file)?;
     println!("✓ Audit log loaded successfully");
-    println!(
-        "  Test cases: {}",
-        loaded_log.test_cases.keys().count()
-    );
+    println!("  Test cases: {}", loaded_log.test_cases.keys().count());
     println!();
 
     let verification_result = loaded_log.verify_test_case("TC001")?;

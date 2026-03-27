@@ -20,13 +20,8 @@ pub struct SignedAuditLog {
 }
 
 impl SignedAuditLog {
-    pub fn sign_log(
-        log: AuditLog,
-        private_key: &SigningKey,
-        key_id: String,
-    ) -> Result<Self> {
-        let log_json = serde_json::to_string(&log)
-            .context("Failed to serialize audit log")?;
+    pub fn sign_log(log: AuditLog, private_key: &SigningKey, key_id: String) -> Result<Self> {
+        let log_json = serde_json::to_string(&log).context("Failed to serialize audit log")?;
 
         let mut hasher = Sha256::new();
         hasher.update(log_json.as_bytes());
@@ -50,18 +45,22 @@ impl SignedAuditLog {
     }
 
     pub fn save_to_file(&self, path: &Path) -> Result<()> {
-        let json = serde_json::to_string_pretty(self)
-            .context("Failed to serialize signed audit log")?;
-        fs::write(path, json)
-            .context(format!("Failed to write signed audit log to: {}", path.display()))?;
+        let json =
+            serde_json::to_string_pretty(self).context("Failed to serialize signed audit log")?;
+        fs::write(path, json).context(format!(
+            "Failed to write signed audit log to: {}",
+            path.display()
+        ))?;
         Ok(())
     }
 
     pub fn load_from_file(path: &Path) -> Result<Self> {
-        let content = fs::read_to_string(path)
-            .context(format!("Failed to read signed audit log from: {}", path.display()))?;
-        let signed_log: SignedAuditLog = serde_json::from_str(&content)
-            .context("Failed to parse signed audit log JSON")?;
+        let content = fs::read_to_string(path).context(format!(
+            "Failed to read signed audit log from: {}",
+            path.display()
+        ))?;
+        let signed_log: SignedAuditLog =
+            serde_json::from_str(&content).context("Failed to parse signed audit log JSON")?;
         Ok(signed_log)
     }
 
@@ -78,15 +77,19 @@ impl SignedAuditLog {
         let computed_hash = format!("{:x}", computed_hash_bytes);
 
         if computed_hash != self.log_hash {
-            log::error!("Hash mismatch: computed '{}', stored '{}'", computed_hash, self.log_hash);
+            log::error!(
+                "Hash mismatch: computed '{}', stored '{}'",
+                computed_hash,
+                self.log_hash
+            );
             return Ok(false);
         }
 
-        let signature_bytes = hex::decode(&self.signature)
-            .context("Failed to decode signature from hex")?;
+        let signature_bytes =
+            hex::decode(&self.signature).context("Failed to decode signature from hex")?;
 
-        let signature = Signature::from_slice(&signature_bytes)
-            .context("Failed to parse signature")?;
+        let signature =
+            Signature::from_slice(&signature_bytes).context("Failed to parse signature")?;
 
         use p521::ecdsa::signature::Verifier;
         match public_key.verify(&computed_hash_bytes, &signature) {
@@ -180,16 +183,12 @@ mod tests {
     #[test]
     fn test_sign_and_verify_audit_log() {
         let mut log = AuditLog::new();
-        let entry = AuditLogEntry::builder(OperationType::GenerateScript)
-            .build();
+        let entry = AuditLogEntry::builder(OperationType::GenerateScript).build();
         log.entries.push(entry);
 
         let private_key = signing::generate_private_key();
-        let signed_log = SignedAuditLog::sign_log(
-            log,
-            &private_key,
-            "test-key".to_string(),
-        ).unwrap();
+        let signed_log =
+            SignedAuditLog::sign_log(log, &private_key, "test-key".to_string()).unwrap();
 
         assert!(signed_log.verify_signature().unwrap());
     }
@@ -197,16 +196,12 @@ mod tests {
     #[test]
     fn test_signed_log_save_and_load() {
         let mut log = AuditLog::new();
-        let entry = AuditLogEntry::builder(OperationType::ExecuteScript)
-            .build();
+        let entry = AuditLogEntry::builder(OperationType::ExecuteScript).build();
         log.entries.push(entry);
 
         let private_key = signing::generate_private_key();
-        let signed_log = SignedAuditLog::sign_log(
-            log,
-            &private_key,
-            "test-key".to_string(),
-        ).unwrap();
+        let signed_log =
+            SignedAuditLog::sign_log(log, &private_key, "test-key".to_string()).unwrap();
 
         let temp_file = NamedTempFile::new().unwrap();
         signed_log.save_to_file(temp_file.path()).unwrap();
@@ -219,16 +214,12 @@ mod tests {
     #[test]
     fn test_verification_report() {
         let mut log = AuditLog::new();
-        let entry = AuditLogEntry::builder(OperationType::ValidateYaml)
-            .build();
+        let entry = AuditLogEntry::builder(OperationType::ValidateYaml).build();
         log.entries.push(entry);
 
         let private_key = signing::generate_private_key();
-        let signed_log = SignedAuditLog::sign_log(
-            log,
-            &private_key,
-            "test-key".to_string(),
-        ).unwrap();
+        let signed_log =
+            SignedAuditLog::sign_log(log, &private_key, "test-key".to_string()).unwrap();
 
         let report = SignatureVerificationReport::verify(&signed_log);
         assert!(report.is_valid);
@@ -241,20 +232,17 @@ mod tests {
     #[test]
     fn test_tampered_log_detection() {
         let mut log = AuditLog::new();
-        let entry = AuditLogEntry::builder(OperationType::GenerateScript)
-            .build();
+        let entry = AuditLogEntry::builder(OperationType::GenerateScript).build();
         log.entries.push(entry);
 
         let private_key = signing::generate_private_key();
-        let mut signed_log = SignedAuditLog::sign_log(
-            log,
-            &private_key,
-            "test-key".to_string(),
-        ).unwrap();
+        let mut signed_log =
+            SignedAuditLog::sign_log(log, &private_key, "test-key".to_string()).unwrap();
 
-        signed_log.audit_log.entries.push(
-            AuditLogEntry::builder(OperationType::ExecuteScript).build()
-        );
+        signed_log
+            .audit_log
+            .entries
+            .push(AuditLogEntry::builder(OperationType::ExecuteScript).build());
 
         assert!(!signed_log.verify_signature().unwrap());
     }

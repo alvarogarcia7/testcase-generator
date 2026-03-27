@@ -436,7 +436,9 @@ fn main() -> Result<()> {
     let log_level = if cli.verbose { "info" } else { &cli.log_level };
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(log_level)).init();
 
-    let audit_log_path = cli.audit_log.clone()
+    let audit_log_path = cli
+        .audit_log
+        .clone()
         .or_else(|| std::env::var("AUDIT_LOG_FILE").ok().map(PathBuf::from))
         .unwrap_or_else(|| PathBuf::from("audit.log.json"));
 
@@ -533,9 +535,18 @@ fn main() -> Result<()> {
                 Ok(())
             })();
 
-            let status = if result.is_ok() { OperationStatus::Success } else { OperationStatus::Failed };
+            let status = if result.is_ok() {
+                OperationStatus::Success
+            } else {
+                OperationStatus::Failed
+            };
             let error = result.as_ref().err().map(|e| e.to_string());
-            audit_logger.log_generate_script(&yaml_file, output.as_deref(), status, error.clone())?;
+            audit_logger.log_generate_script(
+                &yaml_file,
+                output.as_deref(),
+                status,
+                error.clone(),
+            )?;
 
             result
         }
@@ -554,7 +565,11 @@ fn main() -> Result<()> {
                 Ok(())
             })();
 
-            let status = if result.is_ok() { OperationStatus::Success } else { OperationStatus::Failed };
+            let status = if result.is_ok() {
+                OperationStatus::Success
+            } else {
+                OperationStatus::Failed
+            };
             let error = result.as_ref().err().map(|e| e.to_string());
             audit_logger.log_execute_script(&yaml_file, status, error.clone())?;
 
@@ -587,9 +602,19 @@ fn main() -> Result<()> {
                 Ok(())
             })();
 
-            let status = if result.is_ok() { OperationStatus::Success } else { OperationStatus::Failed };
+            let status = if result.is_ok() {
+                OperationStatus::Success
+            } else {
+                OperationStatus::Failed
+            };
             let error = result.as_ref().err().map(|e| e.to_string());
-            audit_logger.log_hydrate_yaml(&yaml_file, &export_file, output.as_deref(), status, error.clone())?;
+            audit_logger.log_hydrate_yaml(
+                &yaml_file,
+                &export_file,
+                output.as_deref(),
+                status,
+                error.clone(),
+            )?;
 
             result
         }

@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use audit_verifier::audit_signer::{SignedAuditLog, SignatureVerificationReport};
+use audit_verifier::audit_signer::{SignatureVerificationReport, SignedAuditLog};
 use clap::Parser;
 use std::fs;
 use std::path::PathBuf;
@@ -37,10 +37,16 @@ fn main() -> Result<()> {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(log_level)).init();
 
     if !cli.signed_log.exists() {
-        anyhow::bail!("Signed audit log file does not exist: {}", cli.signed_log.display());
+        anyhow::bail!(
+            "Signed audit log file does not exist: {}",
+            cli.signed_log.display()
+        );
     }
 
-    log::info!("Loading signed audit log from: {}", cli.signed_log.display());
+    log::info!(
+        "Loading signed audit log from: {}",
+        cli.signed_log.display()
+    );
     let signed_log = SignedAuditLog::load_from_file(&cli.signed_log)?;
 
     log::info!("Verifying signature...");
@@ -48,9 +54,30 @@ fn main() -> Result<()> {
 
     println!("=== Audit Log Verification Report ===");
     println!();
-    println!("Verification Status: {}", if report.is_valid { "✓ VALID" } else { "✗ INVALID" });
-    println!("Log Hash Verified:   {}", if report.log_hash_verified { "✓" } else { "✗" });
-    println!("Signature Verified:  {}", if report.signature_verified { "✓" } else { "✗" });
+    println!(
+        "Verification Status: {}",
+        if report.is_valid {
+            "✓ VALID"
+        } else {
+            "✗ INVALID"
+        }
+    );
+    println!(
+        "Log Hash Verified:   {}",
+        if report.log_hash_verified {
+            "✓"
+        } else {
+            "✗"
+        }
+    );
+    println!(
+        "Signature Verified:  {}",
+        if report.signature_verified {
+            "✓"
+        } else {
+            "✗"
+        }
+    );
     println!();
     println!("Key ID:        {}", report.key_id);
     println!("Signed At:     {}", report.signed_at);
@@ -102,8 +129,10 @@ fn main() -> Result<()> {
     if let Some(output_path) = &cli.output {
         let report_json = serde_json::to_string_pretty(&report)
             .context("Failed to serialize verification report")?;
-        fs::write(output_path, report_json)
-            .context(format!("Failed to write report to: {}", output_path.display()))?;
+        fs::write(output_path, report_json).context(format!(
+            "Failed to write report to: {}",
+            output_path.display()
+        ))?;
         log::info!("Verification report written to: {}", output_path.display());
     }
 

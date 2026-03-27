@@ -153,7 +153,8 @@ fn test_execution_log_json_serialization() {
         "echo 'test'".to_string(),
         0,
         "test
-output".to_string(),
+output"
+            .to_string(),
         true, // result_verification_pass
         true, // output_verification_pass
     );
@@ -252,10 +253,14 @@ fn test_shell_script_basic_structure() {
 
     let script = executor.generate_test_script(&test_case);
 
-    assert!(script.starts_with("#!/bin/bash
-"));
-    assert!(script.contains("set -euo pipefail
-"));
+    assert!(script.starts_with(
+        "#!/bin/bash
+"
+    ));
+    assert!(script.contains(
+        "set -euo pipefail
+"
+    ));
     assert!(script.contains("# Test Case: TC001"));
     assert!(script.contains("# Description: Basic test case"));
 }
@@ -465,10 +470,14 @@ fn test_initial_conditions_in_script() {
     assert!(script.contains("# Session: Active"));
 
     // Verify each condition appears on its own line with proper formatting
-    assert!(script.contains("# Device: Powered on
-"));
-    assert!(script.contains("# Device: Connected
-"));
+    assert!(script.contains(
+        "# Device: Powered on
+"
+    ));
+    assert!(script.contains(
+        "# Device: Connected
+"
+    ));
 }
 
 #[test]
@@ -4699,16 +4708,20 @@ fn test_mixed_bdd_and_non_bdd_statements() {
     let script = executor.generate_test_script_with_json_output(&test_case, json_path, None);
 
     // Non-BDD statement should be a comment only (no executable command for it)
-    assert!(script.contains("# Setup: Device is powered on
-"));
+    assert!(script.contains(
+        "# Setup: Device is powered on
+"
+    ));
 
     // BDD statement should generate command
     assert!(script.contains("# Setup: create directory \"/tmp/logs\""));
     assert!(script.contains("mkdir -p \"/tmp/logs\""));
 
     // Non-BDD statement should be a comment only (no executable command for it)
-    assert!(script.contains("# Setup: Network is connected
-"));
+    assert!(script.contains(
+        "# Setup: Network is connected
+"
+    ));
 }
 
 #[test]
@@ -5174,30 +5187,32 @@ line3",
 
     // The generated bash script should contain the original multi-line command
     assert!(
-        script.contains("echo 'line1'
+        script.contains(
+            "echo 'line1'
 echo 'line2'
-echo 'line3'"),
+echo 'line3'"
+        ),
         "Script should contain the original multi-line command"
     );
 
-    // In the JSON output section of the script, newlines should be escaped as 
+    // In the JSON output section of the script, newlines should be escaped as
 
-    // The command in the JSON should have the newlines converted to 
-// for JSON format
+    // The command in the JSON should have the newlines converted to
+    // for JSON format
     // The script writes: echo '    "command": "...",
-    // where the command value should have 
-// instead of literal newlines
+    // where the command value should have
+    // instead of literal newlines
 
     // Looking for the escaped form in the JSON line
-    // The echo command writes the JSON with newlines escaped as 
+    // The echo command writes the JSON with newlines escaped as
 
     // In the bash script, within single quotes,
- //is literal, so it appears as:
+    //is literal, so it appears as:
     // echo '    "command": "echo \"line1\"
-//echo \"line2\"
-//echo \"line3\"",'
+    //echo \"line2\"
+    //echo \"line3\"",'
     // This produces JSON with
-// (which is the correct JSON escape sequence for newlines)
+    // (which is the correct JSON escape sequence for newlines)
     let expected =
         "echo '    \"command\": \"echo \\\"line1\\\"\\necho \\\"line2\\\"\\necho \\\"line3\\\"\",";
     assert!(
