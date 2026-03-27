@@ -63,6 +63,27 @@ verify-audit-signature --input signed-audit.json --verbose
 - `-i, --input <PATH>`: Path to signed audit verification JSON file (required)
 - `-v, --verbose`: Display detailed information about the signature
 
+### `verify-audit-log`
+
+A standalone binary to verify an audit log signature given separate keypair, payload, and signature files.
+
+#### Usage
+
+```bash
+# Basic verification
+verify-audit-log --keypair key.pem --payload audit.json --signature audit.sig
+
+# Verbose output with details
+verify-audit-log --keypair key.pem --payload audit.json --signature audit.sig --verbose
+```
+
+#### Options
+
+- `-k, --keypair <PATH>`: Path to P-521 private key PEM file (used to derive public key) (required)
+- `-p, --payload <PATH>`: Path to payload file to verify (required)
+- `-s, --signature <PATH>`: Path to signature file (hex-encoded) (required)
+- `-v, --verbose`: Display detailed information
+
 ## Cryptographic Details
 
 ### Algorithm
