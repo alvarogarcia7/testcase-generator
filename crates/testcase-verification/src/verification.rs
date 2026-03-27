@@ -167,6 +167,10 @@ pub struct TestExecutionLog {
     /// Whether output verification passed (optional)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub output_verification_pass: Option<bool>,
+
+    /// SHA-256 hash of the source YAML test case file (optional)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_yaml_sha256: Option<String>,
 }
 
 /// Result of verifying a test case
@@ -207,6 +211,10 @@ pub struct TestCaseVerificationResult {
     /// TC number (optional, for reporting)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tc: Option<i64>,
+
+    /// SHA-256 hash of the source YAML test case file (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source_yaml_sha256: Option<String>,
 }
 
 /// Result of verifying a test sequence
@@ -347,6 +355,10 @@ pub struct ContainerReportMetadata {
 
     /// Number of test cases that failed
     pub failed_test_cases: usize,
+
+    /// SHA-256 hashes of source YAML test case files (test_case_id → sha256)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source_hashes: Option<HashMap<String, String>>,
 }
 
 /// Configuration for generating container reports
@@ -406,6 +418,22 @@ impl ContainerReport {
         executor: Option<String>,
         execution_duration: f64,
     ) -> Self {
+        let source_hashes: HashMap<String, String> = batch_report
+            .test_cases
+            .iter()
+            .filter_map(|tc| {
+                tc.source_yaml_sha256
+                    .as_ref()
+                    .map(|hash| (tc.test_case_id.clone(), hash.clone()))
+            })
+            .collect();
+
+        let source_hashes = if source_hashes.is_empty() {
+            None
+        } else {
+            Some(source_hashes)
+        };
+
         Self {
             doc_type: None,
             schema: None,
@@ -421,6 +449,7 @@ impl ContainerReport {
                 total_test_cases: batch_report.total_test_cases,
                 passed_test_cases: batch_report.passed_test_cases,
                 failed_test_cases: batch_report.failed_test_cases,
+                source_hashes,
             },
         }
     }
@@ -597,6 +626,7 @@ impl TestVerifier {
                     log_file_path: log_path.to_path_buf(),
                     result_verification_pass: None,
                     output_verification_pass: None,
+                    source_yaml_sha256: None,
                 });
             }
         }
@@ -733,6 +763,7 @@ impl TestVerifier {
                     log_file_path: log_path.to_path_buf(),
                     result_verification_pass: None,
                     output_verification_pass: None,
+                    source_yaml_sha256: None,
                 });
             }
         }
@@ -815,6 +846,7 @@ impl TestVerifier {
                 log_file_path: log_path.to_path_buf(),
                 result_verification_pass: Some(entry.result_verification_pass),
                 output_verification_pass: Some(entry.output_verification_pass),
+                source_yaml_sha256: None,
             });
         }
 
@@ -902,6 +934,7 @@ impl TestVerifier {
                 log_file_path: log_path.to_path_buf(),
                 result_verification_pass: Some(entry.result_verification_pass),
                 output_verification_pass: Some(entry.output_verification_pass),
+                source_yaml_sha256: None,
             });
         }
 
@@ -1009,6 +1042,7 @@ impl TestVerifier {
             requirement: requirement.clone(),
             item,
             tc,
+            source_yaml_sha256: None,
         }
     }
 
@@ -1448,6 +1482,7 @@ impl TestVerifier {
                         requirement: None,
                         item: None,
                         tc: None,
+                        source_yaml_sha256: None,
                     };
                     report.add_test_case_result(failed_result);
                 }
@@ -1809,6 +1844,7 @@ mod tests {
             requirement: Some("REQ001".to_string()),
             item: Some(1),
             tc: Some(1),
+            source_yaml_sha256: None,
         };
 
         let yaml = verifier.generate_report_yaml(&result).unwrap();
@@ -1837,6 +1873,7 @@ mod tests {
             requirement: Some("REQ002".to_string()),
             item: Some(2),
             tc: Some(2),
+            source_yaml_sha256: None,
         };
 
         let json = verifier.generate_report_json(&result).unwrap();
@@ -1872,6 +1909,7 @@ mod tests {
             requirement: Some("REQ001".to_string()),
             item: Some(1),
             tc: Some(1),
+            source_yaml_sha256: None,
         });
 
         let config = ContainerReportConfig {
@@ -1926,6 +1964,7 @@ mod tests {
             requirement: Some("REQ001".to_string()),
             item: Some(1),
             tc: Some(1),
+            source_yaml_sha256: None,
         });
 
         let mut report2 = BatchVerificationReport::new();
@@ -1942,6 +1981,7 @@ mod tests {
             requirement: Some("REQ002".to_string()),
             item: Some(2),
             tc: Some(2),
+            source_yaml_sha256: None,
         });
 
         let config = ContainerReportConfig {
@@ -1985,6 +2025,7 @@ mod tests {
             requirement: None,
             item: None,
             tc: None,
+            source_yaml_sha256: None,
         });
 
         let config = ContainerReportConfig {
