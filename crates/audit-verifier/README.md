@@ -212,6 +212,37 @@ verify-audit-signature \
   --verbose
 ```
 
+## Testing
+
+The audit-verifier crate includes comprehensive shell-based integration tests that validate the complete workflow of generating payloads, verifying them, signing, and verifying signatures.
+
+### Running Tests
+
+```bash
+# Run all integration tests
+./crates/audit-verifier/tests/run_all_tests.sh
+
+# Run individual test suites
+./crates/audit-verifier/tests/integration/test_audit_verifier_e2e.sh
+./crates/audit-verifier/tests/integration/test_audit_key_scenarios.sh
+
+# Keep temporary files for debugging
+./crates/audit-verifier/tests/run_all_tests.sh --no-remove
+```
+
+### Test Coverage
+
+The test suite covers:
+
+- **Sample payload generation**: Creating test case YAML and execution logs
+- **Verification with generated keys**: Testing key generation on the fly
+- **Verification with existing keys**: Testing key loading and reuse
+- **Signature verification**: Validating cryptographic signatures
+- **Negative tests**: Hash mismatches, missing fields, tampered data
+- **Error handling**: Missing files, invalid JSON, etc.
+
+See [tests/README.md](tests/README.md) for detailed test documentation.
+
 ## Library Usage
 
 The audit-verifier crate can also be used as a library:

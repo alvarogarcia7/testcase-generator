@@ -100,6 +100,23 @@ audit-verify: build-audit-verifier
 	./target/debug/audit-verifier --yaml testcases/SELF_VALIDATED_EXAMPLE_001.yml --log testcases/self_validated_example_execution_log_with_hash.json
 .PHONY: audit-verify
 
+# audit-verifier integration tests
+test-audit-verifier: build-audit-verifier
+	./crates/audit-verifier/tests/run_all_tests.sh
+.PHONY: test-audit-verifier
+
+test-audit-verifier-simple: build-audit-verifier
+	./crates/audit-verifier/tests/integration/test_simple_workflow.sh
+.PHONY: test-audit-verifier-simple
+
+test-audit-verifier-e2e: build-audit-verifier
+	./crates/audit-verifier/tests/integration/test_audit_verifier_e2e.sh
+.PHONY: test-audit-verifier-e2e
+
+test-audit-verifier-keys: build-audit-verifier
+	./crates/audit-verifier/tests/integration/test_audit_key_scenarios.sh
+.PHONY: test-audit-verifier-keys
+
 test: setup-python-for-test
 	${MAKE} test-unit
 	${MAKE} test-e2e
