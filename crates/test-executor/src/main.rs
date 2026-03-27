@@ -452,7 +452,7 @@ fn main() -> Result<()> {
             json_log,
             force,
             test_case_dir,
-            audit_log: _,
+            audit_log,
         } => {
             let result = (|| -> Result<()> {
                 let yaml_bytes = fs::read(&yaml_file)
@@ -484,10 +484,44 @@ fn main() -> Result<()> {
                     if json_log {
                         executor.generate_execution_log_template(&test_case, output_path)?;
                     }
+
+                    if let Some(audit_log_path) = audit_log {
+                        let mut log = if audit_log_path.exists() {
+                            AuditTraceabilityLog::load_from_file(&audit_log_path)?
+                        } else {
+                            AuditTraceabilityLog::new("default-witness".to_string())
+                        };
+
+                        let mut audit = TestCaseAudit::new();
+
+                        let initial_stage = StageInfo::from_file(&yaml_file).context(format!(
+                            "Failed to create stage info for initial file: {}",
+                            yaml_file.display()
+                        ))?;
+                        audit.add_stage("initial", initial_stage);
+
+                        let script_stage = StageInfo::from_file(output_path).context(format!(
+                            "Failed to create stage info for shell script: {}",
+                            output_path.display()
+                        ))?;
+                        audit.add_stage("05_shell_script", script_stage);
+
+                        log.add_test_case(&test_case.id, audit);
+                        log.save_to_file(&audit_log_path)?;
+
+                        println!(
+                            "✓ Test case '{}' added to audit log: {}",
+                            test_case.id,
+                            audit_log_path.display()
+                        );
+                    }
                 } else {
                     print!("{}", script);
                     if json_log {
                         eprintln!("Warning: --json-log requires --output to be specified");
+                    }
+                    if audit_log.is_some() {
+                        eprintln!("Warning: --audit-log requires --output to be specified");
                     }
                 }
 
