@@ -1,0 +1,24 @@
+[
+  {
+    "test_sequence": 1,
+    "step": 1,
+    "command": "echo \"Sequence 1 - Step 1 executed\"",
+    "exit_code": 0,
+    "output": "Sequence 1 - Step 1 executed",
+    "timestamp": "2026-02-09T10:00:00.000000+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": true,
+    "source_yaml_sha256": "502cbc115245faab48824d1ce6f9a13f1b2ecde8770bd7b99a1adec6797d06d8"
+  },
+  {
+    "test_sequence": 1,
+    "step": 2,
+    "command": "echo \"Sequence 1 - Step 2 executed\"",
+    "exit_code": 0,
+    "output": "Sequence 1 - Step 2 executed",
+    "timestamp": "2026-02-09T10:00:01.000000+00:00",
+    "result_verification_pass": true,
+    "output_verification_pass": true,
+    "source_yaml_sha256": "502cbc115245faab48824d1ce6f9a13f1b2ecde8770bd7b99a1adec6797d06d8"
+  }
+]

@@ -3,7 +3,7 @@ use crate::hydration::VarHydrator;
 use anyhow::{Context, Result};
 use chrono::Local;
 use regex::Regex;
-use sha2::{Sha256, Digest};
+use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -1321,7 +1321,11 @@ impl TestExecutor {
         self.generate_test_script_with_json_output(test_case, json_path, None)
     }
 
-    pub fn generate_test_script_from_yaml(&self, test_case: &TestCase, yaml_bytes: &[u8]) -> String {
+    pub fn generate_test_script_from_yaml(
+        &self,
+        test_case: &TestCase,
+        yaml_bytes: &[u8],
+    ) -> String {
         let json_path_str = format!("{}_execution_log.json", test_case.id);
         let json_path = Path::new(&json_path_str);
         let hash = compute_yaml_sha256(yaml_bytes);
@@ -3570,13 +3574,13 @@ mod tests {
     fn test_compute_yaml_sha256() {
         let yaml_content = b"id: TC001\ndescription: Test case\n";
         let hash = compute_yaml_sha256(yaml_content);
-        
+
         assert_eq!(hash.len(), 64);
         assert!(hash.chars().all(|c| c.is_ascii_hexdigit()));
-        
+
         let hash2 = compute_yaml_sha256(yaml_content);
         assert_eq!(hash, hash2);
-        
+
         let different_content = b"id: TC002\ndescription: Different test\n";
         let hash3 = compute_yaml_sha256(different_content);
         assert_ne!(hash, hash3);
@@ -3620,9 +3624,9 @@ mod tests {
 
         let yaml_content = b"id: TC001\ndescription: Test case\n";
         let expected_hash = compute_yaml_sha256(yaml_content);
-        
+
         let script = executor.generate_test_script_from_yaml(&test_case, yaml_content);
-        
+
         assert!(script.contains(&format!("# Source YAML SHA-256: {}", expected_hash)));
         assert!(script.contains(&format!("SOURCE_YAML_SHA256=\"{}\"", expected_hash)));
     }
@@ -3662,9 +3666,9 @@ mod tests {
         };
         sequence.steps.push(step);
         test_case.test_sequences.push(sequence);
-        
+
         let script = executor.generate_test_script(&test_case);
-        
+
         assert!(!script.contains("# Source YAML SHA-256:"));
         assert!(!script.contains("SOURCE_YAML_SHA256="));
     }
@@ -3705,8 +3709,9 @@ mod tests {
 
         let yaml_content = b"id: TC001\ndescription: Test case\n";
         let script = executor.generate_test_script_from_yaml(&test_case, yaml_content);
-        
-        assert!(script.contains("echo \"    \\\"source_yaml_sha256\\\": \\\"$SOURCE_YAML_SHA256\\\",\""));
+
+        assert!(script
+            .contains("echo \"    \\\"source_yaml_sha256\\\": \\\"$SOURCE_YAML_SHA256\\\",\""));
     }
 
     #[test]
@@ -3742,9 +3747,9 @@ mod tests {
         };
         sequence.steps.push(step);
         test_case.test_sequences.push(sequence);
-        
+
         let script = executor.generate_test_script(&test_case);
-        
+
         assert!(!script.contains("source_yaml_sha256"));
     }
 }

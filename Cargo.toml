@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "crates/audit-verifier",
     "crates/bash-eval",
     "crates/editor",
     "crates/json-escape",

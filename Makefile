@@ -92,6 +92,14 @@ build-bash-eval:
 	cargo build --package bash-eval
 .PHONY: build-bash-eval
 
+build-audit-verifier:
+	cargo build --package audit-verifier
+.PHONY: build-audit-verifier
+
+audit-verify: build-audit-verifier
+	./target/debug/audit-verifier --yaml testcases/SELF_VALIDATED_EXAMPLE_001.yml --log testcases/self_validated_example_execution_log_with_hash.json
+.PHONY: audit-verify
+
 test: setup-python-for-test
 	${MAKE} test-unit
 	${MAKE} test-e2e
