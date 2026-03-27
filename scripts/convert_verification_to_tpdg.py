@@ -491,7 +491,8 @@ def process_test_case_directory(
         log_path = logs_dir / f"{test_case_id}_execution_log.json"
         if not log_path.exists():
             if verbose:
-                print(f"  Warning: No execution log found at {log_path}")
+                print(f"  Error: No execution log found at {log_path}")
+            # Still process it, but all steps will be NotExecuted
             execution_log = []
         else:
             execution_log = parse_execution_log(log_path)
