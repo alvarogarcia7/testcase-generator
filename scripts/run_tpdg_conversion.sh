@@ -120,6 +120,7 @@ if ! command -v python3.14 &> /dev/null && ! command -v python3 &> /dev/null; th
 fi
 
 PYTHON_CMD=$(command -v python3.14 2>/dev/null || command -v python3)
+PYTHON_CMD="uv run python"
 echo_info "Using Python: $PYTHON_CMD"
 
 # Check for PyYAML
