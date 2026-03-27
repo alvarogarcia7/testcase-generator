@@ -10,6 +10,9 @@ use std::path::PathBuf;
 #[command(name = "audit-verifier")]
 #[command(version)]
 #[command(about = "Verify test case YAML hash against execution log entries")]
+#[command(
+    after_help = "ENVIRONMENT VARIABLES:\n    RUST_LOG    Set log level (trace, debug, info, warn, error). Overrides --log-level"
+)]
 struct Cli {
     /// Path to test case YAML file
     #[arg(short, long, value_name = "PATH")]
@@ -34,6 +37,14 @@ struct Cli {
     /// Output file for signed audit verification results (JSON format)
     #[arg(short, long, value_name = "PATH")]
     output: Option<PathBuf>,
+
+    /// Set log level (trace, debug, info, warn, error)
+    #[arg(long, value_name = "LEVEL", default_value = "info")]
+    log_level: String,
+
+    /// Enable verbose output (equivalent to --log-level=debug)
+    #[arg(short, long)]
+    verbose: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -64,6 +75,9 @@ struct SignedAuditOutput {
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
+    let log_level = if cli.verbose { "debug" } else { &cli.log_level };
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(log_level)).init();
+
     // Validate that files exist
     if !cli.yaml.exists() {
         anyhow::bail!("YAML file does not exist: {}", cli.yaml.display());
@@ -80,7 +94,7 @@ fn main() -> Result<()> {
     hasher.update(&yaml_bytes);
     let computed_hash = format!("{:x}", hasher.finalize());
 
-    println!("Computed SHA-256 hash of YAML file: {}", computed_hash);
+    log::info!("Computed SHA-256 hash of YAML file: {}", computed_hash);
 
     // Parse execution log JSON
     let log_content = fs::read_to_string(&cli.log)
@@ -91,7 +105,7 @@ fn main() -> Result<()> {
     )?;
 
     if log_entries.is_empty() {
-        println!("WARNING: Execution log is empty");
+        log::warn!("Execution log is empty");
         std::process::exit(1);
     }
 
@@ -104,8 +118,8 @@ fn main() -> Result<()> {
         match &entry.source_yaml_sha256 {
             Some(hash) => {
                 if hash != &computed_hash {
-                    eprintln!(
-                        "ERROR: Hash mismatch at entry {}: expected '{}', got '{}'",
+                    log::error!(
+                        "Hash mismatch at entry {}: expected '{}', got '{}'",
                         index + 1,
                         computed_hash,
                         hash
@@ -115,10 +129,7 @@ fn main() -> Result<()> {
                 }
             }
             None => {
-                eprintln!(
-                    "WARNING: Missing source_yaml_sha256 field at entry {}",
-                    index + 1
-                );
+                log::warn!("Missing source_yaml_sha256 field at entry {}", index + 1);
                 all_match = false;
                 missing_hash_count += 1;
             }
@@ -126,15 +137,15 @@ fn main() -> Result<()> {
     }
 
     // Print summary
-    println!("\nVerification Summary:");
-    println!("  Total entries: {}", log_entries.len());
-    println!("  Hash mismatches: {}", mismatch_count);
-    println!("  Missing hash fields: {}", missing_hash_count);
+    log::info!("Verification Summary:");
+    log::info!("  Total entries: {}", log_entries.len());
+    log::info!("  Hash mismatches: {}", mismatch_count);
+    log::info!("  Missing hash fields: {}", missing_hash_count);
 
     if all_match {
-        println!("\n✓ All hashes match and no missing hash fields");
+        log::info!("✓ All hashes match and no missing hash fields");
     } else {
-        println!("\n✗ Verification failed");
+        log::error!("✗ Verification failed");
     }
 
     // Compute SHA-256 hash of the execution log content
@@ -153,14 +164,14 @@ fn main() -> Result<()> {
 
     // Load or generate private key
     let private_key = if let Some(key_path) = &cli.private_key {
-        println!("\nLoading private key from: {}", key_path.display());
+        log::info!("Loading private key from: {}", key_path.display());
         signing::load_private_key(key_path).context("Failed to load private key")?
     } else {
-        println!("\nGenerating new P-521 private key...");
+        log::info!("Generating new P-521 private key...");
         let key = signing::generate_private_key();
 
         if let Some(save_path) = &cli.save_key {
-            println!("Saving private key to: {}", save_path.display());
+            log::info!("Saving private key to: {}", save_path.display());
             signing::save_private_key(&key, save_path).context("Failed to save private key")?;
         }
 
@@ -203,13 +214,13 @@ fn main() -> Result<()> {
             "Failed to write output to: {}",
             output_path.display()
         ))?;
-        println!(
-            "\n✓ Signed audit verification written to: {}",
+        log::info!(
+            "✓ Signed audit verification written to: {}",
             output_path.display()
         );
     } else {
-        println!("\n--- Signed Audit Verification Output ---");
-        println!("{}", output_json);
+        log::info!("--- Signed Audit Verification Output ---");
+        log::info!("{}", output_json);
     }
 
     if all_match {
