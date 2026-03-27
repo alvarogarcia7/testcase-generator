@@ -90,9 +90,7 @@ fn main() -> Result<()> {
     let yaml_bytes =
         fs::read(&cli.yaml).context(format!("Failed to read YAML file: {}", cli.yaml.display()))?;
 
-    let mut hasher = Sha256::new();
-    hasher.update(&yaml_bytes);
-    let computed_hash = format!("{:x}", hasher.finalize());
+    let computed_hash = compute_yaml_sha256(&yaml_bytes);
 
     log::info!("Computed SHA-256 hash of YAML file: {}", computed_hash);
 
@@ -100,9 +98,7 @@ fn main() -> Result<()> {
     let log_content = fs::read_to_string(&cli.log)
         .context(format!("Failed to read log file: {}", cli.log.display()))?;
 
-    let log_entries: Vec<ExecutionLogEntry> = serde_json::from_str(&log_content).context(
-        format!("Failed to parse log file as JSON: {}", cli.log.display()),
-    )?;
+    let log_entries = parse_execution_log(&log_content)?;
 
     if log_entries.is_empty() {
         log::warn!("Execution log is empty");
@@ -110,10 +106,9 @@ fn main() -> Result<()> {
     }
 
     // Extract all source_yaml_sha256 fields and compare
-    let mut all_match = true;
-    let mut missing_hash_count = 0;
-    let mut mismatch_count = 0;
+    let result = verify_hashes(&computed_hash, &log_entries);
 
+    // Report individual errors
     for (index, entry) in log_entries.iter().enumerate() {
         match &entry.source_yaml_sha256 {
             Some(hash) => {
@@ -124,14 +119,10 @@ fn main() -> Result<()> {
                         computed_hash,
                         hash
                     );
-                    all_match = false;
-                    mismatch_count += 1;
                 }
             }
             None => {
                 log::warn!("Missing source_yaml_sha256 field at entry {}", index + 1);
-                all_match = false;
-                missing_hash_count += 1;
             }
         }
     }
@@ -139,10 +130,10 @@ fn main() -> Result<()> {
     // Print summary
     log::info!("Verification Summary:");
     log::info!("  Total entries: {}", log_entries.len());
-    log::info!("  Hash mismatches: {}", mismatch_count);
-    log::info!("  Missing hash fields: {}", missing_hash_count);
+    log::info!("  Hash mismatches: {}", result.mismatch_count);
+    log::info!("  Missing hash fields: {}", result.missing_hash_count);
 
-    if all_match {
+    if result.all_match {
         log::info!("✓ All hashes match and no missing hash fields");
     } else {
         log::error!("✗ Verification failed");
@@ -157,9 +148,9 @@ fn main() -> Result<()> {
     let verification_result = VerificationResult {
         computed_hash: computed_hash.clone(),
         total_entries: log_entries.len(),
-        hash_mismatches: mismatch_count,
-        missing_hash_fields: missing_hash_count,
-        verification_passed: all_match,
+        hash_mismatches: result.mismatch_count,
+        missing_hash_fields: result.missing_hash_count,
+        verification_passed: result.all_match,
     };
 
     // Load or generate private key
@@ -223,9 +214,432 @@ fn main() -> Result<()> {
         log::info!("{}", output_json);
     }
 
-    if all_match {
+    if result.all_match {
         std::process::exit(0);
     } else {
         std::process::exit(1);
+    }
+}
+
+fn compute_yaml_sha256(content: &[u8]) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(content);
+    format!("{:x}", hasher.finalize())
+}
+
+fn parse_execution_log(json_content: &str) -> Result<Vec<ExecutionLogEntry>> {
+    serde_json::from_str(json_content).context("Failed to parse execution log JSON")
+}
+
+#[derive(Debug, PartialEq)]
+struct HashVerificationResult {
+    all_match: bool,
+    mismatch_count: usize,
+    missing_hash_count: usize,
+}
+
+fn verify_hashes(
+    computed_hash: &str,
+    log_entries: &[ExecutionLogEntry],
+) -> HashVerificationResult {
+    let mut all_match = true;
+    let mut missing_hash_count = 0;
+    let mut mismatch_count = 0;
+
+    for entry in log_entries {
+        match &entry.source_yaml_sha256 {
+            Some(hash) => {
+                if hash != computed_hash {
+                    all_match = false;
+                    mismatch_count += 1;
+                }
+            }
+            None => {
+                all_match = false;
+                missing_hash_count += 1;
+            }
+        }
+    }
+
+    HashVerificationResult {
+        all_match,
+        mismatch_count,
+        missing_hash_count,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_compute_yaml_sha256_empty_input() {
+        let input = b"";
+        let hash = compute_yaml_sha256(input);
+        // SHA-256 of empty string
+        assert_eq!(
+            hash,
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        );
+    }
+
+    #[test]
+    fn test_compute_yaml_sha256_simple_text() {
+        let input = b"hello world";
+        let hash = compute_yaml_sha256(input);
+        // SHA-256 of "hello world"
+        assert_eq!(
+            hash,
+            "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9"
+        );
+    }
+
+    #[test]
+    fn test_compute_yaml_sha256_yaml_content() {
+        let input = b"name: test\nsteps:\n  - command: echo hello\n";
+        let hash = compute_yaml_sha256(input);
+        // SHA-256 of the YAML content
+        assert_eq!(
+            hash,
+            "51fe73076eb63f0cc4a0b1e98d81c8fbd4413e081943d4d9fc4253b6b61a9121"
+        );
+    }
+
+    #[test]
+    fn test_compute_yaml_sha256_known_hash() {
+        // Test with a known hash value
+        let input = b"test";
+        let hash = compute_yaml_sha256(input);
+        // SHA-256 of "test"
+        assert_eq!(
+            hash,
+            "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+        );
+    }
+
+    #[test]
+    fn test_compute_yaml_sha256_deterministic() {
+        let input = b"deterministic test";
+        let hash1 = compute_yaml_sha256(input);
+        let hash2 = compute_yaml_sha256(input);
+        assert_eq!(hash1, hash2);
+    }
+
+    #[test]
+    fn test_parse_execution_log_empty_array() {
+        let json = "[]";
+        let result = parse_execution_log(json);
+        assert!(result.is_ok());
+        let entries = result.unwrap();
+        assert_eq!(entries.len(), 0);
+    }
+
+    #[test]
+    fn test_parse_execution_log_single_entry_with_hash() {
+        let json = r#"[{"source_yaml_sha256": "abc123"}]"#;
+        let result = parse_execution_log(json);
+        assert!(result.is_ok());
+        let entries = result.unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(
+            entries[0].source_yaml_sha256.as_deref(),
+            Some("abc123")
+        );
+    }
+
+    #[test]
+    fn test_parse_execution_log_single_entry_without_hash() {
+        let json = r#"[{"other_field": "value"}]"#;
+        let result = parse_execution_log(json);
+        assert!(result.is_ok());
+        let entries = result.unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].source_yaml_sha256, None);
+    }
+
+    #[test]
+    fn test_parse_execution_log_multiple_entries_all_with_hash() {
+        let json = r#"[
+            {"source_yaml_sha256": "hash1"},
+            {"source_yaml_sha256": "hash2"},
+            {"source_yaml_sha256": "hash3"}
+        ]"#;
+        let result = parse_execution_log(json);
+        assert!(result.is_ok());
+        let entries = result.unwrap();
+        assert_eq!(entries.len(), 3);
+        assert_eq!(
+            entries[0].source_yaml_sha256.as_deref(),
+            Some("hash1")
+        );
+        assert_eq!(
+            entries[1].source_yaml_sha256.as_deref(),
+            Some("hash2")
+        );
+        assert_eq!(
+            entries[2].source_yaml_sha256.as_deref(),
+            Some("hash3")
+        );
+    }
+
+    #[test]
+    fn test_parse_execution_log_multiple_entries_mixed() {
+        let json = r#"[
+            {"source_yaml_sha256": "hash1"},
+            {"other_field": "value"},
+            {"source_yaml_sha256": "hash3"}
+        ]"#;
+        let result = parse_execution_log(json);
+        assert!(result.is_ok());
+        let entries = result.unwrap();
+        assert_eq!(entries.len(), 3);
+        assert_eq!(
+            entries[0].source_yaml_sha256.as_deref(),
+            Some("hash1")
+        );
+        assert_eq!(entries[1].source_yaml_sha256, None);
+        assert_eq!(
+            entries[2].source_yaml_sha256.as_deref(),
+            Some("hash3")
+        );
+    }
+
+    #[test]
+    fn test_parse_execution_log_null_hash() {
+        let json = r#"[{"source_yaml_sha256": null}]"#;
+        let result = parse_execution_log(json);
+        assert!(result.is_ok());
+        let entries = result.unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].source_yaml_sha256, None);
+    }
+
+    #[test]
+    fn test_parse_execution_log_invalid_json() {
+        let json = "not valid json";
+        let result = parse_execution_log(json);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_execution_log_non_array_json() {
+        let json = r#"{"source_yaml_sha256": "hash"}"#;
+        let result = parse_execution_log(json);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_verify_hashes_all_match() {
+        let entries = vec![
+            ExecutionLogEntry {
+                source_yaml_sha256: Some("abc123".to_string()),
+            },
+            ExecutionLogEntry {
+                source_yaml_sha256: Some("abc123".to_string()),
+            },
+        ];
+        let result = verify_hashes("abc123", &entries);
+        assert!(result.all_match);
+        assert_eq!(result.mismatch_count, 0);
+        assert_eq!(result.missing_hash_count, 0);
+    }
+
+    #[test]
+    fn test_verify_hashes_single_mismatch() {
+        let entries = vec![
+            ExecutionLogEntry {
+                source_yaml_sha256: Some("abc123".to_string()),
+            },
+            ExecutionLogEntry {
+                source_yaml_sha256: Some("def456".to_string()),
+            },
+        ];
+        let result = verify_hashes("abc123", &entries);
+        assert!(!result.all_match);
+        assert_eq!(result.mismatch_count, 1);
+        assert_eq!(result.missing_hash_count, 0);
+    }
+
+    #[test]
+    fn test_verify_hashes_multiple_mismatches() {
+        let entries = vec![
+            ExecutionLogEntry {
+                source_yaml_sha256: Some("wrong1".to_string()),
+            },
+            ExecutionLogEntry {
+                source_yaml_sha256: Some("wrong2".to_string()),
+            },
+            ExecutionLogEntry {
+                source_yaml_sha256: Some("wrong3".to_string()),
+            },
+        ];
+        let result = verify_hashes("abc123", &entries);
+        assert!(!result.all_match);
+        assert_eq!(result.mismatch_count, 3);
+        assert_eq!(result.missing_hash_count, 0);
+    }
+
+    #[test]
+    fn test_verify_hashes_missing_hash() {
+        let entries = vec![
+            ExecutionLogEntry {
+                source_yaml_sha256: Some("abc123".to_string()),
+            },
+            ExecutionLogEntry {
+                source_yaml_sha256: None,
+            },
+        ];
+        let result = verify_hashes("abc123", &entries);
+        assert!(!result.all_match);
+        assert_eq!(result.mismatch_count, 0);
+        assert_eq!(result.missing_hash_count, 1);
+    }
+
+    #[test]
+    fn test_verify_hashes_multiple_missing_hashes() {
+        let entries = vec![
+            ExecutionLogEntry {
+                source_yaml_sha256: None,
+            },
+            ExecutionLogEntry {
+                source_yaml_sha256: None,
+            },
+            ExecutionLogEntry {
+                source_yaml_sha256: None,
+            },
+        ];
+        let result = verify_hashes("abc123", &entries);
+        assert!(!result.all_match);
+        assert_eq!(result.mismatch_count, 0);
+        assert_eq!(result.missing_hash_count, 3);
+    }
+
+    #[test]
+    fn test_verify_hashes_mixed_errors() {
+        let entries = vec![
+            ExecutionLogEntry {
+                source_yaml_sha256: Some("abc123".to_string()),
+            },
+            ExecutionLogEntry {
+                source_yaml_sha256: Some("wrong".to_string()),
+            },
+            ExecutionLogEntry {
+                source_yaml_sha256: None,
+            },
+            ExecutionLogEntry {
+                source_yaml_sha256: Some("abc123".to_string()),
+            },
+        ];
+        let result = verify_hashes("abc123", &entries);
+        assert!(!result.all_match);
+        assert_eq!(result.mismatch_count, 1);
+        assert_eq!(result.missing_hash_count, 1);
+    }
+
+    #[test]
+    fn test_verify_hashes_empty_entries() {
+        let entries: Vec<ExecutionLogEntry> = vec![];
+        let result = verify_hashes("abc123", &entries);
+        assert!(result.all_match);
+        assert_eq!(result.mismatch_count, 0);
+        assert_eq!(result.missing_hash_count, 0);
+    }
+
+    #[test]
+    fn test_verify_hashes_empty_computed_hash() {
+        let entries = vec![ExecutionLogEntry {
+            source_yaml_sha256: Some("".to_string()),
+        }];
+        let result = verify_hashes("", &entries);
+        assert!(result.all_match);
+        assert_eq!(result.mismatch_count, 0);
+        assert_eq!(result.missing_hash_count, 0);
+    }
+
+    #[test]
+    fn test_integration_all_match() {
+        let yaml_content = b"test: data";
+        let computed_hash = compute_yaml_sha256(yaml_content);
+        
+        let log_json = format!(
+            r#"[
+                {{"source_yaml_sha256": "{}"}},
+                {{"source_yaml_sha256": "{}"}}
+            ]"#,
+            computed_hash, computed_hash
+        );
+        
+        let entries = parse_execution_log(&log_json).unwrap();
+        let result = verify_hashes(&computed_hash, &entries);
+        
+        assert!(result.all_match);
+        assert_eq!(result.mismatch_count, 0);
+        assert_eq!(result.missing_hash_count, 0);
+    }
+
+    #[test]
+    fn test_integration_with_mismatch() {
+        let yaml_content = b"test: data";
+        let computed_hash = compute_yaml_sha256(yaml_content);
+        
+        let log_json = format!(
+            r#"[
+                {{"source_yaml_sha256": "{}"}},
+                {{"source_yaml_sha256": "wrong_hash"}}
+            ]"#,
+            computed_hash
+        );
+        
+        let entries = parse_execution_log(&log_json).unwrap();
+        let result = verify_hashes(&computed_hash, &entries);
+        
+        assert!(!result.all_match);
+        assert_eq!(result.mismatch_count, 1);
+        assert_eq!(result.missing_hash_count, 0);
+    }
+
+    #[test]
+    fn test_integration_with_missing_hash() {
+        let yaml_content = b"test: data";
+        let computed_hash = compute_yaml_sha256(yaml_content);
+        
+        let log_json = format!(
+            r#"[
+                {{"source_yaml_sha256": "{}"}},
+                {{"other_field": "value"}}
+            ]"#,
+            computed_hash
+        );
+        
+        let entries = parse_execution_log(&log_json).unwrap();
+        let result = verify_hashes(&computed_hash, &entries);
+        
+        assert!(!result.all_match);
+        assert_eq!(result.mismatch_count, 0);
+        assert_eq!(result.missing_hash_count, 1);
+    }
+
+    #[test]
+    fn test_integration_mixed_scenarios() {
+        let yaml_content = b"name: test\nvalue: 123";
+        let computed_hash = compute_yaml_sha256(yaml_content);
+        
+        let log_json = format!(
+            r#"[
+                {{"source_yaml_sha256": "{}"}},
+                {{"source_yaml_sha256": "mismatch1"}},
+                {{"other": "field"}},
+                {{"source_yaml_sha256": "{}"}},
+                {{"source_yaml_sha256": "mismatch2"}}
+            ]"#,
+            computed_hash, computed_hash
+        );
+        
+        let entries = parse_execution_log(&log_json).unwrap();
+        let result = verify_hashes(&computed_hash, &entries);
+        
+        assert!(!result.all_match);
+        assert_eq!(result.mismatch_count, 2);
+        assert_eq!(result.missing_hash_count, 1);
     }
 }
