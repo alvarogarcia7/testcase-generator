@@ -108,6 +108,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "audit-traceability"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "log",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+]
+
+[[package]]
 name = "audit-verifier"
 version = "0.1.0"
 dependencies = [
@@ -2565,6 +2578,7 @@ name = "test-executor"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "audit-traceability",
  "clap 4.6.0",
  "env_logger 0.11.10",
  "serde",
@@ -2665,6 +2679,7 @@ name = "testcase-generator"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "audit-traceability",
  "env_logger 0.11.10",
  "serde_json",
  "tempfile",

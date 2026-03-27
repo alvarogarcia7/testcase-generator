@@ -238,10 +238,7 @@ struct HashVerificationResult {
     missing_hash_count: usize,
 }
 
-fn verify_hashes(
-    computed_hash: &str,
-    log_entries: &[ExecutionLogEntry],
-) -> HashVerificationResult {
+fn verify_hashes(computed_hash: &str, log_entries: &[ExecutionLogEntry]) -> HashVerificationResult {
     let mut all_match = true;
     let mut missing_hash_count = 0;
     let mut mismatch_count = 0;
@@ -341,10 +338,7 @@ mod tests {
         assert!(result.is_ok());
         let entries = result.unwrap();
         assert_eq!(entries.len(), 1);
-        assert_eq!(
-            entries[0].source_yaml_sha256.as_deref(),
-            Some("abc123")
-        );
+        assert_eq!(entries[0].source_yaml_sha256.as_deref(), Some("abc123"));
     }
 
     #[test]
@@ -368,18 +362,9 @@ mod tests {
         assert!(result.is_ok());
         let entries = result.unwrap();
         assert_eq!(entries.len(), 3);
-        assert_eq!(
-            entries[0].source_yaml_sha256.as_deref(),
-            Some("hash1")
-        );
-        assert_eq!(
-            entries[1].source_yaml_sha256.as_deref(),
-            Some("hash2")
-        );
-        assert_eq!(
-            entries[2].source_yaml_sha256.as_deref(),
-            Some("hash3")
-        );
+        assert_eq!(entries[0].source_yaml_sha256.as_deref(), Some("hash1"));
+        assert_eq!(entries[1].source_yaml_sha256.as_deref(), Some("hash2"));
+        assert_eq!(entries[2].source_yaml_sha256.as_deref(), Some("hash3"));
     }
 
     #[test]
@@ -393,15 +378,9 @@ mod tests {
         assert!(result.is_ok());
         let entries = result.unwrap();
         assert_eq!(entries.len(), 3);
-        assert_eq!(
-            entries[0].source_yaml_sha256.as_deref(),
-            Some("hash1")
-        );
+        assert_eq!(entries[0].source_yaml_sha256.as_deref(), Some("hash1"));
         assert_eq!(entries[1].source_yaml_sha256, None);
-        assert_eq!(
-            entries[2].source_yaml_sha256.as_deref(),
-            Some("hash3")
-        );
+        assert_eq!(entries[2].source_yaml_sha256.as_deref(), Some("hash3"));
     }
 
     #[test]
@@ -560,7 +539,7 @@ mod tests {
     fn test_integration_all_match() {
         let yaml_content = b"test: data";
         let computed_hash = compute_yaml_sha256(yaml_content);
-        
+
         let log_json = format!(
             r#"[
                 {{"source_yaml_sha256": "{}"}},
@@ -568,10 +547,10 @@ mod tests {
             ]"#,
             computed_hash, computed_hash
         );
-        
+
         let entries = parse_execution_log(&log_json).unwrap();
         let result = verify_hashes(&computed_hash, &entries);
-        
+
         assert!(result.all_match);
         assert_eq!(result.mismatch_count, 0);
         assert_eq!(result.missing_hash_count, 0);
@@ -581,7 +560,7 @@ mod tests {
     fn test_integration_with_mismatch() {
         let yaml_content = b"test: data";
         let computed_hash = compute_yaml_sha256(yaml_content);
-        
+
         let log_json = format!(
             r#"[
                 {{"source_yaml_sha256": "{}"}},
@@ -589,10 +568,10 @@ mod tests {
             ]"#,
             computed_hash
         );
-        
+
         let entries = parse_execution_log(&log_json).unwrap();
         let result = verify_hashes(&computed_hash, &entries);
-        
+
         assert!(!result.all_match);
         assert_eq!(result.mismatch_count, 1);
         assert_eq!(result.missing_hash_count, 0);
@@ -602,7 +581,7 @@ mod tests {
     fn test_integration_with_missing_hash() {
         let yaml_content = b"test: data";
         let computed_hash = compute_yaml_sha256(yaml_content);
-        
+
         let log_json = format!(
             r#"[
                 {{"source_yaml_sha256": "{}"}},
@@ -610,10 +589,10 @@ mod tests {
             ]"#,
             computed_hash
         );
-        
+
         let entries = parse_execution_log(&log_json).unwrap();
         let result = verify_hashes(&computed_hash, &entries);
-        
+
         assert!(!result.all_match);
         assert_eq!(result.mismatch_count, 0);
         assert_eq!(result.missing_hash_count, 1);
@@ -623,7 +602,7 @@ mod tests {
     fn test_integration_mixed_scenarios() {
         let yaml_content = b"name: test\nvalue: 123";
         let computed_hash = compute_yaml_sha256(yaml_content);
-        
+
         let log_json = format!(
             r#"[
                 {{"source_yaml_sha256": "{}"}},
@@ -634,10 +613,10 @@ mod tests {
             ]"#,
             computed_hash, computed_hash
         );
-        
+
         let entries = parse_execution_log(&log_json).unwrap();
         let result = verify_hashes(&computed_hash, &entries);
-        
+
         assert!(!result.all_match);
         assert_eq!(result.mismatch_count, 2);
         assert_eq!(result.missing_hash_count, 1);

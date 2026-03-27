@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use audit_traceability::{AuditTraceabilityLog, StageInfo, TestCaseAudit};
 use clap::{Parser, Subcommand};
 use std::collections::HashMap;
 use std::fs;
@@ -53,6 +54,10 @@ enum Commands {
         /// Optional test case directory for dependency resolution (defaults to parent directory of YAML file)
         #[arg(long, value_name = "TEST_CASE_DIR")]
         test_case_dir: Option<PathBuf>,
+
+        /// Update audit traceability log with generated artifacts
+        #[arg(long, value_name = "AUDIT_LOG")]
+        audit_log: Option<PathBuf>,
     },
     /// Execute a test case by generating and running the script
     Execute {
@@ -121,6 +126,53 @@ enum Commands {
         /// Optional output directory (defaults to stdout)
         #[arg(short, long, value_name = "OUTPUT_DIR")]
         output: Option<PathBuf>,
+    },
+    /// Create or update audit traceability log
+    AuditLog {
+        #[command(subcommand)]
+        command: AuditLogCommands,
+    },
+}
+
+#[derive(Subcommand)]
+enum AuditLogCommands {
+    /// Create a new audit traceability log
+    Create {
+        /// Output path for the audit log JSON file
+        #[arg(short, long, default_value = "audit-traceability-log.json")]
+        output: PathBuf,
+
+        /// Witness key for the audit log
+        #[arg(short, long, default_value = "default-witness")]
+        witness_key: String,
+    },
+    /// Add a test case to the audit log
+    Add {
+        /// Path to the audit log JSON file
+        #[arg(short, long, default_value = "audit-traceability-log.json")]
+        log_file: PathBuf,
+
+        /// Test case ID
+        #[arg(long)]
+        test_case_id: String,
+
+        /// Path to initial YAML file
+        #[arg(long)]
+        initial: PathBuf,
+
+        /// Path to generated shell script (stage: 05_shell_script)
+        #[arg(long)]
+        shell_script: Option<PathBuf>,
+    },
+    /// Verify all files in the audit log
+    Verify {
+        /// Path to the audit log JSON file
+        #[arg(short, long, default_value = "audit-traceability-log.json")]
+        log_file: PathBuf,
+
+        /// Optional test case ID to verify (verifies all if not specified)
+        #[arg(long)]
+        test_case_id: Option<String>,
     },
 }
 
@@ -382,6 +434,7 @@ fn main() -> Result<()> {
             json_log,
             force,
             test_case_dir,
+            audit_log,
         } => {
             let yaml_bytes = fs::read(&yaml_file)
                 .context(format!("Failed to read YAML file: {}", yaml_file.display()))?;
@@ -399,8 +452,8 @@ fn main() -> Result<()> {
             let executor = TestExecutor::new();
             let script = executor.generate_test_script_from_yaml(&test_case, &yaml_bytes);
 
-            if let Some(output_path) = output {
-                fs::write(&output_path, &script).context(format!(
+            if let Some(output_path) = &output {
+                fs::write(output_path, &script).context(format!(
                     "Failed to write script to file: {}",
                     output_path.display()
                 ))?;
@@ -410,12 +463,46 @@ fn main() -> Result<()> {
                 );
 
                 if json_log {
-                    executor.generate_execution_log_template(&test_case, &output_path)?;
+                    executor.generate_execution_log_template(&test_case, output_path)?;
+                }
+
+                if let Some(audit_log_path) = audit_log {
+                    let mut log = if audit_log_path.exists() {
+                        AuditTraceabilityLog::load_from_file(&audit_log_path)?
+                    } else {
+                        AuditTraceabilityLog::new("default-witness".to_string())
+                    };
+
+                    let mut audit = TestCaseAudit::new();
+
+                    let initial_stage = StageInfo::from_file(&yaml_file).context(format!(
+                        "Failed to create stage info for initial file: {}",
+                        yaml_file.display()
+                    ))?;
+                    audit.add_stage("initial", initial_stage);
+
+                    let script_stage = StageInfo::from_file(output_path).context(format!(
+                        "Failed to create stage info for shell script: {}",
+                        output_path.display()
+                    ))?;
+                    audit.add_stage("05_shell_script", script_stage);
+
+                    log.add_test_case(&test_case.id, audit);
+                    log.save_to_file(&audit_log_path)?;
+
+                    println!(
+                        "✓ Test case '{}' added to audit log: {}",
+                        test_case.id,
+                        audit_log_path.display()
+                    );
                 }
             } else {
                 print!("{}", script);
                 if json_log {
                     eprintln!("Warning: --json-log requires --output to be specified");
+                }
+                if audit_log.is_some() {
+                    eprintln!("Warning: --audit-log requires --output to be specified");
                 }
             }
 
@@ -592,6 +679,101 @@ fn main() -> Result<()> {
 
             Ok(())
         }
+        Commands::AuditLog { command } => match command {
+            AuditLogCommands::Create {
+                output,
+                witness_key,
+            } => {
+                let log = AuditTraceabilityLog::new(witness_key);
+                log.save_to_file(&output)?;
+                println!("✓ Audit traceability log created: {}", output.display());
+                Ok(())
+            }
+            AuditLogCommands::Add {
+                log_file,
+                test_case_id,
+                initial,
+                shell_script,
+            } => {
+                let mut log = if log_file.exists() {
+                    AuditTraceabilityLog::load_from_file(&log_file)?
+                } else {
+                    AuditTraceabilityLog::new("default-witness".to_string())
+                };
+
+                let mut audit = TestCaseAudit::new();
+
+                let initial_stage = StageInfo::from_file(&initial).context(format!(
+                    "Failed to create stage info for initial file: {}",
+                    initial.display()
+                ))?;
+                audit.add_stage("initial", initial_stage);
+
+                if let Some(script_path) = shell_script {
+                    let script_stage = StageInfo::from_file(&script_path).context(format!(
+                        "Failed to create stage info for shell script: {}",
+                        script_path.display()
+                    ))?;
+                    audit.add_stage("05_shell_script", script_stage);
+                }
+
+                log.add_test_case(&test_case_id, audit);
+                log.save_to_file(&log_file)?;
+
+                println!(
+                    "✓ Test case '{}' added to audit log: {}",
+                    test_case_id,
+                    log_file.display()
+                );
+                Ok(())
+            }
+            AuditLogCommands::Verify {
+                log_file,
+                test_case_id,
+            } => {
+                let log = AuditTraceabilityLog::load_from_file(&log_file)?;
+
+                if let Some(tc_id) = test_case_id {
+                    let result = log.verify_test_case(&tc_id)?;
+                    result.print_summary();
+
+                    if !result.all_passed {
+                        std::process::exit(1);
+                    }
+                } else {
+                    let results = log.verify_all()?;
+
+                    if results.is_empty() {
+                        println!("No test cases found in audit log.");
+                        return Ok(());
+                    }
+
+                    println!("\n=== Audit Verification Results ===\n");
+
+                    let mut all_passed = true;
+                    for result in &results {
+                        result.print_summary();
+                        println!();
+                        if !result.all_passed {
+                            all_passed = false;
+                        }
+                    }
+
+                    println!("=== Summary ===");
+                    let passed_count = results.iter().filter(|r| r.all_passed).count();
+                    let failed_count = results.len() - passed_count;
+                    println!("Total test cases: {}", results.len());
+                    println!("Passed: {}", passed_count);
+                    println!("Failed: {}", failed_count);
+
+                    if !all_passed {
+                        std::process::exit(1);
+                    }
+                }
+
+                Ok(())
+            }
+        },
     }
 }
 
