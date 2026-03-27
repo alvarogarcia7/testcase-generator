@@ -120,7 +120,6 @@ if ! command -v python3.14 &> /dev/null && ! command -v python3 &> /dev/null; th
 fi
 
 PYTHON_CMD=$(command -v python3.14 2>/dev/null || command -v python3)
-PYTHON_CMD="uv run python"
 echo_info "Using Python: $PYTHON_CMD"
 
 # Check for PyYAML
@@ -150,8 +149,11 @@ echo ""
 # Stage 1: Generate test scripts
 echo_section "Stage 1: Generating Test Scripts"
 
-# Find all test case YAML files
-mapfile -d '' YAML_FILES < <(find "$TEST_CASE_DIR" -type f \( -name "*.yaml" -o -name "*.yml" \) -print0 | sort -z)
+# Find all test case YAML files - bash 3.2 compatible
+YAML_FILES=()
+while IFS= read -r -d $'\0' file; do
+    YAML_FILES+=("$file")
+done < <(find "$TEST_CASE_DIR" -type f \( -name "*.yaml" -o -name "*.yml" \) -print0 | sort -z)
 
 TOTAL_TEST_CASES=${#YAML_FILES[@]}
 GENERATION_SUCCESS=0
@@ -196,8 +198,11 @@ fi
 # Stage 2: Execute test scripts
 echo_section "Stage 2: Executing Test Scripts"
 
-# Find all generated scripts
-mapfile -d '' SCRIPT_FILES < <(find "$SCRIPTS_DIR" -type f -name "*.sh" -print0 | sort -z)
+# Find all generated scripts - bash 3.2 compatible
+SCRIPT_FILES=()
+while IFS= read -r -d $'\0' file; do
+    SCRIPT_FILES+=("$file")
+done < <(find "$SCRIPTS_DIR" -type f -name "*.sh" -print0 | sort -z)
 
 EXECUTION_SUCCESS=0
 EXECUTION_FAILED=0
