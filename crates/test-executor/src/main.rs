@@ -383,6 +383,8 @@ fn main() -> Result<()> {
             force,
             test_case_dir,
         } => {
+            let yaml_bytes = fs::read(&yaml_file)
+                .context(format!("Failed to read YAML file: {}", yaml_file.display()))?;
             let mut test_case = load_test_case(&yaml_file)?;
 
             let resolver = if let Some(dir) = test_case_dir {
@@ -395,7 +397,7 @@ fn main() -> Result<()> {
                 .context("Failed to resolve dependencies")?;
 
             let executor = TestExecutor::new();
-            let script = executor.generate_test_script(&test_case);
+            let script = executor.generate_test_script_from_yaml(&test_case, &yaml_bytes);
 
             if let Some(output_path) = output {
                 fs::write(&output_path, &script).context(format!(
