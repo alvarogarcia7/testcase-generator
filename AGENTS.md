@@ -224,6 +224,403 @@ make test
 make lint
 ```
 
+### Selective Compilation and Testing
+
+The project provides intelligent incremental build and test workflows that detect changes since a base reference (branch or commit) and only build/test affected crates and their dependents. This significantly speeds up local development and CI/CD pipelines.
+
+#### Overview
+
+Three main workflow targets are available:
+
+1. **`test-from`** - Incremental testing for local development (builds + unit tests + E2E tests for affected crates)
+2. **`build-from`** - Incremental build-only for affected crates
+3. **`test-all`** - Full unconditional clean build and test (comprehensive CI-style testing)
+4. **`build-all`** - Full unconditional build of all workspace crates
+
+Additionally, `list-affected-crates` is a debugging target that shows which crates would be affected by your changes.
+
+#### Target Comparison
+
+| Target | When to Use | What It Does | Speed | Comprehensiveness |
+|--------|-------------|--------------|-------|-------------------|
+| **test-from** | Local development, feature branches | Builds + tests only affected crates | Fast | Targeted |
+| **test** | Default testing, pre-commit | Full build + comprehensive unit/E2E tests | Moderate | Comprehensive |
+| **test-all** | Clean validation, CI/CD | Full clean build + all tests | Slow | Maximum |
+| **build-from** | Quick compilation check | Builds only affected crates | Very Fast | Build-only |
+| **build-all** | Full workspace build | Builds all crates unconditionally | Moderate | Build-only |
+
+**Key Differences:**
+
+- **`test-from`** (incremental): Fast, change-aware, skips unaffected crates, ideal for rapid iteration
+- **`test`** (default): Comprehensive workspace testing with unit tests, E2E tests, and validation
+- **`test-all`** (full clean): Unconditional full rebuild and test, ensures clean slate, catches edge cases
+
+**Recommendation**: Use `test-from` during development for fast feedback, use `test` before committing, and use `test-all` for critical validation or when you suspect cache issues.
+
+#### Incremental Build: `build-from`
+
+Builds only the crates affected by changes since a base reference.
+
+**Usage:**
+```bash
+# Build crates changed since main branch
+make build-from BASE_REF=main
+
+# Build crates changed since develop branch
+make build-from BASE_REF=develop
+
+# Build crates changed in last 3 commits
+make build-from BASE_REF=HEAD~3
+
+# Build crates changed since specific commit
+make build-from BASE_REF=abc123
+```
+
+**Default**: If `BASE_REF` is not specified, defaults to `main`.
+
+**Behavior:**
+1. Detects all changed files between `BASE_REF` and current state (working directory, staged, committed)
+2. Maps changed files to affected crates
+3. Identifies all reverse dependencies (crates that depend on changed crates)
+4. Builds each affected crate with `cargo build -p <crate>`
+5. Skips tests (build-only mode)
+
+**Exit Codes:**
+- `0` - All builds succeeded or no changes detected
+- `1` - One or more builds failed
+
+**Example Output:**
+```
+========================================
+Incremental Build (from BASE_REF)
+========================================
+Base reference: main
+
+Building affected crates...
+
+Building: testcase-models
+  ✓ Build succeeded: testcase-models
+
+Building: testcase-manager
+  ✓ Build succeeded: testcase-manager
+
+Building: test-executor
+  ✓ Build succeeded: test-executor
+
+========================================
+All builds completed successfully
+========================================
+```
+
+#### Incremental Test: `test-from`
+
+Tests only the crates affected by changes since a base reference, including unit tests and relevant E2E integration tests.
+
+**Usage:**
+```bash
+# Test crates changed since main branch
+make test-from BASE_REF=main
+
+# Test crates changed since develop branch
+make test-from BASE_REF=develop
+
+# Test crates changed in last commit
+make test-from BASE_REF=HEAD~1
+
+# Test crates changed since specific commit
+make test-from BASE_REF=abc123
+```
+
+**Default**: If `BASE_REF` is not specified, defaults to `main`.
+
+**Behavior:**
+1. Detects all changed files between `BASE_REF` and current state
+2. Maps changed files to affected crates (including reverse dependencies)
+3. For each affected crate:
+   - **[1/3]** Builds the crate: `cargo build -p <crate>`
+   - **[2/3]** Runs unit tests: `cargo test -p <crate>`
+   - **[3/3]** Collects relevant E2E integration tests based on binary mapping
+4. Runs all collected E2E tests (deduplicated)
+5. Reports aggregated results
+
+**Exit Codes:**
+- `0` - All builds and tests passed or no changes detected
+- `1` - One or more builds or tests failed
+
+**Crate to E2E Test Mapping:**
+
+The `test-from` target intelligently maps affected crates to their corresponding E2E integration tests:
+
+| Crate | Binaries | E2E Tests |
+|-------|----------|-----------|
+| `validate-yaml` | validate-yaml | test_validate_yaml_*.sh (5 tests) |
+| `test-executor` | test-executor | test_executor_e2e.sh, test_variable_passing_e2e.sh, etc. (4 tests) |
+| `test-orchestrator` | test-orchestrator | test_orchestrator_e2e.sh (1 test) |
+| `verifier` | verifier | test_verifier_*.sh, run_verifier_and_generate_reports.sh (4 tests) |
+| `audit-verifier` | audit-verifier, sign-audit-log, verify-audit-log | audit-verifier integration tests (4 tests) |
+| `json-escape` | json-escape | test_json_escape_e2e.sh (1 test) |
+| `testcase-manager` | testcase-manager | smoke_test.sh, test_bdd_e2e.sh, etc. (5 tests) |
+
+Library crates (e.g., `testcase-models`, `testcase-common`) have no direct E2E test mapping, but their reverse dependencies will be tested if affected.
+
+**Example Output:**
+```
+========================================
+Incremental Test (from BASE_REF)
+========================================
+Base reference: main
+
+Testing affected crates...
+
+========================================
+Processing crate: testcase-models
+========================================
+
+[1/3] Building testcase-models...
+  ✓ Build succeeded: testcase-models
+
+[2/3] Running unit tests for testcase-models...
+  ✓ Unit tests passed: testcase-models
+
+[3/3] Collecting E2E tests for testcase-models...
+  No E2E test mapping for testcase-models (library crate or no tests defined)
+
+========================================
+Processing crate: test-executor
+========================================
+
+[1/3] Building test-executor...
+  ✓ Build succeeded: test-executor
+
+[2/3] Running unit tests for test-executor...
+  ✓ Unit tests passed: test-executor
+
+[3/3] Collecting E2E tests for test-executor...
+  test-executor binary -> 4 E2E tests
+
+========================================
+Running E2E Integration Tests
+========================================
+
+Found 4 unique E2E test script(s) to run
+
+Running: crates/testcase-manager/tests/integration/test_executor_e2e.sh
+  ✓ E2E test passed: test_executor_e2e.sh
+
+...
+
+========================================
+All tests completed successfully
+========================================
+```
+
+#### Full Clean Build and Test: `build-all` and `test-all`
+
+These targets provide unconditional full workspace builds and tests, regardless of changes. They ensure a clean slate and comprehensive validation.
+
+**`build-all`:**
+```bash
+# Build all workspace crates with all features
+make build-all
+
+# Equivalent to:
+cargo build --workspace --all-features
+```
+
+**`test-all`:**
+```bash
+# Full clean build and comprehensive test suite
+make test-all
+
+# Equivalent to:
+cargo build --workspace --all-features
+cargo test --workspace --all-features --tests
+make test-e2e
+```
+
+**When to Use:**
+- **CI/CD pipelines**: Ensure no caching issues or missed dependencies
+- **Pre-release validation**: Comprehensive check before tagging releases
+- **Clean slate testing**: When you suspect incremental build cache issues
+- **Merge validation**: Final check before merging to main/develop
+
+**Note:** `test-all` sets up Python environment automatically (`setup-python-for-test`) before running tests.
+
+#### Detecting Changes: Examples
+
+**Detect changes since main branch:**
+```bash
+# See which files changed
+make list-changed-files BASE_REF=main
+
+# See which crates are affected (including reverse dependencies)
+make list-affected-crates BASE_REF=main
+```
+
+**Detect changes since specific commit:**
+```bash
+# Using commit SHA
+make list-affected-crates BASE_REF=abc123def
+
+# Using relative commit reference
+make list-affected-crates BASE_REF=HEAD~5
+```
+
+**Detect changes in current working directory:**
+```bash
+# Uncommitted changes only
+make list-affected-crates BASE_REF=HEAD
+```
+
+#### Debugging: `list-affected-crates`
+
+This target helps you understand which crates will be built/tested by `build-from` or `test-from` without actually building or testing them.
+
+**Usage:**
+```bash
+# List affected crates compared to main
+make list-affected-crates BASE_REF=main
+
+# List affected crates compared to specific commit
+make list-affected-crates BASE_REF=abc123
+```
+
+**Example Output:**
+```
+Detecting affected crates compared to main...
+
+Affected crates:
+  - testcase-models
+  - testcase-manager
+  - test-executor
+  - verifier
+```
+
+**Interpretation:**
+- **Direct changes**: Crates where files were modified
+- **Reverse dependencies**: Crates that depend on directly changed crates (transitive)
+- **Empty output**: No changes detected or changes don't affect any crates
+
+**Use Cases:**
+1. **Preview impact**: See what will be built/tested before running `test-from`
+2. **Verify detection**: Confirm change detection is working correctly
+3. **Debug issues**: Troubleshoot why expected crates aren't being built
+4. **Estimate time**: Gauge how long incremental builds/tests will take
+
+#### Change Detection Details
+
+The incremental build system uses `scripts/detect-local-changes.sh` to detect changes:
+
+**Detection Sources:**
+1. **Committed changes**: `git diff BASE_REF...HEAD`
+2. **Staged changes**: `git diff --cached`
+3. **Unstaged changes**: `git diff` (working directory modifications)
+
+**File-to-Crate Mapping:**
+- Files under `crates/<crate-name>/` are mapped to `<crate-name>`
+- Changes to workspace files (root `Cargo.toml`, `Cargo.lock`) affect all crates
+- Changes to non-crate files are ignored
+
+**Reverse Dependency Resolution:**
+- Uses `cargo metadata` to build dependency graph
+- Identifies all crates that transitively depend on changed crates
+- Ensures dependent crates are rebuilt when dependencies change
+
+**Example Scenarios:**
+
+| Change | Affected Crates | Reason |
+|--------|----------------|--------|
+| `crates/testcase-models/src/lib.rs` | testcase-models, testcase-manager, test-executor, verifier, ... | All crates that depend on testcase-models |
+| `crates/verifier/src/main.rs` | verifier | Only the verifier binary crate |
+| `Cargo.toml` (workspace root) | All workspace crates | Workspace-wide dependency change |
+| `README.md` | None | Documentation change, no code impact |
+| `crates/testcase-common/src/utils.rs` | testcase-common, all dependents | Shared utility library affects many crates |
+
+#### Performance Comparison
+
+Typical performance improvements when using incremental builds (single crate change):
+
+| Target | Time | What Gets Built/Tested |
+|--------|------|------------------------|
+| `build-from BASE_REF=main` | ~10-30s | 1-5 affected crates |
+| `build-all` | ~2-5m | All 24+ workspace crates |
+| `test-from BASE_REF=main` | ~30s-2m | 1-5 crates + mapped E2E tests |
+| `test-all` | ~5-10m | All crates + all E2E tests |
+
+**Note:** Actual times vary based on:
+- Number of affected crates
+- Extent of changes (API vs implementation)
+- Whether sccache is enabled
+- Machine specifications
+
+#### Best Practices
+
+**Local Development Workflow:**
+```bash
+# 1. Create feature branch from main
+git checkout -b feature/my-feature main
+
+# 2. Make changes to code
+vim crates/testcase-models/src/lib.rs
+
+# 3. Quick incremental test during development
+make test-from BASE_REF=main
+
+# 4. Iterate rapidly
+# Edit code -> make test-from -> repeat
+
+# 5. Before committing: run full test suite
+make test
+
+# 6. Final validation before pushing (optional)
+make test-all
+```
+
+**CI/CD Integration:**
+```bash
+# Feature branch CI: Use incremental testing for fast feedback
+make test-from BASE_REF=origin/main
+
+# Main branch CI: Use full testing for comprehensive validation
+make test-all
+
+# Release CI: Always use test-all for maximum confidence
+make test-all
+```
+
+**Troubleshooting:**
+
+| Issue | Solution |
+|-------|----------|
+| No crates detected when changes exist | Check `git status`, ensure changes are in `crates/` directory |
+| Wrong crates being built | Verify `BASE_REF` points to correct branch/commit |
+| E2E tests not running | Check crate-to-test mapping in `mk/incremental.mk` |
+| Builds fail but `cargo build` works | Run `make build-all` to ensure clean slate |
+
+#### Implementation Details
+
+**Files:**
+- **`mk/incremental.mk`**: Makefile definitions for incremental targets
+- **`scripts/detect-local-changes.sh`**: Change detection and crate resolution script
+- **`Makefile`**: Includes `mk/incremental.mk` via `include` directive
+
+**Customization:**
+
+To add E2E test mappings for new crates, edit `mk/incremental.mk`:
+
+```makefile
+# In the test-from target's case statement:
+your-new-crate) \
+    echo "path/to/test_your_crate_e2e.sh" >> $$E2E_TESTS_FILE; \
+    echo "  your-new-crate binary -> 1 E2E test"; \
+    ;; \
+```
+
+**Dependencies:**
+- Requires Git repository (uses `git diff` for change detection)
+- Requires `cargo metadata` for dependency graph analysis
+- Requires workspace structure (all crates under `crates/` directory)
+
 ### Workspace Troubleshooting
 
 Common workspace-related issues and solutions:
@@ -526,8 +923,19 @@ See the [Hooks](#hooks) section for detailed documentation and examples.
 - **Build**: make build (builds all workspace crates: `cargo build --workspace`)
 - **Build Release**: make build-release (release mode: `cargo build --workspace --release`)
 - **Build Debug**: make build-debug (debug mode, same as `make build`)
+- **Build All**: make build-all (unconditional full build with all features: `cargo build --workspace --all-features`)
 - **Lint**: make lint (runs fmt + clippy on all workspace crates)
 - **Test**: make test (runs unit tests, e2e tests, and verification across workspace)
+- **Test All**: make test-all (unconditional full clean build and comprehensive test suite with all features)
+
+### Incremental Build and Test Commands
+These commands provide intelligent change detection for faster local development:
+- **Build From**: make build-from BASE_REF=main (incrementally build only affected crates since BASE_REF)
+- **Test From**: make test-from BASE_REF=main (incrementally test only affected crates with unit and E2E tests since BASE_REF)
+- **List Changed Files**: make list-changed-files BASE_REF=main (show files changed since BASE_REF)
+- **List Affected Crates**: make list-affected-crates BASE_REF=main (show crates affected by changes, including reverse dependencies)
+
+See the [Selective Compilation and Testing](#selective-compilation-and-testing) section for detailed documentation.
 
 ### Per-Crate Build Commands
 Build individual crates for faster development iteration:
