@@ -263,7 +263,19 @@ example_export-demo:
 	./examples/export_demo.sh
 .PHONY: example_export-demo
 
-test-all: test test-e2e
+# build-all: Unconditional full workspace build with all features
+# Ignores change detection and always builds the entire workspace
+build-all:
+	cargo build --workspace --all-features
+.PHONY: build-all
+
+# test-all: Unconditional full build and test cycle
+# Performs complete build, unit tests, and E2E tests regardless of changes
+# This target ignores any incremental build logic and always runs the full suite
+test-all: setup-python-for-test
+	cargo build --workspace --all-features
+	cargo test --workspace --all-features --tests
+	${MAKE} test-e2e
 .PHONY: test-all
 
 # Coverage exclusion pattern - escapes dots for regex
