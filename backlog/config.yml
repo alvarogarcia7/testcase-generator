@@ -6,7 +6,7 @@ definition_of_done: ["All tests are passing. Run 'make test'"]
 date_format: yyyy-mm-dd
 max_column_width: 20
 auto_open_browser: true
-default_port: 6420
+default_port: 9420
 remote_operations: true
 auto_commit: false
 bypass_git_hooks: false
