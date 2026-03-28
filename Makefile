@@ -1,6 +1,6 @@
 # Include modular makefiles
 include mk/python.mk
-include mk/incremental.mk
+-include mk/incremental.mk
 
 pre-commit: build lint test
 .PHONY: pre-commit
