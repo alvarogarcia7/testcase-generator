@@ -452,7 +452,7 @@ fn main() -> Result<()> {
             json_log,
             force,
             test_case_dir,
-            audit_log,
+            audit_log: _,
         } => {
             let result = (|| -> Result<()> {
                 let yaml_bytes = fs::read(&yaml_file)
@@ -470,52 +470,6 @@ fn main() -> Result<()> {
 
                 let executor = TestExecutor::new();
                 let script = executor.generate_test_script_from_yaml(&test_case, &yaml_bytes);
-            });
-
-
-            if let Some(output_path) = &output {
-                fs::write(output_path, &script).context(format!(
-                    "Failed to write script to file: {}",
-                    output_path.display()
-                ))?;
-                println!(
-                    "Test script generated successfully: {}",
-                    output_path.display()
-                );
-
-                if json_log {
-                    executor.generate_execution_log_template(&test_case, output_path)?;
-                }
-
-                if let Some(audit_log_path) = audit_log {
-                    let mut log = if audit_log_path.exists() {
-                        AuditTraceabilityLog::load_from_file(&audit_log_path)?
-                    } else {
-                        AuditTraceabilityLog::new("default-witness".to_string())
-                    };
-
-                    let mut audit = TestCaseAudit::new();
-
-                    let initial_stage = StageInfo::from_file(&yaml_file).context(format!(
-                        "Failed to create stage info for initial file: {}",
-                        yaml_file.display()
-                    ))?;
-                    audit.add_stage("initial", initial_stage);
-
-                    let script_stage = StageInfo::from_file(output_path).context(format!(
-                        "Failed to create stage info for shell script: {}",
-                        output_path.display()
-                    ))?;
-                    audit.add_stage("05_shell_script", script_stage);
-
-                    log.add_test_case(&test_case.id, audit);
-                    log.save_to_file(&audit_log_path)?;
-
-                    println!(
-                        "✓ Test case '{}' added to audit log: {}",
-                        test_case.id,
-                        audit_log_path.display()
-                    );
 
                 if let Some(output_path) = &output {
                     fs::write(output_path, &script).context(format!(
@@ -535,7 +489,6 @@ fn main() -> Result<()> {
                     if json_log {
                         eprintln!("Warning: --json-log requires --output to be specified");
                     }
-
                 }
 
                 let shellcheck_passed = run_shellcheck_validation(&script, force)?;
@@ -543,13 +496,8 @@ fn main() -> Result<()> {
                     std::process::exit(1);
                 }
 
-                if audit_log.is_some() {
-                    eprintln!("Warning: --audit-log requires --output to be specified");
-                }
-            }
-
                 Ok(())
-            });
+            })();
 
             let status = if result.is_ok() { OperationStatus::Success } else { OperationStatus::Failed };
             let error = result.as_ref().err().map(|e| e.to_string());

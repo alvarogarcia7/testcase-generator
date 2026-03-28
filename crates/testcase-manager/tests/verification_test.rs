@@ -1179,6 +1179,7 @@ fn test_generate_report_yaml_basic() {
         requirement: Some("REQ001".to_string()),
         item: Some(1),
         tc: Some(1),
+        source_yaml_sha256: None,
     };
 
     let yaml = verifier.generate_report_yaml(&result).unwrap();
