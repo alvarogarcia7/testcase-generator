@@ -1,0 +1,157 @@
+Found 89 YAML files to process
+Processing test case: TC_COMPLEX_ALL_HOOKS_CAPTURE_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_COMPLEX_ALL_HOOKS_CAPTURE_001_execution_log.json
+Processing test case: TC_COMPLEX_BDD_HOOKS_VARS_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_COMPLEX_BDD_HOOKS_VARS_001_execution_log.json
+Processing test case: TC_COMPLEX_DATA_DRIVEN_ITERATIONS_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_COMPLEX_DATA_DRIVEN_ITERATIONS_001_execution_log.json
+Processing test case: TC_COMPLEX_FAILED_TEARDOWN_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_COMPLEX_FAILED_TEARDOWN_001_execution_log.json
+Processing test case: TC_COMPLEX_HYDRATION_CONDITIONAL_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_COMPLEX_HYDRATION_CONDITIONAL_001_execution_log.json
+Processing test case: TC_COMPLEX_MULTI_SEQ_HOOKS_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_COMPLEX_MULTI_SEQ_HOOKS_001_execution_log.json
+Processing test case: TC_COMPLEX_PERFORMANCE_TIMING_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_COMPLEX_PERFORMANCE_TIMING_001_execution_log.json
+Processing test case: TC_COMPLEX_PREREQ_DEPS_HOOKS_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_COMPLEX_PREREQ_DEPS_HOOKS_001_execution_log.json
+Processing test case: TC_COMPLEX_SECURITY_AUTH_API_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_COMPLEX_SECURITY_AUTH_API_001_execution_log.json
+Processing test case: TC_DEPENDENCY_CIRCULAR_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_DEPENDENCY_CIRCULAR_001_execution_log.json
+Processing test case: TC_DEPENDENCY_CIRCULAR_002
+  Warning: No execution log found at test-acceptance/execution_logs/TC_DEPENDENCY_CIRCULAR_002_execution_log.json
+Processing test case: TC_DEPENDENCY_COMPLEX_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_DEPENDENCY_COMPLEX_001_execution_log.json
+Processing test case: TC_DEPENDENCY_MISSING_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_DEPENDENCY_MISSING_001_execution_log.json
+Processing test case: TC_DEPENDENCY_NESTED_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_DEPENDENCY_NESTED_001_execution_log.json
+Processing test case: TC_DEPENDENCY_SELF_REF_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_DEPENDENCY_SELF_REF_001_execution_log.json
+Processing test case: TC_DEPENDENCY_SEQUENCE_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_DEPENDENCY_SEQUENCE_001_execution_log.json
+Processing test case: TC_DEPENDENCY_SIMPLE_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_DEPENDENCY_SIMPLE_001_execution_log.json
+Processing test case: TC_FAILURE_COMMAND_NOT_FOUND_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_FAILURE_COMMAND_NOT_FOUND_001_execution_log.json
+Processing test case: TC_FAILURE_DISK_FULL_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_FAILURE_DISK_FULL_001_execution_log.json
+Processing test case: TC_FAILURE_EXIT_CODE_MISMATCH_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_FAILURE_EXIT_CODE_MISMATCH_001_execution_log.json
+Processing test case: TC_FAILURE_FIRST_STEP_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_FAILURE_FIRST_STEP_001_execution_log.json
+Processing test case: TC_FAILURE_INTERMEDIATE_STEP_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_FAILURE_INTERMEDIATE_STEP_001_execution_log.json
+Processing test case: TC_FAILURE_INVALID_SYNTAX_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_FAILURE_INVALID_SYNTAX_001_execution_log.json
+Processing test case: TC_FAILURE_LAST_STEP_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_FAILURE_LAST_STEP_001_execution_log.json
+Processing test case: TC_FAILURE_MULTI_SEQ_MIXED_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_FAILURE_MULTI_SEQ_MIXED_001_execution_log.json
+Processing test case: TC_FAILURE_NEGATIVE_TEST_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_FAILURE_NEGATIVE_TEST_001_execution_log.json
+Processing test case: TC_FAILURE_OUTPUT_MISMATCH_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_FAILURE_OUTPUT_MISMATCH_001_execution_log.json
+Processing test case: TC_FAILURE_PERMISSION_DENIED_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_FAILURE_PERMISSION_DENIED_001_execution_log.json
+Processing test case: TC_FAILURE_VARIABLE_UNDEFINED_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_FAILURE_VARIABLE_UNDEFINED_001_execution_log.json
+Processing test case: TC_HOOKS_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_HOOKS_001_execution_log.json
+Processing test case: TC_HOOKS_CONTINUE_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_HOOKS_CONTINUE_001_execution_log.json
+Processing test case: TC_HOOKS_INLINE_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_HOOKS_INLINE_001_execution_log.json
+Processing test case: TC_HOOKS_MISSING_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_HOOKS_MISSING_001_execution_log.json
+Processing test case: TC_HOOKS_SIMPLE_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_HOOKS_SIMPLE_001_execution_log.json
+Processing test case: TEST_HOOK_AFTER_SEQ_001
+  Warning: No execution log found at test-acceptance/execution_logs/TEST_HOOK_AFTER_SEQ_001_execution_log.json
+Processing test case: TEST_HOOK_AFTER_STEP_001
+  Warning: No execution log found at test-acceptance/execution_logs/TEST_HOOK_AFTER_STEP_001_execution_log.json
+Processing test case: TEST_HOOK_BEFORE_SEQ_001
+  Warning: No execution log found at test-acceptance/execution_logs/TEST_HOOK_BEFORE_SEQ_001_execution_log.json
+Processing test case: TEST_HOOK_BEFORE_STEP_001
+  Warning: No execution log found at test-acceptance/execution_logs/TEST_HOOK_BEFORE_STEP_001_execution_log.json
+Processing test case: TEST_HOOK_SCRIPT_END_001
+  Warning: No execution log found at test-acceptance/execution_logs/TEST_HOOK_SCRIPT_END_001_execution_log.json
+Processing test case: TEST_HOOK_SCRIPT_START_001
+  Warning: No execution log found at test-acceptance/execution_logs/TEST_HOOK_SCRIPT_START_001_execution_log.json
+Processing test case: TEST_HOOK_SETUP_TEST_001
+  Warning: No execution log found at test-acceptance/execution_logs/TEST_HOOK_SETUP_TEST_001_execution_log.json
+Processing test case: TEST_HOOK_TEARDOWN_001
+  Warning: No execution log found at test-acceptance/execution_logs/TEST_HOOK_TEARDOWN_001_execution_log.json
+Processing test case: TC_MANUAL_ALL_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_MANUAL_ALL_001_execution_log.json
+Processing test case: TC_MANUAL_CAPTURE_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_MANUAL_CAPTURE_001_execution_log.json
+Processing test case: TC_MANUAL_CONDITIONAL_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_MANUAL_CONDITIONAL_001_execution_log.json
+Processing test case: TC_MANUAL_FILE_INSPECT_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_MANUAL_FILE_INSPECT_001_execution_log.json
+Processing test case: TC_MANUAL_MIXED_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_MANUAL_MIXED_001_execution_log.json
+Processing test case: TC_MANUAL_MULTI_SEQ_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_MANUAL_MULTI_SEQ_001_execution_log.json
+Processing test case: TC_MANUAL_OUTPUT_VERIFY_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_MANUAL_OUTPUT_VERIFY_001_execution_log.json
+Processing test case: TC_MANUAL_PREREQ_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_MANUAL_PREREQ_001_execution_log.json
+Processing test case: TC_MANUAL_RESULT_VERIFY_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_MANUAL_RESULT_VERIFY_001_execution_log.json
+Processing test case: PREREQ_AUTO_FAIL_001
+  Warning: No execution log found at test-acceptance/execution_logs/PREREQ_AUTO_FAIL_001_execution_log.json
+Processing test case: PREREQ_AUTO_PASS_001
+  Warning: No execution log found at test-acceptance/execution_logs/PREREQ_AUTO_PASS_001_execution_log.json
+Processing test case: PREREQ_COMPLEX_001
+  Warning: No execution log found at test-acceptance/execution_logs/PREREQ_COMPLEX_001_execution_log.json
+Processing test case: PREREQ_MANUAL_001
+  Warning: No execution log found at test-acceptance/execution_logs/PREREQ_MANUAL_001_execution_log.json
+Processing test case: PREREQ_MIXED_001
+  Warning: No execution log found at test-acceptance/execution_logs/PREREQ_MIXED_001_execution_log.json
+Processing test case: PREREQ_NONE_001
+  Warning: No execution log found at test-acceptance/execution_logs/PREREQ_NONE_001_execution_log.json
+Processing test case: PREREQ_PARTIAL_FAIL_001
+  Warning: No execution log found at test-acceptance/execution_logs/PREREQ_PARTIAL_FAIL_001_execution_log.json
+Processing test case: TC_SUCCESS_CMD_CHAIN_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_SUCCESS_CMD_CHAIN_001_execution_log.json
+Processing test case: TC_SUCCESS_COMPLEX_DATA_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_SUCCESS_COMPLEX_DATA_001_execution_log.json
+Processing test case: TC_SUCCESS_CONDITIONAL_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_SUCCESS_CONDITIONAL_001_execution_log.json
+Processing test case: TC_SUCCESS_EMPTY_OUTPUT_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_SUCCESS_EMPTY_OUTPUT_001_execution_log.json
+Processing test case: TC_SUCCESS_ENV_VARS_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_SUCCESS_ENV_VARS_001_execution_log.json
+Processing test case: TC_SUCCESS_FILE_OPS_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_SUCCESS_FILE_OPS_001_execution_log.json
+Processing test case: TC_SUCCESS_LONG_RUNNING_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_SUCCESS_LONG_RUNNING_001_execution_log.json
+Processing test case: TC_SUCCESS_MULTI_SEQ_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_SUCCESS_MULTI_SEQ_001_execution_log.json
+Processing test case: TC_SUCCESS_REGEX_VALIDATION_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_SUCCESS_REGEX_VALIDATION_001_execution_log.json
+Processing test case: TC_SUCCESS_SIMPLE_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_SUCCESS_SIMPLE_001_execution_log.json
+Processing test case: TC_SUCCESS_STEP_DEPS_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_SUCCESS_STEP_DEPS_001_execution_log.json
+Processing test case: TC_SUCCESS_TEXT_PROCESSING_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_SUCCESS_TEXT_PROCESSING_001_execution_log.json
+Processing test case: TC_SUCCESS_VAR_CAPTURE_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_SUCCESS_VAR_CAPTURE_001_execution_log.json
+Processing test case: TC_VAR_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_VAR_001_execution_log.json
+Processing test case: TC_VAR_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_VAR_001_execution_log.json
+Processing test case: TC_VAR_CAPTURE_002
+  Warning: No execution log found at test-acceptance/execution_logs/TC_VAR_CAPTURE_002_execution_log.json
+Processing test case: TC_VAR_DEMO_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_VAR_DEMO_001_execution_log.json
+Processing test case: TC_VAR_DISPLAY_001
+  Warning: No execution log found at test-acceptance/execution_logs/TC_VAR_DISPLAY_001_execution_log.json
+✓ Wrote TPDG container to: test-acceptance/results/acceptance_test_results_container.yaml
+
+✓ Successfully generated TPDG container with 76 test case(s)
+  Output: test-acceptance/results/acceptance_test_results_container.yaml

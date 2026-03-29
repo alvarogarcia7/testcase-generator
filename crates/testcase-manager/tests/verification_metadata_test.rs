@@ -32,6 +32,7 @@ fn test_test_case_verification_result_metadata_fields() {
         requirement: Some("REQ-001".to_string()),
         item: Some(42),
         tc: Some(99),
+        source_yaml_sha256: None,
     };
 
     assert_eq!(result.requirement, Some("REQ-001".to_string()));
@@ -53,6 +54,7 @@ fn test_test_case_verification_result_metadata_optional() {
         requirement: None,
         item: None,
         tc: None,
+        source_yaml_sha256: None,
     };
 
     assert_eq!(result.requirement, None);
@@ -74,6 +76,7 @@ fn test_test_case_verification_result_serialization_with_metadata() {
         requirement: Some("REQ-SERIAL-001".to_string()),
         item: Some(10),
         tc: Some(20),
+        source_yaml_sha256: None,
     };
 
     // Test JSON serialization
@@ -105,6 +108,7 @@ fn test_test_case_verification_result_yaml_serialization_with_metadata() {
         requirement: Some("REQ-YAML-001".to_string()),
         item: Some(15),
         tc: Some(25),
+        source_yaml_sha256: None,
     };
 
     // Test YAML serialization
@@ -134,6 +138,7 @@ fn test_test_case_verification_result_serialization_without_metadata() {
         requirement: None,
         item: None,
         tc: None,
+        source_yaml_sha256: None,
     };
 
     // Test JSON serialization - optional fields should be omitted
@@ -722,6 +727,7 @@ fn test_metadata_propagation_from_test_case_to_results() {
         requirement: Some(test_case.requirement.clone()),
         item: Some(test_case.item),
         tc: Some(test_case.tc),
+        source_yaml_sha256: None,
     };
 
     // Verify metadata is propagated at all levels
@@ -803,6 +809,7 @@ fn test_complete_verification_result_serialization_roundtrip_json() {
         requirement: Some("REQ-RT-JSON-001".to_string()),
         item: Some(50),
         tc: Some(100),
+        source_yaml_sha256: None,
     };
 
     // Serialize to JSON
@@ -890,6 +897,7 @@ fn test_complete_verification_result_serialization_roundtrip_yaml() {
         requirement: Some("REQ-RT-YAML-001".to_string()),
         item: Some(60),
         tc: Some(120),
+        source_yaml_sha256: None,
     };
 
     // Serialize to YAML
@@ -961,6 +969,7 @@ fn test_mixed_metadata_presence_serialization() {
         requirement: Some("REQ-MIXED-001".to_string()),
         item: Some(1),
         tc: Some(1),
+        source_yaml_sha256: None,
     };
 
     // JSON roundtrip

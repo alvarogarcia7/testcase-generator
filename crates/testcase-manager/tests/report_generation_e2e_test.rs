@@ -102,6 +102,7 @@ fn test_e2e_tc_gsma_4_4_2_2_yaml_output() {
         failed_steps: 0,
         not_executed_steps: 0,
         overall_pass: true,
+        source_yaml_sha256: None,
     };
 
     let verifier = TestVerifier::with_exact_matching();
@@ -134,6 +135,7 @@ fn test_e2e_tc_gsma_4_4_2_2_json_output() {
         failed_steps: 0,
         not_executed_steps: 0,
         overall_pass: true,
+        source_yaml_sha256: None,
     };
 
     let verifier = TestVerifier::with_exact_matching();
@@ -172,6 +174,7 @@ fn test_yaml_json_equivalence() {
         failed_steps: 2,
         not_executed_steps: 0,
         overall_pass: false,
+        source_yaml_sha256: None,
     };
 
     let verifier = TestVerifier::with_exact_matching();
@@ -391,6 +394,7 @@ fn test_e2e_container_format_test_results_structure() {
         failed_steps: 0,
         not_executed_steps: 0,
         overall_pass: true,
+        source_yaml_sha256: None,
     });
 
     // Test case 2: Mixed pass/fail/not_executed
@@ -444,6 +448,7 @@ fn test_e2e_container_format_test_results_structure() {
         failed_steps: 1,
         not_executed_steps: 1,
         overall_pass: false,
+        source_yaml_sha256: None,
     });
 
     let config = ContainerReportConfig {
@@ -649,6 +654,7 @@ fn test_e2e_container_format_metadata_accuracy() {
             failed_steps,
             not_executed_steps: 0,
             overall_pass,
+            source_yaml_sha256: None,
         });
     }
 
@@ -721,6 +727,7 @@ fn test_e2e_container_format_json_output() {
         failed_steps: 0,
         not_executed_steps: 0,
         overall_pass: true,
+        source_yaml_sha256: None,
     });
 
     let config = ContainerReportConfig {
@@ -833,6 +840,7 @@ fn test_e2e_container_format_matches_template_structure() {
         failed_steps: 0,
         not_executed_steps: 0,
         overall_pass: true,
+        source_yaml_sha256: None,
     });
 
     let config = ContainerReportConfig {

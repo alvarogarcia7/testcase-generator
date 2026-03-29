@@ -1,6 +1,6 @@
 # Test Case Manager
 
-A comprehensive CLI tool for managing test cases in YAML format with interactive workflows, fuzzy search, git integration, and test verification capabilities.
+A comprehensive CLI tool for managing test cases in YAML format with interactive workflows, fuzzy search, git integration, test verification capabilities, and complete audit logging with digital signatures.
 
 ## Features
 
@@ -16,6 +16,9 @@ A comprehensive CLI tool for managing test cases in YAML format with interactive
 - **Test Verification**: Batch verification mode that processes test execution logs and generates reports with JUnit XML output for CI/CD integration. Supports container configuration for rich metadata in reports - see [VERIFIER_CONFIG_GUIDE.md](VERIFIER_CONFIG_GUIDE.md) and [VERIFIER_SCRIPTS_REFERENCE.md](VERIFIER_SCRIPTS_REFERENCE.md)
 - **Watch Mode**: Continuously monitor directories for file changes with automatic validation and instant feedback
 - **Variables and Data Passing**: Capture dynamic values from command output and pass data between test steps using regex patterns and variable substitution. See [Variables and Data Passing Documentation](docs/VARIABLE_PASSING.md) for details
+- **Comprehensive Audit Logging**: Track all operations (generate, execute, verify) with automatic logging including timestamps, user info, file hashes, and metadata
+- **Digital Signatures**: Sign audit logs with P-521 ECDSA for tamper detection and integrity verification
+- **Audit Verification**: Verify signed audit logs to ensure authenticity and detect any tampering - see [AUDIT_LOGGING.md](AUDIT_LOGGING.md) and [AUDIT_QUICK_START.md](AUDIT_QUICK_START.md)
 
 ## Installation
 
@@ -75,7 +78,7 @@ This project provides multiple executable binaries for comprehensive test case m
 - editor: TCM/TestCase Manager: Interactive test case creation and management
 - **tcm** (Test Case Manager): Alias to the editor
 - **testcase-manager**: Alias to the editor
-- **test-executor**: Automated test execution with JSON logging
+- **test-executor**: Automated test execution with JSON logging and automatic audit logging
 - **test-verify**: Test verification tool for validating test execution logs against test cases
 - **test-orchestrator**: Coordinate complex test workflows
 - **validate-yaml**: YAML validation tool
@@ -83,6 +86,9 @@ This project provides multiple executable binaries for comprehensive test case m
 - **validate-json**: JSON validation tool
 - **trm**: Test Run Manager
 - **editor**: Interactive test case editor
+- **audit-verifier**: Verify test case YAML hashes against execution logs with digital signatures
+- **sign-audit-log**: Sign audit logs with P-521 ECDSA keys
+- **verify-audit-log**: Verify signed audit logs for tampering detection
 
 
 

@@ -51,6 +51,7 @@ fn create_execution_log(
         log_file_path: PathBuf::from("test.json"),
         result_verification_pass: None,
         output_verification_pass: None,
+        source_yaml_sha256: None,
     }
 }
 
@@ -76,6 +77,7 @@ fn create_execution_log_with_precomputed(
         log_file_path: PathBuf::from("test.json"),
         result_verification_pass,
         output_verification_pass,
+        source_yaml_sha256: None,
     }
 }
 
@@ -1176,6 +1178,7 @@ fn test_generate_report_yaml_basic() {
         failed_steps: 1,
         not_executed_steps: 0,
         overall_pass: false,
+        source_yaml_sha256: None,
         requirement: Some("REQ001".to_string()),
         item: Some(1),
         tc: Some(1),
@@ -1244,6 +1247,7 @@ fn test_generate_report_yaml_with_sequences() {
         failed_steps: 1,
         not_executed_steps: 0,
         overall_pass: false,
+        source_yaml_sha256: None,
         requirement: Some("REQ001".to_string()),
         item: Some(1),
         tc: Some(1),
@@ -1305,6 +1309,7 @@ fn test_generate_report_yaml_not_executed_steps() {
         failed_steps: 0,
         not_executed_steps: 1,
         overall_pass: false,
+        source_yaml_sha256: None,
         requirement: None,
         item: None,
         tc: None,
@@ -1332,6 +1337,7 @@ fn test_generate_report_json_basic() {
         failed_steps: 0,
         not_executed_steps: 0,
         overall_pass: true,
+        source_yaml_sha256: None,
         requirement: Some("REQ003".to_string()),
         item: Some(3),
         tc: Some(3),
@@ -1397,6 +1403,7 @@ fn test_generate_report_json_with_sequences() {
         failed_steps: 1,
         not_executed_steps: 0,
         overall_pass: false,
+        source_yaml_sha256: None,
         requirement: None,
         item: None,
         tc: None,
@@ -1430,6 +1437,7 @@ fn test_generate_report_yaml_roundtrip() {
         failed_steps: 1,
         not_executed_steps: 1,
         overall_pass: false,
+        source_yaml_sha256: None,
         requirement: Some("REQ005".to_string()),
         item: Some(5),
         tc: Some(5),
@@ -1462,6 +1470,7 @@ fn test_generate_report_json_roundtrip() {
         failed_steps: 0,
         not_executed_steps: 0,
         overall_pass: true,
+        source_yaml_sha256: None,
         requirement: None,
         item: None,
         tc: None,
@@ -1493,6 +1502,7 @@ fn test_report_generation_special_characters() {
         failed_steps: 0,
         not_executed_steps: 0,
         overall_pass: true,
+        source_yaml_sha256: None,
         requirement: None,
         item: None,
         tc: None,
@@ -1529,6 +1539,7 @@ fn test_report_generation_unicode() {
         failed_steps: 0,
         not_executed_steps: 0,
         overall_pass: true,
+        source_yaml_sha256: None,
         requirement: None,
         item: None,
         tc: None,
@@ -1560,6 +1571,7 @@ fn test_report_generation_empty_sequences() {
         failed_steps: 0,
         not_executed_steps: 0,
         overall_pass: true,
+        source_yaml_sha256: None,
         requirement: None,
         item: None,
         tc: None,
@@ -1588,6 +1600,7 @@ fn test_report_generation_optional_fields() {
         failed_steps: 0,
         not_executed_steps: 0,
         overall_pass: true,
+        source_yaml_sha256: None,
         requirement: Some("REQ010".to_string()),
         item: Some(10),
         tc: Some(10),
@@ -1608,6 +1621,7 @@ fn test_report_generation_optional_fields() {
         failed_steps: 0,
         not_executed_steps: 0,
         overall_pass: true,
+        source_yaml_sha256: None,
         requirement: None,
         item: None,
         tc: None,
@@ -1709,6 +1723,7 @@ fn test_generate_report_yaml_complex_sequences() {
         failed_steps: 1,
         not_executed_steps: 1,
         overall_pass: false,
+        source_yaml_sha256: None,
         requirement: Some("REQ-COMPLEX".to_string()),
         item: Some(99),
         tc: Some(99),
@@ -1781,6 +1796,7 @@ fn test_generate_report_json_complex_sequences() {
         failed_steps: 1,
         not_executed_steps: 0,
         overall_pass: false,
+        source_yaml_sha256: None,
         requirement: None,
         item: None,
         tc: None,
@@ -1839,6 +1855,7 @@ fn test_generate_report_multiline_descriptions() {
         failed_steps: 0,
         not_executed_steps: 0,
         overall_pass: true,
+        source_yaml_sha256: None,
         requirement: None,
         item: None,
         tc: None,
@@ -1870,6 +1887,7 @@ fn test_generate_report_large_numbers() {
         failed_steps: 1,
         not_executed_steps: 0,
         overall_pass: false,
+        source_yaml_sha256: None,
         requirement: None,
         item: Some(999999),
         tc: Some(888888),
@@ -1907,6 +1925,7 @@ fn test_report_generation_error_handling() {
         failed_steps: 0,
         not_executed_steps: 0,
         overall_pass: true,
+        source_yaml_sha256: None,
         requirement: None,
         item: None,
         tc: None,
@@ -1991,6 +2010,7 @@ fn test_container_report_from_batch_report_constructor() {
         failed_steps: 1,
         not_executed_steps: 0,
         overall_pass: false,
+        source_yaml_sha256: None,
         requirement: Some("REQ001".to_string()),
         item: Some(1),
         tc: Some(1),
@@ -2005,6 +2025,7 @@ fn test_container_report_from_batch_report_constructor() {
         failed_steps: 0,
         not_executed_steps: 0,
         overall_pass: true,
+        source_yaml_sha256: None,
         requirement: Some("REQ002".to_string()),
         item: Some(2),
         tc: Some(2),
@@ -2067,6 +2088,7 @@ fn test_container_report_yaml_serialization_structure() {
         failed_steps: 0,
         not_executed_steps: 0,
         overall_pass: true,
+        source_yaml_sha256: None,
         requirement: Some("REQ001".to_string()),
         item: Some(1),
         tc: Some(1),
@@ -2130,6 +2152,7 @@ fn test_container_report_metadata_aggregation() {
         failed_steps: 0,
         not_executed_steps: 0,
         overall_pass: true,
+        source_yaml_sha256: None,
         requirement: None,
         item: None,
         tc: None,
@@ -2144,6 +2167,7 @@ fn test_container_report_metadata_aggregation() {
         failed_steps: 2,
         not_executed_steps: 1,
         overall_pass: false,
+        source_yaml_sha256: None,
         requirement: None,
         item: None,
         tc: None,
@@ -2158,6 +2182,7 @@ fn test_container_report_metadata_aggregation() {
         failed_steps: 0,
         not_executed_steps: 0,
         overall_pass: true,
+        source_yaml_sha256: None,
         requirement: None,
         item: None,
         tc: None,
@@ -2172,6 +2197,7 @@ fn test_container_report_metadata_aggregation() {
         failed_steps: 2,
         not_executed_steps: 1,
         overall_pass: false,
+        source_yaml_sha256: None,
         requirement: None,
         item: None,
         tc: None,
@@ -2271,6 +2297,7 @@ fn test_container_report_roundtrip_serialization() {
         failed_steps: 1,
         not_executed_steps: 1,
         overall_pass: false,
+        source_yaml_sha256: None,
         requirement: Some("REQ_RT".to_string()),
         item: Some(99),
         tc: Some(88),
@@ -2388,6 +2415,7 @@ fn test_container_report_with_sequences_yaml_structure() {
         failed_steps: 1,
         not_executed_steps: 1,
         overall_pass: false,
+        source_yaml_sha256: None,
         requirement: Some("REQ001".to_string()),
         item: Some(1),
         tc: Some(1),
@@ -2866,6 +2894,7 @@ fn test_container_report_config_defaults_only() {
         failed_steps: 0,
         not_executed_steps: 0,
         overall_pass: true,
+        source_yaml_sha256: None,
     });
 
     // Test with only required fields (fallback defaults)
@@ -2930,6 +2959,7 @@ fn test_container_report_config_cli_flags_only() {
         failed_steps: 0,
         not_executed_steps: 0,
         overall_pass: true,
+        source_yaml_sha256: None,
     });
 
     // Simulate CLI flags being used (all fields provided)
@@ -2986,6 +3016,7 @@ fn test_container_report_config_file_only() {
         failed_steps: 0,
         not_executed_steps: 0,
         overall_pass: true,
+        source_yaml_sha256: None,
     });
 
     // Simulate values loaded from config file
@@ -3042,6 +3073,7 @@ fn test_container_report_config_file_with_cli_overrides() {
         failed_steps: 0,
         not_executed_steps: 0,
         overall_pass: true,
+        source_yaml_sha256: None,
     });
 
     // Simulate config file values being overridden by CLI flags
@@ -3102,6 +3134,7 @@ fn test_container_report_partial_config_with_defaults() {
         failed_steps: 0,
         not_executed_steps: 0,
         overall_pass: true,
+        source_yaml_sha256: None,
     });
 
     // Simulate config file with only some optional fields
@@ -3483,6 +3516,7 @@ fn test_container_report_config_json_format() {
         failed_steps: 0,
         not_executed_steps: 0,
         overall_pass: true,
+        source_yaml_sha256: None,
     });
 
     let config = ContainerReportConfig {

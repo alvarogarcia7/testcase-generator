@@ -280,14 +280,14 @@ impl TestOrchestrator {
         let stats = reporter.get_stats();
 
         if total_tests == 0 {
-            println!("No test cases to execute.");
+            log::info!("No test cases to execute.");
             return Ok(Vec::new());
         }
 
-        println!("\n=== Test Execution Starting ===");
-        println!("Total test cases: {}", total_tests);
-        println!("Worker threads: {}", config.num_workers);
-        println!(
+        log::info!("\n=== Test Execution Starting ===");
+        log::info!("Total test cases: {}", total_tests);
+        log::info!("Worker threads: {}", config.num_workers);
+        log::info!(
             "Retry policy: {}",
             match config.retry_policy.strategy {
                 RetryStrategy::NoRetry => "No retries".to_string(),
@@ -302,7 +302,7 @@ impl TestOrchestrator {
                 ),
             }
         );
-        println!();
+        log::info!("");
 
         reporter.start_live_display();
 
@@ -379,7 +379,7 @@ impl TestOrchestrator {
         }
 
         reporter.stop();
-        println!("\n");
+        log::info!("\n");
 
         let final_results = {
             let results = results.lock().unwrap();
@@ -489,7 +489,7 @@ impl TestOrchestrator {
             test_case.id.replace('/', "_")
         ));
         let script_content =
-            executor.generate_test_script_with_json_output(test_case, &json_log_path);
+            executor.generate_test_script_with_json_output(test_case, &json_log_path, None);
 
         let script_path = output_dir.join(format!("{}_test.sh", test_case.id.replace('/', "_")));
         fs::write(&script_path, &script_content).context(format!(
@@ -581,12 +581,12 @@ impl TestOrchestrator {
         match validation_output {
             Ok(output) => {
                 if !output.status.success() {
-                    eprintln!("500 - internal script error");
+                    log::error!("500 - internal script error");
                     anyhow::bail!("Verification JSON validation failed");
                 }
             }
             Err(e) => {
-                eprintln!("500 - internal script error");
+                log::error!("500 - internal script error");
                 anyhow::bail!("Failed to execute validation script: {}", e);
             }
         }
@@ -704,28 +704,28 @@ impl TestOrchestrator {
     }
 
     fn print_summary(&self, stats: &OrchestratorStats, results: &[TestExecutionResult]) {
-        println!("=== Execution Summary ===");
-        println!("Total test cases: {}", stats.total_tests);
-        println!("Completed: {}", stats.completed_tests);
-        println!(
+        log::info!("=== Execution Summary ===");
+        log::info!("Total test cases: {}", stats.total_tests);
+        log::info!("Completed: {}", stats.completed_tests);
+        log::info!(
             "Passed: {} ({}%)",
             stats.passed_tests,
             stats.success_rate() as u32
         );
-        println!("Failed: {}", stats.failed_tests);
-        println!("Total attempts: {}", stats.total_attempts);
-        println!("Total time: {:.2}s", stats.elapsed_time_ms as f64 / 1000.0);
+        log::info!("Failed: {}", stats.failed_tests);
+        log::info!("Total attempts: {}", stats.total_attempts);
+        log::info!("Total time: {:.2}s", stats.elapsed_time_ms as f64 / 1000.0);
 
         // Show which test cases failed
         if stats.failed_tests > 0 {
-            println!();
-            println!("Failed test cases:");
+            log::info!("");
+            log::info!("Failed test cases:");
 
             let failed_results: Vec<&TestExecutionResult> =
                 results.iter().filter(|r| !r.success).collect();
 
             for result in &failed_results {
-                println!("  ✗ {}", result.test_case_id);
+                log::info!("  ✗ {}", result.test_case_id);
                 if let Some(ref error) = result.error_message {
                     // Truncate long error messages
                     let error_preview = if error.len() > 80 {
@@ -733,24 +733,24 @@ impl TestOrchestrator {
                     } else {
                         error.clone()
                     };
-                    println!("    Error: {}", error_preview);
+                    log::info!("    Error: {}", error_preview);
                 }
                 if result.attempts > 1 {
-                    println!("    Attempts: {}", result.attempts);
+                    log::info!("    Attempts: {}", result.attempts);
                 }
             }
 
             // If only one test case failed, show detailed step information
             if failed_results.len() == 1 {
-                println!();
+                log::info!("");
                 self.print_detailed_failure(failed_results[0]);
             }
         }
     }
 
     fn print_detailed_failure(&self, result: &TestExecutionResult) {
-        println!("=== Detailed Failure Information ===");
-        println!("Test case: {}", result.test_case_id);
+        log::info!("=== Detailed Failure Information ===");
+        log::info!("Test case: {}", result.test_case_id);
 
         // Try to load the test case to get sequence and step information
         match self
@@ -758,8 +758,8 @@ impl TestOrchestrator {
             .load_test_case_by_id(&result.test_case_id)
         {
             Ok(test_case) => {
-                println!("Description: {}", test_case.description);
-                println!();
+                log::info!("Description: {}", test_case.description);
+                log::info!("");
 
                 // Try to find and parse execution log
                 let log_file_pattern = format!("{}_attempt", test_case.id.replace('/', "_"));
@@ -792,61 +792,61 @@ impl TestOrchestrator {
 
                 // If no execution log found, just show test case structure
                 if !found_log {
-                    println!("Execution stages:");
+                    log::info!("Execution stages:");
                     for sequence in &test_case.test_sequences {
-                        println!("  Sequence {}: {}", sequence.id, sequence.name);
+                        log::info!("  Sequence {}: {}", sequence.id, sequence.name);
                         for step in &sequence.steps {
                             // We don't know the actual status, so just list them
-                            println!("    • Step {}: {}", step.step, step.description);
+                            log::info!("    • Step {}: {}", step.step, step.description);
                         }
                     }
                 }
 
                 if let Some(ref error) = result.error_message {
-                    println!();
-                    println!("Error details:");
-                    println!("  {}", error);
+                    log::info!("");
+                    log::info!("Error details:");
+                    log::info!("  {}", error);
                 }
             }
             Err(e) => {
-                println!("Unable to load test case details: {}", e);
+                log::info!("Unable to load test case details: {}", e);
                 if let Some(ref error) = result.error_message {
-                    println!();
-                    println!("Error: {}", error);
+                    log::info!("");
+                    log::info!("Error: {}", error);
                 }
             }
         }
     }
 
     fn parse_and_display_log_details(&self, test_case: &TestCase, log_content: &str) {
-        println!("Execution stages:");
+        log::info!("Execution stages:");
 
         // Parse the log to understand what happened
         // The log format includes success/failure information
         let success_in_log = log_content.contains("Success: true");
 
         for sequence in &test_case.test_sequences {
-            println!("  Sequence {}: {}", sequence.id, sequence.name);
+            log::info!("  Sequence {}: {}", sequence.id, sequence.name);
 
             for step in &sequence.steps {
                 // Simple heuristic: if the test overall succeeded, all steps passed
                 // if it failed, we mark steps based on the test structure
                 // In a real implementation, you'd parse detailed step-by-step logs
                 if success_in_log {
-                    println!("    ✓ Step {}: {}", step.step, step.description);
+                    log::info!("    ✓ Step {}: {}", step.step, step.description);
                 } else {
                     // For failed tests, we can't easily determine which step failed
                     // without more detailed logging, so we mark them as uncertain
-                    println!("    ? Step {}: {}", step.step, step.description);
+                    log::info!("    ? Step {}: {}", step.step, step.description);
                 }
             }
         }
 
         // Try to extract error information from log
         if let Some(error_line) = log_content.lines().find(|line| line.starts_with("Error:")) {
-            println!();
-            println!("Log error:");
-            println!("  {}", error_line.trim_start_matches("Error:").trim());
+            log::info!("");
+            log::info!("Log error:");
+            log::info!("  {}", error_line.trim_start_matches("Error:").trim());
         }
     }
 

@@ -58,9 +58,6 @@ done
 TESTS_PASSED=0
 TESTS_FAILED=0
 
-# Source shellcheck helper for validation
-source "$SCRIPT_DIR/../../scripts/lib/shellcheck-helper.sh" || true
-
 # Check prerequisites
 section "Checking Prerequisites"
 

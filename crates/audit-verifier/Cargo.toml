@@ -1,0 +1,42 @@
+[package]
+name = "audit-verifier"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "audit_verifier"
+path = "src/lib.rs"
+
+[[bin]]
+name = "audit-verifier"
+path = "src/main.rs"
+
+[[bin]]
+name = "verify-audit-signature"
+path = "src/bin/verify_signature.rs"
+
+[[bin]]
+name = "verify-audit-log"
+path = "src/bin/verify_audit_log.rs"
+
+[[bin]]
+name = "sign-audit-log"
+path = "src/bin/sign_audit_log.rs"
+
+[dependencies]
+sha2 = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+clap = { workspace = true }
+chrono = { workspace = true }
+p256 = { version = "0.13", features = ["ecdsa", "pem"] }
+p521 = { version = "0.13", features = ["ecdsa", "pem"] }
+signature = "2.2"
+hex = "0.4"
+rand_core = { version = "0.6", features = ["getrandom"] }
+base64ct = { version = "1.6", features = ["alloc"] }
+tempfile = { workspace = true }
+log = { workspace = true }
+env_logger = { workspace = true }
+hostname = "0.3"

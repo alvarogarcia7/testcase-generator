@@ -2,6 +2,8 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use jsonschema::JSONSchema;
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use testcase_models::TestCase;
@@ -224,6 +226,10 @@ struct Cli {
     /// Exit with 0 even if test cases failed (useful for acceptance testing)
     #[arg(long = "success-on-completion")]
     success_on_completion: bool,
+
+    /// Verify source YAML hash from execution logs
+    #[arg(long = "verify-source-hash")]
+    verify_source_hash: bool,
 }
 
 fn main() -> Result<()> {
@@ -252,13 +258,13 @@ fn main() -> Result<()> {
             // Safe unwraps: validate_args guarantees these are Some when mode is SingleFile
             let log_path = log_path.expect("log_path must be Some for SingleFile mode");
             let test_case_id = test_case_id.expect("test_case_id must be Some for SingleFile mode");
-            handle_single_file_mode(&verifier, &log_path, &test_case_id)?
+            handle_single_file_mode(&verifier, &log_path, &test_case_id, cli.verify_source_hash)?
         }
         Mode::FolderDiscovery => {
             // Safe unwrap: validate_args guarantees this is Some when mode is FolderDiscovery
             let folder_path =
                 folder_path.expect("folder_path must be Some for FolderDiscovery mode");
-            handle_folder_mode(&verifier, &folder_path)?
+            handle_folder_mode(&verifier, &folder_path, cli.verify_source_hash)?
         }
     };
 
@@ -353,6 +359,7 @@ fn handle_single_file_mode(
     verifier: &StorageTestVerifier,
     log_path: &PathBuf,
     test_case_id: &str,
+    verify_source_hash: bool,
 ) -> Result<BatchVerificationReport> {
     log::info!("Processing log file: {}", log_path.display());
     log::debug!("Single-file mode: test case ID = '{}'", test_case_id);
@@ -381,9 +388,16 @@ fn handle_single_file_mode(
         test_case.test_sequences.len()
     );
 
+    // Compute source hash and verify if requested
+    let source_hash = compute_test_case_source_hash(verifier.storage(), test_case_id)?;
+    if verify_source_hash {
+        verify_hash_against_logs(&logs, test_case_id, &source_hash)?;
+    }
+
     // Verify
     log::debug!("Verifying test case '{}' against logs", test_case_id);
-    let result = verifier.verify_test_case(&test_case, &logs);
+    let mut result = verifier.verify_test_case(&test_case, &logs);
+    result.source_yaml_sha256 = Some(source_hash);
 
     log::debug!(
         "Verification result: pass={}, steps={}/{}",
@@ -410,6 +424,7 @@ fn handle_single_file_mode(
 fn handle_folder_mode(
     verifier: &StorageTestVerifier,
     folder_path: &PathBuf,
+    verify_source_hash: bool,
 ) -> Result<BatchVerificationReport> {
     log::debug!(
         "Starting folder discovery mode for: {}",
@@ -472,9 +487,40 @@ fn handle_folder_mode(
                             test_case_id,
                             test_case.test_sequences.len()
                         );
+
+                        // Compute source hash and verify if requested
+                        let source_hash_result =
+                            compute_test_case_source_hash(verifier.storage(), &test_case_id);
+                        let source_hash = match source_hash_result {
+                            Ok(hash) => {
+                                if verify_source_hash {
+                                    if let Err(e) =
+                                        verify_hash_against_logs(&logs, &test_case_id, &hash)
+                                    {
+                                        log::error!(
+                                            "Source hash verification failed for test case '{}': {}",
+                                            test_case_id,
+                                            e
+                                        );
+                                        continue;
+                                    }
+                                }
+                                Some(hash)
+                            }
+                            Err(e) => {
+                                log::warn!(
+                                    "Failed to compute source hash for test case '{}': {}",
+                                    test_case_id,
+                                    e
+                                );
+                                None
+                            }
+                        };
+
                         log::debug!("Verifying test case '{}' against logs", test_case_id);
 
-                        let result = verifier.verify_test_case(&test_case, &logs);
+                        let mut result = verifier.verify_test_case(&test_case, &logs);
+                        result.source_yaml_sha256 = source_hash;
 
                         log::debug!(
                             "Verification result for '{}': pass={}, steps={}/{}",
@@ -796,7 +842,7 @@ fn write_output(content: &str, output_path: Option<&PathBuf>) -> Result<()> {
             .context(format!("Failed to write output to {}", path.display()))?;
         log::info!("Report written to {}", path.display());
     } else {
-        println!("{}", content);
+        log::info!("{}", content);
     }
 
     Ok(())
@@ -813,4 +859,141 @@ fn parse_match_strategy(strategy: &str) -> Result<MatchStrategy> {
             strategy
         ),
     }
+}
+
+fn compute_test_case_source_hash(storage: &TestCaseStorage, test_case_id: &str) -> Result<String> {
+    let yaml_path = find_test_case_file_path(storage, test_case_id).context(format!(
+        "Failed to find test case file for ID: {}",
+        test_case_id
+    ))?;
+
+    log::debug!(
+        "Computing SHA-256 hash for test case file: {}",
+        yaml_path.display()
+    );
+
+    let file_bytes = fs::read(&yaml_path).context(format!(
+        "Failed to read test case file: {}",
+        yaml_path.display()
+    ))?;
+
+    let mut hasher = Sha256::new();
+    hasher.update(&file_bytes);
+    let hash_result = hasher.finalize();
+    let hash_hex = format!("{:x}", hash_result);
+
+    log::debug!("Computed SHA-256 hash for '{}': {}", test_case_id, hash_hex);
+
+    Ok(hash_hex)
+}
+
+fn find_test_case_file_path(storage: &TestCaseStorage, test_case_id: &str) -> Result<PathBuf> {
+    const YAML_EXTENSIONS: &[&str] = &["yaml", "yml"];
+
+    let base_path = storage.base_path();
+    let id_path = Path::new(test_case_id);
+
+    if let Some(ext) = id_path.extension() {
+        if YAML_EXTENSIONS.contains(&ext.to_string_lossy().as_ref()) {
+            let file_path = base_path.join(test_case_id);
+            if file_path.exists() {
+                return Ok(file_path);
+            }
+            if id_path.exists() {
+                return Ok(id_path.to_path_buf());
+            }
+        }
+    }
+
+    for ext in YAML_EXTENSIONS {
+        let file_name = format!("{}.{}", test_case_id, ext);
+        let file_path = base_path.join(&file_name);
+
+        if file_path.exists() {
+            return Ok(file_path);
+        }
+    }
+
+    for ext in YAML_EXTENSIONS {
+        let file_name = format!("{}.{}", test_case_id, ext);
+        if let Ok(entries) = fs::read_dir(base_path) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    if let Some(found) = search_recursive(&path, &file_name) {
+                        return Ok(found);
+                    }
+                }
+            }
+        }
+    }
+
+    anyhow::bail!("Test case file not found for ID: {}", test_case_id)
+}
+
+fn search_recursive(dir: &Path, file_name: &str) -> Option<PathBuf> {
+    if let Ok(entries) = fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_file() && path.file_name()?.to_str()? == file_name {
+                return Some(path);
+            } else if path.is_dir() {
+                if let Some(found) = search_recursive(&path, file_name) {
+                    return Some(found);
+                }
+            }
+        }
+    }
+    None
+}
+
+fn verify_hash_against_logs(
+    logs: &[TestExecutionLog],
+    test_case_id: &str,
+    expected_hash: &str,
+) -> Result<()> {
+    log::debug!(
+        "Verifying source hash for test case '{}' against {} log entries",
+        test_case_id,
+        logs.len()
+    );
+
+    let mut hash_map: HashMap<String, usize> = HashMap::new();
+    let mut missing_count = 0;
+
+    for log in logs {
+        if let Some(log_hash) = &log.source_yaml_sha256 {
+            *hash_map.entry(log_hash.clone()).or_insert(0) += 1;
+        } else {
+            missing_count += 1;
+        }
+    }
+
+    if missing_count > 0 {
+        anyhow::bail!(
+            "Source hash verification failed for test case '{}': {} log entries are missing source_yaml_sha256 field",
+            test_case_id,
+            missing_count
+        );
+    }
+
+    for (log_hash, count) in &hash_map {
+        if log_hash != expected_hash {
+            anyhow::bail!(
+                "Source hash verification failed for test case '{}': expected hash '{}' but {} log entries have hash '{}'",
+                test_case_id,
+                expected_hash,
+                count,
+                log_hash
+            );
+        }
+    }
+
+    log::info!(
+        "✓ Source hash verification passed for test case '{}': all {} log entries match expected hash",
+        test_case_id,
+        logs.len()
+    );
+
+    Ok(())
 }

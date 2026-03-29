@@ -822,7 +822,7 @@ fn test_generated_script_produces_valid_json_with_special_chars() -> Result<()> 
         .path()
         .join(format!("{}_execution_log.json", test_case.id));
 
-    let script = executor.generate_test_script_with_json_output(&test_case, &json_log_path);
+    let script = executor.generate_test_script_with_json_output(&test_case, &json_log_path, None);
 
     let script_path = temp_dir.path().join("test_script.sh");
     fs::write(&script_path, script)?;

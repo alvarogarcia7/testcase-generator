@@ -3,6 +3,7 @@ use crate::hydration::VarHydrator;
 use anyhow::{Context, Result};
 use chrono::Local;
 use regex::Regex;
+use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -62,6 +63,14 @@ fn capture_vars_to_vec(
             .map(|cv| (cv.name.clone(), cv.capture.clone(), cv.command.clone()))
             .collect(),
     }
+}
+
+/// Compute SHA-256 hash of YAML content and return hex-encoded string
+pub fn compute_yaml_sha256(content: &[u8]) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(content);
+    let result = hasher.finalize();
+    format!("{:x}", result)
 }
 
 /// Extract strings from VerificationExpression for pattern checking
@@ -379,6 +388,7 @@ impl TestExecutor {
         &self,
         test_case: &TestCase,
         json_output_path: &Path,
+        source_hash: Option<String>,
     ) -> String {
         let mut script = String::new();
 
@@ -449,7 +459,13 @@ impl TestExecutor {
         script.push('\n');
         script.push_str("# Description: ");
         script.push_str(&test_case.description);
-        script.push_str("\n\n");
+        script.push('\n');
+        if let Some(ref hash) = source_hash {
+            script.push_str("# Source YAML SHA-256: ");
+            script.push_str(hash);
+            script.push('\n');
+        }
+        script.push('\n');
 
         // Check if test case uses hydration variables
         let uses_hydration_vars = test_case_uses_hydration_vars(test_case);
@@ -464,7 +480,11 @@ impl TestExecutor {
         }
 
         script.push_str(&format!("JSON_LOG=\"{}\"\n", json_output_path.display()));
-        script.push_str("TIMESTAMP=$(date +\"%Y-%m-%dT%H:%M:%S\")\n\n");
+        script.push_str("TIMESTAMP=$(date +\"%Y-%m-%dT%H:%M:%S\")\n");
+        if let Some(ref hash) = source_hash {
+            script.push_str(&format!("SOURCE_YAML_SHA256=\"{}\"\n", hash));
+        }
+        script.push('\n');
 
         // Check if test case uses variables
         let uses_variables = test_case_uses_variables(test_case);
@@ -953,6 +973,9 @@ impl TestExecutor {
                     );
                     script.push_str("    fi\n");
                     script.push_str("    echo \"    \\\"timestamp\\\": \\\"$TIMESTAMP\\\",\"\n");
+                    if source_hash.is_some() {
+                        script.push_str("    echo \"    \\\"source_yaml_sha256\\\": \\\"$SOURCE_YAML_SHA256\\\",\"\n");
+                    }
 
                     if has_verification {
                         script.push_str("    echo \"    \\\"result_verification_pass\\\": $USER_VERIFICATION_RESULT,\"\n");
@@ -1231,6 +1254,9 @@ impl TestExecutor {
                 script.push_str("    echo \"    \\\"exit_code\\\": $EXIT_CODE,\"\n");
                 script.push_str("    echo \"    \\\"output\\\": \\\"$OUTPUT_ESCAPED\\\",\"\n");
                 script.push_str("    echo \"    \\\"timestamp\\\": \\\"$TIMESTAMP\\\",\"\n");
+                if source_hash.is_some() {
+                    script.push_str("    echo \"    \\\"source_yaml_sha256\\\": \\\"$SOURCE_YAML_SHA256\\\",\"\n");
+                }
                 script.push_str("    echo \"    \\\"result_verification_pass\\\": $VERIFICATION_RESULT_PASS,\"\n");
                 script.push_str("    echo \"    \\\"output_verification_pass\\\": $VERIFICATION_OUTPUT_PASS\"\n");
                 script.push_str("    echo '  }'\n");
@@ -1292,7 +1318,18 @@ impl TestExecutor {
     pub fn generate_test_script(&self, test_case: &TestCase) -> String {
         let json_path_str = format!("{}_execution_log.json", test_case.id);
         let json_path = Path::new(&json_path_str);
-        self.generate_test_script_with_json_output(test_case, json_path)
+        self.generate_test_script_with_json_output(test_case, json_path, None)
+    }
+
+    pub fn generate_test_script_from_yaml(
+        &self,
+        test_case: &TestCase,
+        yaml_bytes: &[u8],
+    ) -> String {
+        let json_path_str = format!("{}_execution_log.json", test_case.id);
+        let json_path = Path::new(&json_path_str);
+        let hash = compute_yaml_sha256(yaml_bytes);
+        self.generate_test_script_with_json_output(test_case, json_path, Some(hash))
     }
 
     pub fn execute_test_case(&self, test_case: &TestCase) -> Result<()> {
@@ -3531,5 +3568,188 @@ mod tests {
         assert!(script.contains(
             "echo \"  GENERAL_VERIFY_PASS_verify_output: $GENERAL_VERIFY_PASS_verify_output\""
         ));
+    }
+
+    #[test]
+    fn test_compute_yaml_sha256() {
+        let yaml_content = b"id: TC001\ndescription: Test case\n";
+        let hash = compute_yaml_sha256(yaml_content);
+
+        assert_eq!(hash.len(), 64);
+        assert!(hash.chars().all(|c| c.is_ascii_hexdigit()));
+
+        let hash2 = compute_yaml_sha256(yaml_content);
+        assert_eq!(hash, hash2);
+
+        let different_content = b"id: TC002\ndescription: Different test\n";
+        let hash3 = compute_yaml_sha256(different_content);
+        assert_ne!(hash, hash3);
+    }
+
+    #[test]
+    fn test_generate_test_script_from_yaml_includes_hash() {
+        let executor = TestExecutor::new();
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test with hash".to_string(),
+        );
+
+        let mut sequence = TestSequence::new(1, "Seq1".to_string(), "First sequence".to_string());
+        let step = Step {
+            step: 1,
+            manual: None,
+            description: "Echo test".to_string(),
+            command: "echo 'hello'".to_string(),
+            capture_vars: None,
+            expected: Expected {
+                success: Some(true),
+                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
+                output: "[ \"$COMMAND_OUTPUT\" = \"hello\" ]".to_string(),
+            },
+            verification: Verification {
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple(
+                    "[ \"$COMMAND_OUTPUT\" = \"hello\" ]".to_string(),
+                ),
+                output_file: None,
+                general: None,
+            },
+            reference: None,
+        };
+        sequence.steps.push(step);
+        test_case.test_sequences.push(sequence);
+
+        let yaml_content = b"id: TC001\ndescription: Test case\n";
+        let expected_hash = compute_yaml_sha256(yaml_content);
+
+        let script = executor.generate_test_script_from_yaml(&test_case, yaml_content);
+
+        assert!(script.contains(&format!("# Source YAML SHA-256: {}", expected_hash)));
+        assert!(script.contains(&format!("SOURCE_YAML_SHA256=\"{}\"", expected_hash)));
+    }
+
+    #[test]
+    fn test_generate_test_script_without_hash() {
+        let executor = TestExecutor::new();
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test without hash".to_string(),
+        );
+
+        let mut sequence = TestSequence::new(1, "Seq1".to_string(), "First sequence".to_string());
+        let step = Step {
+            step: 1,
+            manual: None,
+            description: "Echo test".to_string(),
+            command: "echo 'hello'".to_string(),
+            capture_vars: None,
+            expected: Expected {
+                success: Some(true),
+                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
+                output: "[ \"$COMMAND_OUTPUT\" = \"hello\" ]".to_string(),
+            },
+            verification: Verification {
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple(
+                    "[ \"$COMMAND_OUTPUT\" = \"hello\" ]".to_string(),
+                ),
+                output_file: None,
+                general: None,
+            },
+            reference: None,
+        };
+        sequence.steps.push(step);
+        test_case.test_sequences.push(sequence);
+
+        let script = executor.generate_test_script(&test_case);
+
+        assert!(!script.contains("# Source YAML SHA-256:"));
+        assert!(!script.contains("SOURCE_YAML_SHA256="));
+    }
+
+    #[test]
+    fn test_hash_in_json_log_entries() {
+        let executor = TestExecutor::new();
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test JSON log hash".to_string(),
+        );
+
+        let mut sequence = TestSequence::new(1, "Seq1".to_string(), "First sequence".to_string());
+        let step = Step {
+            step: 1,
+            manual: None,
+            description: "Echo test".to_string(),
+            command: "echo 'test'".to_string(),
+            capture_vars: None,
+            expected: Expected {
+                success: Some(true),
+                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
+                output: "true".to_string(),
+            },
+            verification: Verification {
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
+                output_file: None,
+                general: None,
+            },
+            reference: None,
+        };
+        sequence.steps.push(step);
+        test_case.test_sequences.push(sequence);
+
+        let yaml_content = b"id: TC001\ndescription: Test case\n";
+        let script = executor.generate_test_script_from_yaml(&test_case, yaml_content);
+
+        assert!(script
+            .contains("echo \"    \\\"source_yaml_sha256\\\": \\\"$SOURCE_YAML_SHA256\\\",\""));
+    }
+
+    #[test]
+    fn test_hash_not_in_json_log_when_not_provided() {
+        let executor = TestExecutor::new();
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test no hash in JSON".to_string(),
+        );
+
+        let mut sequence = TestSequence::new(1, "Seq1".to_string(), "First sequence".to_string());
+        let step = Step {
+            step: 1,
+            manual: None,
+            description: "Echo test".to_string(),
+            command: "echo 'test'".to_string(),
+            capture_vars: None,
+            expected: Expected {
+                success: Some(true),
+                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
+                output: "true".to_string(),
+            },
+            verification: Verification {
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
+                output_file: None,
+                general: None,
+            },
+            reference: None,
+        };
+        sequence.steps.push(step);
+        test_case.test_sequences.push(sequence);
+
+        let script = executor.generate_test_script(&test_case);
+
+        assert!(!script.contains("source_yaml_sha256"));
     }
 }

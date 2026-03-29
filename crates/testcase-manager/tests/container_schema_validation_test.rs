@@ -390,6 +390,7 @@ fn test_container_report_with_step_verification_enum_validates() -> Result<()> {
         test_results: vec![TestCaseVerificationResult {
             test_case_id: "TC001".to_string(),
             description: "Test case with all step result variants".to_string(),
+            source_yaml_sha256: None,
             sequences: vec![SequenceVerificationResult {
                 sequence_id: 1,
                 name: "Main Test Sequence".to_string(),
@@ -449,6 +450,7 @@ fn test_container_report_with_step_verification_enum_validates() -> Result<()> {
             total_test_cases: 1,
             passed_test_cases: 0,
             failed_test_cases: 1,
+            source_hashes: None,
         },
     };
 

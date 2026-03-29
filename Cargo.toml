@@ -1,5 +1,7 @@
 [workspace]
 members = [
+    "crates/audit-traceability",
+    "crates/audit-verifier",
     "crates/bash-eval",
     "crates/editor",
     "crates/json-escape",
@@ -33,6 +35,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+audit-traceability = { path = "crates/audit-traceability" }
 testcase-models = { path = "crates/testcase-models" }
 testcase-ui = { path = "crates/testcase-ui" }
 testcase-verification = { path = "crates/testcase-verification" }
@@ -88,6 +91,9 @@ roxmltree = "0.20"
 # Terminal and text processing
 strip-ansi-escapes = "0.2"
 
+# Cryptographic hashing
+sha2 = "0.10"
+
 # HTTP client (dev dependency)
 reqwest = { version = "0.11", features = ["blocking"] }
 
@@ -102,3 +108,7 @@ path = "examples/test_verify_demo.rs"
 [[example]]
 name = "test_verify_integration"
 path = "examples/test_verify_integration.rs"
+
+[[example]]
+name = "audit_traceability_demo"
+path = "examples/audit_traceability_demo.rs"
