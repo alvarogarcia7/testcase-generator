@@ -65,7 +65,7 @@ impl YamlValidator {
     ) -> Result<()> {
         let yaml_path = yaml_path.as_ref();
         let schemas_root = schemas_root.as_ref();
-        
+
         let schema_path = resolve_schema_for_file(yaml_path, None::<&Path>, schemas_root)?;
         validate_single_file(yaml_path, &schema_path)
     }
@@ -136,7 +136,11 @@ pub fn validate_single_file<P: AsRef<Path>, S: AsRef<Path>>(
     let yaml_content = fs::read_to_string(yaml_path)
         .context(format!("Failed to read YAML file: {}", yaml_path.display()))?;
 
-    validate_yaml_against_compiled_schema(&yaml_content, &compiled_schema, &yaml_path.to_string_lossy())
+    validate_yaml_against_compiled_schema(
+        &yaml_content,
+        &compiled_schema,
+        &yaml_path.to_string_lossy(),
+    )
 }
 
 /// Validates YAML content against a JSON schema
@@ -149,10 +153,7 @@ pub fn validate_single_file<P: AsRef<Path>, S: AsRef<Path>>(
 /// # Returns
 ///
 /// Returns `Ok(())` if validation succeeds, or an error describing validation failures
-pub fn validate_yaml_content<S: AsRef<Path>>(
-    yaml_content: &str,
-    schema_path: S,
-) -> Result<()> {
+pub fn validate_yaml_content<S: AsRef<Path>>(yaml_content: &str, schema_path: S) -> Result<()> {
     let schema_path = schema_path.as_ref();
 
     let schema_content = fs::read_to_string(schema_path).context(format!(
@@ -285,7 +286,7 @@ mod tests {
 
         let validator = YamlValidator::new();
         let result = validator.validate_file(yaml_file.path(), schema_file.path());
-        
+
         assert!(result.is_ok());
     }
 
@@ -297,7 +298,7 @@ mod tests {
 
         let validator = YamlValidator::new();
         let result = validator.validate_file(yaml_file.path(), schema_file.path());
-        
+
         assert!(result.is_err());
         let err_msg = result.unwrap_err().to_string();
         assert!(err_msg.contains("Schema constraint violations"));
@@ -311,7 +312,7 @@ mod tests {
 
         let validator = YamlValidator::new();
         let result = validator.validate_file(yaml_file.path(), schema_file.path());
-        
+
         assert!(result.is_err());
         let err_msg = result.unwrap_err().to_string();
         assert!(err_msg.contains("Schema constraint violations"));
@@ -325,7 +326,7 @@ mod tests {
 
         let validator = YamlValidator::new();
         let result = validator.validate_file(yaml_file.path(), schema_file.path());
-        
+
         assert!(result.is_err());
         let err_msg = result.unwrap_err().to_string();
         assert!(err_msg.contains("Schema constraint violations"));
@@ -338,7 +339,7 @@ mod tests {
 
         let validator = YamlValidator::new();
         let result = validator.validate_content(yaml_content, schema_file.path());
-        
+
         assert!(result.is_ok());
     }
 
@@ -349,7 +350,7 @@ mod tests {
 
         let validator = YamlValidator::new();
         let result = validator.validate_content(yaml_content, schema_file.path());
-        
+
         assert!(result.is_err());
         let err_msg = result.unwrap_err().to_string();
         assert!(err_msg.contains("Schema constraint violations"));
@@ -362,7 +363,7 @@ mod tests {
 
         let validator = YamlValidator::new();
         let result = validator.validate_content(yaml_content, schema_file.path());
-        
+
         assert!(result.is_err());
         let err_msg = result.unwrap_err().to_string();
         assert!(err_msg.contains("Failed to parse YAML"));
@@ -414,7 +415,7 @@ mod tests {
         // Create a temporary directory for schemas
         let temp_dir = TempDir::new().unwrap();
         let schemas_root = temp_dir.path();
-        
+
         // Create a schema file in the temp directory
         let schema_path = schemas_root.join("test-schema.json");
         let schema_content = r#"{
@@ -434,7 +435,7 @@ mod tests {
 
         let validator = YamlValidator::new();
         let result = validator.validate_file_auto_schema(yaml_file.path(), schemas_root);
-        
+
         // This may fail if the schema resolution doesn't find the file,
         // but we're testing that the API works
         assert!(result.is_ok() || result.is_err());

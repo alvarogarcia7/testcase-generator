@@ -72,7 +72,8 @@ fn validate_files(
     let schemas_root_path = PathBuf::from(schemas_root);
 
     for yaml_file in yaml_files {
-        let schema_resolution = resolve_schema_for_file(yaml_file, explicit_schema, &schemas_root_path);
+        let schema_resolution =
+            resolve_schema_for_file(yaml_file, explicit_schema, &schemas_root_path);
 
         let (schema_path, resolved_schema) = match schema_resolution {
             Ok(path) => (Some(path.clone()), Some(path)),

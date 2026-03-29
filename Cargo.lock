@@ -2667,6 +2667,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "dotenvy",
+ "jsonschema",
  "log",
  "serde",
  "serde_json",
