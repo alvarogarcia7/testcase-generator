@@ -1627,6 +1627,589 @@ The logger library also provides cleanup management for temporary files and back
 - Verify scripts work with bash 3.2 (default on macOS)
 - Verify script syntax using `make verify-scripts`
 
+## YAML Validation
+
+All YAML files in this project must include required metadata fields and are automatically validated against their JSON schemas before parsing. This section explains the validation system, how to use it in code, and how to troubleshoot validation errors.
+
+### Required YAML Fields
+
+**MANDATORY**: Every YAML file in this project must include two required fields at the root level:
+
+1. **`type`** - Identifies the type of YAML content (e.g., `"test-case"`, `"verification-result"`, `"container"`)
+2. **`schema`** - Specifies the JSON schema URI for validation (e.g., `"tcms/test-case.schema.v1.json"`)
+
+**Example:**
+```yaml
+type: test-case
+schema: tcms/test-case.schema.v1.json
+test_case_id: TC_EXAMPLE_001
+title: Example Test Case
+# ... rest of test case content
+```
+
+**Why These Fields Are Required:**
+- **Schema Resolution**: The `schema` field enables automatic schema resolution without manual specification
+- **Type Safety**: The `type` field provides explicit type identification for documentation and tooling
+- **Validation**: Files are validated against their schema before parsing to catch errors early
+- **Consistency**: Ensures all YAML files follow a consistent structure across the project
+
+### Automatic Schema Validation
+
+YAML files are automatically validated against their schema **before** parsing in all project binaries and libraries:
+
+**Validation Process:**
+1. Read YAML file content
+2. Extract `schema` field from YAML
+3. Resolve schema path from URI (e.g., `tcms/test-case.schema.v1.json` → `schemas/test-case.schema.json`)
+4. Validate YAML content against resolved JSON schema
+5. If validation passes, deserialize YAML to Rust struct
+6. If validation fails, return detailed error with constraint violations
+
+**Benefits:**
+- **Early Error Detection**: Schema violations are caught before parsing
+- **Detailed Error Messages**: Validation errors show exact path and constraint that failed
+- **Type Safety**: Ensures YAML structure matches expected data model
+- **Automatic**: No manual validation code needed in application logic
+
+### Using `testcase_common::load_and_validate_yaml`
+
+**MANDATORY**: All new code that loads YAML files must use the `testcase_common::load_and_validate_yaml` function for automatic schema validation and deserialization.
+
+#### Basic Usage
+
+```rust
+use testcase_common::load_and_validate_yaml;
+use testcase_models::TestCase;
+
+// Load and validate a test case YAML file
+let test_case: TestCase = load_and_validate_yaml("testcases/TC_001.yaml", "schemas/")?;
+
+// File is automatically:
+// 1. Read from disk
+// 2. Schema resolved from 'schema' field
+// 3. Validated against schema
+// 4. Deserialized to TestCase struct
+```
+
+#### Function Signature
+
+```rust
+pub fn load_and_validate_yaml<T, P, S>(file_path: P, schemas_root: S) -> Result<T>
+where
+    T: DeserializeOwned,
+    P: AsRef<Path>,
+    S: AsRef<str>,
+```
+
+**Parameters:**
+- `file_path` - Path to YAML file (relative or absolute)
+- `schemas_root` - Root directory containing schema files (usually `"schemas/"`)
+
+**Returns:**
+- `Ok(T)` - Successfully validated and deserialized object
+- `Err(anyhow::Error)` - Error with context about what failed
+
+**Type Parameter:**
+- `T` - Target Rust struct implementing `serde::Deserialize`
+
+#### Loading Different YAML Types
+
+```rust
+use testcase_common::load_and_validate_yaml;
+use testcase_models::{TestCase, VerificationResult};
+
+// Load test case
+let test_case: TestCase = load_and_validate_yaml(
+    "testcases/TC_001.yaml",
+    "schemas/"
+)?;
+
+// Load verification result
+let result: VerificationResult = load_and_validate_yaml(
+    "results/verification_001.yaml",
+    "schemas/"
+)?;
+
+// Load configuration
+use testcase_common::Config;
+let config: Config = load_and_validate_yaml(
+    "config.yaml",
+    "schemas/"
+)?;
+```
+
+#### Error Handling
+
+```rust
+use testcase_common::load_and_validate_yaml;
+use testcase_models::TestCase;
+
+match load_and_validate_yaml::<TestCase, _, _>("test.yaml", "schemas/") {
+    Ok(test_case) => {
+        println!("Loaded test case: {}", test_case.test_case_id);
+        // Process test case
+    }
+    Err(e) => {
+        eprintln!("Failed to load test case: {}", e);
+        // Error contains full context:
+        // - File read errors
+        // - Schema resolution errors
+        // - Schema validation errors with constraint violations
+        // - YAML parsing errors with line numbers
+        return Err(e);
+    }
+}
+```
+
+#### Using `parse_and_validate_yaml_string`
+
+For YAML content from sources other than files (e.g., editor buffers, network responses):
+
+```rust
+use testcase_common::parse_and_validate_yaml_string;
+use testcase_models::TestCase;
+
+let yaml_content = r#"
+type: test-case
+schema: tcms/test-case.schema.v1.json
+test_case_id: TC_001
+title: Example Test
+sequences: []
+"#;
+
+let test_case: TestCase = parse_and_validate_yaml_string(
+    yaml_content,
+    "schemas/",
+    "editor buffer"  // Source name for error messages
+)?;
+```
+
+#### Integration in Binaries
+
+All project binaries use `load_and_validate_yaml`:
+
+**test-executor:**
+```rust
+// Load test case with automatic validation
+let test_case: TestCase = load_and_validate_yaml(&yaml_file, "schemas/")?;
+```
+
+**verifier:**
+```rust
+// Load verification result with automatic validation
+let result: VerificationResult = load_and_validate_yaml(&log_file, "schemas/")?;
+```
+
+**validate-yaml binary:**
+```rust
+// Uses internal validation for detailed error reporting
+let validator = YamlValidator::new();
+validator.validate_file(&yaml_file, &schema_path)?;
+```
+
+### Manual Validation with `validate-yaml` Binary
+
+The `validate-yaml` binary provides command-line YAML validation with detailed error reporting.
+
+#### Basic Usage
+
+```bash
+# Validate single YAML file (auto-resolves schema from 'schema' field)
+cargo run -p validate-yaml -- testcases/TC_001.yaml
+
+# Validate multiple YAML files
+cargo run -p validate-yaml -- testcases/*.yaml
+
+# Validate with explicit schema (overrides 'schema' field)
+cargo run -p validate-yaml -- testcases/TC_001.yaml --schema schemas/test-case.schema.json
+
+# Specify custom schemas root directory
+cargo run -p validate-yaml -- testcases/TC_001.yaml --schemas-root /custom/schemas/
+```
+
+#### Output Format
+
+**Successful validation:**
+```
+✓ testcases/TC_001.yaml (schema: schemas/test-case.schema.json)
+✓ testcases/TC_002.yaml (schema: schemas/test-case.schema.json)
+
+Summary:
+  Total files validated: 2
+  Passed: 2
+  Failed: 0
+```
+
+**Failed validation:**
+```
+✗ testcases/TC_001.yaml
+  Schema constraint violations:
+    Error #1: Path '/sequences/0/steps/0/expected/exit_code'
+      Constraint: "0" is not of type "integer"
+      Found value: "0"
+
+Summary:
+  Total files validated: 1
+  Passed: 0
+  Failed: 1
+```
+
+#### Watch Mode
+
+Monitor YAML files for changes and auto-validate (Linux/macOS only):
+
+```bash
+# Watch single file
+cargo run -p validate-yaml -- testcases/TC_001.yaml --watch
+
+# Watch multiple files
+cargo run -p validate-yaml -- testcases/*.yaml --watch
+```
+
+**Watch mode features:**
+- Monitors YAML files for changes
+- Monitors schema files (including transitive dependencies via `$ref`)
+- Debounces rapid changes (300ms)
+- Shows which files changed
+- Re-validates automatically on file save
+
+#### Verbose Output
+
+Enable detailed logging for debugging:
+
+```bash
+# Verbose mode (info level)
+cargo run -p validate-yaml -- testcases/TC_001.yaml --verbose
+
+# Custom log level
+cargo run -p validate-yaml -- testcases/TC_001.yaml --log-level debug
+
+# Trace level for maximum detail
+cargo run -p validate-yaml -- testcases/TC_001.yaml --log-level trace
+```
+
+#### Batch Validation
+
+Validate all test case YAML files and generate a detailed report:
+
+```bash
+# Generate validation report for all test cases
+make validate-testcases-report
+
+# View the report
+cat reports/validation_report.txt
+```
+
+See **Test Case Validation Report** section below for details.
+
+### Troubleshooting Validation Errors
+
+#### Common Validation Errors
+
+**1. Missing Required Field: `schema`**
+
+**Error:**
+```
+Failed to resolve schema for file: testcases/TC_001.yaml
+```
+
+**Cause:** YAML file is missing the required `schema` field.
+
+**Solution:**
+```yaml
+# Add schema field at root level
+schema: tcms/test-case.schema.v1.json
+type: test-case
+test_case_id: TC_001
+# ... rest of content
+```
+
+**2. Missing Required Field: `type`**
+
+**Error:**
+```
+Schema constraint violations:
+  Error #1: Path 'root'
+    Constraint: 'type' is a required property
+    Found value: {...}
+```
+
+**Cause:** YAML file is missing the required `type` field.
+
+**Solution:**
+```yaml
+# Add type field at root level
+type: test-case
+schema: tcms/test-case.schema.v1.json
+test_case_id: TC_001
+# ... rest of content
+```
+
+**3. Schema File Not Found**
+
+**Error:**
+```
+Schema file not found: schemas/test-case.schema.json (resolved from URI: 'tcms/test-case.schema.v1.json')
+```
+
+**Cause:** Schema URI in YAML file cannot be resolved to an existing schema file.
+
+**Solution - Check schema URI:**
+```yaml
+# Incorrect URI
+schema: tcms/wrong-name.schema.v1.json  # ✗ Wrong
+
+# Correct URI
+schema: tcms/test-case.schema.v1.json   # ✓ Correct
+```
+
+**Solution - Check schemas directory:**
+```bash
+# Verify schema file exists
+ls -la schemas/test-case.schema.json
+
+# If missing, check schemas directory structure
+tree schemas/
+```
+
+**4. Invalid Data Type**
+
+**Error:**
+```
+Schema constraint violations:
+  Error #1: Path '/sequences/0/steps/0/expected/exit_code'
+    Constraint: "0" is not of type "integer"
+    Found value: "0"
+```
+
+**Cause:** Field has wrong data type (string instead of integer).
+
+**Solution:**
+```yaml
+# Incorrect (string)
+expected:
+  exit_code: "0"  # ✗ Wrong - quoted
+
+# Correct (integer)
+expected:
+  exit_code: 0    # ✓ Correct - unquoted
+```
+
+**5. Missing Required Property**
+
+**Error:**
+```
+Schema constraint violations:
+  Error #1: Path '/sequences/0/steps/0'
+    Constraint: 'command' is a required property
+    Found value: {"description": "Test step", "expected": {...}}
+```
+
+**Cause:** Required field is missing from object.
+
+**Solution:**
+```yaml
+steps:
+  - description: Test step
+    command: echo "Hello"  # ✓ Add required field
+    expected:
+      exit_code: 0
+```
+
+**6. Invalid Enum Value**
+
+**Error:**
+```
+Schema constraint violations:
+  Error #1: Path '/prerequisites/0/type'
+    Constraint: "invalid_type" is not one of ["manual", "automatic"]
+    Found value: "invalid_type"
+```
+
+**Cause:** Field value is not one of the allowed enum values.
+
+**Solution:**
+```yaml
+prerequisites:
+  - type: manual      # ✓ Use valid enum value
+    description: Install required software
+```
+
+**7. Array Length Constraint Violation**
+
+**Error:**
+```
+Schema constraint violations:
+  Error #1: Path '/sequences'
+    Constraint: [] should have at least 1 item
+    Found value: []
+```
+
+**Cause:** Array must have minimum number of items but is empty.
+
+**Solution:**
+```yaml
+sequences:
+  - sequence_id: 1   # ✓ Add at least one sequence
+    name: Test Sequence
+    steps: []
+```
+
+**8. Pattern/Regex Mismatch**
+
+**Error:**
+```
+Schema constraint violations:
+  Error #1: Path '/test_case_id'
+    Constraint: "invalid id" does not match pattern "^[A-Z][A-Z0-9_]*$"
+    Found value: "invalid id"
+```
+
+**Cause:** String value doesn't match required regex pattern.
+
+**Solution:**
+```yaml
+# Incorrect (spaces, lowercase)
+test_case_id: "invalid id"     # ✗ Wrong
+
+# Correct (uppercase, underscores)
+test_case_id: TC_EXAMPLE_001   # ✓ Correct
+```
+
+#### Schema Path Resolution
+
+The validation system resolves schema URIs to file paths using these rules:
+
+**URI Format:** `namespace/schema-name.schema.version.json`
+
+**Examples:**
+- `tcms/test-case.schema.v1.json` → `schemas/test-case.schema.json`
+- `tcms/verification-result.schema.v1.json` → `schemas/verification-result.schema.json`
+- `tcms/container.schema.v1.json` → `schemas/container.schema.json`
+
+**Resolution Process:**
+1. Extract schema name from URI (remove namespace and version)
+2. Append to schemas root directory
+3. Verify file exists
+4. Return absolute path to schema file
+
+**Custom Schemas Root:**
+```bash
+# Use custom schemas directory
+cargo run -p validate-yaml -- test.yaml --schemas-root /custom/path/schemas/
+```
+
+**Debugging Schema Resolution:**
+```bash
+# Enable debug logging to see resolved paths
+cargo run -p validate-yaml -- test.yaml --log-level debug
+
+# Output shows:
+# DEBUG Resolved schema 'tcms/test-case.schema.v1.json' for file 'test.yaml' to 'schemas/test-case.schema.json'
+```
+
+#### Debugging Validation Failures
+
+**Step 1: Enable verbose output**
+```bash
+cargo run -p validate-yaml -- testcases/TC_001.yaml --verbose
+```
+
+**Step 2: Check schema file exists**
+```bash
+# Extract schema URI from YAML
+grep "^schema:" testcases/TC_001.yaml
+
+# Verify schema file exists
+ls -la schemas/test-case.schema.json
+```
+
+**Step 3: Validate schema file is valid JSON**
+```bash
+# Parse schema JSON
+cat schemas/test-case.schema.json | jq .
+
+# If jq fails, schema JSON is malformed
+```
+
+**Step 4: Compare YAML structure to schema**
+```bash
+# View schema requirements
+cat schemas/test-case.schema.json | jq '.required'
+cat schemas/test-case.schema.json | jq '.properties'
+
+# View YAML structure
+cat testcases/TC_001.yaml
+```
+
+**Step 5: Test with minimal valid YAML**
+```bash
+# Create minimal YAML matching schema
+cat > /tmp/minimal.yaml <<EOF
+type: test-case
+schema: tcms/test-case.schema.v1.json
+test_case_id: TC_MINIMAL
+title: Minimal Test
+sequences: []
+EOF
+
+# Validate minimal YAML
+cargo run -p validate-yaml -- /tmp/minimal.yaml --verbose
+
+# If minimal YAML passes, incrementally add fields from failing YAML
+```
+
+**Step 6: Use JSON schema validators**
+```bash
+# Convert YAML to JSON
+cat testcases/TC_001.yaml | yq -o json > /tmp/test.json
+
+# Validate with external tool (if available)
+jsonschema -i /tmp/test.json schemas/test-case.schema.json
+```
+
+#### Common Schema Violations
+
+| Violation | Description | Fix |
+|-----------|-------------|-----|
+| Missing `type` field | Root-level `type` field not present | Add `type: test-case` |
+| Missing `schema` field | Root-level `schema` field not present | Add `schema: tcms/test-case.schema.v1.json` |
+| Wrong data type | String instead of integer, etc. | Remove quotes from numbers/booleans |
+| Missing required property | Required field not in object | Add missing field with valid value |
+| Invalid enum value | Value not in allowed list | Use one of the allowed enum values |
+| Empty array | Array must have min items | Add at least one item to array |
+| Invalid pattern | String doesn't match regex | Fix string format to match pattern |
+| Extra properties | Schema has `additionalProperties: false` | Remove unknown properties |
+
+#### Getting Help
+
+If validation errors persist after troubleshooting:
+
+1. **Check Schema Documentation**
+   - Review schema file: `schemas/test-case.schema.json`
+   - Check schema comments and descriptions
+   - Look at `required` and `properties` sections
+
+2. **Review Example Files**
+   - Valid examples: `testcases/examples/`
+   - Verifier scenarios: `testcases/verifier-scenarios/`
+   - Copy structure from working examples
+
+3. **Use Validation Report**
+   - Generate full report: `make validate-testcases-report`
+   - Compare passing and failing files
+   - Identify common patterns in errors
+
+4. **Check Recent Changes**
+   - Review schema changes in git history
+   - Check if schema was recently updated
+   - Verify YAML files are compatible with new schema
+
+5. **Enable Maximum Logging**
+   ```bash
+   cargo run -p validate-yaml -- file.yaml --log-level trace
+   ```
+
 ## Schema Validation
 
 The project includes comprehensive schema validation for both test case inputs and verification outputs.
