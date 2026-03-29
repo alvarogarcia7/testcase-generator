@@ -1048,7 +1048,8 @@ hydration_vars:
     assert!(!hydrated_yaml.contains("${#USERNAME}"));
     assert!(!hydrated_yaml.contains("${#SERVER_HOST}"));
 
-    // Step 6: Parse hydrated YAML
+    // Step 6: Parse hydrated YAML (note: this would need a schema field in production)
+    // For this test, we use raw serde_yaml since the hydrated YAML may not have proper schema
     let test_case: TestCase = serde_yaml::from_str(&hydrated_yaml)?;
     assert_eq!(test_case.id, "TC_WORKFLOW");
     assert_eq!(test_case.test_sequences.len(), 1);
