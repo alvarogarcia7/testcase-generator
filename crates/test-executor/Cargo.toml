@@ -13,6 +13,7 @@ testcase-execution = { path = "../testcase-execution" }
 testcase-storage = { path = "../testcase-storage" }
 testcase-models = { path = "../testcase-models" }
 testcase-validation = { path = "../testcase-validation" }
+testcase-common = { path = "../testcase-common" }
 audit-verifier = { path = "../audit-verifier" }
 clap = { workspace = true }
 anyhow = { workspace = true }

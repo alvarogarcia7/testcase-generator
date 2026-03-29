@@ -5,6 +5,7 @@ use clap::{Parser, Subcommand};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
+use testcase_common::load_and_validate_yaml;
 use testcase_execution::{AuditLogger, TestExecutor, VarHydrator};
 use testcase_models::TestCase;
 use testcase_storage::{TestCaseFilter, TestCaseFilterer, TestCaseStorage};
@@ -186,13 +187,8 @@ enum AuditLogCommands {
 }
 
 fn load_test_case(yaml_file: &PathBuf) -> Result<TestCase> {
-    let yaml_content = fs::read_to_string(yaml_file)
-        .context(format!("Failed to read YAML file: {}", yaml_file.display()))?;
-
-    let test_case: TestCase =
-        serde_yaml::from_str(&yaml_content).context("Failed to parse YAML content as TestCase")?;
-
-    Ok(test_case)
+    load_and_validate_yaml::<TestCase, _, _>(yaml_file, "schemas/")
+        .context(format!("Failed to load and validate YAML file: {}", yaml_file.display()))
 }
 
 fn load_all_yaml_files_from_dir(dir: &PathBuf) -> Result<Vec<(PathBuf, TestCase)>> {

@@ -2603,6 +2603,7 @@ dependencies = [
  "serde",
  "serde_yaml",
  "tempfile",
+ "testcase-common",
  "testcase-execution",
  "testcase-models",
  "testcase-storage",
