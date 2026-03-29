@@ -87,6 +87,105 @@ where
     Ok(result)
 }
 
+/// Parse and validate a YAML string, then deserialize to type T
+///
+/// This function is designed for working with YAML content from editor buffers
+/// or other string sources where you don't have a file path.
+///
+/// # Arguments
+///
+/// * `yaml_content` - The YAML content as a string
+/// * `schemas_root` - Root directory containing schema files for validation
+/// * `source_name` - Name to use in error messages (e.g., "editor buffer")
+///
+/// # Returns
+///
+/// Returns `Ok(T)` with the deserialized object if successful, or an error if:
+/// - Schema resolution fails (missing 'schema' field in YAML)
+/// - Schema validation fails
+/// - YAML deserialization fails
+///
+/// # Example
+///
+/// ```no_run
+/// use serde::Deserialize;
+/// use testcase_common::parse_and_validate_yaml_string;
+///
+/// #[derive(Deserialize)]
+/// struct TestCase {
+///     schema: String,
+///     id: String,
+///     description: String,
+/// }
+///
+/// let yaml = r#"
+/// schema: tcms/test-case.schema.v1.json
+/// id: TC001
+/// description: Example test case
+/// "#;
+///
+/// let test_case: TestCase = parse_and_validate_yaml_string(yaml, "schemas/", "editor buffer").unwrap();
+/// ```
+pub fn parse_and_validate_yaml_string<T, S>(
+    yaml_content: &str,
+    schemas_root: S,
+    source_name: &str,
+) -> Result<T>
+where
+    T: DeserializeOwned,
+    S: AsRef<str>,
+{
+    let schemas_root = schemas_root.as_ref();
+
+    // Step 1: Parse YAML to extract schema field
+    let envelope: crate::envelope::Envelope = serde_yaml::from_str(yaml_content).map_err(|e| {
+        log_yaml_parse_error(&e, yaml_content, source_name);
+        anyhow::anyhow!("Failed to parse YAML from {}: {}", source_name, e)
+    })?;
+
+    // Step 2: Resolve schema from the payload's schema field
+    let schema_uri = envelope
+        .schema
+        .ok_or_else(|| anyhow::anyhow!("Missing 'schema' field in YAML from {}", source_name))?;
+
+    let schema_path = crate::envelope::resolve_schema_uri(&schema_uri, schemas_root)?;
+
+    // Verify schema file exists
+    if !schema_path.exists() {
+        anyhow::bail!(
+            "Schema file not found: {} (resolved from URI: '{}')",
+            schema_path.display(),
+            schema_uri
+        );
+    }
+
+    log::debug!(
+        "Resolved schema '{}' for {} to '{}'",
+        schema_uri,
+        source_name,
+        schema_path.display()
+    );
+
+    // Step 3: Validate against the schema
+    validate_yaml_against_schema(yaml_content, &schema_path, source_name)
+        .context(format!("Schema validation failed for {}", source_name))?;
+
+    log::debug!("Schema validation successful for {}", source_name);
+
+    // Step 4: Deserialize to type T
+    let result: T = serde_yaml::from_str(yaml_content).map_err(|e| {
+        log_yaml_parse_error(&e, yaml_content, source_name);
+        anyhow::anyhow!("Failed to deserialize YAML from {}: {}", source_name, e)
+    })?;
+
+    log::debug!(
+        "Successfully parsed and validated YAML from {}",
+        source_name
+    );
+
+    Ok(result)
+}
+
 /// Validates YAML content against a JSON schema file
 ///
 /// # Arguments

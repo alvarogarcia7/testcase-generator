@@ -8,5 +8,5 @@ pub use config::{
     JsonEscapingMethod, ScriptGenerationConfig,
 };
 pub use envelope::resolve_schema_from_payload;
-pub use yaml_loader::load_and_validate_yaml;
+pub use yaml_loader::{load_and_validate_yaml, parse_and_validate_yaml_string};
 pub use yaml_utils::log_yaml_parse_error;

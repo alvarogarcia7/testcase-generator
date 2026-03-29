@@ -5,10 +5,10 @@ use std::path::{Path, PathBuf};
 
 /// Envelope structure for extracting schema field from YAML/JSON documents
 #[derive(Debug, Deserialize)]
-struct Envelope {
+pub struct Envelope {
     #[serde(rename = "type")]
-    _type: Option<String>,
-    schema: Option<String>,
+    pub _type: Option<String>,
+    pub schema: Option<String>,
 }
 
 /// Resolve schema from payload by reading the `schema` field and mapping to local path
@@ -80,7 +80,7 @@ pub fn resolve_schema_from_payload<P: AsRef<Path>>(
 ///
 /// # Returns
 /// * `Ok(PathBuf)` - Local schema file path
-fn resolve_schema_uri(schema_uri: &str, schemas_root: &str) -> Result<PathBuf> {
+pub fn resolve_schema_uri(schema_uri: &str, schemas_root: &str) -> Result<PathBuf> {
     // Schema URI is expected to be a relative path like "tcms/test-case.schema.v1.json"
     // We simply join it with the schemas root
     let schema_path = PathBuf::from(schemas_root).join(schema_uri);
