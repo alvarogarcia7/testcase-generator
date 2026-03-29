@@ -1,8 +1,44 @@
+# ============================================================================
+# Testcase Manager Makefile
+# ============================================================================
+#
+# This Makefile uses an INCREMENTAL BUILD STRATEGY by default for everyday
+# development workflows. Common targets like `make build`, `make test`,
+# `make lint`, and `make clippy` automatically detect which crates have changed
+# since a base reference (default: main branch) and only build/test those crates
+# and their reverse dependencies.
+#
+# INCREMENTAL TARGETS (default for everyday use):
+#   make build              - Build only affected crates
+#   make test               - Test only affected crates
+#   make lint               - Lint only affected crates
+#   make clippy             - Clippy only affected crates
+#   make test-unit          - Unit tests for affected crates only
+#   make test-e2e           - E2E tests for affected crates only
+#
+# FULL BUILD TARGETS (for CI/CD or comprehensive validation):
+#   make build-all          - Build all workspace crates unconditionally
+#   make test-all           - Full build + all unit tests + all E2E tests
+#
+# CUSTOMIZING BASE REFERENCE:
+#   By default, incremental targets compare against 'main' branch.
+#   You can override this with BASE_REF parameter:
+#
+#   make build BASE_REF=develop          # Compare against develop branch
+#   make test BASE_REF=HEAD~3            # Compare against 3 commits ago
+#   make build BASE_REF=abc123           # Compare against specific commit
+#
+# DEBUGGING:
+#   make list-affected-crates BASE_REF=main  # See which crates would be built
+#
 # Include modular makefiles
 include mk/python.mk
 -include mk/incremental.mk
 
-pre-commit: build lint test
+pre-commit:
+	@${MAKE} build BASE_REF=$(or $(BASE_REF),main)
+	@${MAKE} lint BASE_REF=$(or $(BASE_REF),main)
+	@${MAKE} test BASE_REF=$(or $(BASE_REF),main)
 .PHONY: pre-commit
 
 README_INSTALL_AUTOMATED.md:
@@ -17,23 +53,61 @@ README_INSTALL_AUTOMATED.md:
   	done
 .PHONY: README_INSTALL_AUTOMATED.md
 
-lint: fmt clippy
+lint:
+	@${MAKE} fmt BASE_REF=$(or $(BASE_REF),main)
+	@${MAKE} clippy BASE_REF=$(or $(BASE_REF),main)
 .PHONY: lint
 
 fmt:
-	cargo fmt --all
+	@BASE_REF=$(or $(BASE_REF),main); \
+	AFFECTED=$$(./scripts/detect-local-changes.sh "$$BASE_REF" 2>/dev/null || echo ""); \
+	if [ -z "$$AFFECTED" ]; then \
+		echo "No changes detected - skipping fmt"; \
+	else \
+		echo "Running fmt for affected crates: $$AFFECTED"; \
+		for crate in $$AFFECTED; do \
+			cargo fmt -p "$$crate" || exit 1; \
+		done; \
+	fi
 .PHONY: fmt
 
 build:
-	cargo build --workspace
+	@BASE_REF=$(or $(BASE_REF),main); \
+	AFFECTED=$$(./scripts/detect-local-changes.sh "$$BASE_REF" 2>/dev/null || echo ""); \
+	if [ -z "$$AFFECTED" ]; then \
+		echo "No changes detected - skipping build"; \
+	else \
+		echo "Building affected crates: $$AFFECTED"; \
+		for crate in $$AFFECTED; do \
+			cargo build -p "$$crate" || exit 1; \
+		done; \
+	fi
 .PHONY: build
 
 build-debug:
-	cargo build --workspace
+	@BASE_REF=$(or $(BASE_REF),main); \
+	AFFECTED=$$(./scripts/detect-local-changes.sh "$$BASE_REF" 2>/dev/null || echo ""); \
+	if [ -z "$$AFFECTED" ]; then \
+		echo "No changes detected - skipping build"; \
+	else \
+		echo "Building affected crates: $$AFFECTED"; \
+		for crate in $$AFFECTED; do \
+			cargo build -p "$$crate" || exit 1; \
+		done; \
+	fi
 .PHONY: build-debug
 
 build-release:
-	cargo build --workspace --release
+	@BASE_REF=$(or $(BASE_REF),main); \
+	AFFECTED=$$(./scripts/detect-local-changes.sh "$$BASE_REF" 2>/dev/null || echo ""); \
+	if [ -z "$$AFFECTED" ]; then \
+		echo "No changes detected - skipping build"; \
+	else \
+		echo "Building affected crates (release mode): $$AFFECTED"; \
+		for crate in $$AFFECTED; do \
+			cargo build -p "$$crate" --release || exit 1; \
+		done; \
+	fi
 .PHONY: build-release
 
 # Per-crate build targets
@@ -127,7 +201,16 @@ test: setup-python-for-test
 .PHONY: test
 
 test-unit: build
-	cargo test --workspace --all-features --tests
+	@BASE_REF=$(or $(BASE_REF),main); \
+	AFFECTED=$$(./scripts/detect-local-changes.sh "$$BASE_REF" 2>/dev/null || echo ""); \
+	if [ -z "$$AFFECTED" ]; then \
+		echo "No changes detected - skipping unit tests"; \
+	else \
+		echo "Running unit tests for affected crates: $$AFFECTED"; \
+		for crate in $$AFFECTED; do \
+			cargo test -p "$$crate" --all-features --tests || exit 1; \
+		done; \
+	fi
 .PHONY: test-unit
 
 test-doc:
@@ -135,10 +218,20 @@ test-doc:
 .PHONY: test-doc
 
 clippy:
-	cargo clippy --workspace --all-features --tests -- -D warnings
+	@BASE_REF=$(or $(BASE_REF),main); \
+	AFFECTED=$$(./scripts/detect-local-changes.sh "$$BASE_REF" 2>/dev/null || echo ""); \
+	if [ -z "$$AFFECTED" ]; then \
+		echo "No changes detected - skipping clippy"; \
+	else \
+		echo "Running clippy for affected crates: $$AFFECTED"; \
+		for crate in $$AFFECTED; do \
+			cargo clippy -p "$$crate" --all-features --tests -- -D warnings || exit 1; \
+		done; \
+	fi
 .PHONY: clippy
 
-run: build
+run:
+	@${MAKE} build BASE_REF=$(or $(BASE_REF),main)
 	./target/debug/testcase-manager
 .PHONY: run
 
@@ -182,68 +275,97 @@ demo-audit-logging: build-audit-verifier build-test-executor
 	@bash examples/audit_logging_demo.sh
 .PHONY: demo-audit-logging
 
-test-e2e-verifier-container: build
+test-e2e-verifier-container:
+	@${MAKE} build BASE_REF=$(or $(BASE_REF),main)
 	./tests/integration/test_verifier_container_e2e.sh
 .PHONY: test-e2e-verifier-container
 
-test-verifier-edge-cases: build
+test-verifier-edge-cases:
+	@${MAKE} build BASE_REF=$(or $(BASE_REF),main)
 	cargo test verification_edge_cases_test
 #	./tests/integration/test_verifier_edge_cases_e2e.sh
 .PHONY: test-verifier-edge-cases
 
-test-e2e-failing: build
+test-e2e-failing:
+	@${MAKE} build BASE_REF=$(or $(BASE_REF),main)
 	./tests/integration/run_e2e_test.sh
 	./tests/integration/test_variable_passing_e2e.sh
 
 .PHONY: test-e2e-failing
 
-test-e2e-failing-all: build
+test-e2e-failing-all:
+	@${MAKE} build BASE_REF=$(or $(BASE_REF),main)
 	./tests/integration/run_all_tests.sh
 .PHONY: test-e2e-failing-all
 
 test-e2e: build
-#	${MAKE} test-e2e-validate-yaml
-#	${MAKE} test-e2e-orchestrator
-#	${MAKE} test-e2e-orchestrator-examples
-#	${MAKE} test-e2e-executor
-#	#${MAKE} test-verify-sample
-#	${MAKE} example_export-demo
-	./crates/testcase-manager/tests/integration/check_environment.sh
-	#./crates/testcase-manager/tests/integration/ci_test.sh
-	#./crates/testcase-manager/tests/integration/run_all_tests.sh
-	#./crates/testcase-manager/tests/integration/run_e2e_test.sh
-	#./crates/testcase-manager/tests/integration/run_validate_files_test.sh
-	./crates/testcase-manager/tests/integration/smoke_test.sh
-	./crates/testcase-manager/tests/integration/test_bdd_e2e.sh
-    #./crates/testcase-manager/tests/integration/test_bdd_initial_conditions.sh
-	./crates/testcase-manager/tests/integration/test_conditional_verification_e2e.sh
-	#./crates/testcase-manager/tests/integration/test_dependencies_e2e.sh
-	#./crates/testcase-manager/tests/integration/test_docker_build.sh
-	./crates/testcase-manager/tests/integration/test_executor_e2e.sh
-	#./crates/testcase-manager/tests/integration/test_hooks_e2e.sh
-	#./crates/testcase-manager/tests/integration/test_json_escape_e2e.sh
-	./crates/testcase-manager/tests/integration/test_manual_steps_e2e.sh
-	./crates/testcase-manager/tests/integration/test_manual_verification_e2e.sh
-	./crates/testcase-manager/tests/integration/test_orchestrator_e2e.sh
-	#./crates/testcase-manager/tests/integration/test_orchestrator_examples.sh
-	#./crates/testcase-manager/tests/integration/test_run_manager_e2e.sh
-	./crates/testcase-manager/tests/integration/test_validate_yaml_watch_e2e.sh
-	./crates/testcase-manager/tests/integration/test_validate_yaml_multi_e2e.sh
-	./crates/testcase-manager/tests/integration/test_validate_yaml_schema_watch_e2e.sh
-	./crates/testcase-manager/tests/integration/test_validate_yaml_transitive_schema_watch_e2e.sh
-	./crates/testcase-manager/tests/integration/test_auto_schema_validation_e2e.sh
-	./crates/testcase-manager/tests/integration/test_variable_display_e2e.sh
-	./crates/testcase-manager/tests/integration/test_variable_passing_e2e.sh
-	./crates/testcase-manager/tests/integration/test_verifier_e2e.sh
-	./crates/testcase-manager/tests/integration/test_verifier_container_e2e.sh
-	./crates/testcase-manager/tests/integration/test_verifier_edge_cases_e2e.sh
-	${MAKE} test-verifier-edge-cases
-	#./crates/testcase-manager/tests/integration/test_verify_e2e.sh
-	#./crates/testcase-manager/tests/integration/test_container_yaml_compat_e2e.sh
-	./crates/testcase-manager/tests/integration/test_documentation_generation.sh
-	# Valid values of BUILD_VARIANT are "" (debug) or "--release" (release mode)
-	BUILD_VARIANT="" ./scripts/run_verifier_and_generate_reports.sh
-	${MAKE} validate-output-schemas
+	@BASE_REF=$(or $(BASE_REF),main); \
+	AFFECTED=$$(./scripts/detect-local-changes.sh "$$BASE_REF" 2>/dev/null || echo ""); \
+	if [ -z "$$AFFECTED" ]; then \
+		echo "No changes detected - running minimal E2E tests"; \
+		./crates/testcase-manager/tests/integration/check_environment.sh; \
+		./crates/testcase-manager/tests/integration/smoke_test.sh; \
+	else \
+		echo "Running E2E tests for affected crates: $$AFFECTED"; \
+		E2E_TESTS_FILE=$$(mktemp); \
+		./crates/testcase-manager/tests/integration/check_environment.sh; \
+		for crate in $$AFFECTED; do \
+			case "$$crate" in \
+				validate-yaml) \
+					echo "./crates/testcase-manager/tests/integration/test_validate_yaml_watch_e2e.sh" >> $$E2E_TESTS_FILE; \
+					echo "./crates/testcase-manager/tests/integration/test_validate_yaml_multi_e2e.sh" >> $$E2E_TESTS_FILE; \
+					echo "./crates/testcase-manager/tests/integration/test_validate_yaml_schema_watch_e2e.sh" >> $$E2E_TESTS_FILE; \
+					echo "./crates/testcase-manager/tests/integration/test_validate_yaml_transitive_schema_watch_e2e.sh" >> $$E2E_TESTS_FILE; \
+					echo "./crates/testcase-manager/tests/integration/test_auto_schema_validation_e2e.sh" >> $$E2E_TESTS_FILE; \
+					;; \
+				test-executor) \
+					echo "./crates/testcase-manager/tests/integration/test_executor_e2e.sh" >> $$E2E_TESTS_FILE; \
+					echo "./crates/testcase-manager/tests/integration/test_variable_passing_e2e.sh" >> $$E2E_TESTS_FILE; \
+					echo "./crates/testcase-manager/tests/integration/test_conditional_verification_e2e.sh" >> $$E2E_TESTS_FILE; \
+					echo "./crates/testcase-manager/tests/integration/test_manual_steps_e2e.sh" >> $$E2E_TESTS_FILE; \
+					;; \
+				test-orchestrator) \
+					echo "./crates/testcase-manager/tests/integration/test_orchestrator_e2e.sh" >> $$E2E_TESTS_FILE; \
+					;; \
+				verifier) \
+					echo "./crates/testcase-manager/tests/integration/test_verifier_e2e.sh" >> $$E2E_TESTS_FILE; \
+					echo "./crates/testcase-manager/tests/integration/test_verifier_container_e2e.sh" >> $$E2E_TESTS_FILE; \
+					echo "./crates/testcase-manager/tests/integration/test_verifier_edge_cases_e2e.sh" >> $$E2E_TESTS_FILE; \
+					echo "./scripts/run_verifier_and_generate_reports.sh" >> $$E2E_TESTS_FILE; \
+					;; \
+				audit-verifier) \
+					echo "./crates/audit-verifier/tests/integration/test_audit_logging_demo_e2e.sh" >> $$E2E_TESTS_FILE; \
+					echo "./crates/audit-verifier/tests/integration/test_audit_verifier_e2e.sh" >> $$E2E_TESTS_FILE; \
+					echo "./crates/audit-verifier/tests/integration/test_audit_key_scenarios.sh" >> $$E2E_TESTS_FILE; \
+					echo "./crates/audit-verifier/tests/integration/test_simple_workflow.sh" >> $$E2E_TESTS_FILE; \
+					;; \
+				json-escape) \
+					echo "./crates/testcase-manager/tests/integration/test_json_escape_e2e.sh" >> $$E2E_TESTS_FILE; \
+					;; \
+				testcase-manager) \
+					echo "./crates/testcase-manager/tests/integration/smoke_test.sh" >> $$E2E_TESTS_FILE; \
+					echo "./crates/testcase-manager/tests/integration/test_bdd_e2e.sh" >> $$E2E_TESTS_FILE; \
+					echo "./crates/testcase-manager/tests/integration/test_manual_verification_e2e.sh" >> $$E2E_TESTS_FILE; \
+					echo "./crates/testcase-manager/tests/integration/test_variable_display_e2e.sh" >> $$E2E_TESTS_FILE; \
+					echo "./crates/testcase-manager/tests/integration/test_documentation_generation.sh" >> $$E2E_TESTS_FILE; \
+					;; \
+			esac; \
+		done; \
+		if [ -s "$$E2E_TESTS_FILE" ]; then \
+			cat "$$E2E_TESTS_FILE" | sort -u | while read test_script; do \
+				if [ -f "$$test_script" ]; then \
+					echo "Running: $$test_script"; \
+					bash "$$test_script" || exit 1; \
+				fi; \
+			done; \
+		fi; \
+		rm -f "$$E2E_TESTS_FILE"; \
+		if echo "$$AFFECTED" | grep -qw "verifier"; then \
+			${MAKE} test-verifier-edge-cases; \
+			BUILD_VARIANT="" ./scripts/run_verifier_and_generate_reports.sh; \
+		fi; \
+		${MAKE} validate-output-schemas; \
+	fi
 .PHONY: test-e2e
 
 test-e2e-f: build
@@ -285,10 +407,11 @@ coverage:
 	cargo llvm-cov --all-features --workspace --tests --ignore-filename-regex '$(COVERAGE_EXCLUDE_REGEX)' --fail-under-lines 50
 .PHONY: coverage
 
-coverage-e2e: build
+coverage-e2e:
+	@${MAKE} build BASE_REF=$(or $(BASE_REF),main)
 	cargo llvm-cov clean --workspace
 	cargo llvm-cov --all-features --workspace --no-report --ignore-filename-regex '$(COVERAGE_EXCLUDE_REGEX)'
-	${MAKE} test-e2e
+	${MAKE} test-e2e BASE_REF=$(or $(BASE_REF),main)
 	cargo llvm-cov report --ignore-filename-regex '$(COVERAGE_EXCLUDE_REGEX)' --fail-under-lines 70
 .PHONY: coverage-e2e
 
@@ -309,10 +432,11 @@ coverage-report:
 	cargo llvm-cov report --ignore-filename-regex '$(COVERAGE_EXCLUDE_REGEX)'
 .PHONY: coverage-report
 
-coverage-report-e2e: build
+coverage-report-e2e:
+	@${MAKE} build BASE_REF=$(or $(BASE_REF),main)
 	cargo llvm-cov clean --workspace
 	cargo llvm-cov --all-features --workspace --no-report --ignore-filename-regex '$(COVERAGE_EXCLUDE_REGEX)'
-	${MAKE} test-e2e
+	${MAKE} test-e2e BASE_REF=$(or $(BASE_REF),main)
 	cargo llvm-cov report --ignore-filename-regex '$(COVERAGE_EXCLUDE_REGEX)'
 .PHONY: coverage-report-e2e
 
@@ -445,7 +569,8 @@ test-e2e-validate-yaml: build-validate-yaml
 	./tests/integration/test_validate_yaml_watch_e2e.sh
 .PHONY: test-e2e-validate-yaml
 
-test-e2e-auto-schema: build
+test-e2e-auto-schema:
+	@${MAKE} build BASE_REF=$(or $(BASE_REF),main)
 	./tests/integration/test_auto_schema_validation_e2e.sh
 .PHONY: test-e2e-auto-schema
 
@@ -458,7 +583,8 @@ docker-run:
 	docker run -v $(PWD)/testcases:/app/testcases testcase-manager:latest
 .PHONY: docker-run
 
-test-verify-sample: build
+test-verify-sample:
+	@${MAKE} build BASE_REF=$(or $(BASE_REF),main)
 	./tests/integration/test_verify_e2e.sh
 .PHONY: test-verify-sample
 
@@ -523,33 +649,40 @@ test-executor-sample: build-test-executor
 	@echo "All test-executor sample verifications passed!"
 .PHONY: test-executor-sample
 
-test-e2e-executor: build
+test-e2e-executor:
+	@${MAKE} build BASE_REF=$(or $(BASE_REF),main)
 	./tests/integration/test_executor_e2e.sh
 .PHONY: test-e2e-executor
 
-test-e2e-orchestrator: build
+test-e2e-orchestrator:
+	@${MAKE} build BASE_REF=$(or $(BASE_REF),main)
 	./tests/integration/test_orchestrator_e2e.sh
 	cargo run --bin test-orchestrator run testcases/self_validated_example.yml --verbose
 	! cargo run --bin test-orchestrator run testcases/self_validated_example_wrong.yml
 .PHONY: test-e2e-orchestrator
 
-test-e2e-orchestrator-examples: build
+test-e2e-orchestrator-examples:
+	@${MAKE} build BASE_REF=$(or $(BASE_REF),main)
 	./tests/integration/test_orchestrator_examples.sh
 .PHONY: test-e2e-orchestrator-examples
 
-generate-docs: build
+generate-docs:
+	@${MAKE} build BASE_REF=$(or $(BASE_REF),main)
 	./scripts/generate_documentation_reports.sh
 .PHONY: generate-docs
 
-generate-docs-all: build
+generate-docs-all:
+	@${MAKE} build BASE_REF=$(or $(BASE_REF),main)
 	./scripts/generate_documentation_reports.sh --logs-dir testcases --test-case-dir testcases
 .PHONY: generate-docs-all
 
-generate-docs-coverage: setup-python-for-test build
+generate-docs-coverage: setup-python-for-test
+	@${MAKE} build BASE_REF=$(or $(BASE_REF),main)
 	./scripts/generate_documentation_coverage_report.sh
 .PHONY: generate-docs-coverage
 
-test-container-compat: build
+test-container-compat:
+	@${MAKE} build BASE_REF=$(or $(BASE_REF),main)
 	./scripts/test_container_yaml_compatibility.sh
 .PHONY: test-container-compat
 
