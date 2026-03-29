@@ -382,16 +382,24 @@ USAGE EXAMPLES:
 
 CONFIGURATION:
 
-sccache can be configured using environment variables:
+This project uses a global cache directory for sccache to enable
+cache sharing across multiple worktrees:
 
-- SCCACHE_DIR: Cache directory (default: ~/.cache/sccache)
+  ~/.cache/sccache/testcase-manager
+
+This is configured in .cargo/config.toml and is automatically used
+when building with cargo.
+
+Additional sccache configuration options (environment variables):
+
+- SCCACHE_DIR: Cache directory (default: configured in .cargo/config.toml)
 - SCCACHE_CACHE_SIZE: Maximum cache size (default: 10G)
 - SCCACHE_REDIS: Redis server for distributed caching
 - SCCACHE_S3_*: S3 bucket configuration for distributed caching
 
-Example configuration:
+Example custom configuration (overrides .cargo/config.toml):
 
-export SCCACHE_DIR=~/.cache/sccache
+export SCCACHE_DIR=~/my-custom-cache
 export SCCACHE_CACHE_SIZE=20G
 
 TROUBLESHOOTING:

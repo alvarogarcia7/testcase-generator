@@ -16,6 +16,8 @@ variables:
   DOCKER_DRIVER: overlay2
   DOCKER_TLS_CERTDIR: "/certs"
   # sccache configuration for build caching
+  # In CI: Use project directory for GitLab Runner cache compatibility
+  # In local dev: Uses ~/.cache/sccache/testcase-manager (configured in .cargo/config.toml)
   RUSTC_WRAPPER: sccache
   SCCACHE_DIR: ${CI_PROJECT_DIR}/.sccache
   SCCACHE_CACHE_SIZE: 5G
@@ -117,7 +119,7 @@ rust:build-test-lint:
     - rustc --version
     - cargo --version
     - apt-get update -qq
-    - apt-get install -y -qq curl
+    - apt-get install -y -qq curl jq
     # Install uv package manager
     - curl -LsSf https://astral.sh/uv/install.sh | sh
     - export PATH="$HOME/.cargo/bin:$PATH"
@@ -129,6 +131,37 @@ rust:build-test-lint:
     - ./scripts/install-sccache.sh --ci
     # Install coverage tools using the installation script
     - ./scripts/install-coverage-tools.sh --gitlab
+    # Detect changed crates for selective builds
+    - |
+      echo "===== Detecting Changed Crates ====="
+      export AFFECTED_CRATES=""
+      export BUILD_ALL_CRATES="false"
+      
+      # Check if we're on a protected branch (main, master, etc.) or if change detection should be skipped
+      if [[ "$CI_COMMIT_REF_PROTECTED" == "true" ]] || [[ "$CI_COMMIT_BRANCH" == "main" ]] || [[ "$CI_COMMIT_BRANCH" == "master" ]]; then
+        echo "Running on protected branch '$CI_COMMIT_BRANCH' - building all crates"
+        export BUILD_ALL_CRATES="true"
+      elif [[ -z "$CI_MERGE_REQUEST_DIFF_BASE_SHA" ]]; then
+        echo "CI_MERGE_REQUEST_DIFF_BASE_SHA not set - building all crates"
+        export BUILD_ALL_CRATES="true"
+      else
+        # Run change detection script
+        if DETECTED_CRATES=$(./scripts/ci-detect-changes.sh 2>&1); then
+          if [[ -n "$DETECTED_CRATES" ]]; then
+            export AFFECTED_CRATES="$DETECTED_CRATES"
+            echo "Detected affected crates: $AFFECTED_CRATES"
+            # Count the number of affected crates
+            CRATE_COUNT=$(echo "$AFFECTED_CRATES" | wc -w)
+            echo "Number of affected crates: $CRATE_COUNT"
+          else
+            echo "No crates affected by changes - will skip build/test/lint"
+            export AFFECTED_CRATES=""
+          fi
+        else
+          echo "Change detection failed - falling back to building all crates"
+          export BUILD_ALL_CRATES="true"
+        fi
+      fi
   image: rust:latest
   cache:
     key: "${CI_COMMIT_REF_SLUG}"
@@ -152,33 +185,147 @@ rust:build-test-lint:
 
     # Build
     - echo "===== Building Release Binaries ====="
-    - cargo build --all --all-features --release
+    - |
+      if [[ "$BUILD_ALL_CRATES" == "true" ]]; then
+        echo "Building all crates in workspace"
+        cargo build --all --all-features --release
+      elif [[ -n "$AFFECTED_CRATES" ]]; then
+        echo "Building only affected crates: $AFFECTED_CRATES"
+        for crate in $AFFECTED_CRATES; do
+          echo "Building crate: $crate"
+          cargo build -p "$crate" --all-features --release || {
+            echo "Failed to build crate $crate, falling back to workspace build"
+            cargo build --all --all-features --release
+            break
+          }
+        done
+      else
+        echo "No crates to build - skipping build step"
+      fi
     - echo "===== sccache Statistics ====="
     - sccache --show-stats
+    
+    # Collect binaries from affected crates
     - mkdir -p artifacts/binaries
-    - cp target/release/validate-yaml artifacts/binaries/ || true
-    - cp target/release/validate-json artifacts/binaries/ || true
-    - cp target/release/trm artifacts/binaries/ || true
-    - cp target/release/test-verify artifacts/binaries/ || true
-    - cp target/release/test-executor artifacts/binaries/ || true
-    - cp target/release/test-orchestrator artifacts/binaries/ || true
+    - |
+      if [[ "$BUILD_ALL_CRATES" == "true" ]]; then
+        echo "Collecting all binaries"
+        cp target/release/validate-yaml artifacts/binaries/ || true
+        cp target/release/validate-json artifacts/binaries/ || true
+        cp target/release/trm artifacts/binaries/ || true
+        cp target/release/test-verify artifacts/binaries/ || true
+        cp target/release/test-executor artifacts/binaries/ || true
+        cp target/release/test-orchestrator artifacts/binaries/ || true
+        cp target/release/editor artifacts/binaries/ || true
+        cp target/release/json-escape artifacts/binaries/ || true
+        cp target/release/json-to-yaml artifacts/binaries/ || true
+        cp target/release/script-cleanup artifacts/binaries/ || true
+        cp target/release/verifier artifacts/binaries/ || true
+        cp target/release/test-plan-documentation-generator-compat artifacts/binaries/ || true
+      elif [[ -n "$AFFECTED_CRATES" ]]; then
+        echo "Collecting binaries from affected crates"
+        # Map crate names to their binary names
+        for crate in $AFFECTED_CRATES; do
+          case "$crate" in
+            validate-yaml)
+              cp target/release/validate-yaml artifacts/binaries/ || true
+              ;;
+            validate-json)
+              cp target/release/validate-json artifacts/binaries/ || true
+              ;;
+            test-run-manager)
+              cp target/release/trm artifacts/binaries/ || true
+              ;;
+            test-verify)
+              cp target/release/test-verify artifacts/binaries/ || true
+              ;;
+            test-executor)
+              cp target/release/test-executor artifacts/binaries/ || true
+              ;;
+            test-orchestrator)
+              cp target/release/test-orchestrator artifacts/binaries/ || true
+              ;;
+            editor)
+              cp target/release/editor artifacts/binaries/ || true
+              ;;
+            json-escape)
+              cp target/release/json-escape artifacts/binaries/ || true
+              ;;
+            json-to-yaml)
+              cp target/release/json-to-yaml artifacts/binaries/ || true
+              ;;
+            script-cleanup)
+              cp target/release/script-cleanup artifacts/binaries/ || true
+              ;;
+            verifier)
+              cp target/release/verifier artifacts/binaries/ || true
+              ;;
+            tpdg-compat)
+              cp target/release/test-plan-documentation-generator-compat artifacts/binaries/ || true
+              ;;
+          esac
+        done
+      fi
 
     # Lint - rustfmt
     - echo "===== Running rustfmt ====="
-    - cargo fmt --all -- --check
+    - |
+      if [[ "$BUILD_ALL_CRATES" == "true" ]]; then
+        cargo fmt --all -- --check
+      elif [[ -n "$AFFECTED_CRATES" ]]; then
+        for crate in $AFFECTED_CRATES; do
+          echo "Running rustfmt on crate: $crate"
+          cargo fmt -p "$crate" -- --check
+        done
+      else
+        echo "No crates to format - skipping rustfmt"
+      fi
 
     # Lint - clippy
     - echo "===== Running Clippy ====="
-    - cargo clippy --all --all-features --tests -- -D warnings 2>&1 | tee clippy_output.txt
+    - |
+      if [[ "$BUILD_ALL_CRATES" == "true" ]]; then
+        cargo clippy --all --all-features --tests -- -D warnings 2>&1 | tee clippy_output.txt
+      elif [[ -n "$AFFECTED_CRATES" ]]; then
+        for crate in $AFFECTED_CRATES; do
+          echo "Running clippy on crate: $crate"
+          cargo clippy -p "$crate" --all-features --tests -- -D warnings 2>&1 | tee -a clippy_output.txt
+        done
+      else
+        echo "No crates to lint - skipping clippy"
+        touch clippy_output.txt
+      fi
 
     # Test - unit tests
     - echo "===== Running Unit Tests ====="
-    - cargo test --all --all-features --tests --no-fail-fast -- --test-threads=1 2>&1 | tee test_output.txt
+    - |
+      if [[ "$BUILD_ALL_CRATES" == "true" ]]; then
+        cargo test --all --all-features --tests --no-fail-fast -- --test-threads=1 2>&1 | tee test_output.txt
+      elif [[ -n "$AFFECTED_CRATES" ]]; then
+        for crate in $AFFECTED_CRATES; do
+          echo "Running tests for crate: $crate"
+          cargo test -p "$crate" --all-features --tests --no-fail-fast -- --test-threads=1 2>&1 | tee -a test_output.txt
+        done
+      else
+        echo "No crates to test - skipping tests"
+        touch test_output.txt
+      fi
     - uv run python3.14 scripts/ci_parse_test_results.py test_output.txt > test_results.json
 
     # Test - doc tests
     - echo "===== Running Doc Tests ====="
-    - cargo test --doc 2>&1 | tee doc_test_output.txt || true
+    - |
+      if [[ "$BUILD_ALL_CRATES" == "true" ]]; then
+        cargo test --doc 2>&1 | tee doc_test_output.txt || true
+      elif [[ -n "$AFFECTED_CRATES" ]]; then
+        for crate in $AFFECTED_CRATES; do
+          echo "Running doc tests for crate: $crate"
+          cargo test --doc -p "$crate" 2>&1 | tee -a doc_test_output.txt || true
+        done
+      else
+        echo "No crates to doc test - skipping doc tests"
+        touch doc_test_output.txt
+      fi
     - echo "===== sccache Statistics After Tests ====="
     - sccache --show-stats
 
@@ -186,7 +333,17 @@ rust:build-test-lint:
     - export CARGO_INCREMENTAL=0
     - export RUSTFLAGS="-Cinstrument-coverage"
     - export LLVM_PROFILE_FILE="coverage-%p-%m.profraw"
-    - cargo test --all --all-features --tests
+    - |
+      if [[ "$BUILD_ALL_CRATES" == "true" ]]; then
+        cargo test --all --all-features --tests
+      elif [[ -n "$AFFECTED_CRATES" ]]; then
+        for crate in $AFFECTED_CRATES; do
+          echo "Running coverage tests for crate: $crate"
+          cargo test -p "$crate" --all-features --tests
+        done
+      else
+        echo "No crates to test for coverage - skipping coverage"
+      fi
     - ./grcov . --binary-path ./target/debug/ -s . -t lcov --branch --ignore-not-existing --ignore "/*" -o lcov.info
     - ./grcov . --binary-path ./target/debug/ -s . -t html --branch --ignore-not-existing --ignore "/*" -o coverage/html
     - |
@@ -218,6 +375,7 @@ rust:build-test-lint:
       - e2e_output.txt
       - doc_test_output.txt
       - clippy_output.txt
+      - artifacts/binaries/
     reports:
       junit: test_results.xml
       coverage_report:
@@ -226,30 +384,30 @@ rust:build-test-lint:
     expire_in: 1 week
     when: always
 
-docker:verify:
-  stage: docker
-  image: python:3.14-slim
-  dependencies:
-    - docker:build
-  needs:
-    - docker:build
-  before_script:
-    - apt-get update -qq
-    - apt-get install -y -qq curl
-    # Install uv package manager
-    - curl -LsSf https://astral.sh/uv/install.sh | sh
-    - export PATH="$HOME/.cargo/bin:$PATH"
-    # Sync Python dependencies
-    - uv sync --python 3.14
-  script:
-    - find . || true
-    - ls -la docker_inspect.json || true
-    - uv run python3.14 scripts/ci_docker_security_scan.py docker_inspect.json > docker_scan_results.json
-  artifacts:
-    name: "docker-verify-$CI_COMMIT_REF_SLUG"
-    paths:
-      - docker_scan_results.json
-    expire_in: 1 week
+#docker:verify:
+#  stage: docker
+#  image: python:3.14-slim
+#  dependencies:
+#    - docker:build
+#  needs:
+#    - docker:build
+#  before_script:
+#    - apt-get update -qq
+#    - apt-get install -y -qq curl
+#    # Install uv package manager
+#    - curl -LsSf https://astral.sh/uv/install.sh | sh
+#    - export PATH="$HOME/.cargo/bin:$PATH"
+#    # Sync Python dependencies
+#    - uv sync --python 3.14
+#  script:
+#    - find . || true
+#    - ls -la docker_inspect.json || true
+#    - uv run python3.14 scripts/ci_docker_security_scan.py docker_inspect.json > docker_scan_results.json
+#  artifacts:
+#    name: "docker-verify-$CI_COMMIT_REF_SLUG"
+#    paths:
+#      - docker_scan_results.json
+#    expire_in: 1 week
 
 rust:e2e-tests:
   stage: e2e

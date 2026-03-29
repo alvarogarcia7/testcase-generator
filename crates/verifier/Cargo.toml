@@ -1,0 +1,22 @@
+[package]
+name = "verifier"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "verifier"
+path = "src/main.rs"
+
+[dependencies]
+testcase-verification = { path = "../testcase-verification" }
+testcase-storage = { path = "../testcase-storage" }
+testcase-models = { path = "../testcase-models" }
+clap = { workspace = true }
+jsonschema = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+anyhow = { workspace = true }
+log = { workspace = true }
+env_logger = { workspace = true }
+sha2 = { workspace = true }

@@ -89,21 +89,21 @@ echo "=== 3. Checking Code Changes ==="
 echo ""
 
 # Check test-executor changes
-if grep -q "test_case_dir" src/bin/test-executor.rs; then
+if grep -q "test_case_dir" crates/testcase-manager/src/bin/test-executor.rs; then
     pass "test-executor.rs: --test-case-dir parameter added"
 else
     fail "test-executor.rs: --test-case-dir parameter missing"
     ((FAILURES++))
 fi
 
-if grep -q "build_dependency_resolver_from_dir" src/bin/test-executor.rs; then
+if grep -q "build_dependency_resolver_from_dir" crates/testcase-manager/src/bin/test-executor.rs; then
     pass "test-executor.rs: build_dependency_resolver_from_dir() function added"
 else
     fail "test-executor.rs: build_dependency_resolver_from_dir() function missing"
     ((FAILURES++))
 fi
 
-if grep -q "load_all_yaml_files_from_dir_recursive" src/bin/test-executor.rs; then
+if grep -q "load_all_yaml_files_from_dir_recursive" crates/testcase-manager/src/bin/test-executor.rs; then
     pass "test-executor.rs: load_all_yaml_files_from_dir_recursive() function added"
 else
     fail "test-executor.rs: load_all_yaml_files_from_dir_recursive() function missing"

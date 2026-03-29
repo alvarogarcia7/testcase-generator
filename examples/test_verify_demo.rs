@@ -1,6 +1,6 @@
-use testcase_manager::{
-    BatchVerificationReport, Step, TestCase, TestCaseStorage, TestSequence, TestVerifier,
-};
+use testcase_models::{Step, TestCase, TestSequence};
+use testcase_storage::TestCaseStorage;
+use testcase_verification::{BatchVerificationReport, StepVerificationResultEnum, TestVerifier};
 
 fn main() -> anyhow::Result<()> {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
@@ -59,7 +59,7 @@ fn main() -> anyhow::Result<()> {
     println!();
 
     // Create test verifier
-    let verifier = TestVerifier::from_storage(storage);
+    let verifier = TestVerifier::with_exact_matching();
 
     // Demo 1: Successful verification
     println!("--- Demo 1: All Steps Pass ---");
@@ -113,7 +113,7 @@ fn main() -> anyhow::Result<()> {
 
     for seq_result in &result.sequences {
         for step_result in &seq_result.step_results {
-            if let testcase_manager::StepVerificationResultEnum::Fail {
+            if let StepVerificationResultEnum::Fail {
                 step,
                 description,
                 reason,

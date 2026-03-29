@@ -1,0 +1,22 @@
+[package]
+name = "testcase-verification"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+testcase-models = { path = "../testcase-models" }
+testcase-common = { path = "../testcase-common" }
+bash-eval = { path = "../bash-eval" }
+regex = { workspace = true }
+strip-ansi-escapes = { workspace = true }
+serde_json = { workspace = true }
+serde = { workspace = true }
+serde_yaml = { workspace = true }
+anyhow = { workspace = true }
+chrono = { workspace = true }
+log = { workspace = true }
+tempfile = { workspace = true }
+sha2 = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

@@ -8,11 +8,12 @@ RUN apt update && \
     rm -rf /var/lib/apt/lists/*
 
 # Set sccache environment variables
+# Use a global cache directory that can be shared across builds via Docker cache mount
 ENV RUSTC_WRAPPER=sccache
-ENV SCCACHE_DIR=/app/.sccache/docker
+ENV SCCACHE_DIR=/root/.cache/sccache/testcase-manager
 
-# Create cache directory and copy host cache if it exists
-RUN mkdir -p /app/.sccache/docker
+# Create cache directory
+RUN mkdir -p /root/.cache/sccache/testcase-manager
 
 # Install coverage tools for CI/CD
 RUN rustup component add llvm-tools-preview && \
@@ -21,8 +22,8 @@ RUN rustup component add llvm-tools-preview && \
 # Copy manifests
 COPY Cargo.toml Cargo.lock ./
 
-# Copy workspace member crates (bash-eval)
-COPY bash-eval ./bash-eval
+# Copy workspace crates structure
+COPY crates ./crates
 
 # Copy scripts directory early so include_str! macros can find the files
 COPY scripts ./scripts
@@ -30,16 +31,20 @@ COPY scripts ./scripts
 # Copy schemas directory early so tests can find schema files
 COPY schemas ./schemas
 
-# Create dummy src/main.rs to build dependencies
-RUN mkdir -p src/bin examples && \
-    echo "fn main() {}" > src/main.rs && \
-    echo "fn main() {}" > src/main_editor.rs && \
-    for bin in validate-yaml validate-json test-run-manager test-verify test-executor json-escape verifier test-orchestrator script-cleanup test-plan-documentation-generator-compat json-to-yaml; do \
-      echo "fn main() {}" > "src/bin/${bin}.rs"; \
-    done && \
-    for example in tty_fallback_demo test_verify_demo test_verify_integration junit_export_example; do \
-      echo "fn main() {}" > "examples/${example}.rs"; \
-    done
+COPY crates ./crates
+
+## Create dummy src files in crates to build dependencies
+#RUN mkdir -p crates/bash-eval/src && \
+#    echo "pub fn dummy() {}" > crates/bash-eval/src/lib.rs && \
+#    mkdir -p crates/testcase-manager/src/bin crates/testcase-manager/examples && \
+#    echo "fn main() {}" > crates/testcase-manager/src/lib.rs && \
+#    echo "fn main() {}" > crates/testcase-manager/src/main_editor.rs && \
+#    for bin in validate-yaml validate-json test-run-manager test-verify test-executor json-escape verifier test-orchestrator script-cleanup test-plan-documentation-generator-compat json-to-yaml; do \
+#      echo "fn main() {}" > "crates/testcase-manager/src/bin/${bin}.rs"; \
+#    done && \
+#    for example in tty_fallback_demo test_verify_demo test_verify_integration junit_export_example; do \
+#      echo "fn main() {}" > "crates/testcase-manager/examples/${example}.rs"; \
+#    done
 
 RUN mkdir -p ".cargo"; cargo vendor --locked > .cargo/config.toml
 
@@ -47,10 +52,8 @@ RUN mkdir -p ".cargo"; cargo vendor --locked > .cargo/config.toml
 RUN cargo build --all --all-features --release && \
     cargo build --all --all-features  # debug build to populate debug cache
 
-# Copy source code
-COPY src ./src
-COPY examples ./examples
-COPY tests ./tests
+# Copy source code (now in crates directory)
+COPY crates ./crates
 COPY data ./data
 COPY testcases ./testcases
 
@@ -96,8 +99,8 @@ done
 
 # Run tests to ensure everything compiles and passes
 # Run unit tests only (skip integration tests that require binaries in specific PATH)
-RUN cargo test --lib --all-features && \
-    cargo test --doc --all-features
+RUN cargo test --workspace --lib --all-features && \
+    cargo test --workspace --doc --all-features
 
 # Make scripts executable
 RUN chmod +x scripts/*.sh && \

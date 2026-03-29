@@ -1,0 +1,107 @@
+pub mod dependency_resolver;
+pub mod dependency_validator;
+pub mod junit_xml_validator;
+pub mod sample_extensions;
+pub mod verification;
+
+// Re-export UI modules from testcase-ui crate
+pub use testcase_ui::{
+    builder, complex_structure_editor, creator, editor, fuzzy, oracle, prompts,
+    recovery_extensions, ui, validation,
+};
+
+// Re-export from testcase-git crate
+pub use testcase_git::{CommitInfo, GitManager};
+
+// Re-export from testcase-cli crate
+pub use testcase_cli::{Cli, Commands, GitCommands};
+
+// Re-export from testcase-execution crate
+pub use builder::TestCaseBuilder;
+pub use complex_structure_editor::ComplexStructureEditor;
+pub use creator::TestCaseCreator;
+pub use dependency_resolver::{DependencyResolver, ResolutionError};
+pub use dependency_validator::{
+    validate_cross_file_dependencies, DependencyError, DependencyErrorType, DependencyValidator,
+};
+pub use editor::TestCaseEditor;
+pub use fuzzy::TestCaseFuzzyFinder;
+pub use junit_xml_validator::validate_junit_xml;
+pub use oracle::{AnswerVariant, HardcodedOracle, MenuCliOracle, Oracle, TtyCliOracle};
+pub use prompts::{Prompts, TestCaseMetadata};
+pub use recovery_extensions::RecoveryManagerPromptsExt;
+pub use sample_extensions::SampleDataOracleExt;
+
+// Re-export from testcase-storage crate
+pub use testcase_common::{
+    log_yaml_parse_error, resolve_schema_from_payload, CommitMessageTemplates, Config,
+    EditorConfig, GitAuthorInfo, JsonEscapingConfig, JsonEscapingMethod, ScriptGenerationConfig,
+};
+pub use testcase_execution::{
+    parse_bdd_statement, BddStepDefinition, BddStepMatcher, BddStepRegistry, ConfirmPrompt,
+    DefaultConfirmPrompt, TestExecutor, VarHydrator,
+};
+pub use testcase_models::ActualResult;
+pub use testcase_models::CaptureVar;
+pub use testcase_models::CaptureVarsFormat;
+pub use testcase_models::EnvVarConfig;
+pub use testcase_models::EnvVariable;
+pub use testcase_models::Expected;
+pub use testcase_models::FieldDiff;
+pub use testcase_models::FileValidationStatus;
+pub use testcase_models::GeneralVerification;
+pub use testcase_models::HookConfig;
+pub use testcase_models::HookType;
+pub use testcase_models::Hooks;
+pub use testcase_models::IncludeRef;
+pub use testcase_models::InitialConditionItem;
+pub use testcase_models::InitialConditions;
+pub use testcase_models::OnError;
+pub use testcase_models::Prerequisite;
+pub use testcase_models::PrerequisiteType;
+pub use testcase_models::Step;
+pub use testcase_models::StepExecutionResult;
+pub use testcase_models::TestCase;
+pub use testcase_models::TestCaseFileInfo;
+pub use testcase_models::TestExecutionLog;
+pub use testcase_models::TestReportOutput;
+pub use testcase_models::TestReportResults;
+pub use testcase_models::TestReportSummary;
+pub use testcase_models::TestRun;
+pub use testcase_models::TestRunMetadata;
+pub use testcase_models::TestRunStatus;
+pub use testcase_models::TestSequence;
+pub use testcase_models::TestSequenceRefTarget;
+pub use testcase_models::TestStepExecutionEntry;
+pub use testcase_models::TestSuite;
+pub use testcase_models::ValidationErrorDetail;
+pub use testcase_models::Verification;
+pub use testcase_models::VerificationExpression;
+pub use testcase_models::VerificationReport;
+pub use testcase_models::VerificationStatus;
+pub use testcase_storage::{
+    ConditionDatabase, RecoveryManager, RecoveryState, SampleData, SearchableCollections,
+    TestCaseFilter, TestCaseFilterer, TestCaseParser, TestCaseStorage, TestRunStorage,
+    ValidationError as RecoveryValidationError,
+};
+pub use ui::{print_title, TitleStyle};
+pub use validation::SchemaValidator;
+pub use verification::StorageTestVerifier;
+
+// Re-export from testcase-verification crate
+pub use testcase_verification::{
+    BatchVerificationReport, ContainerReport, ContainerReportConfig, ContainerReportMetadata,
+    LogCleaner, MatchStrategy, SequenceVerificationResult, StepVerificationResultEnum,
+    TemplateCategory, TestVerifier, VerificationTemplate, VerificationTemplateLibrary,
+};
+
+// Re-export from testcase-orchestration crate
+pub use testcase_orchestration::{RetryPolicy, TestOrchestrator, WorkerConfig};
+
+// Legacy exports (for backward compatibility)
+pub use testcase_verification::DiffDetail;
+pub use testcase_verification::ExecutionVerificationResult;
+pub use testcase_verification::StepVerificationResult;
+pub use testcase_verification::TestCaseVerificationResult;
+pub use testcase_verification::TestExecutionLog as VerificationTestExecutionLog;
+pub use testcase_verification::VerificationDiff;

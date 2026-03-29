@@ -85,7 +85,7 @@ echo "Output directory: $OUTPUT_DIR"
 echo ""
 echo "=== Building verifier binary ==="
 cd "$PROJECT_ROOT"
-cargo build ${BUILD_VARIANT} --bin verifier
+cargo build -p verifier ${BUILD_VARIANT} --bin verifier
 
 if [ $? -ne 0 ]; then
     echo "✗ Failed to build verifier binary"
@@ -112,8 +112,8 @@ build_verifier_cmd() {
     local log_file="$1"
     local test_case_id="$2"
     local output_file="$3"
-    
-    local cmd="cargo run ${BUILD_VARIANT} --bin verifier --"
+
+    local cmd="cargo run -p verifier ${BUILD_VARIANT} --bin verifier --"
     cmd="$cmd --log \"$log_file\""
     cmd="$cmd --test-case \"$test_case_id\""
     cmd="$cmd --format json"

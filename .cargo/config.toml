@@ -5,10 +5,20 @@
 rustflags = []
 
 # sccache configuration for build caching
-# Note: RUSTC_WRAPPER should only be set in CI environments where sccache is explicitly installed
-# GitHub Actions doesn't use sccache; GitLab CI sets it in environment variables
+#
+# Global cache directory: Share compilation cache across multiple worktrees
+# This is set in the user's home directory to enable cache reuse between different
+# git worktrees and checkouts of this repository
+#
+# To enable sccache for local development:
+#   1. Install sccache: make install-sccache
+#   2. Set RUSTC_WRAPPER environment variable: export RUSTC_WRAPPER=sccache
+#   3. Add to shell profile (~/.bashrc, ~/.zshrc): echo 'export RUSTC_WRAPPER=sccache' >> ~/.bashrc
+#
+# CI environments (GitLab CI) set RUSTC_WRAPPER in their configuration
+# GitHub Actions uses RustCrypto/actions/cargo-cache instead
 [env]
-SCCACHE_DIR = { value = ".sccache", relative = true }
+SCCACHE_DIR = { value = "$HOME/.cache/sccache/testcase-manager", force = true, relative = false }
 
 [target.'cfg(all())']
 # Set default RUSTFLAGS for coverage builds with instrument-coverage flag

@@ -1,0 +1,15 @@
+[package]
+name = "testcase-validation"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+testcase-models = { path = "../testcase-models" }
+testcase-common = { path = "../testcase-common" }
+anyhow = { workspace = true }
+jsonschema = { workspace = true }
+roxmltree = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+log = { workspace = true }

@@ -42,6 +42,8 @@ verification-results/
 
 # Test executor logs
 logs/
+# Exception: keep test-acceptance/results/logs directory structure
+!test-acceptance/results/logs/
 
 # Generated reports
 reports/validation_report.txt
@@ -50,6 +52,7 @@ reports/*.pdf
 reports/loc/
 reports/verifier_scenarios/
 reports/tpdg_integration/
+reports/test_comparison_report.json
 
 
 .crates.toml
@@ -70,7 +73,8 @@ tarpaulin-report.*
 cobertura.xml
 *.profdata
 
-# sccache build cache
+# sccache build cache (legacy local cache)
+# Note: Global cache is now at ~/.cache/sccache/testcase-manager (not tracked)
 .sccache/
 
 # CI/CD artifacts
@@ -141,6 +145,13 @@ test-acceptance/execution_logs/
 test-acceptance/verification_results/
 test-acceptance/scripts/
 test-acceptance/reports/
+test-acceptance/mock_execution_logs/
+test-acceptance/tpdg_conversion_output/
+
+# TPDG conversion logs (run_tpdg_conversion.sh)
+test-acceptance/results/logs/conversion_*.log
+test-acceptance/results/logs/conversion_*.err
+test-acceptance/results/logs/latest.log
 
 # Test case validation reports (validate_all_testcases.sh)
 testcase_validation_report.txt
@@ -149,3 +160,21 @@ backlog.md
 # Container config overrides (keep default, ignore environment-specific)
 container_config.*.yml
 !container_config.yml
+
+# Audit traceability logs (uncomment to exclude from git)
+# audit-traceability-log.json
+# **/audit-*.json
+# Audit logging artifacts (audit-verifier)
+*.audit.json
+*.audit.log.json
+audit.log.json
+audit_*.log.json
+signed_audit*.json
+*_audit.json
+*_signed.json
+verification_report*.json
+audit_key.pem
+signing_key.pem
+*_signing_key.pem
+private*.pem
+*.key.pem

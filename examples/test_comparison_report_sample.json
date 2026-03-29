@@ -1,0 +1,214 @@
+{
+  "metadata": {
+    "generated_at": "2024-01-15T14:30:00.123456",
+    "before_ref": "main",
+    "after_ref": "split-binaries-into-crates",
+    "tool_version": "1.0.0"
+  },
+  "summary": {
+    "tests_before": 150,
+    "tests_after": 152,
+    "new_tests": 5,
+    "removed_tests": 3,
+    "common_tests": 147,
+    "total_duration_before_seconds": 45.32,
+    "total_duration_after_seconds": 42.15,
+    "duration_difference_seconds": -3.17,
+    "duration_percent_change": -7.0
+  },
+  "before": {
+    "git_ref": "main",
+    "total_tests": 150,
+    "passed": 148,
+    "failed": 2,
+    "ignored": 0,
+    "filtered": 0,
+    "total_duration_seconds": 45.32,
+    "tests": [
+      {
+        "name": "test_bash_evaluation",
+        "crate": null,
+        "status": "ok",
+        "duration_seconds": 0.0
+      },
+      {
+        "name": "test_json_parsing",
+        "crate": null,
+        "status": "ok",
+        "duration_seconds": 0.0
+      },
+      {
+        "name": "test_yaml_validation",
+        "crate": null,
+        "status": "ok",
+        "duration_seconds": 0.0
+      }
+    ]
+  },
+  "after": {
+    "git_ref": "split-binaries-into-crates",
+    "total_tests": 152,
+    "passed": 150,
+    "failed": 2,
+    "ignored": 0,
+    "filtered": 0,
+    "total_duration_seconds": 42.15,
+    "tests": [
+      {
+        "name": "test_bash_evaluation",
+        "crate": "bash-eval",
+        "status": "ok",
+        "duration_seconds": 0.0
+      },
+      {
+        "name": "test_json_parsing",
+        "crate": "testcase-models",
+        "status": "ok",
+        "duration_seconds": 0.0
+      },
+      {
+        "name": "test_yaml_validation",
+        "crate": "testcase-validation",
+        "status": "ok",
+        "duration_seconds": 0.0
+      },
+      {
+        "name": "test_new_crate_feature",
+        "crate": "testcase-models",
+        "status": "ok",
+        "duration_seconds": 0.0
+      }
+    ],
+    "tests_by_crate": {
+      "bash-eval": {
+        "test_count": 15,
+        "tests": [
+          {
+            "name": "test_bash_evaluation",
+            "crate": "bash-eval",
+            "status": "ok",
+            "duration_seconds": 0.0
+          },
+          {
+            "name": "test_bash_script_generation",
+            "crate": "bash-eval",
+            "status": "ok",
+            "duration_seconds": 0.0
+          }
+        ]
+      },
+      "json-escape": {
+        "test_count": 3,
+        "tests": [
+          {
+            "name": "test_json_escape",
+            "crate": "json-escape",
+            "status": "ok",
+            "duration_seconds": 0.0
+          }
+        ]
+      },
+      "testcase-models": {
+        "test_count": 25,
+        "tests": [
+          {
+            "name": "test_json_parsing",
+            "crate": "testcase-models",
+            "status": "ok",
+            "duration_seconds": 0.0
+          },
+          {
+            "name": "test_model_serialization",
+            "crate": "testcase-models",
+            "status": "ok",
+            "duration_seconds": 0.0
+          },
+          {
+            "name": "test_new_crate_feature",
+            "crate": "testcase-models",
+            "status": "ok",
+            "duration_seconds": 0.0
+          }
+        ]
+      },
+      "testcase-validation": {
+        "test_count": 20,
+        "tests": [
+          {
+            "name": "test_yaml_validation",
+            "crate": "testcase-validation",
+            "status": "ok",
+            "duration_seconds": 0.0
+          },
+          {
+            "name": "test_schema_validation",
+            "crate": "testcase-validation",
+            "status": "ok",
+            "duration_seconds": 0.0
+          }
+        ]
+      },
+      "testcase-manager": {
+        "test_count": 45,
+        "tests": [
+          {
+            "name": "test_test_execution",
+            "crate": "testcase-manager",
+            "status": "ok",
+            "duration_seconds": 0.0
+          },
+          {
+            "name": "test_test_orchestration",
+            "crate": "testcase-manager",
+            "status": "ok",
+            "duration_seconds": 0.0
+          }
+        ]
+      },
+      "verifier": {
+        "test_count": 18,
+        "tests": [
+          {
+            "name": "test_verification_logic",
+            "crate": "verifier",
+            "status": "ok",
+            "duration_seconds": 0.0
+          },
+          {
+            "name": "test_container_generation",
+            "crate": "verifier",
+            "status": "ok",
+            "duration_seconds": 0.0
+          }
+        ]
+      }
+    }
+  },
+  "changes": {
+    "new_tests": [
+      "test_new_crate_feature",
+      "test_new_validation_rule",
+      "test_enhanced_error_handling",
+      "test_additional_model_type",
+      "test_improved_serialization"
+    ],
+    "removed_tests": [
+      "test_deprecated_function",
+      "test_old_validation_method",
+      "test_legacy_parser"
+    ],
+    "common_tests": [
+      "test_bash_evaluation",
+      "test_bash_script_generation",
+      "test_json_escape",
+      "test_json_parsing",
+      "test_model_serialization",
+      "test_yaml_validation",
+      "test_schema_validation",
+      "test_test_execution",
+      "test_test_orchestration",
+      "test_verification_logic",
+      "test_container_generation"
+    ]
+  }
+}

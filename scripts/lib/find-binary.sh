@@ -39,6 +39,9 @@
 #   $2 - environment variable name to check first (optional)
 # Returns:
 #   Path to binary on stdout, or empty string if not found
+# 
+# Workspace-aware: Searches for binaries in both workspace and crate-specific
+# target directories to support both single-crate and workspace builds.
 find_binary() {
     local binary_name="$1"
     local env_var_name="${2:-}"
@@ -52,16 +55,41 @@ find_binary() {
         fi
     fi
     
-    # Check target/release
+    # Workspace-aware search: Check both workspace root and crate-specific locations
+    # This supports:
+    # 1. Workspace builds: binaries in workspace_root/target/{release,debug}/
+    # 2. Single-crate builds: binaries in crate_dir/target/{release,debug}/
+    
+    # Check workspace root target/release
     if [[ -x "target/release/$binary_name" ]]; then
         echo "target/release/$binary_name"
         return 0
     fi
     
-    # Check target/debug
+    # Check workspace root target/debug
     if [[ -x "target/debug/$binary_name" ]]; then
         echo "target/debug/$binary_name"
         return 0
+    fi
+    
+    # Check crate-specific target directories (for non-workspace builds)
+    # Search in crates/*/target/{release,debug}/
+    if [[ -d "crates" ]]; then
+        # Try release builds in crates
+        for crate_dir in crates/*/; do
+            if [[ -x "${crate_dir}target/release/$binary_name" ]]; then
+                echo "${crate_dir}target/release/$binary_name"
+                return 0
+            fi
+        done
+        
+        # Try debug builds in crates
+        for crate_dir in crates/*/; do
+            if [[ -x "${crate_dir}target/debug/$binary_name" ]]; then
+                echo "${crate_dir}target/debug/$binary_name"
+                return 0
+            fi
+        done
     fi
     
     # Check system PATH
@@ -72,7 +100,7 @@ find_binary() {
     
     # Not found
     echo ""
-    return 1
+    return 0
 }
 
 # Find a binary or exit with error

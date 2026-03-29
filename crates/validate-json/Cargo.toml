@@ -1,0 +1,18 @@
+[package]
+name = "validate-json"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "validate-json"
+path = "src/main.rs"
+
+[dependencies]
+testcase-validation = { path = "../testcase-validation" }
+testcase-common = { path = "../testcase-common" }
+anyhow = { workspace = true }
+clap = { workspace = true }
+serde_json = { workspace = true }
+jsonschema = { workspace = true }
+log = { workspace = true }
+env_logger = { workspace = true }

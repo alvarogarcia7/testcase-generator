@@ -1,0 +1,5655 @@
+type: test_results_container
+schema: tcms/testcase_results_container.schema.v1.json
+title: Acceptance Test Suite Results
+project: Test Case Manager - Acceptance Test Suite
+test_date: '2026-03-27T11:58:29Z'
+test_results:
+- test_case_id: TC_COMPLEX_ALL_HOOKS_CAPTURE_001
+  description: Comprehensive test with all 8 hook types and extensive variable capture
+    - complete lifecycle demonstration
+  sequences:
+  - sequence_id: 1
+    name: Hook Lifecycle - Script Start and Setup
+    step_results:
+    - Fail:
+        step: 1
+        description: Capture script start timestamp (demonstrates before_step and
+          after_step hooks)
+        expected:
+          success: true
+          result: '0'
+          output: timestamp
+        actual_result: '0'
+        actual_output: timestamp
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Create hook execution log directory
+        expected:
+          success: true
+          result: '0'
+          output: /tmp/hook_logs_
+        actual_result: '0'
+        actual_output: /tmp/hook_logs_
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Initialize hook tracking file
+        expected:
+          success: true
+          result: '0'
+          output: Hook Execution Log
+        actual_result: '0'
+        actual_output: Hook Execution Log
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: Record that before_sequence hook should have executed
+        expected:
+          success: true
+          result: '0'
+          output: 'before_sequence:'
+        actual_result: '0'
+        actual_output: 'before_sequence:'
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 2
+    name: Hook Lifecycle - Sequence Transitions
+    step_results:
+    - Fail:
+        step: 1
+        description: Capture sequence 2 start time
+        expected:
+          success: true
+          result: '0'
+          output: timestamp
+        actual_result: '0'
+        actual_output: timestamp
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Record sequence transition in hook log
+        expected:
+          success: true
+          result: '0'
+          output: 'SEQUENCE_TRANSITION:'
+        actual_result: '0'
+        actual_output: 'SEQUENCE_TRANSITION:'
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Count before_step and after_step hook executions for sequence
+          1
+        expected:
+          success: true
+          result: '0'
+          output: '4'
+        actual_result: '0'
+        actual_output: '4'
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: Calculate time elapsed since script start
+        expected:
+          success: true
+          result: '0'
+          output: number
+        actual_result: '0'
+        actual_output: number
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 3
+    name: Hook Lifecycle - Step-Level Hooks
+    step_results:
+    - Fail:
+        step: 1
+        description: Generate random operation ID (after_step will record this)
+        expected:
+          success: true
+          result: '0'
+          output: OP_
+        actual_result: '0'
+        actual_output: OP_
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Simulate operation with metrics collection
+        expected:
+          success: true
+          result: '0'
+          output: complete
+        actual_result: '0'
+        actual_output: complete
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Record operation in metrics log
+        expected:
+          success: true
+          result: '0'
+          output: Metrics
+        actual_result: '0'
+        actual_output: Metrics
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: Count total steps executed so far
+        expected:
+          success: true
+          result: '0'
+          output: '11'
+        actual_result: '0'
+        actual_output: '11'
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 5
+        description: Record step hook executions (before_step and after_step for each)
+        expected:
+          success: true
+          result: '0'
+          output: 'executions:'
+        actual_result: '0'
+        actual_output: 'executions:'
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 4
+    name: Hook Lifecycle - Teardown and Completion
+    step_results:
+    - Fail:
+        step: 1
+        description: Capture final timestamp before teardown
+        expected:
+          success: true
+          result: '0'
+          output: timestamp
+        actual_result: '0'
+        actual_output: timestamp
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Calculate total test execution time
+        expected:
+          success: true
+          result: '0'
+          output: duration
+        actual_result: '0'
+        actual_output: duration
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Generate comprehensive hook execution report
+        expected:
+          success: true
+          result: '0'
+          output: Complete Hook Execution Report
+        actual_result: '0'
+        actual_output: Complete Hook Execution Report
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: Record hook execution counts for verification
+        expected:
+          success: true
+          result: '0'
+          output: HOOK_EXECUTION_END=
+        actual_result: '0'
+        actual_output: HOOK_EXECUTION_END=
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 5
+        description: Verify metrics log exists if enabled
+        expected:
+          success: true
+          result: '0'
+          output: verified
+        actual_result: '0'
+        actual_output: verified
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 6
+        description: Count total files generated during test
+        expected:
+          success: true
+          result: '0'
+          output: number
+        actual_result: '0'
+        actual_output: number
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 7
+        description: Final step - prepare for teardown_test and script_end hooks
+        expected:
+          success: true
+          result: '0'
+          output: Test execution finishing
+        actual_result: '0'
+        actual_output: Test execution finishing
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 20
+  passed_steps: 0
+  failed_steps: 20
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: COMPLEX_ALL_HOOKS_VARIABLE_CAPTURE
+  item: 1
+  tc: 4
+- test_case_id: TC_COMPLEX_BDD_HOOKS_VARS_001
+  description: BDD-style test with comprehensive initial conditions, hooks, and variable
+    capture - behavior-driven testing pattern
+  sequences:
+  - sequence_id: 1
+    name: 'Given: User Authentication Context'
+    step_results:
+    - Fail:
+        step: 1
+        description: 'GIVEN: System generates unique user session'
+        expected:
+          success: true
+          result: '0'
+          output: user_
+        actual_result: '0'
+        actual_output: user_
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: 'GIVEN: User profile is created with role'
+        expected:
+          success: true
+          result: '0'
+          output: username=
+        actual_result: '0'
+        actual_output: username=
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: 'GIVEN: System records user login timestamp'
+        expected:
+          success: true
+          result: '0'
+          output: timestamp
+        actual_result: '0'
+        actual_output: timestamp
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: 'GIVEN: Authentication log entry is created'
+        expected:
+          success: true
+          result: '0'
+          output: authenticated with session
+        actual_result: '0'
+        actual_output: authenticated with session
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 2
+    name: 'When: User Performs Actions'
+    step_results:
+    - Fail:
+        step: 1
+        description: 'WHEN: User requests resource list based on role'
+        expected:
+          success: true
+          result: '0'
+          output: 'resources:'
+        actual_result: '0'
+        actual_output: 'resources:'
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: 'WHEN: User attempts to access a resource'
+        expected:
+          success: true
+          result: '0'
+          output: 'Access request:'
+        actual_result: '0'
+        actual_output: 'Access request:'
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: 'WHEN: System validates access based on role and feature flag'
+        expected:
+          success: true
+          result: '0'
+          output: ACCESS_
+        actual_result: '0'
+        actual_output: ACCESS_
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: 'WHEN: System logs the access attempt'
+        expected:
+          success: true
+          result: '0'
+          output: timestamp
+        actual_result: '0'
+        actual_output: timestamp
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 5
+        description: 'WHEN: Access log entry is recorded'
+        expected:
+          success: true
+          result: '0'
+          output: 'Resource:'
+        actual_result: '0'
+        actual_output: 'Resource:'
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 3
+    name: 'Then: System Behavior Verification'
+    step_results:
+    - Fail:
+        step: 1
+        description: 'THEN: User profile still exists with correct data'
+        expected:
+          success: true
+          result: '0'
+          output: username=
+        actual_result: '0'
+        actual_output: username=
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: 'THEN: Authentication log contains login event'
+        expected:
+          success: true
+          result: '0'
+          output: authenticated
+        actual_result: '0'
+        actual_output: authenticated
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: 'THEN: Access log contains the access decision'
+        expected:
+          success: true
+          result: '0'
+          output: 'Resource:'
+        actual_result: '0'
+        actual_output: 'Resource:'
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: 'THEN: Calculate total session duration'
+        expected:
+          success: true
+          result: '0'
+          output: duration
+        actual_result: '0'
+        actual_output: duration
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 5
+        description: 'THEN: Generate BDD test report with all captured data'
+        expected:
+          success: true
+          result: '0'
+          output: BDD Test Execution Report
+        actual_result: '0'
+        actual_output: BDD Test Execution Report
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 6
+        description: 'THEN: Verify all test artifacts exist'
+        expected:
+          success: true
+          result: '0'
+          output: '4'
+        actual_result: '0'
+        actual_output: '4'
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 7
+        description: 'THEN: Cleanup test artifacts'
+        expected:
+          success: true
+          result: '0'
+          output: cleanup complete
+        actual_result: '0'
+        actual_output: cleanup complete
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 16
+  passed_steps: 0
+  failed_steps: 16
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: COMPLEX_BDD_INITIAL_CONDITIONS
+  item: 1
+  tc: 3
+- test_case_id: TC_COMPLEX_DATA_DRIVEN_ITERATIONS_001
+  description: Data-driven test with multiple iterations and aggregated results -
+    demonstrates iterative testing patterns
+  sequences:
+  - sequence_id: 1
+    name: Test Data Preparation
+    step_results:
+    - Fail:
+        step: 1
+        description: Create test data directory structure
+        expected:
+          success: true
+          result: '0'
+          output: 'Created:'
+        actual_result: '0'
+        actual_output: 'Created:'
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Generate test run identifier
+        expected:
+          success: true
+          result: '0'
+          output: timestamp
+        actual_result: '0'
+        actual_output: timestamp
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Initialize iteration counter and results file
+        expected:
+          success: true
+          result: '0'
+          output: iteration
+        actual_result: '0'
+        actual_output: iteration
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: Create test data manifest
+        expected:
+          success: true
+          result: '0'
+          output: Test Run Manifest
+        actual_result: '0'
+        actual_output: Test Run Manifest
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 2
+    name: Iteration 1 - Data Processing
+    step_results:
+    - Fail:
+        step: 1
+        description: Generate input data for iteration 1
+        expected:
+          success: true
+          result: '0'
+          output: count
+        actual_result: '0'
+        actual_output: count
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Capture iteration 1 start time
+        expected:
+          success: true
+          result: '0'
+          output: timestamp
+        actual_result: '0'
+        actual_output: timestamp
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Process iteration 1 data
+        expected:
+          success: true
+          result: '0'
+          output: count
+        actual_result: '0'
+        actual_output: count
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: Capture iteration 1 end time and calculate duration
+        expected:
+          success: true
+          result: '0'
+          output: timestamp
+        actual_result: '0'
+        actual_output: timestamp
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 5
+        description: Calculate iteration 1 processing time and record results
+        expected:
+          success: true
+          result: '0'
+          output: duration
+        actual_result: '0'
+        actual_output: duration
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 3
+    name: Iteration 2 - Data Processing
+    step_results:
+    - Fail:
+        step: 1
+        description: Generate input data for iteration 2
+        expected:
+          success: true
+          result: '0'
+          output: count
+        actual_result: '0'
+        actual_output: count
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Capture iteration 2 start time
+        expected:
+          success: true
+          result: '0'
+          output: timestamp
+        actual_result: '0'
+        actual_output: timestamp
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Process iteration 2 data
+        expected:
+          success: true
+          result: '0'
+          output: count
+        actual_result: '0'
+        actual_output: count
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: Capture iteration 2 end time and calculate duration
+        expected:
+          success: true
+          result: '0'
+          output: timestamp
+        actual_result: '0'
+        actual_output: timestamp
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 5
+        description: Calculate iteration 2 processing time and record results
+        expected:
+          success: true
+          result: '0'
+          output: duration
+        actual_result: '0'
+        actual_output: duration
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 4
+    name: Iteration 3 - Data Processing
+    step_results:
+    - Fail:
+        step: 1
+        description: Generate input data for iteration 3
+        expected:
+          success: true
+          result: '0'
+          output: count
+        actual_result: '0'
+        actual_output: count
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Capture iteration 3 start time
+        expected:
+          success: true
+          result: '0'
+          output: timestamp
+        actual_result: '0'
+        actual_output: timestamp
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Process iteration 3 data
+        expected:
+          success: true
+          result: '0'
+          output: count
+        actual_result: '0'
+        actual_output: count
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: Capture iteration 3 end time and calculate duration
+        expected:
+          success: true
+          result: '0'
+          output: timestamp
+        actual_result: '0'
+        actual_output: timestamp
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 5
+        description: Calculate iteration 3 processing time and record results
+        expected:
+          success: true
+          result: '0'
+          output: duration
+        actual_result: '0'
+        actual_output: duration
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 5
+    name: Results Aggregation and Analysis
+    step_results:
+    - Fail:
+        step: 1
+        description: Count total iterations completed
+        expected:
+          success: true
+          result: '0'
+          output: '3'
+        actual_result: '0'
+        actual_output: '3'
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Calculate average processing time across iterations
+        expected:
+          success: true
+          result: '0'
+          output: average
+        actual_result: '0'
+        actual_output: average
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Calculate minimum processing time
+        expected:
+          success: true
+          result: '0'
+          output: minimum
+        actual_result: '0'
+        actual_output: minimum
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: Calculate maximum processing time
+        expected:
+          success: true
+          result: '0'
+          output: maximum
+        actual_result: '0'
+        actual_output: maximum
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 5
+        description: Count successful iterations
+        expected:
+          success: true
+          result: '0'
+          output: count
+        actual_result: '0'
+        actual_output: count
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 6
+        description: Calculate success rate percentage
+        expected:
+          success: true
+          result: '0'
+          output: percentage
+        actual_result: '0'
+        actual_output: percentage
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 7
+        description: Generate comprehensive analysis report
+        expected:
+          success: true
+          result: '0'
+          output: Data-Driven Test Analysis Report
+        actual_result: '0'
+        actual_output: Data-Driven Test Analysis Report
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 8
+        description: Verify analysis report completeness
+        expected:
+          success: true
+          result: '0'
+          output: '4'
+        actual_result: '0'
+        actual_output: '4'
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 9
+        description: Archive test results and cleanup
+        expected:
+          success: true
+          result: '0'
+          output: complete
+        actual_result: '0'
+        actual_output: complete
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 28
+  passed_steps: 0
+  failed_steps: 28
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: COMPLEX_DATA_DRIVEN_ITERATIONS
+  item: 1
+  tc: 9
+- test_case_id: TC_COMPLEX_FAILED_TEARDOWN_001
+  description: Failed step scenario with teardown hooks ensuring proper cleanup -
+    demonstrates error handling and cleanup guarantees
+  sequences:
+  - sequence_id: 1
+    name: Resource Allocation Before Failure
+    step_results:
+    - Fail:
+        step: 1
+        description: Create cleanup test directory structure
+        expected:
+          success: true
+          result: '0'
+          output: Directories created
+        actual_result: '0'
+        actual_output: Directories created
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Create test resources that need cleanup
+        expected:
+          success: true
+          result: '0'
+          output: timestamp
+        actual_result: '0'
+        actual_output: timestamp
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Allocate multiple test files
+        expected:
+          success: true
+          result: '0'
+          output: '5'
+        actual_result: '0'
+        actual_output: '5'
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: Create lock file that must be cleaned up
+        expected:
+          success: true
+          result: '0'
+          output: pid
+        actual_result: '0'
+        actual_output: pid
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 5
+        description: Create cleanup manifest
+        expected:
+          success: true
+          result: '0'
+          output: Cleanup Manifest
+        actual_result: '0'
+        actual_output: Cleanup Manifest
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 2
+    name: Intentional Failure Sequence
+    step_results:
+    - Fail:
+        step: 1
+        description: Pre-failure operation - should succeed
+        expected:
+          success: true
+          result: '0'
+          output: Pre-failure step executing
+        actual_result: '0'
+        actual_output: Pre-failure step executing
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Create temporary processing files
+        expected:
+          success: true
+          result: '0'
+          output: '3'
+        actual_result: '0'
+        actual_output: '3'
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: THIS STEP INTENTIONALLY FAILS - Simulating error condition
+        expected:
+          success: false
+          result: '1'
+          output: SIMULATED FAILURE
+        actual_result: '1'
+        actual_output: SIMULATED FAILURE
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: Post-failure step - should not execute
+        expected:
+          success: true
+          result: '0'
+          output: should not execute
+        actual_result: '0'
+        actual_output: should not execute
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 3
+    name: Cleanup Verification Sequence
+    step_results:
+    - Fail:
+        step: 1
+        description: Verify cleanup directory still exists for inspection
+        expected:
+          success: true
+          result: '0'
+          output: exists
+        actual_result: '0'
+        actual_output: exists
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Check if cleanup manifest is still present
+        expected:
+          success: true
+          result: '0'
+          output: Cleanup Manifest
+        actual_result: '0'
+        actual_output: Cleanup Manifest
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Log cleanup verification results
+        expected:
+          success: true
+          result: '0'
+          output: Cleanup verification completed
+        actual_result: '0'
+        actual_output: Cleanup verification completed
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 12
+  passed_steps: 0
+  failed_steps: 12
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: COMPLEX_FAILED_STEP_TEARDOWN
+  item: 1
+  tc: 5
+- test_case_id: TC_COMPLEX_HYDRATION_CONDITIONAL_001
+  description: Test with extensive hydration variables and conditional verification
+    - demonstrates environment-driven testing
+  sequences:
+  - sequence_id: 1
+    name: Configuration Validation
+    step_results:
+    - Fail:
+        step: 1
+        description: Verify environment type and capture for conditional logic
+        expected:
+          success: true
+          result: '0'
+          output: environment name
+        actual_result: '0'
+        actual_output: environment name
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Generate environment-specific configuration file
+        expected:
+          success: true
+          result: '0'
+          output: '[environment]'
+        actual_result: '0'
+        actual_output: '[environment]'
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Validate database connection string format
+        expected:
+          success: true
+          result: '0'
+          output: connection string
+        actual_result: '0'
+        actual_output: connection string
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: Check database port is numeric and in valid range
+        expected:
+          success: true
+          result: '0'
+          output: port number
+        actual_result: '0'
+        actual_output: port number
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 2
+    name: Environment-Specific Behavior
+    step_results:
+    - Fail:
+        step: 1
+        description: Set environment-specific timeout values
+        expected:
+          success: true
+          result: '0'
+          output: TIMEOUT_MULTIPLIER=
+        actual_result: '0'
+        actual_output: TIMEOUT_MULTIPLIER=
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Configure connection pool based on environment
+        expected:
+          success: true
+          result: '0'
+          output: POOL_SIZE=
+        actual_result: '0'
+        actual_output: POOL_SIZE=
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Determine logging verbosity based on debug mode
+        expected:
+          success: true
+          result: '0'
+          output: LOG_LEVEL=
+        actual_result: '0'
+        actual_output: LOG_LEVEL=
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: Configure caching strategy
+        expected:
+          success: true
+          result: '0'
+          output: CACHE_STRATEGY=
+        actual_result: '0'
+        actual_output: CACHE_STRATEGY=
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 3
+    name: Runtime Configuration Validation
+    step_results:
+    - Fail:
+        step: 1
+        description: Generate complete runtime configuration
+        expected:
+          success: true
+          result: '0'
+          output: Runtime Configuration Summary
+        actual_result: '0'
+        actual_output: Runtime Configuration Summary
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Validate all required configuration values are present
+        expected:
+          success: true
+          result: '0'
+          output: '7'
+        actual_result: '0'
+        actual_output: '7'
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Verify numeric configuration values are valid
+        expected:
+          success: true
+          result: '0'
+          output: 'Database port:'
+        actual_result: '0'
+        actual_output: 'Database port:'
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: Test configuration with conditional environment checks
+        expected:
+          success: true
+          result: '0'
+          output: 'VALIDATION:'
+        actual_result: '0'
+        actual_output: 'VALIDATION:'
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 5
+        description: Generate final validation report
+        expected:
+          success: true
+          result: '0'
+          output: Configuration Validation Report
+        actual_result: '0'
+        actual_output: Configuration Validation Report
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 6
+        description: Cleanup configuration files
+        expected:
+          success: true
+          result: '0'
+          output: cleaned up
+        actual_result: '0'
+        actual_output: cleaned up
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 14
+  passed_steps: 0
+  failed_steps: 14
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: COMPLEX_HYDRATION_CONDITIONAL_VERIFICATION
+  item: 1
+  tc: 6
+- test_case_id: TC_COMPLEX_MULTI_SEQ_HOOKS_001
+  description: Multi-sequence test with hooks, variables, and manual steps - comprehensive
+    workflow with lifecycle management
+  sequences:
+  - sequence_id: 1
+    name: Automated Setup and Configuration
+    step_results:
+    - NotExecuted:
+        step: 1
+        description: Create test workspace with captured timestamp
+    - NotExecuted:
+        step: 2
+        description: Initialize workspace structure with environment variable
+    - NotExecuted:
+        step: 3
+        description: Generate test configuration file
+    - NotExecuted:
+        step: 4
+        description: Extract and verify configuration values
+    all_steps_passed: false
+  - sequence_id: 2
+    name: Manual Verification and Data Processing
+    step_results:
+    - NotExecuted:
+        step: 1
+        description: Verify test workspace was created correctly
+    - NotExecuted:
+        step: 2
+        description: Create test data file with sequence information
+    - NotExecuted:
+        step: 3
+        description: Process data and capture results
+    - NotExecuted:
+        step: 4
+        description: Verify file count and content manually
+    all_steps_passed: false
+  - sequence_id: 3
+    name: Conditional Verification and Cleanup
+    step_results:
+    - NotExecuted:
+        step: 1
+        description: Calculate test duration
+    - NotExecuted:
+        step: 2
+        description: Verify test execution duration with conditional logic
+    - NotExecuted:
+        step: 3
+        description: Create test summary report
+    - NotExecuted:
+        step: 4
+        description: Review and verify test summary
+    - NotExecuted:
+        step: 5
+        description: Archive test results
+    - NotExecuted:
+        step: 6
+        description: Verify archive and cleanup workspace
+    all_steps_passed: false
+  total_steps: 14
+  passed_steps: 0
+  failed_steps: 0
+  not_executed_steps: 14
+  overall_pass: false
+  requirement: COMPLEX_MULTI_SEQUENCE_HOOKS
+  item: 1
+  tc: 1
+- test_case_id: TC_COMPLEX_PERFORMANCE_TIMING_001
+  description: Performance test with timing capture and validation - demonstrates
+    performance metrics collection and analysis
+  sequences:
+  - sequence_id: 1
+    name: Baseline Performance Measurement
+    step_results:
+    - Fail:
+        step: 1
+        description: Capture baseline start timestamp
+        expected:
+          success: true
+          result: '0'
+          output: timestamp
+        actual_result: '0'
+        actual_output: timestamp
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Execute baseline operation (simple echo)
+        expected:
+          success: true
+          result: '0'
+          output: count
+        actual_result: '0'
+        actual_output: count
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Capture baseline end timestamp
+        expected:
+          success: true
+          result: '0'
+          output: timestamp
+        actual_result: '0'
+        actual_output: timestamp
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: Calculate baseline duration in milliseconds
+        expected:
+          success: true
+          result: '0'
+          output: duration
+        actual_result: '0'
+        actual_output: duration
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 5
+        description: Record baseline metrics
+        expected:
+          success: true
+          result: '0'
+          output: Baseline Performance Metrics
+        actual_result: '0'
+        actual_output: Baseline Performance Metrics
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 2
+    name: File I/O Performance Test
+    step_results:
+    - Fail:
+        step: 1
+        description: Capture file I/O test start timestamp
+        expected:
+          success: true
+          result: '0'
+          output: timestamp
+        actual_result: '0'
+        actual_output: timestamp
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Create test files with measured workload
+        expected:
+          success: true
+          result: '0'
+          output: line count
+        actual_result: '0'
+        actual_output: line count
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Capture file I/O test end timestamp
+        expected:
+          success: true
+          result: '0'
+          output: timestamp
+        actual_result: '0'
+        actual_output: timestamp
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: Calculate file I/O duration
+        expected:
+          success: true
+          result: '0'
+          output: duration
+        actual_result: '0'
+        actual_output: duration
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 5
+        description: Record file I/O metrics
+        expected:
+          success: true
+          result: '0'
+          output: File I/O Performance Metrics
+        actual_result: '0'
+        actual_output: File I/O Performance Metrics
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 3
+    name: Processing Performance Test
+    step_results:
+    - Fail:
+        step: 1
+        description: Capture processing test start timestamp
+        expected:
+          success: true
+          result: '0'
+          output: timestamp
+        actual_result: '0'
+        actual_output: timestamp
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Process test data (grep, sort, count operations)
+        expected:
+          success: true
+          result: '0'
+          output: count
+        actual_result: '0'
+        actual_output: count
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Capture processing test end timestamp
+        expected:
+          success: true
+          result: '0'
+          output: timestamp
+        actual_result: '0'
+        actual_output: timestamp
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: Calculate processing duration
+        expected:
+          success: true
+          result: '0'
+          output: duration
+        actual_result: '0'
+        actual_output: duration
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 5
+        description: Record processing metrics
+        expected:
+          success: true
+          result: '0'
+          output: Processing Performance Metrics
+        actual_result: '0'
+        actual_output: Processing Performance Metrics
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 4
+    name: Performance Analysis and Reporting
+    step_results:
+    - Fail:
+        step: 1
+        description: Calculate total test execution time
+        expected:
+          success: true
+          result: '0'
+          output: duration
+        actual_result: '0'
+        actual_output: duration
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Determine performance test status
+        expected:
+          success: true
+          result: '0'
+          output: OVERALL_STATUS=
+        actual_result: '0'
+        actual_output: OVERALL_STATUS=
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Generate comprehensive performance report
+        expected:
+          success: true
+          result: '0'
+          output: Performance Test Summary Report
+        actual_result: '0'
+        actual_output: Performance Test Summary Report
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: Validate performance metrics quality
+        expected:
+          success: true
+          result: '0'
+          output: 'Baseline:'
+        actual_result: '0'
+        actual_output: 'Baseline:'
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 5
+        description: Cleanup performance test artifacts
+        expected:
+          success: true
+          result: '0'
+          output: cleanup complete
+        actual_result: '0'
+        actual_output: cleanup complete
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 20
+  passed_steps: 0
+  failed_steps: 20
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: COMPLEX_PERFORMANCE_TIMING
+  item: 1
+  tc: 7
+- test_case_id: TC_COMPLEX_PREREQ_DEPS_HOOKS_001
+  description: Test with prerequisites, dependencies, and hooks - comprehensive validation
+    with dependency chains
+  sequences:
+  - sequence_id: 1
+    name: Foundation Setup with Dependencies
+    step_results:
+    - Fail:
+        step: 1
+        description: Create base directory structure
+        expected:
+          success: true
+          result: '0'
+          output: Created directories
+        actual_result: '0'
+        actual_output: Created directories
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Generate unique session ID
+        expected:
+          success: true
+          result: '0'
+          output: session
+        actual_result: '0'
+        actual_output: session
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Create session configuration file (dependency for sequence 2)
+        expected:
+          success: true
+          result: '0'
+          output: session_id=
+        actual_result: '0'
+        actual_output: session_id=
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: Initialize log file (dependency for all sequences)
+        expected:
+          success: true
+          result: '0'
+          output: '[INFO] Test session'
+        actual_result: '0'
+        actual_output: '[INFO] Test session'
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 2
+    name: Service Initialization (depends on sequence 1)
+    step_results:
+    - Fail:
+        step: 1
+        description: Verify sequence 1 dependencies are met
+        expected:
+          success: true
+          result: '0'
+          output: Dependencies verified
+        actual_result: '0'
+        actual_output: Dependencies verified
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Create service data file using session ID
+        expected:
+          success: true
+          result: '0'
+          output: 'Service:'
+        actual_result: '0'
+        actual_output: 'Service:'
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Log service initialization
+        expected:
+          success: true
+          result: '0'
+          output: initialized with session
+        actual_result: '0'
+        actual_output: initialized with session
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: Capture initialization timestamp
+        expected:
+          success: true
+          result: '0'
+          output: timestamp
+        actual_result: '0'
+        actual_output: timestamp
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 3
+    name: Service Operations (depends on sequences 1 and 2)
+    step_results:
+    - Fail:
+        step: 1
+        description: Verify all dependencies from sequences 1 and 2
+        expected:
+          success: true
+          result: '0'
+          output: All dependencies satisfied
+        actual_result: '0'
+        actual_output: All dependencies satisfied
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Simulate service operation with captured variables
+        expected:
+          success: true
+          result: '0'
+          output: Processing request
+        actual_result: '0'
+        actual_output: Processing request
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Count total files created across all sequences
+        expected:
+          success: true
+          result: '0'
+          output: number
+        actual_result: '0'
+        actual_output: number
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: Update service status
+        expected:
+          success: true
+          result: '0'
+          output: 'Status: RUNNING'
+        actual_result: '0'
+        actual_output: 'Status: RUNNING'
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 4
+    name: Teardown and Validation (depends on all previous sequences)
+    step_results:
+    - Fail:
+        step: 1
+        description: Final status update
+        expected:
+          success: true
+          result: '0'
+          output: 'Status: COMPLETED'
+        actual_result: '0'
+        actual_output: 'Status: COMPLETED'
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Generate final test report
+        expected:
+          success: true
+          result: '0'
+          output: Test Execution Report
+        actual_result: '0'
+        actual_output: Test Execution Report
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Archive all test artifacts
+        expected:
+          success: true
+          result: '0'
+          output: created
+        actual_result: '0'
+        actual_output: created
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: Verify archive integrity
+        expected:
+          success: true
+          result: '0'
+          output: number
+        actual_result: '0'
+        actual_output: number
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 5
+        description: Cleanup temporary files (preserve archive)
+        expected:
+          success: true
+          result: '0'
+          output: Cleanup complete
+        actual_result: '0'
+        actual_output: Cleanup complete
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 17
+  passed_steps: 0
+  failed_steps: 17
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: COMPLEX_PREREQUISITES_DEPENDENCIES
+  item: 1
+  tc: 2
+- test_case_id: TC_COMPLEX_SECURITY_AUTH_API_001
+  description: Security test with authentication token capture and API calls - demonstrates
+    secure credential handling and API testing
+  sequences:
+  - sequence_id: 1
+    name: Authentication and Token Generation
+    step_results:
+    - Fail:
+        step: 1
+        description: Generate timestamp for authentication request
+        expected:
+          success: true
+          result: '0'
+          output: timestamp
+        actual_result: '0'
+        actual_output: timestamp
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Simulate authentication request and generate secure token
+        expected:
+          success: true
+          result: '0'
+          output: token
+        actual_result: '0'
+        actual_output: token
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Calculate token expiry timestamp
+        expected:
+          success: true
+          result: '0'
+          output: expiry timestamp
+        actual_result: '0'
+        actual_output: expiry timestamp
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: Store authentication session securely
+        expected:
+          success: true
+          result: '0'
+          output: Secure Session Data
+        actual_result: '0'
+        actual_output: Secure Session Data
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 5
+        description: Generate authorization header for API requests
+        expected:
+          success: true
+          result: '0'
+          output: 'Authorization: Bearer'
+        actual_result: '0'
+        actual_output: 'Authorization: Bearer'
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 2
+    name: API Resource Access with Token
+    step_results:
+    - Fail:
+        step: 1
+        description: Simulate GET request to user profile endpoint
+        expected:
+          success: true
+          result: '0'
+          output: user_id
+        actual_result: '0'
+        actual_output: user_id
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Simulate GET request to resources based on role
+        expected:
+          success: true
+          result: '0'
+          output: resources
+        actual_result: '0'
+        actual_output: resources
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Simulate POST request to create resource
+        expected:
+          success: true
+          result: '0'
+          output: POST
+        actual_result: '0'
+        actual_output: POST
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: Simulate API response with resource ID
+        expected:
+          success: true
+          result: '0'
+          output: resource id
+        actual_result: '0'
+        actual_output: resource id
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 5
+        description: Log API request audit trail
+        expected:
+          success: true
+          result: '0'
+          output: POST /resources
+        actual_result: '0'
+        actual_output: POST /resources
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 3
+    name: Token Validation and Security Checks
+    step_results:
+    - Fail:
+        step: 1
+        description: Check token expiry status
+        expected:
+          success: true
+          result: '0'
+          output: TOKEN_STATUS=
+        actual_result: '0'
+        actual_output: TOKEN_STATUS=
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Validate token format and length
+        expected:
+          success: true
+          result: '0'
+          output: FORMAT_CHECK=
+        actual_result: '0'
+        actual_output: FORMAT_CHECK=
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Count total API requests made with this token
+        expected:
+          success: true
+          result: '0'
+          output: count
+        actual_result: '0'
+        actual_output: count
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: Verify session file security permissions
+        expected:
+          success: true
+          result: '0'
+          output: permissions
+        actual_result: '0'
+        actual_output: permissions
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 4
+    name: Session Termination and Cleanup
+    step_results:
+    - Fail:
+        step: 1
+        description: Simulate logout API request
+        expected:
+          success: true
+          result: '0'
+          output: POST
+        actual_result: '0'
+        actual_output: POST
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Calculate session duration
+        expected:
+          success: true
+          result: '0'
+          output: duration
+        actual_result: '0'
+        actual_output: duration
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Generate security audit report
+        expected:
+          success: true
+          result: '0'
+          output: Security Test Audit Report
+        actual_result: '0'
+        actual_output: Security Test Audit Report
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: Securely wipe sensitive session data
+        expected:
+          success: true
+          result: '0'
+          output: wiped
+        actual_result: '0'
+        actual_output: wiped
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 5
+        description: Archive audit logs and remove sensitive data directory
+        expected:
+          success: true
+          result: '0'
+          output: complete
+        actual_result: '0'
+        actual_output: complete
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 6
+        description: Verify all sensitive data has been removed
+        expected:
+          success: true
+          result: '0'
+          output: CLEANUP_STATUS=SUCCESS
+        actual_result: '0'
+        actual_output: CLEANUP_STATUS=SUCCESS
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 20
+  passed_steps: 0
+  failed_steps: 20
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: COMPLEX_SECURITY_AUTHENTICATION_API
+  item: 1
+  tc: 8
+- test_case_id: TC_DEPENDENCY_CIRCULAR_001
+  description: Circular dependency detection test - demonstrates detection of circular
+    dependency errors (A includes B, B includes A)
+  sequences:
+  - sequence_id: 1
+    name: Circular Dependency Test
+    step_results:
+    - Fail:
+        step: 1
+        description: Attempt to execute with circular dependency
+        expected:
+          success: false
+          result: '1'
+          output: Circular dependency detected
+        actual_result: '1'
+        actual_output: Circular dependency detected
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Verify circular dependency error
+        expected:
+          success: false
+          result: '1'
+          output: Error
+        actual_result: '1'
+        actual_output: Error
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 2
+  passed_steps: 0
+  failed_steps: 2
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: DEPENDENCY_CIRCULAR
+  item: 1
+  tc: 1
+- test_case_id: TC_DEPENDENCY_CIRCULAR_002
+  description: Circular dependency companion test - creates circular reference by
+    including TC_DEPENDENCY_CIRCULAR_001
+  sequences:
+  - sequence_id: 1
+    name: Circular Dependency Companion
+    step_results:
+    - Fail:
+        step: 1
+        description: Attempt to execute with circular dependency
+        expected:
+          success: false
+          result: '1'
+          output: Circular dependency detected
+        actual_result: '1'
+        actual_output: Circular dependency detected
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 1
+  passed_steps: 0
+  failed_steps: 1
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: DEPENDENCY_CIRCULAR
+  item: 1
+  tc: 2
+- test_case_id: TC_DEPENDENCY_COMPLEX_001
+  description: Complex dependency scenario - demonstrates multiple dependencies at
+    both test case and sequence levels
+  sequences:
+  - sequence_id: 1
+    name: Root Level Dependencies Only
+    step_results:
+    - Fail:
+        step: 1
+        description: Execute with inherited dependencies
+        expected:
+          success: true
+          result: '0'
+          output: Using root-level dependencies
+        actual_result: '0'
+        actual_output: Using root-level dependencies
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 2
+    name: Combined Root and Sequence Dependencies
+    step_results:
+    - Fail:
+        step: 1
+        description: Execute with combined dependencies
+        expected:
+          success: true
+          result: '0'
+          output: Combined
+        actual_result: '0'
+        actual_output: Combined
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Verify dependency order
+        expected:
+          success: true
+          result: '0'
+          output: Order
+        actual_result: '0'
+        actual_output: Order
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 3
+    name: Sequence Override Dependencies
+    step_results:
+    - Fail:
+        step: 1
+        description: Execute with potentially duplicate dependencies
+        expected:
+          success: true
+          result: '0'
+          output: Duplication test
+        actual_result: '0'
+        actual_output: Duplication test
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Document dependency handling
+        expected:
+          success: true
+          result: '0'
+          output: Unique dependencies
+        actual_result: '0'
+        actual_output: Unique dependencies
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 4
+    name: Transitive Dependency
+    step_results:
+    - Fail:
+        step: 1
+        description: Execute with transitive dependencies
+        expected:
+          success: true
+          result: '0'
+          output: Transitive closure
+        actual_result: '0'
+        actual_output: Transitive closure
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Verify full dependency graph
+        expected:
+          success: true
+          result: '0'
+          output: Full graph
+        actual_result: '0'
+        actual_output: Full graph
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 7
+  passed_steps: 0
+  failed_steps: 7
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: DEPENDENCY_COMPLEX
+  item: 1
+  tc: 1
+- test_case_id: TC_DEPENDENCY_MISSING_001
+  description: Missing dependency error handling test - references non-existent test
+    case IDs to test error handling
+  sequences:
+  - sequence_id: 1
+    name: Missing Dependency Test
+    step_results:
+    - NotExecuted:
+        step: 1
+        description: Attempt to execute with missing dependencies (marked manual -
+          expected to fail)
+    - NotExecuted:
+        step: 2
+        description: Verify missing dependency error (marked manual - expected to
+          fail)
+    all_steps_passed: false
+  - sequence_id: 2
+    name: Missing Sequence Dependency
+    step_results:
+    - NotExecuted:
+        step: 1
+        description: Attempt to execute with missing sequence dependency (marked manual
+          - expected to fail)
+    all_steps_passed: false
+  total_steps: 3
+  passed_steps: 0
+  failed_steps: 0
+  not_executed_steps: 3
+  overall_pass: false
+  requirement: DEPENDENCY_MISSING
+  item: 1
+  tc: 1
+- test_case_id: TC_DEPENDENCY_NESTED_001
+  description: Nested dependency test - demonstrates transitive dependency chain (A
+    depends on B, B depends on C)
+  sequences:
+  - sequence_id: 1
+    name: First Level Dependency
+    step_results:
+    - Fail:
+        step: 1
+        description: Verify nested dependency chain
+        expected:
+          success: true
+          result: '0'
+          output: Nested dependency
+        actual_result: '0'
+        actual_output: Nested dependency
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Execute with nested dependencies
+        expected:
+          success: true
+          result: '0'
+          output: All nested dependencies resolved
+        actual_result: '0'
+        actual_output: All nested dependencies resolved
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 2
+    name: Second Level Dependency
+    step_results:
+    - Fail:
+        step: 1
+        description: Verify multi-level dependency
+        expected:
+          success: true
+          result: '0'
+          output: Multi-level dependency graph established
+        actual_result: '0'
+        actual_output: Multi-level dependency graph established
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Complete nested test execution
+        expected:
+          success: true
+          result: '0'
+          output: Nested test execution complete
+        actual_result: '0'
+        actual_output: Nested test execution complete
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 3
+    name: Complex Nested Dependencies
+    step_results:
+    - Fail:
+        step: 1
+        description: Execute with complex nested dependencies
+        expected:
+          success: true
+          result: '0'
+          output: Complex nested dependencies
+        actual_result: '0'
+        actual_output: Complex nested dependencies
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 5
+  passed_steps: 0
+  failed_steps: 5
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: DEPENDENCY_NESTED
+  item: 1
+  tc: 1
+- test_case_id: TC_DEPENDENCY_SELF_REF_001
+  description: Self-reference dependency test - detects when a test case includes
+    itself (direct circular dependency)
+  sequences:
+  - sequence_id: 1
+    name: Self Reference Test
+    step_results:
+    - Fail:
+        step: 1
+        description: Attempt to execute with self-reference
+        expected:
+          success: false
+          result: '1'
+          output: Self-reference detected
+        actual_result: '1'
+        actual_output: Self-reference detected
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 2
+    name: Sequence Self Reference
+    step_results:
+    - Fail:
+        step: 1
+        description: Attempt to execute with sequence self-reference
+        expected:
+          success: false
+          result: '1'
+          output: Self-reference detected
+        actual_result: '1'
+        actual_output: Self-reference detected
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 2
+  passed_steps: 0
+  failed_steps: 2
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: DEPENDENCY_SELF_REF
+  item: 1
+  tc: 1
+- test_case_id: TC_DEPENDENCY_SEQUENCE_001
+  description: Sequence-level dependency test - test sequences have dependencies on
+    other test case sequences
+  sequences:
+  - sequence_id: 1
+    name: Independent Sequence
+    step_results:
+    - Fail:
+        step: 1
+        description: Create base data
+        expected:
+          success: true
+          result: '0'
+          output: ''
+        actual_result: '0'
+        actual_output: ''
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Verify base data
+        expected:
+          success: true
+          result: '0'
+          output: Base data created
+        actual_result: '0'
+        actual_output: Base data created
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 2
+    name: Dependent Sequence - References TC_SUCCESS_MULTI_SEQ_001
+    step_results:
+    - Fail:
+        step: 1
+        description: Process dependent data
+        expected:
+          success: true
+          result: '0'
+          output: Processing
+        actual_result: '0'
+        actual_output: Processing
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Cleanup base data
+        expected:
+          success: true
+          result: '0'
+          output: Cleaned
+        actual_result: '0'
+        actual_output: Cleaned
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 3
+    name: Multiple Sequence Dependencies
+    step_results:
+    - Fail:
+        step: 1
+        description: Execute with multiple dependencies
+        expected:
+          success: true
+          result: '0'
+          output: All dependencies
+        actual_result: '0'
+        actual_output: All dependencies
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 5
+  passed_steps: 0
+  failed_steps: 5
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: DEPENDENCY_SEQUENCE
+  item: 1
+  tc: 1
+- test_case_id: TC_DEPENDENCY_SIMPLE_001
+  description: Simple dependency test - test case has dependency on another test case
+    (TC_SUCCESS_SIMPLE_001)
+  sequences:
+  - sequence_id: 1
+    name: Dependent Execution
+    step_results:
+    - Fail:
+        step: 1
+        description: Verify dependency satisfaction
+        expected:
+          success: true
+          result: '0'
+          output: Dependencies satisfied
+        actual_result: '0'
+        actual_output: Dependencies satisfied
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Execute dependent operation
+        expected:
+          success: true
+          result: '0'
+          output: Executing dependent test
+        actual_result: '0'
+        actual_output: Executing dependent test
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Complete dependent test
+        expected:
+          success: true
+          result: '0'
+          output: Test completed successfully
+        actual_result: '0'
+        actual_output: Test completed successfully
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 3
+  passed_steps: 0
+  failed_steps: 3
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: DEPENDENCY_SIMPLE
+  item: 1
+  tc: 1
+- test_case_id: TC_FAILURE_COMMAND_NOT_FOUND_001
+  description: Test case where a command is not found - verifies handling of non-existent
+    commands
+  sequences:
+  - sequence_id: 1
+    name: Command Not Found Sequence
+    step_results:
+    - Fail:
+        step: 1
+        description: Run non-existent command (verification fails)
+        expected:
+          success: true
+          result: '0'
+          output: ''
+        actual_result: '0'
+        actual_output: ''
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: This step should not execute due to verification failure
+        expected:
+          success: true
+          result: '0'
+          output: Step 2
+        actual_result: '0'
+        actual_output: Step 2
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 2
+  passed_steps: 0
+  failed_steps: 2
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: FAILURE_COMMAND_NOT_FOUND
+  item: 1
+  tc: 1
+- test_case_id: TC_FAILURE_DISK_FULL_001
+  description: Test case simulating disk full scenario - verifies handling of write
+    failures due to space constraints
+  sequences:
+  - sequence_id: 1
+    name: Disk Full Simulation Sequence
+    step_results:
+    - Fail:
+        step: 1
+        description: Attempt to write to /dev/full device but expect success (verification
+          fails)
+        expected:
+          success: true
+          result: '0'
+          output: ''
+        actual_result: '0'
+        actual_output: ''
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: This step should not execute due to verification failure
+        expected:
+          success: true
+          result: '0'
+          output: Step 2
+        actual_result: '0'
+        actual_output: Step 2
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 2
+  passed_steps: 0
+  failed_steps: 2
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: FAILURE_DISK_FULL
+  item: 1
+  tc: 1
+- test_case_id: TC_FAILURE_EXIT_CODE_MISMATCH_001
+  description: Test case where command exit code verification fails - tests exit code
+    validation logic
+  sequences:
+  - sequence_id: 1
+    name: Exit Code Mismatch Sequence
+    step_results:
+    - Fail:
+        step: 1
+        description: Run false command but expect success exit code (verification
+          fails)
+        expected:
+          success: true
+          result: '0'
+          output: ''
+        actual_result: '0'
+        actual_output: ''
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: This step should not execute due to exit code verification failure
+        expected:
+          success: true
+          result: '0'
+          output: Step 2
+        actual_result: '0'
+        actual_output: Step 2
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 2
+  passed_steps: 0
+  failed_steps: 2
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: FAILURE_EXIT_CODE_MISMATCH
+  item: 1
+  tc: 1
+- test_case_id: TC_FAILURE_FIRST_STEP_001
+  description: Test case where the first step fails - verifies that test execution
+    halts immediately on first failure
+  sequences:
+  - sequence_id: 1
+    name: First Step Failure Sequence
+    step_results:
+    - Fail:
+        step: 1
+        description: Search for pattern but expect it to be found (verification fails)
+        expected:
+          success: true
+          result: '0'
+          output: some pattern
+        actual_result: '0'
+        actual_output: some pattern
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: This step should not execute due to verification failure
+        expected:
+          success: true
+          result: '0'
+          output: This should not run
+        actual_result: '0'
+        actual_output: This should not run
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: This step should also not execute
+        expected:
+          success: true
+          result: '0'
+          output: current date
+        actual_result: '0'
+        actual_output: current date
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 3
+  passed_steps: 0
+  failed_steps: 3
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: FAILURE_FIRST_STEP
+  item: 1
+  tc: 1
+- test_case_id: TC_FAILURE_INTERMEDIATE_STEP_001
+  description: Test case where an intermediate step fails - verifies that test execution
+    halts after first step succeeds but second fails
+  sequences:
+  - sequence_id: 1
+    name: Intermediate Step Failure Sequence
+    step_results:
+    - Fail:
+        step: 1
+        description: Print success message (succeeds)
+        expected:
+          success: true
+          result: '0'
+          output: Step 1 completed
+        actual_result: '0'
+        actual_output: Step 1 completed
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: List non-existent directory but expect success (verification
+          fails)
+        expected:
+          success: true
+          result: '0'
+          output: file listing
+        actual_result: '0'
+        actual_output: file listing
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: This step should not execute due to verification failure
+        expected:
+          success: true
+          result: '0'
+          output: Step 3 should not run
+        actual_result: '0'
+        actual_output: Step 3 should not run
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 3
+  passed_steps: 0
+  failed_steps: 3
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: FAILURE_INTERMEDIATE_STEP
+  item: 1
+  tc: 1
+- test_case_id: TC_FAILURE_INVALID_SYNTAX_001
+  description: Test case with invalid command syntax - verifies handling of malformed
+    commands
+  sequences:
+  - sequence_id: 1
+    name: Invalid Syntax Sequence
+    step_results:
+    - Fail:
+        step: 1
+        description: Execute command with invalid brace expansion but expect success
+          (verification fails)
+        expected:
+          success: true
+          result: '0'
+          output: ''
+        actual_result: '0'
+        actual_output: ''
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: This step should not execute due to verification failure
+        expected:
+          success: true
+          result: '0'
+          output: Step 2
+        actual_result: '0'
+        actual_output: Step 2
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 2
+  passed_steps: 0
+  failed_steps: 2
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: FAILURE_INVALID_SYNTAX
+  item: 1
+  tc: 1
+- test_case_id: TC_FAILURE_LAST_STEP_001
+  description: Test case where the last step fails - verifies that all previous steps
+    execute successfully before final failure
+  sequences:
+  - sequence_id: 1
+    name: Last Step Failure Sequence
+    step_results:
+    - Fail:
+        step: 1
+        description: Print first success message
+        expected:
+          success: true
+          result: '0'
+          output: Step 1 success
+        actual_result: '0'
+        actual_output: Step 1 success
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Print second success message
+        expected:
+          success: true
+          result: '0'
+          output: Step 2 success
+        actual_result: '0'
+        actual_output: Step 2 success
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Print third success message
+        expected:
+          success: true
+          result: '0'
+          output: Step 3 success
+        actual_result: '0'
+        actual_output: Step 3 success
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: Attempt to read non-existent file but expect success (verification
+          fails)
+        expected:
+          success: true
+          result: '0'
+          output: file contents
+        actual_result: '0'
+        actual_output: file contents
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 4
+  passed_steps: 0
+  failed_steps: 4
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: FAILURE_LAST_STEP
+  item: 1
+  tc: 1
+- test_case_id: TC_FAILURE_MULTI_SEQ_MIXED_001
+  description: Multi-sequence test with mixed pass/fail results - verifies handling
+    of failures across multiple sequences
+  sequences:
+  - sequence_id: 1
+    name: Successful Sequence
+    step_results:
+    - Fail:
+        step: 1
+        description: Print first message
+        expected:
+          success: true
+          result: '0'
+          output: Sequence 1, Step 1
+        actual_result: '0'
+        actual_output: Sequence 1, Step 1
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Print second message
+        expected:
+          success: true
+          result: '0'
+          output: Sequence 1, Step 2
+        actual_result: '0'
+        actual_output: Sequence 1, Step 2
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 2
+    name: Failing Sequence
+    step_results:
+    - Fail:
+        step: 1
+        description: Print message before failure
+        expected:
+          success: true
+          result: '0'
+          output: Sequence 2, Step 1
+        actual_result: '0'
+        actual_output: Sequence 2, Step 1
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: List non-existent directory but expect success (verification
+          fails)
+        expected:
+          success: true
+          result: '0'
+          output: directory listing
+        actual_result: '0'
+        actual_output: directory listing
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: This step should not execute due to verification failure
+        expected:
+          success: true
+          result: '0'
+          output: Sequence 2, Step 3
+        actual_result: '0'
+        actual_output: Sequence 2, Step 3
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 3
+    name: Unreachable Sequence
+    step_results:
+    - Fail:
+        step: 1
+        description: This step should not execute
+        expected:
+          success: true
+          result: '0'
+          output: Sequence 3, Step 1
+        actual_result: '0'
+        actual_output: Sequence 3, Step 1
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 6
+  passed_steps: 0
+  failed_steps: 6
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: FAILURE_MULTI_SEQ_MIXED
+  item: 1
+  tc: 1
+- test_case_id: TC_FAILURE_NEGATIVE_TEST_001
+  description: Test case with expected failure (negative test) - verifies that expected
+    failures are properly handled
+  sequences:
+  - sequence_id: 1
+    name: Negative Test Sequence
+    step_results:
+    - Fail:
+        step: 1
+        description: Successfully print message
+        expected:
+          success: true
+          result: '0'
+          output: Starting negative test
+        actual_result: '0'
+        actual_output: Starting negative test
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Test expected failure - grep for non-existent pattern
+        expected:
+          success: false
+          result: '1'
+          output: ''
+        actual_result: '1'
+        actual_output: ''
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Continue after expected failure
+        expected:
+          success: true
+          result: '0'
+          output: Negative test completed
+        actual_result: '0'
+        actual_output: Negative test completed
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: Another expected failure - test directory creation failure
+        expected:
+          success: false
+          result: '1'
+          output: Permission denied
+        actual_result: '1'
+        actual_output: Permission denied
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 4
+  passed_steps: 0
+  failed_steps: 4
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: FAILURE_NEGATIVE_TEST
+  item: 1
+  tc: 1
+- test_case_id: TC_FAILURE_OUTPUT_MISMATCH_001
+  description: Test case where command succeeds but output verification fails - tests
+    output validation logic
+  sequences:
+  - sequence_id: 1
+    name: Output Mismatch Sequence
+    step_results:
+    - Fail:
+        step: 1
+        description: Print message that differs from expected output (verification
+          fails)
+        expected:
+          success: true
+          result: '0'
+          output: Expected output message
+        actual_result: '0'
+        actual_output: Expected output message
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: This step should not execute due to output verification failure
+        expected:
+          success: true
+          result: '0'
+          output: Step 2
+        actual_result: '0'
+        actual_output: Step 2
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 2
+  passed_steps: 0
+  failed_steps: 2
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: FAILURE_OUTPUT_MISMATCH
+  item: 1
+  tc: 1
+- test_case_id: TC_FAILURE_PERMISSION_DENIED_001
+  description: Test case with permission denied error - verifies handling of permission-related
+    failures
+  sequences:
+  - sequence_id: 1
+    name: Permission Denied Sequence
+    step_results:
+    - Fail:
+        step: 1
+        description: Attempt to write to root-owned directory but expect success (verification
+          fails)
+        expected:
+          success: true
+          result: '0'
+          output: ''
+        actual_result: '0'
+        actual_output: ''
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: This step should not execute due to verification failure
+        expected:
+          success: true
+          result: '0'
+          output: Step 2
+        actual_result: '0'
+        actual_output: Step 2
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 2
+  passed_steps: 0
+  failed_steps: 2
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: FAILURE_PERMISSION_DENIED
+  item: 1
+  tc: 1
+- test_case_id: TC_FAILURE_VARIABLE_UNDEFINED_001
+  description: Test case with undefined variable reference - verifies handling of
+    unset variables in strict mode
+  sequences:
+  - sequence_id: 1
+    name: Undefined Variable Sequence
+    step_results:
+    - Fail:
+        step: 1
+        description: Execute command that uses undefined variable but expect success
+          (verification fails)
+        expected:
+          success: true
+          result: '0'
+          output: ''
+        actual_result: '0'
+        actual_output: ''
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: This step should not execute due to verification failure
+        expected:
+          success: true
+          result: '0'
+          output: Step 2
+        actual_result: '0'
+        actual_output: Step 2
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 2
+  passed_steps: 0
+  failed_steps: 2
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: FAILURE_VARIABLE_UNDEFINED
+  item: 1
+  tc: 1
+- test_case_id: TC_HOOKS_001
+  description: Comprehensive test demonstrating all eight hook types (script_start,
+    setup_test, before_sequence, after_sequence, before_step, after_step, teardown_test,
+    script_end) with sample hook scripts that perform logging, resource management,
+    and validation. Tests both fail and continue on_error modes.
+  sequences:
+  - sequence_id: 1
+    name: 'Hook Lifecycle with on_error: fail'
+    step_results:
+    - Fail:
+        step: 1
+        description: Execute simple echo command - before_step and after_step hooks
+          will log execution
+        expected:
+          success: true
+          result: '0'
+          output: Step 1 execution
+        actual_result: '0'
+        actual_output: Step 1 execution
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Create test data file - after_step hook will validate output
+        expected:
+          success: true
+          result: '0'
+          output: Test data for hooks validation
+        actual_result: '0'
+        actual_output: Test data for hooks validation
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Verify workspace created by setup_test hook exists
+        expected:
+          success: true
+          result: '0'
+          output: Workspace directory exists
+        actual_result: '0'
+        actual_output: Workspace directory exists
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: Check sequence log created by before_sequence hook
+        expected:
+          success: true
+          result: '0'
+          output: Sequence log exists
+        actual_result: '0'
+        actual_output: Sequence log exists
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 2
+    name: Hook Integration with Variables and Capture
+    step_results:
+    - Fail:
+        step: 1
+        description: Generate JSON output and capture variables - hooks will log the
+          execution context
+        expected:
+          success: true
+          result: '0'
+          output: success
+        actual_result: '0'
+        actual_output: success
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Execute command-based capture - after_step hook validates output
+          was saved
+        expected:
+          success: true
+          result: '0'
+          output: Total Executions
+        actual_result: '0'
+        actual_output: Total Executions
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Verify all hook tracking files were created during test execution
+        expected:
+          success: true
+          result: '0'
+          output: Hook tracking file check completed
+        actual_result: '0'
+        actual_output: Hook tracking file check completed
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 3
+    name: 'Hook Error Handling with on_error: continue'
+    step_results:
+    - Fail:
+        step: 1
+        description: Execute test step - hooks handle any errors gracefully
+        expected:
+          success: true
+          result: '0'
+          output: Testing hook resilience
+        actual_result: '0'
+        actual_output: Testing hook resilience
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Verify hook scripts properly use logger library for consistent
+          output
+        expected:
+          success: true
+          result: '0'
+          output: centralized logging library
+        actual_result: '0'
+        actual_output: centralized logging library
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Final validation - demonstrate complete hook lifecycle coverage
+        expected:
+          success: true
+          result: '0'
+          output: Hook Coverage Summary
+        actual_result: '0'
+        actual_output: Hook Coverage Summary
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 10
+  passed_steps: 0
+  failed_steps: 10
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: HOOKS
+  item: 1
+  tc: 1
+- test_case_id: TC_HOOKS_CONTINUE_001
+  description: 'Test case demonstrating hook on_error: continue mode where hook failures
+    do not stop test execution.'
+  sequences:
+  - sequence_id: 1
+    name: Continue on Hook Errors
+    step_results:
+    - Fail:
+        step: 1
+        description: Execute first step (before_step hook succeeds)
+        expected:
+          success: true
+          result: '0'
+          output: Step 1
+        actual_result: '0'
+        actual_output: Step 1
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Execute second step (before_step hook fails but test continues)
+        expected:
+          success: true
+          result: '0'
+          output: Step 2
+        actual_result: '0'
+        actual_output: Step 2
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Execute third step (before_step hook succeeds again)
+        expected:
+          success: true
+          result: '0'
+          output: Step 3
+        actual_result: '0'
+        actual_output: Step 3
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: Verify all steps executed despite hook failure
+        expected:
+          success: true
+          result: '0'
+          output: All steps executed
+        actual_result: '0'
+        actual_output: All steps executed
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 4
+  passed_steps: 0
+  failed_steps: 4
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: HOOKS_ON_ERROR_CONTINUE
+  item: 1
+  tc: 1
+- test_case_id: TC_HOOKS_INLINE_001
+  description: Test case demonstrating inline hook commands without external scripts.
+    All hooks are defined directly in the YAML file using inline bash commands.
+  sequences:
+  - sequence_id: 1
+    name: Inline Hook Demonstration
+    step_results:
+    - Fail:
+        step: 1
+        description: Execute simple command and verify inline hooks
+        expected:
+          success: true
+          result: '0'
+          output: Step 1
+        actual_result: '0'
+        actual_output: Step 1
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Verify hook marker files were created
+        expected:
+          success: true
+          result: '0'
+          output: completed
+        actual_result: '0'
+        actual_output: completed
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 2
+    name: Hook Context Variables
+    step_results:
+    - Fail:
+        step: 1
+        description: Execute command in second sequence
+        expected:
+          success: true
+          result: '0'
+          output: Sequence 2
+        actual_result: '0'
+        actual_output: Sequence 2
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Verify sequence 2 markers were created
+        expected:
+          success: true
+          result: '0'
+          output: completed
+        actual_result: '0'
+        actual_output: completed
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 4
+  passed_steps: 0
+  failed_steps: 4
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: HOOKS_INLINE
+  item: 1
+  tc: 1
+- test_case_id: TC_HOOKS_MISSING_001
+  description: Test case with a missing hook script file to verify error handling
+    when hook script does not exist.
+  sequences:
+  - sequence_id: 1
+    name: Test with Missing Hook Script
+    step_results:
+    - Fail:
+        step: 1
+        description: This step should not execute due to missing hook script
+        expected:
+          success: true
+          result: '0'
+          output: Step 1 should not run
+        actual_result: '0'
+        actual_output: Step 1 should not run
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 1
+  passed_steps: 0
+  failed_steps: 1
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: HOOKS_MISSING_SCRIPT
+  item: 1
+  tc: 1
+- test_case_id: TC_HOOKS_SIMPLE_001
+  description: Simple test case with only script_start and script_end hooks to verify
+    basic hook functionality.
+  sequences:
+  - sequence_id: 1
+    name: Simple Test with Basic Hooks
+    step_results:
+    - Fail:
+        step: 1
+        description: Execute simple echo command
+        expected:
+          success: true
+          result: '0'
+          output: Step 1
+        actual_result: '0'
+        actual_output: Step 1
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Verify start marker was created by script_start hook
+        expected:
+          success: true
+          result: '0'
+          output: executed successfully
+        actual_result: '0'
+        actual_output: executed successfully
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Execute final step
+        expected:
+          success: true
+          result: '0'
+          output: Step 3
+        actual_result: '0'
+        actual_output: Step 3
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 3
+  passed_steps: 0
+  failed_steps: 3
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: HOOKS_SIMPLE
+  item: 1
+  tc: 1
+- test_case_id: TEST_HOOK_AFTER_SEQ_001
+  description: Hook error scenario for after_sequence hook - script exits with error
+    code after first sequence
+  sequences:
+  - sequence_id: 1
+    name: First Sequence - After Hook Fails
+    step_results:
+    - Fail:
+        step: 1
+        description: Execute first step of sequence 1
+        expected:
+          success: true
+          result: '0'
+          output: Sequence 1 - Step 1 executed
+        actual_result: '0'
+        actual_output: Sequence 1 - Step 1 executed
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Execute second step of sequence 1
+        expected:
+          success: true
+          result: '0'
+          output: Sequence 1 - Step 2 executed
+        actual_result: '0'
+        actual_output: Sequence 1 - Step 2 executed
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Execute third step of sequence 1
+        expected:
+          success: true
+          result: '0'
+          output: Sequence 1 - Step 3 executed
+        actual_result: '0'
+        actual_output: Sequence 1 - Step 3 executed
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 2
+    name: Second Sequence - Not Executed
+    step_results:
+    - Fail:
+        step: 1
+        description: This step should not execute
+        expected:
+          success: true
+          result: '0'
+          output: Sequence 2 - Step 1 should not run
+        actual_result: '0'
+        actual_output: Sequence 2 - Step 1 should not run
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: This step should not execute
+        expected:
+          success: true
+          result: '0'
+          output: Sequence 2 - Step 2 should not run
+        actual_result: '0'
+        actual_output: Sequence 2 - Step 2 should not run
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 3
+    name: Third Sequence - Not Executed
+    step_results:
+    - Fail:
+        step: 1
+        description: This step should not execute
+        expected:
+          success: true
+          result: '0'
+          output: Sequence 3 - Step 1 should not run
+        actual_result: '0'
+        actual_output: Sequence 3 - Step 1 should not run
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 6
+  passed_steps: 0
+  failed_steps: 6
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: HOOK_AFTER_SEQUENCE_ERROR
+  item: 1
+  tc: 1
+- test_case_id: TEST_HOOK_AFTER_STEP_001
+  description: Hook error scenario for after_step hook - script exits with error code
+    after second step
+  sequences:
+  - sequence_id: 1
+    name: First Sequence - After Step Hook Fails After Step 2
+    step_results:
+    - Fail:
+        step: 1
+        description: Execute first step - after_step hook succeeds
+        expected:
+          success: true
+          result: '0'
+          output: Sequence 1 - Step 1 executed
+        actual_result: '0'
+        actual_output: Sequence 1 - Step 1 executed
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Execute second step - after_step hook fails after this
+        expected:
+          success: true
+          result: '0'
+          output: Sequence 1 - Step 2 executed
+        actual_result: '0'
+        actual_output: Sequence 1 - Step 2 executed
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: This step should not execute - after_step hook failed
+        expected:
+          success: true
+          result: '0'
+          output: Sequence 1 - Step 3 should not run
+        actual_result: '0'
+        actual_output: Sequence 1 - Step 3 should not run
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: This step should not execute - test terminated
+        expected:
+          success: true
+          result: '0'
+          output: Sequence 1 - Step 4 should not run
+        actual_result: '0'
+        actual_output: Sequence 1 - Step 4 should not run
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 2
+    name: Second Sequence - Not Executed
+    step_results:
+    - Fail:
+        step: 1
+        description: This step should not execute
+        expected:
+          success: true
+          result: '0'
+          output: Sequence 2 - Step 1 should not run
+        actual_result: '0'
+        actual_output: Sequence 2 - Step 1 should not run
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: This step should not execute
+        expected:
+          success: true
+          result: '0'
+          output: Sequence 2 - Step 2 should not run
+        actual_result: '0'
+        actual_output: Sequence 2 - Step 2 should not run
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 6
+  passed_steps: 0
+  failed_steps: 6
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: HOOK_AFTER_STEP_ERROR
+  item: 1
+  tc: 1
+- test_case_id: TEST_HOOK_BEFORE_SEQ_001
+  description: Hook error scenario for before_sequence hook - script exits with error
+    code on second sequence
+  sequences:
+  - sequence_id: 1
+    name: First Sequence - Before Hook Succeeds
+    step_results:
+    - Fail:
+        step: 1
+        description: Execute first step of sequence 1
+        expected:
+          success: true
+          result: '0'
+          output: Sequence 1 - Step 1 executed
+        actual_result: '0'
+        actual_output: Sequence 1 - Step 1 executed
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Execute second step of sequence 1
+        expected:
+          success: true
+          result: '0'
+          output: Sequence 1 - Step 2 executed
+        actual_result: '0'
+        actual_output: Sequence 1 - Step 2 executed
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 2
+    name: Second Sequence - Before Hook Fails
+    step_results:
+    - Fail:
+        step: 1
+        description: This step should not execute
+        expected:
+          success: true
+          result: '0'
+          output: Sequence 2 - Step 1 should not run
+        actual_result: '0'
+        actual_output: Sequence 2 - Step 1 should not run
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: This step should not execute
+        expected:
+          success: true
+          result: '0'
+          output: Sequence 2 - Step 2 should not run
+        actual_result: '0'
+        actual_output: Sequence 2 - Step 2 should not run
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 3
+    name: Third Sequence - Not Executed
+    step_results:
+    - Fail:
+        step: 1
+        description: This step should not execute
+        expected:
+          success: true
+          result: '0'
+          output: Sequence 3 - Step 1 should not run
+        actual_result: '0'
+        actual_output: Sequence 3 - Step 1 should not run
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 5
+  passed_steps: 0
+  failed_steps: 5
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: HOOK_BEFORE_SEQUENCE_ERROR
+  item: 1
+  tc: 1
+- test_case_id: TEST_HOOK_BEFORE_STEP_001
+  description: Hook error scenario for before_step hook - script exits with error
+    code on third step
+  sequences:
+  - sequence_id: 1
+    name: First Sequence - Before Step Hook Fails on Step 3
+    step_results:
+    - Fail:
+        step: 1
+        description: Execute first step - before_step hook succeeds
+        expected:
+          success: true
+          result: '0'
+          output: Sequence 1 - Step 1 executed
+        actual_result: '0'
+        actual_output: Sequence 1 - Step 1 executed
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Execute second step - before_step hook succeeds
+        expected:
+          success: true
+          result: '0'
+          output: Sequence 1 - Step 2 executed
+        actual_result: '0'
+        actual_output: Sequence 1 - Step 2 executed
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: This step should not execute - before_step hook fails
+        expected:
+          success: true
+          result: '0'
+          output: Sequence 1 - Step 3 should not run
+        actual_result: '0'
+        actual_output: Sequence 1 - Step 3 should not run
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: This step should not execute - test terminated
+        expected:
+          success: true
+          result: '0'
+          output: Sequence 1 - Step 4 should not run
+        actual_result: '0'
+        actual_output: Sequence 1 - Step 4 should not run
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 2
+    name: Second Sequence - Not Executed
+    step_results:
+    - Fail:
+        step: 1
+        description: This step should not execute
+        expected:
+          success: true
+          result: '0'
+          output: Sequence 2 - Step 1 should not run
+        actual_result: '0'
+        actual_output: Sequence 2 - Step 1 should not run
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 5
+  passed_steps: 0
+  failed_steps: 5
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: HOOK_BEFORE_STEP_ERROR
+  item: 1
+  tc: 1
+- test_case_id: TEST_HOOK_SCRIPT_END_001
+  description: Hook error scenario for script_end hook - script exits with error code
+    at final script termination
+  sequences:
+  - sequence_id: 1
+    name: First Sequence - Completes Successfully
+    step_results:
+    - Fail:
+        step: 1
+        description: Execute first step of sequence 1
+        expected:
+          success: true
+          result: '0'
+          output: Sequence 1 - Step 1 executed
+        actual_result: '0'
+        actual_output: Sequence 1 - Step 1 executed
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Execute second step of sequence 1
+        expected:
+          success: true
+          result: '0'
+          output: Sequence 1 - Step 2 executed
+        actual_result: '0'
+        actual_output: Sequence 1 - Step 2 executed
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 2
+    name: Second Sequence - Completes Successfully
+    step_results:
+    - Fail:
+        step: 1
+        description: Execute first step of sequence 2
+        expected:
+          success: true
+          result: '0'
+          output: Sequence 2 - Step 1 executed
+        actual_result: '0'
+        actual_output: Sequence 2 - Step 1 executed
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Execute second step of sequence 2
+        expected:
+          success: true
+          result: '0'
+          output: Sequence 2 - Step 2 executed
+        actual_result: '0'
+        actual_output: Sequence 2 - Step 2 executed
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 3
+    name: Third Sequence - Completes Successfully
+    step_results:
+    - Fail:
+        step: 1
+        description: Execute final step
+        expected:
+          success: true
+          result: '0'
+          output: Sequence 3 - Step 1 executed
+        actual_result: '0'
+        actual_output: Sequence 3 - Step 1 executed
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 5
+  passed_steps: 0
+  failed_steps: 5
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: HOOK_SCRIPT_END_ERROR
+  item: 1
+  tc: 1
+- test_case_id: TEST_HOOK_SCRIPT_START_001
+  description: Hook error scenario for script_start hook - script exits with error
+    code
+  sequences:
+  - sequence_id: 1
+    name: Test Sequence After Failed Hook
+    step_results:
+    - Fail:
+        step: 1
+        description: This step should not execute
+        expected:
+          success: true
+          result: '0'
+          output: Step 1 should not run
+        actual_result: '0'
+        actual_output: Step 1 should not run
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: This step should not execute
+        expected:
+          success: true
+          result: '0'
+          output: Step 2 should not run
+        actual_result: '0'
+        actual_output: Step 2 should not run
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 2
+  passed_steps: 0
+  failed_steps: 2
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: HOOK_SCRIPT_START_ERROR
+  item: 1
+  tc: 1
+- test_case_id: TEST_HOOK_SETUP_TEST_001
+  description: Hook error scenario for setup_test hook - script not found
+  sequences:
+  - sequence_id: 1
+    name: Test Sequence After Failed Setup
+    step_results:
+    - Fail:
+        step: 1
+        description: This step should not execute
+        expected:
+          success: true
+          result: '0'
+          output: Setup test step 1 should not run
+        actual_result: '0'
+        actual_output: Setup test step 1 should not run
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: This step should not execute
+        expected:
+          success: true
+          result: '0'
+          output: Setup test step 2 should not run
+        actual_result: '0'
+        actual_output: Setup test step 2 should not run
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: This step should not execute
+        expected:
+          success: true
+          result: '0'
+          output: ''
+        actual_result: '0'
+        actual_output: ''
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 3
+  passed_steps: 0
+  failed_steps: 3
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: HOOK_SETUP_TEST_ERROR
+  item: 1
+  tc: 1
+- test_case_id: TEST_HOOK_TEARDOWN_001
+  description: Hook error scenario for teardown_test hook - script exits with error
+    code during test cleanup
+  sequences:
+  - sequence_id: 1
+    name: First Sequence - Completes Successfully
+    step_results:
+    - Fail:
+        step: 1
+        description: Execute first step of sequence 1
+        expected:
+          success: true
+          result: '0'
+          output: Sequence 1 - Step 1 executed
+        actual_result: '0'
+        actual_output: Sequence 1 - Step 1 executed
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Execute second step of sequence 1
+        expected:
+          success: true
+          result: '0'
+          output: Sequence 1 - Step 2 executed
+        actual_result: '0'
+        actual_output: Sequence 1 - Step 2 executed
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 2
+    name: Second Sequence - Completes Successfully
+    step_results:
+    - Fail:
+        step: 1
+        description: Execute first step of sequence 2
+        expected:
+          success: true
+          result: '0'
+          output: Sequence 2 - Step 1 executed
+        actual_result: '0'
+        actual_output: Sequence 2 - Step 1 executed
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Execute second step of sequence 2
+        expected:
+          success: true
+          result: '0'
+          output: Sequence 2 - Step 2 executed
+        actual_result: '0'
+        actual_output: Sequence 2 - Step 2 executed
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 3
+    name: Third Sequence - Completes Successfully
+    step_results:
+    - Fail:
+        step: 1
+        description: Execute final step
+        expected:
+          success: true
+          result: '0'
+          output: Sequence 3 - Step 1 executed
+        actual_result: '0'
+        actual_output: Sequence 3 - Step 1 executed
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 5
+  passed_steps: 0
+  failed_steps: 5
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: HOOK_TEARDOWN_TEST_ERROR
+  item: 1
+  tc: 1
+- test_case_id: TC_MANUAL_ALL_001
+  description: Test case with all manual steps and verification prompts - demonstrates
+    pure manual testing workflow
+  sequences:
+  - sequence_id: 1
+    name: Complete Manual Testing Workflow
+    step_results:
+    - NotExecuted:
+        step: 1
+        description: Power on the device using the physical power button
+    - NotExecuted:
+        step: 2
+        description: Observe boot messages on the device display
+    - NotExecuted:
+        step: 3
+        description: Wait for login prompt to appear
+    - NotExecuted:
+        step: 4
+        description: Enter username at login prompt
+    - NotExecuted:
+        step: 5
+        description: Enter password and complete login
+    - NotExecuted:
+        step: 6
+        description: Navigate to application menu
+    - NotExecuted:
+        step: 7
+        description: Launch diagnostic tool from menu
+    - NotExecuted:
+        step: 8
+        description: Verify diagnostic results
+    all_steps_passed: false
+  total_steps: 8
+  passed_steps: 0
+  failed_steps: 0
+  not_executed_steps: 8
+  overall_pass: false
+  requirement: MANUAL_ALL_STEPS
+  item: 1
+  tc: 1
+- test_case_id: TC_MANUAL_CAPTURE_001
+  description: Test case with manual steps using variable capture - demonstrates capturing
+    values from manual operations for use in subsequent steps
+  sequences:
+  - sequence_id: 1
+    name: Manual Variable Capture and Verification
+    step_results:
+    - NotExecuted:
+        step: 1
+        description: Generate test device identifier
+    - NotExecuted:
+        step: 2
+        description: Register device ID in system UI
+    - NotExecuted:
+        step: 3
+        description: Generate session token for testing
+    - NotExecuted:
+        step: 4
+        description: Enter session token in authentication dialog
+    - NotExecuted:
+        step: 5
+        description: Retrieve current configuration version
+    - NotExecuted:
+        step: 6
+        description: Verify configuration version in system display
+    - NotExecuted:
+        step: 7
+        description: Display all captured values for verification
+    - NotExecuted:
+        step: 8
+        description: Verify all captured values in system summary
+    - NotExecuted:
+        step: 9
+        description: Log captured values to test results
+    - NotExecuted:
+        step: 10
+        description: Verify test results file contains all captured data
+    - NotExecuted:
+        step: 11
+        description: Cleanup test files
+    all_steps_passed: false
+  total_steps: 11
+  passed_steps: 0
+  failed_steps: 0
+  not_executed_steps: 11
+  overall_pass: false
+  requirement: MANUAL_VARIABLE_CAPTURE
+  item: 1
+  tc: 9
+- test_case_id: TC_MANUAL_CONDITIONAL_001
+  description: Test case with manual step using conditional verification - demonstrates
+    branching logic based on manual observation
+  sequences:
+  - sequence_id: 1
+    name: Manual Conditional Verification Testing
+    step_results:
+    - NotExecuted:
+        step: 1
+        description: Initialize test environment
+    - NotExecuted:
+        step: 2
+        description: Identify device type
+    - NotExecuted:
+        step: 3
+        description: Conditional UI test based on device type
+    - NotExecuted:
+        step: 4
+        description: Capture system capabilities
+    - NotExecuted:
+        step: 5
+        description: Conditional service management test
+    - NotExecuted:
+        step: 6
+        description: Check network availability
+    - NotExecuted:
+        step: 7
+        description: Conditional network-dependent test
+    - NotExecuted:
+        step: 8
+        description: Final conditional verification
+    all_steps_passed: false
+  total_steps: 8
+  passed_steps: 0
+  failed_steps: 0
+  not_executed_steps: 8
+  overall_pass: false
+  requirement: MANUAL_CONDITIONAL_VERIFICATION
+  item: 1
+  tc: 6
+- test_case_id: TC_MANUAL_FILE_INSPECT_001
+  description: Test case with manual step requiring file inspection - demonstrates
+    validation through file system verification
+  sequences:
+  - sequence_id: 1
+    name: Manual File Inspection Workflow
+    step_results:
+    - NotExecuted:
+        step: 1
+        description: Create test file with known content
+    - NotExecuted:
+        step: 2
+        description: Manually verify test file was created
+    - NotExecuted:
+        step: 3
+        description: Inspect file contents using text editor
+    - NotExecuted:
+        step: 4
+        description: Create directory structure for inspection
+    - NotExecuted:
+        step: 5
+        description: Verify directory structure was created
+    - NotExecuted:
+        step: 6
+        description: Verify nested file exists
+    - NotExecuted:
+        step: 7
+        description: Create file with specific permissions
+    - NotExecuted:
+        step: 8
+        description: Verify file permissions are correct
+    - NotExecuted:
+        step: 9
+        description: Cleanup test files
+    all_steps_passed: false
+  total_steps: 9
+  passed_steps: 0
+  failed_steps: 0
+  not_executed_steps: 9
+  overall_pass: false
+  requirement: MANUAL_FILE_INSPECTION
+  item: 1
+  tc: 5
+- test_case_id: TC_MANUAL_MIXED_001
+  description: Test case with mixed automated and manual steps - demonstrates hybrid
+    testing workflow
+  sequences:
+  - sequence_id: 1
+    name: Hybrid Manual and Automated Testing
+    step_results:
+    - NotExecuted:
+        step: 1
+        description: Automated system check
+    - NotExecuted:
+        step: 2
+        description: Manually start the application GUI
+    - NotExecuted:
+        step: 3
+        description: Automated process verification
+    - NotExecuted:
+        step: 4
+        description: Manually test UI responsiveness
+    - NotExecuted:
+        step: 5
+        description: Automated log file check
+    - NotExecuted:
+        step: 6
+        description: Manually verify visual elements
+    - NotExecuted:
+        step: 7
+        description: Automated cleanup
+    - NotExecuted:
+        step: 8
+        description: Manually close the application
+    all_steps_passed: false
+  total_steps: 8
+  passed_steps: 0
+  failed_steps: 0
+  not_executed_steps: 8
+  overall_pass: false
+  requirement: MANUAL_MIXED_AUTO
+  item: 1
+  tc: 2
+- test_case_id: TC_MANUAL_MULTI_SEQ_001
+  description: Test case with manual steps across multiple sequences - demonstrates
+    multi-phase manual testing
+  sequences:
+  - sequence_id: 1
+    name: 'Phase 1: Initial Setup and Verification'
+    step_results:
+    - NotExecuted:
+        step: 1
+        description: Manually power on all test devices
+    - NotExecuted:
+        step: 2
+        description: Verify network link lights on all devices
+    - NotExecuted:
+        step: 3
+        description: Wait for device initialization
+    - NotExecuted:
+        step: 4
+        description: Verify all devices show ready status
+    all_steps_passed: false
+  - sequence_id: 2
+    name: 'Phase 2: Configuration and Testing'
+    step_results:
+    - NotExecuted:
+        step: 1
+        description: Access device configuration interface
+    - NotExecuted:
+        step: 2
+        description: Apply test configuration profile
+    - NotExecuted:
+        step: 3
+        description: Wait for configuration propagation
+    - NotExecuted:
+        step: 4
+        description: Verify configuration was applied
+    - NotExecuted:
+        step: 5
+        description: Execute manual functional test
+    all_steps_passed: false
+  - sequence_id: 3
+    name: 'Phase 3: Stress Testing and Validation'
+    step_results:
+    - NotExecuted:
+        step: 1
+        description: Initiate system stress test
+    - NotExecuted:
+        step: 2
+        description: Monitor system during stress test
+    - NotExecuted:
+        step: 3
+        description: Verify stress test completion
+    - NotExecuted:
+        step: 4
+        description: Review stress test results
+    - NotExecuted:
+        step: 5
+        description: Return system to baseline configuration
+    - NotExecuted:
+        step: 6
+        description: Final system health check
+    all_steps_passed: false
+  total_steps: 15
+  passed_steps: 0
+  failed_steps: 0
+  not_executed_steps: 15
+  overall_pass: false
+  requirement: MANUAL_MULTI_SEQUENCE
+  item: 1
+  tc: 7
+- test_case_id: TC_MANUAL_OUTPUT_VERIFY_001
+  description: Test case with manual steps requiring output verification - demonstrates
+    validation of command outputs and displays
+  sequences:
+  - sequence_id: 1
+    name: Manual Output Verification Testing
+    step_results:
+    - NotExecuted:
+        step: 1
+        description: Generate system status report
+    - NotExecuted:
+        step: 2
+        description: View detailed log output
+    - NotExecuted:
+        step: 3
+        description: Display network statistics
+    - NotExecuted:
+        step: 4
+        description: Generate diagnostic report with graphs
+    - NotExecuted:
+        step: 5
+        description: View system error messages
+    - NotExecuted:
+        step: 6
+        description: Display device configuration output
+    - NotExecuted:
+        step: 7
+        description: Generate and view test results summary
+    - NotExecuted:
+        step: 8
+        description: Export output to file and verify
+    all_steps_passed: false
+  total_steps: 8
+  passed_steps: 0
+  failed_steps: 0
+  not_executed_steps: 8
+  overall_pass: false
+  requirement: MANUAL_OUTPUT_VERIFICATION
+  item: 1
+  tc: 4
+- test_case_id: TC_MANUAL_PREREQ_001
+  description: Test case with manual prerequisite and automatic verification - demonstrates
+    prerequisite validation workflow
+  sequences:
+  - sequence_id: 1
+    name: Post-Prerequisite Testing Workflow
+    step_results:
+    - NotExecuted:
+        step: 1
+        description: Verify prerequisite validations
+    - NotExecuted:
+        step: 2
+        description: Establish serial connection to device
+    - NotExecuted:
+        step: 3
+        description: Login to device via serial console
+    - NotExecuted:
+        step: 4
+        description: Read test data from prerequisite file
+    - NotExecuted:
+        step: 5
+        description: Execute command on device using captured value
+    - NotExecuted:
+        step: 6
+        description: Verify external equipment response
+    - NotExecuted:
+        step: 7
+        description: Log test results to workspace
+    - NotExecuted:
+        step: 8
+        description: Disconnect serial connection and power off device
+    all_steps_passed: false
+  - sequence_id: 2
+    name: Prerequisite Cleanup Verification
+    step_results:
+    - NotExecuted:
+        step: 1
+        description: Verify workspace integrity
+    - NotExecuted:
+        step: 2
+        description: Archive test results
+    - NotExecuted:
+        step: 3
+        description: Verify archive file was created
+    - NotExecuted:
+        step: 4
+        description: Cleanup test workspace
+    all_steps_passed: false
+  total_steps: 12
+  passed_steps: 0
+  failed_steps: 0
+  not_executed_steps: 12
+  overall_pass: false
+  requirement: MANUAL_PREREQUISITES
+  item: 1
+  tc: 8
+- test_case_id: TC_MANUAL_RESULT_VERIFY_001
+  description: Test case with manual steps requiring result verification - demonstrates
+    validation of operation outcomes
+  sequences:
+  - sequence_id: 1
+    name: Manual Result Verification Workflow
+    step_results:
+    - NotExecuted:
+        step: 1
+        description: Execute hardware diagnostic from device menu
+    - NotExecuted:
+        step: 2
+        description: Perform network connectivity test
+    - NotExecuted:
+        step: 3
+        description: Run memory test utility
+    - NotExecuted:
+        step: 4
+        description: Verify disk health status
+    - NotExecuted:
+        step: 5
+        description: Execute performance benchmark
+    - NotExecuted:
+        step: 6
+        description: Test backup operation
+    - NotExecuted:
+        step: 7
+        description: Verify backup integrity
+    all_steps_passed: false
+  total_steps: 7
+  passed_steps: 0
+  failed_steps: 0
+  not_executed_steps: 7
+  overall_pass: false
+  requirement: MANUAL_RESULT_VERIFICATION
+  item: 1
+  tc: 3
+- test_case_id: PREREQ_AUTO_FAIL_001
+  description: Test case with automatic prerequisite that fails verification
+  sequences:
+  - sequence_id: 1
+    name: Test Sequence That Should Not Execute
+    step_results:
+    - Fail:
+        step: 1
+        description: This step should never execute
+        expected:
+          success: true
+          result: '0'
+          output: This should not appear
+        actual_result: '0'
+        actual_output: This should not appear
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 1
+  passed_steps: 0
+  failed_steps: 1
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: PREREQ_AUTO_FAIL
+  item: 1
+  tc: 1
+- test_case_id: PREREQ_AUTO_PASS_001
+  description: Test case with automatic prerequisite that passes verification
+  sequences:
+  - sequence_id: 1
+    name: Basic Command Execution After Prerequisites
+    step_results:
+    - Fail:
+        step: 1
+        description: Echo a test message
+        expected:
+          success: true
+          result: '0'
+          output: Prerequisites passed successfully
+        actual_result: '0'
+        actual_output: Prerequisites passed successfully
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Create a temporary file
+        expected:
+          success: true
+          result: '0'
+          output: test data
+        actual_result: '0'
+        actual_output: test data
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Clean up temporary file
+        expected:
+          success: true
+          result: '0'
+          output: ''
+        actual_result: '0'
+        actual_output: ''
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 3
+  passed_steps: 0
+  failed_steps: 3
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: PREREQ_AUTO_PASS
+  item: 1
+  tc: 1
+- test_case_id: PREREQ_COMPLEX_001
+  description: Complex test case with multiple automatic prerequisites testing various
+    system conditions
+  sequences:
+  - sequence_id: 1
+    name: Text Processing Operations
+    step_results:
+    - Fail:
+        step: 1
+        description: Use echo and grep together
+        expected:
+          success: true
+          result: '0'
+          output: Hello World
+        actual_result: '0'
+        actual_output: Hello World
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Use sed for text substitution
+        expected:
+          success: true
+          result: '0'
+          output: modified data
+        actual_result: '0'
+        actual_output: modified data
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Use awk for field extraction
+        expected:
+          success: true
+          result: '0'
+          output: field2
+        actual_result: '0'
+        actual_output: field2
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: Use grep with extended regex
+        expected:
+          success: true
+          result: '0'
+          output: value123
+        actual_result: '0'
+        actual_output: value123
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 2
+    name: File Operations
+    step_results:
+    - Fail:
+        step: 1
+        description: Create test file with echo
+        expected:
+          success: true
+          result: '0'
+          output: ''
+        actual_result: '0'
+        actual_output: ''
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Verify file exists using test
+        expected:
+          success: true
+          result: '0'
+          output: file exists
+        actual_result: '0'
+        actual_output: file exists
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Read and process file content with multiple utilities
+        expected:
+          success: true
+          result: '0'
+          output: ADVANCED
+        actual_result: '0'
+        actual_output: ADVANCED
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: Remove test file
+        expected:
+          success: true
+          result: '0'
+          output: ''
+        actual_result: '0'
+        actual_output: ''
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 5
+        description: Verify file is removed
+        expected:
+          success: true
+          result: '0'
+          output: cleanup successful
+        actual_result: '0'
+        actual_output: cleanup successful
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 9
+  passed_steps: 0
+  failed_steps: 9
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: PREREQ_COMPLEX
+  item: 1
+  tc: 1
+- test_case_id: PREREQ_MANUAL_001
+  description: Test case with manual prerequisites requiring user confirmation
+  sequences:
+  - sequence_id: 1
+    name: Manual Prerequisite Test Sequence
+    step_results:
+    - NotExecuted:
+        step: 1
+        description: Create a test file in /tmp
+    - NotExecuted:
+        step: 2
+        description: Verify file creation
+    - NotExecuted:
+        step: 3
+        description: Remove test file
+    - NotExecuted:
+        step: 4
+        description: Manually verify that the test file was removed
+    all_steps_passed: false
+  total_steps: 4
+  passed_steps: 0
+  failed_steps: 0
+  not_executed_steps: 4
+  overall_pass: false
+  requirement: PREREQ_MANUAL
+  item: 1
+  tc: 1
+- test_case_id: PREREQ_MIXED_001
+  description: Test case with mixed automatic and manual prerequisites
+  sequences:
+  - sequence_id: 1
+    name: Mixed Prerequisites Test Sequence
+    step_results:
+    - Fail:
+        step: 1
+        description: Display current timestamp
+        expected:
+          success: true
+          result: '0'
+          output: '-'
+        actual_result: '0'
+        actual_output: '-'
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Create and verify test file
+        expected:
+          success: true
+          result: '0'
+          output: mixed prerequisites test
+        actual_result: '0'
+        actual_output: mixed prerequisites test
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Search test file for content
+        expected:
+          success: true
+          result: '0'
+          output: prerequisites
+        actual_result: '0'
+        actual_output: prerequisites
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: Clean up test file
+        expected:
+          success: true
+          result: '0'
+          output: ''
+        actual_result: '0'
+        actual_output: ''
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 2
+    name: Verification Sequence
+    step_results:
+    - Fail:
+        step: 1
+        description: Confirm prerequisites were checked at start
+        expected:
+          success: true
+          result: '0'
+          output: Prerequisites checked before first sequence only
+        actual_result: '0'
+        actual_output: Prerequisites checked before first sequence only
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 5
+  passed_steps: 0
+  failed_steps: 5
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: PREREQ_MIXED
+  item: 1
+  tc: 1
+- test_case_id: PREREQ_NONE_001
+  description: Baseline test case with no prerequisites defined
+  sequences:
+  - sequence_id: 1
+    name: Baseline Test Sequence
+    step_results:
+    - Fail:
+        step: 1
+        description: Echo without prerequisites
+        expected:
+          success: true
+          result: '0'
+          output: No prerequisites required
+        actual_result: '0'
+        actual_output: No prerequisites required
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Execute simple true command
+        expected:
+          success: true
+          result: '0'
+          output: ''
+        actual_result: '0'
+        actual_output: ''
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Test basic variable assignment
+        expected:
+          success: true
+          result: '0'
+          output: Value is baseline
+        actual_result: '0'
+        actual_output: Value is baseline
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 3
+  passed_steps: 0
+  failed_steps: 3
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: PREREQ_NONE
+  item: 1
+  tc: 1
+- test_case_id: PREREQ_PARTIAL_FAIL_001
+  description: Test case where some automatic prerequisites pass but at least one
+    fails
+  sequences:
+  - sequence_id: 1
+    name: Test Sequence That Should Not Execute
+    step_results:
+    - Fail:
+        step: 1
+        description: This step should never execute
+        expected:
+          success: true
+          result: '0'
+          output: Test failed to stop at failed prerequisite
+        actual_result: '0'
+        actual_output: Test failed to stop at failed prerequisite
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 1
+  passed_steps: 0
+  failed_steps: 1
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: PREREQ_PARTIAL_FAIL
+  item: 1
+  tc: 1
+- test_case_id: TC_SUCCESS_CMD_CHAIN_001
+  description: Command chaining with && operator - demonstrates sequential command
+    execution with dependency
+  sequences:
+  - sequence_id: 1
+    name: Command Chaining Tests
+    step_results:
+    - Fail:
+        step: 1
+        description: Chain directory creation and file creation
+        expected:
+          success: true
+          result: '0'
+          output: chained
+        actual_result: '0'
+        actual_output: chained
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Chain file operations - create, modify, read
+        expected:
+          success: true
+          result: '0'
+          output: '3'
+        actual_result: '0'
+        actual_output: '3'
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Chain grep and awk operations
+        expected:
+          success: true
+          result: '0'
+          output: '12345'
+        actual_result: '0'
+        actual_output: '12345'
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: Chain with directory navigation and operations
+        expected:
+          success: true
+          result: '0'
+          output: '3'
+        actual_result: '0'
+        actual_output: '3'
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 5
+        description: Cleanup with chained removal
+        expected:
+          success: true
+          result: '0'
+          output: cleanup complete
+        actual_result: '0'
+        actual_output: cleanup complete
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 5
+  passed_steps: 0
+  failed_steps: 5
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: COMMAND_CHAINING
+  item: 1
+  tc: 1
+- test_case_id: TC_SUCCESS_COMPLEX_DATA_001
+  description: Complex data processing with multiple captures and validations - demonstrates
+    real-world data extraction and validation
+  sequences:
+  - sequence_id: 1
+    name: JSON-like Data Processing
+    step_results:
+    - Fail:
+        step: 1
+        description: Generate and parse API response data
+        expected:
+          success: true
+          result: '0'
+          output: success
+        actual_result: '0'
+        actual_output: success
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Parse and validate server log entries
+        expected:
+          success: true
+          result: '0'
+          output: INFO
+        actual_result: '0'
+        actual_output: INFO
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Process metrics data with calculations
+        expected:
+          success: true
+          result: '0'
+          output: PERFORMANCE_METRICS
+        actual_result: '0'
+        actual_output: PERFORMANCE_METRICS
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 3
+  passed_steps: 0
+  failed_steps: 3
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: COMPLEX_DATA_PROCESSING
+  item: 1
+  tc: 1
+- test_case_id: TC_SUCCESS_CONDITIONAL_001
+  description: Complex conditional verification logic - demonstrates if/then/else
+    verification with captured variables
+  sequences:
+  - sequence_id: 1
+    name: Conditional Verification
+    step_results:
+    - Fail:
+        step: 1
+        description: Generate number and conditionally verify range
+        expected:
+          success: true
+          result: '0'
+          output: '75'
+        actual_result: '0'
+        actual_output: '75'
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Check status and conditionally handle
+        expected:
+          success: true
+          result: '0'
+          output: 'STATUS: ACTIVE'
+        actual_result: '0'
+        actual_output: 'STATUS: ACTIVE'
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Evaluate multiple conditions with nested logic
+        expected:
+          success: true
+          result: '0'
+          output: count=5
+        actual_result: '0'
+        actual_output: count=5
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: Complex conditional with multiple variables
+        expected:
+          success: true
+          result: '0'
+          output: 'CPU:'
+        actual_result: '0'
+        actual_output: 'CPU:'
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 5
+        description: Conditional verification with string comparison
+        expected:
+          success: true
+          result: '0'
+          output: 'Environment:'
+        actual_result: '0'
+        actual_output: 'Environment:'
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 5
+  passed_steps: 0
+  failed_steps: 5
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: CONDITIONAL_VERIFICATION
+  item: 1
+  tc: 1
+- test_case_id: TC_SUCCESS_EMPTY_OUTPUT_001
+  description: Empty output validation - demonstrates handling commands with no output
+    or minimal output
+  sequences:
+  - sequence_id: 1
+    name: Empty Output Handling
+    step_results:
+    - Fail:
+        step: 1
+        description: Create file with no output
+        expected:
+          success: true
+          result: '0'
+          output: ''
+        actual_result: '0'
+        actual_output: ''
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Remove file silently
+        expected:
+          success: true
+          result: '0'
+          output: ''
+        actual_result: '0'
+        actual_output: ''
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Create directory with no output
+        expected:
+          success: true
+          result: '0'
+          output: ''
+        actual_result: '0'
+        actual_output: ''
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: Verify empty directory has zero files
+        expected:
+          success: true
+          result: '0'
+          output: '0'
+        actual_result: '0'
+        actual_output: '0'
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 5
+        description: Read empty file and verify no output
+        expected:
+          success: true
+          result: '0'
+          output: ''
+        actual_result: '0'
+        actual_output: ''
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 6
+        description: Cleanup test directory and file
+        expected:
+          success: true
+          result: '0'
+          output: ''
+        actual_result: '0'
+        actual_output: ''
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 6
+  passed_steps: 0
+  failed_steps: 6
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: EMPTY_OUTPUT
+  item: 1
+  tc: 1
+- test_case_id: TC_SUCCESS_ENV_VARS_001
+  description: Environment variable usage - demonstrates using environment variables
+    in commands and validations
+  sequences:
+  - sequence_id: 1
+    name: Environment Variable Usage
+    step_results:
+    - Fail:
+        step: 1
+        description: Display test user environment variable
+        expected:
+          success: true
+          result: '0'
+          output: 'User:'
+        actual_result: '0'
+        actual_output: 'User:'
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Create home directory using environment variable
+        expected:
+          success: true
+          result: '0'
+          output: 'Created:'
+        actual_result: '0'
+        actual_output: 'Created:'
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Verify port is numeric
+        expected:
+          success: true
+          result: '0'
+          output: port number
+        actual_result: '0'
+        actual_output: port number
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: Create config file with environment variables
+        expected:
+          success: true
+          result: '0'
+          output: user=
+        actual_result: '0'
+        actual_output: user=
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 5
+        description: Cleanup test directory
+        expected:
+          success: true
+          result: '0'
+          output: ''
+        actual_result: '0'
+        actual_output: ''
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 5
+  passed_steps: 0
+  failed_steps: 5
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: ENVIRONMENT_VARIABLES
+  item: 1
+  tc: 1
+- test_case_id: TC_SUCCESS_FILE_OPS_001
+  description: Advanced file operations with permissions and metadata - demonstrates
+    comprehensive file system operations
+  sequences:
+  - sequence_id: 1
+    name: File Creation and Metadata
+    step_results:
+    - Fail:
+        step: 1
+        description: Create test directory and capture path
+        expected:
+          success: true
+          result: '0'
+          output: /tmp/fileops_test
+        actual_result: '0'
+        actual_output: /tmp/fileops_test
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Create file with specific content and size
+        expected:
+          success: true
+          result: '0'
+          output: bytes
+        actual_result: '0'
+        actual_output: bytes
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Set file permissions and verify
+        expected:
+          success: true
+          result: '0'
+          output: permissions
+        actual_result: '0'
+        actual_output: permissions
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: Create multiple files and count them
+        expected:
+          success: true
+          result: '0'
+          output: '4'
+        actual_result: '0'
+        actual_output: '4'
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 2
+    name: File Content Operations
+    step_results:
+    - Fail:
+        step: 1
+        description: Append to file and verify line count
+        expected:
+          success: true
+          result: '0'
+          output: '3'
+        actual_result: '0'
+        actual_output: '3'
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Search file content with grep
+        expected:
+          success: true
+          result: '0'
+          output: '2'
+        actual_result: '0'
+        actual_output: '2'
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Copy file and verify both exist
+        expected:
+          success: true
+          result: '0'
+          output: Files are identical
+        actual_result: '0'
+        actual_output: Files are identical
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 3
+    name: Cleanup and Verification
+    step_results:
+    - Fail:
+        step: 1
+        description: Count files before cleanup
+        expected:
+          success: true
+          result: '0'
+          output: files
+        actual_result: '0'
+        actual_output: files
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Remove all test files
+        expected:
+          success: true
+          result: '0'
+          output: Files removed
+        actual_result: '0'
+        actual_output: Files removed
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Verify directory is empty
+        expected:
+          success: true
+          result: '0'
+          output: '0'
+        actual_result: '0'
+        actual_output: '0'
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: Remove test directory
+        expected:
+          success: true
+          result: '0'
+          output: Directory removed
+        actual_result: '0'
+        actual_output: Directory removed
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 11
+  passed_steps: 0
+  failed_steps: 11
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: FILE_OPERATIONS
+  item: 1
+  tc: 1
+- test_case_id: TC_SUCCESS_LONG_RUNNING_001
+  description: Long-running commands - demonstrates handling commands that take time
+    to execute
+  sequences:
+  - sequence_id: 1
+    name: Long Running Operations
+    step_results:
+    - Fail:
+        step: 1
+        description: Execute 2-second delay and verify completion
+        expected:
+          success: true
+          result: '0'
+          output: Completed after 2 seconds
+        actual_result: '0'
+        actual_output: Completed after 2 seconds
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Measure time for operation
+        expected:
+          success: true
+          result: '0'
+          output: 'Duration:'
+        actual_result: '0'
+        actual_output: 'Duration:'
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Process data over time with progress updates
+        expected:
+          success: true
+          result: '0'
+          output: 'Complete: 100%'
+        actual_result: '0'
+        actual_output: 'Complete: 100%'
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: Simulate batch processing with timestamps
+        expected:
+          success: true
+          result: '0'
+          output: Batch
+        actual_result: '0'
+        actual_output: Batch
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 4
+  passed_steps: 0
+  failed_steps: 4
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: LONG_RUNNING
+  item: 1
+  tc: 1
+- test_case_id: TC_SUCCESS_MULTI_SEQ_001
+  description: Multi-sequence test with 3 sequences containing 2-4 steps each - demonstrates
+    test organization and complex workflows
+  sequences:
+  - sequence_id: 1
+    name: File Creation Sequence
+    step_results:
+    - Fail:
+        step: 1
+        description: Create first test file
+        expected:
+          success: true
+          result: '0'
+          output: ''
+        actual_result: '0'
+        actual_output: ''
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Create second test file
+        expected:
+          success: true
+          result: '0'
+          output: ''
+        actual_result: '0'
+        actual_output: ''
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Verify files exist
+        expected:
+          success: true
+          result: '0'
+          output: '2'
+        actual_result: '0'
+        actual_output: '2'
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 2
+    name: File Content Processing
+    step_results:
+    - Fail:
+        step: 1
+        description: Read first file content
+        expected:
+          success: true
+          result: '0'
+          output: File 1 content
+        actual_result: '0'
+        actual_output: File 1 content
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Read second file content
+        expected:
+          success: true
+          result: '0'
+          output: File 2 content
+        actual_result: '0'
+        actual_output: File 2 content
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Count total characters in both files
+        expected:
+          success: true
+          result: '0'
+          output: '30'
+        actual_result: '0'
+        actual_output: '30'
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: Concatenate files
+        expected:
+          success: true
+          result: '0'
+          output: File 1 content
+        actual_result: '0'
+        actual_output: File 1 content
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 3
+    name: File Cleanup Sequence
+    step_results:
+    - Fail:
+        step: 1
+        description: Remove first test file
+        expected:
+          success: true
+          result: '0'
+          output: ''
+        actual_result: '0'
+        actual_output: ''
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Remove second test file
+        expected:
+          success: true
+          result: '0'
+          output: ''
+        actual_result: '0'
+        actual_output: ''
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Remove combined file
+        expected:
+          success: true
+          result: '0'
+          output: ''
+        actual_result: '0'
+        actual_output: ''
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: Verify all test files removed
+        expected:
+          success: true
+          result: '0'
+          output: '0'
+        actual_result: '0'
+        actual_output: '0'
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 11
+  passed_steps: 0
+  failed_steps: 11
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: MULTI_SEQUENCE
+  item: 1
+  tc: 1
+- test_case_id: TC_SUCCESS_REGEX_VALIDATION_001
+  description: Output validation with regex patterns - demonstrates complex pattern
+    matching in verification
+  sequences:
+  - sequence_id: 1
+    name: Regex Pattern Validation
+    step_results:
+    - Fail:
+        step: 1
+        description: Generate UUID-like string and validate format
+        expected:
+          success: true
+          result: '0'
+          output: UUID format
+        actual_result: '0'
+        actual_output: UUID format
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Generate email address and validate format
+        expected:
+          success: true
+          result: '0'
+          output: email
+        actual_result: '0'
+        actual_output: email
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Generate IP address and validate format
+        expected:
+          success: true
+          result: '0'
+          output: IP address
+        actual_result: '0'
+        actual_output: IP address
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: Generate URL and validate format
+        expected:
+          success: true
+          result: '0'
+          output: URL
+        actual_result: '0'
+        actual_output: URL
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 5
+        description: Generate semantic version and validate
+        expected:
+          success: true
+          result: '0'
+          output: version
+        actual_result: '0'
+        actual_output: version
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 5
+  passed_steps: 0
+  failed_steps: 5
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: REGEX_VALIDATION
+  item: 1
+  tc: 1
+- test_case_id: TC_SUCCESS_SIMPLE_001
+  description: Simple single-sequence test with 3 basic steps - verifies basic command
+    execution and output validation
+  sequences:
+  - sequence_id: 1
+    name: Basic Command Execution
+    step_results:
+    - Fail:
+        step: 1
+        description: Print hello world message
+        expected:
+          success: true
+          result: '0'
+          output: Hello World
+        actual_result: '0'
+        actual_output: Hello World
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Display current date
+        expected:
+          success: true
+          result: '0'
+          output: date format YYYY-MM-DD
+        actual_result: '0'
+        actual_output: date format YYYY-MM-DD
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: List temporary directory
+        expected:
+          success: true
+          result: '0'
+          output: /tmp
+        actual_result: '0'
+        actual_output: /tmp
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 3
+  passed_steps: 0
+  failed_steps: 3
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: SIMPLE_SUCCESS
+  item: 1
+  tc: 1
+- test_case_id: TC_SUCCESS_STEP_DEPS_001
+  description: Step dependencies using captured variables - demonstrates using variables
+    from earlier steps in later steps
+  sequences:
+  - sequence_id: 1
+    name: Dependent Step Execution
+    step_results:
+    - Fail:
+        step: 1
+        description: Generate unique ID and capture it
+        expected:
+          success: true
+          result: '0'
+          output: ID_
+        actual_result: '0'
+        actual_output: ID_
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Create directory using captured ID
+        expected:
+          success: true
+          result: '0'
+          output: 'Created:'
+        actual_result: '0'
+        actual_output: 'Created:'
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Create file in directory and capture file count
+        expected:
+          success: true
+          result: '0'
+          output: '1'
+        actual_result: '0'
+        actual_output: '1'
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: Read file and capture content
+        expected:
+          success: true
+          result: '0'
+          output: test data
+        actual_result: '0'
+        actual_output: test data
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 5
+        description: Calculate directory size and capture it
+        expected:
+          success: true
+          result: '0'
+          output: bytes
+        actual_result: '0'
+        actual_output: bytes
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 6
+        description: Cleanup directory using captured ID
+        expected:
+          success: true
+          result: '0'
+          output: 'Removed:'
+        actual_result: '0'
+        actual_output: 'Removed:'
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 6
+  passed_steps: 0
+  failed_steps: 6
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: STEP_DEPENDENCIES
+  item: 1
+  tc: 1
+- test_case_id: TC_SUCCESS_TEXT_PROCESSING_001
+  description: Advanced text processing with sed, awk, and grep - demonstrates complex
+    text manipulation and pattern matching
+  sequences:
+  - sequence_id: 1
+    name: Pattern Matching and Extraction
+    step_results:
+    - Fail:
+        step: 1
+        description: Extract fields using awk
+        expected:
+          success: true
+          result: '0'
+          output: 'First:'
+        actual_result: '0'
+        actual_output: 'First:'
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Transform text with sed
+        expected:
+          success: true
+          result: '0'
+          output: 'WARNING:'
+        actual_result: '0'
+        actual_output: 'WARNING:'
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Count occurrences with grep
+        expected:
+          success: true
+          result: '0'
+          output: '3'
+        actual_result: '0'
+        actual_output: '3'
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: Extract and sum numbers with awk
+        expected:
+          success: true
+          result: '0'
+          output: '500'
+        actual_result: '0'
+        actual_output: '500'
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 2
+    name: Complex Text Transformations
+    step_results:
+    - Fail:
+        step: 1
+        description: Parse CSV and calculate average
+        expected:
+          success: true
+          result: '0'
+          output: average
+        actual_result: '0'
+        actual_output: average
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Extract and format log data
+        expected:
+          success: true
+          result: '0'
+          output: ':'
+        actual_result: '0'
+        actual_output: ':'
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Filter and aggregate data
+        expected:
+          success: true
+          result: '0'
+          output: 'Count:'
+        actual_result: '0'
+        actual_output: 'Count:'
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 7
+  passed_steps: 0
+  failed_steps: 7
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: TEXT_PROCESSING
+  item: 1
+  tc: 1
+- test_case_id: TC_SUCCESS_VAR_CAPTURE_001
+  description: Variable capture and usage - demonstrates capturing values and using
+    them in subsequent steps
+  sequences:
+  - sequence_id: 1
+    name: Variable Capture and Reuse
+    step_results:
+    - Fail:
+        step: 1
+        description: Generate timestamp and capture it
+        expected:
+          success: true
+          result: '0'
+          output: timestamp
+        actual_result: '0'
+        actual_output: timestamp
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Create file with captured timestamp
+        expected:
+          success: true
+          result: '0'
+          output: ''
+        actual_result: '0'
+        actual_output: ''
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Read back the file and verify timestamp
+        expected:
+          success: true
+          result: '0'
+          output: 'Timestamp:'
+        actual_result: '0'
+        actual_output: 'Timestamp:'
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 4
+        description: Cleanup file using captured timestamp
+        expected:
+          success: true
+          result: '0'
+          output: Deleted
+        actual_result: '0'
+        actual_output: Deleted
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 4
+  passed_steps: 0
+  failed_steps: 4
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: VARIABLE_CAPTURE
+  item: 1
+  tc: 1
+- test_case_id: TC_VAR_001
+  description: Test command-based and regex-based variable captures with general verification
+    conditions
+  sequences:
+  - sequence_id: 1
+    name: Variable Capture Test
+    step_results:
+    - NotExecuted:
+        step: 1
+        description: Create test file and capture byte count with command
+    - NotExecuted:
+        step: 2
+        description: Echo JSON and capture token with regex pattern
+    - NotExecuted:
+        step: 3
+        description: Mix command-based and regex-based captures
+    all_steps_passed: false
+  total_steps: 3
+  passed_steps: 0
+  failed_steps: 0
+  not_executed_steps: 3
+  overall_pass: false
+  requirement: VAR_001
+  item: 1
+  tc: 1
+- test_case_id: TC_VAR_001
+  description: Test command-based and regex-based variable captures with general verification
+    conditions
+  sequences:
+  - sequence_id: 1
+    name: Variable Capture Test
+    step_results:
+    - NotExecuted:
+        step: 1
+        description: Create test file and capture byte count with command
+    all_steps_passed: false
+  total_steps: 1
+  passed_steps: 0
+  failed_steps: 0
+  not_executed_steps: 1
+  overall_pass: false
+  requirement: VAR_001
+  item: 1
+  tc: 1
+- test_case_id: TC_VAR_CAPTURE_002
+  description: Comprehensive test demonstrating command-based captures, regex-based
+    captures with new format, and general verification conditions using captured variables
+  sequences:
+  - sequence_id: 1
+    name: Command-based Variable Captures
+    step_results:
+    - Fail:
+        step: 1
+        description: Create test file and capture byte count using wc -c
+        expected:
+          success: true
+          result: '0'
+          output: ''
+        actual_result: '0'
+        actual_output: ''
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Create JSON data and capture fields using jq
+        expected:
+          success: true
+          result: '0'
+          output: ''
+        actual_result: '0'
+        actual_output: ''
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Extract data using grep and awk pipeline
+        expected:
+          success: true
+          result: '0'
+          output: ''
+        actual_result: '0'
+        actual_output: ''
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 2
+    name: Regex-based Variable Captures with New Format
+    step_results:
+    - Fail:
+        step: 1
+        description: Simulate API response and capture tokens using regex
+        expected:
+          success: true
+          result: '0'
+          output: success
+        actual_result: '0'
+        actual_output: success
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Extract multiple fields from structured log output
+        expected:
+          success: true
+          result: '0'
+          output: REQUEST_ID
+        actual_result: '0'
+        actual_output: REQUEST_ID
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Extract version and build information from application output
+        expected:
+          success: true
+          result: '0'
+          output: Version
+        actual_result: '0'
+        actual_output: Version
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 3
+    name: Mixed Captures with Complex Verification
+    step_results:
+    - Fail:
+        step: 1
+        description: Process file and capture both computed and extracted values
+        expected:
+          success: true
+          result: '0'
+          output: Transaction
+        actual_result: '0'
+        actual_output: Transaction
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Analyze metrics with arithmetic comparisons
+        expected:
+          success: true
+          result: '0'
+          output: METRICS_REPORT
+        actual_result: '0'
+        actual_output: METRICS_REPORT
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Complex pattern matching with multiple capture groups
+        expected:
+          success: true
+          result: '0'
+          output: Server started
+        actual_result: '0'
+        actual_output: Server started
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 9
+  passed_steps: 0
+  failed_steps: 9
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: VAR_CAPTURE
+  item: 1
+  tc: 2
+- test_case_id: TC_VAR_DEMO_001
+  description: Demonstration test showing variable capture using command-based captures,
+    validation of captured values through general verification conditions, and usage
+    of captured variables in subsequent steps
+  sequences:
+  - sequence_id: 1
+    name: Variable Capture and Usage Demonstration
+    step_results:
+    - Fail:
+        step: 1
+        description: Capture timestamp, hostname, and process count using command-based
+          captures
+        expected:
+          success: true
+          result: '0'
+          output: Capturing system information
+        actual_result: '0'
+        actual_output: Capturing system information
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Assert captured values are valid using general verification conditions
+        expected:
+          success: true
+          result: '0'
+          output: Validating
+        actual_result: '0'
+        actual_output: Validating
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Print all captured variables using echo to demonstrate variable
+          usage
+        expected:
+          success: true
+          result: '0'
+          output: Captured System Information
+        actual_result: '0'
+        actual_output: Captured System Information
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 3
+  passed_steps: 0
+  failed_steps: 3
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: VAR_DEMO
+  item: 1
+  tc: 1
+- test_case_id: TC_VAR_DISPLAY_001
+  description: Comprehensive test demonstrating variable display with diverse capture
+    scenarios including regex captures from JSON output, command-based captures using
+    wc/jq/awk, mixed regex and command captures in single step, and general verification
+    conditions that reference captured variables with descriptive step names
+  sequences:
+  - sequence_id: 1
+    name: Regex Captures from JSON Output
+    step_results:
+    - Fail:
+        step: 1
+        description: Capture authentication tokens and metadata from JSON API response
+          using regex patterns
+        expected:
+          success: true
+          result: '0'
+          output: authenticated
+        actual_result: '0'
+        actual_output: authenticated
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Extract nested configuration settings from JSON output using
+          complex regex patterns
+        expected:
+          success: true
+          result: '0'
+          output: config
+        actual_result: '0'
+        actual_output: config
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 2
+    name: Command-based Captures using wc, jq, and awk
+    step_results:
+    - Fail:
+        step: 1
+        description: Create test file and capture file statistics (byte count, word
+          count, line count) using wc command
+        expected:
+          success: true
+          result: '0'
+          output: ''
+        actual_result: '0'
+        actual_output: ''
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Parse JSON file and extract specific fields using jq command-line
+          JSON processor
+        expected:
+          success: true
+          result: '0'
+          output: ''
+        actual_result: '0'
+        actual_output: ''
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Extract and count patterns from log file using grep and awk for
+          data analysis
+        expected:
+          success: true
+          result: '0'
+          output: ''
+        actual_result: '0'
+        actual_output: ''
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  - sequence_id: 3
+    name: Mixed Regex and Command Captures in Single Step
+    step_results:
+    - Fail:
+        step: 1
+        description: 'Process transaction data with mixed capture: extract fields
+          via regex, compute statistics via commands'
+        expected:
+          success: true
+          result: '0'
+          output: Transaction-ID
+        actual_result: '0'
+        actual_output: Transaction-ID
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 2
+        description: Analyze server metrics combining regex extraction from output
+          and command-based calculations
+        expected:
+          success: true
+          result: '0'
+          output: Performance Report
+        actual_result: '0'
+        actual_output: Performance Report
+        reason: result verification failed and output verification failed
+    - Fail:
+        step: 3
+        description: Parse application deployment info using mixed captures for version
+          data and deployment statistics
+        expected:
+          success: true
+          result: '0'
+          output: Deployment Information
+        actual_result: '0'
+        actual_output: Deployment Information
+        reason: result verification failed and output verification failed
+    all_steps_passed: false
+  total_steps: 8
+  passed_steps: 0
+  failed_steps: 8
+  not_executed_steps: 0
+  overall_pass: false
+  requirement: VAR_DISPLAY
+  item: 1
+  tc: 1
+metadata:
+  execution_duration: 0.0
+  total_test_cases: 76
+  passed_test_cases: 0
+  failed_test_cases: 76
