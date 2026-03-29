@@ -3,6 +3,10 @@ name = "validate-yaml"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+name = "validate_yaml"
+path = "src/lib.rs"
+
 [[bin]]
 name = "validate-yaml"
 path = "src/main.rs"
@@ -24,3 +28,6 @@ env_logger = { workspace = true }
 [target.'cfg(not(target_os = "windows"))'.dependencies]
 notify = { workspace = true }
 walkdir = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

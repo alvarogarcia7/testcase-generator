@@ -3,9 +3,9 @@ use clap::Parser;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process;
-use testcase_common::{log_yaml_parse_error, resolve_schema_from_payload};
 use testcase_manager::validate_cross_file_dependencies;
 use testcase_models::TestCase;
+use validate_yaml::{resolve_schema_for_file, YamlValidator};
 
 #[cfg(not(target_os = "windows"))]
 use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
@@ -62,89 +62,17 @@ const COLOR_RED: &str = "\x1b[31m";
 const COLOR_RESET: &str = "\x1b[0m";
 const COLOR_BOLD: &str = "\x1b[1m";
 
-pub fn validate_single_file<P: AsRef<Path>, S: AsRef<Path>>(
-    yaml_path: P,
-    schema_path: S,
-) -> Result<()> {
-    let yaml_path = yaml_path.as_ref();
-    let schema_path = schema_path.as_ref();
-
-    let schema_content = fs::read_to_string(schema_path).context(format!(
-        "Failed to read schema file: {}",
-        schema_path.display()
-    ))?;
-
-    let schema_value: serde_json::Value =
-        serde_json::from_str(&schema_content).context("Failed to parse JSON schema")?;
-
-    let compiled_schema = jsonschema::JSONSchema::compile(&schema_value)
-        .map_err(|e| anyhow::anyhow!("Failed to compile JSON schema: {}", e))?;
-
-    let yaml_content = fs::read_to_string(yaml_path)
-        .context(format!("Failed to read YAML file: {}", yaml_path.display()))?;
-
-    let yaml_value: serde_yaml::Value = serde_yaml::from_str(&yaml_content).map_err(|e| {
-        log_yaml_parse_error(&e, &yaml_content, &yaml_path.to_string_lossy());
-        anyhow::anyhow!("Failed to parse YAML: {}", e)
-    })?;
-
-    let json_value: serde_json::Value =
-        serde_json::to_value(&yaml_value).context("Failed to convert YAML to JSON")?;
-
-    if let Err(errors) = compiled_schema.validate(&json_value) {
-        let mut error_messages = vec!["Schema constraint violations:".to_string()];
-
-        for (idx, error) in errors.enumerate() {
-            let path = if error.instance_path.to_string().is_empty() {
-                "root".to_string()
-            } else {
-                error.instance_path.to_string()
-            };
-
-            error_messages.push(format!("  Error #{}: Path '{}'", idx + 1, path));
-            error_messages.push(format!("    Constraint: {}", error));
-
-            let instance = error.instance.as_ref();
-            error_messages.push(format!("    Found value: {}", instance));
-        }
-
-        return Err(anyhow::anyhow!(error_messages.join("\n")));
-    }
-
-    Ok(())
-}
-
-fn resolve_schema_for_file(
-    yaml_file: &Path,
-    explicit_schema: Option<&Path>,
-    schemas_root: &str,
-) -> Result<PathBuf> {
-    if let Some(schema) = explicit_schema {
-        log::debug!(
-            "Using explicit schema '{}' for file '{}'",
-            schema.display(),
-            yaml_file.display()
-        );
-        return Ok(schema.to_path_buf());
-    }
-
-    log::debug!(
-        "Auto-resolving schema for file '{}' from schemas root '{}'",
-        yaml_file.display(),
-        schemas_root
-    );
-    resolve_schema_from_payload(yaml_file, schemas_root)
-}
-
 fn validate_files(
     yaml_files: &[PathBuf],
     explicit_schema: Option<&Path>,
     schemas_root: &str,
 ) -> Vec<ValidationResult> {
     let mut results = Vec::new();
+    let validator = YamlValidator::new();
+    let schemas_root_path = PathBuf::from(schemas_root);
 
     for yaml_file in yaml_files {
-        let schema_resolution = resolve_schema_for_file(yaml_file, explicit_schema, schemas_root);
+        let schema_resolution = resolve_schema_for_file(yaml_file, explicit_schema, &schemas_root_path);
 
         let (schema_path, resolved_schema) = match schema_resolution {
             Ok(path) => (Some(path.clone()), Some(path)),
@@ -161,7 +89,7 @@ fn validate_files(
         };
 
         let validation_result = if let Some(ref schema) = schema_path {
-            validate_single_file(yaml_file, schema)
+            validator.validate_file(yaml_file, schema)
         } else {
             Err(anyhow::anyhow!("No schema available for validation"))
         };
@@ -362,10 +290,11 @@ fn run_watch_mode(
 
     // For watch mode, we need to determine the schema to monitor
     // If explicit schema is provided, use it; otherwise resolve from first file
+    let schemas_root_path = PathBuf::from(&schemas_root);
     let schema_path = if let Some(ref schema) = explicit_schema {
         schema.clone()
     } else if !yaml_files.is_empty() {
-        resolve_schema_for_file(&yaml_files[0], None, &schemas_root)?
+        resolve_schema_for_file(&yaml_files[0], None::<&Path>, &schemas_root_path)?
     } else {
         return Err(anyhow::anyhow!("No files to watch"));
     };
