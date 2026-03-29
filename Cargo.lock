@@ -3208,6 +3208,7 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "sha2",
+ "testcase-common",
  "testcase-models",
  "testcase-storage",
  "testcase-verification",

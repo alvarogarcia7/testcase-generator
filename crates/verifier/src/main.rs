@@ -6,12 +6,16 @@ use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
+use testcase_common::load_and_validate_yaml;
 use testcase_models::TestCase;
 use testcase_storage::TestCaseStorage;
 use testcase_verification::{
     BatchVerificationReport, ContainerReport, ContainerReportConfig, MatchStrategy,
     StepVerificationResultEnum, TestCaseVerificationResult, TestExecutionLog, TestVerifier,
 };
+
+/// Default schemas root directory
+const SCHEMAS_ROOT: &str = "schemas";
 
 /// Storage-aware TestVerifier that wraps the core TestVerifier from testcase-verification
 /// and provides storage integration
@@ -77,6 +81,10 @@ impl StorageTestVerifier {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 struct VerifierConfig {
+    /// Schema reference for envelope support
+    #[serde(skip_serializing_if = "Option::is_none")]
+    schema: Option<String>,
+
     /// Report title
     title: String,
 
@@ -96,6 +104,7 @@ struct VerifierConfig {
 impl Default for VerifierConfig {
     fn default() -> Self {
         Self {
+            schema: None,
             title: "Test Execution Results".to_string(),
             project: "Test Case Manager - Verification Results".to_string(),
             environment: None,
@@ -106,13 +115,10 @@ impl Default for VerifierConfig {
 }
 
 impl VerifierConfig {
-    /// Load configuration from a YAML file
+    /// Load configuration from a YAML file with schema validation
     fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
-        let content =
-            fs::read_to_string(path.as_ref()).context("Failed to read configuration file")?;
-        let config: VerifierConfig =
-            serde_yaml::from_str(&content).context("Failed to parse configuration file")?;
-        Ok(config)
+        load_and_validate_yaml(path, SCHEMAS_ROOT)
+            .context("Failed to load and validate configuration file")
     }
 
     /// Apply CLI overrides to the configuration
