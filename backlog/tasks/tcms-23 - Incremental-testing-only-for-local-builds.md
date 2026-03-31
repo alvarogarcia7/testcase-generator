@@ -1,10 +1,10 @@
 ---
 id: TCMS-23
 title: Incremental testing only for local builds
-status: In Progress
+status: In Review
 assignee: []
 created_date: '2026-03-31 13:44'
-updated_date: '2026-03-31 13:44'
+updated_date: '2026-03-31 13:45'
 labels: []
 dependencies: []
 ---
