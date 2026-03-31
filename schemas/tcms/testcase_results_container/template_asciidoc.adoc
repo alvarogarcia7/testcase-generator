@@ -1,0 +1,365 @@
+= {{ title }}
+:doctype: book
+:toc: left
+:toclevels: 3
+:sectnums:
+:sectnumlevels: 3
+:chapter-label:
+:icons: font
+:imagesdir: images
+:source-highlighter: rouge
+
+[discrete]
+== Document Information
+
+*Project:* {{ project }}
+
+*Test Date:* {{ test_date }}
+
+*Environment:* {{ metadata.environment }}
+
+*Platform:* {{ metadata.platform }}
+
+*Executor:* {{ metadata.executor }}
+
+{% if metadata.execution_duration is defined %}*Execution Duration:* {{ metadata.execution_duration }} seconds
+{% endif %}
+
+<<<
+
+{% if show_table_of_contents is defined and show_table_of_contents -%}
+== Table of Contents
+
+toc::[]
+
+<<<
+
+{% endif -%}
+== Executive Summary
+
+=== Test Execution Overview
+
+This document presents the results of test execution for {{ project }}.
+
+[cols="1,2", options="header"]
+|===
+| Metric
+| Value
+
+| Total Test Cases
+| {% if metadata.total_test_cases is defined %}{{ metadata.total_test_cases }}{% else %}{{ test_results | length }}{% endif %}
+
+| Passed Test Cases
+| {% if metadata.passed_test_cases is defined %}{{ metadata.passed_test_cases }}{% else %}{{ test_results | filter(attribute="overall_pass", value=true) | length }}{% endif %}
+
+| Failed Test Cases
+| {% if metadata.failed_test_cases is defined %}{{ metadata.failed_test_cases }}{% else %}{{ test_results | filter(attribute="overall_pass", value=false) | length }}{% endif %}
+
+{% if show_not_executed_test_cases is defined and show_not_executed_test_cases -%}
+| Not Executed Test Cases
+| {% if metadata.not_executed_test_cases is defined %}{{ metadata.not_executed_test_cases }}{% else %}0{% endif %}
+
+{% endif -%}
+|===
+
+=== Test Cases Status
+
+[cols="1,1", options="header"]
+|===
+| Test Case ID
+| Status
+
+{% for test_result in test_results -%}
+| {{ test_result.test_case_id }}
+| {% if test_result.overall_pass %}✓ PASS{% else %}✗ FAIL{% endif %}
+
+{% endfor -%}
+|===
+
+{% if use_success_rate_heading is defined and use_success_rate_heading -%}
+=== Success Rate
+{% else -%}
+=== Pass/Fail Summary
+{% endif %}
+
+{% set total = metadata.total_test_cases | default(value=test_results | length) -%}
+{% set passed = metadata.passed_test_cases | default(value=test_results | filter(attribute="overall_pass", value=true) | length) -%}
+{% set failed = metadata.failed_test_cases | default(value=test_results | filter(attribute="overall_pass", value=false) | length) -%}
+{% if total > 0 -%}
+{% set pass_rate = passed * 100 / total -%}
+*Pass Rate:* {{ pass_rate | round(precision=2) }}%
+
+{% if show_overall_status_in_executive_summary is defined and show_overall_status_in_executive_summary -%}
+*Overall Status:* {% if failed == 0 %}✓ *PASS*{% else %}✗ *FAIL*{% endif %}
+{% endif -%}
+{% else -%}
+*Pass Rate:* N/A
+
+{% if show_overall_status_in_executive_summary is defined and show_overall_status_in_executive_summary -%}
+*Overall Status:* N/A
+{% endif -%}
+{% endif %}
+
+<<<
+
+= Detailed Test Results
+
+{% for test_result in test_results %}
+== Test Case: {{ test_result.test_case_id }}
+
+*Description:* {{ test_result.description }}
+
+{% if test_result.requirement is defined %}*Requirement:* {{ test_result.requirement }}
+{% endif %}
+{% if test_result.item is defined %}*Item:* {{ test_result.item }}
+{% endif %}
+{% if test_result.tc is defined %}*TC:* {{ test_result.tc }}
+{% endif %}
+
+*Overall Status:* {% if test_result.overall_pass %}✓ PASS{% else %}✗ FAIL{% endif %}
+
+{% if use_level1_headings is defined and use_level1_headings -%}
+== Execution Summary
+{% else -%}
+=== Execution Summary
+{% endif %}
+
+[cols="1,1", options="header"]
+|===
+| Metric
+| Count
+
+| Total Steps
+| {{ test_result.total_steps }}
+
+| Passed Steps
+| {{ test_result.passed_steps }}
+
+| Failed Steps
+| {{ test_result.failed_steps }}
+
+| Not Executed Steps
+| {{ test_result.not_executed_steps }}
+
+|===
+
+{% for sequence in test_result.sequences %}
+{% if use_level1_headings is defined and use_level1_headings -%}
+== Test Sequence {{ sequence.sequence_id }}: {{ sequence.name }}
+{% else -%}
+=== Test Sequence {{ sequence.sequence_id }}: {{ sequence.name }}
+{% endif %}
+
+*Sequence Status:* {% if sequence.all_steps_passed %}✓ PASS{% else %}✗ FAIL{% endif %}
+
+{% if use_level1_headings is defined and use_level1_headings -%}
+=== Step Results
+{% else -%}
+==== Step-by-Step Results
+{% endif %}
+
+[cols="1,3,2", options="header"]
+|===
+| Step
+| Description
+| Status
+
+{% for step_result in sequence.step_results -%}
+{% if step_result.Pass -%}
+| {{ step_result.Pass.step }}
+| {{ step_result.Pass.description }} +
+ +
+*Expected Result:* {{ step_result.Pass.result.expected.result }} +
+*Expected Output:* {{ step_result.Pass.result.expected.output }} +
+*Actual Result:* {{ step_result.Pass.result.actual.result }} +
+*Actual Output:* {{ step_result.Pass.result.actual.output }}
+| ✓ Pass
+
+{% elif step_result.Fail -%}
+| {{ step_result.Fail.step }}
+| {{ step_result.Fail.description }} +
+ +
+*Expected Result:* {{ step_result.Fail.result.expected.result }} +
+*Expected Output:* {{ step_result.Fail.result.expected.output }} +
+*Actual Result:* {{ step_result.Fail.result.actual.result }} +
+*Actual Output:* {{ step_result.Fail.result.actual.output }} +
+*Reason:* {{ step_result.Fail.reason }}
+| ✗ Fail
+
+{% elif step_result.NotExecuted -%}
+| {{ step_result.NotExecuted.step }}
+| {{ step_result.NotExecuted.description }} +
+ +
+*Expected Result:* {{ step_result.NotExecuted.result.expected.result }} +
+*Expected Output:* {{ step_result.NotExecuted.result.expected.output }}
+| ⊘ Not Executed
+
+{% endif -%}
+{% endfor %}
+|===
+
+{% if use_level1_headings is defined and use_level1_headings -%}
+=== Expected vs Actual Comparison
+{% else -%}
+==== Expected vs Actual Comparison
+{% endif %}
+
+[cols="1,2,2", options="header"]
+|===
+| Step
+| Expected
+| Actual
+
+{% for step_result in sequence.step_results -%}
+{% if step_result.Pass -%}
+| {{ step_result.Pass.step }}
+| {% if step_result.Pass.result.expected.result is defined %}*Result:* {{ step_result.Pass.result.expected.result }}{% else %}*Result:* {{ step_result.Pass.result.expected }}{% endif %}
+
+{% if step_result.Pass.output.expected is defined %}*Output:* {{ step_result.Pass.output.expected }}{% endif %}
+| {% if step_result.Pass.result.actual.result is defined %}*Result:* {{ step_result.Pass.result.actual.result }}{% else %}*Result:* {{ step_result.Pass.result.actual }}{% endif %}
+
+{% if step_result.Pass.output.actual is defined %}*Output:* {{ step_result.Pass.output.actual }}{% endif %}
+
+{% elif step_result.Fail -%}
+| {{ step_result.Fail.step }}
+| {% if step_result.Fail.result.expected.result is defined %}*Result:* {{ step_result.Fail.result.expected.result }}{% else %}*Result:* {{ step_result.Fail.result.expected }}{% endif %}
+
+{% if step_result.Fail.output.expected is defined %}*Output:* {{ step_result.Fail.output.expected }}{% endif %}
+| {% if step_result.Fail.result.actual.result is defined %}*Result:* {{ step_result.Fail.result.actual.result }}{% else %}*Result:* {{ step_result.Fail.result.actual }}{% endif %}
+
+{% if step_result.Fail.output.actual is defined %}*Output:* {{ step_result.Fail.output.actual }}{% endif %}
+
+*Reason:* {{ step_result.Fail.reason }}
+
+{% elif step_result.NotExecuted -%}
+| {{ step_result.NotExecuted.step }}
+| {% if step_result.NotExecuted.result.expected.result is defined %}*Result:* {{ step_result.NotExecuted.result.expected.result }}{% else %}*Result:* {{ step_result.NotExecuted.result.expected }}{% endif %}
+
+{% if step_result.NotExecuted.output.expected is defined %}*Output:* {{ step_result.NotExecuted.output.expected }}{% endif %}
+| ⊘ Not Executed
+
+{% endif -%}
+{% endfor %}
+|===
+
+{% for step_result in sequence.step_results -%}
+{% if step_result.Fail %}
+{% if use_level1_headings is defined and use_level1_headings -%}
+=== Step {{ step_result.Fail.step }} - Failure Details
+{% else -%}
+==== Step {{ step_result.Fail.step }} - Failure Details
+{% endif %}
+
+*Description:* {{ step_result.Fail.description }}
+
+*Reason:* {{ step_result.Fail.reason }}
+==== Expected vs Actual Results
+
+[cols="1,2,2", options="header"]
+|===
+| Step
+| Expected
+| Actual
+
+{% for step_result in sequence.step_results -%}
+{% if step_result.Pass -%}
+| {{ step_result.Pass.step }}
+| *Result:* {{ step_result.Pass.result.expected.result }}
+
+*Output:* {{ step_result.Pass.result.expected.output }}
+| *Result:* {{ step_result.Pass.result.actual.result }}
+
+*Output:* {{ step_result.Pass.result.actual.output }}
+
+{% elif step_result.Fail -%}
+| {{ step_result.Fail.step }}
+| *Result:* {{ step_result.Fail.result.expected.result }}
+
+*Output:* {{ step_result.Fail.result.expected.output }}
+| *Result:* {{ step_result.Fail.result.actual.result }}
+
+*Output:* {{ step_result.Fail.result.actual.output }}
+
+*Reason:* {{ step_result.Fail.reason }}
+
+{% elif step_result.NotExecuted -%}
+| {{ step_result.NotExecuted.step }}
+| *Result:* {{ step_result.NotExecuted.result.expected.result }}
+
+*Output:* {{ step_result.NotExecuted.result.expected.output }}
+| ⊘ Not Executed
+
+{% endif -%}
+{% endfor %}
+|===
+
+{% endfor %}
+
+<<<
+
+{% endfor %}
+
+== Final Verification Verdict
+
+=== Overall Test Execution Status
+
+[cols="1,2", options="header"]
+|===
+| Verdict
+| Result
+
+| Overall Status
+| {% if metadata.failed_test_cases is defined %}{% if metadata.failed_test_cases == 0 %}✓ *PASS*{% else %}✗ *FAIL*{% endif %}{% else %}{% if test_results | filter(attribute="overall_pass", value=false) | length == 0 %}✓ *PASS*{% else %}✗ *FAIL*{% endif %}{% endif %}
+
+| Total Test Cases
+| {% if metadata.total_test_cases is defined %}{{ metadata.total_test_cases }}{% else %}{{ test_results | length }}{% endif %}
+
+| Passed
+| {% if metadata.passed_test_cases is defined %}{{ metadata.passed_test_cases }}{% else %}{{ test_results | filter(attribute="overall_pass", value=true) | length }}{% endif %}
+
+| Failed
+| {% if metadata.failed_test_cases is defined %}{{ metadata.failed_test_cases }}{% else %}{{ test_results | filter(attribute="overall_pass", value=false) | length }}{% endif %}
+
+{% if show_not_executed_in_verdict is defined and show_not_executed_in_verdict -%}
+| Not Executed
+| {% if metadata.not_executed_test_cases is defined %}{{ metadata.not_executed_test_cases }}{% else %}0{% endif %}
+
+{% endif -%}
+|===
+
+{% set total = metadata.total_test_cases | default(value=test_results | length) -%}
+{% set passed = metadata.passed_test_cases | default(value=test_results | filter(attribute="overall_pass", value=true) | length) -%}
+{% set failed = metadata.failed_test_cases | default(value=test_results | filter(attribute="overall_pass", value=false) | length) -%}
+{% if failed == 0 and total > 0 -%}
+
+=== Conclusion
+
+All test cases have been executed successfully. The system under test meets the specified requirements.
+{% elif failed > 0 -%}
+
+=== Conclusion
+
+{{ failed }} test case(s) failed during execution. Review the detailed test results section for failure analysis and remediation actions.
+{% else -%}
+
+=== Conclusion
+
+No test cases were executed or results are inconclusive.
+{% endif %}
+
+{% if requirements_summary_adoc is defined and requirements_summary_adoc -%}
+<<<
+
+== Requirements Summary
+
+{{ requirements_summary_adoc }}
+{% endif %}
+
+{% if copyright_notice is defined and copyright_notice -%}
+<<<
+
+[discrete]
+== Copyright Notice
+
+{{ copyright_notice }}
+{% endif %}

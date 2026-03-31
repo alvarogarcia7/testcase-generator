@@ -1,0 +1,252 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Test Results Container",
+  "description": "Schema for overall test results document containing multiple test case results",
+  "type": "object",
+  "definitions": {
+    "TestStepExecution": {
+      "type": "object",
+      "description": "Expected and actual value pair",
+      "properties": {
+        "expected": {},
+        "actual": {}
+      },
+      "required": ["expected", "actual"]
+    },
+    "expectedOnlyPair": {
+      "type": "object",
+      "description": "Expected value only",
+      "properties": {
+        "expected": {}
+      },
+      "required": ["expected"]
+    },
+    "passFailResult": {
+      "type": "object",
+      "description": "Result structure with expected and actual for Pass/Fail",
+      "properties": {
+        "result": {
+          "$ref": "#/definitions/TestStepExecution"
+        },
+        "output": {
+          "$ref": "#/definitions/TestStepExecution"
+        }
+      },
+      "required": ["result"]
+    }
+  },
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Title of the test results document"
+    },
+    "project": {
+      "type": "string",
+      "description": "Project name or identifier"
+    },
+    "test_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Date and time when tests were executed"
+    },
+    "test_results": {
+      "type": "array",
+      "description": "Array of test case verification results",
+      "items": {
+        "type": "object",
+        "properties": {
+          "requirement": {
+            "type": "string",
+            "description": "Requirement identifier"
+          },
+          "item": {
+            "type": "integer",
+            "description": "Item number"
+          },
+          "tc": {
+            "type": "integer",
+            "description": "Test case number"
+          },
+          "test_case_id": {
+            "type": "string",
+            "description": "Test case identifier"
+          },
+          "description": {
+            "type": "string",
+            "description": "Test case description"
+          },
+          "sequences": {
+            "type": "array",
+            "description": "Test sequences executed",
+            "items": {
+              "type": "object",
+              "properties": {
+                "sequence_id": {
+                  "type": "integer",
+                  "description": "Sequence identifier"
+                },
+                "name": {
+                  "type": "string",
+                  "description": "Sequence name"
+                },
+                "step_results": {
+                  "type": "array",
+                  "description": "Results for each step",
+                  "items": {
+                    "type": "object",
+                    "oneOf": [
+                      {
+                        "properties": {
+                          "Pass": {
+                            "type": "object",
+                            "allOf": [
+                              {
+                                "properties": {
+                                  "step": {
+                                    "type": "integer"
+                                  },
+                                  "description": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": ["step", "description"]
+                              },
+                              {
+                                "$ref": "#/definitions/passFailResult"
+                              }
+                            ]
+                          }
+                        },
+                        "required": ["Pass"]
+                      },
+                      {
+                        "properties": {
+                          "Fail": {
+                            "type": "object",
+                            "allOf": [
+                              {
+                                "properties": {
+                                  "step": {
+                                    "type": "integer"
+                                  },
+                                  "description": {
+                                    "type": "string"
+                                  },
+                                  "reason": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": ["step", "description", "reason"]
+                              },
+                              {
+                                "$ref": "#/definitions/passFailResult"
+                              }
+                            ]
+                          }
+                        },
+                        "required": ["Fail"]
+                      },
+                      {
+                        "properties": {
+                          "NotExecuted": {
+                            "type": "object",
+                            "properties": {
+                              "step": {
+                                "type": "integer"
+                              },
+                              "description": {
+                                "type": "string"
+                              },
+                              "result": {
+                                "$ref": "#/definitions/expectedOnlyPair"
+                              },
+                              "output": {
+                                "$ref": "#/definitions/expectedOnlyPair"
+                              }
+                            },
+                            "required": ["step", "description", "result"]
+                          }
+                        },
+                        "required": ["NotExecuted"]
+                      }
+                    ]
+                  }
+                },
+                "all_steps_passed": {
+                  "type": "boolean",
+                  "description": "Whether all steps in the sequence passed"
+                }
+              },
+              "required": ["sequence_id", "name", "step_results", "all_steps_passed"]
+            }
+          },
+          "total_steps": {
+            "type": "integer",
+            "description": "Total number of steps",
+            "minimum": 0
+          },
+          "passed_steps": {
+            "type": "integer",
+            "description": "Number of steps that passed",
+            "minimum": 0
+          },
+          "failed_steps": {
+            "type": "integer",
+            "description": "Number of steps that failed",
+            "minimum": 0
+          },
+          "not_executed_steps": {
+            "type": "integer",
+            "description": "Number of steps not executed",
+            "minimum": 0
+          },
+          "overall_pass": {
+            "type": "boolean",
+            "description": "Overall pass/fail status for the test case"
+          }
+        },
+        "required": ["test_case_id", "description", "sequences", "total_steps", "passed_steps", "failed_steps", "not_executed_steps", "overall_pass"]
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Execution environment and metadata details",
+      "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Test environment name or identifier"
+        },
+        "platform": {
+          "type": "string",
+          "description": "Platform on which tests were executed"
+        },
+        "executor": {
+          "type": "string",
+          "description": "Name or identifier of the test executor"
+        },
+        "execution_duration": {
+          "type": "number",
+          "description": "Total execution time in seconds",
+          "minimum": 0
+        },
+        "total_test_cases": {
+          "type": "integer",
+          "description": "Total number of test cases executed",
+          "minimum": 0
+        },
+        "passed_test_cases": {
+          "type": "integer",
+          "description": "Number of test cases that passed",
+          "minimum": 0
+        },
+        "failed_test_cases": {
+          "type": "integer",
+          "description": "Number of test cases that failed",
+          "minimum": 0
+        }
+      },
+      "required": ["environment", "platform", "executor"]
+    }
+  },
+  "required": ["title", "project", "test_date", "test_results", "metadata"]
+}

@@ -1,0 +1,253 @@
+title: 'Sample Test Results Report - Q1 2024'
+project: 'Sample Project Testing'
+test_date: '2024-03-15T10:00:00Z'
+test_results:
+  - requirement: "REQ-001"
+    item: 1
+    tc: 1
+    test_case_id: 'TC-001 User Authentication'
+    description: 'Verify user authentication functionality with valid and invalid credentials.'
+    sequences:
+      - sequence_id: 1
+        name: "Valid Credentials Login"
+        step_results:
+          - Pass:
+              step: 1
+              description: "Navigate to login page"
+              result:
+                expected: "Login page loaded successfully"
+                actual: "Login page loaded successfully"
+              output:
+                expected: 0
+                actual: 0
+          - Pass:
+              step: 2
+              description: "Enter valid username and password"
+              result:
+                expected:
+                  result: "Credentials entered"
+                  output: "Username and password fields populated"
+                actual:
+                  result: "Credentials entered"
+                  output: "Username and password fields populated"
+          - Pass:
+              step: 3
+              description: "Click login button"
+              result:
+                expected:
+                  result: "Login request submitted"
+                  output: "Loading indicator displayed"
+                actual:
+                  result: "Login request submitted"
+                  output: "Loading indicator displayed"
+          - Pass:
+              step: 4
+              description: "Verify successful login and redirect to dashboard"
+              result:
+                expected:
+                  result: "User authenticated and redirected"
+                  output: "Dashboard page with user welcome message"
+                actual:
+                  result: "User authenticated and redirected"
+                  output: "Dashboard page with user welcome message"
+        all_steps_passed: true
+      - sequence_id: 2
+        name: "Invalid Credentials Login"
+        step_results:
+          - Pass:
+              step: 5
+              description: "Navigate to login page"
+              result:
+                expected:
+                  result: "Login page loaded successfully"
+                  output: "Login form with username and password fields displayed"
+                actual:
+                  result: "Login page loaded successfully"
+                  output: "Login form with username and password fields displayed"
+          - Pass:
+              step: 6
+              description: "Enter invalid username and password"
+              result:
+                expected:
+                  result: "Invalid credentials entered"
+                  output: "Username and password fields populated with test data"
+                actual:
+                  result: "Invalid credentials entered"
+                  output: "Username and password fields populated with test data"
+          - Pass:
+              step: 7
+              description: "Click login button"
+              result:
+                expected:
+                  result: "Login request submitted"
+                  output: "Loading indicator displayed"
+                actual:
+                  result: "Login request submitted"
+                  output: "Loading indicator displayed"
+          - Pass:
+              step: 8
+              description: "Verify error message is displayed"
+              result:
+                expected:
+                  result: "Authentication failed"
+                  output: "Error message: 'Invalid username or password'"
+                actual:
+                  result: "Authentication failed"
+                  output: "Error message: 'Invalid username or password'"
+        all_steps_passed: true
+    total_steps: 8
+    passed_steps: 8
+    failed_steps: 0
+    not_executed_steps: 0
+    overall_pass: true
+  - requirement: "REQ-002"
+    item: 2
+    tc: 2
+    test_case_id: 'TC-002 Data Validation'
+    description: 'Verify input validation for user registration form.'
+    sequences:
+      - sequence_id: 1
+        name: "Email Format Validation"
+        step_results:
+          - Pass:
+              step: 1
+              description: "Navigate to registration page"
+              result:
+                expected:
+                  result: "Registration page loaded"
+                  output: "Registration form displayed with all fields"
+                actual:
+                  result: "Registration page loaded"
+                  output: "Registration form displayed with all fields"
+          - Pass:
+              step: 2
+              description: "Enter valid email format"
+              result:
+                expected:
+                  result: "Email field populated"
+                  output: "Valid email format accepted"
+                actual:
+                  result: "Email field populated"
+                  output: "Valid email format accepted"
+          - Fail:
+              step: 3
+              description: "Submit form and verify acceptance"
+              result:
+                expected:
+                  result: "Form submitted successfully"
+                  output: "User registered with email confirmation sent"
+                actual:
+                  result: "Form validation error"
+                  output: "Email already exists in database"
+              reason: "Expected successful registration but email was already in use, indicating duplicate check failure"
+        all_steps_passed: false
+      - sequence_id: 2
+        name: "Password Strength Validation"
+        step_results:
+          - NotExecuted:
+              step: 4
+              description: "Enter weak password (less than 8 characters)"
+              result:
+                expected:
+                  result: "Weak password entered"
+                  output: "Password field populated with short password"
+          - NotExecuted:
+              step: 5
+              description: "Verify password strength error message"
+              result:
+                expected:
+                  result: "Validation error displayed"
+                  output: "Error message: 'Password must be at least 8 characters long'"
+        all_steps_passed: false
+    total_steps: 5
+    passed_steps: 2
+    failed_steps: 1
+    not_executed_steps: 2
+    overall_pass: false
+  - requirement: "REQ-003"
+    item: 3
+    tc: 3
+    test_case_id: 'TC-003 API Response Time'
+    description: 'Verify API endpoints meet performance requirements.'
+    sequences:
+      - sequence_id: 1
+        name: "GET Request Performance"
+        step_results:
+          - Pass:
+              step: 1
+              description: "Send GET request to /api/users endpoint"
+              result:
+                expected:
+                  result: "HTTP 200 OK"
+                  output: "JSON array of user objects"
+                actual:
+                  result: "HTTP 200 OK"
+                  output: "JSON array of user objects"
+          - Pass:
+              step: 2
+              description: "Measure response time"
+              result:
+                expected:
+                  result: "Response time captured"
+                  output: "Time value in milliseconds"
+                actual:
+                  result: "Response time captured"
+                  output: "Time value in milliseconds"
+          - Pass:
+              step: 3
+              description: "Verify response time is under 200ms"
+              result:
+                expected:
+                  result: "Response time < 200ms"
+                  output: "Performance requirement met (156ms)"
+                actual:
+                  result: "Response time < 200ms"
+                  output: "Performance requirement met (156ms)"
+        all_steps_passed: true
+      - sequence_id: 2
+        name: "POST Request Performance"
+        step_results:
+          - Pass:
+              step: 4
+              description: "Send POST request to /api/users endpoint"
+              result:
+                expected:
+                  result: "HTTP 201 Created"
+                  output: "JSON object with new user data"
+                actual:
+                  result: "HTTP 201 Created"
+                  output: "JSON object with new user data"
+          - Pass:
+              step: 5
+              description: "Measure response time"
+              result:
+                expected:
+                  result: "Response time captured"
+                  output: "Time value in milliseconds"
+                actual:
+                  result: "Response time captured"
+                  output: "Time value in milliseconds"
+          - Pass:
+              step: 6
+              description: "Verify response time is under 300ms"
+              result:
+                expected:
+                  result: "Response time < 300ms"
+                  output: "Performance requirement met (234ms)"
+                actual:
+                  result: "Response time < 300ms"
+                  output: "Performance requirement met (234ms)"
+        all_steps_passed: true
+    total_steps: 6
+    passed_steps: 6
+    failed_steps: 0
+    not_executed_steps: 0
+    overall_pass: true
+metadata:
+  environment: 'Test Environment - Staging'
+  platform: 'Ubuntu 22.04 LTS with Node.js v18.16.0'
+  executor: 'Automated Test Framework v1.2.3'
+  execution_duration: 145.8
+  total_test_cases: 3
+  passed_test_cases: 2
+  failed_test_cases: 1
