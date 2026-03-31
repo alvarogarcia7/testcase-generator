@@ -111,6 +111,8 @@ section "1. Test sequence.variables initialization"
 
 VARS_YAML="$TEMP_DIR/test_sequence_variables.yaml"
 cat > "$VARS_YAML" << 'EOF'
+type: test-case
+schema: "1.0"
 requirement: VAR_SEQ
 item: 1
 tc: 1
@@ -158,7 +160,7 @@ info "Generating script from YAML..."
 VARS_SCRIPT="$TEMP_DIR/test_sequence_variables.sh"
 if "$TEST_EXECUTOR_BIN" generate "$VARS_YAML" -o "$VARS_SCRIPT" > /dev/null 2>&1; then
     pass "Script generated successfully"
-    TESTS_PASSED=$((TESTS_PASSED+1))
+    TESTS_PASSED=$((TESTS_PASSED + 1))
 else
     fail "Script generation failed"
     TESTS_FAILED=$((TESTS_FAILED+1))
@@ -221,6 +223,8 @@ section "2. Test legacy capture_vars (map format) with sed substitution"
 
 LEGACY_YAML="$TEMP_DIR/test_legacy_capture.yaml"
 cat > "$LEGACY_YAML" << 'EOF'
+type: test-case
+schema: "1.0"
 requirement: LEGACY_CAP
 item: 2
 tc: 2
@@ -329,6 +333,8 @@ section "3. Test new array format capture_vars (capture + command)"
 
 ARRAY_YAML="$TEMP_DIR/test_array_capture.yaml"
 cat > "$ARRAY_YAML" << 'EOF'
+type: test-case
+schema: "1.0"
 requirement: ARRAY_CAP
 item: 3
 tc: 3
@@ -429,6 +435,8 @@ section "4. Test cross-sequence variable capture"
 
 CROSS_SEQ_YAML="$TEMP_DIR/test_cross_sequence.yaml"
 cat > "$CROSS_SEQ_YAML" << 'EOF'
+type: test-case
+schema: "1.0"
 requirement: CROSS_SEQ
 item: 4
 tc: 4
@@ -530,6 +538,8 @@ section "5. Test manual steps interspersed with automated steps"
 
 MANUAL_YAML="$TEMP_DIR/test_manual_steps.yaml"
 cat > "$MANUAL_YAML" << 'EOF'
+type: test-case
+schema: "1.0"
 requirement: MANUAL_TEST
 item: 5
 tc: 5
@@ -685,6 +695,8 @@ section "6. Test non-interactive mode"
 info "Executing script in non-interactive mode..."
 NONINTERACTIVE_YAML="$TEMP_DIR/test_noninteractive.yaml"
 cat > "$NONINTERACTIVE_YAML" << 'EOF'
+type: test-case
+schema: "1.0"
 requirement: NONINT
 item: 6
 tc: 6
@@ -749,6 +761,8 @@ section "7. Test JSON log validation (fields and structure)"
 
 JSON_TEST_YAML="$TEMP_DIR/test_json_log.yaml"
 cat > "$JSON_TEST_YAML" << 'EOF'
+type: test-case
+schema: "1.0"
 requirement: JSON_LOG
 item: 7
 tc: 7
@@ -891,6 +905,8 @@ section "8. Test source_yaml_sha256 field in JSON log"
 
 HASH_TEST_YAML="$TEMP_DIR/test_hash.yaml"
 cat > "$HASH_TEST_YAML" << 'EOF'
+type: test-case
+schema: "1.0"
 requirement: HASH_TEST
 item: 8
 tc: 8
@@ -987,6 +1003,8 @@ section "9. Test special characters in JSON log (round-trip integrity)"
 
 SPECIAL_YAML="$TEMP_DIR/test_special_chars.yaml"
 cat > "$SPECIAL_YAML" << 'EOF'
+type: test-case
+schema: "1.0"
 requirement: SPECIAL_CHARS
 item: 9
 tc: 9
@@ -1015,7 +1033,7 @@ test_sequences:
           output: He said "Hello" to the world
         verification:
           result: "[ $EXIT_CODE -eq 0 ]"
-          output: "true"
+          output: "[[ \"$COMMAND_OUTPUT\" == *'\"Hello\"'* ]]"
       - step: 2
         description: Test backslashes
         command: echo 'Path: C:\Users\test\file.txt'
@@ -1148,7 +1166,7 @@ echo "Tests Passed: $TESTS_PASSED"
 echo "Tests Failed: $TESTS_FAILED"
 echo ""
 
-if [[ $TESTS_FAILED -eq 0 ]]; then
+if [[ $TESTS_FAILED -eq 0 && $TESTS_PASSED -gt 0 ]]; then
     echo -e "${GREEN}All tests passed!${NC}"
     exit 0
 else

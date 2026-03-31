@@ -586,18 +586,15 @@ fn test_manual_steps_excluded_from_json_log() -> Result<()> {
     assert_eq!(entries[0].step, 1, "First entry should be step 1");
     assert_eq!(entries[1].step, 3, "Second entry should be step 3");
 
-    let step1_log = temp_dir.path().join(format!(
-        "{}_seq_{}_step_{}.actual.log",
-        test_case.id, 1, 1
-    ));
-    let step2_log = temp_dir.path().join(format!(
-        "{}_seq_{}_step_{}.actual.log",
-        test_case.id, 1, 2
-    ));
-    let step3_log = temp_dir.path().join(format!(
-        "{}_seq_{}_step_{}.actual.log",
-        test_case.id, 1, 3
-    ));
+    let step1_log = temp_dir
+        .path()
+        .join(format!("{}_seq_{}_step_{}.actual.log", test_case.id, 1, 1));
+    let step2_log = temp_dir
+        .path()
+        .join(format!("{}_seq_{}_step_{}.actual.log", test_case.id, 1, 2));
+    let step3_log = temp_dir
+        .path()
+        .join(format!("{}_seq_{}_step_{}.actual.log", test_case.id, 1, 3));
 
     assert!(step1_log.exists(), "Step 1 log file should exist");
     assert!(
@@ -808,11 +805,7 @@ fn test_json_log_structure_compliance() -> Result<()> {
             "Entry {} test_sequence must be a number",
             i
         );
-        assert!(
-            obj["step"].is_number(),
-            "Entry {} step must be a number",
-            i
-        );
+        assert!(obj["step"].is_number(), "Entry {} step must be a number", i);
         assert!(
             obj["command"].is_string(),
             "Entry {} command must be a string",
