@@ -1,395 +1,269 @@
-# JSON Schemas Documentation
+# TCMS Schema Documentation
 
-This directory contains JSON Schema files that define and validate the structure of various data formats used throughout the test case management system.
+This directory contains JSON schemas for the Test Case Management System (TCMS).
 
-## Overview
+## 📚 Documentation Files
 
-The schemas ensure data consistency and provide validation for:
-- Test case definitions in YAML format
-- Test execution logs
-- Verification results
-- Verification output files
+### Quick Start
+- **[SCHEMA_QUICK_REFERENCE.md](SCHEMA_QUICK_REFERENCE.md)** - Fast lookup guide for schema selection and usage
 
-## Schema Files
+### Comprehensive Analysis
+- **[SCHEMA_AUDIT.md](SCHEMA_AUDIT.md)** - Full audit report with duplication analysis, migration guidance, and recommendations
+- **[SCHEMA_AUDIT.csv](SCHEMA_AUDIT.csv)** - Spreadsheet format of all schemas for easy filtering and analysis
 
-### 1. `test-case.schema.json`
+### Deprecation Notices
+- **[tcms/schemas/DEPRECATED.md](tcms/schemas/DEPRECATED.md)** - Verification schema duplicates
+- **[tcms/test_results/DEPRECATED.md](tcms/test_results/DEPRECATED.md)** - Legacy container_schema.json
+- **[tcms/testcase_results_container/DEPRECATED.md](tcms/testcase_results_container/DEPRECATED.md)** - Legacy testcase_results_container/schema.json
+- **[tcms/container/DEPRECATED.md](tcms/container/DEPRECATED.md)** - Minimal legacy container/schema.json
 
-**Purpose**: Validates test case YAML files against the GSMA test case structure.
+## 🎯 Current Production Schemas (v1)
 
-**Description**: This schema defines the complete structure for test case definitions, including requirements, test sequences, steps, initial conditions, prerequisites, verification expressions, and environment variable hydration.
+All production schemas are located in `schemas/tcms/*.schema.v1.json` and follow the envelope pattern.
 
-**Key Components**:
-- **Root Properties**: `requirement`, `item`, `tc`, `id`, `description`
-- **Prerequisites**: Manual or automatic prerequisites that must be satisfied before test execution
-- **Hydration Variables**: Environment variables requiring configuration
-- **Initial Conditions**: General and device-specific initial conditions (supports BDD patterns)
-- **Test Sequences**: Ordered sequences containing test steps
-- **Test Steps**: Individual test actions with commands, expected results, and verification rules
-- **Verification**: Simple or conditional verification expressions for result/output validation
+### Core
+- `tcms-envelope.schema.json` - Meta-schema defining envelope pattern
 
-**Example Usage**:
+### Document Types
+1. **test_case** - `tcms/test-case.schema.v1.json` - Test case definitions
+2. **test_execution** - `tcms/test-execution.schema.v1.json` - Execution log entries
+3. **test_verification** - `tcms/test-verification.schema.v1.json` - Verification results
+4. **test_result** - `tcms/test-result.schema.v1.json` - Test results (alternative to test_verification)
+5. **test_results_container** - `tcms/test-results-container.schema.v1.json` - Container for multiple results
+6. **container_config** - `tcms/container-config.schema.v1.json` - Container metadata configuration
 
-```yaml
-requirement: "XXX100"
-item: 1
-tc: 1
-id: "TC_001"
-description: "Example test case"
+## 🔬 Verification Methods
 
-prerequisites:
-  - type: automatic
-    description: "SSH connection available"
-    verification_command: "ssh -q user@host exit"
+Specialized schemas for different verification methodologies in `tcms/verification_methods/`:
 
-hydration_vars:
-  TARGET_HOST:
-    name: "TARGET_HOST"
-    description: "Target device hostname"
-    default_value: "192.168.1.1"
-    required: true
+- **test** - Test-based verification
+- **analysis** - Analytical verification with calculations
+- **demonstration** - Operational demonstrations
+- **inspection** - Inspection/review verification
+- **common_criteria** - Security evaluation (EAL1-7)
+- **high_assurance** - DO-178C aviation safety verification
+- **result** - Generic result reporting
 
-general_initial_conditions:
-  system:
-    - "create directory \"/tmp/test\""
-    - "set environment variable \"DEBUG\" to \"1\""
+## ⚠️ Schema Status Summary
 
-initial_conditions:
-  device:
-    - "ping device \"${TARGET_HOST}\" with 3 retries"
+### Active Schemas
+- **7 versioned (v1)** - Current production standard with envelope support
+- **7 verification methods** - Domain-specific methodologies
 
-test_sequences:
-  - id: 1
-    name: "Basic Test"
-    description: "Basic functionality test"
-    initial_conditions:
-      device:
-        - "wait until port 80 on \"${TARGET_HOST}\" is open with timeout 30 seconds"
-    steps:
-      - step: 1
-        description: "Execute command"
-        command: "echo \"Hello\""
-        expected:
-          success: true
-          result: 0
-          output: "Hello"
-        verification:
-          result: "[[ $EXIT_CODE -eq 0 ]]"
-          output: "grep -q 'Hello' <<< \"$COMMAND_OUTPUT\""
-```
+### Deprecated Schemas
+- **3 confirmed duplicates** - Use v1 equivalents instead
+  - `tcms/schemas/verification_schema.json`
+  - `tcms/schemas/verification-schema.json`
+  - `tcms/container/schema.json`
 
-**Validation Tools**:
-- `validate-yaml` binary: `validate-yaml testcase.yml --schema schemas/test-case.schema.json`
-- Rust API: `SchemaValidator::new()?.validate_chunk(yaml_content)?`
+### Consider for Deprecation
+- **2 legacy containers** - Migration path available
+  - `tcms/test_results/container_schema.json`
+  - `tcms/testcase_results_container/schema.json`
 
-**Related Documentation**:
-- `docs/BDD_INITIAL_CONDITIONS.md` - BDD pattern reference for initial conditions
-- `docs/CONDITIONAL_VERIFICATION.md` - Conditional verification expressions
-- `docs/ENVIRONMENT_VARIABLE_HYDRATION.md` - Environment variable configuration
-- `docs/PREREQUISITES.md` - Prerequisites system documentation
-- `docs/VARIABLES_CAPTURE_COMMAND.md` - Variable capture functionality
+### Transitional Schemas
+- **5 root-level schemas** - Have optional envelope support, migrate to v1
+  - `test-case.schema.json`
+  - `container_config.schema.json`
+  - `execution-log.schema.json`
+  - `verification-output.schema.json`
+  - `verification-result.schema.json`
 
----
+## 📖 Quick Schema Selection
 
-### 2. `execution-log.schema.json`
+### I need to...
+- **Define test cases** → `tcms/test-case.schema.v1.json`
+- **Record execution logs** → `tcms/test-execution.schema.v1.json`
+- **Store single test results** → `tcms/test-verification.schema.v1.json` or `tcms/test-result.schema.v1.json`
+- **Aggregate multiple results** → `tcms/test-results-container.schema.v1.json`
+- **Configure container metadata** → `tcms/container-config.schema.v1.json`
+- **Use specific verification method** → `tcms/verification_methods/{type}/schema.json`
 
-**Purpose**: Validates test execution log entry format.
+## 🔄 Envelope Pattern
 
-**Description**: This schema defines the structure for individual test execution log entries that record the execution of test steps. Each entry captures the command executed, its exit code, output, and timestamp.
-
-**Key Components**:
-- `test_sequence`: Sequence number of the test (integer)
-- `step`: Step number within the sequence (integer)
-- `command`: The command that was executed (string)
-- `exit_code`: Exit code from command execution (integer)
-- `output`: Output produced by the command (string)
-- `timestamp`: ISO 8601 timestamp of execution (string, optional)
-
-**Example**:
+All v1 schemas follow the envelope pattern with required fields:
 
 ```json
-[
-  {
-    "test_sequence": 1,
-    "step": 1,
-    "command": "echo \"Hello World\"",
-    "exit_code": 0,
-    "output": "Hello World",
-    "timestamp": "2024-01-15T10:30:45.123456Z"
-  },
-  {
-    "test_sequence": 1,
-    "step": 2,
-    "command": "false",
-    "exit_code": 1,
-    "output": "",
-    "timestamp": "2024-01-15T10:30:45.234567Z"
+{
+  "type": "test_case",
+  "schema": "tcms/test-case.schema.v1.json",
+  ...
+}
+```
+
+Valid types: `test_case`, `test_execution`, `test_verification`, `test_result`, `container_config`, `test_results_container`
+
+## 📊 Statistics
+
+- **Total schemas:** 24
+- **Production (v1):** 7 (29%)
+- **Verification methods:** 7 (29%)
+- **Transitional:** 5 (21%)
+- **Deprecated/Legacy:** 5 (21%)
+
+## 🔍 Duplication Findings
+
+### Confirmed Duplicates
+1. ✅ `verification_schema.json` and `verification-schema.json` are duplicates of `test-verification.schema.v1.json`
+2. ✅ `container/schema.json` is superseded by container-config and test-results-container schemas
+
+### Potential Duplicates
+3. ⚠️ `test_results/container_schema.json` - Consider using `test-results-container.schema.v1.json`
+4. ⚠️ `testcase_results_container/schema.json` - Consider using `test-results-container.schema.v1.json`
+
+See [SCHEMA_AUDIT.md](SCHEMA_AUDIT.md) for detailed analysis and migration guidance.
+
+## 🚀 Usage Example
+
+### Creating a Test Case
+```json
+{
+  "type": "test_case",
+  "schema": "tcms/test-case.schema.v1.json",
+  "requirement": "REQ-001",
+  "item": 1,
+  "tc": 1,
+  "id": "TC-001",
+  "description": "Example test case",
+  "general_initial_conditions": {},
+  "initial_conditions": {},
+  "test_sequences": [
+    {
+      "id": 1,
+      "name": "Test Sequence 1",
+      "description": "First test sequence",
+      "initial_conditions": {},
+      "steps": [
+        {
+          "step": 1,
+          "description": "Execute command",
+          "command": "echo 'hello'",
+          "expected": {
+            "result": "0",
+            "output": "hello"
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Creating a Results Container
+```json
+{
+  "type": "test_results_container",
+  "schema": "tcms/test-results-container.schema.v1.json",
+  "title": "Test Run Results",
+  "project": "My Project",
+  "test_date": "2024-01-15T10:30:00Z",
+  "test_results": [...],
+  "metadata": {
+    "execution_duration": 120.5,
+    "total_test_cases": 10,
+    "passed_test_cases": 9,
+    "failed_test_cases": 1
   }
-]
-```
-
-**Usage Context**:
-- Generated by: `TestExecutor` during test case execution
-- Used by: `TestVerifier` to compare actual vs. expected results
-- Location: Execution log files are typically saved as `<test-case-id>_execution_log.json`
-
-**Validation Tool**:
-- `validate-json` binary: `validate-json execution_log.json schemas/execution-log.schema.json`
-
-**Related Code**:
-- `src/executor.rs` - Generates execution logs
-- `src/verification.rs` - Parses and validates execution logs
-- `models::TestStepExecutionEntry` - Rust structure representing log entries
-
----
-
-### 3. `verification-result.schema.json`
-
-**Purpose**: Validates test case verification results structure.
-
-**Description**: This schema defines the complete verification result for a test case, including pass/fail status for each step, sequence, and the overall test case. Results use an enum-based format with distinct types for Pass, Fail, and NotExecuted states.
-
-**Key Components**:
-- **Test Case Level**: ID, description, overall pass/fail, step counts
-- **Sequence Level**: Sequence ID, name, step results, all_steps_passed flag
-- **Step Results** (enum variants):
-  - `Pass`: Step passed with step number and description
-  - `Fail`: Step failed with expected values, actual values, and reason
-  - `NotExecuted`: Step was not executed
-
-**Example**:
-
-```json
-{
-  "test_case_id": "TC_001",
-  "description": "Example test case",
-  "sequences": [
-    {
-      "sequence_id": 1,
-      "name": "Basic Test",
-      "step_results": [
-        {
-          "Pass": {
-            "step": 1,
-            "description": "Execute command"
-          }
-        },
-        {
-          "Fail": {
-            "step": 2,
-            "description": "Check output",
-            "expected": {
-              "success": true,
-              "result": "0",
-              "output": "Success"
-            },
-            "actual_result": "1",
-            "actual_output": "Error occurred",
-            "reason": "Exit code mismatch: expected '0', got '1'"
-          }
-        },
-        {
-          "NotExecuted": {
-            "step": 3,
-            "description": "Cleanup"
-          }
-        }
-      ],
-      "all_steps_passed": false
-    }
-  ],
-  "total_steps": 3,
-  "passed_steps": 1,
-  "failed_steps": 1,
-  "not_executed_steps": 1,
-  "overall_pass": false
 }
 ```
 
-**Usage Context**:
-- Generated by: `TestVerifier::verify_test_case()`
-- Used for: Detailed verification reporting and analysis
-- Serialized to: JSON files for persistence and reporting
+## 📋 Directory Structure
 
-**Validation Tool**:
-- `validate-json` binary: `validate-json verification_result.json schemas/verification-result.schema.json`
+```
+schemas/
+├── README.md                          # This file
+├── SCHEMA_AUDIT.md                    # Comprehensive audit report
+├── SCHEMA_AUDIT.csv                   # Spreadsheet format
+├── SCHEMA_QUICK_REFERENCE.md          # Quick lookup guide
+├── tcms-envelope.schema.json          # Envelope meta-schema
+├── tcms/
+│   ├── *.schema.v1.json              # 6 versioned schemas (PRODUCTION)
+│   ├── container/                     # Legacy (DEPRECATED)
+│   ├── schemas/                       # Legacy (DEPRECATED)
+│   ├── test_results/                  # Legacy (CONSIDER DEPRECATING)
+│   ├── testcase_results_container/    # Legacy (CONSIDER DEPRECATING)
+│   └── verification_methods/          # 7 verification method schemas (ACTIVE)
+│       ├── test/
+│       ├── analysis/
+│       ├── demonstration/
+│       ├── inspection/
+│       ├── common_criteria/
+│       ├── high_assurance/
+│       └── result/
+└── *.schema.json                      # Root-level transitional schemas
+```
 
-**Related Code**:
-- `src/verification.rs` - `TestCaseVerificationResult`, `SequenceVerificationResult`, `StepVerificationResultEnum`
-- `src/bin/test-verify.rs` - Test verification CLI tool
+## 🎓 Best Practices
+
+1. ✅ **Always use v1 schemas** for new code
+2. ✅ **Always include envelope fields** (`type`, `schema`)
+3. ✅ **Use JSON Schema draft-07** for new schemas
+4. ❌ **Avoid legacy schemas** without envelope support
+5. 📚 **Document schema selection** in your code
+6. 🔄 **Plan migration** from transitional schemas
+7. ✅ **Validate against schemas** before processing
+
+## 🛠️ Validation
+
+### Using ajv (Node.js)
+```javascript
+const Ajv = require('ajv');
+const ajv = new Ajv();
+const schema = require('./schemas/tcms/test-case.schema.v1.json');
+const valid = ajv.validate(schema, data);
+if (!valid) console.log(ajv.errors);
+```
+
+### Using jsonschema (Python)
+```python
+import jsonschema
+import json
+
+with open('schemas/tcms/test-case.schema.v1.json') as f:
+    schema = json.load(f)
+
+jsonschema.validate(instance=data, schema=schema)
+```
+
+## 🔗 Related Tools
+
+- **validate-yaml** - YAML test case validator (uses test-case schema)
+- **test-executor** - Test execution engine (generates test-execution logs)
+- **verifier** - Test verification tool (generates test-verification/test-result outputs)
+- **test-orchestrator** - Test orchestration (uses container schemas)
+
+## 📞 Support
+
+For schema-related questions:
+1. Check [SCHEMA_QUICK_REFERENCE.md](SCHEMA_QUICK_REFERENCE.md)
+2. Review [SCHEMA_AUDIT.md](SCHEMA_AUDIT.md)
+3. Examine schema files directly
+4. Consult tool-specific documentation
+
+## 🗺️ Roadmap
+
+### Completed
+- ✅ Envelope pattern implementation
+- ✅ Version 1 schema migration
+- ✅ Schema audit and documentation
+
+### In Progress
+- 🔄 Deprecation of duplicate schemas
+- 🔄 Migration guides for transitional schemas
+- 🔄 Tooling updates to use v1 schemas
+
+### Planned
+- 📅 Envelope support for verification methods
+- 📅 Migration to JSON Schema draft-07 for all schemas
+- 📅 Automated schema testing and validation tools
+- 📅 Schema versioning policy and v2 planning
+
+## 📜 License
+
+See project LICENSE file for schema licensing information.
 
 ---
 
-### 4. `verification-output.schema.json`
-
-**Purpose**: Validates verification output files generated by the test executor.
-
-**Description**: This schema is similar to `verification-result.schema.json` but specifically designed for the JSON output files produced by the test verification process. It provides a simpler step result format optimized for file output and external consumption.
-
-**Key Components**:
-- Test case identification and description
-- Sequences with step results in simplified format
-- Step result variants: `Pass`, `Fail`, `NotExecuted`
-- Summary statistics: total, passed, failed, and not executed step counts
-- Overall pass/fail status
-
-**Example**:
-
-```json
-{
-  "test_case_id": "TC_001",
-  "description": "Example test case",
-  "sequences": [
-    {
-      "sequence_id": 1,
-      "name": "Basic Test",
-      "step_results": [
-        {
-          "Pass": {
-            "step": 1,
-            "description": "Execute command"
-          }
-        },
-        {
-          "Fail": {
-            "step": 2,
-            "description": "Check output",
-            "reason": "Exit code mismatch: expected '0', got '1'"
-          }
-        }
-      ],
-      "all_steps_passed": false
-    }
-  ],
-  "total_steps": 2,
-  "passed_steps": 1,
-  "failed_steps": 1,
-  "not_executed_steps": 0,
-  "overall_pass": false
-}
-```
-
-**Differences from verification-result.schema.json**:
-- Simplified `Fail` structure (no `expected`, `actual_result`, `actual_output` fields)
-- Optimized for file storage and external tool integration
-- Stricter `additionalProperties: false` constraints
-
-**Usage Context**:
-- Generated by: Test verification tools during result export
-- Output location: `testcases/test-runs/<test-case-id>/verification_output.json`
-- Used by: CI/CD pipelines, reporting tools, external analysis systems
-
-**Validation Tool**:
-- `validate-json` binary: `validate-json verification_output.json schemas/verification-output.schema.json`
-
-**Related Code**:
-- `src/verification.rs` - Result serialization
-- `src/bin/test-verify.rs` - Verification output generation
-- `src/junit_xml_validator.rs` - JUnit XML export (alternative format)
-
----
-
-## Common Usage Patterns
-
-### Validating Test Cases in Bulk
-
-```bash
-# Validate all test case YAML files
-validate-yaml testcases/*.yml --schema schemas/test-case.schema.json
-
-# Watch mode for continuous validation during development
-validate-yaml testcases/*.yml --schema schemas/test-case.schema.json --watch
-```
-
-### Validating Execution Logs
-
-```bash
-# Validate execution log
-validate-json testcases/test-runs/TC_001/execution_log.json schemas/execution-log.schema.json
-```
-
-### Validating Verification Results
-
-```bash
-# Validate verification output
-validate-json testcases/test-runs/TC_001/verification_output.json schemas/verification-output.schema.json
-```
-
-### Programmatic Validation (Rust)
-
-```rust
-use testcase_manager::SchemaValidator;
-
-// Validate test case YAML
-let validator = SchemaValidator::new()?;
-validator.validate_chunk(yaml_content)?;
-
-// Get detailed validation errors
-let errors = validator.validate_with_details(yaml_content)?;
-for error in errors {
-    println!("Error at {}: {}", error.path, error.constraint);
-}
-```
-
-## Integration with Build System
-
-The schemas are validated as part of the build process:
-
-```bash
-# Run full validation suite
-make lint
-
-# Build project (includes validation)
-make build
-
-# Run tests
-make test
-```
-
-## CI/CD Integration
-
-Example GitLab CI configuration:
-
-```yaml
-validate:
-  script:
-    - validate-yaml testcases/*.yml --schema schemas/test-case.schema.json
-    - validate-json testcases/test-runs/*/verification_output.json schemas/verification-output.schema.json
-```
-
-## Related Tools
-
-### Command-Line Tools
-- **`validate-yaml`**: YAML validation with watch mode support (Linux/macOS)
-- **`validate-json`**: JSON validation against schemas
-- **`test-verify`**: Test case verification and result generation
-- **`test-orchestrator`**: Orchestrates test execution and verification
-
-### Rust APIs
-- **`SchemaValidator`**: Validates test case YAML structures
-- **`TestCaseParser`**: Parses and validates test cases
-- **`TestVerifier`**: Verifies execution results against expected outcomes
-- **`TestExecutor`**: Executes test cases and generates logs
-
-## Documentation References
-
-- **Validation**: `docs/validation.md` - Comprehensive validation documentation
-- **Quick Reference**: `docs/VALIDATE_YAML_QUICK_REF.md` - Quick reference for validate-yaml
-- **Test Verification**: `docs/TEST_VERIFY_USAGE.md` - Test verification workflow
-- **Watch Mode**: `docs/WATCH_MODE_COMPARISON.md` - Comparison of watch mode implementations
-
-## Schema Compliance
-
-All schemas follow JSON Schema specifications:
-- **test-case.schema.json**: JSON Schema Draft-04
-- **execution-log.schema.json**: JSON Schema Draft-07
-- **verification-result.schema.json**: JSON Schema Draft-07
-- **verification-output.schema.json**: JSON Schema Draft-07
-
-## Contributing
-
-When modifying schemas:
-1. Ensure backward compatibility where possible
-2. Update corresponding Rust structures in `src/models.rs` and `src/verification.rs`
-3. Update related documentation
-4. Run full test suite to validate changes: `cargo test --all-features`
-5. Validate existing test cases against updated schemas
+**Last Updated:** 2024
+**Schema Version:** v1
+**Total Schemas:** 24
