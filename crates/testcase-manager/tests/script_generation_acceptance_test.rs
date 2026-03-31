@@ -516,7 +516,10 @@ fn test_capture_vars_legacy_format_execution() -> Result<()> {
     if entries.len() >= 2 {
         assert_eq!(entries[1].step, 2);
         // Variable capture output verification - just ensure output is present
-        assert!(!entries[1].output.is_empty(), "Step 2 output should not be empty");
+        assert!(
+            !entries[1].output.is_empty(),
+            "Step 2 output should not be empty"
+        );
     }
 
     Ok(())
@@ -547,7 +550,10 @@ fn test_capture_vars_new_format_command_mode() -> Result<()> {
 
     if entries.len() >= 2 {
         // Variable capture output verification - just ensure output is present
-        assert!(!entries[1].output.is_empty(), "Step 2 output should not be empty");
+        assert!(
+            !entries[1].output.is_empty(),
+            "Step 2 output should not be empty"
+        );
     }
 
     Ok(())
