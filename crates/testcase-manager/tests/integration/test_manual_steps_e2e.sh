@@ -107,6 +107,8 @@ section "Test 1: Creating Test YAML with Manual Steps"
 
 MANUAL_YAML="$TEMP_DIR/test_manual.yaml"
 cat > "$MANUAL_YAML" << 'EOF'
+type: test_case
+schema: tcms/test-case.schema.v1.json
 requirement: TEST_MANUAL
 item: 1
 tc: 1
@@ -214,10 +216,12 @@ fi
 section "Test 3: Shell Script Generation"
 
 MANUAL_SCRIPT="$TEMP_DIR/test_manual.sh"
-if "$TEST_EXECUTOR_BIN" generate "$MANUAL_YAML" -o "$MANUAL_SCRIPT" > /dev/null 2>&1; then
+MANUAL_GEN_OUTPUT="$TEMP_DIR/manual_gen_output.txt"
+if "$TEST_EXECUTOR_BIN" generate "$MANUAL_YAML" -o "$MANUAL_SCRIPT" > "$MANUAL_GEN_OUTPUT" 2>&1; then
     pass "Generated script from YAML with manual steps"
 else
     fail "Failed to generate script from YAML"
+    info "Error output: $(cat "$MANUAL_GEN_OUTPUT" 2>/dev/null | head -20)"
 fi
 
 if [[ -f "$MANUAL_SCRIPT" ]]; then

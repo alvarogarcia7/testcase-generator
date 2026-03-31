@@ -213,8 +213,42 @@ fn validate_yaml_against_schema<P: AsRef<Path>>(
     let schema_value: serde_json::Value =
         serde_json::from_str(&schema_content).context("Failed to parse JSON schema")?;
 
-    // Compile the schema
-    let compiled_schema = jsonschema::JSONSchema::compile(&schema_value)
+    // Compile the schema with options to handle external references
+    // Pre-load the tcms-envelope schema to avoid URL resolution failures
+    let mut options = jsonschema::JSONSchema::options();
+
+    // If this schema references the envelope schema, load it
+    // The envelope schema is in the parent directory (e.g., schemas/tcms-envelope.schema.json)
+    // when the main schema is in schemas/tcms/test-case.schema.v1.json
+    if let Some(schema_dir) = schema_path.parent() {
+        // Try the parent directory first (schemas/ when we're in schemas/tcms/)
+        let envelope_schema_path = schema_dir
+            .parent()
+            .map(|parent| parent.join("tcms-envelope.schema.json"))
+            .unwrap_or_else(|| schema_dir.join("tcms-envelope.schema.json"));
+
+        if envelope_schema_path.exists() {
+            if let Ok(envelope_content) = fs::read_to_string(&envelope_schema_path) {
+                if let Ok(envelope_value) =
+                    serde_json::from_str::<serde_json::Value>(&envelope_content)
+                {
+                    // Add the envelope schema with its $id as the key
+                    if let Some(id) = envelope_value.get("$id").and_then(|v| v.as_str()) {
+                        let id_string = id.to_string();
+                        options.with_document(id_string.clone(), envelope_value);
+                        log::debug!(
+                            "Loaded referenced schema: {} from {}",
+                            id_string,
+                            envelope_schema_path.display()
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    let compiled_schema = options
+        .compile(&schema_value)
         .map_err(|e| anyhow::anyhow!("Failed to compile JSON schema: {}", e))?;
 
     // Parse YAML content

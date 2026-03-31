@@ -187,8 +187,10 @@ enum AuditLogCommands {
 }
 
 fn load_test_case(yaml_file: &PathBuf) -> Result<TestCase> {
-    load_and_validate_yaml::<TestCase, _, _>(yaml_file, "schemas/")
-        .context(format!("Failed to load and validate YAML file: {}", yaml_file.display()))
+    load_and_validate_yaml::<TestCase, _, _>(yaml_file, "schemas/").context(format!(
+        "Failed to load and validate YAML file: {}",
+        yaml_file.display()
+    ))
 }
 
 fn load_all_yaml_files_from_dir(dir: &PathBuf) -> Result<Vec<(PathBuf, TestCase)>> {

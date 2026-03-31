@@ -197,6 +197,8 @@ setup_test_data() {
     
     # Create test case 1
     cat > "$TEST_DIR/testcases/TC001.yaml" << 'EOF'
+type: test_case
+schema: tcms/test-case.schema.v1.json
 requirement: REQ001
 item: 1
 tc: 1
@@ -218,6 +220,8 @@ EOF
     
     # Create test case 2
     cat > "$TEST_DIR/testcases/TC002.yaml" << 'EOF'
+type: test_case
+schema: tcms/test-case.schema.v1.json
 requirement: REQ001
 item: 1
 tc: 2
@@ -239,6 +243,8 @@ EOF
     
     # Create test case 3
     cat > "$TEST_DIR/testcases/TC003.yaml" << 'EOF'
+type: test_case
+schema: tcms/test-case.schema.v1.json
 requirement: REQ001
 item: 1
 tc: 3

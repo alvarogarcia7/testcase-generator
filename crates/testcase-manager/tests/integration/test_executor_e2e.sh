@@ -105,6 +105,8 @@ section "Creating Test YAML Files"
 
 PASSING_YAML="$TEMP_DIR/test_passing.yaml"
 cat > "$PASSING_YAML" << 'EOF'
+type: test_case
+schema: tcms/test-case.schema.v1.json
 requirement: TEST001
 item: 1
 tc: 1
@@ -151,6 +153,8 @@ pass "Created passing test YAML"
 # Create test YAML file with failing verification
 FAILING_YAML="$TEMP_DIR/test_failing.yaml"
 cat > "$FAILING_YAML" << 'EOF'
+type: test_case
+schema: tcms/test-case.schema.v1.json
 requirement: TEST002
 item: 1
 tc: 2
@@ -203,10 +207,12 @@ fi
 section "Test 2: Shell Script Generation and Syntax Validation"
 
 PASSING_SCRIPT="$TEMP_DIR/test_passing.sh"
-if "$TEST_EXECUTOR_BIN" generate "$PASSING_YAML" -o "$PASSING_SCRIPT" > /dev/null 2>&1; then
+PASSING_GEN_OUTPUT="$TEMP_DIR/passing_gen_output.txt"
+if "$TEST_EXECUTOR_BIN" generate "$PASSING_YAML" -o "$PASSING_SCRIPT" > "$PASSING_GEN_OUTPUT" 2>&1; then
     pass "Generated script from passing YAML"
 else
     fail "Failed to generate script from passing YAML"
+    info "Error output: $(cat "$PASSING_GEN_OUTPUT" 2>/dev/null | head -20)"
 fi
 
 if [[ -f "$PASSING_SCRIPT" ]]; then
@@ -224,10 +230,12 @@ fi
 validate_with_shellcheck "$PASSING_SCRIPT" "Passing script"
 
 FAILING_SCRIPT="$TEMP_DIR/test_failing.sh"
-if "$TEST_EXECUTOR_BIN" generate "$FAILING_YAML" -o "$FAILING_SCRIPT" > /dev/null 2>&1; then
+FAILING_GEN_OUTPUT="$TEMP_DIR/failing_gen_output.txt"
+if "$TEST_EXECUTOR_BIN" generate "$FAILING_YAML" -o "$FAILING_SCRIPT" > "$FAILING_GEN_OUTPUT" 2>&1; then
     pass "Generated script from failing YAML"
 else
     fail "Failed to generate script from failing YAML"
+    info "Error output: $(cat "$FAILING_GEN_OUTPUT" 2>/dev/null | head -20)"
 fi
 
 if [[ -f "$FAILING_SCRIPT" ]]; then
@@ -378,6 +386,8 @@ section "Test 6: Verify Individual .actual.log Files"
 # Create a test YAML with multiple steps and sequences for comprehensive testing
 LOG_TEST_YAML="$TEMP_DIR/test_log_files.yaml"
 cat > "$LOG_TEST_YAML" << 'EOF'
+type: test_case
+schema: tcms/test-case.schema.v1.json
 requirement: TEST003
 item: 1
 tc: 3
@@ -461,10 +471,12 @@ pass "Created log test YAML"
 
 # Generate and execute the test script
 LOG_TEST_SCRIPT="$TEMP_DIR/test_log_files.sh"
-if "$TEST_EXECUTOR_BIN" generate "$LOG_TEST_YAML" -o "$LOG_TEST_SCRIPT" > /dev/null 2>&1; then
+LOG_GEN_OUTPUT="$TEMP_DIR/log_gen_output.txt"
+if "$TEST_EXECUTOR_BIN" generate "$LOG_TEST_YAML" -o "$LOG_TEST_SCRIPT" > "$LOG_GEN_OUTPUT" 2>&1; then
     pass "Generated script from log test YAML"
 else
     fail "Failed to generate script from log test YAML"
+    info "Error output: $(cat "$LOG_GEN_OUTPUT" 2>/dev/null | head -20)"
 fi
 
 # Execute the script in the temp directory to create log files there
@@ -549,6 +561,8 @@ section "Test 7: Verify Mixed Manual and Non-Manual Steps"
 # Create a test YAML with both manual and non-manual steps
 MIXED_TEST_YAML="$TEMP_DIR/test_mixed_steps.yaml"
 cat > "$MIXED_TEST_YAML" << 'EOF'
+type: test_case
+schema: tcms/test-case.schema.v1.json
 requirement: TEST004
 item: 1
 tc: 4
@@ -633,10 +647,12 @@ fi
 
 # Generate script from mixed steps YAML
 MIXED_TEST_SCRIPT="$TEMP_DIR/test_mixed_steps.sh"
-if "$TEST_EXECUTOR_BIN" generate "$MIXED_TEST_YAML" -o "$MIXED_TEST_SCRIPT" > /dev/null 2>&1; then
+MIXED_GEN_OUTPUT="$TEMP_DIR/mixed_gen_output.txt"
+if "$TEST_EXECUTOR_BIN" generate "$MIXED_TEST_YAML" -o "$MIXED_TEST_SCRIPT" > "$MIXED_GEN_OUTPUT" 2>&1; then
     pass "Generated script from mixed steps YAML"
 else
     fail "Failed to generate script from mixed steps YAML"
+    info "Error output: $(cat "$MIXED_GEN_OUTPUT" 2>/dev/null | head -20)"
 fi
 
 # Validate bash syntax
@@ -778,6 +794,8 @@ section "Test 8: Verify Stderr Output Capture in Log Files"
 # Create a test YAML with a command that produces both stdout and stderr
 STDERR_TEST_YAML="$TEMP_DIR/test_stderr.yaml"
 cat > "$STDERR_TEST_YAML" << 'EOF'
+type: test_case
+schema: tcms/test-case.schema.v1.json
 requirement: TEST005
 item: 1
 tc: 5
@@ -820,10 +838,12 @@ fi
 
 # Generate script from stderr test YAML
 STDERR_TEST_SCRIPT="$TEMP_DIR/test_stderr.sh"
-if "$TEST_EXECUTOR_BIN" generate "$STDERR_TEST_YAML" -o "$STDERR_TEST_SCRIPT" > /dev/null 2>&1; then
+STDERR_GEN_OUTPUT="$TEMP_DIR/stderr_gen_output.txt"
+if "$TEST_EXECUTOR_BIN" generate "$STDERR_TEST_YAML" -o "$STDERR_TEST_SCRIPT" > "$STDERR_GEN_OUTPUT" 2>&1; then
     pass "Generated script from stderr test YAML"
 else
     fail "Failed to generate script from stderr test YAML"
+    info "Error output: $(cat "$STDERR_GEN_OUTPUT" 2>/dev/null | head -20)"
 fi
 
 # Validate bash syntax
