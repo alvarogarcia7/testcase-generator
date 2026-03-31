@@ -178,3 +178,4 @@ signing_key.pem
 *_signing_key.pem
 private*.pem
 *.key.pem
+.tokens
