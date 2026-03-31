@@ -23,7 +23,8 @@ SCCACHE_DIR = { value = "$HOME/.cache/sccache/testcase-manager", force = true, r
 [target.'cfg(all())']
 # Set default RUSTFLAGS for coverage builds with instrument-coverage flag
 # This enables source-based code coverage instrumentation
-rustflags = ["-C", "instrument-coverage"]
+#rustflags = ["-C", "instrument-coverage"]
+rustflags = []
 
 # Cargo aliases for coverage-related tasks
 [alias]
