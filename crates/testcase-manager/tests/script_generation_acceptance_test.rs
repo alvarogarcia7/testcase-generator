@@ -510,7 +510,10 @@ fn test_capture_vars_legacy_format_execution() -> Result<()> {
     let json_content = fs::read_to_string(&log_file)?;
     let entries: Vec<TestStepExecutionEntry> = serde_json::from_str(&json_content)?;
 
-    assert!(!entries.is_empty(), "Should have at least 1 execution entry");
+    assert!(
+        !entries.is_empty(),
+        "Should have at least 1 execution entry"
+    );
     assert_eq!(entries[0].step, 1);
 
     if entries.len() >= 2 {
@@ -546,7 +549,10 @@ fn test_capture_vars_new_format_command_mode() -> Result<()> {
     let json_content = fs::read_to_string(&log_file)?;
     let entries: Vec<TestStepExecutionEntry> = serde_json::from_str(&json_content)?;
 
-    assert!(!entries.is_empty(), "Should have at least 1 execution entry");
+    assert!(
+        !entries.is_empty(),
+        "Should have at least 1 execution entry"
+    );
 
     if entries.len() >= 2 {
         // Variable capture output verification - just ensure output is present
