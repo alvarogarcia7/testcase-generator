@@ -20,7 +20,6 @@ All schema documentation is located in the `schemas/` directory:
 - **[schemas/SCHEMA_AUDIT.csv](schemas/SCHEMA_AUDIT.csv)** - Spreadsheet format for filtering/analysis
 
 ### ⚠️ Deprecation Notices
-- **[schemas/tcms/schemas/DEPRECATED.md](schemas/tcms/schemas/DEPRECATED.md)** - Verification schema duplicates
 - **[schemas/tcms/test_results/DEPRECATED.md](schemas/tcms/test_results/DEPRECATED.md)** - Legacy container_schema.json
 - **[schemas/tcms/testcase_results_container/DEPRECATED.md](schemas/tcms/testcase_results_container/DEPRECATED.md)** - Legacy testcase_results_container/schema.json
 - **[schemas/tcms/container/DEPRECATED.md](schemas/tcms/container/DEPRECATED.md)** - Minimal legacy container/schema.json
@@ -39,9 +38,7 @@ All current schemas are in `schemas/tcms/*.schema.v1.json`:
 ### Key Findings
 
 #### ✅ Confirmed Duplicates (Deprecate)
-1. `tcms/schemas/verification_schema.json` → Use `test-verification.schema.v1.json`
-2. `tcms/schemas/verification-schema.json` → Use `test-verification.schema.v1.json`
-3. `tcms/container/schema.json` → Use `container-config.schema.v1.json` or `test-results-container.schema.v1.json`
+1. `tcms/container/schema.json` → Use `container-config.schema.v1.json` or `test-results-container.schema.v1.json`
 
 #### ⚠️ Potential Duplicates (Consider Deprecating)
 4. `tcms/test_results/container_schema.json` → Use `test-results-container.schema.v1.json`
@@ -56,11 +53,11 @@ Root-level schemas with optional envelope support:
 - `verification-result.schema.json`
 
 ### Statistics
-- **Total schemas:** 24
-- **Production (v1):** 7 (29%)
-- **Verification methods:** 7 (29%)
-- **Transitional:** 5 (21%)
-- **Deprecated/Legacy:** 5 (21%)
+- **Total schemas:** 22
+- **Production (v1):** 7 (32%)
+- **Verification methods:** 7 (32%)
+- **Transitional:** 5 (23%)
+- **Deprecated/Legacy:** 3 (14%)
 
 ## 🔍 What Was Audited
 
@@ -72,12 +69,7 @@ The audit covers all JSON schema files in the `schemas/` directory, analyzing:
 
 ## 📋 Key Identified Issues
 
-### 1. Verification Schema Duplicates
-- **Issue:** `verification_schema.json` and `verification-schema.json` duplicate `test-verification.schema.v1.json`
-- **Impact:** Maintenance burden, potential inconsistencies
-- **Action:** Deprecate both, migrate to v1 schema with envelope support
-
-### 2. Container Schema Duplicates
+### 1. Container Schema Duplicates
 - **Issue:** Three different container schemas serving similar purposes
   - `test_results/container_schema.json` - Minimal, loose typing
   - `testcase_results_container/schema.json` - More detailed, different encoding
@@ -85,7 +77,7 @@ The audit covers all JSON schema files in the `schemas/` directory, analyzing:
 - **Impact:** Confusion about which to use, inconsistent data models
 - **Action:** Consolidate to `test-results-container.schema.v1.json`
 
-### 3. Transitional Schemas
+### 2. Transitional Schemas
 - **Issue:** Root-level schemas with optional envelope fields
 - **Impact:** Unclear migration status, may confuse users
 - **Action:** Document migration path, set deprecation timeline
@@ -93,7 +85,7 @@ The audit covers all JSON schema files in the `schemas/` directory, analyzing:
 ## 🎓 Recommendations
 
 ### Immediate (Priority 1)
-1. ✅ **Deprecate confirmed duplicates** - verification_schema.json, verification-schema.json, container/schema.json
+1. ✅ **Deprecate confirmed duplicates** - container/schema.json
 2. 📝 **Update documentation** - Point to v1 schemas as standard
 3. ⚠️ **Add deprecation warnings** - In code that uses legacy schemas
 
@@ -124,5 +116,5 @@ For schema-related questions:
 ---
 
 **Last Updated:** 2024
-**Audit Scope:** All 24 schema files in `schemas/` directory
+**Audit Scope:** All 22 schema files in `schemas/` directory
 **Status:** ✅ Audit Complete - Documentation Generated

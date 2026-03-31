@@ -12,7 +12,6 @@ This directory contains JSON schemas for the Test Case Management System (TCMS).
 - **[SCHEMA_AUDIT.csv](SCHEMA_AUDIT.csv)** - Spreadsheet format of all schemas for easy filtering and analysis
 
 ### Deprecation Notices
-- **[tcms/schemas/DEPRECATED.md](tcms/schemas/DEPRECATED.md)** - Verification schema duplicates
 - **[tcms/test_results/DEPRECATED.md](tcms/test_results/DEPRECATED.md)** - Legacy container_schema.json
 - **[tcms/testcase_results_container/DEPRECATED.md](tcms/testcase_results_container/DEPRECATED.md)** - Legacy testcase_results_container/schema.json
 - **[tcms/container/DEPRECATED.md](tcms/container/DEPRECATED.md)** - Minimal legacy container/schema.json
@@ -51,9 +50,7 @@ Specialized schemas for different verification methodologies in `tcms/verificati
 - **7 verification methods** - Domain-specific methodologies
 
 ### Deprecated Schemas
-- **3 confirmed duplicates** - Use v1 equivalents instead
-  - `tcms/schemas/verification_schema.json`
-  - `tcms/schemas/verification-schema.json`
+- **1 confirmed duplicate** - Use v1 equivalent instead
   - `tcms/container/schema.json`
 
 ### Consider for Deprecation
@@ -95,17 +92,16 @@ Valid types: `test_case`, `test_execution`, `test_verification`, `test_result`, 
 
 ## 📊 Statistics
 
-- **Total schemas:** 24
-- **Production (v1):** 7 (29%)
-- **Verification methods:** 7 (29%)
-- **Transitional:** 5 (21%)
-- **Deprecated/Legacy:** 5 (21%)
+- **Total schemas:** 22
+- **Production (v1):** 7 (32%)
+- **Verification methods:** 7 (32%)
+- **Transitional:** 5 (23%)
+- **Deprecated/Legacy:** 3 (14%)
 
 ## 🔍 Duplication Findings
 
 ### Confirmed Duplicates
-1. ✅ `verification_schema.json` and `verification-schema.json` are duplicates of `test-verification.schema.v1.json`
-2. ✅ `container/schema.json` is superseded by container-config and test-results-container schemas
+1. ✅ `container/schema.json` is superseded by container-config and test-results-container schemas
 
 ### Potential Duplicates
 3. ⚠️ `test_results/container_schema.json` - Consider using `test-results-container.schema.v1.json`
@@ -179,7 +175,6 @@ schemas/
 ├── tcms/
 │   ├── *.schema.v1.json              # 6 versioned schemas (PRODUCTION)
 │   ├── container/                     # Legacy (DEPRECATED)
-│   ├── schemas/                       # Legacy (DEPRECATED)
 │   ├── test_results/                  # Legacy (CONSIDER DEPRECATING)
 │   ├── testcase_results_container/    # Legacy (CONSIDER DEPRECATING)
 │   └── verification_methods/          # 7 verification method schemas (ACTIVE)
@@ -266,4 +261,4 @@ See project LICENSE file for schema licensing information.
 
 **Last Updated:** 2024
 **Schema Version:** v1
-**Total Schemas:** 24
+**Total Schemas:** 22

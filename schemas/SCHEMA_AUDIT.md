@@ -6,18 +6,17 @@
 ## Executive Summary
 
 ### Schema Inventory
-- **Total Schema Files:** 24
+- **Total Schema Files:** 22
 - **Versioned (Envelope-compliant):** 7
-- **Legacy (Non-envelope):** 17
+- **Legacy (Non-envelope):** 15
 - **Unique Schemas:** 18
-- **Duplicate/Superseded Schemas:** 6
+- **Duplicate/Superseded Schemas:** 4
 
 ### Key Findings
 
 1. **Envelope System**: The project has successfully migrated to a versioned envelope system (`tcms-envelope.schema.json`) with 7 production-ready v1 schemas in `schemas/tcms/*.schema.v1.json`.
 
 2. **Duplicates Identified**: 
-   - `verification_schema.json` and `verification-schema.json` are duplicates of `test-verification.schema.v1.json`
    - `test_results/container_schema.json` and `testcase_results_container/schema.json` are potential duplicates of `test-results-container.schema.v1.json`
    - `container/schema.json` is a minimal legacy schema superseded by container-config schemas
 
@@ -69,25 +68,7 @@ All files in `schemas/tcms/*.schema.v1.json` follow the envelope pattern with re
 
 ### 3. Duplicate Schemas (Confirmed)
 
-#### 3.1 Verification Schema Duplicates
-
-| File | Type | Issue | Recommendation |
-|------|------|-------|----------------|
-| `tcms/schemas/verification_schema.json` | Legacy | Duplicate of `test-verification.schema.v1.json` without envelope | **Deprecate** |
-| `tcms/schemas/verification-schema.json` | Legacy | Simplified duplicate of `test-verification.schema.v1.json` without envelope | **Deprecate** |
-
-**Analysis:**
-- Both are legacy versions of the current `test-verification.schema.v1.json`
-- `verification_schema.json` has optional `requirement`/`item`/`tc` at top level only
-- `verification-schema.json` is even more simplified (no requirement tracking, simpler Fail structure)
-- Neither supports the envelope pattern
-- Current v1 schema supersedes both
-
-**Migration Path:** Update any code/tooling referencing these files to use `tcms/test-verification.schema.v1.json` with envelope support.
-
----
-
-#### 3.2 Container Schema Potential Duplicates
+#### 3.1 Container Schema Potential Duplicates
 
 | File | Type | Issue | Recommendation |
 |------|------|-------|----------------|
@@ -187,45 +168,9 @@ Specialized schemas for different verification approaches. These are **unique an
 
 ## Duplication Analysis Details
 
-### Confirmed Duplicates
-
-#### 1. `verification_schema.json` vs `test-verification.schema.v1.json`
-
-**Comparison:**
-
-| Feature | `verification_schema.json` (Legacy) | `test-verification.schema.v1.json` (Current) |
-|---------|-------------------------------------|---------------------------------------------|
-| Envelope | ❌ No | ✅ Yes (required) |
-| JSON Schema | draft-07 | draft-07 |
-| Structure | Test results with sequences | Test results with sequences |
-| Requirement Tracking | Top-level only (requirement, item, tc) | Multi-level (test, sequence, step) |
-| Step Results | Pass/Fail/NotExecuted | Pass/Fail/NotExecuted (externally tagged) |
-| Use Case | Legacy output format | Current standard with envelope |
-
-**Verdict:** ✅ **Confirmed duplicate** - Legacy version without envelope support.
-
----
-
-#### 2. `verification-schema.json` vs `test-verification.schema.v1.json`
-
-**Comparison:**
-
-| Feature | `verification-schema.json` (Legacy) | `test-verification.schema.v1.json` (Current) |
-|---------|-------------------------------------|---------------------------------------------|
-| Envelope | ❌ No | ✅ Yes (required) |
-| JSON Schema | draft-07 | draft-07 |
-| Structure | Simplified test results | Full test results with sequences |
-| Requirement Tracking | ❌ None | Multi-level (test, sequence, step) |
-| Fail Structure | Simplified (step, description, reason) | Complete (step, description, expected, actual_result, actual_output, reason) |
-| Use Case | Simplified legacy format | Current comprehensive standard |
-
-**Verdict:** ✅ **Confirmed duplicate** - Simplified legacy version without envelope or requirement tracking.
-
----
-
 ### Potential Duplicates (Container Schemas)
 
-#### 3. `test_results/container_schema.json` vs `test-results-container.schema.v1.json`
+#### 1. `test_results/container_schema.json` vs `test-results-container.schema.v1.json`
 
 **Comparison:**
 
@@ -249,7 +194,7 @@ Specialized schemas for different verification approaches. These are **unique an
 
 ---
 
-#### 4. `testcase_results_container/schema.json` vs `test-results-container.schema.v1.json`
+#### 2. `testcase_results_container/schema.json` vs `test-results-container.schema.v1.json`
 
 **Comparison:**
 
@@ -273,7 +218,7 @@ Specialized schemas for different verification approaches. These are **unique an
 
 ---
 
-#### 5. `container/schema.json` - Minimal Legacy Schema
+#### 3. `container/schema.json` - Minimal Legacy Schema
 
 **Analysis:**
 - Only 3 fields: `date`, `product`, `description`
@@ -305,9 +250,6 @@ schemas/
 ├── tcms/
 │   ├── *.schema.v1.json                            # 6 versioned schemas (CURRENT STANDARD)
 │   ├── container/schema.json                        # 1 minimal legacy (DEPRECATE)
-│   ├── schemas/
-│   │   ├── verification_schema.json                 # DUPLICATE - Deprecate
-│   │   └── verification-schema.json                 # DUPLICATE - Deprecate
 │   ├── test_results/container_schema.json          # POTENTIAL DUPLICATE - Consider deprecate
 │   ├── testcase_results_container/schema.json      # POTENTIAL DUPLICATE - Consider deprecate
 │   └── verification_methods/                        # 7 verification method schemas (KEEP)
@@ -322,7 +264,7 @@ schemas/
 
 **Observations:**
 - Clear separation between versioned (`tcms/*.schema.v1.json`) and legacy schemas
-- Multiple legacy directories (`schemas/`, `test_results/`, `testcase_results_container/`, `container/`) suggest incremental evolution
+- Multiple legacy directories (`test_results/`, `testcase_results_container/`, `container/`) suggest incremental evolution
 - Verification methods in organized subdirectory structure
 - Root-level schemas appear to be transitional versions during envelope migration
 
@@ -333,8 +275,6 @@ schemas/
 ### Immediate Actions
 
 1. **Deprecate Confirmed Duplicates:**
-   - `tcms/schemas/verification_schema.json` → Use `tcms/test-verification.schema.v1.json`
-   - `tcms/schemas/verification-schema.json` → Use `tcms/test-verification.schema.v1.json`
    - `tcms/container/schema.json` → Use `tcms/container-config.schema.v1.json` or `tcms/test-results-container.schema.v1.json`
 
 2. **Evaluate Container Duplicates:**
@@ -404,7 +344,7 @@ schemas/
 - **When:** Storing verification results for a single test case
 - **Envelope:** ✅ Required
 - **Notes:** Both schemas are very similar; choose based on naming preference or tool compatibility
-- **Avoid:** `verification_schema.json`, `verification-schema.json`, `verification-result.schema.json`, `verification-output.schema.json` (all legacy/transitional)
+- **Avoid:** `verification-result.schema.json`, `verification-output.schema.json` (transitional)
 
 #### Test Results Container (Multiple Tests)
 - **Use:** `tcms/test-results-container.schema.v1.json`
@@ -439,23 +379,21 @@ schemas/
 | 5 | `tcms/test-result.schema.v1.json` | Large | 07 | ✅ | Current |
 | 6 | `tcms/test-results-container.schema.v1.json` | Large | 07 | ✅ | Current |
 | 7 | `tcms/container-config.schema.v1.json` | Medium | 07 | ✅ | Current |
-| 8 | `tcms/schemas/verification_schema.json` | Large | 07 | ❌ | Duplicate |
-| 9 | `tcms/schemas/verification-schema.json` | Medium | 07 | ❌ | Duplicate |
-| 10 | `tcms/test_results/container_schema.json` | Medium | 07 | ❌ | Potential Dup |
-| 11 | `tcms/testcase_results_container/schema.json` | Large | 07 | ❌ | Potential Dup |
-| 12 | `tcms/container/schema.json` | Small | 04 | ❌ | Legacy |
-| 13 | `test-case.schema.json` | Large | 04 | Optional | Transitional |
-| 14 | `container_config.schema.json` | Medium | 07 | Optional | Transitional |
-| 15 | `execution-log.schema.json` | Medium | 07 | Optional | Transitional |
-| 16 | `verification-output.schema.json` | Large | 07 | Optional | Transitional |
-| 17 | `verification-result.schema.json` | Large | 07 | Optional | Transitional |
-| 18 | `tcms/verification_methods/test/schema.json` | Medium | 04 | ❌ | Unique |
-| 19 | `tcms/verification_methods/analysis/schema.json` | Medium | 04 | ❌ | Unique |
-| 20 | `tcms/verification_methods/demonstration/schema.json` | Small | 04 | ❌ | Unique |
-| 21 | `tcms/verification_methods/inspection/schema.json` | Small | 04 | ❌ | Unique |
-| 22 | `tcms/verification_methods/common_criteria/schema.json` | Large | 04 | ❌ | Unique |
-| 23 | `tcms/verification_methods/high_assurance/schema.json` | Large | 04 | ❌ | Unique |
-| 24 | `tcms/verification_methods/result/schema.json` | Small | 04 | ❌ | Unique |
+| 8 | `tcms/test_results/container_schema.json` | Medium | 07 | ❌ | Potential Dup |
+| 9 | `tcms/testcase_results_container/schema.json` | Large | 07 | ❌ | Potential Dup |
+| 10 | `tcms/container/schema.json` | Small | 04 | ❌ | Legacy |
+| 11 | `test-case.schema.json` | Large | 04 | Optional | Transitional |
+| 12 | `container_config.schema.json` | Medium | 07 | Optional | Transitional |
+| 13 | `execution-log.schema.json` | Medium | 07 | Optional | Transitional |
+| 14 | `verification-output.schema.json` | Large | 07 | Optional | Transitional |
+| 15 | `verification-result.schema.json` | Large | 07 | Optional | Transitional |
+| 16 | `tcms/verification_methods/test/schema.json` | Medium | 04 | ❌ | Unique |
+| 17 | `tcms/verification_methods/analysis/schema.json` | Medium | 04 | ❌ | Unique |
+| 18 | `tcms/verification_methods/demonstration/schema.json` | Small | 04 | ❌ | Unique |
+| 19 | `tcms/verification_methods/inspection/schema.json` | Small | 04 | ❌ | Unique |
+| 20 | `tcms/verification_methods/common_criteria/schema.json` | Large | 04 | ❌ | Unique |
+| 21 | `tcms/verification_methods/high_assurance/schema.json` | Large | 04 | ❌ | Unique |
+| 22 | `tcms/verification_methods/result/schema.json` | Small | 04 | ❌ | Unique |
 
 ---
 
@@ -477,9 +415,7 @@ schemas/
 - **Draft-04:** 8 schemas (33%)
 
 ### Deprecation Candidates
-- **Confirmed for Deprecation:** 3 schemas
-  - `tcms/schemas/verification_schema.json`
-  - `tcms/schemas/verification-schema.json`
+- **Confirmed for Deprecation:** 1 schema
   - `tcms/container/schema.json`
   
 - **Consider for Deprecation:** 2 schemas
@@ -506,7 +442,7 @@ Key strengths:
 - ✅ Consistent JSON Schema draft-07 usage in current schemas
 
 Recommended focus areas:
-- 🔄 Deprecate 3 confirmed duplicate schemas
+- 🔄 Deprecate 1 confirmed duplicate schema
 - 🔄 Evaluate and migrate 2 container duplicates
 - 🔄 Document migration path for 5 transitional schemas
 - 🔄 Consider envelope migration for verification methods

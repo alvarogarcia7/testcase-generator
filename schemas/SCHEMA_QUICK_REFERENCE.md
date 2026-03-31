@@ -127,10 +127,6 @@ schemas/tcms/verification_methods/result/schema.json
 
 ## Deprecated Schemas (Do Not Use)
 
-### ❌ Verification Duplicates
-- `tcms/schemas/verification_schema.json` → Use `test-verification.schema.v1.json`
-- `tcms/schemas/verification-schema.json` → Use `test-verification.schema.v1.json`
-
 ### ⚠️ Container Duplicates
 - `tcms/test_results/container_schema.json` → Use `test-results-container.schema.v1.json`
 - `tcms/testcase_results_container/schema.json` → Use `test-results-container.schema.v1.json`
@@ -260,7 +256,7 @@ Need to define a schema?
 1. ✅ **Always use versioned schemas** (`*.schema.v1.json`) for new code
 2. ✅ **Always include envelope fields** (`type`, `schema`) in documents
 3. ✅ **Use draft-07** JSON Schema for new schemas
-4. ❌ **Avoid legacy schemas** in `tcms/schemas/`, `tcms/test_results/`, `tcms/testcase_results_container/`, `tcms/container/`
+4. ❌ **Avoid legacy schemas** in `tcms/test_results/`, `tcms/testcase_results_container/`, `tcms/container/`
 5. ❌ **Avoid root-level transitional schemas** (those without `tcms/` prefix and without `v1` version)
 
 ---
