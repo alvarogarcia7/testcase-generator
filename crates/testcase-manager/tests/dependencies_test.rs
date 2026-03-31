@@ -25,6 +25,7 @@ fn test_deserialize_dependencies_example_1() {
         yaml_path.display()
     );
 
+    // Note: This test uses raw YAML parsing to test dependency resolution logic
     let yaml_content = fs::read_to_string(&yaml_path)
         .unwrap_or_else(|e| panic!("Failed to read {}: {}", yaml_path.display(), e));
 
@@ -113,6 +114,7 @@ fn test_deserialize_dependencies_example_2() {
         yaml_path.display()
     );
 
+    // Note: This test uses raw YAML parsing to test dependency resolution logic
     let yaml_content = fs::read_to_string(&yaml_path)
         .unwrap_or_else(|e| panic!("Failed to read {}: {}", yaml_path.display(), e));
 

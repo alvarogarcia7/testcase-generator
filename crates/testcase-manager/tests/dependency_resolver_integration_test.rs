@@ -13,6 +13,7 @@ fn load_test_case(file_path: &str) -> Result<TestCase> {
 
     let full_path = workspace_root.join(file_path);
 
+    // Note: This test uses raw YAML parsing to test dependency resolution logic
     let yaml_content = fs::read_to_string(&full_path)
         .map_err(|e| anyhow::anyhow!("Failed to read {}: {}", full_path.display(), e))?;
     let test_case: TestCase = serde_yaml::from_str(&yaml_content)?;

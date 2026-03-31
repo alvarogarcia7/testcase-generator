@@ -189,6 +189,7 @@ fn test_valid_files_can_be_parsed_as_yaml() {
     for file_path in valid_files {
         log::info!("\n=== Testing YAML parsing for: {} ===", file_path);
 
+        // Note: This test uses raw YAML parsing since the test file doesn't have a schema field
         let content = fs::read_to_string(file_path)
             .unwrap_or_else(|e| panic!("Failed to read {}: {}", file_path, e));
 

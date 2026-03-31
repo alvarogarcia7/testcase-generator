@@ -272,6 +272,7 @@ test_sequences:
 
     validate_yaml_structure(yaml_content);
 
+    // For this test, we use raw serde_yaml since the YAML doesn't have a schema field
     let parsed: TestCase = serde_yaml::from_str(yaml_content).expect("Failed to parse YAML");
 
     assert_eq!(parsed.requirement, "REQ-TEST-001");
@@ -386,6 +387,7 @@ fn validate_yaml_structure(yaml_content: &str) {
 }
 
 fn validate_yaml_parsing(yaml_file: &Path) {
+    // Note: Uses raw YAML parsing since generated YAML may not have schema field
     let yaml_content = fs::read_to_string(yaml_file).expect("Failed to read YAML file for parsing");
 
     let parsed_test_case: TestCase =
@@ -538,6 +540,7 @@ fn load_test_case_from_file(path: &str) -> Result<TestCase> {
         yaml_path.display()
     );
 
+    // Note: Uses raw YAML parsing since example files may not have schema fields
     let yaml_content = fs::read_to_string(&yaml_path)
         .unwrap_or_else(|e| panic!("Failed to read {}: {}", yaml_path.display(), e));
 

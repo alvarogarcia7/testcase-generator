@@ -134,13 +134,12 @@ impl TestCaseEditor {
 
         let edited_content = edit::edit(yaml_content).context("Failed to open editor")?;
 
-        let edited_test_case: TestCase = match serde_yaml::from_str(&edited_content) {
-            Ok(tc) => tc,
-            Err(e) => {
-                log_yaml_parse_error(&e, &edited_content, "editor buffer");
-                return Err(anyhow::anyhow!("Failed to parse edited YAML: {}", e));
-            }
-        };
+        let edited_test_case: TestCase = testcase_common::parse_and_validate_yaml_string(
+            &edited_content,
+            "schemas",
+            "editor buffer",
+        )
+        .context("Failed to parse and validate edited YAML")?;
 
         Ok(edited_test_case)
     }
