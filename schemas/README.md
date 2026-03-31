@@ -14,6 +14,207 @@ This directory contains JSON schemas for the Test Case Management System (TCMS).
 ### Deprecation and Consolidation
 - **[tcms/CONTAINER_SCHEMAS.md](tcms/CONTAINER_SCHEMAS.md)** - Container schema consolidation guide (explains removal of redundant schemas)
 
+## 🗂️ Schema Organization
+
+### Overview
+
+The TCMS schema directory is organized into three main categories:
+
+1. **Legacy Schemas (Root Level)** - Backward compatibility
+2. **Versioned Schemas (tcms/)** - Production standard
+3. **Supporting Assets** - Samples and templates
+
+### 1. Legacy Schemas (schemas/*.schema.json)
+
+**Location:** `schemas/*.schema.json` (root level)
+
+**Purpose:** Backward compatibility with existing code and data
+
+**Characteristics:**
+- ✅ Optional envelope fields (`type`, `schema`)
+- ⚠️ Transitional - maintained for compatibility only
+- 📦 5 schemas: `test-case.schema.json`, `container_config.schema.json`, `execution-log.schema.json`, `verification-output.schema.json`, `verification-result.schema.json`
+
+**When to Use:**
+- Only when working with legacy code that hasn't migrated yet
+- When validating existing documents that lack envelope fields
+- For backward compatibility requirements
+
+**Migration Path:** New code should use versioned schemas from `tcms/` directory
+
+### 2. Versioned Schemas (schemas/tcms/*.schema.v1.json)
+
+**Location:** `schemas/tcms/*.schema.v1.json`
+
+**Purpose:** Production standard for all new development
+
+**Characteristics:**
+- ✅ **Required envelope fields** (`type`, `schema`)
+- ✅ Versioned (v1) for future compatibility
+- ✅ Follows envelope pattern (see below)
+- ✅ JSON Schema draft-07 compliant
+
+**When to Use:**
+- ✅ **All new code and documents**
+- ✅ Creating test cases, executions, results, and containers
+- ✅ Production deployments
+- ✅ API integrations
+
+**Available Schemas:**
+- `test-case.schema.v1.json` - Test case definitions
+- `test-execution.schema.v1.json` - Execution log entries
+- `test-verification.schema.v1.json` - Verification results
+- `test-result.schema.v1.json` - Test results (alternative format)
+- `test-results-container.schema.v1.json` - Container for multiple results
+- `container-config.schema.v1.json` - Container metadata configuration
+
+### 3. Sample Data (schemas/tcms/samples/)
+
+**Location:** `schemas/tcms/samples/`
+
+**Purpose:** Validation testing and usage examples
+
+**Contents:**
+- Example documents conforming to versioned schemas
+- Reference implementations showing correct envelope usage
+- Test fixtures for schema validation
+
+**Usage:**
+```bash
+# Validate against sample data
+validate-yaml -s schemas/tcms/test-case.schema.v1.json \
+              schemas/tcms/samples/testcase_results_container_sample.yml
+```
+
+### 4. Templates (schemas/templates/)
+
+**Location:** `schemas/templates/`
+
+**Purpose:** Report generation and document scaffolding
+
+**Contents:**
+- Report templates for different verification methods
+- Document structure templates
+- Template schemas in `templates/verification_methods/`
+
+**Usage:**
+- Used by report generation tools (e.g., verifier)
+- Provides consistent document formatting
+- Supports multiple verification methodologies
+
+### Envelope Pattern
+
+All versioned schemas (v1) require envelope fields for type identification and schema validation:
+
+```json
+{
+  "type": "test_case",
+  "schema": "tcms/test-case.schema.v1.json",
+  ...document content...
+}
+```
+
+**Envelope Fields:**
+- `type` - Document type identifier (e.g., `test_case`, `test_execution`, `test_verification`)
+- `schema` - Schema file path for validation
+
+**Benefits:**
+- ✅ Self-describing documents
+- ✅ Automatic schema selection
+- ✅ Version compatibility tracking
+- ✅ Tool interoperability
+
+### Schema Selection Decision Tree
+
+**Use this decision tree to choose the correct schema file:**
+
+```
+┌─────────────────────────────────────────────────┐
+│ What are you validating?                        │
+└─────────────────────────────────────────────────┘
+                    │
+        ┌───────────┴───────────┐
+        │                       │
+  ┌─────▼─────┐         ┌──────▼──────┐
+  │ New code/ │         │ Legacy data │
+  │ document  │         │ without     │
+  │           │         │ envelope    │
+  └─────┬─────┘         └──────┬──────┘
+        │                      │
+        │                      │
+  ┌─────▼─────────────────┐   │
+  │ Use versioned schema: │   │
+  │ tcms/*.schema.v1.json │   │
+  └───────────────────────┘   │
+        │                      │
+        │              ┌───────▼───────────────┐
+        │              │ Use legacy schema:    │
+        │              │ *.schema.json (root)  │
+        │              └───────────────────────┘
+        │
+  ┌─────▼─────────────────────────────────┐
+  │ What type of document?                │
+  └───────────────────────────────────────┘
+        │
+        ├─ Test case definition
+        │  → tcms/test-case.schema.v1.json
+        │
+        ├─ Execution log entry
+        │  → tcms/test-execution.schema.v1.json
+        │
+        ├─ Single verification result
+        │  → tcms/test-verification.schema.v1.json
+        │  → tcms/test-result.schema.v1.json (alternative)
+        │
+        ├─ Multiple results container
+        │  → tcms/test-results-container.schema.v1.json
+        │
+        ├─ Container metadata/config
+        │  → tcms/container-config.schema.v1.json
+        │
+        └─ Specialized verification method
+           → tcms/verification_methods/{method}/schema.json
+```
+
+**Quick Reference Table:**
+
+| Document Type | Has Envelope? | Schema Path |
+|---------------|---------------|-------------|
+| Test case (new) | ✅ Yes | `tcms/test-case.schema.v1.json` |
+| Test case (legacy) | ❌ No | `test-case.schema.json` |
+| Execution log (new) | ✅ Yes | `tcms/test-execution.schema.v1.json` |
+| Execution log (legacy) | ❌ No | `execution-log.schema.json` |
+| Verification result (new) | ✅ Yes | `tcms/test-verification.schema.v1.json` |
+| Verification result (legacy) | ❌ No | `verification-result.schema.json` |
+| Results container (new) | ✅ Yes | `tcms/test-results-container.schema.v1.json` |
+| Container config (new) | ✅ Yes | `tcms/container-config.schema.v1.json` |
+| Container config (legacy) | ❌ No | `container_config.schema.json` |
+
+**Detection Logic:**
+```javascript
+// Pseudocode for schema selection
+if (document.type && document.schema) {
+  // Document has envelope - use versioned schema
+  const schemaPath = `schemas/${document.schema}`;
+  validate(document, schemaPath);
+} else {
+  // Document lacks envelope - use legacy schema
+  const legacySchema = detectLegacySchemaType(document);
+  validate(document, legacySchema);
+}
+```
+
+### Migration Checklist
+
+When migrating from legacy to versioned schemas:
+
+- [ ] Add `type` field with appropriate document type
+- [ ] Add `schema` field pointing to v1 schema file
+- [ ] Update validation code to use `tcms/*.schema.v1.json`
+- [ ] Test with sample data from `tcms/samples/`
+- [ ] Update documentation and comments
+- [ ] Validate against v1 schema before deployment
+
 ## 🎯 Current Production Schemas (v1)
 
 All production schemas are located in `schemas/tcms/*.schema.v1.json` and follow the envelope pattern.
