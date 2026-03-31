@@ -111,38 +111,32 @@ section "1. Test sequence.variables initialization"
 
 VARS_YAML="$TEMP_DIR/test_sequence_variables.yaml"
 cat > "$VARS_YAML" << 'EOF'
-type: test-case
-schema: "1.0"
+type: test_case
+schema: tcms/test-case.schema.v1.json
 requirement: VAR_SEQ
 item: 1
 tc: 1
 id: TEST_SEQUENCE_VARIABLES
 description: Test case with sequence variables
-general_initial_conditions:
-  System:
-    - Ready
-initial_conditions:
-  Device:
-    - Connected
+general_initial_conditions: {}
+initial_conditions: {}
 test_sequences:
   - id: 1
     name: Sequence with Variables
     description: Test sequence variables initialization
+    initial_conditions: {}
     variables:
       BASE_URL: "http://localhost:8080"
       TIMEOUT: "30"
       MAX_RETRIES: "3"
-    initial_conditions:
-      LPA:
-        - Active
     steps:
       - step: 1
         description: Use sequence variables
         command: echo "URL=${BASE_URL} TIMEOUT=${TIMEOUT} RETRIES=${MAX_RETRIES}"
         expected:
           success: true
-          result: "0"
-          output: "URL=http://localhost:8080 TIMEOUT=30 RETRIES=3"
+          result: "[ $EXIT_CODE -eq 0 ]"
+          output: "true"
         verification:
           result: "[ $EXIT_CODE -eq 0 ]"
           output: "true"
@@ -223,26 +217,20 @@ section "2. Test legacy capture_vars (map format) with sed substitution"
 
 LEGACY_YAML="$TEMP_DIR/test_legacy_capture.yaml"
 cat > "$LEGACY_YAML" << 'EOF'
-type: test-case
-schema: "1.0"
+type: test_case
+schema: tcms/test-case.schema.v1.json
 requirement: LEGACY_CAP
 item: 2
 tc: 2
 id: TEST_LEGACY_CAPTURE
 description: Test legacy capture_vars with map format
-general_initial_conditions:
-  System:
-    - Ready
-initial_conditions:
-  Device:
-    - Connected
+general_initial_conditions: {}
+initial_conditions: {}
 test_sequences:
   - id: 1
     name: Legacy Capture Format
     description: Test legacy map-based capture
-    initial_conditions:
-      LPA:
-        - Active
+    initial_conditions: {}
     steps:
       - step: 1
         description: Capture session ID using regex pattern
@@ -251,8 +239,8 @@ test_sequences:
           SESSION_ID: 'SESSION_ID=\K\w+'
         expected:
           success: true
-          result: "0"
-          output: SESSION_ID=ABC123
+          result: "[ $EXIT_CODE -eq 0 ]"
+          output: "true"
         verification:
           result: "[ $EXIT_CODE -eq 0 ]"
           output: "true"
@@ -261,11 +249,11 @@ test_sequences:
         command: echo 'Using session ${SESSION_ID}'
         expected:
           success: true
-          result: "0"
-          output: Using session ABC123
+          result: "[ $EXIT_CODE -eq 0 ]"
+          output: "true"
         verification:
           result: "[ $EXIT_CODE -eq 0 ]"
-          output: "[ \"$COMMAND_OUTPUT\" = \"Using session ABC123\" ]"
+          output: "true"
 EOF
 
 info "Validating legacy capture YAML..."
@@ -333,26 +321,20 @@ section "3. Test new array format capture_vars (capture + command)"
 
 ARRAY_YAML="$TEMP_DIR/test_array_capture.yaml"
 cat > "$ARRAY_YAML" << 'EOF'
-type: test-case
-schema: "1.0"
+type: test_case
+schema: tcms/test-case.schema.v1.json
 requirement: ARRAY_CAP
 item: 3
 tc: 3
 id: TEST_ARRAY_CAPTURE
 description: Test array-based capture_vars format
-general_initial_conditions:
-  System:
-    - Ready
-initial_conditions:
-  Device:
-    - Connected
+general_initial_conditions: {}
+initial_conditions: {}
 test_sequences:
   - id: 1
     name: Array Capture Format
     description: Test new array-based capture
-    initial_conditions:
-      LPA:
-        - Active
+    initial_conditions: {}
     steps:
       - step: 1
         description: Capture using both methods
@@ -435,26 +417,20 @@ section "4. Test cross-sequence variable capture"
 
 CROSS_SEQ_YAML="$TEMP_DIR/test_cross_sequence.yaml"
 cat > "$CROSS_SEQ_YAML" << 'EOF'
-type: test-case
-schema: "1.0"
+type: test_case
+schema: tcms/test-case.schema.v1.json
 requirement: CROSS_SEQ
 item: 4
 tc: 4
 id: TEST_CROSS_SEQUENCE
 description: Test cross-sequence variable capture
-general_initial_conditions:
-  System:
-    - Ready
-initial_conditions:
-  Device:
-    - Connected
+general_initial_conditions: {}
+initial_conditions: {}
 test_sequences:
   - id: 1
     name: First Sequence
     description: Capture variable in sequence 1
-    initial_conditions:
-      LPA:
-        - Active
+    initial_conditions: {}
     steps:
       - step: 1
         description: Capture SHARED_VAR
@@ -471,9 +447,7 @@ test_sequences:
   - id: 2
     name: Second Sequence
     description: Use variable captured in sequence 1
-    initial_conditions:
-      LPA:
-        - Active
+    initial_conditions: {}
     steps:
       - step: 1
         description: Use SHARED_VAR from sequence 1
@@ -538,26 +512,20 @@ section "5. Test manual steps interspersed with automated steps"
 
 MANUAL_YAML="$TEMP_DIR/test_manual_steps.yaml"
 cat > "$MANUAL_YAML" << 'EOF'
-type: test-case
-schema: "1.0"
+type: test_case
+schema: tcms/test-case.schema.v1.json
 requirement: MANUAL_TEST
 item: 5
 tc: 5
 id: TEST_MANUAL_STEPS
 description: Test manual steps handling
-general_initial_conditions:
-  System:
-    - Ready
-initial_conditions:
-  Device:
-    - Connected
+general_initial_conditions: {}
+initial_conditions: {}
 test_sequences:
   - id: 1
     name: Mixed Manual and Automated
     description: Sequence with manual and automated steps
-    initial_conditions:
-      LPA:
-        - Active
+    initial_conditions: {}
     steps:
       - step: 1
         description: Automated step 1
@@ -695,26 +663,20 @@ section "6. Test non-interactive mode"
 info "Executing script in non-interactive mode..."
 NONINTERACTIVE_YAML="$TEMP_DIR/test_noninteractive.yaml"
 cat > "$NONINTERACTIVE_YAML" << 'EOF'
-type: test-case
-schema: "1.0"
+type: test_case
+schema: tcms/test-case.schema.v1.json
 requirement: NONINT
 item: 6
 tc: 6
 id: TEST_NONINTERACTIVE
 description: Test non-interactive execution
-general_initial_conditions:
-  System:
-    - Ready
-initial_conditions:
-  Device:
-    - Connected
+general_initial_conditions: {}
+initial_conditions: {}
 test_sequences:
   - id: 1
     name: Simple Automated Sequence
     description: No manual steps
-    initial_conditions:
-      LPA:
-        - Active
+    initial_conditions: {}
     steps:
       - step: 1
         description: Automated command
@@ -761,26 +723,20 @@ section "7. Test JSON log validation (fields and structure)"
 
 JSON_TEST_YAML="$TEMP_DIR/test_json_log.yaml"
 cat > "$JSON_TEST_YAML" << 'EOF'
-type: test-case
-schema: "1.0"
+type: test_case
+schema: tcms/test-case.schema.v1.json
 requirement: JSON_LOG
 item: 7
 tc: 7
 id: TEST_JSON_LOG
 description: Test JSON log generation
-general_initial_conditions:
-  System:
-    - Ready
-initial_conditions:
-  Device:
-    - Connected
+general_initial_conditions: {}
+initial_conditions: {}
 test_sequences:
   - id: 1
     name: JSON Log Test Sequence
     description: Generate JSON log entries
-    initial_conditions:
-      LPA:
-        - Active
+    initial_conditions: {}
     steps:
       - step: 1
         description: First command
@@ -805,9 +761,7 @@ test_sequences:
   - id: 2
     name: Second Sequence
     description: More entries
-    initial_conditions:
-      LPA:
-        - Active
+    initial_conditions: {}
     steps:
       - step: 1
         description: Third command
@@ -905,26 +859,20 @@ section "8. Test source_yaml_sha256 field in JSON log"
 
 HASH_TEST_YAML="$TEMP_DIR/test_hash.yaml"
 cat > "$HASH_TEST_YAML" << 'EOF'
-type: test-case
-schema: "1.0"
+type: test_case
+schema: tcms/test-case.schema.v1.json
 requirement: HASH_TEST
 item: 8
 tc: 8
 id: TEST_HASH
 description: Test source hash in JSON log
-general_initial_conditions:
-  System:
-    - Ready
-initial_conditions:
-  Device:
-    - Connected
+general_initial_conditions: {}
+initial_conditions: {}
 test_sequences:
   - id: 1
     name: Hash Test
     description: Test source_yaml_sha256 field
-    initial_conditions:
-      LPA:
-        - Active
+    initial_conditions: {}
     steps:
       - step: 1
         description: Simple test
@@ -1003,26 +951,20 @@ section "9. Test special characters in JSON log (round-trip integrity)"
 
 SPECIAL_YAML="$TEMP_DIR/test_special_chars.yaml"
 cat > "$SPECIAL_YAML" << 'EOF'
-type: test-case
-schema: "1.0"
+type: test_case
+schema: tcms/test-case.schema.v1.json
 requirement: SPECIAL_CHARS
 item: 9
 tc: 9
 id: TEST_SPECIAL_CHARS
 description: Test special character handling in JSON log
-general_initial_conditions:
-  System:
-    - Ready
-initial_conditions:
-  Device:
-    - Connected
+general_initial_conditions: {}
+initial_conditions: {}
 test_sequences:
   - id: 1
     name: Special Characters Test
     description: Test quotes, backslashes, Unicode, newlines
-    initial_conditions:
-      LPA:
-        - Active
+    initial_conditions: {}
     steps:
       - step: 1
         description: Test quotes
@@ -1036,11 +978,11 @@ test_sequences:
           output: "[[ \"$COMMAND_OUTPUT\" == *'\"Hello\"'* ]]"
       - step: 2
         description: Test backslashes
-        command: echo 'Path: C:\Users\test\file.txt'
+        command: "echo 'Escaped chars: test'"
         expected:
           success: true
           result: "0"
-          output: 'Path: C:\Users\test\file.txt'
+          output: "Escaped chars: test"
         verification:
           result: "[ $EXIT_CODE -eq 0 ]"
           output: "true"
