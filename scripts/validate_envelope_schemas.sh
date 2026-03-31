@@ -19,6 +19,11 @@
 
 set -euo pipefail
 
+# Canonical paths:
+# - Versioned schemas: schemas/tcms/*.schema.v1.json (production standard with envelope)
+# - Envelope meta-schema: schemas/tcms-envelope.schema.json
+# - Sample data: schemas/tcms/samples/ (canonical location)
+# - Templates: schemas/templates/ (canonical location)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 SCHEMAS_DIR="${REPO_ROOT}/schemas"

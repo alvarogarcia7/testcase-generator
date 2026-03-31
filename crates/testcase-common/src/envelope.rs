@@ -13,9 +13,13 @@ pub struct Envelope {
 
 /// Resolve schema from payload by reading the `schema` field and mapping to local path
 ///
+/// Canonical schema paths resolved:
+/// - Legacy schemas: schemas/*.schema.json
+/// - Versioned schemas: schemas/tcms/*.schema.v1.json
+///
 /// # Arguments
 /// * `file_path` - Path to the YAML or JSON file
-/// * `schemas_root` - Root directory containing schema files (e.g., "schemas/")
+/// * `schemas_root` - Root directory containing schema files (default: "schemas/")
 ///
 /// # Returns
 /// * `Ok(PathBuf)` - Resolved schema file path

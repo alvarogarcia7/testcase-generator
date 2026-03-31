@@ -590,9 +590,10 @@ def create_tpdg_container(
     if test_date is None:
         test_date = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     
+    # Using canonical schema path for versioned container schema
     container = {
         "type": "test_results_container",
-        "schema": "tcms/testcase_results_container.schema.v1.json",
+        "schema": "tcms/test-results-container.schema.v1.json",
         "title": title or f"Test Results - {datetime.now().strftime('%Y-%m-%d')}",
         "project": project or "Test Suite Execution",
         "test_date": datetime.now().strftime('%Y-%m-%dT%H:%M:%SZ'),
@@ -771,7 +772,7 @@ Modes:
         '--schema',
         type=str,
         default='schemas/verification-result.schema.json',
-        help='Schema file for validation (default: schemas/verification-result.schema.json)'
+        help='Schema file for validation (default: schemas/verification-result.schema.json - legacy schema, canonical: schemas/tcms/test-verification.schema.v1.json)'
     )
     
     parser.add_argument(

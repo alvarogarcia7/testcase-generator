@@ -31,13 +31,17 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib/logger.sh" || exit 1
 
 # Configuration
+# Canonical paths for samples and expected results:
+# - TCMS samples: schemas/tcms/samples/ (canonical location)
+# - Templates: schemas/templates/ (canonical location)
+# - Expected results: testcases/examples/expected_test_results/ (test fixtures)
 EXPECTED_RESULTS_DIR="testcases/examples/expected_test_results"
 TEST_CASE_RESULT_DIR="$EXPECTED_RESULTS_DIR/test_case_result"
 CONTAINER_DIR="$EXPECTED_RESULTS_DIR/container"
 TEST_CASE_RESULT_SCHEMA="$TEST_CASE_RESULT_DIR/schema.json"
 CONTAINER_SCHEMA="$CONTAINER_DIR/container_schema.json"
 
-# New schema organization paths
+# Canonical schema organization paths
 SCHEMAS_DIR="schemas"
 TCMS_SCHEMAS_DIR="$SCHEMAS_DIR/tcms"
 TCMS_SAMPLES_DIR="$TCMS_SCHEMAS_DIR/samples"

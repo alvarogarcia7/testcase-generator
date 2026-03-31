@@ -4,6 +4,10 @@ use serde_json::Value;
 use std::fs;
 use std::path::PathBuf;
 
+// Canonical paths:
+// - Working schema (used by verifier): data/testcase_results_container/schema.json
+// - Versioned schema (recommended): schemas/tcms/test-results-container.schema.v1.json
+// - Sample data: schemas/tcms/samples/ (canonical location)
 const SCHEMA_PATH: &str = "../../data/testcase_results_container/schema.json";
 const SAMPLE_PATH: &str = "../../schemas/tcms/samples/testcase_results_container_sample.yml";
 

@@ -12,6 +12,9 @@ pub struct SchemaValidator {
 }
 
 impl SchemaValidator {
+    /// Create a new SchemaValidator
+    /// Uses canonical schema path: schemas/test-case.schema.json (legacy, backward compatible)
+    /// For new development, consider using: schemas/tcms/test-case.schema.v1.json
     pub fn new() -> Result<Self> {
         let schema_path = Path::new("schemas/test-case.schema.json");
         let schema_content =
