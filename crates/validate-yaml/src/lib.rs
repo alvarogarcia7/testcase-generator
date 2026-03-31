@@ -401,7 +401,7 @@ mod tests {
 
     #[test]
     fn test_validator_default() {
-        let validator = YamlValidator::default();
+        let validator = YamlValidator::new();
         let schema_file = create_temp_schema().unwrap();
         let yaml_content = "name: Default Test";
         let yaml_file = create_temp_yaml(yaml_content).unwrap();
