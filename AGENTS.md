@@ -414,7 +414,7 @@ All tests completed successfully
 ========================================
 ```
 
-#### Full Clean Build and Test: `build-all` and `test-all`
+#### Full Clean Build and Test: `build-all`, `test-all`, and `test-e2e-all`
 
 These targets provide unconditional full workspace builds and tests, regardless of changes. They ensure a clean slate and comprehensive validation.
 
@@ -435,7 +435,23 @@ make test-all
 # Equivalent to:
 cargo build --workspace --all-features
 cargo test --workspace --all-features --tests
-make test-e2e
+make test-e2e-all
+```
+
+**`test-e2e-all`:**
+```bash
+# Run all E2E integration tests unconditionally (includes build)
+make test-e2e-all
+
+# This runs the complete E2E test suite:
+# - All validate-yaml tests
+# - All test-executor tests (including manual step tests)
+# - All test-orchestrator tests
+# - All verifier tests
+# - All testcase-manager tests
+# - All audit-verifier tests
+# - Documentation generation tests
+# - Output schema validation
 ```
 
 **When to Use:**
@@ -444,7 +460,7 @@ make test-e2e
 - **Clean slate testing**: When you suspect incremental build cache issues
 - **Merge validation**: Final check before merging to main/develop
 
-**Note:** `test-all` sets up Python environment automatically (`setup-python-for-test`) before running tests.
+**Note:** `test-all` sets up Python environment automatically (`setup-python-for-test`) before running tests. All E2E tests in `test-e2e-all` are designed to run in non-interactive mode and will not block on user input.
 
 #### Detecting Changes: Examples
 
@@ -927,6 +943,7 @@ See the [Hooks](#hooks) section for detailed documentation and examples.
 - **Lint**: make lint (runs fmt + clippy on all workspace crates)
 - **Test**: make test (runs unit tests, e2e tests, and verification across workspace)
 - **Test All**: make test-all (unconditional full clean build and comprehensive test suite with all features)
+- **Test E2E All**: make test-e2e-all (unconditional full E2E test suite, all tests run in non-interactive mode)
 
 ### Incremental Build and Test Commands
 These commands provide intelligent change detection for faster local development:

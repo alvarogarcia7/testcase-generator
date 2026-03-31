@@ -19,6 +19,7 @@
 # FULL BUILD TARGETS (for CI/CD or comprehensive validation):
 #   make build-all          - Build all workspace crates unconditionally
 #   make test-all           - Full build + all unit tests + all E2E tests
+#   make test-e2e-all       - Run all E2E tests unconditionally (with build)
 #
 # CUSTOMIZING BASE REFERENCE:
 #   By default, incremental targets compare against 'main' branch.
@@ -381,6 +382,40 @@ test-e2e-f: build
 	./crates/testcase-manager/tests/integration/test_container_yaml_compat_e2e.sh
 .PHONY: test-e2e-f
 
+# test-e2e-all: Run ALL E2E integration tests unconditionally
+# This target runs the complete E2E test suite regardless of changes
+# Used by test-all to ensure comprehensive testing in CI/CD
+test-e2e-all: build-all
+	${MAKE} test-e2e-all-no-build
+.PHONY: test-e2e-all
+
+# test-e2e-all-no-build: Run ALL E2E integration tests without building
+# Internal target used by test-all after build-all has already been run
+test-e2e-all-no-build:
+	./crates/testcase-manager/tests/integration/check_environment.sh
+	./crates/testcase-manager/tests/integration/smoke_test.sh
+	./crates/testcase-manager/tests/integration/test_bdd_e2e.sh
+	./crates/testcase-manager/tests/integration/test_conditional_verification_e2e.sh
+	./crates/testcase-manager/tests/integration/test_executor_e2e.sh
+	./crates/testcase-manager/tests/integration/test_manual_steps_e2e.sh
+	./crates/testcase-manager/tests/integration/test_manual_verification_e2e.sh
+	./crates/testcase-manager/tests/integration/test_orchestrator_e2e.sh
+	./crates/testcase-manager/tests/integration/test_validate_yaml_watch_e2e.sh
+	./crates/testcase-manager/tests/integration/test_validate_yaml_multi_e2e.sh
+	./crates/testcase-manager/tests/integration/test_validate_yaml_schema_watch_e2e.sh
+	./crates/testcase-manager/tests/integration/test_validate_yaml_transitive_schema_watch_e2e.sh
+	./crates/testcase-manager/tests/integration/test_auto_schema_validation_e2e.sh
+	./crates/testcase-manager/tests/integration/test_variable_display_e2e.sh
+	./crates/testcase-manager/tests/integration/test_variable_passing_e2e.sh
+	./crates/testcase-manager/tests/integration/test_verifier_e2e.sh
+	./crates/testcase-manager/tests/integration/test_verifier_container_e2e.sh
+	./crates/testcase-manager/tests/integration/test_verifier_edge_cases_e2e.sh
+	${MAKE} test-verifier-edge-cases
+	./crates/testcase-manager/tests/integration/test_documentation_generation.sh
+	BUILD_VARIANT="" ./scripts/run_verifier_and_generate_reports.sh
+	${MAKE} validate-output-schemas
+.PHONY: test-e2e-all-no-build
+
 example_export-demo:
 	./examples/export_demo.sh
 .PHONY: example_export-demo
@@ -394,10 +429,9 @@ build-all:
 # test-all: Unconditional full build and test cycle
 # Performs complete build, unit tests, and E2E tests regardless of changes
 # This target ignores any incremental build logic and always runs the full suite
-test-all: setup-python-for-test
-	cargo build --workspace --all-features
+test-all: setup-python-for-test build-all
 	cargo test --workspace --all-features --tests
-	${MAKE} test-e2e
+	${MAKE} test-e2e-all-no-build
 .PHONY: test-all
 
 # Coverage exclusion pattern - escapes dots for regex
