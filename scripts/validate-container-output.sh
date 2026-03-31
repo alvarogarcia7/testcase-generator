@@ -11,7 +11,7 @@ source "$SCRIPT_DIR/lib/logger.sh" || exit 1
 # Check if file argument is provided
 if [ $# -lt 1 ]; then
     log_error "Usage: $0 <file.yml|file.json>"
-    log_info "Example: $0 data/testcase_results_container/data_sample.yml"
+    log_info "Example: $0 schemas/tcms/samples/testcase_results_container_sample.yml"
     exit 1
 fi
 

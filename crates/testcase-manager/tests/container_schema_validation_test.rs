@@ -5,7 +5,7 @@ use std::fs;
 use std::path::PathBuf;
 
 const SCHEMA_PATH: &str = "../../data/testcase_results_container/schema.json";
-const SAMPLE_PATH: &str = "../../data/testcase_results_container/data_sample.yml";
+const SAMPLE_PATH: &str = "../../schemas/tcms/samples/testcase_results_container_sample.yml";
 
 /// Helper function to load and compile schema
 fn load_schema() -> Result<(Value, JSONSchema)> {
