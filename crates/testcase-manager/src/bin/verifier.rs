@@ -97,7 +97,7 @@ struct Cli {
     test_case_id: Option<String>,
 
     /// Folder discovery mode: path to folder containing log files
-    #[arg(short = 'f', long, value_name = "PATH")]
+    #[arg(short = 'f', long, value_name = "LOG_FOLDER_PATH")]
     folder: Option<PathBuf>,
 
     /// Output format (yaml or json)
