@@ -127,10 +127,17 @@ schemas/tcms/verification_methods/result/schema.json
 
 ## Deprecated Schemas (Do Not Use)
 
-### ⚠️ Container Duplicates
-- `tcms/test_results/container_schema.json` → Use `test-results-container.schema.v1.json`
-- `tcms/testcase_results_container/schema.json` → Use `test-results-container.schema.v1.json`
-- `tcms/container/schema.json` → Use `container-config.schema.v1.json`
+### ✅ Container Schemas (Consolidated)
+Three redundant schemas have been **removed**:
+- `tcms/test_results/container_schema.json` (REMOVED)
+- `tcms/testcase_results_container/schema.json` (REMOVED)
+- `tcms/container/schema.json` (REMOVED)
+
+**Use instead:**
+- Canonical: `tcms/test-results-container.schema.v1.json` (with envelope)
+- Working: `data/testcase_results_container/schema.json` (backward compatible)
+
+See [tcms/CONTAINER_SCHEMAS.md](tcms/CONTAINER_SCHEMAS.md) for details.
 
 ### 🔄 Transitional Schemas (Optional Envelope)
 - `test-case.schema.json` → Use `tcms/test-case.schema.v1.json`

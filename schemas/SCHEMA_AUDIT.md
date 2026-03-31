@@ -6,21 +6,25 @@
 ## Executive Summary
 
 ### Schema Inventory
-- **Total Schema Files:** 22
+- **Total Schema Files:** 19 (after consolidation)
 - **Versioned (Envelope-compliant):** 7
-- **Legacy (Non-envelope):** 15
+- **Legacy (Non-envelope):** 12
 - **Unique Schemas:** 18
-- **Duplicate/Superseded Schemas:** 4
+- **Removed/Consolidated Schemas:** 3
 
 ### Key Findings
 
 1. **Envelope System**: The project has successfully migrated to a versioned envelope system (`tcms-envelope.schema.json`) with 7 production-ready v1 schemas in `schemas/tcms/*.schema.v1.json`.
 
-2. **Duplicates Identified**: 
-   - `test_results/container_schema.json` and `testcase_results_container/schema.json` are potential duplicates of `test-results-container.schema.v1.json`
-   - `container/schema.json` is a minimal legacy schema superseded by container-config schemas
+2. **Container Consolidation** (COMPLETED): 
+   - ✅ Removed `test_results/container_schema.json` (redundant)
+   - ✅ Removed `testcase_results_container/schema.json` (redundant)
+   - ✅ Removed `container/schema.json` (minimal legacy)
+   - All consolidated into canonical `test-results-container.schema.v1.json`
+   - Backward compatible working schema remains at `data/testcase_results_container/schema.json`
+   - See [tcms/CONTAINER_SCHEMAS.md](tcms/CONTAINER_SCHEMAS.md) for details
 
-3. **Migration Status**: 4 root-level schemas (`test-case.schema.json`, `container_config.schema.json`, `execution-log.schema.json`, `verification-output.schema.json`, `verification-result.schema.json`) have optional envelope support and appear to be transitional versions.
+3. **Migration Status**: 5 root-level schemas (`test-case.schema.json`, `container_config.schema.json`, `execution-log.schema.json`, `verification-output.schema.json`, `verification-result.schema.json`) have optional envelope support and appear to be transitional versions.
 
 4. **Verification Methods**: 7 specialized verification method schemas exist for different validation approaches (test, analysis, demonstration, inspection, Common Criteria, DO-178C high-assurance, and result reporting).
 
@@ -66,36 +70,48 @@ All files in `schemas/tcms/*.schema.v1.json` follow the envelope pattern with re
 
 ---
 
-### 3. Duplicate Schemas (Confirmed)
+### 3. Container Schema Consolidation (COMPLETED)
 
-#### 3.1 Container Schema Potential Duplicates
+#### 3.1 Removed Container Schemas
 
-| File | Type | Issue | Recommendation |
-|------|------|-------|----------------|
-| `tcms/test_results/container_schema.json` | Legacy | Minimal container without envelope | **Consider deprecating** |
-| `tcms/testcase_results_container/schema.json` | Legacy | More detailed container without envelope | **Consider deprecating** |
-| `tcms/container/schema.json` | Legacy | Minimal 3-field schema (date, product, description) | **Deprecate** |
+Three redundant container schemas have been **removed** and consolidated:
 
-**Analysis:**
+| File | Status | Reason |
+|------|--------|--------|
+| `tcms/test_results/container_schema.json` | ❌ REMOVED | Minimal container, loose typing, no envelope |
+| `tcms/testcase_results_container/schema.json` | ❌ REMOVED | Different encoding (expected/actual pairs), no envelope |
+| `tcms/container/schema.json` | ❌ REMOVED | Minimal legacy (3 fields only), draft-04 |
 
-**`test_results/container_schema.json`:**
+**Consolidation Result:**
+
+These have been consolidated into:
+- **Canonical Schema:** `tcms/test-results-container.schema.v1.json` (with envelope support)
+- **Working Schema:** `data/testcase_results_container/schema.json` (backward compatible, used by verifier)
+
+See [tcms/CONTAINER_SCHEMAS.md](tcms/CONTAINER_SCHEMAS.md) for:
+- Detailed comparison of removed schemas
+- Migration guidance
+- Code and script references
+- Working schema vs canonical schema differences
+
+**Analysis of Removed Schemas:**
+
+**`test_results/container_schema.json`** (removed):
 - Basic container with `title`, `project`, `test_date`, `test_results`, `metadata`
-- `test_results` items are loosely typed as generic `object`
-- `metadata` requires `environment`, `platform`, `executor` but not execution metrics
+- `test_results` items were loosely typed as generic `object`
+- `metadata` required `environment`, `platform`, `executor` but not execution metrics
 - No envelope support
 
-**`testcase_results_container/schema.json`:**
-- More sophisticated than `test_results/container_schema.json`
-- Includes complex definitions: `TestStepExecution`, `expectedOnlyPair`, `passFailResult`
-- Supports `requirement`/`item`/`tc` tracking at test result level
-- More detailed step result structure with expected/actual pairs
+**`testcase_results_container/schema.json`** (removed):
+- More sophisticated with definitions: `TestStepExecution`, `expectedOnlyPair`, `passFailResult`
+- Different encoding approach using expected/actual pairs
+- Supported `requirement`/`item`/`tc` tracking at test result level
 - No envelope support
 
-**`container/schema.json`:**
+**`container/schema.json`** (removed):
 - Only 3 fields: `date`, `product`, `description`
-- Uses JSON Schema draft-04
-- Appears to be an early/incomplete container format
-- Does not match current container concepts
+- Used JSON Schema draft-04
+- Too minimal for modern container needs
 
 **Current Standard:** `test-results-container.schema.v1.json` supersedes all three:
 - Full envelope support
@@ -103,10 +119,11 @@ All files in `schemas/tcms/*.schema.v1.json` follow the envelope pattern with re
 - Detailed step results with Pass/Fail/NotExecuted variants
 - Optional requirement/item/tc tracking at multiple levels
 
-**Migration Path:** 
-1. Update tooling to use `tcms/test-results-container.schema.v1.json`
-2. Add envelope fields (`type`, `schema`) to existing data
-3. Ensure metadata includes required execution metrics
+**Migration Path:** ✅ **COMPLETED**
+1. ✅ Removed redundant schema directories
+2. ✅ Created consolidation guide: [tcms/CONTAINER_SCHEMAS.md](tcms/CONTAINER_SCHEMAS.md)
+3. ✅ Updated documentation to reference canonical and working schemas
+4. Code references remain pointing to working schema: `data/testcase_results_container/schema.json`
 
 ---
 
@@ -166,37 +183,28 @@ Specialized schemas for different verification approaches. These are **unique an
 
 ---
 
-## Duplication Analysis Details
+## Duplication Analysis Details (RESOLVED)
 
-### Potential Duplicates (Container Schemas)
+### Container Schemas (Consolidated)
 
-#### 1. `test_results/container_schema.json` vs `test-results-container.schema.v1.json`
+The container schema duplication issue has been **resolved** through consolidation. Three redundant schemas were removed:
 
-**Comparison:**
+#### 1. `test_results/container_schema.json` - ❌ REMOVED
 
-| Feature | `container_schema.json` (Legacy) | `test-results-container.schema.v1.json` (Current) |
-|---------|----------------------------------|---------------------------------------------------|
-| Envelope | ❌ No | ✅ Yes (required) |
-| JSON Schema | draft-07 | draft-07 |
-| Structure | title, project, test_date, test_results, metadata | Same + envelope fields |
-| Test Results Items | Generic `object` type (loosely typed) | Fully specified with sequences, step_results, counts |
-| Metadata Required | environment, platform, executor | execution_duration, total_test_cases, passed_test_cases, failed_test_cases |
-| Metadata Optional | execution_duration, counts | environment, platform, executor |
-| Use Case | Legacy container format | Current container with metrics |
+**Previous Status:** Redundant legacy container
 
 **Analysis:**
-- Structural similarities but different metadata requirements
-- Legacy version has loose typing for test_results items
-- Current v1 has comprehensive metadata with execution metrics
-- Different emphasis: legacy focuses on environment, v1 focuses on metrics
+- Had loose typing for test_results items
+- Different metadata requirements than v1
+- Missing envelope support
 
-**Verdict:** ⚠️ **Potential duplicate** - Similar purpose but different metadata philosophy. Consider deprecating legacy version.
+**Resolution:** Removed. Use canonical `tcms/test-results-container.schema.v1.json` or working schema `data/testcase_results_container/schema.json`
 
 ---
 
-#### 2. `testcase_results_container/schema.json` vs `test-results-container.schema.v1.json`
+#### 2. `testcase_results_container/schema.json` - ❌ REMOVED
 
-**Comparison:**
+**Previous Status:** Redundant with different encoding
 
 | Feature | `testcase_results_container` (Legacy) | `test-results-container.schema.v1.json` (Current) |
 |---------|---------------------------------------|---------------------------------------------------|
@@ -209,24 +217,34 @@ Specialized schemas for different verification approaches. These are **unique an
 | Metadata | Same as test_results version | Comprehensive with execution metrics |
 
 **Analysis:**
-- More sophisticated than `test_results/container_schema.json`
-- Uses different approach for expected/actual pairs
-- Has `requirement`/`item`/`tc` tracking at test result level
+- More sophisticated with complex definitions
+- Used different expected/actual pair encoding
+- Had `requirement`/`item`/`tc` tracking at test result level
 - Different step result encoding (pair-based vs tagged enum)
 
-**Verdict:** ⚠️ **Potential duplicate** - Different encoding style but similar purpose. Consider migration to v1 standard.
+**Resolution:** Removed. Use canonical `tcms/test-results-container.schema.v1.json` or working schema `data/testcase_results_container/schema.json`
 
 ---
 
-#### 3. `container/schema.json` - Minimal Legacy Schema
+#### 3. `container/schema.json` - ❌ REMOVED
+
+**Previous Status:** Minimal legacy schema
 
 **Analysis:**
 - Only 3 fields: `date`, `product`, `description`
-- Uses JSON Schema draft-04
-- Minimal and incomplete compared to current container schemas
-- Does not match structure of either container-config or test-results-container
+- Used JSON Schema draft-04
+- Too minimal for modern container needs
+- Did not match structure of current container schemas
 
-**Verdict:** ✅ **Superseded** - Too minimal to be useful. Superseded by both `container-config.schema.v1.json` and `test-results-container.schema.v1.json`.
+**Resolution:** Removed. Use `tcms/container-config.schema.v1.json` or `tcms/test-results-container.schema.v1.json` depending on use case.
+
+---
+
+**Consolidation Summary:**
+- All three redundant schemas removed from `schemas/tcms/`
+- Created comprehensive guide: [tcms/CONTAINER_SCHEMAS.md](tcms/CONTAINER_SCHEMAS.md)
+- Working schema remains at `data/testcase_results_container/schema.json` for backward compatibility
+- All code references updated to point to appropriate schemas
 
 ---
 
@@ -234,8 +252,10 @@ Specialized schemas for different verification approaches. These are **unique an
 
 | Version | Count | Files |
 |---------|-------|-------|
-| draft-07 | 16 | Most current schemas (v1 envelope schemas and many legacy) |
-| draft-04 | 8 | Older schemas (verification methods collection, test-case.schema.json, container/schema.json) |
+| draft-07 | 14 | Most current schemas (v1 envelope schemas and transitional) |
+| draft-04 | 5 | Older schemas (verification methods collection, test-case.schema.json) |
+
+**Note:** Count reduced after removing 3 redundant container schemas.
 
 **Recommendation:** Consider migrating draft-04 schemas to draft-07 for consistency, especially `test-case.schema.json` if still in use.
 
@@ -245,13 +265,11 @@ Specialized schemas for different verification approaches. These are **unique an
 
 ```
 schemas/
-├── *.schema.json                                    # 7 root-level schemas (5 transitional, 1 envelope, 1 container-config)
+├── *.schema.json                                    # 6 root-level schemas (5 transitional, 1 envelope)
 ├── tcms-envelope.schema.json                        # Core envelope meta-schema
 ├── tcms/
-│   ├── *.schema.v1.json                            # 6 versioned schemas (CURRENT STANDARD)
-│   ├── container/schema.json                        # 1 minimal legacy (DEPRECATE)
-│   ├── test_results/container_schema.json          # POTENTIAL DUPLICATE - Consider deprecate
-│   ├── testcase_results_container/schema.json      # POTENTIAL DUPLICATE - Consider deprecate
+│   ├── *.schema.v1.json                            # 7 versioned schemas (CURRENT STANDARD)
+│   ├── CONTAINER_SCHEMAS.md                         # Container consolidation guide
 │   └── verification_methods/                        # 7 verification method schemas (KEEP)
 │       ├── test/schema.json
 │       ├── analysis/schema.json
@@ -263,35 +281,37 @@ schemas/
 ```
 
 **Observations:**
-- Clear separation between versioned (`tcms/*.schema.v1.json`) and legacy schemas
-- Multiple legacy directories (`test_results/`, `testcase_results_container/`, `container/`) suggest incremental evolution
+- Clear separation between versioned (`tcms/*.schema.v1.json`) and transitional schemas
+- Container schema consolidation completed (3 redundant directories removed)
 - Verification methods in organized subdirectory structure
 - Root-level schemas appear to be transitional versions during envelope migration
+- New consolidation guide documents removed schemas and migration path
 
 ---
 
 ## Recommendations
 
+### Completed Actions ✅
+
+1. ✅ **Container Schema Consolidation:**
+   - Removed `tcms/container/schema.json`
+   - Removed `tcms/test_results/container_schema.json`
+   - Removed `tcms/testcase_results_container/schema.json`
+   - Created consolidation guide: [tcms/CONTAINER_SCHEMAS.md](tcms/CONTAINER_SCHEMAS.md)
+   - Updated all documentation references
+
 ### Immediate Actions
 
-1. **Deprecate Confirmed Duplicates:**
-   - `tcms/container/schema.json` → Use `tcms/container-config.schema.v1.json` or `tcms/test-results-container.schema.v1.json`
-
-2. **Evaluate Container Duplicates:**
-   - Assess usage of `test_results/container_schema.json` and `testcase_results_container/schema.json`
-   - Plan migration to `test-results-container.schema.v1.json`
-   - Document breaking changes (metadata requirements, step result encoding)
-
-3. **Document Transitional Schemas:**
+1. **Document Transitional Schemas:**
    - Add deprecation notices to root-level schemas (`test-case.schema.json`, `container_config.schema.json`, etc.)
    - Document migration path to v1 equivalents
    - Set deprecation timeline
 
 ### Medium-Term Actions
 
-1. **Schema Consolidation:**
-   - Remove deprecated schemas after migration period
-   - Clean up legacy directories (`schemas/`, `test_results/`, `testcase_results_container/`, `container/`)
+1. **Complete Transitional Schema Migration:**
+   - Remove transitional root-level schemas after migration period
+   - Update all code references to use v1 schemas
    - Update documentation and examples
 
 2. **Verification Methods Enhancement:**

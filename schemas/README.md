@@ -11,10 +11,8 @@ This directory contains JSON schemas for the Test Case Management System (TCMS).
 - **[SCHEMA_AUDIT.md](SCHEMA_AUDIT.md)** - Full audit report with duplication analysis, migration guidance, and recommendations
 - **[SCHEMA_AUDIT.csv](SCHEMA_AUDIT.csv)** - Spreadsheet format of all schemas for easy filtering and analysis
 
-### Deprecation Notices
-- **[tcms/test_results/DEPRECATED.md](tcms/test_results/DEPRECATED.md)** - Legacy container_schema.json
-- **[tcms/testcase_results_container/DEPRECATED.md](tcms/testcase_results_container/DEPRECATED.md)** - Legacy testcase_results_container/schema.json
-- **[tcms/container/DEPRECATED.md](tcms/container/DEPRECATED.md)** - Minimal legacy container/schema.json
+### Deprecation and Consolidation
+- **[tcms/CONTAINER_SCHEMAS.md](tcms/CONTAINER_SCHEMAS.md)** - Container schema consolidation guide (explains removal of redundant schemas)
 
 ## 🎯 Current Production Schemas (v1)
 
@@ -49,14 +47,12 @@ Specialized schemas for different verification methodologies in `tcms/verificati
 - **7 versioned (v1)** - Current production standard with envelope support
 - **7 verification methods** - Domain-specific methodologies
 
-### Deprecated Schemas
-- **1 confirmed duplicate** - Use v1 equivalent instead
-  - `tcms/container/schema.json`
-
-### Consider for Deprecation
-- **2 legacy containers** - Migration path available
-  - `tcms/test_results/container_schema.json`
-  - `tcms/testcase_results_container/schema.json`
+### Removed Schemas (Consolidated)
+- **3 redundant container schemas** - Removed and consolidated into canonical v1 schema
+  - `tcms/container/schema.json` (minimal legacy - 3 fields only)
+  - `tcms/test_results/container_schema.json` (loose typing)
+  - `tcms/testcase_results_container/schema.json` (different encoding)
+- **See:** [tcms/CONTAINER_SCHEMAS.md](tcms/CONTAINER_SCHEMAS.md) for details and migration guidance
 
 ### Transitional Schemas
 - **5 root-level schemas** - Have optional envelope support, migrate to v1
@@ -92,22 +88,25 @@ Valid types: `test_case`, `test_execution`, `test_verification`, `test_result`, 
 
 ## 📊 Statistics
 
-- **Total schemas:** 22
-- **Production (v1):** 7 (32%)
-- **Verification methods:** 7 (32%)
-- **Transitional:** 5 (23%)
-- **Deprecated/Legacy:** 3 (14%)
+- **Total schemas:** 19 (3 redundant schemas removed)
+- **Production (v1):** 7 (37%)
+- **Verification methods:** 7 (37%)
+- **Transitional:** 5 (26%)
+- **Removed/Consolidated:** 3 container schemas
 
-## 🔍 Duplication Findings
+## 🔍 Schema Consolidation
 
-### Confirmed Duplicates
-1. ✅ `container/schema.json` is superseded by container-config and test-results-container schemas
+### Container Schemas
+Three redundant container schemas were identified and removed:
+- `tcms/container/schema.json`
+- `tcms/test_results/container_schema.json`
+- `tcms/testcase_results_container/schema.json`
 
-### Potential Duplicates
-3. ⚠️ `test_results/container_schema.json` - Consider using `test-results-container.schema.v1.json`
-4. ⚠️ `testcase_results_container/schema.json` - Consider using `test-results-container.schema.v1.json`
+These have been **consolidated** into:
+- **Canonical:** `tcms/test-results-container.schema.v1.json` (with envelope)
+- **Working:** `data/testcase_results_container/schema.json` (backward compatible, used by verifier)
 
-See [SCHEMA_AUDIT.md](SCHEMA_AUDIT.md) for detailed analysis and migration guidance.
+See [tcms/CONTAINER_SCHEMAS.md](tcms/CONTAINER_SCHEMAS.md) for details and migration guidance.
 
 ## 🚀 Usage Example
 
@@ -173,10 +172,8 @@ schemas/
 ├── SCHEMA_QUICK_REFERENCE.md          # Quick lookup guide
 ├── tcms-envelope.schema.json          # Envelope meta-schema
 ├── tcms/
-│   ├── *.schema.v1.json              # 6 versioned schemas (PRODUCTION)
-│   ├── container/                     # Legacy (DEPRECATED)
-│   ├── test_results/                  # Legacy (CONSIDER DEPRECATING)
-│   ├── testcase_results_container/    # Legacy (CONSIDER DEPRECATING)
+│   ├── *.schema.v1.json              # 7 versioned schemas (PRODUCTION)
+│   ├── CONTAINER_SCHEMAS.md           # Container schema consolidation guide
 │   └── verification_methods/          # 7 verification method schemas (ACTIVE)
 │       ├── test/
 │       ├── analysis/
@@ -241,9 +238,9 @@ For schema-related questions:
 - ✅ Envelope pattern implementation
 - ✅ Version 1 schema migration
 - ✅ Schema audit and documentation
+- ✅ Container schema consolidation (removed 3 redundant schemas)
 
 ### In Progress
-- 🔄 Deprecation of duplicate schemas
 - 🔄 Migration guides for transitional schemas
 - 🔄 Tooling updates to use v1 schemas
 
@@ -261,4 +258,4 @@ See project LICENSE file for schema licensing information.
 
 **Last Updated:** 2024
 **Schema Version:** v1
-**Total Schemas:** 22
+**Total Schemas:** 19 (after consolidation)

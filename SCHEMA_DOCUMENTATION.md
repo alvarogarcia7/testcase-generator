@@ -19,10 +19,8 @@ All schema documentation is located in the `schemas/` directory:
   - Schema selection guide
 - **[schemas/SCHEMA_AUDIT.csv](schemas/SCHEMA_AUDIT.csv)** - Spreadsheet format for filtering/analysis
 
-### ⚠️ Deprecation Notices
-- **[schemas/tcms/test_results/DEPRECATED.md](schemas/tcms/test_results/DEPRECATED.md)** - Legacy container_schema.json
-- **[schemas/tcms/testcase_results_container/DEPRECATED.md](schemas/tcms/testcase_results_container/DEPRECATED.md)** - Legacy testcase_results_container/schema.json
-- **[schemas/tcms/container/DEPRECATED.md](schemas/tcms/container/DEPRECATED.md)** - Minimal legacy container/schema.json
+### ✅ Schema Consolidation
+- **[schemas/tcms/CONTAINER_SCHEMAS.md](schemas/tcms/CONTAINER_SCHEMAS.md)** - Container schema consolidation guide (3 redundant schemas removed)
 
 ## 🎯 Quick Summary
 
@@ -37,12 +35,17 @@ All current schemas are in `schemas/tcms/*.schema.v1.json`:
 
 ### Key Findings
 
-#### ✅ Confirmed Duplicates (Deprecate)
-1. `tcms/container/schema.json` → Use `container-config.schema.v1.json` or `test-results-container.schema.v1.json`
+#### ✅ Container Schema Consolidation (COMPLETED)
+Three redundant container schemas have been removed:
+1. `tcms/container/schema.json` (REMOVED)
+2. `tcms/test_results/container_schema.json` (REMOVED)
+3. `tcms/testcase_results_container/schema.json` (REMOVED)
 
-#### ⚠️ Potential Duplicates (Consider Deprecating)
-4. `tcms/test_results/container_schema.json` → Use `test-results-container.schema.v1.json`
-5. `tcms/testcase_results_container/schema.json` → Use `test-results-container.schema.v1.json`
+**Use instead:**
+- Canonical: `tcms/test-results-container.schema.v1.json` (with envelope)
+- Working: `data/testcase_results_container/schema.json` (backward compatible)
+
+See [schemas/tcms/CONTAINER_SCHEMAS.md](schemas/tcms/CONTAINER_SCHEMAS.md) for details.
 
 #### 🔄 Transitional Schemas (Document Migration)
 Root-level schemas with optional envelope support:
@@ -69,13 +72,16 @@ The audit covers all JSON schema files in the `schemas/` directory, analyzing:
 
 ## 📋 Key Identified Issues
 
-### 1. Container Schema Duplicates
-- **Issue:** Three different container schemas serving similar purposes
-  - `test_results/container_schema.json` - Minimal, loose typing
-  - `testcase_results_container/schema.json` - More detailed, different encoding
-  - `container/schema.json` - Only 3 fields, too minimal
-- **Impact:** Confusion about which to use, inconsistent data models
-- **Action:** Consolidate to `test-results-container.schema.v1.json`
+### 1. Container Schema Consolidation ✅ COMPLETED
+- **Issue:** Three redundant container schemas
+- **Resolution:** All removed and consolidated
+  - `test_results/container_schema.json` (REMOVED)
+  - `testcase_results_container/schema.json` (REMOVED)
+  - `container/schema.json` (REMOVED)
+- **Current schemas:**
+  - Canonical: `test-results-container.schema.v1.json` (with envelope)
+  - Working: `data/testcase_results_container/schema.json` (backward compatible)
+- **Documentation:** [schemas/tcms/CONTAINER_SCHEMAS.md](schemas/tcms/CONTAINER_SCHEMAS.md)
 
 ### 2. Transitional Schemas
 - **Issue:** Root-level schemas with optional envelope fields
