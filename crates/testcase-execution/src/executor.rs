@@ -274,53 +274,53 @@ impl TestExecutor {
 
         match method {
             JsonEscapingMethod::Jq => {
-                // Use jq reading from the capture temp file
+                // Use jq reading from COMMAND_OUTPUT
                 let jq_cmd = jq_path.as_ref().and_then(|p| p.to_str()).unwrap_or("jq");
                 script.push_str(&format!(
-                    "OUTPUT_ESCAPED=$({} -Rs . < \"$_CAPTURE_TMPFILE\" 2>/dev/null | sed 's/^\"//;s/\"$//' || echo \"\")\n",
+                    "OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | {} -Rs . 2>/dev/null | sed 's/^\"//;s/\"$//' || echo \"\")\n",
                     jq_cmd
                 ));
             }
             JsonEscapingMethod::RustBinary => {
-                // Use json-escape binary reading from the capture temp file
+                // Use json-escape binary reading from COMMAND_OUTPUT
                 let bin_path = binary_path
                     .as_ref()
                     .and_then(|p| p.to_str())
                     .unwrap_or("json-escape");
                 script.push_str(&format!(
-                    "OUTPUT_ESCAPED=$({} < \"$_CAPTURE_TMPFILE\" 2>/dev/null || echo \"\")\n",
+                    "OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | {} 2>/dev/null || echo \"\")\n",
                     bin_path
                 ));
             }
             JsonEscapingMethod::ShellFallback => {
-                // Use sed/awk fallback reading from the capture temp file
+                // Use sed/awk fallback reading from COMMAND_OUTPUT
                 script.push_str("# Shell fallback: escape backslashes, quotes, tabs, and convert newlines to \\n\n");
-                script.push_str("OUTPUT_ESCAPED=$(sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g; s/\\t/\\\\t/g' < \"$_CAPTURE_TMPFILE\" | awk '{printf \"%s%s\", (NR>1?\"\\\\n\":\"\"), $0}')\n");
+                script.push_str("OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g; s/\\t/\\\\t/g' | awk '{printf \"%s%s\", (NR>1?\"\\\\n\":\"\"), $0}')\n");
             }
             JsonEscapingMethod::Auto => {
-                // Try jq first (reading from capture temp file), then json-escape binary, then fallback to sed/awk
+                // Try json-escape binary first, then jq, then fallback to sed/awk
                 let jq_cmd = jq_path.as_ref().and_then(|p| p.to_str()).unwrap_or("jq");
                 let bin_path = binary_path
                     .as_ref()
                     .and_then(|p| p.to_str())
                     .unwrap_or("json-escape");
 
-                script.push_str(&format!("if command -v {} >/dev/null 2>&1; then\n", jq_cmd));
+                script.push_str(&format!("if command -v {} >/dev/null 2>&1; then\n", bin_path));
                 script.push_str(&format!(
-                    "    OUTPUT_ESCAPED=$({} -Rs . < \"$_CAPTURE_TMPFILE\" 2>/dev/null | sed 's/^\"//;s/\"$//' || echo \"\")\n",
-                    jq_cmd
+                    "    OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | {} 2>/dev/null || echo \"\")\n",
+                    bin_path
                 ));
                 script.push_str(&format!(
                     "elif command -v {} >/dev/null 2>&1; then\n",
-                    bin_path
+                    jq_cmd
                 ));
                 script.push_str(&format!(
-                    "    OUTPUT_ESCAPED=$({} < \"$_CAPTURE_TMPFILE\" 2>/dev/null || echo \"\")\n",
-                    bin_path
+                    "    OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | {} -Rs . 2>/dev/null | sed 's/^\"//;s/\"$//' || echo \"\")\n",
+                    jq_cmd
                 ));
                 script.push_str("else\n");
                 script.push_str("    # Shell fallback: escape backslashes, quotes, tabs, and convert newlines to \\n\n");
-                script.push_str("    OUTPUT_ESCAPED=$(sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g; s/\\t/\\\\t/g' < \"$_CAPTURE_TMPFILE\" | awk '{printf \"%s%s\", (NR>1?\"\\\\n\":\"\"), $0}')\n");
+                script.push_str("    OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g; s/\\t/\\\\t/g' | awk '{printf \"%s%s\", (NR>1?\"\\\\n\":\"\"), $0}')\n");
                 script.push_str("fi\n");
             }
         }

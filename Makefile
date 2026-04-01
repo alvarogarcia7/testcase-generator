@@ -814,3 +814,15 @@ loc-report:
 	@mkdir -p reports/loc
 	./scripts/compute-loc.sh --output reports/loc/loc_statistics.txt
 .PHONY: loc-report
+
+test-rest:
+	touch .test-failing .test-failing-tmp
+	if [[ $$(wc -l .test-failing | awk '{print $$1}') -eq 0 ]]; then \
+		echo "No test-failing/empty found. Adding all"; \
+		rm -f .test-failing && touch .test-failing; \
+		find crates -maxdepth 1 -type d | cut -d'/' -f2 | grep -v "^\crates" >> .test-failing; \
+	fi
+	#cat .test-failing
+	while IFS= read -r line; do cargo test -p "$$line" || echo "$$line" >> .test-failing-tmp; done < ".test-failing"
+	-mv .test-failing-tmp .test-failing
+.PHONY: test-rest
