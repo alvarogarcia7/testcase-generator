@@ -182,7 +182,7 @@ def write_single_result_file(test_cases: list[dict[str, Any]], output_path: Path
     output_path.parent.mkdir(parents=True, exist_ok=True)
     
     with open(output_path, 'w', encoding='utf-8') as f:
-        yaml.dump_all(results, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
+        yaml.dump(results, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
     
     print(f"✓ Wrote: {output_path}")
     return len(results)
@@ -263,7 +263,7 @@ Examples:
   %(prog)s verification.json -o results/
   %(prog)s verification.json -o results/ --multiple
 
-  # Convert to a single YAML file with multiple documents
+  # Convert to a single YAML file as a plain array
   %(prog)s verification.json -o results/ --single
 
   # Convert with verbose output
@@ -280,7 +280,7 @@ Input JSON format:
 
 Output modes:
   --multiple (default): Each test case generates a separate file named {test_case_id}_result.yaml
-  --single: All test cases are written to a single YAML file as multiple documents
+  --single: All test cases are written to a single YAML file as a plain YAML array
 
 Output YAML format:
   Each result document contains:
@@ -317,7 +317,7 @@ Output YAML format:
     output_mode.add_argument(
         '--single',
         action='store_true',
-        help='Generate a single YAML file containing all test cases as multiple documents'
+        help='Generate a single YAML file containing all test cases as a plain YAML array'
     )
     
     parser.add_argument(
@@ -365,7 +365,7 @@ Output YAML format:
     # Summary
     if count > 0:
         if mode == "single":
-            print(f"\n✓ Successfully generated single YAML file with {count} result document(s) in: {args.output_dir}")
+            print(f"\n✓ Successfully generated single YAML array file with {count} result(s) in: {args.output_dir}")
         else:
             print(f"\n✓ Successfully generated {count} result YAML file(s) in: {args.output_dir}")
         return 0
