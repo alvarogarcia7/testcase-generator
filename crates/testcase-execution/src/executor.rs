@@ -274,15 +274,18 @@ impl TestExecutor {
 
         match method {
             JsonEscapingMethod::Jq => {
-                // Use jq directly
+                // Use jq with temporary file approach
                 let jq_cmd = jq_path
                     .as_ref()
                     .and_then(|p| p.to_str())
                     .unwrap_or("jq");
+                script.push_str("_TMPFILE=$(mktemp)\n");
+                script.push_str("printf '%s' \"$COMMAND_OUTPUT\" > \"$_TMPFILE\"\n");
                 script.push_str(&format!(
-                    "OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | {} -Rs '.' 2>/dev/null | sed 's/^\"//;s/\"$//' || echo \"\")\n",
+                    "OUTPUT_ESCAPED=$({} -Rs . < \"$_TMPFILE\" 2>/dev/null | sed 's/^\"//;s/\"$//' || echo \"\")\n",
                     jq_cmd
                 ));
+                script.push_str("rm -f \"$_TMPFILE\"\n");
             }
             JsonEscapingMethod::RustBinary => {
                 // Use json-escape binary directly
@@ -301,7 +304,7 @@ impl TestExecutor {
                 script.push_str("OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g; s/\\t/\\\\t/g' | awk '{printf \"%s%s\", (NR>1?\"\\\\n\":\"\"), $0}')\n");
             }
             JsonEscapingMethod::Auto => {
-                // Try jq first, then json-escape binary, then fallback to sed/awk
+                // Try jq first (with temp file), then json-escape binary, then fallback to sed/awk
                 let jq_cmd = jq_path
                     .as_ref()
                     .and_then(|p| p.to_str())
@@ -315,10 +318,13 @@ impl TestExecutor {
                     "if command -v {} >/dev/null 2>&1; then\n",
                     jq_cmd
                 ));
+                script.push_str("    _TMPFILE=$(mktemp)\n");
+                script.push_str("    printf '%s' \"$COMMAND_OUTPUT\" > \"$_TMPFILE\"\n");
                 script.push_str(&format!(
-                    "    OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | {} -Rs '.' 2>/dev/null | sed 's/^\"//;s/\"$//' || echo \"\")\n",
+                    "    OUTPUT_ESCAPED=$({} -Rs . < \"$_TMPFILE\" 2>/dev/null | sed 's/^\"//;s/\"$//' || echo \"\")\n",
                     jq_cmd
                 ));
+                script.push_str("    rm -f \"$_TMPFILE\"\n");
                 script.push_str(&format!(
                     "elif command -v {} >/dev/null 2>&1; then\n",
                     bin_path
