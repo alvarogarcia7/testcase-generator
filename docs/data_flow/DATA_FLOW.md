@@ -21,18 +21,18 @@ The Test Case Management System (TCMS) follows a five-layer architecture that pr
 ┌─────────────────────────────────────────────────────────────┐
 │  Layer 1: Test Definition (YAML)                            │
 │  - TestCase, TestSequence, Step definitions                 │
-│  - Initial conditions, prerequisites, verification rules     │
+│  - Initial conditions, prerequisites, verification rules    │
 └─────────────────────────────────────────────────────────────┘
                             ↓
 ┌─────────────────────────────────────────────────────────────┐
 │  Layer 2: Validation & Processing                           │
-│  - Schema validation, dependency resolution                  │
+│  - Schema validation, dependency resolution                 │
 │  - Variable hydration, BDD parsing                          │
 └─────────────────────────────────────────────────────────────┘
                             ↓
 ┌─────────────────────────────────────────────────────────────┐
-│  Layer 3: Script Generation                                  │
-│  - Bash script generation from TestCase                      │
+│  Layer 3: Script Generation                                 │
+│  - Bash script generation from TestCase                     │
 │  - Verification logic embedding, hook integration           │
 └─────────────────────────────────────────────────────────────┘
                             ↓
