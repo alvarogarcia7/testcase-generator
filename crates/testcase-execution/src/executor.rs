@@ -261,7 +261,7 @@ impl TestExecutor {
 
     /// Generate JSON escaping code based on configuration
     ///
-    /// Returns bash script code that reads from $COMMAND_OUTPUT and sets $OUTPUT_ESCAPED
+    /// Returns bash script code that reads from $_CAPTURE_TMPFILE and sets $OUTPUT_ESCAPED
     /// based on the configured JSON escaping method.
     fn generate_json_escaping_code(&self) -> String {
         let mut script = String::new();
@@ -274,37 +274,34 @@ impl TestExecutor {
 
         match method {
             JsonEscapingMethod::Jq => {
-                // Use jq with temporary file approach
+                // Use jq reading from the capture temp file
                 let jq_cmd = jq_path
                     .as_ref()
                     .and_then(|p| p.to_str())
                     .unwrap_or("jq");
-                script.push_str("_TMPFILE=$(mktemp)\n");
-                script.push_str("printf '%s' \"$COMMAND_OUTPUT\" > \"$_TMPFILE\"\n");
                 script.push_str(&format!(
-                    "OUTPUT_ESCAPED=$({} -Rs . < \"$_TMPFILE\" 2>/dev/null | sed 's/^\"//;s/\"$//' || echo \"\")\n",
+                    "OUTPUT_ESCAPED=$({} -Rs . < \"$_CAPTURE_TMPFILE\" 2>/dev/null | sed 's/^\"//;s/\"$//' || echo \"\")\n",
                     jq_cmd
                 ));
-                script.push_str("rm -f \"$_TMPFILE\"\n");
             }
             JsonEscapingMethod::RustBinary => {
-                // Use json-escape binary directly
+                // Use json-escape binary reading from the capture temp file
                 let bin_path = binary_path
                     .as_ref()
                     .and_then(|p| p.to_str())
                     .unwrap_or("json-escape");
                 script.push_str(&format!(
-                    "OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | {} 2>/dev/null || echo \"\")\n",
+                    "OUTPUT_ESCAPED=$({} < \"$_CAPTURE_TMPFILE\" 2>/dev/null || echo \"\")\n",
                     bin_path
                 ));
             }
             JsonEscapingMethod::ShellFallback => {
-                // Use sed/awk fallback directly
+                // Use sed/awk fallback reading from the capture temp file
                 script.push_str("# Shell fallback: escape backslashes, quotes, tabs, and convert newlines to \\n\n");
-                script.push_str("OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g; s/\\t/\\\\t/g' | awk '{printf \"%s%s\", (NR>1?\"\\\\n\":\"\"), $0}')\n");
+                script.push_str("OUTPUT_ESCAPED=$(sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g; s/\\t/\\\\t/g' < \"$_CAPTURE_TMPFILE\" | awk '{printf \"%s%s\", (NR>1?\"\\\\n\":\"\"), $0}')\n");
             }
             JsonEscapingMethod::Auto => {
-                // Try jq first (with temp file), then json-escape binary, then fallback to sed/awk
+                // Try jq first (reading from capture temp file), then json-escape binary, then fallback to sed/awk
                 let jq_cmd = jq_path
                     .as_ref()
                     .and_then(|p| p.to_str())
@@ -318,24 +315,21 @@ impl TestExecutor {
                     "if command -v {} >/dev/null 2>&1; then\n",
                     jq_cmd
                 ));
-                script.push_str("    _TMPFILE=$(mktemp)\n");
-                script.push_str("    printf '%s' \"$COMMAND_OUTPUT\" > \"$_TMPFILE\"\n");
                 script.push_str(&format!(
-                    "    OUTPUT_ESCAPED=$({} -Rs . < \"$_TMPFILE\" 2>/dev/null | sed 's/^\"//;s/\"$//' || echo \"\")\n",
+                    "    OUTPUT_ESCAPED=$({} -Rs . < \"$_CAPTURE_TMPFILE\" 2>/dev/null | sed 's/^\"//;s/\"$//' || echo \"\")\n",
                     jq_cmd
                 ));
-                script.push_str("    rm -f \"$_TMPFILE\"\n");
                 script.push_str(&format!(
                     "elif command -v {} >/dev/null 2>&1; then\n",
                     bin_path
                 ));
                 script.push_str(&format!(
-                    "    OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | {} 2>/dev/null || echo \"\")\n",
+                    "    OUTPUT_ESCAPED=$({} < \"$_CAPTURE_TMPFILE\" 2>/dev/null || echo \"\")\n",
                     bin_path
                 ));
                 script.push_str("else\n");
                 script.push_str("    # Shell fallback: escape backslashes, quotes, tabs, and convert newlines to \\n\n");
-                script.push_str("    OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g; s/\\t/\\\\t/g' | awk '{printf \"%s%s\", (NR>1?\"\\\\n\":\"\"), $0}')\n");
+                script.push_str("    OUTPUT_ESCAPED=$(sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g; s/\\t/\\\\t/g' < \"$_CAPTURE_TMPFILE\" | awk '{printf \"%s%s\", (NR>1?\"\\\\n\":\"\"), $0}')\n");
                 script.push_str("fi\n");
             }
         }
@@ -528,9 +522,13 @@ impl TestExecutor {
             script.push_str("CAPTURED_VAR_NAMES=\"\"\n\n");
         }
 
-        // Add trap to ensure JSON file is properly closed on any exit
-        script.push_str("# Trap to ensure JSON file is closed properly on exit\n");
+        // Add trap to ensure JSON file is properly closed on any exit and temp files are cleaned
+        script.push_str("# Trap to ensure JSON file is closed properly on exit and temp files are cleaned\n");
         script.push_str("cleanup() {\n");
+        script.push_str("    # Clean up temp capture file if it exists\n");
+        script.push_str("    if [ -n \"${_CAPTURE_TMPFILE:-}\" ] && [ -f \"$_CAPTURE_TMPFILE\" ]; then\n");
+        script.push_str("        rm -f \"$_CAPTURE_TMPFILE\"\n");
+        script.push_str("    fi\n");
         script.push_str("    if [ -f \"$JSON_LOG\" ]; then\n");
         script.push_str("        # Check if JSON_LOG ends with '[' or ','\n");
         script.push_str("        LAST_CHAR=$(tail -c 2 \"$JSON_LOG\" | head -c 1)\n");
@@ -1043,6 +1041,7 @@ impl TestExecutor {
                     test_case.id, sequence.id, step.step
                 ));
                 script.push_str("COMMAND_OUTPUT=\"\"\n");
+                script.push_str("_CAPTURE_TMPFILE=$(mktemp)\n");
                 script.push_str("set +e\n");
 
                 // Convert hydration placeholders (${#VAR_NAME} -> ${VAR_NAME})
@@ -1076,20 +1075,20 @@ impl TestExecutor {
                     script.push_str("    done\n");
                     script.push_str("fi\n");
 
-                    // Wrap command in subshell with braces and redirect stderr to stdout before piping to tee
-                    // This ensures both stdout and stderr are captured in the log file
+                    // Write command output to temp file and tee to log file
                     script.push_str(
-                        "COMMAND_OUTPUT=$({ eval \"$SUBSTITUTED_COMMAND\"; } 2>&1 | tee \"$LOG_FILE\")\n",
+                        "{ eval \"$SUBSTITUTED_COMMAND\"; } 2>&1 | tee \"$LOG_FILE\" > \"$_CAPTURE_TMPFILE\"\n",
                     );
                 } else {
                     // No substitution needed - inline the command directly
                     script.push_str(&format!(
-                        "COMMAND_OUTPUT=$({{ {}; }} 2>&1 | tee \"$LOG_FILE\")\n",
+                        "{{ {}; }} 2>&1 | tee \"$LOG_FILE\" > \"$_CAPTURE_TMPFILE\"\n",
                         converted_command
                     ));
                 }
 
                 script.push_str("EXIT_CODE=$?\n");
+                script.push_str("COMMAND_OUTPUT=$(cat \"$_CAPTURE_TMPFILE\")\n");
                 script.push_str("set -e\n\n");
 
                 // Variable capture: extract values from COMMAND_OUTPUT using regex patterns or commands
@@ -3082,8 +3081,9 @@ mod tests {
         assert!(script.contains("# Replace ${var_name} pattern"));
         assert!(script.contains("SUBSTITUTED_COMMAND=$(echo \"$SUBSTITUTED_COMMAND\" | sed \"s/\\${$var_name}/$escaped_value/g\")"));
         assert!(script.contains(
-            "COMMAND_OUTPUT=$({ eval \"$SUBSTITUTED_COMMAND\"; } 2>&1 | tee \"$LOG_FILE\")"
+            "{ eval \"$SUBSTITUTED_COMMAND\"; } 2>&1 | tee \"$LOG_FILE\" > \"$_CAPTURE_TMPFILE\""
         ));
+        assert!(script.contains("COMMAND_OUTPUT=$(cat \"$_CAPTURE_TMPFILE\")"));
     }
 
     #[test]
