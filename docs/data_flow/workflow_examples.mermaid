@@ -1,0 +1,297 @@
+%% ==============================================================================
+%% Test Case Manager - Workflow Examples
+%% ==============================================================================
+%% This file contains sequence diagrams showing end-to-end data flow for major
+%% use cases in the Test Case Management System.
+%% ==============================================================================
+
+%% ==============================================================================
+%% Workflow 1: Test Creation Flow
+%% ==============================================================================
+%% Shows the flow of data from test case creation through UI to storage and validation
+%% ==============================================================================
+
+sequenceDiagram
+    participant User as User/Tester
+    participant Editor as editor<br/>(interactive CLI)
+    participant UI as testcase-ui<br/>(UI components)
+    participant Storage as testcase-storage<br/>(persistence layer)
+    participant YAML as Test Case YAML<br/>(testcases/*.yaml)
+    participant Validation as testcase-validation<br/>(schema validator)
+    
+    User->>Editor: testcase-manager create
+    Note over Editor: Interactive mode
+    
+    Editor->>UI: prompt_for_requirement()<br/>prompt_for_item()<br/>prompt_for_tc()
+    UI-->>Editor: String: requirement<br/>i64: item<br/>i64: tc
+    
+    Editor->>UI: prompt_for_description()
+    UI-->>Editor: String: description
+    
+    Note over Editor: Build test case structure
+    Editor->>Editor: Create TestCase instance
+    
+    Editor->>UI: prompt_for_test_sequence()
+    UI-->>Editor: TestSequence{<br/>  id: i64,<br/>  name: String,<br/>  description: String,<br/>  initial_conditions: InitialConditions,<br/>  steps: Vec&lt;Step&gt;<br/>}
+    
+    loop For each step
+        Editor->>UI: prompt_for_step()
+        UI-->>Editor: Step{<br/>  step: i64,<br/>  description: String,<br/>  command: String,<br/>  manual: Option&lt;bool&gt;,<br/>  expected: Expected{<br/>    result: String,<br/>    output: String<br/>  },<br/>  verification: Verification{<br/>    result: VerificationExpression,<br/>    output: VerificationExpression<br/>  }<br/>}
+        Editor->>Editor: Add step to sequence
+    end
+    
+    Editor->>Editor: Add sequence to test_sequences: Vec&lt;TestSequence&gt;
+    
+    Note over Editor,Storage: Serialize and persist
+    Editor->>Storage: save_test_case(TestCase)
+    Note over Storage: TestCase{<br/>  requirement: String,<br/>  item: i64,<br/>  tc: i64,<br/>  id: String,<br/>  description: String,<br/>  test_sequences: Vec&lt;TestSequence&gt;,<br/>  prerequisites: Option&lt;Vec&lt;Prerequisite&gt;&gt;,<br/>  hydration_vars: Option&lt;HashMap&lt;String, EnvVariable&gt;&gt;<br/>}
+    
+    Storage->>Storage: Serialize to YAML
+    Storage->>YAML: Write YAML file<br/>(serde_yaml::to_string)
+    YAML-->>Storage: PathBuf: file path
+    
+    Note over Storage,Validation: Validate against schema
+    Storage->>Validation: validate_yaml(yaml_content)
+    Validation->>Validation: Load JSON schema<br/>(schemas/test_case.schema.json)
+    Validation->>Validation: Parse YAML to JSON
+    Validation->>Validation: JSONSchema::compile()
+    Validation->>Validation: schema.validate(json)
+    
+    alt Validation success
+        Validation-->>Storage: Result&lt;(), ValidationError&gt;::Ok
+        Storage-->>Editor: Result&lt;PathBuf&gt;::Ok(path)
+        Editor-->>User: Test case saved: {id}.yaml
+    else Validation failure
+        Validation-->>Storage: Result&lt;(), ValidationError&gt;::Err<br/>Vec&lt;ValidationErrorDetail&gt;{<br/>  path: String,<br/>  constraint: String,<br/>  found_value: String,<br/>  expected_constraint: String<br/>}
+        Storage-->>Editor: Error: validation failed
+        Editor-->>User: Validation errors displayed
+    end
+
+
+%% ==============================================================================
+%% Workflow 2: Test Execution Flow
+%% ==============================================================================
+%% Shows the complete flow from YAML to bash script execution to verification
+%% ==============================================================================
+
+sequenceDiagram
+    participant User as User/Tester
+    participant Executor as test-executor<br/>(script generator)
+    participant YAML as Test Case YAML<br/>(testcases/*.yaml)
+    participant Storage as testcase-storage<br/>(loader/parser)
+    participant Execution as testcase-execution<br/>(bash generator)
+    participant Bash as Bash Script<br/>(generated .sh)
+    participant DUT as Device/System<br/>Under Test
+    participant LogFile as Execution Log JSON<br/>(test_execution.log)
+    participant Verifier as testcase-verification<br/>(comparator)
+    participant Report as Verification Report<br/>(JSON/YAML/XML)
+    
+    User->>Executor: test-executor generate {id}.yaml
+    
+    Executor->>YAML: Read YAML file
+    YAML-->>Executor: String: yaml_content
+    
+    Executor->>Storage: load_test_case(yaml_content)
+    Storage->>Storage: Parse YAML<br/>(serde_yaml::from_str)
+    Storage-->>Executor: TestCase{<br/>  id: String,<br/>  test_sequences: Vec&lt;TestSequence&gt;,<br/>  prerequisites: Option&lt;Vec&lt;Prerequisite&gt;&gt;,<br/>  hydration_vars: Option&lt;HashMap&lt;String, EnvVariable&gt;&gt;,<br/>  hooks: Option&lt;Hooks&gt;<br/>}
+    
+    Executor->>Execution: generate_bash_script(TestCase)
+    
+    Note over Execution: Process hydration vars
+    Execution->>Execution: Generate env var checks<br/>(HashMap&lt;String, EnvVariable&gt;)
+    
+    Note over Execution: Process prerequisites
+    loop For each prerequisite
+        Execution->>Execution: Generate prerequisite check<br/>Prerequisite{<br/>  type: PrerequisiteType,<br/>  description: String,<br/>  verification_command: Option&lt;String&gt;<br/>}
+    end
+    
+    Note over Execution: Process hooks
+    Execution->>Execution: Generate hook functions<br/>Hooks{<br/>  script_start: Option&lt;HookConfig&gt;,<br/>  before_step: Option&lt;HookConfig&gt;,<br/>  after_step: Option&lt;HookConfig&gt;<br/>}
+    
+    Note over Execution: Process test sequences
+    loop For each TestSequence
+        loop For each Step
+            Execution->>Execution: Generate step execution<br/>Step{<br/>  step: i64,<br/>  command: String,<br/>  capture_vars: Option&lt;CaptureVarsFormat&gt;,<br/>  verification: Verification<br/>}
+            Execution->>Execution: Generate verification logic<br/>Verification{<br/>  result: VerificationExpression,<br/>  output: VerificationExpression,<br/>  output_file: Option&lt;VerificationExpression&gt;<br/>}
+        end
+    end
+    
+    Execution->>Execution: Generate JSON logging code<br/>(TestStepExecutionEntry format)
+    Execution-->>Executor: String: bash_script_content
+    
+    Executor->>Bash: Write to file<br/>(chmod +x)
+    Bash-->>Executor: PathBuf: script_path
+    
+    User->>Bash: Execute ./{script}.sh
+    
+    Note over Bash,DUT: Execute test steps
+    loop For each step
+        alt Manual step
+            Bash->>User: Prompt for manual action<br/>manual: true
+            User->>DUT: Perform manual action
+            User->>Bash: Confirm completion
+        else Automated step
+            Bash->>DUT: Execute command<br/>command: String
+            DUT-->>Bash: Output: String<br/>Exit code: i32
+        end
+        
+        Bash->>Bash: Capture output to COMMAND_OUTPUT
+        
+        opt Has capture_vars
+            Bash->>Bash: Extract variables<br/>CaptureVar{<br/>  name: String,<br/>  capture: Option&lt;String&gt;,<br/>  command: Option&lt;String&gt;<br/>}
+        end
+        
+        Bash->>Bash: Evaluate verification expressions<br/>result_verification_pass: bool<br/>output_verification_pass: bool
+        
+        Bash->>LogFile: Append JSON entry<br/>TestStepExecutionEntry{<br/>  test_sequence: i64,<br/>  step: i64,<br/>  command: String,<br/>  exit_code: i32,<br/>  output: String,<br/>  timestamp: Option&lt;String&gt;,<br/>  result_verification_pass: bool,<br/>  output_verification_pass: bool<br/>}
+    end
+    
+    Bash-->>User: Execution complete<br/>Exit code: 0 or 1
+    
+    Note over User,Verifier: Verification phase
+    User->>Verifier: verifier -f logs/ -y testcases/
+    
+    Verifier->>LogFile: Read execution logs
+    LogFile-->>Verifier: Vec&lt;TestExecutionLog&gt;{<br/>  test_case_id: String,<br/>  sequence_id: i64,<br/>  entries: Vec&lt;TestStepExecutionEntry&gt;<br/>}
+    
+    Verifier->>YAML: Read test case YAML
+    YAML-->>Verifier: TestCase
+    
+    Verifier->>Verifier: verify_test_case(TestCase, Vec&lt;TestExecutionLog&gt;)
+    
+    loop For each step
+        Verifier->>Verifier: Compare expected vs actual<br/>Expected{<br/>  result: String,<br/>  output: String<br/>}<br/>vs<br/>TestStepExecutionEntry{<br/>  exit_code: i32,<br/>  output: String<br/>}
+        
+        Verifier->>Verifier: Create StepVerificationResult{<br/>  step_number: i64,<br/>  passed: bool,<br/>  skipped: bool,<br/>  field_diffs: Vec&lt;FieldDiff&gt;{<br/>    field_name: String,<br/>    expected: String,<br/>    actual: String,<br/>    matched: bool<br/>  }<br/>}
+    end
+    
+    Verifier->>Verifier: Aggregate results<br/>VerificationReport{<br/>  total_steps: usize,<br/>  passed_steps: usize,<br/>  failed_steps: usize,<br/>  step_results: Vec&lt;StepVerificationResult&gt;,<br/>  overall_status: VerificationStatus<br/>}
+    
+    Verifier->>Report: Generate report(format)<br/>TestCaseVerificationResult{<br/>  test_case_id: String,<br/>  requirement: String,<br/>  item: i64,<br/>  tc: i64,<br/>  verification_report: VerificationReport<br/>}
+    
+    alt Format: JSON
+        Report-->>Verifier: JSON string<br/>(serde_json::to_string_pretty)
+    else Format: YAML
+        Report-->>Verifier: YAML string<br/>(serde_yaml::to_string)
+    else Format: XML
+        Report-->>Verifier: XML string<br/>(&lt;test_results&gt;...&lt;/test_results&gt;)
+    end
+    
+    Verifier-->>User: Report saved to output/
+
+
+%% ==============================================================================
+%% Workflow 3: Audit & Reporting Flow
+%% ==============================================================================
+%% Shows audit log signing, report generation, and traceability tracking
+%% ==============================================================================
+
+sequenceDiagram
+    participant User as User/Tester
+    participant TestExec as test-executor<br/>(generates script)
+    participant Bash as Bash Script<br/>(executes tests)
+    participant AuditLog as Audit Log JSON<br/>(operations.audit.log)
+    participant Signer as audit-verifier<br/>(sign-audit-log)
+    participant Signature as Signature File<br/>(.audit.log.sig)
+    participant Verifier as verifier<br/>(report generator)
+    participant XMLReport as XML Report<br/>(test_results.xml)
+    participant Traceability as audit-traceability<br/>(tracks operations)
+    participant TraceDB as Traceability DB<br/>(operation history)
+    
+    Note over User,AuditLog: Operation auditing
+    
+    User->>TestExec: test-executor generate test.yaml
+    activate TestExec
+    
+    TestExec->>TestExec: Create AuditLogger
+    TestExec->>AuditLog: Log operation<br/>AuditLogEntry{<br/>  timestamp: DateTime&lt;Utc&gt;,<br/>  operation: OperationType::GenerateScript,<br/>  user: Option&lt;String&gt;,<br/>  hostname: Option&lt;String&gt;,<br/>  input_files: Vec&lt;PathBuf&gt;,<br/>  output_files: Vec&lt;PathBuf&gt;,<br/>  input_file_hashes: Vec&lt;(PathBuf, String)&gt;,<br/>  output_file_hashes: Vec&lt;(PathBuf, String)&gt;,<br/>  status: OperationStatus::Success,<br/>  duration_ms: Option&lt;u64&gt;<br/>}
+    
+    TestExec->>AuditLog: Write to file<br/>AuditLog{<br/>  version: String,<br/>  entries: Vec&lt;AuditLogEntry&gt;,<br/>  created_at: DateTime&lt;Utc&gt;,<br/>  last_updated: DateTime&lt;Utc&gt;<br/>}
+    deactivate TestExec
+    
+    User->>Bash: Execute test.sh
+    activate Bash
+    
+    Bash->>AuditLog: Log execution start<br/>OperationType::ExecuteScript
+    Note over Bash: Test execution...
+    Bash->>AuditLog: Log execution complete<br/>OperationStatus::Success
+    deactivate Bash
+    
+    Note over User,Signature: Audit log signing
+    
+    User->>Signer: sign-audit-log operations.audit.log
+    activate Signer
+    
+    Signer->>AuditLog: Read audit log
+    AuditLog-->>Signer: AuditLog{<br/>  entries: Vec&lt;AuditLogEntry&gt;<br/>}
+    
+    Signer->>Signer: Generate private/public key pair<br/>(Ed25519)
+    Signer->>Signer: Serialize audit log to bytes
+    Signer->>Signer: Compute SHA-256 hash<br/>Hash: [u8; 32]
+    Signer->>Signer: Sign hash with private key<br/>Signature: Vec&lt;u8&gt;
+    
+    Signer->>Signature: Write signature file<br/>SignatureFile{<br/>  signature: Vec&lt;u8&gt;,<br/>  public_key: Vec&lt;u8&gt;,<br/>  algorithm: String ("Ed25519"),<br/>  timestamp: DateTime&lt;Utc&gt;,<br/>  file_hash: String (SHA-256)<br/>}
+    deactivate Signer
+    
+    Note over User,XMLReport: Report generation
+    
+    User->>Verifier: verifier -f logs/ -y testcases/ --format xml
+    activate Verifier
+    
+    Verifier->>AuditLog: Log verification start<br/>OperationType::VerifyTest
+    
+    Verifier->>Verifier: Load test cases and logs
+    Verifier->>Verifier: Verify test executions<br/>VerificationReport
+    
+    Verifier->>Verifier: Generate BatchVerificationReport{<br/>  test_case_results: Vec&lt;TestCaseVerificationResult&gt;,<br/>  total_test_cases: usize,<br/>  passed_test_cases: usize,<br/>  failed_test_cases: usize<br/>}
+    
+    Verifier->>Verifier: Format as XML<br/>ContainerReport{<br/>  title: String,<br/>  project: String,<br/>  test_date: String,<br/>  environment: Option&lt;String&gt;,<br/>  results: Vec&lt;TestCaseVerificationResult&gt;<br/>}
+    
+    Verifier->>XMLReport: Write XML report<br/>&lt;test_results&gt;<br/>  &lt;summary&gt;...&lt;/summary&gt;<br/>  &lt;test_case id="..." requirement="..."&gt;<br/>    &lt;sequence id="..."&gt;<br/>      &lt;step number="..." status="..."&gt;<br/>        &lt;expected&gt;...&lt;/expected&gt;<br/>        &lt;actual&gt;...&lt;/actual&gt;<br/>      &lt;/step&gt;<br/>    &lt;/sequence&gt;<br/>  &lt;/test_case&gt;<br/>&lt;/test_results&gt;
+    
+    Verifier->>AuditLog: Log verification complete<br/>OperationStatus::Success<br/>output_files: [xml_report_path]
+    deactivate Verifier
+    
+    Note over User,TraceDB: Traceability tracking
+    
+    User->>Traceability: Track all operations
+    activate Traceability
+    
+    Traceability->>AuditLog: Read all audit entries
+    AuditLog-->>Traceability: Vec&lt;AuditLogEntry&gt;
+    
+    loop For each audit entry
+        Traceability->>Traceability: Extract metadata<br/>OperationType<br/>input/output file hashes<br/>timestamps
+        
+        Traceability->>Traceability: Build dependency graph<br/>InputFile -> Operation -> OutputFile
+        
+        Traceability->>TraceDB: Store operation record<br/>OperationRecord{<br/>  operation_id: String,<br/>  operation_type: OperationType,<br/>  timestamp: DateTime&lt;Utc&gt;,<br/>  input_artifacts: Vec&lt;Artifact{<br/>    path: PathBuf,<br/>    hash: String<br/>  }&gt;,<br/>  output_artifacts: Vec&lt;Artifact&gt;,<br/>  user: String,<br/>  status: OperationStatus<br/>}
+    end
+    
+    Traceability->>Traceability: Generate traceability matrix<br/>TestCase -> Script -> Execution -> Log -> Report
+    
+    Traceability->>TraceDB: Query operation history
+    TraceDB-->>Traceability: Vec&lt;OperationRecord&gt;
+    
+    Traceability->>Traceability: Generate compliance report<br/>TraceabilityReport{<br/>  test_case_id: String,<br/>  operation_chain: Vec&lt;OperationRecord&gt;,<br/>  all_artifacts_signed: bool,<br/>  complete_chain: bool<br/>}
+    
+    deactivate Traceability
+    
+    User->>Signer: verify-audit-log operations.audit.log.sig
+    activate Signer
+    
+    Signer->>Signature: Read signature file
+    Signature-->>Signer: SignatureFile{<br/>  signature: Vec&lt;u8&gt;,<br/>  public_key: Vec&lt;u8&gt;<br/>}
+    
+    Signer->>AuditLog: Read audit log
+    AuditLog-->>Signer: AuditLog
+    
+    Signer->>Signer: Compute hash of audit log
+    Signer->>Signer: Verify signature with public key<br/>Result&lt;(), SignatureError&gt;
+    
+    alt Verification success
+        Signer-->>User: Signature valid ✓<br/>Audit log integrity confirmed
+    else Verification failure
+        Signer-->>User: Signature invalid ✗<br/>Audit log may be tampered
+    end
+    deactivate Signer
