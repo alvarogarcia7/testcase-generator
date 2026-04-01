@@ -435,8 +435,8 @@ impl ContainerReport {
         };
 
         Self {
-            doc_type: None,
-            schema: None,
+            doc_type: Some("test_results_container".to_string()),
+            schema: Some("tcms/test-results-container.schema.v1.json".to_string()),
             title,
             project,
             test_date: batch_report.generated_at,
@@ -1922,6 +1922,8 @@ mod tests {
         let yaml = verifier.generate_report(&[report], "yaml", config).unwrap();
 
         // Verify YAML structure
+        assert!(yaml.contains("type: test_results_container"));
+        assert!(yaml.contains("schema: tcms/test-results-container.schema.v1.json"));
         assert!(yaml.contains("title: Test Report"));
         assert!(yaml.contains("project: Test Project"));
         assert!(yaml.contains("test_date:"));
@@ -1936,6 +1938,11 @@ mod tests {
 
         // Verify it can be deserialized
         let parsed: ContainerReport = serde_yaml::from_str(&yaml).unwrap();
+        assert_eq!(parsed.doc_type, Some("test_results_container".to_string()));
+        assert_eq!(
+            parsed.schema,
+            Some("tcms/test-results-container.schema.v1.json".to_string())
+        );
         assert_eq!(parsed.title, "Test Report");
         assert_eq!(parsed.project, "Test Project");
         assert_eq!(parsed.metadata.execution_duration, 0.0);
@@ -1995,6 +2002,10 @@ mod tests {
             .generate_report(&[report1, report2], "yaml", config)
             .unwrap();
 
+        // Verify envelope fields are present
+        assert!(yaml.contains("type: test_results_container"));
+        assert!(yaml.contains("schema: tcms/test-results-container.schema.v1.json"));
+
         // Verify execution duration is calculated (100 seconds)
         assert!(yaml.contains("execution_duration: 100"));
         assert!(yaml.contains("total_test_cases: 2"));
@@ -2002,6 +2013,11 @@ mod tests {
 
         // Verify it can be deserialized
         let parsed: ContainerReport = serde_yaml::from_str(&yaml).unwrap();
+        assert_eq!(parsed.doc_type, Some("test_results_container".to_string()));
+        assert_eq!(
+            parsed.schema,
+            Some("tcms/test-results-container.schema.v1.json".to_string())
+        );
         assert_eq!(parsed.title, "Multi-Report Test");
         assert_eq!(parsed.metadata.execution_duration, 100.0);
         assert_eq!(parsed.metadata.total_test_cases, 2);
@@ -2038,6 +2054,8 @@ mod tests {
         let json = verifier.generate_report(&[report], "json", config).unwrap();
 
         // Verify JSON structure
+        assert!(json.contains("\"type\": \"test_results_container\""));
+        assert!(json.contains("\"schema\": \"tcms/test-results-container.schema.v1.json\""));
         assert!(json.contains("\"title\": \"JSON Test\""));
         assert!(json.contains("\"project\": \"JSON Project\""));
         assert!(json.contains("\"test_date\""));
@@ -2048,6 +2066,11 @@ mod tests {
 
         // Verify it can be deserialized
         let parsed: ContainerReport = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.doc_type, Some("test_results_container".to_string()));
+        assert_eq!(
+            parsed.schema,
+            Some("tcms/test-results-container.schema.v1.json".to_string())
+        );
         assert_eq!(parsed.title, "JSON Test");
         assert_eq!(parsed.project, "JSON Project");
         assert_eq!(parsed.metadata.execution_duration, 0.0);
