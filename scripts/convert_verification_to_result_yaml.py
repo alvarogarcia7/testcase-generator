@@ -133,17 +133,35 @@ def write_result_yaml(result: dict[str, Any], output_path: Path) -> None:
     print(f"✓ Wrote: {output_path}")
 
 
-def process_verification_json(input_path: Path, output_dir: Path, verbose: bool = False) -> int:
+def write_results_yaml_single(results: list[dict[str, Any]], output_path: Path) -> None:
+    """
+    Write multiple result dictionaries to a single YAML file.
+    
+    Args:
+        results: List of result dictionaries
+        output_path: Path to write the YAML file
+    """
+    # Ensure parent directory exists
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    with open(output_path, 'w', encoding='utf-8') as f:
+        yaml.dump_all(results, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
+    
+    print(f"✓ Wrote: {output_path}")
+
+
+def process_verification_json(input_path: Path, output_dir: Path, single_file: bool = False, verbose: bool = False) -> int:
     """
     Process a verification JSON file and generate result YAML files.
     
     Args:
         input_path: Path to the input JSON file
-        output_dir: Directory to write output YAML files
+        output_dir: Directory to write output YAML files (or parent directory if single_file=True)
+        single_file: If True, write all results to a single YAML file; if False, write individual files
         verbose: Whether to print verbose output
         
     Returns:
-        Number of result files generated
+        Number of result files/documents generated
     """
     if verbose:
         print(f"Reading: {input_path}")
@@ -182,33 +200,55 @@ def process_verification_json(input_path: Path, output_dir: Path, verbose: bool 
         return 0
     
     # Process each test case
-    count = 0
-    for test_case in test_cases:
-        test_case_id = test_case.get("test_case_id", "unknown")
+    if single_file:
+        # Single file mode: collect all results and write to one file
+        results = []
+        for test_case in test_cases:
+            result = convert_test_case_to_result(test_case)
+            results.append(result)
         
-        # Convert to result structure
-        result = convert_test_case_to_result(test_case)
-        
-        # Generate output filename
-        output_filename = f"{test_case_id}_result.yaml"
+        # Determine output filename based on input filename
+        if input_path.stem:
+            output_filename = f"{input_path.stem}_results.yaml"
+        else:
+            output_filename = "results.yaml"
         output_path = output_dir / output_filename
         
-        # Write result YAML
-        write_result_yaml(result, output_path)
-        count += 1
-    
-    return count
+        write_results_yaml_single(results, output_path)
+        return len(results)
+    else:
+        # Multiple files mode: write individual files
+        count = 0
+        for test_case in test_cases:
+            test_case_id = test_case.get("test_case_id", "unknown")
+            
+            # Convert to result structure
+            result = convert_test_case_to_result(test_case)
+            
+            # Generate output filename
+            output_filename = f"{test_case_id}_result.yaml"
+            output_path = output_dir / output_filename
+            
+            # Write result YAML
+            write_result_yaml(result, output_path)
+            count += 1
+        
+        return count
 
 
 def main() -> int:
     """Main entry point."""
     parser = argparse.ArgumentParser(
-        description="Convert verifier JSON output to individual YAML result files",
+        description="Convert verifier JSON output to YAML result files",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Convert a single verification JSON file
+  # Convert to multiple individual files (default)
   %(prog)s verification.json -o results/
+  %(prog)s verification.json -o results/ --multiple
+
+  # Convert to a single YAML file with multiple documents
+  %(prog)s verification.json -o results/ --single
 
   # Convert with verbose output
   %(prog)s verification.json -o results/ -v
@@ -222,8 +262,12 @@ Input JSON format:
   2. BatchVerificationReport: {"test_cases": [...], "total_test_cases": N, ...}
   3. TestCaseVerificationResult: {"test_case_id": "...", "description": "...", ...}
 
+Output modes:
+  --multiple (default): Each test case generates a separate file named {test_case_id}_result.yaml
+  --single: All test cases are written to a single YAML file as multiple documents
+
 Output YAML format:
-  Each test case generates a file named {test_case_id}_result.yaml with:
+  Each result document contains:
   - type: result
   - test_case_id, description
   - sequences with step_results (Pass/Fail/NotExecuted variants)
@@ -244,7 +288,20 @@ Output YAML format:
         '-o', '--output-dir',
         type=Path,
         required=True,
-        help='Output directory for result YAML files'
+        help='Output directory for result YAML files (in --multiple mode) or parent directory for single output file (in --single mode)'
+    )
+    
+    # Mutually exclusive group for output mode
+    output_mode = parser.add_mutually_exclusive_group()
+    output_mode.add_argument(
+        '--multiple',
+        action='store_true',
+        help='Generate multiple individual YAML files, one per test case (default)'
+    )
+    output_mode.add_argument(
+        '--single',
+        action='store_true',
+        help='Generate a single YAML file containing all test cases as multiple documents'
     )
     
     parser.add_argument(
@@ -254,6 +311,9 @@ Output YAML format:
     )
     
     args = parser.parse_args()
+    
+    # Determine output mode: default to multiple if neither flag is specified
+    single_file = args.single
     
     # Handle stdin input
     if args.input is None:
@@ -268,7 +328,7 @@ Output YAML format:
                 tmp.write(stdin_content)
                 tmp_path = Path(tmp.name)
             
-            count = process_verification_json(tmp_path, args.output_dir, args.verbose)
+            count = process_verification_json(tmp_path, args.output_dir, single_file, args.verbose)
             tmp_path.unlink()  # Clean up temporary file
         except Exception as e:
             print(f"✗ Error reading from stdin: {e}")
@@ -284,11 +344,14 @@ Output YAML format:
             return 1
         
         # Process input file
-        count = process_verification_json(args.input, args.output_dir, args.verbose)
+        count = process_verification_json(args.input, args.output_dir, single_file, args.verbose)
     
     # Summary
     if count > 0:
-        print(f"\n✓ Successfully generated {count} result YAML file(s) in: {args.output_dir}")
+        if single_file:
+            print(f"\n✓ Successfully generated single YAML file with {count} result document(s) in: {args.output_dir}")
+        else:
+            print(f"\n✓ Successfully generated {count} result YAML file(s) in: {args.output_dir}")
         return 0
     else:
         print(f"\n✗ No result files generated")
