@@ -165,8 +165,8 @@ else
     fail "Verification output should show overall pass"
 fi
 
-# Test 2: Convert verification output to result YAML
-section "Test 2: Convert Verification Output to Result YAML"
+# Test 2: Convert verification output to result YAML (Multiple Mode)
+section "Test 2: Convert Verification Output to Result YAML (Multiple Mode)"
 
 CONVERT_SCRIPT="$PROJECT_ROOT/scripts/convert_verification_to_result_yaml.py"
 
@@ -176,13 +176,14 @@ if [[ ! -f "$CONVERT_SCRIPT" ]]; then
 fi
 pass "Conversion script found"
 
-log_info "Converting verification JSON to result YAML..."
+log_info "Converting verification JSON to result YAML with --multiple flag..."
 if uv run python3 "$CONVERT_SCRIPT" \
     "$VERIFICATION_OUTPUT" \
-    -o "$RESULT_YAML_DIR" > /dev/null 2>&1; then
-    pass "Conversion completed successfully"
+    -o "$RESULT_YAML_DIR" \
+    --multiple > /dev/null 2>&1; then
+    pass "Conversion completed successfully (--multiple mode)"
 else
-    fail "Conversion failed"
+    fail "Conversion failed (--multiple mode)"
     exit 1
 fi
 
@@ -211,6 +212,135 @@ if grep -q "overall_pass: true" "$RESULT_YAML_FILE"; then
     pass "Result YAML shows overall pass"
 else
     fail "Result YAML should show overall pass"
+fi
+
+# Test 2b: Convert verification output to result YAML (Single Mode)
+section "Test 2b: Convert Verification Output to Result YAML (Single Mode)"
+
+SINGLE_RESULT_YAML_FILE="$TEMP_DIR/single_result.yaml"
+
+log_info "Converting verification JSON to result YAML with --single flag..."
+if uv run python3 "$CONVERT_SCRIPT" \
+    "$VERIFICATION_OUTPUT" \
+    -o "$SINGLE_RESULT_YAML_FILE" \
+    --single > /dev/null 2>&1; then
+    pass "Conversion completed successfully (--single mode)"
+else
+    fail "Conversion failed (--single mode)"
+    exit 1
+fi
+
+# Verify single result YAML file was created
+if [[ ! -f "$SINGLE_RESULT_YAML_FILE" ]]; then
+    fail "Single result YAML file not created: $(basename "$SINGLE_RESULT_YAML_FILE")"
+    exit 1
+fi
+pass "Single result YAML file created: $(basename "$SINGLE_RESULT_YAML_FILE")"
+
+# Validate single file is non-empty
+FILE_SIZE=$(stat -f%z "$SINGLE_RESULT_YAML_FILE" 2>/dev/null || stat -c%s "$SINGLE_RESULT_YAML_FILE" 2>/dev/null || echo "0")
+if [[ $FILE_SIZE -gt 0 ]]; then
+    pass "Single result YAML file has content ($FILE_SIZE bytes)"
+else
+    fail "Single result YAML file is empty"
+fi
+
+# Parse and validate YAML array structure using Python
+log_info "Validating single YAML array structure..."
+VALIDATION_RESULT=$(uv run python3 -c "
+import sys
+import yaml
+
+try:
+    with open('$SINGLE_RESULT_YAML_FILE', 'r') as f:
+        data = yaml.safe_load(f)
+    
+    # Check if data is a list
+    if not isinstance(data, list):
+        print('ERROR: Root element is not a YAML array')
+        sys.exit(1)
+    
+    # Check number of results
+    num_results = len(data)
+    if num_results != 1:
+        print(f'ERROR: Expected 1 result, found {num_results}')
+        sys.exit(1)
+    
+    # Validate first result structure
+    result = data[0]
+    
+    # Check required fields
+    required_fields = ['type', 'test_case_id', 'description', 'sequences', 
+                       'total_steps', 'passed_steps', 'failed_steps', 
+                       'not_executed_steps', 'overall_pass']
+    
+    missing_fields = [field for field in required_fields if field not in result]
+    if missing_fields:
+        print(f'ERROR: Missing required fields: {missing_fields}')
+        sys.exit(1)
+    
+    # Validate field values
+    if result['type'] != 'result':
+        print(f\"ERROR: type field should be 'result', got '{result['type']}'\")
+        sys.exit(1)
+    
+    if result['test_case_id'] != 'TEST_SUCCESS_001':
+        print(f\"ERROR: test_case_id should be 'TEST_SUCCESS_001', got '{result['test_case_id']}'\")
+        sys.exit(1)
+    
+    if not isinstance(result['sequences'], list):
+        print('ERROR: sequences field is not a list')
+        sys.exit(1)
+    
+    if result['overall_pass'] != True:
+        print(f\"ERROR: overall_pass should be True, got {result['overall_pass']}\")
+        sys.exit(1)
+    
+    # Validate sequences structure
+    for seq in result['sequences']:
+        if 'sequence_id' not in seq or 'name' not in seq or 'step_results' not in seq:
+            print('ERROR: Sequence missing required fields (sequence_id, name, step_results)')
+            sys.exit(1)
+        
+        if not isinstance(seq['step_results'], list):
+            print('ERROR: step_results is not a list')
+            sys.exit(1)
+        
+        # Validate step_results contain Pass/Fail/NotExecuted variants
+        for step_result in seq['step_results']:
+            if not any(key in step_result for key in ['Pass', 'Fail', 'NotExecuted']):
+                print('ERROR: step_result missing Pass/Fail/NotExecuted variant')
+                sys.exit(1)
+    
+    print('OK')
+    sys.exit(0)
+
+except Exception as e:
+    print(f'ERROR: {str(e)}')
+    sys.exit(1)
+" 2>&1)
+
+if [[ "$VALIDATION_RESULT" == "OK" ]]; then
+    pass "Single YAML array structure is valid"
+    pass "Single YAML contains expected 1 test case result"
+    pass "Single YAML test case has correct structure and fields"
+    pass "Single YAML sequences and step_results are properly formatted"
+else
+    fail "Single YAML validation failed: $VALIDATION_RESULT"
+    exit 1
+fi
+
+# Verify single mode output contains same data as multiple mode output
+if grep -q "test_case_id: TEST_SUCCESS_001" "$SINGLE_RESULT_YAML_FILE"; then
+    pass "Single mode output contains correct test case ID"
+else
+    fail "Single mode output missing correct test case ID"
+fi
+
+if grep -q "overall_pass: true" "$SINGLE_RESULT_YAML_FILE"; then
+    pass "Single mode output shows overall pass"
+else
+    fail "Single mode output should show overall pass"
 fi
 
 # Test 3: Check for test-plan-doc-gen availability
@@ -247,7 +377,8 @@ if [[ $SKIP_DOC_GEN -eq 1 ]]; then
     echo ""
     log_info "Completed tests (test-plan-doc-gen tests skipped):"
     info "✓ Verifier execution on successful test scenario"
-    info "✓ Conversion of verification output to result YAML"
+    info "✓ Conversion of verification output to result YAML (--multiple mode)"
+    info "✓ Conversion of verification output to result YAML (--single mode)"
     info "✓ Result YAML validation"
     echo ""
     pass "All available tests passed (test-plan-doc-gen not available. Perhaps override the TEST_PLAN_DOC_GEN_DIR variable to point to a valid test-plan-doc-gen directory?)"
@@ -659,7 +790,8 @@ echo ""
 
 log_info "Successfully completed tests:"
 info "✓ Verifier execution on successful test scenario"
-info "✓ Conversion of verification output to result YAML"
+info "✓ Conversion of verification output to result YAML (--multiple mode)"
+info "✓ Conversion of verification output to result YAML (--single mode)"
 info "✓ Result YAML validation"
 
 if [[ $SKIP_DOC_GEN -eq 0 ]]; then
