@@ -6,7 +6,7 @@
 #   This script validates Stage 7 by running verifier in --folder mode to generate a
 #   consolidated all_tests_container.yaml with all test case results aggregated, then
 #   using TPDG to generate unified documentation. It performs:
-#   - Running verifier --folder mode on execution_logs/ directory
+#   - Running verifier --folder mode on 10_test_results/execution_logs/ directory
 #   - Validating all_tests_container.yaml is generated
 #   - Validating container YAML against schema
 #   - Verifying metadata section has correct total_test_cases count
@@ -61,8 +61,8 @@ source "$REPO_ROOT/scripts/lib/report_generator.sh" || exit 1
 source "$REPO_ROOT/scripts/lib/find-binary.sh" || exit 1
 
 # Configuration
-EXECUTION_LOGS_DIR="$SCRIPT_DIR/execution_logs"
-REPORTS_DIR="$SCRIPT_DIR/reports"
+EXECUTION_LOGS_DIR="$SCRIPT_DIR/10_test_results/execution_logs"
+REPORTS_DIR="$SCRIPT_DIR/30_documentation_source"
 CONSOLIDATED_DIR="$REPORTS_DIR/consolidated"
 CONTAINER_SCHEMA="$REPO_ROOT/data/testcase_results_container/schema.json"
 VERBOSE=0

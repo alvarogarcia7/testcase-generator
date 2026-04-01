@@ -41,7 +41,7 @@ source "$REPO_ROOT/scripts/lib/logger.sh" || exit 1
 source "$REPO_ROOT/scripts/lib/find-binary.sh" || exit 1
 
 # Configuration
-TEST_CASES_DIR="$SCRIPT_DIR/test_cases"
+TEST_CASES_DIR="$SCRIPT_DIR/00_test_cases"
 SCHEMA_FILE="$REPO_ROOT/schemas/test-case.schema.json"
 VERBOSE=0
 
@@ -75,7 +75,7 @@ OPTIONS:
     -h, --help       Show this help message
 
 DESCRIPTION:
-    Validates all test case YAML files in test-acceptance/test_cases/ by:
+    Validates all test case YAML files in test-acceptance/00_test_cases/ by:
     - Running schema validation against schemas/test-case.schema.json
     - Verifying required YAML structure fields
     - Checking test_sequences array has at least 1 valid sequence

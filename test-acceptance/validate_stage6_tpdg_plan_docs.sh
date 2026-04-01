@@ -11,7 +11,7 @@
 #   - Checking TPDG binary availability ($TEST_PLAN_DOC_GEN or PATH)
 #   - Invoking TPDG on each test case YAML to generate AsciiDoc test plan documents
 #   - Invoking TPDG on each test case YAML to generate Markdown test plan documents
-#   - Validating generated .adoc files exist in reports/ subdirectories
+#   - Validating generated .adoc files exist in 30_documentation_source/ subdirectories
 #   - Checking .md files exist for each test
 #   - Verifying AsciiDoc files contain test case structure markers:
 #     * Test case ID (requirement, item, tc, id, description)
@@ -60,8 +60,8 @@ source "$REPO_ROOT/scripts/lib/logger.sh" || exit 1
 source "$REPO_ROOT/scripts/lib/report_generator.sh" || exit 1
 
 # Configuration
-TEST_CASES_DIR="$SCRIPT_DIR/test_cases"
-REPORTS_DIR="$SCRIPT_DIR/reports"
+TEST_CASES_DIR="$SCRIPT_DIR/00_test_cases"
+REPORTS_DIR="$SCRIPT_DIR/30_documentation_source"
 PLAN_DOCS_DIR="$REPORTS_DIR/plan_docs"
 VERBOSE=0
 TEST_PATTERN="*"

@@ -47,8 +47,8 @@ source "$REPO_ROOT/scripts/lib/logger.sh" || exit 1
 source "$REPO_ROOT/scripts/lib/find-binary.sh" || exit 1
 
 # Configuration
-TEST_CASES_DIR="$SCRIPT_DIR/test_cases"
-SCRIPTS_DIR="$SCRIPT_DIR/scripts"
+TEST_CASES_DIR="$SCRIPT_DIR/00_test_cases"
+SCRIPTS_DIR="$SCRIPT_DIR/05_scripts"
 VERBOSE=0
 SKIP_SHELLCHECK=0
 TEST_JSON_LOG=0

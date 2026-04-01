@@ -7,7 +7,7 @@
 #   and validating the generated container YAML files. It performs:
 #   - Running verifier binary on each execution log with proper metadata
 #   - Validating verifier exit codes (0 for all-pass, 1 for some-fail)
-#   - Checking container YAML output files exist in verification_results/
+#   - Checking container YAML output files exist in 20_verification/
 #   - Validating container YAML structure against data/testcase_results_container/schema.json
 #   - Verifying test_results array contains TestCaseVerificationResult entries
 #   - Checking metadata section has correct statistics
@@ -52,11 +52,11 @@ source "$REPO_ROOT/scripts/lib/logger.sh" || exit 1
 source "$REPO_ROOT/scripts/lib/find-binary.sh" || exit 1
 
 # Configuration
-TEST_CASES_DIR="$SCRIPT_DIR/test_cases"
-SCRIPTS_DIR="$SCRIPT_DIR/scripts"
-EXECUTION_LOGS_DIR="$SCRIPT_DIR/execution_logs"
-VERIFICATION_RESULTS_DIR="$SCRIPT_DIR/verification_results"
-REPORTS_DIR="$SCRIPT_DIR/reports"
+TEST_CASES_DIR="$SCRIPT_DIR/00_test_cases"
+SCRIPTS_DIR="$SCRIPT_DIR/05_scripts"
+EXECUTION_LOGS_DIR="$SCRIPT_DIR/10_test_results/execution_logs"
+VERIFICATION_RESULTS_DIR="$SCRIPT_DIR/20_verification"
+REPORTS_DIR="$SCRIPT_DIR/30_documentation_source"
 CONTAINER_SCHEMA="$REPO_ROOT/data/testcase_results_container/schema.json"
 VERBOSE=0
 SKIP_SCHEMA=0
