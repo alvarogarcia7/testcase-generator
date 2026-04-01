@@ -270,8 +270,20 @@ impl TestExecutor {
 
         let method = &self.config.script_generation.json_escaping.method;
         let binary_path = &self.config.script_generation.json_escaping.binary_path;
+        let jq_path = &self.config.script_generation.json_escaping.jq_path;
 
         match method {
+            JsonEscapingMethod::Jq => {
+                // Use jq directly
+                let jq_cmd = jq_path
+                    .as_ref()
+                    .and_then(|p| p.to_str())
+                    .unwrap_or("jq");
+                script.push_str(&format!(
+                    "OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | {} -Rs '.' 2>/dev/null | sed 's/^\"//;s/\"$//' || echo \"\")\n",
+                    jq_cmd
+                ));
+            }
             JsonEscapingMethod::RustBinary => {
                 // Use json-escape binary directly
                 let bin_path = binary_path
@@ -289,13 +301,26 @@ impl TestExecutor {
                 script.push_str("OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g; s/\\t/\\\\t/g' | awk '{printf \"%s%s\", (NR>1?\"\\\\n\":\"\"), $0}')\n");
             }
             JsonEscapingMethod::Auto => {
-                // Try json-escape binary first, fallback to sed/awk
+                // Try jq first, then json-escape binary, then fallback to sed/awk
+                let jq_cmd = jq_path
+                    .as_ref()
+                    .and_then(|p| p.to_str())
+                    .unwrap_or("jq");
                 let bin_path = binary_path
                     .as_ref()
                     .and_then(|p| p.to_str())
                     .unwrap_or("json-escape");
+                
                 script.push_str(&format!(
                     "if command -v {} >/dev/null 2>&1; then\n",
+                    jq_cmd
+                ));
+                script.push_str(&format!(
+                    "    OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | {} -Rs '.' 2>/dev/null | sed 's/^\"//;s/\"$//' || echo \"\")\n",
+                    jq_cmd
+                ));
+                script.push_str(&format!(
+                    "elif command -v {} >/dev/null 2>&1; then\n",
                     bin_path
                 ));
                 script.push_str(&format!(
