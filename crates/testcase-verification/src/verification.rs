@@ -1939,7 +1939,10 @@ mod tests {
         // Verify it can be deserialized
         let parsed: ContainerReport = serde_yaml::from_str(&yaml).unwrap();
         assert_eq!(parsed.doc_type, Some("test_results_container".to_string()));
-        assert_eq!(parsed.schema, Some("tcms/test-results-container.schema.v1.json".to_string()));
+        assert_eq!(
+            parsed.schema,
+            Some("tcms/test-results-container.schema.v1.json".to_string())
+        );
         assert_eq!(parsed.title, "Test Report");
         assert_eq!(parsed.project, "Test Project");
         assert_eq!(parsed.metadata.execution_duration, 0.0);
@@ -2011,7 +2014,10 @@ mod tests {
         // Verify it can be deserialized
         let parsed: ContainerReport = serde_yaml::from_str(&yaml).unwrap();
         assert_eq!(parsed.doc_type, Some("test_results_container".to_string()));
-        assert_eq!(parsed.schema, Some("tcms/test-results-container.schema.v1.json".to_string()));
+        assert_eq!(
+            parsed.schema,
+            Some("tcms/test-results-container.schema.v1.json".to_string())
+        );
         assert_eq!(parsed.title, "Multi-Report Test");
         assert_eq!(parsed.metadata.execution_duration, 100.0);
         assert_eq!(parsed.metadata.total_test_cases, 2);
@@ -2061,7 +2067,10 @@ mod tests {
         // Verify it can be deserialized
         let parsed: ContainerReport = serde_json::from_str(&json).unwrap();
         assert_eq!(parsed.doc_type, Some("test_results_container".to_string()));
-        assert_eq!(parsed.schema, Some("tcms/test-results-container.schema.v1.json".to_string()));
+        assert_eq!(
+            parsed.schema,
+            Some("tcms/test-results-container.schema.v1.json".to_string())
+        );
         assert_eq!(parsed.title, "JSON Test");
         assert_eq!(parsed.project, "JSON Project");
         assert_eq!(parsed.metadata.execution_duration, 0.0);
