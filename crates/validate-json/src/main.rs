@@ -16,10 +16,14 @@ struct Cli {
     json_file: PathBuf,
 
     /// Path to the JSON schema file (optional, auto-resolved from 'schema' field if not provided)
+    /// Canonical paths:
+    ///   - Legacy schemas: schemas/*.schema.json
+    ///   - Versioned schemas: schemas/tcms/*.schema.v1.json
     #[arg(value_name = "SCHEMA_FILE")]
     schema_file: Option<PathBuf>,
 
     /// Root directory containing schema files for auto-resolution
+    /// Default: schemas/ (contains both legacy and versioned schemas)
     #[arg(long, value_name = "SCHEMAS_ROOT", default_value = "schemas/")]
     schemas_root: String,
 

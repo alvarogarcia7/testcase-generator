@@ -597,6 +597,9 @@ shellcheck:
 	fi
 .PHONY: shellcheck
 
+# Canonical schema paths:
+# - Legacy schemas: schemas/*.schema.json (backward compatible)
+# - Versioned schemas: schemas/tcms/*.schema.v1.json (recommended for new development)
 test-e2e-validate-yaml: build-validate-yaml
 	cargo run --bin validate-yaml -- --schema schemas/test-case.schema.json tests/sample/gsma_4.4.2.2_TC.yml >/dev/null 2>&1
 	! cargo run --bin validate-yaml -- --schema schemas/test-case.schema.json tests/sample/data.yml >/dev/null 2>&1
@@ -623,10 +626,12 @@ test-verify-sample:
 	./tests/integration/test_verify_e2e.sh
 .PHONY: test-verify-sample
 
+# Uses canonical legacy schema path: schemas/test-case.schema.json
 validate-all-testcases: build-validate-yaml
 	SCHEMA_FILE=schemas/test-case.schema.json ./scripts/validate-files.sh --pattern '\.ya?ml$$' --validator ./scripts/validate-yaml-wrapper.sh
 .PHONY: validate-all-testcases
 
+# Uses canonical legacy schema path: schemas/test-case.schema.json
 verify-testcases: build-validate-yaml
 	@echo "Verifying test case files against schema..."
 	@FAILED=0; \
@@ -647,11 +652,13 @@ verify-testcases: build-validate-yaml
 	fi
 .PHONY: verify-testcases
 
+# Validates output samples in schemas/tcms/samples/ and testcases/examples/expected_test_results/
 validate-output-schemas:
 	@echo "Validating expected output sample files against schemas..."
 	./scripts/validate-output-schemas.sh
 .PHONY: validate-output-schemas
 
+# Validates versioned schemas in schemas/tcms/*.schema.v1.json
 validate-envelope-schemas:
 	@echo "Validating TCMS envelope schemas..."
 	./scripts/validate_envelope_schemas.sh
@@ -661,6 +668,7 @@ watch: build-validate-yaml
 	./scripts/watch-yaml-files.sh
 .PHONY: watch
 
+# Uses canonical legacy schema path: schemas/test-case.schema.json
 watch-verbose: build-validate-yaml
 	SCHEMA_FILE=schemas/test-case.schema.json ./scripts/validate-files.sh --pattern '\.ya?ml$$' --validator ./scripts/validate-yaml-wrapper.sh --watch --verbose
 .PHONY: watch-verbose

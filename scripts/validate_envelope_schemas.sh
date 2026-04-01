@@ -7,6 +7,7 @@
 # 2. Sample files with envelope fields validate against their respective schemas
 # 3. Schema files are syntactically valid JSON
 # 4. Required envelope fields (type, schema) are present and properly constrained
+# 5. Schema organization - schemas/tcms/ contains only schema files and approved subdirectories
 #
 # Usage:
 #   ./scripts/validate_envelope_schemas.sh [--verbose]
@@ -18,15 +19,23 @@
 
 set -euo pipefail
 
+# Canonical paths:
+# - Versioned schemas: schemas/tcms/*.schema.v1.json (production standard with envelope)
+# - Envelope meta-schema: schemas/tcms-envelope.schema.json
+# - Sample data: schemas/tcms/samples/ (canonical location)
+# - Templates: schemas/templates/ (canonical location)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 SCHEMAS_DIR="${REPO_ROOT}/schemas"
 TCMS_SCHEMAS_DIR="${SCHEMAS_DIR}/tcms"
+TCMS_SAMPLES_DIR="${SCHEMAS_DIR}/tcms/samples"
+TEMPLATES_DIR="${SCHEMAS_DIR}/templates"
 ENVELOPE_SCHEMA="${SCHEMAS_DIR}/tcms-envelope.schema.json"
 
 VERBOSE=0
 FAILED=0
 PASSED=0
+WARNINGS=0
 
 # Parse arguments
 for arg in "$@"; do
@@ -63,6 +72,7 @@ log_error() {
 
 log_warning() {
     echo -e "${YELLOW}[WARN]${NC} $*"
+    WARNINGS=$((WARNINGS + 1))
 }
 
 # Check if required tools are available
@@ -364,6 +374,228 @@ except ValidationError as e:
     fi
 }
 
+# Validate schema organization in schemas/tcms/
+validate_tcms_organization() {
+    log_info "Validating schemas/tcms/ organization..."
+    
+    local org_failed=0
+    
+    # Check for files in schemas/tcms/ root
+    for file in "$TCMS_SCHEMAS_DIR"/*; do
+        if [ ! -e "$file" ]; then
+            continue
+        fi
+        
+        local basename_file
+        basename_file="$(basename "$file")"
+        
+        # Check if it's a directory
+        if [ -d "$file" ]; then
+            # Allow only specific subdirectories
+            case "$basename_file" in
+                samples|verification_methods)
+                    if [ "$VERBOSE" -eq 1 ]; then
+                        log_success "Approved subdirectory: $basename_file"
+                    fi
+                    ;;
+                *)
+                    log_warning "Unexpected subdirectory in schemas/tcms/: $basename_file"
+                    log_warning "  Only 'samples/' and 'verification_methods/' are expected"
+                    org_failed=1
+                    ;;
+            esac
+        elif [ -f "$file" ]; then
+            # Check if it's a valid schema file
+            if [[ "$basename_file" =~ ^[a-z-]+\.schema\.v[0-9]+\.json$ ]]; then
+                if [ "$VERBOSE" -eq 1 ]; then
+                    log_success "Valid schema file: $basename_file"
+                fi
+            elif [[ "$basename_file" =~ \.md$ ]] || [[ "$basename_file" =~ \.csv$ ]]; then
+                # Documentation files are acceptable
+                if [ "$VERBOSE" -eq 1 ]; then
+                    log_success "Documentation file: $basename_file"
+                fi
+            else
+                log_warning "Misplaced file in schemas/tcms/: $basename_file"
+                log_warning "  Expected pattern: *.schema.v*.json or documentation files"
+                org_failed=1
+            fi
+        fi
+    done
+    
+    if [ "$org_failed" -eq 0 ]; then
+        PASSED=$((PASSED + 1))
+        log_success "schemas/tcms/ organization is valid"
+    else
+        FAILED=$((FAILED + 1))
+        log_error "schemas/tcms/ organization has issues"
+    fi
+    
+    return "$org_failed"
+}
+
+# Detect duplicate schema files across directories
+detect_duplicate_schemas() {
+    log_info "Checking for duplicate schema files..."
+    
+    # Use Python to detect duplicates for better compatibility
+    local duplicates_output
+    duplicates_output=$($PYTHON_CMD << 'PYEOF'
+import os
+from collections import defaultdict
+
+schemas_dir = os.environ.get('SCHEMAS_DIR', 'schemas')
+tcms_dir = os.path.join(schemas_dir, 'tcms')
+
+# Track schema files by basename
+schema_files = defaultdict(list)
+
+# Check schemas/ root
+if os.path.isdir(schemas_dir):
+    for file in os.listdir(schemas_dir):
+        if file.endswith('.json') and os.path.isfile(os.path.join(schemas_dir, file)):
+            schema_files[file].append('schemas/')
+
+# Check schemas/tcms/
+if os.path.isdir(tcms_dir):
+    for file in os.listdir(tcms_dir):
+        if file.endswith('.json') and os.path.isfile(os.path.join(tcms_dir, file)):
+            schema_files[file].append('schemas/tcms/')
+
+# Check schemas/tcms/verification_methods/
+vm_dir = os.path.join(tcms_dir, 'verification_methods')
+if os.path.isdir(vm_dir):
+    for subdir in os.listdir(vm_dir):
+        subdir_path = os.path.join(vm_dir, subdir)
+        if os.path.isdir(subdir_path):
+            for file in os.listdir(subdir_path):
+                if file.endswith('.json') and os.path.isfile(os.path.join(subdir_path, file)):
+                    schema_files[file].append(f'schemas/tcms/verification_methods/{subdir}/')
+
+# Report duplicates
+duplicates = {name: locs for name, locs in schema_files.items() if len(locs) > 1}
+
+if duplicates:
+    for name, locations in duplicates.items():
+        print(f'DUPLICATE:{name}:{",".join(locations)}')
+else:
+    print('NO_DUPLICATES')
+PYEOF
+)
+    
+    if echo "$duplicates_output" | grep -q "^DUPLICATE:"; then
+        # Parse and display duplicates
+        echo "$duplicates_output" | while IFS=':' read -r status name locations; do
+            if [ "$status" = "DUPLICATE" ]; then
+                log_warning "Duplicate schema file found: $name"
+                log_warning "  Locations: $locations"
+            fi
+        done
+        log_warning "Duplicate schema files detected (see warnings above)"
+    else
+        PASSED=$((PASSED + 1))
+        log_success "No duplicate schema files detected"
+    fi
+    
+    return 0
+}
+
+# Validate that templates are in schemas/templates/
+validate_templates_location() {
+    log_info "Validating template file locations..."
+    
+    local misplaced_found=0
+    
+    # Check for template files in schemas/tcms/ (should be in schemas/templates/)
+    for file in "$TCMS_SCHEMAS_DIR"/*; do
+        if [ -f "$file" ]; then
+            local basename_file
+            basename_file="$(basename "$file")"
+            if [[ "$basename_file" =~ template ]] || [[ "$basename_file" =~ \.j2$ ]] || [[ "$basename_file" =~ \.adoc$ ]]; then
+                log_warning "Template file found in schemas/tcms/: $basename_file"
+                log_warning "  Templates should be in schemas/templates/"
+                misplaced_found=1
+            fi
+        fi
+    done
+    
+    # Check for template files in verification_methods subdirectories
+    if [ -d "$TCMS_SCHEMAS_DIR/verification_methods" ]; then
+        for subdir in "$TCMS_SCHEMAS_DIR/verification_methods"/*; do
+            if [ -d "$subdir" ]; then
+                for file in "$subdir"/*; do
+                    if [ -f "$file" ]; then
+                        local basename_file
+                        basename_file="$(basename "$file")"
+                        if [[ "$basename_file" =~ template ]] || [[ "$basename_file" =~ \.j2$ ]] || [[ "$basename_file" =~ \.adoc$ ]]; then
+                            log_warning "Template file found in schemas/tcms/verification_methods/: $file"
+                            log_warning "  Templates should be in schemas/templates/verification_methods/"
+                            misplaced_found=1
+                        fi
+                    fi
+                done
+            fi
+        done
+    fi
+    
+    # Verify templates directory exists
+    if [ ! -d "$TEMPLATES_DIR" ]; then
+        log_warning "schemas/templates/ directory not found"
+        log_warning "  Template files should be stored in schemas/templates/"
+        misplaced_found=1
+    fi
+    
+    if [ "$misplaced_found" -eq 0 ]; then
+        PASSED=$((PASSED + 1))
+        log_success "All template files are properly located"
+    else
+        # Don't fail, just warn
+        log_warning "Some template files may be misplaced (see warnings above)"
+    fi
+    
+    return 0
+}
+
+# Validate that samples are in schemas/tcms/samples/
+validate_samples_location() {
+    log_info "Validating sample file locations..."
+    
+    local misplaced_found=0
+    
+    # Check for sample files in schemas/tcms/ root (should be in schemas/tcms/samples/)
+    for file in "$TCMS_SCHEMAS_DIR"/*; do
+        if [ -f "$file" ]; then
+            local basename_file
+            basename_file="$(basename "$file")"
+            if [[ "$basename_file" =~ sample ]] || [[ "$basename_file" =~ \.yml$ ]] || [[ "$basename_file" =~ \.yaml$ ]]; then
+                # Exclude documentation files
+                if [[ ! "$basename_file" =~ \.md$ ]]; then
+                    log_warning "Sample file found in schemas/tcms/: $basename_file"
+                    log_warning "  Sample files should be in schemas/tcms/samples/"
+                    misplaced_found=1
+                fi
+            fi
+        fi
+    done
+    
+    # Verify samples directory exists
+    if [ ! -d "$TCMS_SAMPLES_DIR" ]; then
+        log_warning "schemas/tcms/samples/ directory not found"
+        log_warning "  Sample files should be stored in schemas/tcms/samples/"
+        misplaced_found=1
+    fi
+    
+    if [ "$misplaced_found" -eq 0 ]; then
+        PASSED=$((PASSED + 1))
+        log_success "All sample files are properly located"
+    else
+        # Don't fail, just warn
+        log_warning "Some sample files may be misplaced (see warnings above)"
+    fi
+    
+    return 0
+}
+
 # Main validation workflow
 main() {
     log_info "Starting TCMS envelope schema validation"
@@ -372,13 +604,33 @@ main() {
     check_dependencies
     echo ""
     
-    # 1. Validate envelope meta-schema JSON syntax
-    log_info "Step 1: Validating envelope meta-schema"
+    # Step 1: Validate schema organization
+    log_info "Step 1: Validating schema organization"
+    validate_tcms_organization
+    echo ""
+    
+    # Step 2: Check for duplicate schemas
+    log_info "Step 2: Checking for duplicate schemas"
+    detect_duplicate_schemas
+    echo ""
+    
+    # Step 3: Validate template locations
+    log_info "Step 3: Validating template locations"
+    validate_templates_location
+    echo ""
+    
+    # Step 4: Validate sample locations
+    log_info "Step 4: Validating sample locations"
+    validate_samples_location
+    echo ""
+    
+    # Step 5: Validate envelope meta-schema JSON syntax
+    log_info "Step 5: Validating envelope meta-schema"
     validate_json_syntax "$ENVELOPE_SCHEMA"
     echo ""
     
-    # 2. Validate all versioned schemas
-    log_info "Step 2: Validating versioned schemas"
+    # Step 6: Validate all versioned schemas
+    log_info "Step 6: Validating versioned schemas"
     
     # Define schema validation rules (using case statement for bash 3.2 compatibility)
     get_schema_validation_rule() {
@@ -433,7 +685,7 @@ main() {
     done
     
     echo ""
-    log_info "Step 3: Summary"
+    log_info "Step 7: Summary"
     echo ""
     
     # Print summary
@@ -444,11 +696,16 @@ main() {
     echo "Total checks:  $TOTAL"
     echo -e "Passed:        ${GREEN}$PASSED${NC}"
     echo -e "Failed:        ${RED}$FAILED${NC}"
+    echo -e "Warnings:      ${YELLOW}$WARNINGS${NC}"
     echo "=========================================="
     echo ""
     
     if [ "$FAILED" -eq 0 ]; then
-        log_success "All envelope schema validations passed!"
+        if [ "$WARNINGS" -gt 0 ]; then
+            log_warning "All validations passed but $WARNINGS warning(s) were issued"
+        else
+            log_success "All envelope schema validations passed!"
+        fi
         return 0
     else
         log_error "$FAILED validation(s) failed"

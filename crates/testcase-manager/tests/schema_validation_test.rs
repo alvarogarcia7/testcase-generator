@@ -5,6 +5,9 @@ use testcase_manager::{
 use testcase_models::Expected;
 
 /// Load and compile a JSON schema from the schemas directory
+/// Canonical schema paths:
+/// - Legacy schemas: schemas/*.schema.json
+/// - Versioned schemas: schemas/tcms/*.schema.v1.json
 fn load_schema(schema_name: &str) -> JSONSchema {
     let schema_path = format!("schemas/{}", schema_name);
     let schema_content = std::fs::read_to_string(&schema_path)
