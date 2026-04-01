@@ -321,6 +321,7 @@ test-e2e: build
 					;; \
 				test-executor) \
 					echo "./crates/testcase-manager/tests/integration/test_executor_e2e.sh" >> $$E2E_TESTS_FILE; \
+					echo "./crates/testcase-manager/tests/integration/test_script_generation_acceptance_e2e.sh" >> $$E2E_TESTS_FILE; \
 					echo "./crates/testcase-manager/tests/integration/test_variable_passing_e2e.sh" >> $$E2E_TESTS_FILE; \
 					echo "./crates/testcase-manager/tests/integration/test_conditional_verification_e2e.sh" >> $$E2E_TESTS_FILE; \
 					echo "./crates/testcase-manager/tests/integration/test_manual_steps_e2e.sh" >> $$E2E_TESTS_FILE; \
