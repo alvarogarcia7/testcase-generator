@@ -188,13 +188,13 @@ def write_single_result_file(test_cases: list[dict[str, Any]], output_path: Path
     return len(results)
 
 
-def process_verification_json(input_path: Path, output_dir: Path, output_mode: str = "multiple", verbose: bool = False) -> int:
+def process_verification_json(input_path: Path, output_path: Path, output_mode: str = "multiple", verbose: bool = False) -> int:
     """
     Process a verification JSON file and generate result YAML files.
     
     Args:
         input_path: Path to the input JSON file
-        output_dir: Directory to write output YAML files (or parent directory if output_mode="single")
+        output_path: In multiple mode: directory to write output YAML files. In single mode: file path for output YAML file.
         output_mode: Output mode - "multiple" for individual files, "single" for one file
         verbose: Whether to print verbose output
         
@@ -239,17 +239,11 @@ def process_verification_json(input_path: Path, output_dir: Path, output_mode: s
     
     # Route to appropriate output function based on mode
     if output_mode == "single":
-        # Determine output filename based on input filename
-        if input_path.stem:
-            output_filename = f"{input_path.stem}_results.yaml"
-        else:
-            output_filename = "results.yaml"
-        output_path = output_dir / output_filename
-        
+        # In single mode, output_path is already the full file path
         return write_single_result_file(test_cases, output_path)
     else:
-        # Default to multiple files mode
-        return write_multiple_result_files(test_cases, output_dir)
+        # In multiple mode, output_path is a directory
+        return write_multiple_result_files(test_cases, output_path)
 
 
 def main() -> int:
@@ -264,7 +258,7 @@ Examples:
   %(prog)s verification.json -o results/ --multiple
 
   # Convert to a single YAML file as a plain array
-  %(prog)s verification.json -o results/ --single
+  %(prog)s verification.json -o results.yaml --single
 
   # Convert with verbose output
   %(prog)s verification.json -o results/ -v
@@ -280,7 +274,9 @@ Input JSON format:
 
 Output modes:
   --multiple (default): Each test case generates a separate file named {test_case_id}_result.yaml
+                        Requires --output-dir to be a directory path
   --single: All test cases are written to a single YAML file as a plain YAML array
+            Requires --output-dir to be a file path with .yaml or .yml extension
 
 Output YAML format:
   Each result document contains:
@@ -304,7 +300,7 @@ Output YAML format:
         '-o', '--output-dir',
         type=Path,
         required=True,
-        help='Output directory for result YAML files (in --multiple mode) or parent directory for single output file (in --single mode)'
+        help='Output directory for result YAML files (in --multiple mode) or output file path with .yaml/.yml extension (in --single mode)'
     )
     
     # Mutually exclusive group for output mode
@@ -330,6 +326,18 @@ Output YAML format:
     
     # Determine output mode: default to multiple if neither flag is specified
     mode = "single" if args.single else "multiple"
+    
+    # Validate --output-dir based on mode
+    if mode == "single":
+        # In single mode, require output-dir to be a file path with .yaml or .yml extension
+        output_path = args.output_dir
+        if not (output_path.suffix.lower() in ['.yaml', '.yml']):
+            print(f"✗ Error: In --single mode, --output-dir must be a file path with .yaml or .yml extension, got: {output_path}")
+            return 1
+    else:
+        # In multiple mode, output-dir should be a directory
+        # (we don't validate it exists yet, as it will be created if needed)
+        pass
     
     # Handle stdin input
     if args.input is None:
@@ -365,7 +373,7 @@ Output YAML format:
     # Summary
     if count > 0:
         if mode == "single":
-            print(f"\n✓ Successfully generated single YAML array file with {count} result(s) in: {args.output_dir}")
+            print(f"\n✓ Successfully generated single YAML array file with {count} result(s): {args.output_dir}")
         else:
             print(f"\n✓ Successfully generated {count} result YAML file(s) in: {args.output_dir}")
         return 0
