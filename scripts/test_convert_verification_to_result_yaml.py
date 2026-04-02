@@ -3,12 +3,15 @@
 Unit tests for convert_verification_to_result_yaml.py
 
 Tests all major functions and workflows including:
+- Loading execution logs and test cases
+- Enriching step results with expected/actual data
 - Multiple mode with ContainerReport input creates N separate YAML files
 - Single mode with ContainerReport input creates one YAML file as array
 - Multiple mode with stdin ContainerReport produces individual files
 - Single mode with stdin produces single array file
-- Validation that single-mode output is parseable as YAML array and each element has type: result
+- Validation that single-mode output is parseable as YAML array and each element has type: test_result
 - Error when --single is used with directory path instead of file path
+- Validation of mandatory execution-logs and testcases arguments
 """
 
 import unittest
@@ -35,8 +38,240 @@ from convert_verification_to_result_yaml import (
     write_multiple_result_files,
     write_single_result_file,
     process_verification_json,
+    load_execution_log,
+    load_test_case,
+    get_expected_from_testcase,
+    enrich_step_result,
     main,
 )
+
+
+class TestLoadExecutionLog(unittest.TestCase):
+    """Tests for load_execution_log function."""
+
+    def setUp(self):
+        """Create temporary directory for test files."""
+        self.temp_dir = tempfile.mkdtemp()
+        self.temp_path = Path(self.temp_dir)
+
+    def tearDown(self):
+        """Clean up temporary directory."""
+        shutil.rmtree(self.temp_dir)
+
+    def test_load_valid_execution_log(self):
+        """Test loading a valid execution log."""
+        log_data = [
+            {
+                "test_sequence": 1,
+                "step": 1,
+                "command": "echo hello",
+                "exit_code": 0,
+                "output": "hello",
+                "result_verification_pass": True,
+                "output_verification_pass": True
+            },
+            {
+                "test_sequence": 1,
+                "step": 2,
+                "command": "true",
+                "exit_code": 0,
+                "output": "",
+                "result_verification_pass": True,
+                "output_verification_pass": True
+            }
+        ]
+        
+        log_path = self.temp_path / "test_log.json"
+        with open(log_path, 'w', encoding='utf-8') as f:
+            json.dump(log_data, f)
+        
+        execution_map = load_execution_log(log_path)
+        
+        self.assertEqual(len(execution_map), 2)
+        self.assertIn((1, 1), execution_map)
+        self.assertIn((1, 2), execution_map)
+        self.assertEqual(execution_map[(1, 1)]["output"], "hello")
+        self.assertEqual(execution_map[(1, 2)]["exit_code"], 0)
+
+    def test_load_nonexistent_log(self):
+        """Test loading a non-existent execution log."""
+        log_path = self.temp_path / "nonexistent.json"
+        execution_map = load_execution_log(log_path)
+        
+        self.assertEqual(len(execution_map), 0)
+
+
+class TestLoadTestCase(unittest.TestCase):
+    """Tests for load_test_case function."""
+
+    def setUp(self):
+        """Create temporary directory for test files."""
+        self.temp_dir = tempfile.mkdtemp()
+        self.temp_path = Path(self.temp_dir)
+
+    def tearDown(self):
+        """Clean up temporary directory."""
+        shutil.rmtree(self.temp_dir)
+
+    def test_load_valid_test_case(self):
+        """Test loading a valid test case."""
+        testcase_data = {
+            "type": "test_case",
+            "schema": "tcms/test-case.schema.v1.json",
+            "id": "TC-001",
+            "description": "Test case",
+            "test_sequences": [
+                {
+                    "id": 1,
+                    "name": "Sequence 1",
+                    "steps": [
+                        {
+                            "step": 1,
+                            "description": "Step 1",
+                            "command": "echo hello",
+                            "expected": {
+                                "success": True,
+                                "result": "0",
+                                "output": "hello"
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+        
+        tc_path = self.temp_path / "TC-001.yaml"
+        with open(tc_path, 'w', encoding='utf-8') as f:
+            yaml.dump(testcase_data, f)
+        
+        testcase = load_test_case(tc_path)
+        
+        self.assertIsNotNone(testcase)
+        self.assertEqual(testcase["id"], "TC-001")
+        self.assertEqual(len(testcase["test_sequences"]), 1)
+
+
+class TestGetExpectedFromTestcase(unittest.TestCase):
+    """Tests for get_expected_from_testcase function."""
+
+    def test_get_expected_values(self):
+        """Test extracting expected values from test case."""
+        testcase = {
+            "test_sequences": [
+                {
+                    "id": 1,
+                    "steps": [
+                        {
+                            "step": 1,
+                            "expected": {
+                                "success": True,
+                                "result": "0",
+                                "output": "hello"
+                            }
+                        },
+                        {
+                            "step": 2,
+                            "expected": {
+                                "result": 0,
+                                "output": ""
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+        
+        expected = get_expected_from_testcase(testcase, 1, 1)
+        self.assertIsNotNone(expected)
+        self.assertEqual(expected["result"], "0")
+        self.assertEqual(expected["output"], "hello")
+        self.assertTrue(expected["success"])
+        
+        # Test with integer result being converted to string
+        expected2 = get_expected_from_testcase(testcase, 1, 2)
+        self.assertIsNotNone(expected2)
+        self.assertEqual(expected2["result"], "0")
+
+    def test_get_expected_nonexistent_step(self):
+        """Test getting expected for non-existent step."""
+        testcase = {
+            "test_sequences": [
+                {
+                    "id": 1,
+                    "steps": []
+                }
+            ]
+        }
+        
+        expected = get_expected_from_testcase(testcase, 1, 99)
+        self.assertIsNone(expected)
+
+
+class TestEnrichStepResult(unittest.TestCase):
+    """Tests for enrich_step_result function."""
+
+    def test_enrich_fail_step_with_execution_data(self):
+        """Test enriching a Fail step with execution data."""
+        step_result = {
+            "Fail": {
+                "step": 1,
+                "description": "Failed step",
+                "expected": {},
+                "actual_result": "",
+                "actual_output": "",
+                "reason": "Test failure"
+            }
+        }
+        
+        execution_map = {
+            (1, 1): {
+                "exit_code": 1,
+                "output": "error message"
+            }
+        }
+        
+        testcase = {
+            "test_sequences": [
+                {
+                    "id": 1,
+                    "steps": [
+                        {
+                            "step": 1,
+                            "expected": {
+                                "success": True,
+                                "result": "0",
+                                "output": "success"
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+        
+        enriched = enrich_step_result(step_result, execution_map, testcase, 1)
+        
+        self.assertIn("Fail", enriched)
+        fail_data = enriched["Fail"]
+        self.assertEqual(fail_data["actual_result"], "1")
+        self.assertEqual(fail_data["actual_output"], "error message")
+        self.assertEqual(fail_data["expected"]["result"], "0")
+        self.assertEqual(fail_data["expected"]["output"], "success")
+
+    def test_enrich_pass_step_unchanged(self):
+        """Test that Pass steps are not modified."""
+        step_result = {
+            "Pass": {
+                "step": 1,
+                "description": "Passed step"
+            }
+        }
+        
+        execution_map = {}
+        testcase = None
+        
+        enriched = enrich_step_result(step_result, execution_map, testcase, 1)
+        
+        self.assertEqual(enriched, step_result)
 
 
 class TestParseStepResult(unittest.TestCase):
@@ -58,8 +293,9 @@ class TestParseStepResult(unittest.TestCase):
             "Fail": {
                 "step": 2,
                 "description": "Step failed",
-                "expected": {"result": "0"},
+                "expected": {"result": "0", "output": ""},
                 "actual_result": "1",
+                "actual_output": "",
                 "reason": "Result mismatch",
             }
         }
@@ -107,9 +343,10 @@ class TestConvertTestCaseToResult(unittest.TestCase):
             "overall_pass": False,
         }
 
-        result = convert_test_case_to_result(test_case)
+        result = convert_test_case_to_result(test_case, {}, None)
 
-        self.assertEqual(result["type"], "result")
+        self.assertEqual(result["type"], "test_result")
+        self.assertEqual(result["schema"], "tcms/test-result.schema.v1.json")
         self.assertEqual(result["test_case_id"], "TC-001")
         self.assertEqual(result["description"], "Test case 001")
         self.assertEqual(result["total_steps"], 5)
@@ -124,8 +361,8 @@ class TestConvertTestCaseToResult(unittest.TestCase):
             "test_case_id": "TC-002",
             "description": "Test case 002",
             "requirement": "REQ-001",
-            "item": "ITEM-001",
-            "tc": "TC-002",
+            "item": 1,
+            "tc": 2,
             "sequences": [],
             "total_steps": 0,
             "passed_steps": 0,
@@ -134,11 +371,11 @@ class TestConvertTestCaseToResult(unittest.TestCase):
             "overall_pass": True,
         }
 
-        result = convert_test_case_to_result(test_case)
+        result = convert_test_case_to_result(test_case, {}, None)
 
         self.assertEqual(result["requirement"], "REQ-001")
-        self.assertEqual(result["item"], "ITEM-001")
-        self.assertEqual(result["tc"], "TC-002")
+        self.assertEqual(result["item"], 1)
+        self.assertEqual(result["tc"], 2)
 
     def test_convert_without_optional_metadata(self):
         """Test that None values are not included."""
@@ -156,7 +393,7 @@ class TestConvertTestCaseToResult(unittest.TestCase):
             "overall_pass": True,
         }
 
-        result = convert_test_case_to_result(test_case)
+        result = convert_test_case_to_result(test_case, {}, None)
 
         self.assertNotIn("requirement", result)
         self.assertNotIn("item", result)
@@ -177,8 +414,10 @@ class TestConvertTestCaseToResult(unittest.TestCase):
                             "Fail": {
                                 "step": 2,
                                 "description": "Step failed",
-                                "expected": {"result": "0"},
+                                "expected": {"result": "0", "output": ""},
                                 "actual_result": "1",
+                                "actual_output": "",
+                                "reason": "Failed"
                             }
                         },
                     ],
@@ -192,7 +431,7 @@ class TestConvertTestCaseToResult(unittest.TestCase):
             "overall_pass": False,
         }
 
-        result = convert_test_case_to_result(test_case)
+        result = convert_test_case_to_result(test_case, {}, None)
 
         self.assertEqual(len(result["sequences"]), 1)
         seq = result["sequences"][0]
@@ -213,8 +452,8 @@ class TestConvertTestCaseToResult(unittest.TestCase):
                     "sequence_id": 1,
                     "name": "Sequence 1",
                     "requirement": "SEQ-REQ-001",
-                    "item": "SEQ-ITEM-001",
-                    "tc": "SEQ-TC-001",
+                    "item": 1,
+                    "tc": 1,
                     "step_results": [],
                     "all_steps_passed": True,
                 }
@@ -226,12 +465,12 @@ class TestConvertTestCaseToResult(unittest.TestCase):
             "overall_pass": True,
         }
 
-        result = convert_test_case_to_result(test_case)
+        result = convert_test_case_to_result(test_case, {}, None)
 
         seq = result["sequences"][0]
         self.assertEqual(seq["requirement"], "SEQ-REQ-001")
-        self.assertEqual(seq["item"], "SEQ-ITEM-001")
-        self.assertEqual(seq["tc"], "SEQ-TC-001")
+        self.assertEqual(seq["item"], 1)
+        self.assertEqual(seq["tc"], 1)
 
 
 class TestWriteResultYaml(unittest.TestCase):
@@ -249,7 +488,8 @@ class TestWriteResultYaml(unittest.TestCase):
     def test_write_result_yaml_creates_file(self):
         """Test that write_result_yaml creates a YAML file."""
         result = {
-            "type": "result",
+            "type": "test_result",
+            "schema": "tcms/test-result.schema.v1.json",
             "test_case_id": "TC-001",
             "description": "Test",
             "sequences": [],
@@ -268,13 +508,15 @@ class TestWriteResultYaml(unittest.TestCase):
         with open(output_path, "r", encoding="utf-8") as f:
             loaded = yaml.safe_load(f)
 
-        self.assertEqual(loaded["type"], "result")
+        self.assertEqual(loaded["type"], "test_result")
+        self.assertEqual(loaded["schema"], "tcms/test-result.schema.v1.json")
         self.assertEqual(loaded["test_case_id"], "TC-001")
 
     def test_write_result_yaml_creates_parent_directory(self):
         """Test that write_result_yaml creates parent directories if needed."""
         result = {
-            "type": "result",
+            "type": "test_result",
+            "schema": "tcms/test-result.schema.v1.json",
             "test_case_id": "TC-002",
             "description": "Test",
             "sequences": [],
@@ -340,7 +582,7 @@ class TestWriteMultipleResultFiles(unittest.TestCase):
         ]
 
         output_dir = self.temp_path / "results"
-        count = write_multiple_result_files(test_cases, output_dir)
+        count = write_multiple_result_files(test_cases, output_dir, None, None)
 
         self.assertEqual(count, 3)
 
@@ -356,19 +598,20 @@ class TestWriteMultipleResultFiles(unittest.TestCase):
         # Verify content of each file
         with open(file1, "r", encoding="utf-8") as f:
             result1 = yaml.safe_load(f)
-        self.assertEqual(result1["type"], "result")
+        self.assertEqual(result1["type"], "test_result")
+        self.assertEqual(result1["schema"], "tcms/test-result.schema.v1.json")
         self.assertEqual(result1["test_case_id"], "TC-001")
         self.assertTrue(result1["overall_pass"])
 
         with open(file2, "r", encoding="utf-8") as f:
             result2 = yaml.safe_load(f)
-        self.assertEqual(result2["type"], "result")
+        self.assertEqual(result2["type"], "test_result")
         self.assertEqual(result2["test_case_id"], "TC-002")
         self.assertFalse(result2["overall_pass"])
 
         with open(file3, "r", encoding="utf-8") as f:
             result3 = yaml.safe_load(f)
-        self.assertEqual(result3["type"], "result")
+        self.assertEqual(result3["type"], "test_result")
         self.assertEqual(result3["test_case_id"], "TC-003")
         self.assertFalse(result3["overall_pass"])
 
@@ -377,7 +620,7 @@ class TestWriteMultipleResultFiles(unittest.TestCase):
         test_cases = []
         output_dir = self.temp_path / "results"
 
-        count = write_multiple_result_files(test_cases, output_dir)
+        count = write_multiple_result_files(test_cases, output_dir, None, None)
 
         self.assertEqual(count, 0)
 
@@ -430,7 +673,7 @@ class TestWriteSingleResultFile(unittest.TestCase):
         ]
 
         output_file = self.temp_path / "results.yaml"
-        count = write_single_result_file(test_cases, output_file)
+        count = write_single_result_file(test_cases, output_file, None, None)
 
         self.assertEqual(count, 3)
         self.assertTrue(output_file.exists())
@@ -442,9 +685,10 @@ class TestWriteSingleResultFile(unittest.TestCase):
         self.assertIsInstance(results, list)
         self.assertEqual(len(results), 3)
 
-        # Verify each element has type: result
+        # Verify each element has type: test_result
         for i, result in enumerate(results):
-            self.assertEqual(result["type"], "result")
+            self.assertEqual(result["type"], "test_result")
+            self.assertEqual(result["schema"], "tcms/test-result.schema.v1.json")
             self.assertEqual(result["test_case_id"], f"TC-{i + 1:03d}")
 
         # Verify specific content
@@ -453,7 +697,7 @@ class TestWriteSingleResultFile(unittest.TestCase):
         self.assertFalse(results[2]["overall_pass"])
 
     def test_single_mode_output_parseable_as_yaml_array(self):
-        """Test that single-mode output is parseable as YAML array and each element has type: result field."""
+        """Test that single-mode output is parseable as YAML array and each element has type: test_result field."""
         test_cases = [
             {
                 "test_case_id": "TC-PARSE-001",
@@ -487,7 +731,7 @@ class TestWriteSingleResultFile(unittest.TestCase):
         ]
 
         output_file = self.temp_path / "parseable.yaml"
-        write_single_result_file(test_cases, output_file)
+        write_single_result_file(test_cases, output_file, None, None)
 
         # Parse the YAML file
         with open(output_file, "r", encoding="utf-8") as f:
@@ -496,11 +740,14 @@ class TestWriteSingleResultFile(unittest.TestCase):
         # Verify it's a list
         self.assertIsInstance(parsed, list, "Output should be parseable as YAML array")
 
-        # Verify each element has type: result
+        # Verify each element has type: test_result
         for idx, element in enumerate(parsed):
             self.assertIn("type", element, f"Element {idx} missing 'type' field")
             self.assertEqual(
-                element["type"], "result", f"Element {idx} should have type: result"
+                element["type"], "test_result", f"Element {idx} should have type: test_result"
+            )
+            self.assertEqual(
+                element["schema"], "tcms/test-result.schema.v1.json", f"Element {idx} should have correct schema"
             )
             self.assertIn("test_case_id", element)
             self.assertIn("description", element)
@@ -513,7 +760,7 @@ class TestWriteSingleResultFile(unittest.TestCase):
         test_cases = []
         output_file = self.temp_path / "empty_results.yaml"
 
-        count = write_single_result_file(test_cases, output_file)
+        count = write_single_result_file(test_cases, output_file, None, None)
 
         self.assertEqual(count, 0)
         self.assertTrue(output_file.exists())
@@ -570,7 +817,7 @@ class TestProcessVerificationJson(unittest.TestCase):
 
         output_dir = self.temp_path / "results"
         count = process_verification_json(
-            input_file, output_dir, output_mode="multiple", verbose=False
+            input_file, output_dir, None, None, output_mode="multiple", verbose=False
         )
 
         self.assertEqual(count, 2)
@@ -610,7 +857,7 @@ class TestProcessVerificationJson(unittest.TestCase):
 
         output_file = self.temp_path / "results.yaml"
         count = process_verification_json(
-            input_file, output_file, output_mode="single", verbose=False
+            input_file, output_file, None, None, output_mode="single", verbose=False
         )
 
         self.assertEqual(count, 2)
@@ -645,7 +892,7 @@ class TestProcessVerificationJson(unittest.TestCase):
 
         output_dir = self.temp_path / "results"
         count = process_verification_json(
-            input_file, output_dir, output_mode="multiple", verbose=False
+            input_file, output_dir, None, None, output_mode="multiple", verbose=False
         )
 
         self.assertEqual(count, 1)
@@ -670,7 +917,7 @@ class TestProcessVerificationJson(unittest.TestCase):
 
         output_dir = self.temp_path / "results"
         count = process_verification_json(
-            input_file, output_dir, output_mode="multiple", verbose=False
+            input_file, output_dir, None, None, output_mode="multiple", verbose=False
         )
 
         self.assertEqual(count, 1)
@@ -684,7 +931,7 @@ class TestProcessVerificationJson(unittest.TestCase):
 
         output_dir = self.temp_path / "results"
         count = process_verification_json(
-            input_file, output_dir, output_mode="multiple", verbose=False
+            input_file, output_dir, None, None, output_mode="multiple", verbose=False
         )
 
         self.assertEqual(count, 0)
@@ -699,10 +946,246 @@ class TestProcessVerificationJson(unittest.TestCase):
 
         output_dir = self.temp_path / "results"
         count = process_verification_json(
-            input_file, output_dir, output_mode="multiple", verbose=False
+            input_file, output_dir, None, None, output_mode="multiple", verbose=False
         )
 
         self.assertEqual(count, 0)
+
+
+class TestMainValidation(unittest.TestCase):
+    """Tests for main function validation logic."""
+
+    def setUp(self):
+        """Save original argv."""
+        self.original_argv = sys.argv
+        self.temp_dir = tempfile.mkdtemp()
+        self.temp_path = Path(self.temp_dir)
+        
+        # Create dummy execution logs and testcases directories
+        self.exec_logs_dir = self.temp_path / "logs"
+        self.testcases_dir = self.temp_path / "testcases"
+        self.exec_logs_dir.mkdir()
+        self.testcases_dir.mkdir()
+
+    def tearDown(self):
+        """Restore original argv and clean up."""
+        sys.argv = self.original_argv
+        shutil.rmtree(self.temp_dir)
+
+    def test_single_mode_with_directory_path_error(self):
+        """Test that error occurs when --single is used with directory path instead of file path."""
+        # Create a dummy input file
+        input_file = self.temp_path / "input.json"
+        input_file.write_text(json.dumps({"test_results": []}))
+
+        # Use directory path for output in --single mode (should fail)
+        output_dir = self.temp_path / "output_dir"
+        sys.argv = [
+            "convert_verification_to_result_yaml.py",
+            str(input_file),
+            "-o",
+            str(output_dir),
+            "--single",
+            "--execution-logs",
+            str(self.exec_logs_dir),
+            "--testcases",
+            str(self.testcases_dir),
+        ]
+
+        # Run main and expect error exit code
+        exit_code = main()
+
+        self.assertEqual(exit_code, 1)
+
+    def test_single_mode_with_file_path_without_extension_error(self):
+        """Test that error occurs when --single is used with file path without .yaml/.yml extension."""
+        # Create a dummy input file
+        input_file = self.temp_path / "input.json"
+        input_file.write_text(json.dumps({"test_results": []}))
+
+        # Use file path without proper extension
+        output_file = self.temp_path / "output.txt"
+        sys.argv = [
+            "convert_verification_to_result_yaml.py",
+            str(input_file),
+            "-o",
+            str(output_file),
+            "--single",
+            "--execution-logs",
+            str(self.exec_logs_dir),
+            "--testcases",
+            str(self.testcases_dir),
+        ]
+
+        # Run main and expect error exit code
+        exit_code = main()
+
+        self.assertEqual(exit_code, 1)
+
+    def test_single_mode_with_yaml_extension_success(self):
+        """Test that --single mode works with .yaml extension."""
+        # Create a valid input file
+        input_file = self.temp_path / "input.json"
+        container_report = {
+            "test_results": [
+                {
+                    "test_case_id": "TC-001",
+                    "description": "Test",
+                    "sequences": [],
+                    "total_steps": 0,
+                    "passed_steps": 0,
+                    "failed_steps": 0,
+                    "not_executed_steps": 0,
+                    "overall_pass": True,
+                }
+            ]
+        }
+        input_file.write_text(json.dumps(container_report))
+
+        # Use file path with .yaml extension
+        output_file = self.temp_path / "output.yaml"
+        sys.argv = [
+            "convert_verification_to_result_yaml.py",
+            str(input_file),
+            "-o",
+            str(output_file),
+            "--single",
+            "--execution-logs",
+            str(self.exec_logs_dir),
+            "--testcases",
+            str(self.testcases_dir),
+        ]
+
+        # Run main
+        exit_code = main()
+
+        self.assertEqual(exit_code, 0)
+        self.assertTrue(output_file.exists())
+
+    def test_single_mode_with_yml_extension_success(self):
+        """Test that --single mode works with .yml extension."""
+        # Create a valid input file
+        input_file = self.temp_path / "input.json"
+        container_report = {
+            "test_results": [
+                {
+                    "test_case_id": "TC-001",
+                    "description": "Test",
+                    "sequences": [],
+                    "total_steps": 0,
+                    "passed_steps": 0,
+                    "failed_steps": 0,
+                    "not_executed_steps": 0,
+                    "overall_pass": True,
+                }
+            ]
+        }
+        input_file.write_text(json.dumps(container_report))
+
+        # Use file path with .yml extension
+        output_file = self.temp_path / "output.yml"
+        sys.argv = [
+            "convert_verification_to_result_yaml.py",
+            str(input_file),
+            "-o",
+            str(output_file),
+            "--single",
+            "--execution-logs",
+            str(self.exec_logs_dir),
+            "--testcases",
+            str(self.testcases_dir),
+        ]
+
+        # Run main
+        exit_code = main()
+
+        self.assertEqual(exit_code, 0)
+        self.assertTrue(output_file.exists())
+
+    def test_nonexistent_input_file_error(self):
+        """Test that error occurs when input file doesn't exist."""
+        input_file = self.temp_path / "nonexistent.json"
+        output_dir = self.temp_path / "output"
+        sys.argv = [
+            "convert_verification_to_result_yaml.py",
+            str(input_file),
+            "-o",
+            str(output_dir),
+            "--execution-logs",
+            str(self.exec_logs_dir),
+            "--testcases",
+            str(self.testcases_dir),
+        ]
+
+        exit_code = main()
+
+        self.assertEqual(exit_code, 1)
+
+    def test_input_path_is_directory_error(self):
+        """Test that error occurs when input path is a directory."""
+        input_dir = self.temp_path / "input_dir"
+        input_dir.mkdir()
+        output_dir = self.temp_path / "output"
+        sys.argv = [
+            "convert_verification_to_result_yaml.py",
+            str(input_dir),
+            "-o",
+            str(output_dir),
+            "--execution-logs",
+            str(self.exec_logs_dir),
+            "--testcases",
+            str(self.testcases_dir),
+        ]
+
+        exit_code = main()
+
+        self.assertEqual(exit_code, 1)
+
+    def test_missing_execution_logs_error(self):
+        """Test that error occurs when execution logs directory is missing."""
+        input_file = self.temp_path / "input.json"
+        input_file.write_text(json.dumps({"test_results": []}))
+        
+        output_dir = self.temp_path / "output"
+        nonexistent_logs = self.temp_path / "nonexistent_logs"
+        
+        sys.argv = [
+            "convert_verification_to_result_yaml.py",
+            str(input_file),
+            "-o",
+            str(output_dir),
+            "--execution-logs",
+            str(nonexistent_logs),
+            "--testcases",
+            str(self.testcases_dir),
+        ]
+
+        exit_code = main()
+
+        self.assertEqual(exit_code, 1)
+
+    def test_missing_testcases_error(self):
+        """Test that error occurs when testcases directory is missing."""
+        input_file = self.temp_path / "input.json"
+        input_file.write_text(json.dumps({"test_results": []}))
+        
+        output_dir = self.temp_path / "output"
+        nonexistent_testcases = self.temp_path / "nonexistent_testcases"
+        
+        sys.argv = [
+            "convert_verification_to_result_yaml.py",
+            str(input_file),
+            "-o",
+            str(output_dir),
+            "--execution-logs",
+            str(self.exec_logs_dir),
+            "--testcases",
+            str(nonexistent_testcases),
+        ]
+
+        exit_code = main()
+
+        self.assertEqual(exit_code, 1)
 
 
 class TestMainStdinMultipleMode(unittest.TestCase):
@@ -714,6 +1197,12 @@ class TestMainStdinMultipleMode(unittest.TestCase):
         self.temp_path = Path(self.temp_dir)
         self.original_stdin = sys.stdin
         self.original_argv = sys.argv
+        
+        # Create dummy execution logs and testcases directories
+        self.exec_logs_dir = self.temp_path / "logs"
+        self.testcases_dir = self.temp_path / "testcases"
+        self.exec_logs_dir.mkdir()
+        self.testcases_dir.mkdir()
 
     def tearDown(self):
         """Clean up temporary directory and restore stdin/argv."""
@@ -758,6 +1247,10 @@ class TestMainStdinMultipleMode(unittest.TestCase):
             "-o",
             str(output_dir),
             "--multiple",
+            "--execution-logs",
+            str(self.exec_logs_dir),
+            "--testcases",
+            str(self.testcases_dir),
         ]
 
         # Run main
@@ -777,6 +1270,12 @@ class TestMainStdinSingleMode(unittest.TestCase):
         self.temp_path = Path(self.temp_dir)
         self.original_stdin = sys.stdin
         self.original_argv = sys.argv
+        
+        # Create dummy execution logs and testcases directories
+        self.exec_logs_dir = self.temp_path / "logs"
+        self.testcases_dir = self.temp_path / "testcases"
+        self.exec_logs_dir.mkdir()
+        self.testcases_dir.mkdir()
 
     def tearDown(self):
         """Clean up temporary directory and restore stdin/argv."""
@@ -821,6 +1320,10 @@ class TestMainStdinSingleMode(unittest.TestCase):
             "-o",
             str(output_file),
             "--single",
+            "--execution-logs",
+            str(self.exec_logs_dir),
+            "--testcases",
+            str(self.testcases_dir),
         ]
 
         # Run main
@@ -835,168 +1338,8 @@ class TestMainStdinSingleMode(unittest.TestCase):
 
         self.assertIsInstance(results, list)
         self.assertEqual(len(results), 2)
-        self.assertEqual(results[0]["type"], "result")
-        self.assertEqual(results[1]["type"], "result")
-
-
-class TestMainValidation(unittest.TestCase):
-    """Tests for main function validation logic."""
-
-    def setUp(self):
-        """Save original argv."""
-        self.original_argv = sys.argv
-        self.temp_dir = tempfile.mkdtemp()
-        self.temp_path = Path(self.temp_dir)
-
-    def tearDown(self):
-        """Restore original argv and clean up."""
-        sys.argv = self.original_argv
-        shutil.rmtree(self.temp_dir)
-
-    def test_single_mode_with_directory_path_error(self):
-        """Test that error occurs when --single is used with directory path instead of file path."""
-        # Create a dummy input file
-        input_file = self.temp_path / "input.json"
-        input_file.write_text(json.dumps({"test_results": []}))
-
-        # Use directory path for output in --single mode (should fail)
-        output_dir = self.temp_path / "output_dir"
-        sys.argv = [
-            "convert_verification_to_result_yaml.py",
-            str(input_file),
-            "-o",
-            str(output_dir),
-            "--single",
-        ]
-
-        # Run main and expect error exit code
-        exit_code = main()
-
-        self.assertEqual(exit_code, 1)
-
-    def test_single_mode_with_file_path_without_extension_error(self):
-        """Test that error occurs when --single is used with file path without .yaml/.yml extension."""
-        # Create a dummy input file
-        input_file = self.temp_path / "input.json"
-        input_file.write_text(json.dumps({"test_results": []}))
-
-        # Use file path without proper extension
-        output_file = self.temp_path / "output.txt"
-        sys.argv = [
-            "convert_verification_to_result_yaml.py",
-            str(input_file),
-            "-o",
-            str(output_file),
-            "--single",
-        ]
-
-        # Run main and expect error exit code
-        exit_code = main()
-
-        self.assertEqual(exit_code, 1)
-
-    def test_single_mode_with_yaml_extension_success(self):
-        """Test that --single mode works with .yaml extension."""
-        # Create a valid input file
-        input_file = self.temp_path / "input.json"
-        container_report = {
-            "test_results": [
-                {
-                    "test_case_id": "TC-001",
-                    "description": "Test",
-                    "sequences": [],
-                    "total_steps": 0,
-                    "passed_steps": 0,
-                    "failed_steps": 0,
-                    "not_executed_steps": 0,
-                    "overall_pass": True,
-                }
-            ]
-        }
-        input_file.write_text(json.dumps(container_report))
-
-        # Use file path with .yaml extension
-        output_file = self.temp_path / "output.yaml"
-        sys.argv = [
-            "convert_verification_to_result_yaml.py",
-            str(input_file),
-            "-o",
-            str(output_file),
-            "--single",
-        ]
-
-        # Run main
-        exit_code = main()
-
-        self.assertEqual(exit_code, 0)
-        self.assertTrue(output_file.exists())
-
-    def test_single_mode_with_yml_extension_success(self):
-        """Test that --single mode works with .yml extension."""
-        # Create a valid input file
-        input_file = self.temp_path / "input.json"
-        container_report = {
-            "test_results": [
-                {
-                    "test_case_id": "TC-001",
-                    "description": "Test",
-                    "sequences": [],
-                    "total_steps": 0,
-                    "passed_steps": 0,
-                    "failed_steps": 0,
-                    "not_executed_steps": 0,
-                    "overall_pass": True,
-                }
-            ]
-        }
-        input_file.write_text(json.dumps(container_report))
-
-        # Use file path with .yml extension
-        output_file = self.temp_path / "output.yml"
-        sys.argv = [
-            "convert_verification_to_result_yaml.py",
-            str(input_file),
-            "-o",
-            str(output_file),
-            "--single",
-        ]
-
-        # Run main
-        exit_code = main()
-
-        self.assertEqual(exit_code, 0)
-        self.assertTrue(output_file.exists())
-
-    def test_nonexistent_input_file_error(self):
-        """Test that error occurs when input file doesn't exist."""
-        input_file = self.temp_path / "nonexistent.json"
-        output_dir = self.temp_path / "output"
-        sys.argv = [
-            "convert_verification_to_result_yaml.py",
-            str(input_file),
-            "-o",
-            str(output_dir),
-        ]
-
-        exit_code = main()
-
-        self.assertEqual(exit_code, 1)
-
-    def test_input_path_is_directory_error(self):
-        """Test that error occurs when input path is a directory."""
-        input_dir = self.temp_path / "input_dir"
-        input_dir.mkdir()
-        output_dir = self.temp_path / "output"
-        sys.argv = [
-            "convert_verification_to_result_yaml.py",
-            str(input_dir),
-            "-o",
-            str(output_dir),
-        ]
-
-        exit_code = main()
-
-        self.assertEqual(exit_code, 1)
+        self.assertEqual(results[0]["type"], "test_result")
+        self.assertEqual(results[1]["type"], "test_result")
 
 
 class TestIntegration(unittest.TestCase):
@@ -1019,8 +1362,8 @@ class TestIntegration(unittest.TestCase):
                     "test_case_id": "TC-FULL-001",
                     "description": "Full test 1",
                     "requirement": "REQ-001",
-                    "item": "ITEM-001",
-                    "tc": "TC-FULL-001",
+                    "item": 1,
+                    "tc": 1,
                     "sequences": [
                         {
                             "sequence_id": 1,
@@ -1031,8 +1374,9 @@ class TestIntegration(unittest.TestCase):
                                     "Fail": {
                                         "step": 2,
                                         "description": "Failed step",
-                                        "expected": {"result": "0"},
+                                        "expected": {"result": "0", "output": ""},
                                         "actual_result": "1",
+                                        "actual_output": "",
                                         "reason": "Mismatch",
                                     }
                                 },
@@ -1065,7 +1409,7 @@ class TestIntegration(unittest.TestCase):
 
         output_dir = self.temp_path / "results"
         count = process_verification_json(
-            input_file, output_dir, output_mode="multiple", verbose=True
+            input_file, output_dir, None, None, output_mode="multiple", verbose=True
         )
 
         self.assertEqual(count, 2)
@@ -1076,10 +1420,10 @@ class TestIntegration(unittest.TestCase):
         with open(file1, "r", encoding="utf-8") as f:
             result1 = yaml.safe_load(f)
 
-        self.assertEqual(result1["type"], "result")
+        self.assertEqual(result1["type"], "test_result")
         self.assertEqual(result1["test_case_id"], "TC-FULL-001")
         self.assertEqual(result1["requirement"], "REQ-001")
-        self.assertEqual(result1["item"], "ITEM-001")
+        self.assertEqual(result1["item"], 1)
         self.assertEqual(len(result1["sequences"]), 1)
         self.assertEqual(len(result1["sequences"][0]["step_results"]), 2)
         self.assertIn("Pass", result1["sequences"][0]["step_results"][0])
@@ -1091,7 +1435,7 @@ class TestIntegration(unittest.TestCase):
         with open(file2, "r", encoding="utf-8") as f:
             result2 = yaml.safe_load(f)
 
-        self.assertEqual(result2["type"], "result")
+        self.assertEqual(result2["type"], "test_result")
         self.assertEqual(result2["test_case_id"], "TC-FULL-002")
         self.assertTrue(result2["overall_pass"])
 
@@ -1128,7 +1472,7 @@ class TestIntegration(unittest.TestCase):
 
         output_file = self.temp_path / "all_results.yaml"
         count = process_verification_json(
-            input_file, output_file, output_mode="single", verbose=True
+            input_file, output_file, None, None, output_mode="single", verbose=True
         )
 
         self.assertEqual(count, 2)
@@ -1141,9 +1485,9 @@ class TestIntegration(unittest.TestCase):
         self.assertIsInstance(results, list)
         self.assertEqual(len(results), 2)
 
-        # Verify each result has type: result
+        # Verify each result has type: test_result
         for result in results:
-            self.assertEqual(result["type"], "result")
+            self.assertEqual(result["type"], "test_result")
 
         self.assertEqual(results[0]["test_case_id"], "TC-SINGLE-FULL-001")
         self.assertTrue(results[0]["overall_pass"])
