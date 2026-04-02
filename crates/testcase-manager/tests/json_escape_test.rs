@@ -665,6 +665,7 @@ fn test_config_rust_binary_method() {
                 method: JsonEscapingMethod::RustBinary,
                 enabled: true,
                 binary_path: None,
+                jq_path: None,
             },
         },
         ..Default::default()
@@ -685,6 +686,7 @@ fn test_config_shell_fallback_method() {
                 method: JsonEscapingMethod::ShellFallback,
                 enabled: true,
                 binary_path: None,
+                jq_path: None,
             },
         },
         ..Default::default()
@@ -706,6 +708,7 @@ fn test_config_custom_binary_path() {
                 method: JsonEscapingMethod::Auto,
                 enabled: true,
                 binary_path: Some(custom_path.clone()),
+                jq_path: None,
             },
         },
         ..Default::default()
@@ -726,6 +729,7 @@ fn test_config_serialization_to_toml() -> Result<()> {
                 method: JsonEscapingMethod::RustBinary,
                 enabled: true,
                 binary_path: Some(PathBuf::from("/custom/path/json-escape")),
+                jq_path: None,
             },
         },
         ..Default::default()
@@ -770,6 +774,7 @@ fn test_config_json_escaping_disabled() {
                 method: JsonEscapingMethod::Auto,
                 enabled: false,
                 binary_path: None,
+                jq_path: None,
             },
         },
         ..Default::default()
@@ -791,6 +796,7 @@ fn test_script_generation_rust_binary_default_path() {
                 method: JsonEscapingMethod::RustBinary,
                 enabled: true,
                 binary_path: None,
+                jq_path: None,
             },
         },
         ..Default::default()
@@ -802,7 +808,7 @@ fn test_script_generation_rust_binary_default_path() {
 
     // Should use json-escape binary directly
     assert!(script.contains("json-escape"));
-    assert!(script.contains("printf '%s' \"$COMMAND_OUTPUT\" | json-escape"));
+    assert!(script.contains("OUTPUT_ESCAPED=$(json-escape < \"$_CAPTURE_TMPFILE\""));
     // Should not have if command -v check
     assert!(!script.contains("if command -v json-escape"));
 }
@@ -816,6 +822,7 @@ fn test_script_generation_rust_binary_custom_path() {
                 method: JsonEscapingMethod::RustBinary,
                 enabled: true,
                 binary_path: Some(PathBuf::from("/usr/local/bin/my-json-escape")),
+                jq_path: None,
             },
         },
         ..Default::default()
@@ -827,7 +834,9 @@ fn test_script_generation_rust_binary_custom_path() {
 
     // Should use custom binary path
     assert!(script.contains("/usr/local/bin/my-json-escape"));
-    assert!(script.contains("printf '%s' \"$COMMAND_OUTPUT\" | /usr/local/bin/my-json-escape"));
+    assert!(
+        script.contains("OUTPUT_ESCAPED=$(/usr/local/bin/my-json-escape < \"$_CAPTURE_TMPFILE\"")
+    );
 }
 
 // ============================================================================
@@ -843,6 +852,7 @@ fn test_script_generation_shell_fallback() {
                 method: JsonEscapingMethod::ShellFallback,
                 enabled: true,
                 binary_path: None,
+                jq_path: None,
             },
         },
         ..Default::default()
@@ -869,6 +879,7 @@ fn test_script_generation_shell_fallback_escapes() {
                 method: JsonEscapingMethod::ShellFallback,
                 enabled: true,
                 binary_path: None,
+                jq_path: None,
             },
         },
         ..Default::default()
@@ -898,6 +909,7 @@ fn test_script_generation_auto_mode() {
                 method: JsonEscapingMethod::Auto,
                 enabled: true,
                 binary_path: None,
+                jq_path: None,
             },
         },
         ..Default::default()
@@ -911,7 +923,7 @@ fn test_script_generation_auto_mode() {
     assert!(script.contains("if command -v json-escape"));
     assert!(script.contains("else"));
     // Should have both binary and fallback paths
-    assert!(script.contains("printf '%s' \"$COMMAND_OUTPUT\" | json-escape"));
+    assert!(script.contains("OUTPUT_ESCAPED=$(json-escape < \"$_CAPTURE_TMPFILE\""));
     assert!(script.contains("Shell fallback"));
     assert!(script.contains("sed 's/\\\\/\\\\\\\\/g"));
 }
@@ -925,6 +937,7 @@ fn test_script_generation_auto_mode_custom_path() {
                 method: JsonEscapingMethod::Auto,
                 enabled: true,
                 binary_path: Some(PathBuf::from("/opt/bin/json-escape")),
+                jq_path: None,
             },
         },
         ..Default::default()
@@ -936,7 +949,7 @@ fn test_script_generation_auto_mode_custom_path() {
 
     // Should check for custom binary
     assert!(script.contains("if command -v /opt/bin/json-escape"));
-    assert!(script.contains("printf '%s' \"$COMMAND_OUTPUT\" | /opt/bin/json-escape"));
+    assert!(script.contains("OUTPUT_ESCAPED=$(/opt/bin/json-escape < \"$_CAPTURE_TMPFILE\""));
 }
 
 // ============================================================================
@@ -1033,6 +1046,7 @@ fn test_generated_script_binary_detection() {
                 method: JsonEscapingMethod::Auto,
                 enabled: true,
                 binary_path: None,
+                jq_path: None,
             },
         },
         ..Default::default()
@@ -1057,6 +1071,7 @@ fn test_script_execution_with_binary_in_path() -> Result<()> {
                 method: JsonEscapingMethod::Auto,
                 enabled: true,
                 binary_path: None,
+                jq_path: None,
             },
         },
         ..Default::default()
@@ -1076,7 +1091,7 @@ fn test_script_execution_with_binary_in_path() -> Result<()> {
 
     // Verify the code structure
     assert!(escaping_code.contains("OUTPUT_ESCAPED="));
-    assert!(escaping_code.contains("COMMAND_OUTPUT"));
+    assert!(escaping_code.contains("_CAPTURE_TMPFILE"));
 
     Ok(())
 }
@@ -1090,6 +1105,7 @@ fn test_script_execution_fallback_when_binary_missing() -> Result<()> {
                 method: JsonEscapingMethod::Auto,
                 enabled: true,
                 binary_path: Some(PathBuf::from("/nonexistent/path/json-escape")),
+                jq_path: None,
             },
         },
         ..Default::default()
@@ -1122,6 +1138,7 @@ fn test_full_script_with_complex_output() {
                 method: JsonEscapingMethod::Auto,
                 enabled: true,
                 binary_path: None,
+                jq_path: None,
             },
         },
         ..Default::default()
@@ -1367,6 +1384,7 @@ fn test_config_nonexistent_binary_path() -> Result<()> {
                 method: JsonEscapingMethod::RustBinary,
                 enabled: true,
                 binary_path: Some(PathBuf::from("/nonexistent/path/to/json-escape")),
+                jq_path: None,
             },
         },
         ..Default::default()
@@ -1399,6 +1417,7 @@ fn test_config_json_escaping_disabled_script_generation() {
                 method: JsonEscapingMethod::Auto,
                 enabled: false,
                 binary_path: None,
+                jq_path: None,
             },
         },
         ..Default::default()
@@ -1457,6 +1476,7 @@ fn test_config_save_and_load() -> Result<()> {
                 method: JsonEscapingMethod::ShellFallback,
                 enabled: false,
                 binary_path: Some(PathBuf::from("/custom/path/json-escape")),
+                jq_path: None,
             },
         },
         default_device_name: Some("test-device".to_string()),
@@ -1531,7 +1551,7 @@ enabled = true
     // Should use default "json-escape" command (not a path)
     assert!(script.contains("json-escape"));
     // Verify it's using the bare command name, not a path with slashes
-    assert!(script.contains("printf '%s' \"$COMMAND_OUTPUT\" | json-escape"));
+    assert!(script.contains("OUTPUT_ESCAPED=$(json-escape < \"$_CAPTURE_TMPFILE\""));
 
     Ok(())
 }
@@ -1566,6 +1586,7 @@ fn test_config_serialization_format() -> Result<()> {
                 method: JsonEscapingMethod::Auto,
                 enabled: false,
                 binary_path: Some(PathBuf::from("/test/path")),
+                jq_path: None,
             },
         },
         ..Default::default()
@@ -1622,6 +1643,7 @@ fn test_config_method_and_enabled_combinations() -> Result<()> {
                 method: JsonEscapingMethod::RustBinary,
                 enabled: true,
                 binary_path: None,
+                jq_path: None,
             },
         },
         ..Default::default()
@@ -1637,6 +1659,7 @@ fn test_config_method_and_enabled_combinations() -> Result<()> {
                 method: JsonEscapingMethod::ShellFallback,
                 enabled: true,
                 binary_path: None,
+                jq_path: None,
             },
         },
         ..Default::default()
@@ -1653,13 +1676,14 @@ fn test_config_method_and_enabled_combinations() -> Result<()> {
                 method: JsonEscapingMethod::Auto,
                 enabled: true,
                 binary_path: None,
+                jq_path: None,
             },
         },
         ..Default::default()
     };
     let executor = TestExecutor::with_config(config);
     let script = executor.generate_test_script(&create_simple_test_case());
-    assert!(script.contains("if command -v json-escape"));
+    assert!(script.contains("if command -v"));
 
     Ok(())
 }
@@ -1673,6 +1697,7 @@ fn test_config_relative_binary_path() -> Result<()> {
                 method: JsonEscapingMethod::RustBinary,
                 enabled: true,
                 binary_path: Some(PathBuf::from("./bin/json-escape")),
+                jq_path: None,
             },
         },
         ..Default::default()
@@ -1697,6 +1722,7 @@ fn test_config_absolute_binary_path() -> Result<()> {
                 method: JsonEscapingMethod::Auto,
                 enabled: true,
                 binary_path: Some(PathBuf::from("/usr/local/bin/json-escape")),
+                jq_path: None,
             },
         },
         ..Default::default()

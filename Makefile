@@ -60,16 +60,7 @@ lint:
 .PHONY: lint
 
 fmt:
-	@BASE_REF=$(or $(BASE_REF),main); \
-	AFFECTED=$$(./scripts/detect-local-changes.sh "$$BASE_REF" 2>/dev/null || echo ""); \
-	if [ -z "$$AFFECTED" ]; then \
-		echo "No changes detected - skipping fmt"; \
-	else \
-		echo "Running fmt for affected crates: $$AFFECTED"; \
-		for crate in $$AFFECTED; do \
-			cargo fmt -p "$$crate" || exit 1; \
-		done; \
-	fi
+	cargo fmt
 .PHONY: fmt
 
 build:

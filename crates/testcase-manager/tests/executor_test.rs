@@ -554,7 +554,8 @@ fn test_command_with_pipes() {
 
     let script = executor.generate_test_script(&test_case);
 
-    assert!(script.contains("COMMAND_OUTPUT=$({ echo 'hello world' | grep world; } 2>&1 | tee"));
+    assert!(script.contains("{ echo 'hello world' | grep world; } 2>&1 | tee"));
+    assert!(script.contains("COMMAND_OUTPUT=$(cat \"$_CAPTURE_TMPFILE\")"));
 }
 
 #[test]
@@ -582,7 +583,8 @@ fn test_command_with_redirects() {
 
     let script = executor.generate_test_script(&test_case);
 
-    assert!(script.contains("COMMAND_OUTPUT=$({ cat /dev/null 2>&1; } 2>&1 | tee"));
+    assert!(script.contains("{ cat /dev/null 2>&1; } 2>&1 | tee"));
+    assert!(script.contains("COMMAND_OUTPUT=$(cat \"$_CAPTURE_TMPFILE\")"));
 }
 
 #[test]
@@ -610,7 +612,8 @@ fn test_command_with_environment_variables() {
 
     let script = executor.generate_test_script(&test_case);
 
-    assert!(script.contains("COMMAND_OUTPUT=$({ MY_VAR=test echo $MY_VAR; } 2>&1 | tee"));
+    assert!(script.contains("{ MY_VAR=test echo $MY_VAR; } 2>&1 | tee"));
+    assert!(script.contains("COMMAND_OUTPUT=$(cat \"$_CAPTURE_TMPFILE\")"));
 }
 
 #[test]
@@ -2072,7 +2075,7 @@ fn test_script_with_both_manual_and_automated_steps() {
 
     // Verify automated steps use normal execution
     assert!(script.contains("# Step 1: Automated step"));
-    assert!(script.contains("COMMAND_OUTPUT=$({ echo 'automated'; } 2>&1 | tee"));
+    assert!(script.contains("{ echo 'automated'; } 2>&1 | tee"));
 
     // Verify manual step uses USER_VERIFICATION
     assert!(script.contains("# Step 2: Manual step"));
@@ -2081,7 +2084,7 @@ fn test_script_with_both_manual_and_automated_steps() {
 
     // Verify third automated step
     assert!(script.contains("# Step 3: Another automated step"));
-    assert!(script.contains("COMMAND_OUTPUT=$({ echo 'done'; } 2>&1 | tee"));
+    assert!(script.contains("{ echo 'done'; } 2>&1 | tee"));
 }
 
 #[test]

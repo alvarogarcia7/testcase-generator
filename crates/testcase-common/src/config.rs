@@ -7,6 +7,8 @@ use std::path::{Path, PathBuf};
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum JsonEscapingMethod {
+    #[serde(rename = "jq")]
+    Jq,
     #[serde(rename = "rust_binary")]
     RustBinary,
     #[serde(rename = "shell_fallback")]
@@ -22,6 +24,7 @@ pub struct JsonEscapingConfig {
     pub method: JsonEscapingMethod,
     pub enabled: bool,
     pub binary_path: Option<PathBuf>,
+    pub jq_path: Option<PathBuf>,
 }
 
 impl Default for JsonEscapingConfig {
@@ -30,6 +33,7 @@ impl Default for JsonEscapingConfig {
             method: JsonEscapingMethod::Auto,
             enabled: true,
             binary_path: None,
+            jq_path: None,
         }
     }
 }

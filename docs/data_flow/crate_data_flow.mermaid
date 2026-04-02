@@ -1,0 +1,236 @@
+flowchart TB
+    %% External Artifacts
+    YAML_IN[("Test Case YAML Files<br/>(testcases/*.yaml)")]:::artifact
+    BASH_SCRIPTS[("Generated Test Scripts<br/>(*.sh)")]:::artifact
+    EXEC_LOGS[("Test Execution Logs<br/>(*.json)")]:::artifact
+    XML_REPORTS[("JUnit XML Reports<br/>(*.xml)")]:::artifact
+    AUDIT_LOGS[("Audit Logs<br/>(*.audit.json)")]:::artifact
+    VERIFY_REPORTS[("Verification Reports<br/>(*.verification.json)")]:::artifact
+    
+    %% Base Layer - Foundation utilities with no internal dependencies
+    subgraph BASE["Base Layer - Utilities"]
+        direction LR
+        bash_eval["bash-eval<br/>(Shell evaluation)"]:::base
+        audit_traceability["audit-traceability<br/>(Audit events)"]:::base
+        audit_verifier["audit-verifier<br/>(Signature verification)"]:::base
+    end
+    
+    %% Foundation Layer - Core data models and shared utilities
+    subgraph FOUNDATION["Foundation Layer - Models & Common"]
+        direction LR
+        testcase_models["testcase-models<br/>(Data structures)"]:::foundation
+        testcase_common["testcase-common<br/>(Shared utilities)"]:::foundation
+        testcase_git["testcase-git<br/>(Git integration)"]:::foundation
+    end
+    
+    %% Core Layer - Business logic and processing
+    subgraph CORE["Core Layer - Business Logic"]
+        direction TB
+        testcase_validation["testcase-validation<br/>(Schema validation)"]:::core
+        testcase_storage["testcase-storage<br/>(File I/O)"]:::core
+        testcase_execution["testcase-execution<br/>(Test execution)"]:::core
+        testcase_verification["testcase-verification<br/>(Result verification)"]:::core
+        testcase_cli["testcase-cli<br/>(CLI parsing)"]:::core
+        testcase_ui["testcase-ui<br/>(Interactive UI)"]:::core
+    end
+    
+    %% Orchestration Layer - High-level coordination
+    subgraph ORCHESTRATION["Orchestration Layer - Coordination"]
+        direction LR
+        testcase_orchestration["testcase-orchestration<br/>(Test coordination)"]:::orchestration
+    end
+    
+    %% Binary Layer - User-facing executables
+    subgraph BINARY["Binary Layer - Executables"]
+        direction TB
+        
+        subgraph BINARY_VALIDATORS["Validators"]
+            validate_yaml["validate-yaml<br/>(YAML validator)"]:::binary
+            validate_json["validate-json<br/>(JSON validator)"]:::binary
+        end
+        
+        subgraph BINARY_EXECUTORS["Executors"]
+            test_executor["test-executor<br/>(Test runner)"]:::binary
+            test_orchestrator["test-orchestrator<br/>(Multi-test orchestrator)"]:::binary
+        end
+        
+        subgraph BINARY_VERIFIERS["Verifiers"]
+            verifier["verifier<br/>(Result verifier)"]:::binary
+            test_verify["test-verify<br/>(Verification CLI)"]:::binary
+        end
+        
+        subgraph BINARY_MANAGERS["Managers"]
+            testcase_manager["testcase-manager<br/>(Main CLI + tools)"]:::binary
+            editor["editor<br/>(Interactive editor)"]:::binary
+            test_run_manager["test-run-manager<br/>(Run manager)"]:::binary
+        end
+        
+        subgraph BINARY_UTILITIES["Utilities"]
+            json_escape["json-escape<br/>(JSON escaper)"]:::binary
+            json_to_yaml["json-to-yaml<br/>(Format converter)"]:::binary
+            script_cleanup["script-cleanup<br/>(Script cleaner)"]:::binary
+            tpdg_compat["tpdg-compat<br/>(Legacy compat)"]:::binary
+        end
+    end
+    
+    %% ============================================
+    %% Data Flow - Base Layer Dependencies
+    %% ============================================
+    
+    %% bash-eval is standalone (no internal deps)
+    %% audit-traceability is standalone
+    %% audit-verifier is standalone
+    
+    %% ============================================
+    %% Data Flow - Foundation Layer
+    %% ============================================
+    
+    bash_eval -->|"Shell patterns"| testcase_models
+    testcase_models -->|"TestCase,<br/>TestStep,<br/>Expectation"| testcase_common
+    
+    %% ============================================
+    %% Data Flow - Core Layer
+    %% ============================================
+    
+    testcase_models -->|"TestCase"| testcase_validation
+    testcase_common -->|"Config,<br/>Schemas"| testcase_validation
+    
+    testcase_models -->|"TestCase"| testcase_storage
+    testcase_common -->|"File paths"| testcase_storage
+    testcase_validation -->|"Validation"| testcase_storage
+    
+    bash_eval -->|"Variable expansion"| testcase_execution
+    testcase_models -->|"TestCase,<br/>TestStep"| testcase_execution
+    testcase_common -->|"Config"| testcase_execution
+    audit_verifier -->|"Audit signing"| testcase_execution
+    
+    testcase_models -->|"TestCase,<br/>Expectation"| testcase_verification
+    testcase_common -->|"Config"| testcase_verification
+    bash_eval -->|"Expression eval"| testcase_verification
+    
+    testcase_models -->|"TestCase"| testcase_cli
+    
+    testcase_models -->|"TestCase"| testcase_ui
+    testcase_storage -->|"Load/Save"| testcase_ui
+    testcase_common -->|"Config"| testcase_ui
+    testcase_verification -->|"Validation"| testcase_ui
+    testcase_git -->|"Git ops"| testcase_ui
+    
+    %% ============================================
+    %% Data Flow - Orchestration Layer
+    %% ============================================
+    
+    testcase_models -->|"TestCase"| testcase_orchestration
+    testcase_execution -->|"ExecutionResult"| testcase_orchestration
+    testcase_storage -->|"Load tests"| testcase_orchestration
+    testcase_verification -->|"VerificationResult"| testcase_orchestration
+    
+    %% ============================================
+    %% Data Flow - Binary Layer
+    %% ============================================
+    
+    %% Validators
+    testcase_validation -->|"Validation logic"| validate_yaml
+    testcase_models -->|"TestCase"| validate_yaml
+    testcase_common -->|"Schemas"| validate_yaml
+    testcase_manager -->|"Core features"| validate_yaml
+    
+    testcase_validation -->|"Validation logic"| validate_json
+    testcase_common -->|"Schemas"| validate_json
+    
+    %% Executors
+    audit_traceability -->|"Traceability"| test_executor
+    testcase_execution -->|"Execution engine"| test_executor
+    testcase_storage -->|"Load TestCase"| test_executor
+    testcase_models -->|"TestCase"| test_executor
+    testcase_validation -->|"Validation"| test_executor
+    testcase_common -->|"Config"| test_executor
+    audit_verifier -->|"Audit signing"| test_executor
+    
+    testcase_orchestration -->|"Orchestration"| test_orchestrator
+    testcase_storage -->|"Load tests"| test_orchestrator
+    testcase_ui -->|"UI components"| test_orchestrator
+    testcase_verification -->|"Verification"| test_orchestrator
+    
+    %% Verifiers
+    testcase_verification -->|"Verification logic"| verifier
+    testcase_storage -->|"Load logs"| verifier
+    testcase_models -->|"TestCase,<br/>ExecutionLog"| verifier
+    testcase_common -->|"Config"| verifier
+    
+    testcase_manager -->|"Core features"| test_verify
+    testcase_verification -->|"Verification logic"| test_verify
+    testcase_storage -->|"Load data"| test_verify
+    testcase_models -->|"TestCase"| test_verify
+    
+    %% Managers
+    bash_eval -->|"Shell eval"| testcase_manager
+    testcase_models -->|"TestCase"| testcase_manager
+    testcase_cli -->|"CLI parsing"| testcase_manager
+    testcase_common -->|"Config"| testcase_manager
+    testcase_execution -->|"Execution"| testcase_manager
+    testcase_git -->|"Git ops"| testcase_manager
+    testcase_orchestration -->|"Orchestration"| testcase_manager
+    testcase_storage -->|"Load/Save"| testcase_manager
+    testcase_ui -->|"UI components"| testcase_manager
+    testcase_verification -->|"Verification"| testcase_manager
+    
+    testcase_manager -->|"Core features"| editor
+    testcase_ui -->|"UI components"| editor
+    testcase_cli -->|"CLI parsing"| editor
+    testcase_git -->|"Git ops"| editor
+    testcase_storage -->|"Load/Save"| editor
+    testcase_models -->|"TestCase"| editor
+    testcase_common -->|"Config"| editor
+    
+    testcase_storage -->|"Load runs"| test_run_manager
+    testcase_ui -->|"UI components"| test_run_manager
+    testcase_models -->|"TestRun"| test_run_manager
+    
+    %% Utilities
+    testcase_verification -->|"Cleaning logic"| script_cleanup
+    
+    %% ============================================
+    %% External Artifact Flows
+    %% ============================================
+    
+    YAML_IN -.->|"Load TestCase"| testcase_storage
+    testcase_storage -.->|"Save TestCase"| YAML_IN
+    
+    YAML_IN -.->|"Validate"| validate_yaml
+    
+    test_executor -.->|"Generate"| BASH_SCRIPTS
+    
+    BASH_SCRIPTS -.->|"Execute"| testcase_execution
+    testcase_execution -.->|"Write ExecutionLog"| EXEC_LOGS
+    
+    EXEC_LOGS -.->|"Read"| testcase_verification
+    testcase_verification -.->|"Write VerificationReport"| VERIFY_REPORTS
+    testcase_verification -.->|"Write JUnit XML"| XML_REPORTS
+    
+    audit_verifier -.->|"Sign"| AUDIT_LOGS
+    AUDIT_LOGS -.->|"Verify"| audit_verifier
+    
+    testcase_execution -.->|"Write audit"| AUDIT_LOGS
+    
+    %% ============================================
+    %% Styling
+    %% ============================================
+    
+    classDef base fill:#4A90E2,stroke:#2E5C8A,stroke-width:2px,color:#fff
+    classDef foundation fill:#50C878,stroke:#2D8B57,stroke-width:2px,color:#fff
+    classDef core fill:#FFD700,stroke:#B8860B,stroke-width:2px,color:#000
+    classDef orchestration fill:#FF8C00,stroke:#CC6600,stroke-width:2px,color:#fff
+    classDef binary fill:#DC143C,stroke:#8B0000,stroke-width:2px,color:#fff
+    classDef artifact fill:#9370DB,stroke:#6A0DAD,stroke-width:3px,color:#fff,stroke-dasharray: 5 5
+    
+    style BASE fill:#E3F2FD,stroke:#4A90E2,stroke-width:3px
+    style FOUNDATION fill:#E8F5E9,stroke:#50C878,stroke-width:3px
+    style CORE fill:#FFFACD,stroke:#FFD700,stroke-width:3px
+    style ORCHESTRATION fill:#FFE4B5,stroke:#FF8C00,stroke-width:3px
+    style BINARY fill:#FFE4E1,stroke:#DC143C,stroke-width:3px
+    style BINARY_VALIDATORS fill:#FFF0F5,stroke:#DC143C,stroke-width:2px
+    style BINARY_EXECUTORS fill:#FFF0F5,stroke:#DC143C,stroke-width:2px
+    style BINARY_VERIFIERS fill:#FFF0F5,stroke:#DC143C,stroke-width:2px
+    style BINARY_MANAGERS fill:#FFF0F5,stroke:#DC143C,stroke-width:2px
+    style BINARY_UTILITIES fill:#FFF0F5,stroke:#DC143C,stroke-width:2px

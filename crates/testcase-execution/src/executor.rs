@@ -261,7 +261,7 @@ impl TestExecutor {
 
     /// Generate JSON escaping code based on configuration
     ///
-    /// Returns bash script code that reads from $COMMAND_OUTPUT and sets $OUTPUT_ESCAPED
+    /// Returns bash script code that reads from $_CAPTURE_TMPFILE and sets $OUTPUT_ESCAPED
     /// based on the configured JSON escaping method.
     fn generate_json_escaping_code(&self) -> String {
         let mut script = String::new();
@@ -270,41 +270,57 @@ impl TestExecutor {
 
         let method = &self.config.script_generation.json_escaping.method;
         let binary_path = &self.config.script_generation.json_escaping.binary_path;
+        let jq_path = &self.config.script_generation.json_escaping.jq_path;
 
         match method {
+            JsonEscapingMethod::Jq => {
+                // Use jq reading from the capture temp file
+                let jq_cmd = jq_path.as_ref().and_then(|p| p.to_str()).unwrap_or("jq");
+                script.push_str(&format!(
+                    "OUTPUT_ESCAPED=$({} -Rs . < \"$_CAPTURE_TMPFILE\" 2>/dev/null | sed 's/^\"//;s/\"$//' || echo \"\")\n",
+                    jq_cmd
+                ));
+            }
             JsonEscapingMethod::RustBinary => {
-                // Use json-escape binary directly
+                // Use json-escape binary reading from the capture temp file
                 let bin_path = binary_path
                     .as_ref()
                     .and_then(|p| p.to_str())
                     .unwrap_or("json-escape");
                 script.push_str(&format!(
-                    "OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | {} 2>/dev/null || echo \"\")\n",
+                    "OUTPUT_ESCAPED=$({} < \"$_CAPTURE_TMPFILE\" 2>/dev/null || echo \"\")\n",
                     bin_path
                 ));
             }
             JsonEscapingMethod::ShellFallback => {
-                // Use sed/awk fallback directly
+                // Use sed/awk fallback reading from the capture temp file
                 script.push_str("# Shell fallback: escape backslashes, quotes, tabs, and convert newlines to \\n\n");
-                script.push_str("OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g; s/\\t/\\\\t/g' | awk '{printf \"%s%s\", (NR>1?\"\\\\n\":\"\"), $0}')\n");
+                script.push_str("OUTPUT_ESCAPED=$(sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g; s/\\t/\\\\t/g' < \"$_CAPTURE_TMPFILE\" | awk '{printf \"%s%s\", (NR>1?\"\\\\n\":\"\"), $0}')\n");
             }
             JsonEscapingMethod::Auto => {
-                // Try json-escape binary first, fallback to sed/awk
+                // Try jq first (reading from capture temp file), then json-escape binary, then fallback to sed/awk
+                let jq_cmd = jq_path.as_ref().and_then(|p| p.to_str()).unwrap_or("jq");
                 let bin_path = binary_path
                     .as_ref()
                     .and_then(|p| p.to_str())
                     .unwrap_or("json-escape");
+
+                script.push_str(&format!("if command -v {} >/dev/null 2>&1; then\n", jq_cmd));
                 script.push_str(&format!(
-                    "if command -v {} >/dev/null 2>&1; then\n",
+                    "    OUTPUT_ESCAPED=$({} -Rs . < \"$_CAPTURE_TMPFILE\" 2>/dev/null | sed 's/^\"//;s/\"$//' || echo \"\")\n",
+                    jq_cmd
+                ));
+                script.push_str(&format!(
+                    "elif command -v {} >/dev/null 2>&1; then\n",
                     bin_path
                 ));
                 script.push_str(&format!(
-                    "    OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | {} 2>/dev/null || echo \"\")\n",
+                    "    OUTPUT_ESCAPED=$({} < \"$_CAPTURE_TMPFILE\" 2>/dev/null || echo \"\")\n",
                     bin_path
                 ));
                 script.push_str("else\n");
                 script.push_str("    # Shell fallback: escape backslashes, quotes, tabs, and convert newlines to \\n\n");
-                script.push_str("    OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g; s/\\t/\\\\t/g' | awk '{printf \"%s%s\", (NR>1?\"\\\\n\":\"\"), $0}')\n");
+                script.push_str("    OUTPUT_ESCAPED=$(sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g; s/\\t/\\\\t/g' < \"$_CAPTURE_TMPFILE\" | awk '{printf \"%s%s\", (NR>1?\"\\\\n\":\"\"), $0}')\n");
                 script.push_str("fi\n");
             }
         }
@@ -497,9 +513,17 @@ impl TestExecutor {
             script.push_str("CAPTURED_VAR_NAMES=\"\"\n\n");
         }
 
-        // Add trap to ensure JSON file is properly closed on any exit
-        script.push_str("# Trap to ensure JSON file is closed properly on exit\n");
+        // Add trap to ensure JSON file is properly closed on any exit and temp files are cleaned
+        script.push_str(
+            "# Trap to ensure JSON file is closed properly on exit and temp files are cleaned\n",
+        );
         script.push_str("cleanup() {\n");
+        script.push_str("    # Clean up temp capture file if it exists\n");
+        script.push_str(
+            "    if [ -n \"${_CAPTURE_TMPFILE:-}\" ] && [ -f \"$_CAPTURE_TMPFILE\" ]; then\n",
+        );
+        script.push_str("        rm -f \"$_CAPTURE_TMPFILE\"\n");
+        script.push_str("    fi\n");
         script.push_str("    if [ -f \"$JSON_LOG\" ]; then\n");
         script.push_str("        # Check if JSON_LOG ends with '[' or ','\n");
         script.push_str("        LAST_CHAR=$(tail -c 2 \"$JSON_LOG\" | head -c 1)\n");
@@ -1012,6 +1036,7 @@ impl TestExecutor {
                     test_case.id, sequence.id, step.step
                 ));
                 script.push_str("COMMAND_OUTPUT=\"\"\n");
+                script.push_str("_CAPTURE_TMPFILE=$(mktemp)\n");
                 script.push_str("set +e\n");
 
                 // Convert hydration placeholders (${#VAR_NAME} -> ${VAR_NAME})
@@ -1045,20 +1070,20 @@ impl TestExecutor {
                     script.push_str("    done\n");
                     script.push_str("fi\n");
 
-                    // Wrap command in subshell with braces and redirect stderr to stdout before piping to tee
-                    // This ensures both stdout and stderr are captured in the log file
+                    // Write command output to temp file and tee to log file
                     script.push_str(
-                        "COMMAND_OUTPUT=$({ eval \"$SUBSTITUTED_COMMAND\"; } 2>&1 | tee \"$LOG_FILE\")\n",
+                        "{ eval \"$SUBSTITUTED_COMMAND\"; } 2>&1 | tee \"$LOG_FILE\" > \"$_CAPTURE_TMPFILE\"\n",
                     );
                 } else {
                     // No substitution needed - inline the command directly
                     script.push_str(&format!(
-                        "COMMAND_OUTPUT=$({{ {}; }} 2>&1 | tee \"$LOG_FILE\")\n",
+                        "{{ {}; }} 2>&1 | tee \"$LOG_FILE\" > \"$_CAPTURE_TMPFILE\"\n",
                         converted_command
                     ));
                 }
 
                 script.push_str("EXIT_CODE=$?\n");
+                script.push_str("COMMAND_OUTPUT=$(cat \"$_CAPTURE_TMPFILE\")\n");
                 script.push_str("set -e\n\n");
 
                 // Variable capture: extract values from COMMAND_OUTPUT using regex patterns or commands
@@ -3051,8 +3076,9 @@ mod tests {
         assert!(script.contains("# Replace ${var_name} pattern"));
         assert!(script.contains("SUBSTITUTED_COMMAND=$(echo \"$SUBSTITUTED_COMMAND\" | sed \"s/\\${$var_name}/$escaped_value/g\")"));
         assert!(script.contains(
-            "COMMAND_OUTPUT=$({ eval \"$SUBSTITUTED_COMMAND\"; } 2>&1 | tee \"$LOG_FILE\")"
+            "{ eval \"$SUBSTITUTED_COMMAND\"; } 2>&1 | tee \"$LOG_FILE\" > \"$_CAPTURE_TMPFILE\""
         ));
+        assert!(script.contains("COMMAND_OUTPUT=$(cat \"$_CAPTURE_TMPFILE\")"));
     }
 
     #[test]
@@ -3751,5 +3777,673 @@ mod tests {
         let script = executor.generate_test_script(&test_case);
 
         assert!(!script.contains("source_yaml_sha256"));
+    }
+
+    #[test]
+    fn test_json_escaping_jq_method() {
+        use testcase_common::{
+            Config, JsonEscapingConfig, JsonEscapingMethod, ScriptGenerationConfig,
+        };
+
+        let config = Config {
+            script_generation: ScriptGenerationConfig {
+                json_escaping: JsonEscapingConfig {
+                    method: JsonEscapingMethod::Jq,
+                    enabled: true,
+                    binary_path: None,
+                    jq_path: None,
+                },
+            },
+            ..Default::default()
+        };
+
+        let executor = TestExecutor::with_config(config);
+        let escaping_code = executor.generate_json_escaping_code();
+
+        assert!(escaping_code.contains("# Escape output for JSON (BSD/GNU compatible)"));
+        assert!(escaping_code.contains("jq -Rs . < \"$_CAPTURE_TMPFILE\""));
+        assert!(escaping_code.contains("sed 's/^\"//;s/\"$//'"));
+        assert!(escaping_code.contains("OUTPUT_ESCAPED="));
+        assert!(!escaping_code.contains("if command -v"));
+        assert!(!escaping_code.contains("json-escape"));
+    }
+
+    #[test]
+    fn test_json_escaping_jq_method_custom_path() {
+        use std::path::PathBuf;
+        use testcase_common::{
+            Config, JsonEscapingConfig, JsonEscapingMethod, ScriptGenerationConfig,
+        };
+
+        let config = Config {
+            script_generation: ScriptGenerationConfig {
+                json_escaping: JsonEscapingConfig {
+                    method: JsonEscapingMethod::Jq,
+                    enabled: true,
+                    binary_path: None,
+                    jq_path: Some(PathBuf::from("/usr/local/bin/jq")),
+                },
+            },
+            ..Default::default()
+        };
+
+        let executor = TestExecutor::with_config(config);
+        let escaping_code = executor.generate_json_escaping_code();
+
+        assert!(escaping_code.contains("/usr/local/bin/jq -Rs . < \"$_CAPTURE_TMPFILE\""));
+    }
+
+    #[test]
+    fn test_json_escaping_rust_binary_method() {
+        use testcase_common::{
+            Config, JsonEscapingConfig, JsonEscapingMethod, ScriptGenerationConfig,
+        };
+
+        let config = Config {
+            script_generation: ScriptGenerationConfig {
+                json_escaping: JsonEscapingConfig {
+                    method: JsonEscapingMethod::RustBinary,
+                    enabled: true,
+                    binary_path: None,
+                    jq_path: None,
+                },
+            },
+            ..Config::default()
+        };
+
+        let executor = TestExecutor::with_config(config);
+        let escaping_code = executor.generate_json_escaping_code();
+
+        assert!(escaping_code.contains("# Escape output for JSON (BSD/GNU compatible)"));
+        assert!(escaping_code.contains("json-escape < \"$_CAPTURE_TMPFILE\""));
+        assert!(escaping_code.contains("OUTPUT_ESCAPED="));
+        assert!(!escaping_code.contains("if command -v"));
+        assert!(!escaping_code.contains("jq -Rs"));
+    }
+
+    #[test]
+    fn test_json_escaping_rust_binary_method_custom_path() {
+        use std::path::PathBuf;
+        use testcase_common::{
+            Config, JsonEscapingConfig, JsonEscapingMethod, ScriptGenerationConfig,
+        };
+
+        let config = Config {
+            script_generation: ScriptGenerationConfig {
+                json_escaping: JsonEscapingConfig {
+                    method: JsonEscapingMethod::RustBinary,
+                    enabled: true,
+                    binary_path: Some(PathBuf::from("/opt/bin/json-escape")),
+                    jq_path: None,
+                },
+            },
+            ..Default::default()
+        };
+
+        let executor = TestExecutor::with_config(config);
+        let escaping_code = executor.generate_json_escaping_code();
+
+        assert!(escaping_code.contains("/opt/bin/json-escape < \"$_CAPTURE_TMPFILE\""));
+    }
+
+    #[test]
+    fn test_json_escaping_shell_fallback_method() {
+        use testcase_common::{
+            Config, JsonEscapingConfig, JsonEscapingMethod, ScriptGenerationConfig,
+        };
+
+        let config = Config {
+            script_generation: ScriptGenerationConfig {
+                json_escaping: JsonEscapingConfig {
+                    method: JsonEscapingMethod::ShellFallback,
+                    enabled: true,
+                    binary_path: None,
+                    jq_path: None,
+                },
+            },
+            ..Default::default()
+        };
+
+        let executor = TestExecutor::with_config(config);
+        let escaping_code = executor.generate_json_escaping_code();
+
+        assert!(escaping_code.contains("# Escape output for JSON (BSD/GNU compatible)"));
+        assert!(escaping_code.contains(
+            "# Shell fallback: escape backslashes, quotes, tabs, and convert newlines to \\n"
+        ));
+        assert!(escaping_code.contains(
+            "sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g; s/\\t/\\\\t/g' < \"$_CAPTURE_TMPFILE\""
+        ));
+        assert!(escaping_code.contains("awk '{printf \"%s%s\", (NR>1?\"\\\\n\":\"\"), $0}'"));
+        assert!(escaping_code.contains("OUTPUT_ESCAPED="));
+        assert!(!escaping_code.contains("if command -v"));
+        assert!(!escaping_code.contains("jq -Rs"));
+        assert!(!escaping_code.contains("json-escape"));
+    }
+
+    #[test]
+    fn test_json_escaping_auto_method() {
+        use testcase_common::{
+            Config, JsonEscapingConfig, JsonEscapingMethod, ScriptGenerationConfig,
+        };
+
+        let config = Config {
+            script_generation: ScriptGenerationConfig {
+                json_escaping: JsonEscapingConfig {
+                    method: JsonEscapingMethod::Auto,
+                    enabled: true,
+                    binary_path: None,
+                    jq_path: None,
+                },
+            },
+            ..Default::default()
+        };
+
+        let executor = TestExecutor::with_config(config);
+        let escaping_code = executor.generate_json_escaping_code();
+
+        assert!(escaping_code.contains("# Escape output for JSON (BSD/GNU compatible)"));
+
+        // Check for jq fallback chain
+        assert!(escaping_code.contains("if command -v jq >/dev/null 2>&1; then"));
+        assert!(escaping_code.contains("OUTPUT_ESCAPED=$(jq -Rs . < \"$_CAPTURE_TMPFILE\""));
+
+        // Check for json-escape fallback
+        assert!(escaping_code.contains("elif command -v json-escape >/dev/null 2>&1; then"));
+        assert!(escaping_code.contains("OUTPUT_ESCAPED=$(json-escape < \"$_CAPTURE_TMPFILE\""));
+
+        // Check for shell fallback
+        assert!(escaping_code.contains("else"));
+        assert!(escaping_code.contains(
+            "# Shell fallback: escape backslashes, quotes, tabs, and convert newlines to \\n"
+        ));
+        assert!(escaping_code.contains("OUTPUT_ESCAPED=$(sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g; s/\\t/\\\\t/g' < \"$_CAPTURE_TMPFILE\""));
+        assert!(escaping_code.contains("fi"));
+    }
+
+    #[test]
+    fn test_json_escaping_auto_method_custom_paths() {
+        use std::path::PathBuf;
+        use testcase_common::{
+            Config, JsonEscapingConfig, JsonEscapingMethod, ScriptGenerationConfig,
+        };
+
+        let config = Config {
+            script_generation: ScriptGenerationConfig {
+                json_escaping: JsonEscapingConfig {
+                    method: JsonEscapingMethod::Auto,
+                    enabled: true,
+                    binary_path: Some(PathBuf::from("/custom/json-escape")),
+                    jq_path: Some(PathBuf::from("/custom/jq")),
+                },
+            },
+            ..Default::default()
+        };
+
+        let executor = TestExecutor::with_config(config);
+        let escaping_code = executor.generate_json_escaping_code();
+
+        assert!(escaping_code.contains("if command -v /custom/jq >/dev/null 2>&1; then"));
+        assert!(escaping_code.contains("OUTPUT_ESCAPED=$(/custom/jq -Rs . < \"$_CAPTURE_TMPFILE\""));
+        assert!(escaping_code.contains("elif command -v /custom/json-escape >/dev/null 2>&1; then"));
+        assert!(
+            escaping_code.contains("OUTPUT_ESCAPED=$(/custom/json-escape < \"$_CAPTURE_TMPFILE\"")
+        );
+    }
+
+    #[test]
+    fn test_cleanup_trap_in_generated_script() {
+        let executor = TestExecutor::new();
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test cleanup trap".to_string(),
+        );
+
+        let mut sequence = TestSequence::new(1, "Seq1".to_string(), "First sequence".to_string());
+        let step = Step {
+            step: 1,
+            manual: None,
+            description: "Echo test".to_string(),
+            command: "echo 'hello'".to_string(),
+            capture_vars: None,
+            expected: Expected {
+                success: Some(true),
+                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
+                output: "[ \"$COMMAND_OUTPUT\" = \"hello\" ]".to_string(),
+            },
+            verification: Verification {
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple(
+                    "[ \"$COMMAND_OUTPUT\" = \"hello\" ]".to_string(),
+                ),
+                output_file: None,
+                general: None,
+            },
+            reference: None,
+        };
+        sequence.steps.push(step);
+        test_case.test_sequences.push(sequence);
+
+        let json_output_path = PathBuf::from("/tmp/test.json");
+        let script =
+            executor.generate_test_script_with_json_output(&test_case, &json_output_path, None);
+
+        // Check cleanup function is defined
+        assert!(script.contains("cleanup() {"));
+        assert!(script.contains("# Clean up temp capture file if it exists"));
+        assert!(script
+            .contains("if [ -n \"${_CAPTURE_TMPFILE:-}\" ] && [ -f \"$_CAPTURE_TMPFILE\" ]; then"));
+        assert!(script.contains("rm -f \"$_CAPTURE_TMPFILE\""));
+
+        // Check trap is set
+        assert!(script.contains("trap cleanup EXIT"));
+    }
+
+    #[test]
+    fn test_temp_file_creation_in_generated_script() {
+        let executor = TestExecutor::new();
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test temp file creation".to_string(),
+        );
+
+        let mut sequence = TestSequence::new(1, "Seq1".to_string(), "First sequence".to_string());
+        let step = Step {
+            step: 1,
+            manual: None,
+            description: "Echo test".to_string(),
+            command: "echo 'hello'".to_string(),
+            capture_vars: None,
+            expected: Expected {
+                success: Some(true),
+                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
+                output: "[ \"$COMMAND_OUTPUT\" = \"hello\" ]".to_string(),
+            },
+            verification: Verification {
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple(
+                    "[ \"$COMMAND_OUTPUT\" = \"hello\" ]".to_string(),
+                ),
+                output_file: None,
+                general: None,
+            },
+            reference: None,
+        };
+        sequence.steps.push(step);
+        test_case.test_sequences.push(sequence);
+
+        let json_output_path = PathBuf::from("/tmp/test.json");
+        let script =
+            executor.generate_test_script_with_json_output(&test_case, &json_output_path, None);
+
+        // Check temp file is created with mktemp
+        assert!(script.contains("_CAPTURE_TMPFILE=$(mktemp)"));
+
+        // Check command output is redirected to temp file
+        assert!(script.contains("> \"$_CAPTURE_TMPFILE\""));
+
+        // Check temp file content is read back
+        assert!(script.contains("COMMAND_OUTPUT=$(cat \"$_CAPTURE_TMPFILE\")"));
+    }
+
+    #[test]
+    fn test_temp_file_used_in_json_escaping() {
+        use testcase_common::{
+            Config, JsonEscapingConfig, JsonEscapingMethod, ScriptGenerationConfig,
+        };
+
+        let config = Config {
+            script_generation: ScriptGenerationConfig {
+                json_escaping: JsonEscapingConfig {
+                    method: JsonEscapingMethod::Jq,
+                    enabled: true,
+                    binary_path: None,
+                    jq_path: None,
+                },
+            },
+            ..Config::default()
+        };
+
+        let executor = TestExecutor::with_config(config);
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test temp file in JSON escaping".to_string(),
+        );
+
+        let mut sequence = TestSequence::new(1, "Seq1".to_string(), "First sequence".to_string());
+        let step = Step {
+            step: 1,
+            manual: None,
+            description: "Echo test".to_string(),
+            command: "echo 'hello'".to_string(),
+            capture_vars: None,
+            expected: Expected {
+                success: Some(true),
+                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
+                output: "[ \"$COMMAND_OUTPUT\" = \"hello\" ]".to_string(),
+            },
+            verification: Verification {
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple(
+                    "[ \"$COMMAND_OUTPUT\" = \"hello\" ]".to_string(),
+                ),
+                output_file: None,
+                general: None,
+            },
+            reference: None,
+        };
+        sequence.steps.push(step);
+        test_case.test_sequences.push(sequence);
+
+        let json_output_path = PathBuf::from("/tmp/test.json");
+        let script =
+            executor.generate_test_script_with_json_output(&test_case, &json_output_path, None);
+
+        // Check that JSON escaping code reads from temp file
+        assert!(script.contains("jq -Rs . < \"$_CAPTURE_TMPFILE\""));
+    }
+
+    #[test]
+    fn test_edge_case_empty_output_handling() {
+        let executor = TestExecutor::new();
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test empty output".to_string(),
+        );
+
+        let mut sequence = TestSequence::new(1, "Seq1".to_string(), "First sequence".to_string());
+        let step = Step {
+            step: 1,
+            manual: None,
+            description: "Command with no output".to_string(),
+            command: "true".to_string(),
+            capture_vars: None,
+            expected: Expected {
+                success: Some(true),
+                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
+                output: "[ -z \"$COMMAND_OUTPUT\" ]".to_string(),
+            },
+            verification: Verification {
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple("[ -z \"$COMMAND_OUTPUT\" ]".to_string()),
+                output_file: None,
+                general: None,
+            },
+            reference: None,
+        };
+        sequence.steps.push(step);
+        test_case.test_sequences.push(sequence);
+
+        let json_output_path = PathBuf::from("/tmp/test.json");
+        let script =
+            executor.generate_test_script_with_json_output(&test_case, &json_output_path, None);
+
+        // Verify JSON escaping code has fallback for empty output
+        assert!(script.contains("|| echo \"\""));
+
+        // Verify the script can handle empty COMMAND_OUTPUT
+        assert!(script.contains("[ -z \"$COMMAND_OUTPUT\" ]"));
+    }
+
+    #[test]
+    fn test_edge_case_binary_output_handling() {
+        use testcase_common::{
+            Config, JsonEscapingConfig, JsonEscapingMethod, ScriptGenerationConfig,
+        };
+
+        let config = Config {
+            script_generation: ScriptGenerationConfig {
+                json_escaping: JsonEscapingConfig {
+                    method: JsonEscapingMethod::Jq,
+                    enabled: true,
+                    binary_path: None,
+                    jq_path: None,
+                },
+            },
+            ..Config::default()
+        };
+
+        let executor = TestExecutor::with_config(config);
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test binary output".to_string(),
+        );
+
+        let mut sequence = TestSequence::new(1, "Seq1".to_string(), "First sequence".to_string());
+        let step = Step {
+            step: 1,
+            manual: None,
+            description: "Command producing binary output".to_string(),
+            command: "dd if=/dev/urandom bs=1 count=10".to_string(),
+            capture_vars: None,
+            expected: Expected {
+                success: Some(true),
+                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
+                output: "true".to_string(),
+            },
+            verification: Verification {
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple("true".to_string()),
+                output_file: None,
+                general: None,
+            },
+            reference: None,
+        };
+        sequence.steps.push(step);
+        test_case.test_sequences.push(sequence);
+
+        let json_output_path = PathBuf::from("/tmp/test.json");
+        let script =
+            executor.generate_test_script_with_json_output(&test_case, &json_output_path, None);
+
+        // Verify jq handles binary data with -Rs (raw input, slurp)
+        assert!(script.contains("jq -Rs . < \"$_CAPTURE_TMPFILE\""));
+
+        // Verify error handling with 2>/dev/null and fallback (jq uses piped sed before the || echo)
+        assert!(script.contains("2>/dev/null"));
+        assert!(script.contains("|| echo \"\""));
+    }
+
+    #[test]
+    fn test_cleanup_trap_closes_json_file() {
+        let executor = TestExecutor::new();
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Test JSON file closure".to_string(),
+        );
+
+        let mut sequence = TestSequence::new(1, "Seq1".to_string(), "First sequence".to_string());
+        let step = Step {
+            step: 1,
+            manual: None,
+            description: "Echo test".to_string(),
+            command: "echo 'hello'".to_string(),
+            capture_vars: None,
+            expected: Expected {
+                success: Some(true),
+                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
+                output: "[ \"$COMMAND_OUTPUT\" = \"hello\" ]".to_string(),
+            },
+            verification: Verification {
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple(
+                    "[ \"$COMMAND_OUTPUT\" = \"hello\" ]".to_string(),
+                ),
+                output_file: None,
+                general: None,
+            },
+            reference: None,
+        };
+        sequence.steps.push(step);
+        test_case.test_sequences.push(sequence);
+
+        let json_output_path = PathBuf::from("/tmp/test.json");
+        let script =
+            executor.generate_test_script_with_json_output(&test_case, &json_output_path, None);
+
+        // Check that cleanup function closes JSON file properly
+        assert!(script.contains("cleanup() {"));
+        assert!(script.contains("if [ -f \"$JSON_LOG\" ]; then"));
+
+        // Verify cleanup checks last character
+        assert!(script.contains("LAST_CHAR=$(tail -c 2 \"$JSON_LOG\" | head -c 1)"));
+
+        // Verify cleanup adds closing bracket when needed
+        assert!(script.contains("echo ']' >> \"$JSON_LOG\""));
+    }
+
+    #[test]
+    fn test_json_escaping_in_full_script_with_jq() {
+        use testcase_common::{
+            Config, JsonEscapingConfig, JsonEscapingMethod, ScriptGenerationConfig,
+        };
+
+        let config = Config {
+            script_generation: ScriptGenerationConfig {
+                json_escaping: JsonEscapingConfig {
+                    method: JsonEscapingMethod::Jq,
+                    enabled: true,
+                    binary_path: None,
+                    jq_path: None,
+                },
+            },
+            ..Default::default()
+        };
+
+        let executor = TestExecutor::with_config(config);
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Full script test".to_string(),
+        );
+
+        let mut sequence = TestSequence::new(1, "Seq1".to_string(), "First sequence".to_string());
+        let step = Step {
+            step: 1,
+            manual: None,
+            description: "Echo test".to_string(),
+            command: "echo 'hello'".to_string(),
+            capture_vars: None,
+            expected: Expected {
+                success: Some(true),
+                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
+                output: "[ \"$COMMAND_OUTPUT\" = \"hello\" ]".to_string(),
+            },
+            verification: Verification {
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple(
+                    "[ \"$COMMAND_OUTPUT\" = \"hello\" ]".to_string(),
+                ),
+                output_file: None,
+                general: None,
+            },
+            reference: None,
+        };
+        sequence.steps.push(step);
+        test_case.test_sequences.push(sequence);
+
+        let json_output_path = PathBuf::from("/tmp/test.json");
+        let script =
+            executor.generate_test_script_with_json_output(&test_case, &json_output_path, None);
+
+        // Verify all components are present
+        assert!(script.contains("_CAPTURE_TMPFILE=$(mktemp)"));
+        assert!(script.contains("jq -Rs . < \"$_CAPTURE_TMPFILE\""));
+        assert!(script.contains("cleanup() {"));
+        assert!(script.contains("rm -f \"$_CAPTURE_TMPFILE\""));
+        assert!(script.contains("trap cleanup EXIT"));
+    }
+
+    #[test]
+    fn test_json_escaping_in_full_script_with_auto() {
+        use testcase_common::{
+            Config, JsonEscapingConfig, JsonEscapingMethod, ScriptGenerationConfig,
+        };
+
+        let config = Config {
+            script_generation: ScriptGenerationConfig {
+                json_escaping: JsonEscapingConfig {
+                    method: JsonEscapingMethod::Auto,
+                    enabled: true,
+                    binary_path: None,
+                    jq_path: None,
+                },
+            },
+            ..Default::default()
+        };
+
+        let executor = TestExecutor::with_config(config);
+        let mut test_case = TestCase::new(
+            "REQ001".to_string(),
+            1,
+            1,
+            "TC001".to_string(),
+            "Full script test with auto".to_string(),
+        );
+
+        let mut sequence = TestSequence::new(1, "Seq1".to_string(), "First sequence".to_string());
+        let step = Step {
+            step: 1,
+            manual: None,
+            description: "Echo test".to_string(),
+            command: "echo 'hello'".to_string(),
+            capture_vars: None,
+            expected: Expected {
+                success: Some(true),
+                result: "[ $EXIT_CODE -eq 0 ]".to_string(),
+                output: "[ \"$COMMAND_OUTPUT\" = \"hello\" ]".to_string(),
+            },
+            verification: Verification {
+                result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+                output: VerificationExpression::Simple(
+                    "[ \"$COMMAND_OUTPUT\" = \"hello\" ]".to_string(),
+                ),
+                output_file: None,
+                general: None,
+            },
+            reference: None,
+        };
+        sequence.steps.push(step);
+        test_case.test_sequences.push(sequence);
+
+        let json_output_path = PathBuf::from("/tmp/test.json");
+        let script =
+            executor.generate_test_script_with_json_output(&test_case, &json_output_path, None);
+
+        // Verify all fallback levels are present
+        assert!(script.contains("if command -v jq >/dev/null 2>&1; then"));
+        assert!(script.contains("jq -Rs . < \"$_CAPTURE_TMPFILE\""));
+        assert!(script.contains("elif command -v json-escape >/dev/null 2>&1; then"));
+        assert!(script.contains("json-escape < \"$_CAPTURE_TMPFILE\""));
+        assert!(script.contains("else"));
+        assert!(script.contains(
+            "sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g; s/\\t/\\\\t/g' < \"$_CAPTURE_TMPFILE\""
+        ));
+
+        // Verify temp file and cleanup
+        assert!(script.contains("_CAPTURE_TMPFILE=$(mktemp)"));
+        assert!(script.contains("cleanup() {"));
+        assert!(script.contains("rm -f \"$_CAPTURE_TMPFILE\""));
+        assert!(script.contains("trap cleanup EXIT"));
     }
 }

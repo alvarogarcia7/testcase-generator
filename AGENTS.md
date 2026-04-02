@@ -1973,6 +1973,635 @@ The project includes several binary utilities:
         --environment "Production"
       ```
 
+## JSON Escaping Methods
+
+When capturing command output for JSON formatting in generated bash scripts, the test execution framework supports multiple JSON escaping methods with automatic fallback. This ensures robust handling of special characters, newlines, and control codes in command output.
+
+### Overview
+
+**Preferred Method**: `jq` is now the preferred method for JSON output capture due to its robustness, native JSON handling, and widespread availability in modern environments.
+
+**Auto Mode Priority**: When using `auto` mode (default), the framework automatically selects the best available method using this fallback chain:
+1. **jq** - JSON processor (most robust, preferred)
+2. **json-escape** - Custom Rust binary (fast, reliable, works when jq unavailable)
+3. **Shell fallback** - Native bash string escaping (least robust, always available)
+
+### Configuration
+
+JSON escaping method is configured in the test case configuration TOML file under the `json_escaping` section.
+
+#### Configuration Location
+
+Create a configuration file (e.g., `config.toml` or `testcase-config.toml`) with the following structure:
+
+```toml
+[json_escaping]
+# Method: "auto", "jq", "json-escape", or "shell"
+method = "auto"
+```
+
+#### Available Methods
+
+| Method | Description | Requirements | Robustness |
+|--------|-------------|--------------|------------|
+| `auto` | Automatic selection (jq > json-escape > shell) | None (always works) | High |
+| `jq` | Use jq JSON processor | jq must be installed and in PATH | Highest |
+| `json-escape` | Use custom Rust binary | json-escape binary in PATH or target/ | High |
+| `shell` | Use bash string escaping | None (bash built-in) | Moderate |
+
+#### Configuration Examples
+
+**Example 1: Auto mode (recommended)**
+```toml
+[json_escaping]
+method = "auto"
+```
+
+**Example 2: Force jq (production environments)**
+```toml
+[json_escaping]
+method = "jq"
+```
+
+**Example 3: Force json-escape binary**
+```toml
+[json_escaping]
+method = "json-escape"
+```
+
+**Example 4: Force shell fallback (constrained environments)**
+```toml
+[json_escaping]
+method = "shell"
+```
+
+#### Using Configuration File
+
+Pass the configuration file to test-executor using the `--config` flag:
+
+```bash
+# Generate script with configuration
+test-executor generate testcases/TC_001.yaml --config config.toml
+
+# Execute test with configuration
+test-executor execute testcases/TC_001.yaml --config config.toml
+```
+
+**Default Behavior**: If no configuration file is provided or the `json_escaping` section is missing, the framework uses `auto` mode by default.
+
+### Method Details
+
+#### 1. jq (Preferred)
+
+**Why jq is Preferred**:
+- **Native JSON handling**: Correctly escapes all special characters, Unicode, and control codes
+- **Standard compliance**: Produces valid JSON strings according to RFC 8259
+- **Robustness**: Handles edge cases (null bytes, binary data, invalid UTF-8) gracefully
+- **Widespread availability**: Pre-installed on most modern Linux distributions and CI/CD environments
+- **Performance**: Fast and efficient for JSON processing
+- **Reliability**: Battle-tested in production environments worldwide
+
+**Usage in Generated Scripts**:
+```bash
+# Example: Capture output with jq escaping
+OUTPUT=$(command_to_run 2>&1)
+ESCAPED_OUTPUT=$(printf '%s' "$OUTPUT" | jq -Rs .)
+echo "{\"output\": $ESCAPED_OUTPUT}" >> result.json
+```
+
+**Requirements**:
+- jq must be installed: `apt-get install jq` (Debian/Ubuntu) or `brew install jq` (macOS)
+- jq must be in PATH
+
+**Verification**:
+```bash
+# Check if jq is available
+command -v jq >/dev/null 2>&1 && echo "jq available" || echo "jq not found"
+
+# Test jq escaping
+echo 'Hello "World"' | jq -Rs .
+# Output: "Hello \"World\"\n"
+```
+
+#### 2. json-escape (Custom Binary)
+
+**When to Use**:
+- jq is not available in the environment
+- Need consistent behavior across different environments
+- Prefer Rust-based tooling
+
+**Usage in Generated Scripts**:
+```bash
+# Example: Capture output with json-escape binary
+OUTPUT=$(command_to_run 2>&1)
+ESCAPED_OUTPUT=$(printf '%s' "$OUTPUT" | json-escape)
+echo "{\"output\": \"$ESCAPED_OUTPUT\"}" >> result.json
+```
+
+**Requirements**:
+- json-escape binary must be built: `make build-json-escape`
+- json-escape must be in PATH or discoverable in `target/release/` or `target/debug/`
+
+**Building json-escape**:
+```bash
+# Build in release mode
+make build-json-escape
+
+# Or build manually
+cargo build --release -p json-escape
+
+# Add to PATH (optional)
+export PATH="$PWD/target/release:$PATH"
+```
+
+**Verification**:
+```bash
+# Check if json-escape is available
+command -v json-escape >/dev/null 2>&1 && echo "json-escape available" || echo "json-escape not found"
+
+# Test json-escape
+echo 'Hello "World"' | json-escape
+# Output: Hello \"World\"
+```
+
+#### 3. Shell Fallback
+
+**When Used**:
+- Automatically when neither jq nor json-escape is available (in `auto` mode)
+- Explicitly configured with `method = "shell"`
+- Constrained environments without external dependencies
+
+**Usage in Generated Scripts**:
+```bash
+# Example: Capture output with shell escaping
+OUTPUT=$(command_to_run 2>&1)
+ESCAPED_OUTPUT=$(printf '%s' "$OUTPUT" | sed 's/\\/\\\\/g; s/"/\\"/g; s/\t/\\t/g; s/\n/\\n/g')
+echo "{\"output\": \"$ESCAPED_OUTPUT\"}" >> result.json
+```
+
+**Limitations**:
+- Less robust than jq or json-escape
+- May not handle all edge cases (binary data, complex Unicode)
+- Relies on sed availability and BSD/GNU compatibility
+
+**Best Practices**:
+- Use only when jq and json-escape are unavailable
+- Test generated output with JSON validators
+- Prefer `auto` mode to avoid manual fallback selection
+
+### Production Environment Requirements
+
+#### jq Availability in Production
+
+**MANDATORY for Production**: Production environments should have `jq` installed to ensure robust JSON output capture and avoid potential parsing errors.
+
+**Why jq is Required**:
+- **Reliability**: jq provides the most reliable JSON escaping for production workloads
+- **Error Prevention**: Reduces risk of JSON parsing errors from improperly escaped output
+- **Standard Compliance**: Ensures all JSON output is RFC 8259 compliant
+- **Maintainability**: Simplifies troubleshooting and reduces edge case handling
+
+**Installation Instructions**:
+
+**Debian/Ubuntu**:
+```bash
+sudo apt-get update
+sudo apt-get install -y jq
+```
+
+**RHEL/CentOS/Fedora**:
+```bash
+sudo yum install -y jq
+# or
+sudo dnf install -y jq
+```
+
+**macOS**:
+```bash
+brew install jq
+```
+
+**Alpine Linux** (Docker):
+```dockerfile
+RUN apk add --no-cache jq
+```
+
+**Docker Images**:
+```dockerfile
+# Add to Dockerfile
+FROM ubuntu:22.04
+RUN apt-get update && apt-get install -y jq && rm -rf /var/lib/apt/lists/*
+```
+
+**Verification**:
+```bash
+# Check jq installation
+jq --version
+# Expected output: jq-1.6 (or later)
+
+# Verify jq is in PATH
+which jq
+# Expected output: /usr/bin/jq (or similar)
+```
+
+**CI/CD Integration**:
+```yaml
+# Example: GitLab CI
+before_script:
+  - apt-get update && apt-get install -y jq
+
+# Example: GitHub Actions
+- name: Install jq
+  run: sudo apt-get install -y jq
+
+# Example: Jenkins
+sh 'apt-get update && apt-get install -y jq'
+```
+
+### Troubleshooting JSON Parsing Errors
+
+#### Common Issue: Invalid Output Characters
+
+**Symptoms**:
+- JSON parsing errors: `Unexpected character`, `Invalid escape sequence`, `Unterminated string`
+- Verification fails with JSON schema violations
+- Container YAML contains malformed JSON strings
+- Output contains unescaped special characters: `"`, `\`, newlines, tabs, control codes
+
+**Example Error**:
+```
+Error: Failed to parse JSON output
+  Unexpected character '"' at position 42
+  JSON string not properly escaped
+```
+
+**Root Cause**:
+Command output contains special characters that were not properly escaped for JSON string encoding.
+
+**Characters That Require Escaping**:
+| Character | JSON Escape | Description |
+|-----------|-------------|-------------|
+| `"` | `\"` | Double quote |
+| `\` | `\\` | Backslash |
+| `/` | `\/` | Forward slash (optional) |
+| Newline (`\n`) | `\\n` | Line feed |
+| Tab (`\t`) | `\\t` | Horizontal tab |
+| Carriage return (`\r`) | `\\r` | Carriage return |
+| Backspace (`\b`) | `\\b` | Backspace |
+| Form feed (`\f`) | `\\f` | Form feed |
+| Control codes (U+0000 to U+001F) | `\uXXXX` | Unicode escape sequences |
+
+#### Diagnosis Steps
+
+**Step 1: Identify the problematic output**
+```bash
+# Check execution log for the failing test step
+cat execution_log.txt
+
+# Look for JSON output sections
+grep -A 10 "output" execution_log.txt
+```
+
+**Step 2: Check which escaping method was used**
+```bash
+# Review generated test script
+cat generated_test_script.sh
+
+# Look for output capture commands
+grep -A 5 "ESCAPED_OUTPUT" generated_test_script.sh
+```
+
+**Step 3: Verify current configuration**
+```bash
+# Check configuration file
+cat config.toml
+
+# Look for json_escaping section
+grep -A 3 "\[json_escaping\]" config.toml
+```
+
+**Step 4: Test escaping manually**
+```bash
+# Test problematic output with different methods
+SAMPLE_OUTPUT='Line with "quotes" and \backslashes and
+newlines'
+
+# Test with jq
+echo "$SAMPLE_OUTPUT" | jq -Rs .
+
+# Test with json-escape
+echo "$SAMPLE_OUTPUT" | json-escape
+
+# Test with shell fallback
+echo "$SAMPLE_OUTPUT" | sed 's/\\/\\\\/g; s/"/\\"/g'
+```
+
+#### Solutions
+
+**Solution 1: Use jq (Recommended)**
+
+Install jq and configure to use jq method:
+
+```bash
+# Install jq
+sudo apt-get install -y jq  # Debian/Ubuntu
+# or
+brew install jq  # macOS
+
+# Update configuration
+cat > config.toml <<EOF
+[json_escaping]
+method = "jq"
+EOF
+
+# Regenerate test script
+test-executor generate testcases/TC_001.yaml --config config.toml
+
+# Re-execute test
+./generated_test_script.sh
+```
+
+**Solution 2: Use json-escape binary**
+
+Build and configure json-escape:
+
+```bash
+# Build json-escape
+make build-json-escape
+
+# Add to PATH
+export PATH="$PWD/target/release:$PATH"
+
+# Update configuration
+cat > config.toml <<EOF
+[json_escaping]
+method = "json-escape"
+EOF
+
+# Regenerate and execute
+test-executor generate testcases/TC_001.yaml --config config.toml
+./generated_test_script.sh
+```
+
+**Solution 3: Use auto mode (Default)**
+
+Let the framework automatically select the best available method:
+
+```bash
+# Update configuration
+cat > config.toml <<EOF
+[json_escaping]
+method = "auto"
+EOF
+
+# Framework will try: jq > json-escape > shell fallback
+test-executor generate testcases/TC_001.yaml --config config.toml
+```
+
+**Solution 4: Validate JSON output**
+
+After fixing escaping, validate the JSON output:
+
+```bash
+# Extract JSON from output file
+cat result.json | jq .
+
+# If jq parses successfully, escaping is correct
+# If jq fails, escaping is still incorrect
+```
+
+#### Prevention Best Practices
+
+**1. Always Use Auto Mode or jq in Production**
+```toml
+[json_escaping]
+method = "auto"  # or "jq" for production
+```
+
+**2. Install jq in All Environments**
+```bash
+# Add to Dockerfile
+RUN apt-get update && apt-get install -y jq
+
+# Add to CI/CD setup scripts
+sudo apt-get install -y jq
+```
+
+**3. Test with Complex Output**
+
+Test your test cases with output containing special characters:
+
+```yaml
+sequences:
+  - sequence_id: 1
+    steps:
+      - description: Test special characters
+        command: |
+          cat <<'EOF'
+          Line with "quotes"
+          Line with \backslashes
+          Line with 	tabs
+          Line with $variables
+          EOF
+        expected:
+          exit_code: 0
+```
+
+**4. Validate Generated JSON**
+
+Always validate JSON output before using in production:
+
+```bash
+# After test execution
+cat verification_result.json | jq . > /dev/null && echo "Valid JSON" || echo "Invalid JSON"
+```
+
+**5. Monitor Escaping Method Usage**
+
+Log which escaping method is being used:
+
+```bash
+# Check generated script for escaping method
+grep -o "jq\|json-escape\|sed.*\\\\\\\\g" generated_test_script.sh | head -1
+```
+
+#### Edge Cases and Special Considerations
+
+**Binary Data**: 
+- jq handles binary data by converting to base64 or escaping as Unicode
+- json-escape filters non-UTF-8 sequences
+- Shell fallback may produce invalid results
+
+**Large Output** (> 1MB):
+- All methods handle large output efficiently
+- jq may use more memory for very large inputs
+- json-escape is optimized for streaming
+
+**Null Bytes** (`\0`):
+- jq escapes as `\u0000`
+- json-escape filters null bytes
+- Shell fallback may truncate at null byte
+
+**Invalid UTF-8**:
+- jq replaces invalid sequences with replacement character
+- json-escape filters invalid UTF-8
+- Shell fallback may corrupt data
+
+### Migration Guide
+
+#### Migrating to jq
+
+If you're currently using `json-escape` or `shell` method and want to migrate to jq:
+
+**Step 1: Install jq in all environments**
+```bash
+# Development environment
+sudo apt-get install -y jq
+
+# Update CI/CD configuration
+# Update Dockerfile
+# Update deployment scripts
+```
+
+**Step 2: Update configuration files**
+```toml
+# Before
+[json_escaping]
+method = "json-escape"
+
+# After
+[json_escaping]
+method = "jq"
+```
+
+**Step 3: Regenerate all test scripts**
+```bash
+# Batch regeneration
+find testcases/ -name "*.yaml" -type f -exec \
+  test-executor generate {} --config config.toml \;
+```
+
+**Step 4: Validate changes**
+```bash
+# Run tests and verify output
+make test-e2e
+
+# Check JSON output validity
+find test-results/ -name "*.json" -exec sh -c 'jq . {} > /dev/null' \;
+```
+
+**Step 5: Update documentation**
+- Update deployment guides to include jq installation
+- Update CI/CD documentation
+- Update troubleshooting guides
+
+### Examples
+
+#### Example 1: Configuration with jq
+
+**config.toml**:
+```toml
+[json_escaping]
+method = "jq"
+```
+
+**Generated script snippet**:
+```bash
+# Capture command output with jq escaping
+STEP_OUTPUT=$(echo "Testing jq escaping" 2>&1)
+ESCAPED_OUTPUT=$(printf '%s' "$STEP_OUTPUT" | jq -Rs .)
+echo "{\"output\": $ESCAPED_OUTPUT, \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" >> result.json
+```
+
+#### Example 2: Configuration with auto mode
+
+**config.toml**:
+```toml
+[json_escaping]
+method = "auto"
+```
+
+**Generated script snippet**:
+```bash
+# Auto-detect best escaping method
+if command -v jq >/dev/null 2>&1; then
+    ESCAPED_OUTPUT=$(printf '%s' "$STEP_OUTPUT" | jq -Rs .)
+elif command -v json-escape >/dev/null 2>&1; then
+    ESCAPED_OUTPUT=$(printf '%s' "$STEP_OUTPUT" | json-escape)
+else
+    # Shell fallback
+    ESCAPED_OUTPUT=$(printf '%s' "$STEP_OUTPUT" | sed 's/\\/\\\\/g; s/"/\\"/g; s/\t/\\t/g')
+fi
+```
+
+#### Example 3: Testing different methods
+
+**test-json-escaping.sh**:
+```bash
+#!/usr/bin/env bash
+set -e
+
+# Sample output with special characters
+SAMPLE='Line with "quotes" and \backslashes and
+newlines and 	tabs'
+
+echo "Testing JSON escaping methods:"
+echo "=============================="
+
+# Test jq
+echo -e "\n1. jq method:"
+printf '%s' "$SAMPLE" | jq -Rs .
+
+# Test json-escape
+echo -e "\n2. json-escape method:"
+printf '%s' "$SAMPLE" | json-escape
+
+# Test shell fallback
+echo -e "\n3. shell fallback method:"
+printf '%s' "$SAMPLE" | sed 's/\\/\\\\/g; s/"/\\"/g; s/\t/\\t/g; s/\n/\\n/g'
+
+echo -e "\n=============================="
+echo "All methods tested"
+```
+
+### Reference
+
+#### Configuration Schema
+
+```toml
+[json_escaping]
+# Method selection: "auto", "jq", "json-escape", or "shell"
+# Default: "auto"
+method = "auto"
+```
+
+#### Method Selection Logic (Auto Mode)
+
+```
+1. Check if jq is available in PATH
+   YES → Use jq
+   NO → Continue to step 2
+
+2. Check if json-escape binary is available in PATH or target/
+   YES → Use json-escape
+   NO → Continue to step 3
+
+3. Use shell fallback (always available)
+```
+
+#### Command Reference
+
+| Operation | Command |
+|-----------|---------|
+| Install jq (Debian/Ubuntu) | `sudo apt-get install -y jq` |
+| Install jq (macOS) | `brew install jq` |
+| Build json-escape | `make build-json-escape` |
+| Test jq escaping | `echo 'test' \| jq -Rs .` |
+| Test json-escape | `echo 'test' \| json-escape` |
+| Validate JSON output | `cat output.json \| jq .` |
+| Check jq availability | `command -v jq` |
+| Check json-escape availability | `command -v json-escape` |
+
 ## Shell Script Compatibility
 
 **MANDATORY**: All shell scripts and generated bash scripts must be compatible with both BSD and GNU variants of command-line tools, and must work with bash 3.2+ (the default on macOS).

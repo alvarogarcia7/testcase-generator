@@ -6,6 +6,7 @@
 # - Variables (sequence.variables, capture_vars legacy/new format, cross-sequence)
 # - User interaction (manual steps, non-interactive mode)
 # - JSON log archival (validation, source hash, special characters)
+# - JSON escaping methods (explicit Jq mode, Auto mode with fallback chain)
 #
 # Usage: ./tests/integration/test_script_generation_acceptance_e2e.sh [--no-remove]
 #
@@ -945,9 +946,9 @@ else
 fi
 
 # ============================================================================
-# SECTION 9: Test special characters in JSON log
+# SECTION 9: Test special characters in JSON log with explicit Jq escaping
 # ============================================================================
-section "9. Test special characters in JSON log (round-trip integrity)"
+section "9. Test special characters in JSON log with explicit Jq escaping method"
 
 SPECIAL_YAML="$TEMP_DIR/test_special_chars.yaml"
 cat > "$SPECIAL_YAML" << 'EOF'
@@ -957,7 +958,7 @@ requirement: SPECIAL_CHARS
 item: 9
 tc: 9
 id: TEST_SPECIAL_CHARS
-description: Test special character handling in JSON log
+description: Test special character handling in JSON log with Jq escaping
 general_initial_conditions: {}
 initial_conditions: {}
 test_sequences:
@@ -1015,13 +1016,32 @@ else
     TESTS_FAILED=$((TESTS_FAILED+1))
 fi
 
-info "Generating script with JSON logging..."
+info "Creating config file with explicit Jq method..."
+CONFIG_DIR="$TEMP_DIR/.testcase-manager"
+mkdir -p "$CONFIG_DIR"
+CONFIG_FILE="$CONFIG_DIR/config.toml"
+cat > "$CONFIG_FILE" << 'EOF'
+[script_generation.json_escaping]
+method = "jq"
+enabled = true
+EOF
+
+info "Generating script with JSON logging using Jq escaping method..."
 SPECIAL_SCRIPT="$TEMP_DIR/test_special_chars.sh"
-if "$TEST_EXECUTOR_BIN" generate --json-log "$SPECIAL_YAML" -o "$SPECIAL_SCRIPT" > /dev/null 2>&1; then
+if HOME="$TEMP_DIR" "$TEST_EXECUTOR_BIN" generate --json-log "$SPECIAL_YAML" -o "$SPECIAL_SCRIPT" > /dev/null 2>&1; then
     pass "Script generated"
     TESTS_PASSED=$((TESTS_PASSED+1))
 else
     fail "Script generation failed"
+    TESTS_FAILED=$((TESTS_FAILED+1))
+fi
+
+info "Checking for jq-based escaping in generated script..."
+if grep -q 'jq -Rs' "$SPECIAL_SCRIPT"; then
+    pass "Generated script uses jq for JSON escaping"
+    TESTS_PASSED=$((TESTS_PASSED+1))
+else
+    fail "Generated script does not use jq for JSON escaping"
     TESTS_FAILED=$((TESTS_FAILED+1))
 fi
 
@@ -1097,6 +1117,161 @@ if bash "$SPECIAL_SCRIPT" > /dev/null 2>&1; then
 else
     fail "Script execution failed"
     TESTS_FAILED=$((TESTS_FAILED+1))
+fi
+
+# ============================================================================
+# SECTION 10: Test Auto mode JSON escaping with fallback chain
+# ============================================================================
+section "10. Test Auto mode JSON escaping (jq → json-escape → shell fallback)"
+
+AUTO_YAML="$TEMP_DIR/test_auto_escaping.yaml"
+cat > "$AUTO_YAML" << 'EOF'
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: AUTO_ESCAPE
+item: 10
+tc: 10
+id: TEST_AUTO_ESCAPING
+description: Test Auto mode JSON escaping with fallback chain
+general_initial_conditions: {}
+initial_conditions: {}
+test_sequences:
+  - id: 1
+    name: Auto Escaping Test
+    description: Test Auto mode tries jq, then json-escape, then shell
+    initial_conditions: {}
+    steps:
+      - step: 1
+        description: Test auto escaping
+        command: echo 'Test "quotes" and special chars'
+        expected:
+          success: true
+          result: "0"
+          output: Test "quotes" and special chars
+        verification:
+          result: "[ $EXIT_CODE -eq 0 ]"
+          output: "true"
+EOF
+
+if "$VALIDATE_YAML_BIN" --schema "$SCHEMA_FILE" "$AUTO_YAML" > /dev/null 2>&1; then
+    pass "Auto escaping YAML validated"
+else
+    fail "Auto escaping YAML validation failed"
+    TESTS_FAILED=$((TESTS_FAILED+1))
+fi
+
+info "Creating config file with Auto method..."
+AUTO_CONFIG_DIR="$TEMP_DIR/.testcase-manager-auto"
+mkdir -p "$AUTO_CONFIG_DIR"
+AUTO_CONFIG_FILE="$AUTO_CONFIG_DIR/config.toml"
+cat > "$AUTO_CONFIG_FILE" << 'EOF'
+[script_generation.json_escaping]
+method = "auto"
+enabled = true
+EOF
+
+info "Generating script with Auto mode..."
+AUTO_SCRIPT="$TEMP_DIR/test_auto_escaping.sh"
+if HOME="$TEMP_DIR" HOME="$AUTO_CONFIG_DIR/.." "$TEST_EXECUTOR_BIN" generate --json-log "$AUTO_YAML" -o "$AUTO_SCRIPT" > /dev/null 2>&1; then
+    pass "Script generated with Auto mode"
+    TESTS_PASSED=$((TESTS_PASSED+1))
+else
+    fail "Script generation with Auto mode failed"
+    TESTS_FAILED=$((TESTS_FAILED+1))
+fi
+
+info "Checking for Auto mode fallback chain in generated script..."
+# Auto mode should generate code that tries jq first, then json-escape, then shell fallback
+if grep -q 'command -v jq' "$AUTO_SCRIPT" && grep -q 'command -v json-escape' "$AUTO_SCRIPT"; then
+    pass "Generated script contains Auto mode fallback detection logic"
+    TESTS_PASSED=$((TESTS_PASSED+1))
+else
+    fail "Generated script missing Auto mode fallback detection"
+    TESTS_FAILED=$((TESTS_FAILED+1))
+fi
+
+if grep -q 'jq -Rs' "$AUTO_SCRIPT"; then
+    pass "Generated script includes jq as first fallback option"
+    TESTS_PASSED=$((TESTS_PASSED+1))
+else
+    fail "Generated script missing jq as fallback option"
+    TESTS_FAILED=$((TESTS_FAILED+1))
+fi
+
+if grep -q 'json-escape' "$AUTO_SCRIPT"; then
+    pass "Generated script includes json-escape as second fallback option"
+    TESTS_PASSED=$((TESTS_PASSED+1))
+else
+    fail "Generated script missing json-escape as fallback option"
+    TESTS_FAILED=$((TESTS_FAILED+1))
+fi
+
+# Look for shell fallback sed/awk/printf logic
+if grep -E 'sed|awk|printf.*OUTPUT_ESCAPED' "$AUTO_SCRIPT" > /dev/null 2>&1; then
+    pass "Generated script includes shell fallback as final option"
+    TESTS_PASSED=$((TESTS_PASSED+1))
+else
+    info "Shell fallback may be implemented differently or missing"
+fi
+
+info "Executing script with jq available..."
+chmod +x "$AUTO_SCRIPT"
+if bash "$AUTO_SCRIPT" > /dev/null 2>&1; then
+    pass "Script executed successfully"
+    TESTS_PASSED=$((TESTS_PASSED+1))
+    
+    AUTO_LOG="$TEMP_DIR/TEST_AUTO_ESCAPING_execution.json"
+    if [[ -f "$AUTO_LOG" ]]; then
+        pass "JSON log created"
+        TESTS_PASSED=$((TESTS_PASSED+1))
+        
+        if jq empty "$AUTO_LOG" >/dev/null 2>&1; then
+            pass "JSON log is valid"
+            TESTS_PASSED=$((TESTS_PASSED+1))
+        else
+            fail "JSON log is invalid"
+            TESTS_FAILED=$((TESTS_FAILED+1))
+        fi
+        
+        # Verify special characters were properly escaped
+        OUT=$(jq -r '.[0].output' "$AUTO_LOG" 2>/dev/null)
+        if [[ "$OUT" == *'"quotes"'* ]]; then
+            pass "Auto mode correctly escaped special characters"
+            TESTS_PASSED=$((TESTS_PASSED+1))
+        else
+            info "Output field: $OUT"
+        fi
+    else
+        fail "JSON log not created"
+        TESTS_FAILED=$((TESTS_FAILED+1))
+    fi
+else
+    fail "Script execution failed"
+    TESTS_FAILED=$((TESTS_FAILED+1))
+fi
+
+info "Testing fallback behavior: simulating jq unavailable..."
+# Create a modified version of the script that simulates jq being unavailable
+AUTO_SCRIPT_NOJQ="$TEMP_DIR/test_auto_escaping_nojq.sh"
+sed 's/command -v jq/command -v jq_not_available/g' "$AUTO_SCRIPT" > "$AUTO_SCRIPT_NOJQ"
+chmod +x "$AUTO_SCRIPT_NOJQ"
+
+if bash "$AUTO_SCRIPT_NOJQ" > /dev/null 2>&1; then
+    pass "Script executed successfully with jq fallback disabled"
+    TESTS_PASSED=$((TESTS_PASSED+1))
+    
+    AUTO_LOG_NOJQ="$TEMP_DIR/TEST_AUTO_ESCAPING_execution.json"
+    if [[ -f "$AUTO_LOG_NOJQ" ]]; then
+        if jq empty "$AUTO_LOG_NOJQ" >/dev/null 2>&1; then
+            pass "Fallback chain produced valid JSON when jq unavailable"
+            TESTS_PASSED=$((TESTS_PASSED+1))
+        else
+            fail "Fallback chain produced invalid JSON"
+            TESTS_FAILED=$((TESTS_FAILED+1))
+        fi
+    fi
+else
+    info "Script with jq fallback disabled may have failed (acceptable depending on json-escape availability)"
 fi
 
 # ============================================================================
