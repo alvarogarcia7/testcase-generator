@@ -4381,14 +4381,16 @@ mod tests {
         };
 
         let config = Config {
-        script_generation: ScriptGenerationConfig {
-            json_escaping: JsonEscapingConfig {
-                method: JsonEscapingMethod::Auto,
-                enabled: true,
-                binary_path: None,
-                jq_path: None,
+            script_generation: ScriptGenerationConfig {
+                json_escaping: JsonEscapingConfig {
+                    method: JsonEscapingMethod::Auto,
+                    enabled: true,
+                    binary_path: None,
+                    jq_path: None,
+                },
             },
-        }, ..Default::default()};
+            ..Default::default()
+        };
 
         let executor = TestExecutor::with_config(config);
         let mut test_case = TestCase::new(
