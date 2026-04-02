@@ -261,7 +261,7 @@ impl TestExecutor {
 
     /// Generate JSON escaping code based on configuration
     ///
-    /// Returns bash script code that reads from $_CAPTURE_TMPFILE and sets $OUTPUT_ESCAPED
+    /// Returns bash script code that reads from $COMMAND_OUTPUT and sets $OUTPUT_ESCAPED
     /// based on the configured JSON escaping method.
     fn generate_json_escaping_code(&self) -> String {
         let mut script = String::new();
@@ -305,7 +305,10 @@ impl TestExecutor {
                     .and_then(|p| p.to_str())
                     .unwrap_or("json-escape");
 
-                script.push_str(&format!("if command -v {} >/dev/null 2>&1; then\n", bin_path));
+                script.push_str(&format!(
+                    "if command -v {} >/dev/null 2>&1; then\n",
+                    bin_path
+                ));
                 script.push_str(&format!(
                     "    OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | {} 2>/dev/null || echo \"\")\n",
                     bin_path
@@ -3801,7 +3804,7 @@ mod tests {
         let escaping_code = executor.generate_json_escaping_code();
 
         assert!(escaping_code.contains("# Escape output for JSON (BSD/GNU compatible)"));
-        assert!(escaping_code.contains("jq -Rs . < \"$_CAPTURE_TMPFILE\""));
+        assert!(escaping_code.contains("printf '%s' \"$COMMAND_OUTPUT\" | jq -Rs ."));
         assert!(escaping_code.contains("sed 's/^\"//;s/\"$//'"));
         assert!(escaping_code.contains("OUTPUT_ESCAPED="));
         assert!(!escaping_code.contains("if command -v"));
@@ -3830,7 +3833,7 @@ mod tests {
         let executor = TestExecutor::with_config(config);
         let escaping_code = executor.generate_json_escaping_code();
 
-        assert!(escaping_code.contains("/usr/local/bin/jq -Rs . < \"$_CAPTURE_TMPFILE\""));
+        assert!(escaping_code.contains("printf '%s' \"$COMMAND_OUTPUT\" | /usr/local/bin/jq -Rs ."));
     }
 
     #[test]
@@ -3855,7 +3858,7 @@ mod tests {
         let escaping_code = executor.generate_json_escaping_code();
 
         assert!(escaping_code.contains("# Escape output for JSON (BSD/GNU compatible)"));
-        assert!(escaping_code.contains("json-escape < \"$_CAPTURE_TMPFILE\""));
+        assert!(escaping_code.contains("printf '%s' \"$COMMAND_OUTPUT\" | json-escape"));
         assert!(escaping_code.contains("OUTPUT_ESCAPED="));
         assert!(!escaping_code.contains("if command -v"));
         assert!(!escaping_code.contains("jq -Rs"));
@@ -3883,7 +3886,7 @@ mod tests {
         let executor = TestExecutor::with_config(config);
         let escaping_code = executor.generate_json_escaping_code();
 
-        assert!(escaping_code.contains("/opt/bin/json-escape < \"$_CAPTURE_TMPFILE\""));
+        assert!(escaping_code.contains("printf '%s' \"$COMMAND_OUTPUT\" | /opt/bin/json-escape"));
     }
 
     #[test]
@@ -3912,7 +3915,7 @@ mod tests {
             "# Shell fallback: escape backslashes, quotes, tabs, and convert newlines to \\n"
         ));
         assert!(escaping_code.contains(
-            "sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g; s/\\t/\\\\t/g' < \"$_CAPTURE_TMPFILE\""
+            "printf '%s' \"$COMMAND_OUTPUT\" | sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g; s/\\t/\\\\t/g'"
         ));
         assert!(escaping_code.contains("awk '{printf \"%s%s\", (NR>1?\"\\\\n\":\"\"), $0}'"));
         assert!(escaping_code.contains("OUTPUT_ESCAPED="));
@@ -3944,20 +3947,20 @@ mod tests {
 
         assert!(escaping_code.contains("# Escape output for JSON (BSD/GNU compatible)"));
 
-        // Check for jq fallback chain
-        assert!(escaping_code.contains("if command -v jq >/dev/null 2>&1; then"));
-        assert!(escaping_code.contains("OUTPUT_ESCAPED=$(jq -Rs . < \"$_CAPTURE_TMPFILE\""));
+        // Check for json-escape fallback chain (now comes first)
+        assert!(escaping_code.contains("if command -v json-escape >/dev/null 2>&1; then"));
+        assert!(escaping_code.contains("OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | json-escape"));
 
-        // Check for json-escape fallback
-        assert!(escaping_code.contains("elif command -v json-escape >/dev/null 2>&1; then"));
-        assert!(escaping_code.contains("OUTPUT_ESCAPED=$(json-escape < \"$_CAPTURE_TMPFILE\""));
+        // Check for jq fallback
+        assert!(escaping_code.contains("elif command -v jq >/dev/null 2>&1; then"));
+        assert!(escaping_code.contains("OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | jq -Rs ."));
 
         // Check for shell fallback
         assert!(escaping_code.contains("else"));
         assert!(escaping_code.contains(
             "# Shell fallback: escape backslashes, quotes, tabs, and convert newlines to \\n"
         ));
-        assert!(escaping_code.contains("OUTPUT_ESCAPED=$(sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g; s/\\t/\\\\t/g' < \"$_CAPTURE_TMPFILE\""));
+        assert!(escaping_code.contains("OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g; s/\\t/\\\\t/g'"));
         assert!(escaping_code.contains("fi"));
     }
 
@@ -3983,11 +3986,11 @@ mod tests {
         let executor = TestExecutor::with_config(config);
         let escaping_code = executor.generate_json_escaping_code();
 
-        assert!(escaping_code.contains("if command -v /custom/jq >/dev/null 2>&1; then"));
-        assert!(escaping_code.contains("OUTPUT_ESCAPED=$(/custom/jq -Rs . < \"$_CAPTURE_TMPFILE\""));
-        assert!(escaping_code.contains("elif command -v /custom/json-escape >/dev/null 2>&1; then"));
+        assert!(escaping_code.contains("if command -v /custom/json-escape >/dev/null 2>&1; then"));
+        assert!(escaping_code.contains("OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | /custom/json-escape"));
+        assert!(escaping_code.contains("elif command -v /custom/jq >/dev/null 2>&1; then"));
         assert!(
-            escaping_code.contains("OUTPUT_ESCAPED=$(/custom/json-escape < \"$_CAPTURE_TMPFILE\"")
+            escaping_code.contains("OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | /custom/jq -Rs .")
         );
     }
 
@@ -4148,8 +4151,8 @@ mod tests {
         let script =
             executor.generate_test_script_with_json_output(&test_case, &json_output_path, None);
 
-        // Check that JSON escaping code reads from temp file
-        assert!(script.contains("jq -Rs . < \"$_CAPTURE_TMPFILE\""));
+        // Check that JSON escaping code uses printf with COMMAND_OUTPUT
+        assert!(script.contains("printf '%s' \"$COMMAND_OUTPUT\" | jq -Rs ."));
     }
 
     #[test]
@@ -4251,8 +4254,8 @@ mod tests {
         let script =
             executor.generate_test_script_with_json_output(&test_case, &json_output_path, None);
 
-        // Verify jq handles binary data with -Rs (raw input, slurp)
-        assert!(script.contains("jq -Rs . < \"$_CAPTURE_TMPFILE\""));
+        // Verify jq handles binary data with -Rs (raw input, slurp) and uses printf with COMMAND_OUTPUT
+        assert!(script.contains("printf '%s' \"$COMMAND_OUTPUT\" | jq -Rs ."));
 
         // Verify error handling with 2>/dev/null and fallback (jq uses piped sed before the || echo)
         assert!(script.contains("2>/dev/null"));
@@ -4368,7 +4371,7 @@ mod tests {
 
         // Verify all components are present
         assert!(script.contains("_CAPTURE_TMPFILE=$(mktemp)"));
-        assert!(script.contains("jq -Rs . < \"$_CAPTURE_TMPFILE\""));
+        assert!(script.contains("printf '%s' \"$COMMAND_OUTPUT\" | jq -Rs ."));
         assert!(script.contains("cleanup() {"));
         assert!(script.contains("rm -f \"$_CAPTURE_TMPFILE\""));
         assert!(script.contains("trap cleanup EXIT"));
@@ -4430,14 +4433,14 @@ mod tests {
         let script =
             executor.generate_test_script_with_json_output(&test_case, &json_output_path, None);
 
-        // Verify all fallback levels are present
-        assert!(script.contains("if command -v jq >/dev/null 2>&1; then"));
-        assert!(script.contains("jq -Rs . < \"$_CAPTURE_TMPFILE\""));
-        assert!(script.contains("elif command -v json-escape >/dev/null 2>&1; then"));
-        assert!(script.contains("json-escape < \"$_CAPTURE_TMPFILE\""));
+        // Verify all fallback levels are present (json-escape first, then jq)
+        assert!(script.contains("if command -v json-escape >/dev/null 2>&1; then"));
+        assert!(script.contains("printf '%s' \"$COMMAND_OUTPUT\" | json-escape"));
+        assert!(script.contains("elif command -v jq >/dev/null 2>&1; then"));
+        assert!(script.contains("printf '%s' \"$COMMAND_OUTPUT\" | jq -Rs ."));
         assert!(script.contains("else"));
         assert!(script.contains(
-            "sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g; s/\\t/\\\\t/g' < \"$_CAPTURE_TMPFILE\""
+            "printf '%s' \"$COMMAND_OUTPUT\" | sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g; s/\\t/\\\\t/g'"
         ));
 
         // Verify temp file and cleanup

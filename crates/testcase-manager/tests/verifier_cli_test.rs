@@ -938,7 +938,7 @@ fn test_default_format_is_yaml() {
     // Output should be in YAML format (default) - check both stdout and stderr
     let all_output = format!("{}{}", stdout, stderr);
     assert!(
-        all_output.contains("test_cases:")
+        all_output.contains("test_results:")
             || all_output.contains("test_case_id:")
             || all_output.contains("Processing log file")
     );
