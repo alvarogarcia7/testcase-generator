@@ -3949,11 +3949,14 @@ mod tests {
 
         // Check for json-escape fallback chain (now comes first)
         assert!(escaping_code.contains("if command -v json-escape >/dev/null 2>&1; then"));
-        assert!(escaping_code.contains("OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | json-escape"));
+        assert!(escaping_code
+            .contains("OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | json-escape"));
 
         // Check for jq fallback
         assert!(escaping_code.contains("elif command -v jq >/dev/null 2>&1; then"));
-        assert!(escaping_code.contains("OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | jq -Rs ."));
+        assert!(
+            escaping_code.contains("OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | jq -Rs .")
+        );
 
         // Check for shell fallback
         assert!(escaping_code.contains("else"));
@@ -3987,11 +3990,11 @@ mod tests {
         let escaping_code = executor.generate_json_escaping_code();
 
         assert!(escaping_code.contains("if command -v /custom/json-escape >/dev/null 2>&1; then"));
-        assert!(escaping_code.contains("OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | /custom/json-escape"));
+        assert!(escaping_code
+            .contains("OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | /custom/json-escape"));
         assert!(escaping_code.contains("elif command -v /custom/jq >/dev/null 2>&1; then"));
-        assert!(
-            escaping_code.contains("OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | /custom/jq -Rs .")
-        );
+        assert!(escaping_code
+            .contains("OUTPUT_ESCAPED=$(printf '%s' \"$COMMAND_OUTPUT\" | /custom/jq -Rs ."));
     }
 
     #[test]
