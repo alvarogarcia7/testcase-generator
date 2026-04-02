@@ -168,10 +168,7 @@ fn test_config_jq_method_script_generation() -> Result<()> {
         script.contains("jq -Rs"),
         "Script should use jq -Rs for JSON escaping"
     );
-    assert!(
-        script.contains("jq -Rs ."),
-        "Script should use jq -Rs ."
-    );
+    assert!(script.contains("jq -Rs ."), "Script should use jq -Rs .");
 
     Ok(())
 }
@@ -785,10 +782,7 @@ fn test_jq_vs_other_methods_in_script() -> Result<()> {
     let script_jq = executor_jq.generate_test_script(&test_case);
 
     // Verify jq method
-    assert!(
-        script_jq.contains("jq -Rs"),
-        "Jq method should use jq -Rs"
-    );
+    assert!(script_jq.contains("jq -Rs"), "Jq method should use jq -Rs");
     assert!(
         !script_jq.contains("json-escape"),
         "Jq method should not reference json-escape"
