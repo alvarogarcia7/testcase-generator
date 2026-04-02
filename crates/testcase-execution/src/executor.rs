@@ -3785,14 +3785,16 @@ mod tests {
             Config, JsonEscapingConfig, JsonEscapingMethod, ScriptGenerationConfig,
         };
 
-        let mut config = Config::default();
-        config.script_generation = ScriptGenerationConfig {
-            json_escaping: JsonEscapingConfig {
-                method: JsonEscapingMethod::Jq,
-                enabled: true,
-                binary_path: None,
-                jq_path: None,
+        let config = Config {
+            script_generation: ScriptGenerationConfig {
+                json_escaping: JsonEscapingConfig {
+                    method: JsonEscapingMethod::Jq,
+                    enabled: true,
+                    binary_path: None,
+                    jq_path: None,
+                },
             },
+            ..Default::default()
         };
 
         let executor = TestExecutor::with_config(config);
@@ -3813,14 +3815,16 @@ mod tests {
             Config, JsonEscapingConfig, JsonEscapingMethod, ScriptGenerationConfig,
         };
 
-        let mut config = Config::default();
-        config.script_generation = ScriptGenerationConfig {
-            json_escaping: JsonEscapingConfig {
-                method: JsonEscapingMethod::Jq,
-                enabled: true,
-                binary_path: None,
-                jq_path: Some(PathBuf::from("/usr/local/bin/jq")),
+        let config = Config {
+            script_generation: ScriptGenerationConfig {
+                json_escaping: JsonEscapingConfig {
+                    method: JsonEscapingMethod::Jq,
+                    enabled: true,
+                    binary_path: None,
+                    jq_path: Some(PathBuf::from("/usr/local/bin/jq")),
+                },
             },
+            ..Default::default()
         };
 
         let executor = TestExecutor::with_config(config);
@@ -3835,14 +3839,16 @@ mod tests {
             Config, JsonEscapingConfig, JsonEscapingMethod, ScriptGenerationConfig,
         };
 
-        let mut config = Config::default();
-        config.script_generation = ScriptGenerationConfig {
-            json_escaping: JsonEscapingConfig {
-                method: JsonEscapingMethod::RustBinary,
-                enabled: true,
-                binary_path: None,
-                jq_path: None,
+        let config = Config {
+            script_generation: ScriptGenerationConfig {
+                json_escaping: JsonEscapingConfig {
+                    method: JsonEscapingMethod::RustBinary,
+                    enabled: true,
+                    binary_path: None,
+                    jq_path: None,
+                },
             },
+            ..Config::default()
         };
 
         let executor = TestExecutor::with_config(config);
@@ -3862,14 +3868,16 @@ mod tests {
             Config, JsonEscapingConfig, JsonEscapingMethod, ScriptGenerationConfig,
         };
 
-        let mut config = Config::default();
-        config.script_generation = ScriptGenerationConfig {
-            json_escaping: JsonEscapingConfig {
-                method: JsonEscapingMethod::RustBinary,
-                enabled: true,
-                binary_path: Some(PathBuf::from("/opt/bin/json-escape")),
-                jq_path: None,
+        let config = Config {
+            script_generation: ScriptGenerationConfig {
+                json_escaping: JsonEscapingConfig {
+                    method: JsonEscapingMethod::RustBinary,
+                    enabled: true,
+                    binary_path: Some(PathBuf::from("/opt/bin/json-escape")),
+                    jq_path: None,
+                },
             },
+            ..Default::default()
         };
 
         let executor = TestExecutor::with_config(config);
@@ -3884,14 +3892,16 @@ mod tests {
             Config, JsonEscapingConfig, JsonEscapingMethod, ScriptGenerationConfig,
         };
 
-        let mut config = Config::default();
-        config.script_generation = ScriptGenerationConfig {
-            json_escaping: JsonEscapingConfig {
-                method: JsonEscapingMethod::ShellFallback,
-                enabled: true,
-                binary_path: None,
-                jq_path: None,
+        let config = Config {
+            script_generation: ScriptGenerationConfig {
+                json_escaping: JsonEscapingConfig {
+                    method: JsonEscapingMethod::ShellFallback,
+                    enabled: true,
+                    binary_path: None,
+                    jq_path: None,
+                },
             },
+            ..Default::default()
         };
 
         let executor = TestExecutor::with_config(config);
@@ -3917,14 +3927,16 @@ mod tests {
             Config, JsonEscapingConfig, JsonEscapingMethod, ScriptGenerationConfig,
         };
 
-        let mut config = Config::default();
-        config.script_generation = ScriptGenerationConfig {
-            json_escaping: JsonEscapingConfig {
-                method: JsonEscapingMethod::Auto,
-                enabled: true,
-                binary_path: None,
-                jq_path: None,
+        let config = Config {
+            script_generation: ScriptGenerationConfig {
+                json_escaping: JsonEscapingConfig {
+                    method: JsonEscapingMethod::Auto,
+                    enabled: true,
+                    binary_path: None,
+                    jq_path: None,
+                },
             },
+            ..Default::default()
         };
 
         let executor = TestExecutor::with_config(config);
@@ -3956,14 +3968,16 @@ mod tests {
             Config, JsonEscapingConfig, JsonEscapingMethod, ScriptGenerationConfig,
         };
 
-        let mut config = Config::default();
-        config.script_generation = ScriptGenerationConfig {
-            json_escaping: JsonEscapingConfig {
-                method: JsonEscapingMethod::Auto,
-                enabled: true,
-                binary_path: Some(PathBuf::from("/custom/json-escape")),
-                jq_path: Some(PathBuf::from("/custom/jq")),
+        let config = Config {
+            script_generation: ScriptGenerationConfig {
+                json_escaping: JsonEscapingConfig {
+                    method: JsonEscapingMethod::Auto,
+                    enabled: true,
+                    binary_path: Some(PathBuf::from("/custom/json-escape")),
+                    jq_path: Some(PathBuf::from("/custom/jq")),
+                },
             },
+            ..Default::default()
         };
 
         let executor = TestExecutor::with_config(config);
@@ -4084,14 +4098,16 @@ mod tests {
             Config, JsonEscapingConfig, JsonEscapingMethod, ScriptGenerationConfig,
         };
 
-        let mut config = Config::default();
-        config.script_generation = ScriptGenerationConfig {
-            json_escaping: JsonEscapingConfig {
-                method: JsonEscapingMethod::Jq,
-                enabled: true,
-                binary_path: None,
-                jq_path: None,
+        let config = Config {
+            script_generation: ScriptGenerationConfig {
+                json_escaping: JsonEscapingConfig {
+                    method: JsonEscapingMethod::Jq,
+                    enabled: true,
+                    binary_path: None,
+                    jq_path: None,
+                },
             },
+            ..Config::default()
         };
 
         let executor = TestExecutor::with_config(config);
@@ -4187,14 +4203,16 @@ mod tests {
             Config, JsonEscapingConfig, JsonEscapingMethod, ScriptGenerationConfig,
         };
 
-        let mut config = Config::default();
-        config.script_generation = ScriptGenerationConfig {
-            json_escaping: JsonEscapingConfig {
-                method: JsonEscapingMethod::Jq,
-                enabled: true,
-                binary_path: None,
-                jq_path: None,
+        let config = Config {
+            script_generation: ScriptGenerationConfig {
+                json_escaping: JsonEscapingConfig {
+                    method: JsonEscapingMethod::Jq,
+                    enabled: true,
+                    binary_path: None,
+                    jq_path: None,
+                },
             },
+            ..Config::default()
         };
 
         let executor = TestExecutor::with_config(config);
@@ -4298,14 +4316,16 @@ mod tests {
             Config, JsonEscapingConfig, JsonEscapingMethod, ScriptGenerationConfig,
         };
 
-        let mut config = Config::default();
-        config.script_generation = ScriptGenerationConfig {
-            json_escaping: JsonEscapingConfig {
-                method: JsonEscapingMethod::Jq,
-                enabled: true,
-                binary_path: None,
-                jq_path: None,
+        let config = Config {
+            script_generation: ScriptGenerationConfig {
+                json_escaping: JsonEscapingConfig {
+                    method: JsonEscapingMethod::Jq,
+                    enabled: true,
+                    binary_path: None,
+                    jq_path: None,
+                },
             },
+            ..Default::default()
         };
 
         let executor = TestExecutor::with_config(config);
@@ -4360,15 +4380,15 @@ mod tests {
             Config, JsonEscapingConfig, JsonEscapingMethod, ScriptGenerationConfig,
         };
 
-        let mut config = Config::default();
-        config.script_generation = ScriptGenerationConfig {
+        let config = Config {
+        script_generation: ScriptGenerationConfig {
             json_escaping: JsonEscapingConfig {
                 method: JsonEscapingMethod::Auto,
                 enabled: true,
                 binary_path: None,
                 jq_path: None,
             },
-        };
+        }, ..Default::default()};
 
         let executor = TestExecutor::with_config(config);
         let mut test_case = TestCase::new(
