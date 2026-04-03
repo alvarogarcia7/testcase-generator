@@ -392,6 +392,7 @@ test-e2e-all-no-build:
 	./crates/testcase-manager/tests/integration/test_manual_steps_e2e.sh
 	./crates/testcase-manager/tests/integration/test_manual_verification_e2e.sh
 	./crates/testcase-manager/tests/integration/test_orchestrator_e2e.sh
+	./crates/testcase-manager/tests/integration/test_pipeline_e2e.sh
 	./crates/testcase-manager/tests/integration/test_validate_yaml_watch_e2e.sh
 	./crates/testcase-manager/tests/integration/test_validate_yaml_multi_e2e.sh
 	./crates/testcase-manager/tests/integration/test_validate_yaml_schema_watch_e2e.sh
@@ -699,6 +700,16 @@ test-e2e-orchestrator-examples:
 	@${MAKE} build BASE_REF=$(or $(BASE_REF),main)
 	./tests/integration/test_orchestrator_examples.sh
 .PHONY: test-e2e-orchestrator-examples
+
+test-e2e-pipeline:
+	@${MAKE} build BASE_REF=$(or $(BASE_REF),main)
+	./crates/testcase-manager/tests/integration/test_pipeline_e2e.sh
+.PHONY: test-e2e-pipeline
+
+test-e2e-pipeline-batch:
+	@${MAKE} build BASE_REF=$(or $(BASE_REF),main)
+	./crates/testcase-manager/tests/integration/test_pipeline_batch.sh
+.PHONY: test-e2e-pipeline-batch
 
 generate-docs:
 	@${MAKE} build BASE_REF=$(or $(BASE_REF),main)
