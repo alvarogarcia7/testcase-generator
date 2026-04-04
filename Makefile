@@ -377,7 +377,7 @@ test-e2e-f: build
 # test-e2e-all: Run ALL E2E integration tests unconditionally
 # This target runs the complete E2E test suite regardless of changes
 # Used by test-all to ensure comprehensive testing in CI/CD
-test-e2e-all: build-all
+test-e2e-all: setup-python-for-test build-all
 	${MAKE} test-e2e-all-no-build
 .PHONY: test-e2e-all
 
