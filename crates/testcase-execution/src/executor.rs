@@ -2044,17 +2044,14 @@ pub fn convert_pcre_to_sed_pattern(pattern: &str) -> String {
         let prefix = &pattern[..idx];
         let suffix = &pattern[idx + 2..];
 
-        // Convert PCRE character classes to POSIX for sed and convert parentheses
+        // Convert PCRE character classes to POSIX for sed
         let converted_suffix = suffix
             .replace(r"\d+", r"\([0-9][0-9]*\)")
             .replace(r"\d", r"\([0-9]\)")
             .replace(r"\w+", r"\([a-zA-Z0-9_][a-zA-Z0-9_]*\)")
             .replace(r"\w", r"\([a-zA-Z0-9_]\)")
             .replace(r"\s+", r"\([[:space:]][[:space:]]*\)")
-            .replace(r"\s", r"\([[:space:]]\)")
-            // Convert PCRE parentheses to sed parentheses
-            .replace("(", r"\(")
-            .replace(")", r"\)");
+            .replace(r"\s", r"\([[:space:]]\)");
 
         // If suffix doesn't already have capture group, wrap it
         let capture_suffix = if converted_suffix.starts_with(r"\(") {
@@ -2083,10 +2080,7 @@ pub fn convert_pcre_to_sed_pattern(pattern: &str) -> String {
                 .replace(r"\w", r"\([a-zA-Z0-9_]\)")
                 .replace("[a-f0-9]+", r"\([a-f0-9][a-f0-9]*\)")
                 .replace("[A-Z0-9]+", r"\([A-Z0-9][A-Z0-9]*\)")
-                .replace("[0-9]+", r"\([0-9][0-9]*\)")
-                // Convert PCRE parentheses to sed parentheses
-                .replace("(", r"\(")
-                .replace(")", r"\)");
+                .replace("[0-9]+", r"\([0-9][0-9]*\)");
 
             // Wrap in capture group if not already
             let capture_rest = if converted_rest.starts_with(r"\(") {
