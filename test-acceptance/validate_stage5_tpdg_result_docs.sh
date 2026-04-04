@@ -8,7 +8,7 @@
 #   - Checking TPDG binary availability ($TEST_PLAN_DOC_GEN or PATH)
 #   - Invoking TPDG on each container YAML to generate AsciiDoc result documents
 #   - Invoking TPDG on each container YAML to generate Markdown result documents
-#   - Validating generated .adoc files exist in reports/ subdirectories
+#   - Validating generated .adoc files exist in 30_documentation_source/ subdirectories
 #   - Checking .md files exist for each test
 #   - Verifying AsciiDoc files contain expected content markers:
 #     * Test case ID
@@ -62,8 +62,8 @@ source "$REPO_ROOT/scripts/lib/logger.sh" || exit 1
 source "$REPO_ROOT/scripts/lib/report_generator.sh" || exit 1
 
 # Configuration
-VERIFICATION_RESULTS_DIR="$SCRIPT_DIR/verification_results"
-REPORTS_DIR="$SCRIPT_DIR/reports"
+VERIFICATION_RESULTS_DIR="$SCRIPT_DIR/20_verification"
+REPORTS_DIR="$SCRIPT_DIR/30_documentation_source"
 RESULT_DOCS_DIR="$REPORTS_DIR/result_docs"
 VERBOSE=0
 SKIP_HTML=0

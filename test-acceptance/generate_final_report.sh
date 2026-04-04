@@ -18,7 +18,7 @@
 # OPTIONS:
 #   -v, --verbose         Enable verbose output
 #   -h, --help            Show this help message
-#   -o, --output-dir DIR  Output directory for reports (default: test-acceptance/reports/final)
+#   -o, --output-dir DIR  Output directory for reports (default: 30_documentation_source/reports/final)
 #   --skip-html           Skip HTML report generation
 #   --skip-markdown       Skip Markdown report generation
 #   --skip-json           Skip JSON report generation
@@ -50,7 +50,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 source "$REPO_ROOT/scripts/lib/logger.sh" || exit 1
 
 # Configuration
-OUTPUT_DIR="$SCRIPT_DIR/reports/final"
+OUTPUT_DIR="$SCRIPT_DIR/30_documentation_source/reports/final"
 VERBOSE=0
 SKIP_HTML=0
 SKIP_MARKDOWN=0
@@ -77,7 +77,7 @@ Generates comprehensive final report for acceptance test suite.
 OPTIONS:
     -v, --verbose         Enable verbose output
     -h, --help            Show this help message
-    -o, --output-dir DIR  Output directory for reports (default: test-acceptance/reports/final)
+    -o, --output-dir DIR  Output directory for reports (default: 30_documentation_source/reports/final)
     --skip-html           Skip HTML report generation
     --skip-markdown       Skip Markdown report generation
     --skip-json           Skip JSON report generation
@@ -279,7 +279,7 @@ run_stage_validation() {
 
 # Generate test coverage matrix
 generate_coverage_matrix() {
-    local test_cases_dir="$SCRIPT_DIR/test_cases"
+    local test_cases_dir="$SCRIPT_DIR/00_test_cases"
     
     # Initialize category counters
     local success_tests=0

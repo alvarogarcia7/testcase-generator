@@ -49,10 +49,10 @@ source "$REPO_ROOT/scripts/lib/logger.sh" || exit 1
 source "$REPO_ROOT/scripts/lib/find-binary.sh" || exit 1
 
 # Configuration
-TEST_CASES_DIR="$SCRIPT_DIR/test_cases"
-SCRIPTS_DIR="$SCRIPT_DIR/scripts"
-EXECUTION_LOGS_DIR="$SCRIPT_DIR/execution_logs"
-REPORTS_DIR="$SCRIPT_DIR/reports"
+TEST_CASES_DIR="$SCRIPT_DIR/00_test_cases"
+SCRIPTS_DIR="$SCRIPT_DIR/05_scripts"
+EXECUTION_LOGS_DIR="$SCRIPT_DIR/10_test_results/execution_logs"
+REPORTS_DIR="$SCRIPT_DIR/30_documentation_source"
 VERBOSE=0
 TIMEOUT_SECONDS=30
 SKIP_JSON=0

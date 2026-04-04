@@ -50,11 +50,11 @@ create_test_environment() {
     log_info "Creating isolated test environment in $test_dir"
     
     # Create directory structure
-    mkdir -p "$test_dir/test_cases"
-    mkdir -p "$test_dir/scripts"
-    mkdir -p "$test_dir/execution_logs"
-    mkdir -p "$test_dir/verification_results"
-    mkdir -p "$test_dir/reports"
+    mkdir -p "$test_dir/00_test_cases"
+    mkdir -p "$test_dir/05_scripts"
+    mkdir -p "$test_dir/10_test_results/execution_logs"
+    mkdir -p "$test_dir/20_verification"
+    mkdir -p "$test_dir/30_documentation_source"
     
     # Copy a subset of test cases (5 success, 3 failure, 2 hooks)
     # Success cases
@@ -66,10 +66,10 @@ create_test_environment() {
         "TC_SUCCESS_ENV_VARS_001.yaml"
     )
     
-    mkdir -p "$test_dir/test_cases/success"
+    mkdir -p "$test_dir/00_test_cases/success"
     for test in "${success_tests[@]}"; do
         if [[ -f "$ACCEPTANCE_DIR/test_cases/success/$test" ]]; then
-            cp "$ACCEPTANCE_DIR/test_cases/success/$test" "$test_dir/test_cases/success/"
+            cp "$ACCEPTANCE_DIR/test_cases/success/$test" "$test_dir/00_test_cases/success/"
         fi
     done
     
@@ -80,10 +80,10 @@ create_test_environment() {
         "TC_FAILURE_OUTPUT_MISMATCH_001.yaml"
     )
     
-    mkdir -p "$test_dir/test_cases/failure"
+    mkdir -p "$test_dir/00_test_cases/failure"
     for test in "${failure_tests[@]}"; do
         if [[ -f "$ACCEPTANCE_DIR/test_cases/failure/$test" ]]; then
-            cp "$ACCEPTANCE_DIR/test_cases/failure/$test" "$test_dir/test_cases/failure/"
+            cp "$ACCEPTANCE_DIR/test_cases/failure/$test" "$test_dir/00_test_cases/failure/"
         fi
     done
     
@@ -93,16 +93,16 @@ create_test_environment() {
         "HOOKS_AFTER_STEP_001.yaml"
     )
     
-    mkdir -p "$test_dir/test_cases/hooks"
+    mkdir -p "$test_dir/00_test_cases/hooks"
     for test in "${hook_tests[@]}"; do
         if [[ -f "$ACCEPTANCE_DIR/test_cases/hooks/$test" ]]; then
             # Copy YAML and any associated hook scripts
-            cp "$ACCEPTANCE_DIR/test_cases/hooks/$test" "$test_dir/test_cases/hooks/"
+            cp "$ACCEPTANCE_DIR/test_cases/hooks/$test" "$test_dir/00_test_cases/hooks/"
             
             # Copy hook script directories if they exist
             local test_base=$(basename "$test" .yaml)
             if [[ -d "$ACCEPTANCE_DIR/test_cases/hooks/${test_base}_scripts" ]]; then
-                cp -r "$ACCEPTANCE_DIR/test_cases/hooks/${test_base}_scripts" "$test_dir/test_cases/hooks/"
+                cp -r "$ACCEPTANCE_DIR/test_cases/hooks/${test_base}_scripts" "$test_dir/00_test_cases/hooks/"
             fi
         fi
     done
@@ -117,11 +117,11 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 source "$PROJECT_ROOT/scripts/lib/logger.sh" || exit 1
 
 # Override paths to use test directory
-TEST_CASES_DIR="$SCRIPT_DIR/test_cases"
-EXECUTION_LOGS_DIR="$SCRIPT_DIR/execution_logs"
-VERIFICATION_RESULTS_DIR="$SCRIPT_DIR/verification_results"
-SCRIPTS_DIR="$SCRIPT_DIR/scripts"
-REPORTS_DIR="$SCRIPT_DIR/reports"
+TEST_CASES_DIR="$SCRIPT_DIR/00_test_cases"
+EXECUTION_LOGS_DIR="$SCRIPT_DIR/10_test_results/execution_logs"
+VERIFICATION_RESULTS_DIR="$SCRIPT_DIR/20_verification"
+SCRIPTS_DIR="$SCRIPT_DIR/05_scripts"
+REPORTS_DIR="$SCRIPT_DIR/30_documentation_source"
 SCHEMA_DIR="$PROJECT_ROOT/schemas"
 CONTAINER_SCHEMA="$PROJECT_ROOT/data/testcase_results_container/schema.json"
 
@@ -141,7 +141,7 @@ EOF
     
     chmod +x "$test_dir/run_acceptance_suite_test.sh"
     
-    log_info "Test environment created with $(find "$test_dir/test_cases" -name "*.yaml" | wc -l | tr -d ' ') test cases"
+    log_info "Test environment created with $(find "$test_dir/00_test_cases" -name "*.yaml" | wc -l | tr -d ' ') test cases"
 }
 
 # Test 1: Verify acceptance suite completes successfully on subset
@@ -156,11 +156,11 @@ test_basic_execution() {
     
     # Use the actual acceptance suite script with test directory
     cd "$test_env"
-    if TEST_CASES_DIR="$test_env/test_cases" \
-       EXECUTION_LOGS_DIR="$test_env/execution_logs" \
-       VERIFICATION_RESULTS_DIR="$test_env/verification_results" \
-       SCRIPTS_DIR="$test_env/scripts" \
-       REPORTS_DIR="$test_env/reports" \
+    if TEST_CASES_DIR="$test_env/00_test_cases" \
+       EXECUTION_LOGS_DIR="$test_env/10_test_results/execution_logs" \
+       VERIFICATION_RESULTS_DIR="$test_env/20_verification" \
+       SCRIPTS_DIR="$test_env/05_scripts" \
+       REPORTS_DIR="$test_env/30_documentation_source" \
        "$ACCEPTANCE_SUITE" > "$output_file" 2>&1; then
         
         log_info "Acceptance suite completed successfully"
@@ -216,15 +216,15 @@ test_file_creation() {
     log_info "Running acceptance suite and verifying file creation..."
     
     cd "$test_env"
-    TEST_CASES_DIR="$test_env/test_cases" \
-    EXECUTION_LOGS_DIR="$test_env/execution_logs" \
-    VERIFICATION_RESULTS_DIR="$test_env/verification_results" \
-    SCRIPTS_DIR="$test_env/scripts" \
-    REPORTS_DIR="$test_env/reports" \
+    TEST_CASES_DIR="$test_env/00_test_cases" \
+    EXECUTION_LOGS_DIR="$test_env/10_test_results/execution_logs" \
+    VERIFICATION_RESULTS_DIR="$test_env/20_verification" \
+    SCRIPTS_DIR="$test_env/05_scripts" \
+    REPORTS_DIR="$test_env/30_documentation_source" \
     "$ACCEPTANCE_SUITE" > "$TEST_WORKSPACE/file_creation_output.log" 2>&1 || true
     
     # Stage 2: Check generated scripts
-    local script_count=$(find "$test_env/scripts" -name "*.sh" -type f 2>/dev/null | wc -l | tr -d ' ')
+    local script_count=$(find "$test_env/05_scripts" -name "*.sh" -type f 2>/dev/null | wc -l | tr -d ' ')
     if [[ $script_count -lt 8 ]]; then
         log_error "Expected at least 8 generated scripts, found $script_count"
         return 1
@@ -232,7 +232,7 @@ test_file_creation() {
     pass "Stage 2: Found $script_count generated scripts"
     
     # Stage 3: Check execution logs
-    local log_count=$(find "$test_env/execution_logs" -name "*.json" -type f 2>/dev/null | wc -l | tr -d ' ')
+    local log_count=$(find "$test_env/10_test_results/execution_logs" -name "*.json" -type f 2>/dev/null | wc -l | tr -d ' ')
     if [[ $log_count -lt 5 ]]; then
         log_error "Expected at least 5 execution logs, found $log_count"
         return 1
@@ -240,7 +240,7 @@ test_file_creation() {
     pass "Stage 3: Found $log_count execution logs"
     
     # Stage 4: Check verification results
-    local container_count=$(find "$test_env/verification_results" -name "*_container.yaml" -type f 2>/dev/null | wc -l | tr -d ' ')
+    local container_count=$(find "$test_env/20_verification" -name "*_container.yaml" -type f 2>/dev/null | wc -l | tr -d ' ')
     if [[ $container_count -lt 5 ]]; then
         log_error "Expected at least 5 container YAMLs, found $container_count"
         return 1
@@ -248,8 +248,8 @@ test_file_creation() {
     pass "Stage 4: Found $container_count container YAMLs"
     
     # Stage 6: Check documentation
-    local asciidoc_count=$(find "$test_env/reports/asciidoc" -name "*.adoc" -type f 2>/dev/null | wc -l | tr -d ' ')
-    local markdown_count=$(find "$test_env/reports/markdown" -name "*.md" -type f 2>/dev/null | wc -l | tr -d ' ')
+    local asciidoc_count=$(find "$test_env/30_documentation_source/asciidoc" -name "*.adoc" -type f 2>/dev/null | wc -l | tr -d ' ')
+    local markdown_count=$(find "$test_env/30_documentation_source/markdown" -name "*.md" -type f 2>/dev/null | wc -l | tr -d ' ')
     
     # Documentation might be skipped if TPDG not available
     if command -v test-plan-documentation-generator > /dev/null 2>&1 || [[ -n "${TEST_PLAN_DOC_GEN:-}" ]]; then
@@ -267,7 +267,7 @@ test_file_creation() {
     fi
     
     # Check summary report
-    if [[ ! -f "$test_env/reports/acceptance_suite_summary.txt" ]]; then
+    if [[ ! -f "$test_env/30_documentation_source/acceptance_suite_summary.txt" ]]; then
         log_error "Summary report not found"
         return 1
     fi
@@ -284,14 +284,14 @@ test_final_report_statistics() {
     log_info "Running acceptance suite and validating report statistics..."
     
     cd "$test_env"
-    TEST_CASES_DIR="$test_env/test_cases" \
-    EXECUTION_LOGS_DIR="$test_env/execution_logs" \
-    VERIFICATION_RESULTS_DIR="$test_env/verification_results" \
-    SCRIPTS_DIR="$test_env/scripts" \
-    REPORTS_DIR="$test_env/reports" \
+    TEST_CASES_DIR="$test_env/00_test_cases" \
+    EXECUTION_LOGS_DIR="$test_env/10_test_results/execution_logs" \
+    VERIFICATION_RESULTS_DIR="$test_env/20_verification" \
+    SCRIPTS_DIR="$test_env/05_scripts" \
+    REPORTS_DIR="$test_env/30_documentation_source" \
     "$ACCEPTANCE_SUITE" > "$TEST_WORKSPACE/report_stats_output.log" 2>&1 || true
     
-    local report="$test_env/reports/acceptance_suite_summary.txt"
+    local report="$test_env/30_documentation_source/acceptance_suite_summary.txt"
     
     if [[ ! -f "$report" ]]; then
         log_error "Report file not found: $report"
@@ -354,11 +354,11 @@ test_skip_generation_flag() {
     local output_file="$TEST_WORKSPACE/skip_generation_output.log"
     
     cd "$test_env"
-    TEST_CASES_DIR="$test_env/test_cases" \
-    EXECUTION_LOGS_DIR="$test_env/execution_logs" \
-    VERIFICATION_RESULTS_DIR="$test_env/verification_results" \
-    SCRIPTS_DIR="$test_env/scripts" \
-    REPORTS_DIR="$test_env/reports" \
+    TEST_CASES_DIR="$test_env/00_test_cases" \
+    EXECUTION_LOGS_DIR="$test_env/10_test_results/execution_logs" \
+    VERIFICATION_RESULTS_DIR="$test_env/20_verification" \
+    SCRIPTS_DIR="$test_env/05_scripts" \
+    REPORTS_DIR="$test_env/30_documentation_source" \
     "$ACCEPTANCE_SUITE" --skip-generation > "$output_file" 2>&1 || true
     
     # Verify Stage 2 was skipped
@@ -370,7 +370,7 @@ test_skip_generation_flag() {
     pass "Stage 2 correctly skipped"
     
     # Verify no scripts were generated
-    local script_count=$(find "$test_env/scripts" -name "*.sh" -type f 2>/dev/null | wc -l | tr -d ' ')
+    local script_count=$(find "$test_env/05_scripts" -name "*.sh" -type f 2>/dev/null | wc -l | tr -d ' ')
     if [[ $script_count -ne 0 ]]; then
         log_error "Scripts were generated despite --skip-generation flag"
         return 1
@@ -391,11 +391,11 @@ test_skip_execution_flag() {
     local output_file="$TEST_WORKSPACE/skip_execution_output.log"
     
     cd "$test_env"
-    TEST_CASES_DIR="$test_env/test_cases" \
-    EXECUTION_LOGS_DIR="$test_env/execution_logs" \
-    VERIFICATION_RESULTS_DIR="$test_env/verification_results" \
-    SCRIPTS_DIR="$test_env/scripts" \
-    REPORTS_DIR="$test_env/reports" \
+    TEST_CASES_DIR="$test_env/00_test_cases" \
+    EXECUTION_LOGS_DIR="$test_env/10_test_results/execution_logs" \
+    VERIFICATION_RESULTS_DIR="$test_env/20_verification" \
+    SCRIPTS_DIR="$test_env/05_scripts" \
+    REPORTS_DIR="$test_env/30_documentation_source" \
     "$ACCEPTANCE_SUITE" --skip-execution > "$output_file" 2>&1 || true
     
     # Verify Stage 3 was skipped
@@ -407,7 +407,7 @@ test_skip_execution_flag() {
     pass "Stage 3 correctly skipped"
     
     # Scripts should still be generated
-    local script_count=$(find "$test_env/scripts" -name "*.sh" -type f 2>/dev/null | wc -l | tr -d ' ')
+    local script_count=$(find "$test_env/05_scripts" -name "*.sh" -type f 2>/dev/null | wc -l | tr -d ' ')
     if [[ $script_count -lt 8 ]]; then
         log_error "Scripts not generated (expected at least 8, got $script_count)"
         return 1
@@ -416,7 +416,7 @@ test_skip_execution_flag() {
     pass "Scripts still generated ($script_count)"
     
     # But execution logs should not exist
-    local log_count=$(find "$test_env/execution_logs" -name "*.json" -type f 2>/dev/null | wc -l | tr -d ' ')
+    local log_count=$(find "$test_env/10_test_results/execution_logs" -name "*.json" -type f 2>/dev/null | wc -l | tr -d ' ')
     if [[ $log_count -ne 0 ]]; then
         log_error "Execution logs created despite --skip-execution flag"
         return 1
@@ -437,11 +437,11 @@ test_skip_verification_flag() {
     local output_file="$TEST_WORKSPACE/skip_verification_output.log"
     
     cd "$test_env"
-    TEST_CASES_DIR="$test_env/test_cases" \
-    EXECUTION_LOGS_DIR="$test_env/execution_logs" \
-    VERIFICATION_RESULTS_DIR="$test_env/verification_results" \
-    SCRIPTS_DIR="$test_env/scripts" \
-    REPORTS_DIR="$test_env/reports" \
+    TEST_CASES_DIR="$test_env/00_test_cases" \
+    EXECUTION_LOGS_DIR="$test_env/10_test_results/execution_logs" \
+    VERIFICATION_RESULTS_DIR="$test_env/20_verification" \
+    SCRIPTS_DIR="$test_env/05_scripts" \
+    REPORTS_DIR="$test_env/30_documentation_source" \
     "$ACCEPTANCE_SUITE" --skip-verification > "$output_file" 2>&1 || true
     
     # Verify Stage 4 and 5 were skipped
@@ -458,7 +458,7 @@ test_skip_verification_flag() {
     pass "Stages 4 and 5 correctly skipped"
     
     # Execution should still happen
-    local log_count=$(find "$test_env/execution_logs" -name "*.json" -type f 2>/dev/null | wc -l | tr -d ' ')
+    local log_count=$(find "$test_env/10_test_results/execution_logs" -name "*.json" -type f 2>/dev/null | wc -l | tr -d ' ')
     if [[ $log_count -lt 5 ]]; then
         log_error "Execution logs not created"
         return 1
@@ -479,11 +479,11 @@ test_skip_documentation_flag() {
     local output_file="$TEST_WORKSPACE/skip_documentation_output.log"
     
     cd "$test_env"
-    TEST_CASES_DIR="$test_env/test_cases" \
-    EXECUTION_LOGS_DIR="$test_env/execution_logs" \
-    VERIFICATION_RESULTS_DIR="$test_env/verification_results" \
-    SCRIPTS_DIR="$test_env/scripts" \
-    REPORTS_DIR="$test_env/reports" \
+    TEST_CASES_DIR="$test_env/00_test_cases" \
+    EXECUTION_LOGS_DIR="$test_env/10_test_results/execution_logs" \
+    VERIFICATION_RESULTS_DIR="$test_env/20_verification" \
+    SCRIPTS_DIR="$test_env/05_scripts" \
+    REPORTS_DIR="$test_env/30_documentation_source" \
     "$ACCEPTANCE_SUITE" --skip-documentation > "$output_file" 2>&1 || true
     
     # Verify Stage 6 was skipped
@@ -509,24 +509,24 @@ test_verbose_flag() {
     
     # Run without verbose
     cd "$test_env"
-    TEST_CASES_DIR="$test_env/test_cases" \
-    EXECUTION_LOGS_DIR="$test_env/execution_logs" \
-    VERIFICATION_RESULTS_DIR="$test_env/verification_results" \
-    SCRIPTS_DIR="$test_env/scripts" \
-    REPORTS_DIR="$test_env/reports" \
+    TEST_CASES_DIR="$test_env/00_test_cases" \
+    EXECUTION_LOGS_DIR="$test_env/10_test_results/execution_logs" \
+    VERIFICATION_RESULTS_DIR="$test_env/20_verification" \
+    SCRIPTS_DIR="$test_env/05_scripts" \
+    REPORTS_DIR="$test_env/30_documentation_source" \
     "$ACCEPTANCE_SUITE" > "$output_normal" 2>&1 || true
     
     # Clean for second run
-    rm -rf "$test_env/scripts" "$test_env/execution_logs" "$test_env/verification_results" "$test_env/reports"
-    mkdir -p "$test_env/scripts" "$test_env/execution_logs" "$test_env/verification_results" "$test_env/reports"
+    rm -rf "$test_env/05_scripts" "$test_env/10_test_results" "$test_env/20_verification" "$test_env/30_documentation_source"
+    mkdir -p "$test_env/05_scripts" "$test_env/10_test_results/execution_logs" "$test_env/20_verification" "$test_env/30_documentation_source"
     
     # Run with verbose
     cd "$test_env"
-    TEST_CASES_DIR="$test_env/test_cases" \
-    EXECUTION_LOGS_DIR="$test_env/execution_logs" \
-    VERIFICATION_RESULTS_DIR="$test_env/verification_results" \
-    SCRIPTS_DIR="$test_env/scripts" \
-    REPORTS_DIR="$test_env/reports" \
+    TEST_CASES_DIR="$test_env/00_test_cases" \
+    EXECUTION_LOGS_DIR="$test_env/10_test_results/execution_logs" \
+    VERIFICATION_RESULTS_DIR="$test_env/20_verification" \
+    SCRIPTS_DIR="$test_env/05_scripts" \
+    REPORTS_DIR="$test_env/30_documentation_source" \
     "$ACCEPTANCE_SUITE" --verbose > "$output_verbose" 2>&1 || true
     
     # Verbose output should be longer (more detailed)
@@ -562,11 +562,11 @@ test_missing_tpdg_handling() {
     
     # Run with TPDG deliberately not set
     cd "$test_env"
-    TEST_CASES_DIR="$test_env/test_cases" \
-    EXECUTION_LOGS_DIR="$test_env/execution_logs" \
-    VERIFICATION_RESULTS_DIR="$test_env/verification_results" \
-    SCRIPTS_DIR="$test_env/scripts" \
-    REPORTS_DIR="$test_env/reports" \
+    TEST_CASES_DIR="$test_env/00_test_cases" \
+    EXECUTION_LOGS_DIR="$test_env/10_test_results/execution_logs" \
+    VERIFICATION_RESULTS_DIR="$test_env/20_verification" \
+    SCRIPTS_DIR="$test_env/05_scripts" \
+    REPORTS_DIR="$test_env/30_documentation_source" \
     env -u TEST_PLAN_DOC_GEN PATH="/bin:/usr/bin" \
     "$ACCEPTANCE_SUITE" > "$output_file" 2>&1 || true
     
@@ -601,7 +601,7 @@ test_timeout_handling() {
     log_info "Testing timeout handling..."
     
     # Create a test case with a long-running command
-    cat > "$test_env/test_cases/timeout_test.yaml" << 'EOF'
+    cat > "$test_env/00_test_cases/timeout_test.yaml" << 'EOF'
 test_case_id: TC_TIMEOUT_001
 title: Timeout Test Case
 description: Tests timeout handling
@@ -628,11 +628,11 @@ EOF
     
     # Run with very short timeout to ensure completion
     if timeout 300 env \
-        TEST_CASES_DIR="$test_env/test_cases" \
-        EXECUTION_LOGS_DIR="$test_env/execution_logs" \
-        VERIFICATION_RESULTS_DIR="$test_env/verification_results" \
-        SCRIPTS_DIR="$test_env/scripts" \
-        REPORTS_DIR="$test_env/reports" \
+        TEST_CASES_DIR="$test_env/00_test_cases" \
+        EXECUTION_LOGS_DIR="$test_env/10_test_results/execution_logs" \
+        VERIFICATION_RESULTS_DIR="$test_env/20_verification" \
+        SCRIPTS_DIR="$test_env/05_scripts" \
+        REPORTS_DIR="$test_env/30_documentation_source" \
         "$ACCEPTANCE_SUITE" > "$output_file" 2>&1; then
         pass "Acceptance suite completed within timeout"
         return 0
@@ -660,11 +660,11 @@ test_cleanup_temporary_files() {
     local output_file="$TEST_WORKSPACE/cleanup_output.log"
     
     cd "$test_env"
-    TEST_CASES_DIR="$test_env/test_cases" \
-    EXECUTION_LOGS_DIR="$test_env/execution_logs" \
-    VERIFICATION_RESULTS_DIR="$test_env/verification_results" \
-    SCRIPTS_DIR="$test_env/scripts" \
-    REPORTS_DIR="$test_env/reports" \
+    TEST_CASES_DIR="$test_env/00_test_cases" \
+    EXECUTION_LOGS_DIR="$test_env/10_test_results/execution_logs" \
+    VERIFICATION_RESULTS_DIR="$test_env/20_verification" \
+    SCRIPTS_DIR="$test_env/05_scripts" \
+    REPORTS_DIR="$test_env/30_documentation_source" \
     "$ACCEPTANCE_SUITE" > "$output_file" 2>&1 || true
     
     # After completion, check that no stray temp files remain in /tmp
@@ -680,13 +680,13 @@ test_cleanup_temporary_files() {
     pass "Cleanup check completed"
     
     # Verify expected output directories exist
-    if [[ ! -d "$test_env/scripts" ]]; then
+    if [[ ! -d "$test_env/05_scripts" ]]; then
         log_error "Scripts directory was cleaned up incorrectly"
         return 1
     fi
     
-    if [[ ! -d "$test_env/reports" ]]; then
-        log_error "Reports directory was cleaned up incorrectly"
+    if [[ ! -d "$test_env/30_documentation_source" ]]; then
+        log_error "Documentation source directory was cleaned up incorrectly"
         return 1
     fi
     
@@ -705,11 +705,11 @@ test_multiple_skip_flags() {
     local output_file="$TEST_WORKSPACE/multiple_skip_output.log"
     
     cd "$test_env"
-    TEST_CASES_DIR="$test_env/test_cases" \
-    EXECUTION_LOGS_DIR="$test_env/execution_logs" \
-    VERIFICATION_RESULTS_DIR="$test_env/verification_results" \
-    SCRIPTS_DIR="$test_env/scripts" \
-    REPORTS_DIR="$test_env/reports" \
+    TEST_CASES_DIR="$test_env/00_test_cases" \
+    EXECUTION_LOGS_DIR="$test_env/10_test_results/execution_logs" \
+    VERIFICATION_RESULTS_DIR="$test_env/20_verification" \
+    SCRIPTS_DIR="$test_env/05_scripts" \
+    REPORTS_DIR="$test_env/30_documentation_source" \
     "$ACCEPTANCE_SUITE" --skip-execution --skip-verification --skip-documentation \
         > "$output_file" 2>&1 || true
     
@@ -764,11 +764,11 @@ test_stage7_consolidated_documentation() {
     
     # Run acceptance suite on test subset
     cd "$test_env"
-    TEST_CASES_DIR="$test_env/test_cases" \
-    EXECUTION_LOGS_DIR="$test_env/execution_logs" \
-    VERIFICATION_RESULTS_DIR="$test_env/verification_results" \
-    SCRIPTS_DIR="$test_env/scripts" \
-    REPORTS_DIR="$test_env/reports" \
+    TEST_CASES_DIR="$test_env/00_test_cases" \
+    EXECUTION_LOGS_DIR="$test_env/10_test_results/execution_logs" \
+    VERIFICATION_RESULTS_DIR="$test_env/20_verification" \
+    SCRIPTS_DIR="$test_env/05_scripts" \
+    REPORTS_DIR="$test_env/30_documentation_source" \
     "$ACCEPTANCE_SUITE" > "$output_file" 2>&1 || true
     
     # Verify Stage 7 was executed
@@ -785,16 +785,16 @@ test_stage7_consolidated_documentation() {
     fi
     pass "No CONSOLIDATED_DOC_FAILED errors"
     
-    # Verify test-acceptance/reports/consolidated/ directory was created
-    local consolidated_dir="$test_env/reports/consolidated"
+    # Verify test-acceptance/30_documentation_source/consolidated/ directory was created
+    local consolidated_dir="$test_env/30_documentation_source/consolidated"
     if [[ ! -d "$consolidated_dir" ]]; then
-        log_error "Consolidated reports directory not created: $consolidated_dir"
+        log_error "Consolidated documentation directory not created: $consolidated_dir"
         return 1
     fi
-    pass "Consolidated reports directory created"
+    pass "Consolidated documentation directory created"
     
     # Check that all_tests_container.yaml was created
-    local consolidated_container="$test_env/reports/consolidated/all_tests_container.yaml"
+    local consolidated_container="$test_env/30_documentation_source/consolidated/all_tests_container.yaml"
     if [[ ! -f "$consolidated_container" ]]; then
         log_error "Consolidated container YAML not created: $consolidated_container"
         return 1
@@ -856,7 +856,7 @@ test_stage7_consolidated_documentation() {
         local metadata_count=$(grep -A 10 "^metadata:" "$consolidated_container" | grep "total_test_cases:" | grep -o '[0-9]\+' || echo "0")
         
         # Count actual execution logs
-        local log_count=$(find "$test_env/execution_logs" -name "*.json" -type f 2>/dev/null | wc -l | tr -d ' ')
+        local log_count=$(find "$test_env/10_test_results/execution_logs" -name "*.json" -type f 2>/dev/null | wc -l | tr -d ' ')
         
         if [[ "$metadata_count" -ne "$log_count" ]]; then
             log_error "Metadata total_test_cases ($metadata_count) doesn't match execution logs count ($log_count)"
@@ -905,7 +905,7 @@ test_stage7_consolidated_documentation() {
     pass "Container includes test cases from multiple categories (success, failure, hooks)"
     
     # Verify TPDG successfully generated AsciiDoc
-    local consolidated_asciidoc="$test_env/reports/consolidated/all_tests.adoc"
+    local consolidated_asciidoc="$test_env/30_documentation_source/consolidated/all_tests.adoc"
     if [[ ! -f "$consolidated_asciidoc" ]]; then
         log_error "Consolidated AsciiDoc not created: $consolidated_asciidoc"
         return 1
@@ -926,7 +926,7 @@ test_stage7_consolidated_documentation() {
     pass "AsciiDoc has valid content"
     
     # Verify TPDG successfully generated Markdown
-    local consolidated_markdown="$test_env/reports/consolidated/all_tests.md"
+    local consolidated_markdown="$test_env/30_documentation_source/consolidated/all_tests.md"
     if [[ ! -f "$consolidated_markdown" ]]; then
         log_error "Consolidated Markdown not created: $consolidated_markdown"
         return 1
@@ -980,7 +980,7 @@ test_stage7_consolidated_documentation() {
     pass "Documentation content includes test case IDs from multiple categories"
     
     # Verify summary report mentions Stage 7
-    local report="$test_env/reports/acceptance_suite_summary.txt"
+    local report="$test_env/30_documentation_source/acceptance_suite_summary.txt"
     if [[ ! -f "$report" ]]; then
         log_error "Summary report not found"
         return 1
@@ -992,7 +992,7 @@ test_stage7_consolidated_documentation() {
     fi
     pass "Summary report includes Stage 7 results"
     
-    # Verify consolidated reports paths are listed in summary
+    # Verify consolidated documentation paths are listed in summary
     if ! grep -q "all_tests_container.yaml" "$report"; then
         log_error "Summary report doesn't mention consolidated container"
         return 1
