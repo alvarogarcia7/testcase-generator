@@ -87,6 +87,8 @@ section "Test 1: if_true Branch Executes When Condition Passes"
 
 PASSING_CONDITION_YAML="$TEMP_DIR/test_passing_condition.yaml"
 cat > "$PASSING_CONDITION_YAML" << 'EOF'
+type: test_case
+schema: tcms/test-case.schema.v1.json
 requirement: COND001
 item: 1
 tc: 1
@@ -182,6 +184,8 @@ section "Test 2: Condition Passes for Expected Error Code"
 
 EXPECTED_ERROR_YAML="$TEMP_DIR/test_expected_error.yaml"
 cat > "$EXPECTED_ERROR_YAML" << 'EOF'
+type: test_case
+schema: tcms/test-case.schema.v1.json
 requirement: COND002
 item: 1
 tc: 2
@@ -270,6 +274,8 @@ section "Test 3: if_false Branch Executes When Condition Fails"
 
 WRONG_EXIT_YAML="$TEMP_DIR/test_wrong_exit.yaml"
 cat > "$WRONG_EXIT_YAML" << 'EOF'
+type: test_case
+schema: tcms/test-case.schema.v1.json
 requirement: COND003
 item: 1
 tc: 3
@@ -367,6 +373,8 @@ section "Test 4: Pass/Fail Status Determined by Condition Result"
 
 ACTION_SUCCESS_YAML="$TEMP_DIR/test_action_success.yaml"
 cat > "$ACTION_SUCCESS_YAML" << 'EOF'
+type: test_case
+schema: tcms/test-case.schema.v1.json
 requirement: COND004
 item: 1
 tc: 4
@@ -462,6 +470,8 @@ section "Test 5: Output Verification with Conditional Logic"
 
 OUTPUT_CONDITIONAL_YAML="$TEMP_DIR/test_output_conditional.yaml"
 cat > "$OUTPUT_CONDITIONAL_YAML" << 'ENDYAML'
+type: test_case
+schema: tcms/test-case.schema.v1.json
 requirement: COND005
 item: 1
 tc: 5
@@ -559,6 +569,8 @@ section "Test 6: Mixed Simple and Conditional Verifications"
 
 MIXED_YAML="$TEMP_DIR/test_mixed.yaml"
 cat > "$MIXED_YAML" << 'EOF'
+type: test_case
+schema: tcms/test-case.schema.v1.json
 requirement: COND006
 item: 1
 tc: 6
