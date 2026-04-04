@@ -331,6 +331,36 @@ impl TestExecutor {
         script
     }
 
+    /// Detect if a verification expression string is a bash command or a human-readable prompt
+    /// Returns true if it looks like a bash expression (starts with bash operators or common commands)
+    /// Returns false if it looks like human-readable text (a prompt for manual verification)
+    fn is_bash_expression(expr_str: &str) -> bool {
+        let trimmed = expr_str.trim();
+
+        // Check for common bash expression patterns
+        if trimmed.starts_with("[[") || trimmed.starts_with("[") ||
+           trimmed.starts_with("grep") || trimmed.starts_with("test") ||
+           trimmed.starts_with("echo") || trimmed.starts_with("cat") ||
+           trimmed.starts_with("if ") || trimmed.starts_with("!") ||
+           trimmed.starts_with("$") || trimmed.starts_with("-f ") ||
+           trimmed.starts_with("-d ") || trimmed.starts_with("command ") ||
+           trimmed.starts_with("hash ") || trimmed.contains(" -eq ") ||
+           trimmed.contains(" -ne ") || trimmed.contains(" -lt ") ||
+           trimmed.contains(" -gt ") || trimmed.contains(" = ") ||
+           trimmed.contains(" == ") || trimmed.contains(" != ") ||
+           trimmed.starts_with("awk ") || trimmed.starts_with("sed ") {
+            return true;
+        }
+
+        // If it's just "true" or "false", it's a bash expression
+        if trimmed == "true" || trimmed == "false" {
+            return true;
+        }
+
+        // Default to false - treat as prompt text
+        false
+    }
+
     /// Generate bash script code for a VerificationExpression
     /// For Simple expressions, generates an if statement that sets the variable on success
     /// For Conditional expressions, generates bash code to evaluate the condition
@@ -890,19 +920,44 @@ impl TestExecutor {
                         }
 
                         // Generate verification script for output
+                        // For manual steps, check if the output verification is a prompt text
                         if has_output_verification {
-                            let output_verification_script = if uses_variables {
-                                generate_verification_with_var_subst(
-                                    &converted_output_expr,
-                                    "USER_VERIFICATION_OUTPUT",
-                                )
-                            } else {
-                                Self::generate_verification_script(
-                                    &converted_output_expr,
-                                    "USER_VERIFICATION_OUTPUT",
-                                )
+                            let output_expr_str = match &converted_output_expr {
+                                VerificationExpression::Simple(s) => s.clone(),
+                                _ => String::new(),
                             };
-                            script.push_str(&output_verification_script);
+
+                            // Check if this looks like a prompt (not a bash expression)
+                            if !Self::is_bash_expression(&output_expr_str) && !uses_variables {
+                                // Treat as a manual verification prompt
+                                // Use read_verification to prompt the user
+                                script.push_str("# Use read_verification for manual step prompt\n");
+                                let escaped_prompt = output_expr_str
+                                    .replace("\\", "\\\\")
+                                    .replace("\"", "\\\"");
+                                script.push_str(&format!(
+                                    "if read_verification \"{}\"; then\n",
+                                    escaped_prompt
+                                ));
+                                script.push_str("    USER_VERIFICATION_OUTPUT=true\n");
+                                script.push_str("else\n");
+                                script.push_str("    USER_VERIFICATION_OUTPUT=false\n");
+                                script.push_str("fi\n");
+                            } else {
+                                // Treat as a bash expression
+                                let output_verification_script = if uses_variables {
+                                    generate_verification_with_var_subst(
+                                        &converted_output_expr,
+                                        "USER_VERIFICATION_OUTPUT",
+                                    )
+                                } else {
+                                    Self::generate_verification_script(
+                                        &converted_output_expr,
+                                        "USER_VERIFICATION_OUTPUT",
+                                    )
+                                };
+                                script.push_str(&output_verification_script);
+                            }
                         } else {
                             script.push_str("USER_VERIFICATION_OUTPUT=true\n");
                         }
@@ -1045,15 +1100,19 @@ impl TestExecutor {
                 // Convert hydration placeholders (${#VAR_NAME} -> ${VAR_NAME})
                 let converted_command = convert_hydration_placeholder_to_bash(&step.command);
 
+                // Only trim trailing newlines/carriage returns from the command
+                // Keep internal newlines for heredocs and multi-line control structures
+                let normalized_command = converted_command.trim_end_matches('\n').trim_end_matches('\r').to_string();
+
                 // Check if the command needs variable substitution
                 let needs_substitution =
-                    converted_command.contains("${") || converted_command.contains("$STEP_VARS");
+                    normalized_command.contains("${") || normalized_command.contains("$STEP_VARS");
 
                 if needs_substitution {
                     // Generate bash code to perform variable substitution on the command
                     // Store the original command in a variable
                     // Escape backslashes, quotes, and dollar signs to prevent premature expansion
-                    let escaped_command = converted_command
+                    let escaped_command = normalized_command
                         .replace("\\", "\\\\")
                         .replace("\"", "\\\"")
                         .replace("$", "\\$");
@@ -1081,7 +1140,7 @@ impl TestExecutor {
                     // No substitution needed - inline the command directly
                     script.push_str(&format!(
                         "{{ {}; }} 2>&1 | tee \"$LOG_FILE\" > \"$_CAPTURE_TMPFILE\"\n",
-                        converted_command
+                        normalized_command
                     ));
                 }
 

@@ -115,13 +115,9 @@ impl fmt::Display for Verification {
 }
 
 /// Verification expression that can be either a simple string or a conditional expression
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
-#[serde(untagged)]
+#[derive(Debug, Clone, Serialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum VerificationExpression {
-    /// Simple string expression for backward compatibility
-    Simple(String),
-
-    /// Conditional expression with condition and branches
+    /// Conditional expression with condition and branches (try first for struct matching)
     Conditional {
         /// The condition to evaluate
         condition: String,
@@ -138,6 +134,72 @@ pub enum VerificationExpression {
         #[serde(skip_serializing_if = "Option::is_none")]
         always: Option<Vec<String>>,
     },
+
+    /// Simple string expression for backward compatibility (fallback for non-struct input)
+    Simple(String),
+}
+
+impl VerificationExpression {
+    /// Create a VerificationExpression from a boolean value
+    /// true -> "true", false -> "false"
+    pub fn from_bool(value: bool) -> Self {
+        VerificationExpression::Simple(value.to_string())
+    }
+}
+
+// Custom deserialization to support both string and boolean values
+impl<'de> serde::Deserialize<'de> for VerificationExpression {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use serde::de::Visitor;
+        use std::fmt;
+
+        struct VerificationExpressionVisitor;
+
+        impl<'de> Visitor<'de> for VerificationExpressionVisitor {
+            type Value = VerificationExpression;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a string, boolean, or conditional expression object")
+            }
+
+            fn visit_bool<E>(self, value: bool) -> Result<VerificationExpression, E>
+            where
+                E: serde::de::Error,
+            {
+                Ok(VerificationExpression::Simple(value.to_string()))
+            }
+
+            fn visit_str<E>(self, value: &str) -> Result<VerificationExpression, E>
+            where
+                E: serde::de::Error,
+            {
+                Ok(VerificationExpression::Simple(value.to_string()))
+            }
+
+            fn visit_string<E>(self, value: String) -> Result<VerificationExpression, E>
+            where
+                E: serde::de::Error,
+            {
+                Ok(VerificationExpression::Simple(value))
+            }
+
+            fn visit_map<M>(self, _map: M) -> Result<VerificationExpression, M::Error>
+            where
+                M: serde::de::MapAccess<'de>,
+            {
+                // Maps should be handled by the standard deserializer
+                // This is a fallback that shouldn't normally be reached
+                Err(serde::de::Error::custom(
+                    "Unexpected map for VerificationExpression - expected 'condition' field for Conditional variant",
+                ))
+            }
+        }
+
+        deserializer.deserialize_any(VerificationExpressionVisitor)
+    }
 }
 
 impl fmt::Display for VerificationExpression {
