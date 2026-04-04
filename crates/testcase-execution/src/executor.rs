@@ -338,17 +338,29 @@ impl TestExecutor {
         let trimmed = expr_str.trim();
 
         // Check for common bash expression patterns
-        if trimmed.starts_with("[[") || trimmed.starts_with("[") ||
-           trimmed.starts_with("grep") || trimmed.starts_with("test") ||
-           trimmed.starts_with("echo") || trimmed.starts_with("cat") ||
-           trimmed.starts_with("if ") || trimmed.starts_with("!") ||
-           trimmed.starts_with("$") || trimmed.starts_with("-f ") ||
-           trimmed.starts_with("-d ") || trimmed.starts_with("command ") ||
-           trimmed.starts_with("hash ") || trimmed.contains(" -eq ") ||
-           trimmed.contains(" -ne ") || trimmed.contains(" -lt ") ||
-           trimmed.contains(" -gt ") || trimmed.contains(" = ") ||
-           trimmed.contains(" == ") || trimmed.contains(" != ") ||
-           trimmed.starts_with("awk ") || trimmed.starts_with("sed ") {
+        if trimmed.starts_with("[[")
+            || trimmed.starts_with("[")
+            || trimmed.starts_with("grep")
+            || trimmed.starts_with("test")
+            || trimmed.starts_with("echo")
+            || trimmed.starts_with("cat")
+            || trimmed.starts_with("if ")
+            || trimmed.starts_with("!")
+            || trimmed.starts_with("$")
+            || trimmed.starts_with("-f ")
+            || trimmed.starts_with("-d ")
+            || trimmed.starts_with("command ")
+            || trimmed.starts_with("hash ")
+            || trimmed.contains(" -eq ")
+            || trimmed.contains(" -ne ")
+            || trimmed.contains(" -lt ")
+            || trimmed.contains(" -gt ")
+            || trimmed.contains(" = ")
+            || trimmed.contains(" == ")
+            || trimmed.contains(" != ")
+            || trimmed.starts_with("awk ")
+            || trimmed.starts_with("sed ")
+        {
             return true;
         }
 
@@ -932,9 +944,8 @@ impl TestExecutor {
                                 // Treat as a manual verification prompt
                                 // Use read_verification to prompt the user
                                 script.push_str("# Use read_verification for manual step prompt\n");
-                                let escaped_prompt = output_expr_str
-                                    .replace("\\", "\\\\")
-                                    .replace("\"", "\\\"");
+                                let escaped_prompt =
+                                    output_expr_str.replace("\\", "\\\\").replace("\"", "\\\"");
                                 script.push_str(&format!(
                                     "if read_verification \"{}\"; then\n",
                                     escaped_prompt
@@ -1102,7 +1113,10 @@ impl TestExecutor {
 
                 // Only trim trailing newlines/carriage returns from the command
                 // Keep internal newlines for heredocs and multi-line control structures
-                let normalized_command = converted_command.trim_end_matches('\n').trim_end_matches('\r').to_string();
+                let normalized_command = converted_command
+                    .trim_end_matches('\n')
+                    .trim_end_matches('\r')
+                    .to_string();
 
                 // Check if the command needs variable substitution
                 let needs_substitution =
