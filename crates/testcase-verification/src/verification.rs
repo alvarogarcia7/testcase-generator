@@ -195,7 +195,7 @@ impl<'de> Deserialize<'de> for StepVerificationResultEnum {
     where
         D: serde::Deserializer<'de>,
     {
-        use serde::de::{self, Deserialize, MapAccess, Visitor};
+        use serde::de::{self, MapAccess, Visitor};
 
         struct StepResultVisitor;
 
