@@ -154,10 +154,20 @@ for YAML_FILE in "${ALL_YAMLS[@]}"; do
     #-------------------------------------------------------------------------
     # Stage 1: YAML Test Case Validation
     #-------------------------------------------------------------------------
-    
+
     STAGE1_OUTPUT="$TEMP_DIR/logs/${YAML_NAME}_stage1.log"
-    
-    if "$VALIDATE_YAML_BIN" --schema "$PROJECT_ROOT/schemas/test-case.schema.json" "$YAML_FILE" > "$STAGE1_OUTPUT" 2>&1; then
+
+    # Validate YAML files that are test cases (type: test_case)
+    # Use legacy schema which works with current YAML files
+    # Skip files that don't have 'type: test_case' (containers, verification results, etc.)
+    if ! grep -q "^type: test_case" "$YAML_FILE" 2>/dev/null; then
+        # Not a test case YAML file, skip to next file
+        echo "  ⊘ Stage 1: Skipped (not a test case file)"
+        continue
+    fi
+
+    # Validate the test case YAML against the schema
+    if "$VALIDATE_YAML_BIN" --schemas-root "$PROJECT_ROOT/schemas" --schema "$PROJECT_ROOT/schemas/test-case.schema.json" "$YAML_FILE" > "$STAGE1_OUTPUT" 2>&1; then
         TC_STAGE1=1
         STAGE1_SUCCESS=$((STAGE1_SUCCESS + 1))
         echo "  ✓ Stage 1: YAML validation passed"
