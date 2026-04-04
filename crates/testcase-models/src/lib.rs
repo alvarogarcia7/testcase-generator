@@ -186,15 +186,44 @@ impl<'de> serde::Deserialize<'de> for VerificationExpression {
                 Ok(VerificationExpression::Simple(value))
             }
 
-            fn visit_map<M>(self, _map: M) -> Result<VerificationExpression, M::Error>
+            fn visit_map<M>(self, mut map: M) -> Result<VerificationExpression, M::Error>
             where
                 M: serde::de::MapAccess<'de>,
             {
-                // Maps should be handled by the standard deserializer
-                // This is a fallback that shouldn't normally be reached
-                Err(serde::de::Error::custom(
-                    "Unexpected map for VerificationExpression - expected 'condition' field for Conditional variant",
-                ))
+                // Try to deserialize as Conditional expression
+                let mut condition: Option<String> = None;
+                let mut if_true: Option<Vec<String>> = None;
+                let mut if_false: Option<Vec<String>> = None;
+                let mut always: Option<Vec<String>> = None;
+
+                while let Some((key, value)) = map.next_entry::<String, serde_json::Value>()? {
+                    match key.as_str() {
+                        "condition" => condition = Some(value.as_str().unwrap_or("").to_string()),
+                        "if_true" => if_true = value.as_array().map(|arr| {
+                            arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect()
+                        }),
+                        "if_false" => if_false = value.as_array().map(|arr| {
+                            arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect()
+                        }),
+                        "always" => always = value.as_array().map(|arr| {
+                            arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect()
+                        }),
+                        _ => {}
+                    }
+                }
+
+                if let Some(cond) = condition {
+                    Ok(VerificationExpression::Conditional {
+                        condition: cond,
+                        if_true,
+                        if_false,
+                        always,
+                    })
+                } else {
+                    Err(serde::de::Error::custom(
+                        "Conditional variant requires 'condition' field",
+                    ))
+                }
             }
         }
 

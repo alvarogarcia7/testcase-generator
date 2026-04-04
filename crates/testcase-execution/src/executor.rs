@@ -1152,10 +1152,20 @@ impl TestExecutor {
                     );
                 } else {
                     // No substitution needed - inline the command directly
-                    script.push_str(&format!(
-                        "{{ {}; }} 2>&1 | tee \"$LOG_FILE\" > \"$_CAPTURE_TMPFILE\"\n",
-                        normalized_command
-                    ));
+                    // Special handling for here-documents: ensure EOF delimiter is on its own line
+                    if normalized_command.contains("<<") {
+                        // For here-documents, put closing brace on new line to keep EOF delimiter intact
+                        script.push_str(&format!(
+                            "{{\n{}\n}} 2>&1 | tee \"$LOG_FILE\" > \"$_CAPTURE_TMPFILE\"\n",
+                            normalized_command
+                        ));
+                    } else {
+                        // For regular commands, use compact form
+                        script.push_str(&format!(
+                            "{{ {}; }} 2>&1 | tee \"$LOG_FILE\" > \"$_CAPTURE_TMPFILE\"\n",
+                            normalized_command
+                        ));
+                    }
                 }
 
                 script.push_str("EXIT_CODE=$?\n");
@@ -2034,14 +2044,17 @@ pub fn convert_pcre_to_sed_pattern(pattern: &str) -> String {
         let prefix = &pattern[..idx];
         let suffix = &pattern[idx + 2..];
 
-        // Convert PCRE character classes to POSIX for sed
+        // Convert PCRE character classes to POSIX for sed and convert parentheses
         let converted_suffix = suffix
             .replace(r"\d+", r"\([0-9][0-9]*\)")
             .replace(r"\d", r"\([0-9]\)")
             .replace(r"\w+", r"\([a-zA-Z0-9_][a-zA-Z0-9_]*\)")
             .replace(r"\w", r"\([a-zA-Z0-9_]\)")
             .replace(r"\s+", r"\([[:space:]][[:space:]]*\)")
-            .replace(r"\s", r"\([[:space:]]\)");
+            .replace(r"\s", r"\([[:space:]]\)")
+            // Convert PCRE parentheses to sed parentheses
+            .replace("(", r"\(")
+            .replace(")", r"\)");
 
         // If suffix doesn't already have capture group, wrap it
         let capture_suffix = if converted_suffix.starts_with(r"\(") {
@@ -2062,7 +2075,7 @@ pub fn convert_pcre_to_sed_pattern(pattern: &str) -> String {
             let lookbehind = &pattern[4..end_idx];
             let rest = &pattern[end_idx + 1..];
 
-            // Convert character classes
+            // Convert character classes and parentheses
             let converted_rest = rest
                 .replace(r"\d+", r"\([0-9][0-9]*\)")
                 .replace(r"\d", r"\([0-9]\)")
@@ -2070,7 +2083,10 @@ pub fn convert_pcre_to_sed_pattern(pattern: &str) -> String {
                 .replace(r"\w", r"\([a-zA-Z0-9_]\)")
                 .replace("[a-f0-9]+", r"\([a-f0-9][a-f0-9]*\)")
                 .replace("[A-Z0-9]+", r"\([A-Z0-9][A-Z0-9]*\)")
-                .replace("[0-9]+", r"\([0-9][0-9]*\)");
+                .replace("[0-9]+", r"\([0-9][0-9]*\)")
+                // Convert PCRE parentheses to sed parentheses
+                .replace("(", r"\(")
+                .replace(")", r"\)");
 
             // Wrap in capture group if not already
             let capture_rest = if converted_rest.starts_with(r"\(") {
@@ -2101,10 +2117,19 @@ pub fn convert_pcre_to_sed_pattern(pattern: &str) -> String {
         .replace(r"\w+", r"[a-zA-Z0-9_][a-zA-Z0-9_]*")
         .replace(r"\w", r"[a-zA-Z0-9_]")
         .replace(r"\s+", r"[[:space:]][[:space:]]*")
-        .replace(r"\s", r"[[:space:]]");
+        .replace(r"\s", r"[[:space:]]")
+        // Convert PCRE parentheses to sed parentheses
+        .replace("(", r"\(")
+        .replace(")", r"\)");
 
-    // Wrap in sed substitution with capture group
-    format!("s/.*\\({}\\).*/\\1/p", converted)
+    // Check if pattern already has capture group
+    if converted.contains(r"\(") {
+        // Pattern already has a capture group, use it directly
+        format!("s/.*{}.*/\\1/p", converted)
+    } else {
+        // No capture group in pattern, wrap entire pattern in one
+        format!("s/.*\\({}\\).*/\\1/p", converted)
+    }
 }
 
 /// Performs variable substitution in a command string using the STEP_VARS associative array.
