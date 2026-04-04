@@ -179,3 +179,7 @@ signing_key.pem
 private*.pem
 *.key.pem
 .tokens
+
+# Test Rest
+.test-failing
+.test-failing-tmp

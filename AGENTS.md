@@ -51,6 +51,108 @@ This project uses a **Cargo workspace** to organize multiple related crates unde
 - **Easier Maintenance**: Dependency updates managed centrally
 - **Incremental Compilation**: Only changed crates and their dependents rebuild
 
+## Data Flow and Architecture
+
+Understanding the data flow and architecture is essential for navigating the codebase and understanding how different components interact.
+
+### Documentation References
+
+- **Data Flow Diagram**: See [docs/data_flow/2026-01-20_diagram_steps.mermaid](docs/data_flow/2026-01-20_diagram_steps.mermaid) for a detailed Mermaid sequence diagram showing the complete test execution workflow from test case generation through verification and documentation.
+- **Architecture Guide**: See [crates/README.md](crates/README.md) for comprehensive documentation on crate dependencies, layer architecture, and design principles.
+
+### Five-Layer Architecture
+
+The workspace follows a **strict bottom-up layered architecture** where higher-level crates depend on lower-level crates, but never the reverse. This prevents circular dependencies and ensures clean separation of concerns.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  LAYER 5: BINARY CRATES                                          │
+│  (Autonomous microservices - independently deployable)           │
+│                                                                   │
+│  editor, test-executor, test-orchestrator, test-verify,          │
+│  test-run-manager, verifier, validate-yaml, validate-json,       │
+│  script-cleanup, json-escape, json-to-yaml, tpdg-compat          │
+└───────────────────────────┬───────────────────────────────────────┘
+                            │ depends on
+                            ↓
+┌─────────────────────────────────────────────────────────────────┐
+│  LAYER 4: ORCHESTRATION                                          │
+│  (High-level coordination and workflow management)               │
+│                                                                   │
+│  testcase-orchestration, testcase-manager                        │
+└───────────────────────────┬───────────────────────────────────────┘
+                            │ depends on
+                            ↓
+┌─────────────────────────────────────────────────────────────────┐
+│  LAYER 3: CORE FUNCTIONALITY                                     │
+│  (Domain-specific logic)                                         │
+│                                                                   │
+│  testcase-validation, testcase-execution, testcase-verification, │
+│  testcase-storage, testcase-ui, testcase-git, testcase-cli       │
+└───────────────────────────┬───────────────────────────────────────┘
+                            │ depends on
+                            ↓
+┌─────────────────────────────────────────────────────────────────┐
+│  LAYER 2: FOUNDATION                                             │
+│  (Shared utilities and data structures)                          │
+│                                                                   │
+│  testcase-common                                                 │
+└───────────────────────────┬───────────────────────────────────────┘
+                            │ depends on
+                            ↓
+┌─────────────────────────────────────────────────────────────────┐
+│  LAYER 1: BASE                                                   │
+│  (Core data models and primitive utilities)                      │
+│                                                                   │
+│  testcase-models, bash-eval                                      │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Layer Responsibilities**:
+
+1. **Base (Layer 1)**: Core data structures (`TestCase`, `TestSequence`, `TestStep`, `Verification`, `Hook`) and bash expression evaluation
+2. **Foundation (Layer 2)**: Shared utilities (file I/O, YAML/JSON parsing, configuration management, path resolution)
+3. **Core Functionality (Layer 3)**: Domain-specific logic (validation, execution, verification, storage, UI components, Git integration)
+4. **Orchestration (Layer 4)**: High-level workflows that coordinate multiple core functionality crates
+5. **Binary (Layer 5)**: Self-contained microservices with CLI interfaces, each performing one well-defined task
+
+### Common Data Types and Flow
+
+The following table shows the primary data types that flow between crates:
+
+| Data Type | Produced By | Consumed By | Format | Purpose |
+|-----------|-------------|-------------|--------|---------|
+| **TestCase** | testcase-models, testcase-storage | All crates (directly or indirectly) | Rust struct | Core test case definition with sequences, steps, verifications |
+| **Test Case YAML** | User (editor), testcase-storage | testcase-validation, testcase-storage, testcase-execution | YAML file | Declarative test case definition |
+| **Bash Script** | testcase-execution, test-executor | Bash interpreter, test-orchestrator | .sh file | Executable test script generated from YAML |
+| **Execution Log** | testcase-execution, Bash scripts | testcase-verification, verifier | JSON file | Captured test execution output with timestamps |
+| **Verification Result** | testcase-verification, verifier | testcase-orchestration, test-verify, Reports | YAML/JSON | Pass/fail status with detailed comparison results |
+| **Container YAML** | testcase-verification, verifier | test-plan-documentation-generator, tpdg-compat | YAML file | Structured verification results for documentation |
+| **Documentation** | test-plan-documentation-generator | User, CI/CD systems | AsciiDoc/Markdown/HTML | Human-readable test reports and documentation |
+| **Configuration** | testcase-common | testcase-execution, testcase-validation | YAML/TOML/.env | Environment variables, settings, metadata |
+| **Schema** | Project (schemas/ directory) | testcase-validation, validate-yaml, validate-json | JSON Schema | Validation rules for YAML/JSON files |
+
+**Key Data Flow Patterns**:
+
+- **YAML → TestCase**: `testcase-storage` deserializes YAML files into `TestCase` structs
+- **TestCase → Bash Script**: `testcase-execution` generates executable scripts from test case definitions
+- **Execution → Log**: Bash scripts output JSON execution logs
+- **Log + TestCase → Verification**: `testcase-verification` compares actual vs. expected outputs
+- **Verification → Container**: Results are serialized into container YAML format for documentation
+- **Container → Documentation**: External `test-plan-documentation-generator` renders reports
+
+### Navigation Tips for Agents
+
+When working with the codebase:
+
+1. **Start with the layer diagram**: Identify which layer your change affects
+2. **Check dependencies**: Use `cargo tree -p <crate> --invert` to see what depends on a crate
+3. **Follow data flow**: Trace data types from their source (`testcase-models`) through transformations
+4. **Read architecture docs**: Consult [crates/README.md](crates/README.md) for detailed crate descriptions
+5. **View sequence diagram**: See [docs/data_flow/2026-01-20_diagram_steps.mermaid](docs/data_flow/2026-01-20_diagram_steps.mermaid) for the complete test execution workflow
+6. **Respect layer boundaries**: Never add dependencies from lower layers to higher layers
+7. **Keep binaries autonomous**: Binary crates should be self-contained microservices
+
 ### Build Commands
 
 The project supports both workspace-wide and per-crate build commands:

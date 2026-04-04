@@ -808,7 +808,7 @@ fn test_script_generation_rust_binary_default_path() {
 
     // Should use json-escape binary directly
     assert!(script.contains("json-escape"));
-    assert!(script.contains("OUTPUT_ESCAPED=$(json-escape < \"$_CAPTURE_TMPFILE\""));
+    assert!(script.contains("printf '%s' \"$COMMAND_OUTPUT\" | json-escape"));
     // Should not have if command -v check
     assert!(!script.contains("if command -v json-escape"));
 }
@@ -834,9 +834,7 @@ fn test_script_generation_rust_binary_custom_path() {
 
     // Should use custom binary path
     assert!(script.contains("/usr/local/bin/my-json-escape"));
-    assert!(
-        script.contains("OUTPUT_ESCAPED=$(/usr/local/bin/my-json-escape < \"$_CAPTURE_TMPFILE\"")
-    );
+    assert!(script.contains("printf '%s' \"$COMMAND_OUTPUT\" | /usr/local/bin/my-json-escape"));
 }
 
 // ============================================================================
@@ -923,7 +921,7 @@ fn test_script_generation_auto_mode() {
     assert!(script.contains("if command -v json-escape"));
     assert!(script.contains("else"));
     // Should have both binary and fallback paths
-    assert!(script.contains("OUTPUT_ESCAPED=$(json-escape < \"$_CAPTURE_TMPFILE\""));
+    assert!(script.contains("printf '%s' \"$COMMAND_OUTPUT\" | json-escape"));
     assert!(script.contains("Shell fallback"));
     assert!(script.contains("sed 's/\\\\/\\\\\\\\/g"));
 }
@@ -949,7 +947,7 @@ fn test_script_generation_auto_mode_custom_path() {
 
     // Should check for custom binary
     assert!(script.contains("if command -v /opt/bin/json-escape"));
-    assert!(script.contains("OUTPUT_ESCAPED=$(/opt/bin/json-escape < \"$_CAPTURE_TMPFILE\""));
+    assert!(script.contains("printf '%s' \"$COMMAND_OUTPUT\" | /opt/bin/json-escape"));
 }
 
 // ============================================================================
@@ -1091,7 +1089,7 @@ fn test_script_execution_with_binary_in_path() -> Result<()> {
 
     // Verify the code structure
     assert!(escaping_code.contains("OUTPUT_ESCAPED="));
-    assert!(escaping_code.contains("_CAPTURE_TMPFILE"));
+    assert!(escaping_code.contains("COMMAND_OUTPUT"));
 
     Ok(())
 }
@@ -1551,7 +1549,7 @@ enabled = true
     // Should use default "json-escape" command (not a path)
     assert!(script.contains("json-escape"));
     // Verify it's using the bare command name, not a path with slashes
-    assert!(script.contains("OUTPUT_ESCAPED=$(json-escape < \"$_CAPTURE_TMPFILE\""));
+    assert!(script.contains("printf '%s' \"$COMMAND_OUTPUT\" | json-escape"));
 
     Ok(())
 }
