@@ -144,7 +144,10 @@ impl Serialize for StepVerificationResultEnum {
                 let mut fail_map = std::collections::BTreeMap::new();
                 fail_map.insert("step", serde_json::json!(step));
                 fail_map.insert("description", serde_json::json!(description));
-                fail_map.insert("expected", serde_json::to_value(expected).unwrap_or(serde_json::json!({})));
+                fail_map.insert(
+                    "expected",
+                    serde_json::to_value(expected).unwrap_or(serde_json::json!({})),
+                );
                 fail_map.insert("actual_result", serde_json::json!(actual_result));
                 fail_map.insert("actual_output", serde_json::json!(actual_output));
                 fail_map.insert("reason", serde_json::json!(reason));
@@ -283,7 +286,10 @@ impl<'de> Deserialize<'de> for StepVerificationResultEnum {
                                 tc: data.tc,
                             })
                         }
-                        _ => Err(de::Error::unknown_variant(&key, &["Pass", "Fail", "NotExecuted"])),
+                        _ => Err(de::Error::unknown_variant(
+                            &key,
+                            &["Pass", "Fail", "NotExecuted"],
+                        )),
                     }
                 } else {
                     Err(de::Error::missing_field("variant"))
