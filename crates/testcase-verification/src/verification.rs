@@ -28,18 +28,14 @@ pub struct StepVerificationResult {
 }
 
 /// Result of verifying a single step (enum-based, for batch verification)
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "PascalCase")]
+#[derive(Debug, Clone, PartialEq)]
 pub enum StepVerificationResultEnum {
     /// Step passed verification
     Pass {
         step: i64,
         description: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
         requirement: Option<String>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         item: Option<i64>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         tc: Option<i64>,
     },
     /// Step failed verification
@@ -50,22 +46,16 @@ pub enum StepVerificationResultEnum {
         actual_result: String,
         actual_output: String,
         reason: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
         requirement: Option<String>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         item: Option<i64>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         tc: Option<i64>,
     },
     /// Step was not found in execution log
     NotExecuted {
         step: i64,
         description: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
         requirement: Option<String>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         item: Option<i64>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         tc: Option<i64>,
     },
 }
@@ -105,6 +95,203 @@ impl StepVerificationResultEnum {
             StepVerificationResultEnum::Fail { tc, .. } => *tc,
             StepVerificationResultEnum::NotExecuted { tc, .. } => *tc,
         }
+    }
+}
+
+impl Serialize for StepVerificationResultEnum {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        use serde::ser::SerializeMap;
+
+        match self {
+            StepVerificationResultEnum::Pass {
+                step,
+                description,
+                requirement,
+                item,
+                tc,
+            } => {
+                let mut map = serializer.serialize_map(Some(1))?;
+                let mut pass_map = std::collections::BTreeMap::new();
+                pass_map.insert("step", serde_json::json!(step));
+                pass_map.insert("description", serde_json::json!(description));
+                if let Some(req) = requirement {
+                    pass_map.insert("requirement", serde_json::json!(req));
+                }
+                if let Some(i) = item {
+                    pass_map.insert("item", serde_json::json!(i));
+                }
+                if let Some(t) = tc {
+                    pass_map.insert("tc", serde_json::json!(t));
+                }
+                map.serialize_entry("Pass", &pass_map)?;
+                map.end()
+            }
+            StepVerificationResultEnum::Fail {
+                step,
+                description,
+                expected,
+                actual_result,
+                actual_output,
+                reason,
+                requirement,
+                item,
+                tc,
+            } => {
+                let mut map = serializer.serialize_map(Some(1))?;
+                let mut fail_map = std::collections::BTreeMap::new();
+                fail_map.insert("step", serde_json::json!(step));
+                fail_map.insert("description", serde_json::json!(description));
+                fail_map.insert("expected", serde_json::to_value(expected).unwrap_or(serde_json::json!({})));
+                fail_map.insert("actual_result", serde_json::json!(actual_result));
+                fail_map.insert("actual_output", serde_json::json!(actual_output));
+                fail_map.insert("reason", serde_json::json!(reason));
+                if let Some(req) = requirement {
+                    fail_map.insert("requirement", serde_json::json!(req));
+                }
+                if let Some(i) = item {
+                    fail_map.insert("item", serde_json::json!(i));
+                }
+                if let Some(t) = tc {
+                    fail_map.insert("tc", serde_json::json!(t));
+                }
+                map.serialize_entry("Fail", &fail_map)?;
+                map.end()
+            }
+            StepVerificationResultEnum::NotExecuted {
+                step,
+                description,
+                requirement,
+                item,
+                tc,
+            } => {
+                let mut map = serializer.serialize_map(Some(1))?;
+                let mut not_exec_map = std::collections::BTreeMap::new();
+                not_exec_map.insert("step", serde_json::json!(step));
+                not_exec_map.insert("description", serde_json::json!(description));
+                if let Some(req) = requirement {
+                    not_exec_map.insert("requirement", serde_json::json!(req));
+                }
+                if let Some(i) = item {
+                    not_exec_map.insert("item", serde_json::json!(i));
+                }
+                if let Some(t) = tc {
+                    not_exec_map.insert("tc", serde_json::json!(t));
+                }
+                map.serialize_entry("NotExecuted", &not_exec_map)?;
+                map.end()
+            }
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for StepVerificationResultEnum {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use serde::de::{self, Deserialize, MapAccess, Visitor};
+
+        struct StepResultVisitor;
+
+        impl<'de> Visitor<'de> for StepResultVisitor {
+            type Value = StepVerificationResultEnum;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("an externally tagged enum variant")
+            }
+
+            fn visit_map<V>(self, mut map: V) -> Result<StepVerificationResultEnum, V::Error>
+            where
+                V: MapAccess<'de>,
+            {
+                if let Some((key, value)) = map.next_entry::<String, serde_json::Value>()? {
+                    match key.as_str() {
+                        "Pass" => {
+                            #[derive(Deserialize)]
+                            struct PassData {
+                                step: i64,
+                                description: String,
+                                #[serde(default)]
+                                requirement: Option<String>,
+                                #[serde(default)]
+                                item: Option<i64>,
+                                #[serde(default)]
+                                tc: Option<i64>,
+                            }
+                            let data: PassData = serde_json::from_value(value)
+                                .map_err(|e| de::Error::custom(e.to_string()))?;
+                            Ok(StepVerificationResultEnum::Pass {
+                                step: data.step,
+                                description: data.description,
+                                requirement: data.requirement,
+                                item: data.item,
+                                tc: data.tc,
+                            })
+                        }
+                        "Fail" => {
+                            #[derive(Deserialize)]
+                            struct FailData {
+                                step: i64,
+                                description: String,
+                                expected: Expected,
+                                actual_result: String,
+                                actual_output: String,
+                                reason: String,
+                                #[serde(default)]
+                                requirement: Option<String>,
+                                #[serde(default)]
+                                item: Option<i64>,
+                                #[serde(default)]
+                                tc: Option<i64>,
+                            }
+                            let data: FailData = serde_json::from_value(value)
+                                .map_err(|e| de::Error::custom(e.to_string()))?;
+                            Ok(StepVerificationResultEnum::Fail {
+                                step: data.step,
+                                description: data.description,
+                                expected: data.expected,
+                                actual_result: data.actual_result,
+                                actual_output: data.actual_output,
+                                reason: data.reason,
+                                requirement: data.requirement,
+                                item: data.item,
+                                tc: data.tc,
+                            })
+                        }
+                        "NotExecuted" => {
+                            #[derive(Deserialize)]
+                            struct NotExecutedData {
+                                step: i64,
+                                description: String,
+                                #[serde(default)]
+                                requirement: Option<String>,
+                                #[serde(default)]
+                                item: Option<i64>,
+                                #[serde(default)]
+                                tc: Option<i64>,
+                            }
+                            let data: NotExecutedData = serde_json::from_value(value)
+                                .map_err(|e| de::Error::custom(e.to_string()))?;
+                            Ok(StepVerificationResultEnum::NotExecuted {
+                                step: data.step,
+                                description: data.description,
+                                requirement: data.requirement,
+                                item: data.item,
+                                tc: data.tc,
+                            })
+                        }
+                        _ => Err(de::Error::unknown_variant(&key, &["Pass", "Fail", "NotExecuted"])),
+                    }
+                } else {
+                    Err(de::Error::missing_field("variant"))
+                }
+            }
+        }
+
+        deserializer.deserialize_map(StepResultVisitor)
     }
 }
 

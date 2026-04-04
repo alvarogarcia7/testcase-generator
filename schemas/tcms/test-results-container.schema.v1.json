@@ -1,21 +1,19 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://tcms.example.com/schemas/tcms/test-results-container.schema.v1.json",
   "title": "TCMS Test Case Results Container Schema v1",
   "description": "JSON schema for validating test case result container YAML/JSON output from the verifier",
-  "allOf": [
-    {
-      "$ref": "../tcms-envelope.schema.json"
+  "type": "object",
+  "required": [
+    "type",
+    "schema"
+  ],
+  "properties": {
+    "type": {
+      "const": "test_results_container"
     },
-    {
-      "type": "object",
-      "properties": {
-        "type": {
-          "const": "test_results_container"
-        },
-        "schema": {
-          "const": "tcms/test-results-container.schema.v1.json"
-        },
+    "schema": {
+      "const": "tcms/test-results-container.schema.v1.json"
+    },
         "title": {
           "type": "string",
           "description": "Title of the test report",
@@ -328,16 +326,14 @@
           ]
         }
       },
-      "required": [
-        "type",
-        "schema",
-        "title",
-        "project",
-        "test_date",
-        "test_results",
-        "metadata"
-      ],
-      "additionalProperties": false
-    }
-  ]
+  "required": [
+    "type",
+    "schema",
+    "title",
+    "project",
+    "test_date",
+    "test_results",
+    "metadata"
+  ],
+  "additionalProperties": false
 }

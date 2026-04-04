@@ -299,8 +299,8 @@ for YAML_FILE in "${ALL_YAMLS[@]}"; do
     "$VERIFIER_BIN" --log "$EXECUTION_JSON" --test-case "$TEST_CASE_ID" -d "$YAML_DIR" --format yaml -o "$VERIFICATION_YAML" > "$STAGE4_OUTPUT" 2>&1 || true
     
     if [[ -f "$VERIFICATION_YAML" ]]; then
-        # Validate verification YAML against schema
-        if "$VALIDATE_YAML_BIN" --schema "$PROJECT_ROOT/schemas/verification-result.schema.json" "$VERIFICATION_YAML" > /dev/null 2>&1; then
+        # Validate verification YAML against schema (auto-resolved from YAML's schema field)
+        if "$VALIDATE_YAML_BIN" --schemas-root "$PROJECT_ROOT/schemas" "$VERIFICATION_YAML" > /dev/null 2>&1; then
             TC_STAGE4=1
             STAGE4_SUCCESS=$((STAGE4_SUCCESS + 1))
             
