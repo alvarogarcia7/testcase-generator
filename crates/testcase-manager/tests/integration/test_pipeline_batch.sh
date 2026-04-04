@@ -295,8 +295,8 @@ for YAML_FILE in "${ALL_YAMLS[@]}"; do
     # Get the directory containing the original YAML for -d parameter
     YAML_DIR=$(dirname "$YAML_FILE")
     
-    # Run verifier (may exit non-zero if test failed, but that's ok)
-    "$VERIFIER_BIN" --log "$EXECUTION_JSON" --test-case "$TEST_CASE_ID" -d "$YAML_DIR" --format yaml -o "$VERIFICATION_YAML" > "$STAGE4_OUTPUT" 2>&1 || true
+    # Run verifier with the YAML filename (may exit non-zero if test failed, but that's ok)
+    "$VERIFIER_BIN" --log "$EXECUTION_JSON" --test-case "$YAML_BASENAME" -d "$YAML_DIR" --format yaml -o "$VERIFICATION_YAML" > "$STAGE4_OUTPUT" 2>&1 || true
     
     if [[ -f "$VERIFICATION_YAML" ]]; then
         # Validate verification YAML against schema (auto-resolved from YAML's schema field)
