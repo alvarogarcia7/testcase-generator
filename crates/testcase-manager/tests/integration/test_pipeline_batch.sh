@@ -160,8 +160,8 @@ for YAML_FILE in "${ALL_YAMLS[@]}"; do
     # Validate YAML files that are test cases (type: test_case)
     # Use legacy schema which works with current YAML files
     # Skip files that don't have 'type: test_case' (containers, verification results, etc.)
-    # Use more specific pattern to avoid matching test_case_verification_result, etc.
-    if ! grep -qE "^type: test_case[[:space:]]|^type: test_case$" "$YAML_FILE" 2>/dev/null; then
+    # Use word boundary to avoid matching test_case_verification_result, etc.
+    if ! grep -qE "^type: test_case\b" "$YAML_FILE" 2>/dev/null; then
         # Not a test case YAML file, skip to next file
         echo "  ⊘ Stage 1: Skipped (not a test case file)"
         continue
