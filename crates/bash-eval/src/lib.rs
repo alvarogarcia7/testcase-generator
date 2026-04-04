@@ -157,9 +157,7 @@ pub fn generate_verification_with_var_subst(expression: &BashExpression, var_nam
             // For simple expressions with potential variables, perform substitution
             let mut script = String::new();
             // Escape backslashes and quotes, but NOT $ since we need it for variable and arithmetic expansion
-            let escaped_expr = s
-                .replace("\\", "\\\\")
-                .replace("\"", "\\\"");
+            let escaped_expr = s.replace("\\", "\\\\").replace("\"", "\\\"");
             script.push_str(&format!("EXPR=\"{}\"\n", escaped_expr));
             script.push_str("if [ -n \"$CAPTURED_VAR_NAMES\" ]; then\n");
             script.push_str("    for var_name in $CAPTURED_VAR_NAMES; do\n");
