@@ -109,6 +109,8 @@ section "Test 1: Creating Test YAML with Manual Verification"
 
 MANUAL_VERIFY_YAML="$TEMP_DIR/test_manual_verify.yaml"
 cat > "$MANUAL_VERIFY_YAML" << EOF
+type: test_case
+schema: tcms/test-case.schema.v1.json
 requirement: TEST_MANUAL_VERIFY
 item: 1
 tc: 1
@@ -384,6 +386,8 @@ section "Test 10: Script Execution with Failed Verification"
 # Create a new YAML with verification that will fail
 FAIL_VERIFY_YAML="$TEMP_DIR/test_fail_verify.yaml"
 cat > "$FAIL_VERIFY_YAML" << EOF
+type: test_case
+schema: tcms/test-case.schema.v1.json
 requirement: TEST_FAIL_VERIFY
 item: 1
 tc: 1
@@ -557,6 +561,8 @@ section "Test 15: Conditional Verification in Manual Steps"
 
 CONDITIONAL_YAML="$TEMP_DIR/test_conditional_manual.yaml"
 cat > "$CONDITIONAL_YAML" << EOF
+type: test_case
+schema: tcms/test-case.schema.v1.json
 requirement: TEST_COND_MANUAL
 item: 1
 tc: 1
