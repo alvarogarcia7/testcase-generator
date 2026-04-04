@@ -4,11 +4,22 @@
 #
 # This script orchestrates the full report generation pipeline:
 # 1. Run verifier on execution logs using folder mode
-# 2. Convert verification JSON to result YAML files
+# 2. Convert verification JSON to result YAML files (uses --multiple mode by default)
 # 3. Build test-plan-doc-gen if needed
 # 4. Generate test results reports (AsciiDoc and Markdown) from result container YAML
 # 5. Generate test plan reports (AsciiDoc and Markdown) from test case YAML files
 # 6. Print paths to all generated reports
+#
+# Step 2 Output Modes:
+#   --multiple (default): Generates individual YAML files, one per test case
+#                         (e.g., TC_001_result.yaml, TC_002_result.yaml)
+#                         Each file is self-contained and can be processed independently.
+#   --single: Generates a single YAML file containing all test cases as an array
+#             (e.g., results.yaml with all results in one file)
+#             Useful when downstream tools expect a single aggregated file.
+#
+# This script uses --multiple mode to enable independent processing of each
+# test case result file and support parallel report generation workflows.
 #
 # Usage: ./scripts/generate_documentation_reports.sh [OPTIONS]
 #
@@ -248,11 +259,15 @@ if [[ -z "$PYTHON_CMD" ]]; then
     exit 1
 fi
 
-log_verbose "Command: $PYTHON_CMD $CONVERT_SCRIPT $VERIFICATION_OUTPUT -o $OUTPUT_DIR/results"
+log_verbose "Command: $PYTHON_CMD $CONVERT_SCRIPT $VERIFICATION_OUTPUT -o $OUTPUT_DIR/results --multiple"
 
+# Use --multiple mode to generate individual YAML files (one per test case).
+# This enables independent processing and supports parallel report generation.
+# Alternative: Use --single to generate a single aggregated YAML array file.
 if $PYTHON_CMD "$CONVERT_SCRIPT" \
     "$VERIFICATION_OUTPUT" \
-    -o "$OUTPUT_DIR/results" 2>&1 | while IFS= read -r line; do
+    -o "$OUTPUT_DIR/results" \
+    --multiple 2>&1 | while IFS= read -r line; do
         log_verbose "$line"
     done; then
     pass "Conversion completed successfully"
