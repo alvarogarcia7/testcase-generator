@@ -19,7 +19,7 @@ use testcase_models::{
 fn test_json_escape_binary_quotes() -> Result<()> {
     let input = r#"He said "hello" to me"#;
     let output = Command::new("cargo")
-        .args(["run", "--bin", "json-escape"])
+        .args(["run", "-p", "json-escape", "--bin", "json-escape"])
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .spawn()
@@ -41,7 +41,7 @@ fn test_json_escape_binary_quotes() -> Result<()> {
 fn test_json_escape_binary_backslashes() -> Result<()> {
     let input = r#"Path is C:\Users\test"#;
     let output = Command::new("cargo")
-        .args(["run", "--bin", "json-escape"])
+        .args(["run", "-p", "json-escape", "--bin", "json-escape"])
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .spawn()
@@ -63,7 +63,7 @@ fn test_json_escape_binary_backslashes() -> Result<()> {
 fn test_json_escape_binary_newlines() -> Result<()> {
     let input = "Line 1\nLine 2\nLine 3";
     let output = Command::new("cargo")
-        .args(["run", "--bin", "json-escape"])
+        .args(["run", "-p", "json-escape", "--bin", "json-escape"])
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .spawn()
@@ -85,7 +85,7 @@ fn test_json_escape_binary_newlines() -> Result<()> {
 fn test_json_escape_binary_tabs() -> Result<()> {
     let input = "Column1\tColumn2\tColumn3";
     let output = Command::new("cargo")
-        .args(["run", "--bin", "json-escape"])
+        .args(["run", "-p", "json-escape", "--bin", "json-escape"])
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .spawn()
@@ -107,7 +107,7 @@ fn test_json_escape_binary_tabs() -> Result<()> {
 fn test_json_escape_binary_carriage_returns() -> Result<()> {
     let input = "Line 1\r\nLine 2\r\nLine 3";
     let output = Command::new("cargo")
-        .args(["run", "--bin", "json-escape"])
+        .args(["run", "-p", "json-escape", "--bin", "json-escape"])
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .spawn()
@@ -129,7 +129,7 @@ fn test_json_escape_binary_carriage_returns() -> Result<()> {
 fn test_json_escape_binary_control_chars() -> Result<()> {
     let input = "Text\x08with\x0Ccontrol";
     let output = Command::new("cargo")
-        .args(["run", "--bin", "json-escape"])
+        .args(["run", "-p", "json-escape", "--bin", "json-escape"])
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .spawn()
@@ -151,7 +151,7 @@ fn test_json_escape_binary_control_chars() -> Result<()> {
 fn test_json_escape_binary_unicode() -> Result<()> {
     let input = "Hello 世界 🌍";
     let output = Command::new("cargo")
-        .args(["run", "--bin", "json-escape"])
+        .args(["run", "-p", "json-escape", "--bin", "json-escape"])
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .spawn()
@@ -176,7 +176,7 @@ fn test_json_escape_binary_mixed_characters() -> Result<()> {
 Line 2 with tab	here
 And a newline"#;
     let output = Command::new("cargo")
-        .args(["run", "--bin", "json-escape"])
+        .args(["run", "-p", "json-escape", "--bin", "json-escape"])
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .spawn()
@@ -201,7 +201,7 @@ And a newline"#;
 fn test_json_escape_binary_empty_input() -> Result<()> {
     let input = "";
     let output = Command::new("cargo")
-        .args(["run", "--bin", "json-escape"])
+        .args(["run", "-p", "json-escape", "--bin", "json-escape"])
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .spawn()
@@ -223,7 +223,7 @@ fn test_json_escape_binary_empty_input() -> Result<()> {
 fn test_json_escape_binary_test_mode_valid() -> Result<()> {
     let input = "Simple text";
     let output = Command::new("cargo")
-        .args(["run", "--bin", "json-escape", "--", "--test"])
+        .args(["run", "-p", "json-escape", "--bin", "json-escape", "--", "--test"])
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
@@ -250,7 +250,7 @@ fn test_json_escape_binary_test_mode_valid() -> Result<()> {
 fn test_json_escape_binary_empty_string_test_mode() -> Result<()> {
     let input = "";
     let output = Command::new("cargo")
-        .args(["run", "--bin", "json-escape", "--", "--test"])
+        .args(["run", "-p", "json-escape", "--bin", "json-escape", "--", "--test"])
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
@@ -281,7 +281,7 @@ fn test_json_escape_binary_very_long_input() -> Result<()> {
     }
 
     let output = Command::new("cargo")
-        .args(["run", "--bin", "json-escape"])
+        .args(["run", "-p", "json-escape", "--bin", "json-escape"])
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .spawn()
@@ -316,7 +316,7 @@ fn test_json_escape_binary_very_long_input() -> Result<()> {
 fn test_json_escape_binary_consecutive_backslashes() -> Result<()> {
     let input = r#"One\Two\\Three\\\Four\\\\Five"#;
     let output = Command::new("cargo")
-        .args(["run", "--bin", "json-escape"])
+        .args(["run", "-p", "json-escape", "--bin", "json-escape"])
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .spawn()
@@ -343,7 +343,7 @@ fn test_json_escape_binary_consecutive_backslashes() -> Result<()> {
 fn test_json_escape_binary_nested_quotes() -> Result<()> {
     let input = r#"He said "She said "Hello" to me" yesterday"#;
     let output = Command::new("cargo")
-        .args(["run", "--bin", "json-escape"])
+        .args(["run", "-p", "json-escape", "--bin", "json-escape"])
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .spawn()
@@ -370,7 +370,7 @@ fn test_json_escape_binary_nested_quotes() -> Result<()> {
 fn test_json_escape_binary_consecutive_special_chars() -> Result<()> {
     let input = "test\"\"\\\\\n\n\t\t\r\r";
     let output = Command::new("cargo")
-        .args(["run", "--bin", "json-escape"])
+        .args(["run", "-p", "json-escape", "--bin", "json-escape"])
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .spawn()
@@ -404,7 +404,7 @@ fn test_json_escape_binary_all_control_characters() -> Result<()> {
     input.extend_from_slice(b":End");
 
     let output = Command::new("cargo")
-        .args(["run", "--bin", "json-escape"])
+        .args(["run", "-p", "json-escape", "--bin", "json-escape"])
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .spawn()
@@ -444,7 +444,7 @@ fn test_json_escape_binary_control_sequences() -> Result<()> {
     // Test various combinations of control characters
     let input = "Before\x00\x01\x02After";
     let output = Command::new("cargo")
-        .args(["run", "--bin", "json-escape"])
+        .args(["run", "-p", "json-escape", "--bin", "json-escape"])
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .spawn()
@@ -478,7 +478,7 @@ fn test_json_escape_binary_invalid_utf8() -> Result<()> {
     ];
 
     let output = Command::new("cargo")
-        .args(["run", "--bin", "json-escape"])
+        .args(["run", "-p", "json-escape", "--bin", "json-escape"])
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
@@ -508,7 +508,7 @@ fn test_json_escape_binary_utf8_replacement_char() -> Result<()> {
     // Test with the Unicode replacement character (used when invalid UTF-8 is encountered)
     let input = "Valid text \u{FFFD} with replacement char";
     let output = Command::new("cargo")
-        .args(["run", "--bin", "json-escape"])
+        .args(["run", "-p", "json-escape", "--bin", "json-escape"])
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .spawn()
@@ -542,7 +542,7 @@ fn test_json_escape_binary_long_consecutive_specials() -> Result<()> {
     input.push_str("End");
 
     let output = Command::new("cargo")
-        .args(["run", "--bin", "json-escape"])
+        .args(["run", "-p", "json-escape", "--bin", "json-escape"])
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .spawn()
@@ -574,7 +574,7 @@ fn test_json_escape_binary_long_consecutive_specials() -> Result<()> {
 fn test_json_escape_binary_mixed_control_printable() -> Result<()> {
     let input = "Line1\x00\nLine2\x01\tLine3\x02\"quoted\"\x03\\backslash\\";
     let output = Command::new("cargo")
-        .args(["run", "--bin", "json-escape"])
+        .args(["run", "-p", "json-escape", "--bin", "json-escape"])
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .spawn()
@@ -617,7 +617,7 @@ fn test_json_escape_binary_test_mode_long_input() -> Result<()> {
     }
 
     let output = Command::new("cargo")
-        .args(["run", "--bin", "json-escape", "--", "--test"])
+        .args(["run", "-p", "json-escape", "--bin", "json-escape", "--", "--test"])
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
