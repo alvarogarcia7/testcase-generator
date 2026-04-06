@@ -124,6 +124,8 @@ pass "Execution log found: $(basename "$EXECUTION_LOG")"
 # Create a test config file
 TEST_CONFIG="$TEMP_DIR/doc_gen_config.yml"
 cat > "$TEST_CONFIG" << 'EOF'
+type: container_config
+schema: tcms/container-config.schema.v1.json
 title: "Documentation Generation Test Results"
 project: "Test Case Manager - Documentation Generation"
 environment: "Integration Testing"
@@ -177,9 +179,16 @@ fi
 pass "Conversion script found"
 
 log_info "Converting verification JSON to result YAML with --multiple flag..."
+# Create execution logs directory for conversion script
+EXEC_LOGS_DIR="$TEMP_DIR/exec_logs"
+mkdir -p "$EXEC_LOGS_DIR"
+cp "$EXECUTION_LOG" "$EXEC_LOGS_DIR/TEST_SUCCESS_001_execution_log.json"
+
 if uv run python3 "$CONVERT_SCRIPT" \
     "$VERIFICATION_OUTPUT" \
     -o "$RESULT_YAML_DIR" \
+    --execution-logs "$EXEC_LOGS_DIR" \
+    --testcases "$TEST_CASE_DIR" \
     --multiple > /dev/null 2>&1; then
     pass "Conversion completed successfully (--multiple mode)"
 else
@@ -196,10 +205,10 @@ fi
 pass "Result YAML file created: $(basename "$RESULT_YAML_FILE")"
 
 # Validate result YAML structure
-if grep -q "type: result" "$RESULT_YAML_FILE"; then
-    pass "Result YAML contains 'type: result' field"
+if grep -q "type: test_result" "$RESULT_YAML_FILE"; then
+    pass "Result YAML contains 'type: test_result' field"
 else
-    fail "Result YAML missing 'type: result' field"
+    fail "Result YAML missing 'type: test_result' field"
 fi
 
 if grep -q "test_case_id: TEST_SUCCESS_001" "$RESULT_YAML_FILE"; then
@@ -223,6 +232,8 @@ log_info "Converting verification JSON to result YAML with --single flag..."
 if uv run python3 "$CONVERT_SCRIPT" \
     "$VERIFICATION_OUTPUT" \
     -o "$SINGLE_RESULT_YAML_FILE" \
+    --execution-logs "$EXEC_LOGS_DIR" \
+    --testcases "$TEST_CASE_DIR" \
     --single > /dev/null 2>&1; then
     pass "Conversion completed successfully (--single mode)"
 else
@@ -280,8 +291,8 @@ try:
         sys.exit(1)
     
     # Validate field values
-    if result['type'] != 'result':
-        print(f\"ERROR: type field should be 'result', got '{result['type']}'\")
+    if result['type'] != 'test_result':
+        print(f\"ERROR: type field should be 'test_result', got '{result['type']}'\")
         sys.exit(1)
     
     if result['test_case_id'] != 'TEST_SUCCESS_001':

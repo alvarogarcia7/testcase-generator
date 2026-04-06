@@ -96,8 +96,21 @@ pub fn escape_for_bash(value: &str) -> String {
 pub fn generate_verification_script(expression: &BashExpression, var_name: &str) -> String {
     match expression {
         BashExpression::Simple(s) => {
-            // For simple expressions, just evaluate and set the variable
-            format!("if {}; then\n    {}=true\nfi\n", s, var_name)
+            // Check if the expression is already a complete if-elif-else-fi block
+            let trimmed = s.trim();
+            if trimmed.starts_with("if ") && trimmed.ends_with("fi") {
+                // Expression is already a complete control structure
+                // Wrap it in a way that sets the variable based on the result
+                // We need to execute the block and check its exit status
+                let mut script = String::new();
+                script.push_str("{\n");
+                script.push_str(&format!("{}\n", s));
+                script.push_str(&format!("}} && {}=true || {}=false\n", var_name, var_name));
+                script
+            } else {
+                // For simple expressions, just evaluate and set the variable
+                format!("if {}; then\n    {}=true\nfi\n", s, var_name)
+            }
         }
         BashExpression::Conditional {
             condition,
@@ -156,6 +169,8 @@ pub fn generate_verification_with_var_subst(expression: &BashExpression, var_nam
         BashExpression::Simple(s) => {
             // For simple expressions with potential variables, perform substitution
             let mut script = String::new();
+            // Escape backslashes, quotes, and $ to prevent unwanted variable expansion
+            // This allows ${...} patterns to be treated as literals for sed substitution later
             let escaped_expr = s
                 .replace("\\", "\\\\")
                 .replace("$", "\\$")
@@ -168,7 +183,10 @@ pub fn generate_verification_with_var_subst(expression: &BashExpression, var_nam
             script.push_str(
                 "        escaped_value=$(printf '%s' \"$var_value\" | sed 's/[&/\\]/\\\\&/g')\n",
             );
-            script.push_str("        # Replace ${var_name} pattern\n");
+            script.push_str("        # Replace both $var_name and ${var_name} patterns\n");
+            script.push_str(
+                "        EXPR=$(echo \"$EXPR\" | sed \"s/\\\\\\$$var_name\\([^a-zA-Z0-9_]\\|$\\)/$escaped_value\\1/g\")\n",
+            );
             script.push_str(
                 "        EXPR=$(echo \"$EXPR\" | sed \"s/\\${$var_name}/$escaped_value/g\")\n",
             );
@@ -201,7 +219,13 @@ pub fn generate_verification_with_var_subst(expression: &BashExpression, var_nam
             script.push_str(
                 "        escaped_value=$(printf '%s' \"$var_value\" | sed 's/[&/\\]/\\\\&/g')\n",
             );
-            script.push_str("        COND_EXPR=$(echo \"$COND_EXPR\" | sed \"s/\\${$var_name}/$escaped_value/g\")\n");
+            script.push_str("        # Replace both $var_name and ${var_name} patterns\n");
+            script.push_str(
+                "        COND_EXPR=$(echo \"$COND_EXPR\" | sed \"s/\\\\\\$$var_name\\([^a-zA-Z0-9_]\\|$\\)/$escaped_value\\1/g\")\n",
+            );
+            script.push_str(
+                "        COND_EXPR=$(echo \"$COND_EXPR\" | sed \"s/\\${$var_name}/$escaped_value/g\")\n",
+            );
             script.push_str("    done\n");
             script.push_str("fi\n");
 

@@ -98,6 +98,8 @@ mkdir -p "$TEST_CASE_DIR"
 
 TEST_YAML="$TEST_CASE_DIR/TC_CONTAINER_001.yaml"
 cat > "$TEST_YAML" << 'EOF'
+type: test_case
+schema: tcms/test-case.schema.v1.json
 requirement: REQ_CONTAINER_001
 item: 1
 tc: 1
@@ -227,6 +229,8 @@ section "Test 4: Create Verifier Config File"
 
 CONFIG_FILE="$TEMP_DIR/verifier-config.yaml"
 cat > "$CONFIG_FILE" << 'EOF'
+type: container_config
+schema: tcms/container-config.schema.v1.json
 title: "Container Format Test Results"
 project: "Verifier Container E2E Tests"
 environment: "Testing"

@@ -210,7 +210,8 @@ test-from:
 				echo "crates/testcase-manager/tests/integration/test_conditional_verification_e2e.sh" >> $$E2E_TESTS_FILE; \
 				echo "crates/testcase-manager/tests/integration/test_manual_steps_e2e.sh" >> $$E2E_TESTS_FILE; \
 				echo "crates/testcase-manager/tests/integration/test_jq_json_escaping_e2e.sh" >> $$E2E_TESTS_FILE; \
-				echo "  test-executor binary -> 5 E2E tests"; \
+				echo "crates/testcase-manager/tests/integration/test_pipeline_e2e.sh" >> $$E2E_TESTS_FILE; \
+				echo "  test-executor binary -> 6 E2E tests"; \
 				;; \
 			test-orchestrator) \
 				echo "crates/testcase-manager/tests/integration/test_orchestrator_e2e.sh" >> $$E2E_TESTS_FILE; \

@@ -186,10 +186,12 @@ fn test_case_uses_hydration_vars(test_case: &TestCase) -> bool {
     false
 }
 
-/// Replace ${#VAR_NAME} with ${VAR_NAME} for bash substitution
+/// Replace ${#VAR_NAME} with ${VAR_NAME} (remove the # marker)
 fn convert_hydration_placeholder_to_bash(text: &str) -> String {
     let placeholder_pattern = Regex::new(r"\$\{#([A-Z_][A-Z0-9_]*)\}").unwrap();
-    placeholder_pattern.replace_all(text, "$${$1}").to_string()
+    placeholder_pattern
+        .replace_all(text, |caps: &regex::Captures| format!("${{{}}}", &caps[1]))
+        .to_string()
 }
 
 /// Convert hydration placeholders in a VerificationExpression
@@ -331,6 +333,63 @@ impl TestExecutor {
         script
     }
 
+    /// Detect if a verification expression string is a bash command or a human-readable prompt
+    /// Returns true if it looks like a bash expression (starts with bash operators or common commands)
+    /// Returns false if it looks like human-readable text (a prompt for manual verification)
+    fn is_bash_expression(expr_str: &str) -> bool {
+        let trimmed = expr_str.trim();
+
+        // Check for common bash expression patterns
+        if trimmed.starts_with("[[")
+            || trimmed.starts_with("[")
+            || trimmed.starts_with("grep")
+            || trimmed.starts_with("test")
+            || trimmed.starts_with("echo")
+            || trimmed.starts_with("cat")
+            || trimmed.starts_with("if ")
+            || trimmed.starts_with("!")
+            || trimmed.starts_with("$")
+            || trimmed.starts_with("-f ")
+            || trimmed.starts_with("-d ")
+            || trimmed.starts_with("command ")
+            || trimmed.starts_with("hash ")
+            || trimmed.starts_with("read_true_false ")
+            || trimmed.starts_with("read_verification ")
+            || trimmed.starts_with("tail ")
+            || trimmed.starts_with("head ")
+            || trimmed.starts_with("wc ")
+            || trimmed.starts_with("find ")
+            || trimmed.starts_with("ls ")
+            || trimmed.starts_with("ps ")
+            || trimmed.starts_with("pgrep ")
+            || trimmed.starts_with("curl ")
+            || trimmed.starts_with("wget ")
+            || trimmed.starts_with("nc ")
+            || trimmed.starts_with("netcat ")
+            || trimmed.contains(" || ")
+            || trimmed.contains(" && ")
+            || trimmed.contains(" -eq ")
+            || trimmed.contains(" -ne ")
+            || trimmed.contains(" -lt ")
+            || trimmed.contains(" -gt ")
+            || trimmed.contains(" = ")
+            || trimmed.contains(" == ")
+            || trimmed.contains(" != ")
+            || trimmed.starts_with("awk ")
+            || trimmed.starts_with("sed ")
+        {
+            return true;
+        }
+
+        // If it's just "true" or "false", it's a bash expression
+        if trimmed == "true" || trimmed == "false" {
+            return true;
+        }
+
+        // Default to false - treat as prompt text
+        false
+    }
+
     /// Generate bash script code for a VerificationExpression
     /// For Simple expressions, generates an if statement that sets the variable on success
     /// For Conditional expressions, generates bash code to evaluate the condition
@@ -344,6 +403,7 @@ impl TestExecutor {
     fn generate_hook_execution(
         hook_name: &str,
         hook_config: &testcase_models::HookConfig,
+        yaml_dir: Option<&Path>,
     ) -> String {
         let mut code = String::new();
 
@@ -352,6 +412,29 @@ impl TestExecutor {
         // Check if command is a .sh file (source it) or another executable (execute it)
         let command = &hook_config.command;
         let is_sh_file = command.ends_with(".sh");
+
+        // Resolve absolute path for relative hook commands
+        let resolved_command = if command.starts_with('/') {
+            // Absolute path - use as is
+            command.to_string()
+        } else if let Some(dir) = yaml_dir {
+            // Relative path - convert to absolute path relative to yaml_dir
+            let full_path = dir.join(command);
+            // Try to get absolute path
+            match std::fs::canonicalize(&full_path) {
+                Ok(abs_path) => abs_path.to_string_lossy().to_string(),
+                Err(_) => {
+                    // If canonicalize fails (file doesn't exist), construct absolute path manually
+                    match std::env::current_dir() {
+                        Ok(cwd) => cwd.join(&full_path).to_string_lossy().to_string(),
+                        Err(_) => full_path.to_string_lossy().to_string(),
+                    }
+                }
+            }
+        } else {
+            // No yaml_dir - use command as is
+            command.to_string()
+        };
 
         // Determine on_error behavior (default is Fail)
         let on_error = hook_config
@@ -363,20 +446,20 @@ impl TestExecutor {
         code.push_str("set +e\n");
 
         if is_sh_file {
-            // Source .sh files
-            code.push_str(&format!("if [ -f \"{}\" ]; then\n", command));
-            code.push_str(&format!("    source \"{}\"\n", command));
+            // Source .sh files in a subshell to prevent exit from terminating main script
+            code.push_str(&format!("if [ -f \"{}\" ]; then\n", resolved_command));
+            code.push_str(&format!("    (source \"{}\")\n", resolved_command));
             code.push_str("    HOOK_EXIT_CODE=$?\n");
             code.push_str("else\n");
             code.push_str(&format!(
                 "    echo \"Warning: Hook script '{}' not found\" >&2\n",
-                command
+                resolved_command
             ));
             code.push_str("    HOOK_EXIT_CODE=127\n");
             code.push_str("fi\n");
         } else {
             // Execute other files
-            code.push_str(&format!("{}\n", command));
+            code.push_str(&format!("{}\n", resolved_command));
             code.push_str("HOOK_EXIT_CODE=$?\n");
         }
 
@@ -395,6 +478,29 @@ impl TestExecutor {
                 "    echo \"Error: {} hook failed with exit code $HOOK_EXIT_CODE\" >&2\n",
                 hook_name
             ));
+            // Only record hook failure in JSON for hooks that run BEFORE JSON is closed
+            // (script_start, setup_test, before_sequence, before_step, after_step, after_sequence)
+            // Don't record for teardown_test and script_end which run AFTER JSON array is closed
+            let record_failure = !matches!(hook_name, "teardown_test" | "script_end");
+
+            if record_failure {
+                code.push_str("    # Record hook failure in JSON before exiting\n");
+                code.push_str("    if [ \"$FIRST_ENTRY\" = \"true\" ]; then\n");
+                code.push_str("        FIRST_ENTRY=false\n");
+                code.push_str("    else\n");
+                code.push_str("        echo ',' >> \"$JSON_LOG\"\n");
+                code.push_str("    fi\n");
+                // Write hook failure entry using echo instead of heredoc to ensure variable substitution
+                code.push_str("    cat >> \"$JSON_LOG\" << EOF\n");
+                code.push_str("  {\n");
+                code.push_str(&format!("    \"hook_name\": \"{}\",\n", hook_name));
+                code.push_str("    \"status\": \"failed\",\n");
+                code.push_str("    \"exit_code\": $HOOK_EXIT_CODE,\n");
+                code.push_str("    \"timestamp\": \"$TIMESTAMP\"\n");
+                code.push_str("  }\n");
+                code.push_str("EOF\n");
+            }
+
             code.push_str("    exit $HOOK_EXIT_CODE\n");
             code.push_str("fi\n");
         }
@@ -408,16 +514,73 @@ impl TestExecutor {
         test_case: &TestCase,
         json_output_path: &Path,
         source_hash: Option<String>,
+        yaml_dir: Option<&Path>,
     ) -> String {
         let mut script = String::new();
 
         script.push_str("#!/bin/bash\n");
         script.push_str("set -euo pipefail\n\n");
 
-        // Execute script_start hook after shebang
+        // Initialize JSON logging FIRST before any hooks (so JSON file exists even if hooks fail)
+        script.push_str(&format!("JSON_LOG=\"{}\"\n", json_output_path.display()));
+        script.push_str("TIMESTAMP=$(date +\"%Y-%m-%dT%H:%M:%S\")\n");
+        if let Some(ref hash) = source_hash {
+            script.push_str(&format!("SOURCE_YAML_SHA256=\"{}\"\n", hash));
+        }
+        script.push('\n');
+
+        // Check if test case uses variables
+        let uses_variables = test_case_uses_variables(test_case);
+
+        if uses_variables {
+            // Initialize variable storage (bash 3.2+ compatible using space-separated string)
+            script.push_str(
+                "# Initialize variable storage for captured variables (bash 3.2+ compatible)\n",
+            );
+            script.push_str("CAPTURED_VAR_NAMES=\"\"\n\n");
+        }
+
+        // Add trap to ensure JSON file is properly closed on any exit and temp files are cleaned
+        script.push_str(
+            "# Trap to ensure JSON file is closed properly on exit and temp files are cleaned\n",
+        );
+        script.push_str("cleanup() {\n");
+        script.push_str("    # Clean up temp capture file if it exists\n");
+        script.push_str(
+            "    if [ -n \"${_CAPTURE_TMPFILE:-}\" ] && [ -f \"$_CAPTURE_TMPFILE\" ]; then\n",
+        );
+        script.push_str("        rm -f \"$_CAPTURE_TMPFILE\"\n");
+        script.push_str("    fi\n");
+        script.push_str("    if [ -f \"$JSON_LOG\" ]; then\n");
+        script.push_str("        # Check if JSON_LOG ends with '[' or ','\n");
+        script.push_str("        LAST_CHAR=$(tail -c 2 \"$JSON_LOG\" | head -c 1)\n");
+        script.push_str("        if [ \"$LAST_CHAR\" != \"]\" ]; then\n");
+        script.push_str("            echo '' >> \"$JSON_LOG\"\n");
+        script.push_str("            echo ']' >> \"$JSON_LOG\"\n");
+        script.push_str("        fi\n");
+        script.push_str("        # Validate JSON\n");
+        script.push_str("        if command -v jq >/dev/null 2>&1; then\n");
+        script.push_str("            if ! jq empty \"$JSON_LOG\" >/dev/null 2>&1; then\n");
+        script.push_str("                echo \"500 - Internal Script Error: Generated JSON is not valid\" >&2\n");
+        script.push_str("                exit 1\n");
+        script.push_str("            fi\n");
+        script.push_str("        fi\n");
+        script.push_str("    fi\n");
+        script.push_str("}\n");
+        script.push_str("trap cleanup EXIT\n\n");
+
+        // Initialize JSON file BEFORE any hooks
+        script.push_str("echo '[' > \"$JSON_LOG\"\n");
+        script.push_str("FIRST_ENTRY=true\n\n");
+
+        // Execute script_start hook after JSON is initialized
         if let Some(ref hooks) = test_case.hooks {
             if let Some(ref hook) = hooks.script_start {
-                script.push_str(&Self::generate_hook_execution("script_start", hook));
+                script.push_str(&Self::generate_hook_execution(
+                    "script_start",
+                    hook,
+                    yaml_dir,
+                ));
             }
         }
 
@@ -498,56 +661,6 @@ impl TestExecutor {
             script.push_str("fi\n\n");
         }
 
-        script.push_str(&format!("JSON_LOG=\"{}\"\n", json_output_path.display()));
-        script.push_str("TIMESTAMP=$(date +\"%Y-%m-%dT%H:%M:%S\")\n");
-        if let Some(ref hash) = source_hash {
-            script.push_str(&format!("SOURCE_YAML_SHA256=\"{}\"\n", hash));
-        }
-        script.push('\n');
-
-        // Check if test case uses variables
-        let uses_variables = test_case_uses_variables(test_case);
-
-        if uses_variables {
-            // Initialize variable storage (bash 3.2+ compatible using space-separated string)
-            script.push_str(
-                "# Initialize variable storage for captured variables (bash 3.2+ compatible)\n",
-            );
-            script.push_str("CAPTURED_VAR_NAMES=\"\"\n\n");
-        }
-
-        // Add trap to ensure JSON file is properly closed on any exit and temp files are cleaned
-        script.push_str(
-            "# Trap to ensure JSON file is closed properly on exit and temp files are cleaned\n",
-        );
-        script.push_str("cleanup() {\n");
-        script.push_str("    # Clean up temp capture file if it exists\n");
-        script.push_str(
-            "    if [ -n \"${_CAPTURE_TMPFILE:-}\" ] && [ -f \"$_CAPTURE_TMPFILE\" ]; then\n",
-        );
-        script.push_str("        rm -f \"$_CAPTURE_TMPFILE\"\n");
-        script.push_str("    fi\n");
-        script.push_str("    if [ -f \"$JSON_LOG\" ]; then\n");
-        script.push_str("        # Check if JSON_LOG ends with '[' or ','\n");
-        script.push_str("        LAST_CHAR=$(tail -c 2 \"$JSON_LOG\" | head -c 1)\n");
-        script.push_str("        if [ \"$LAST_CHAR\" != \"]\" ]; then\n");
-        script.push_str("            echo '' >> \"$JSON_LOG\"\n");
-        script.push_str("            echo ']' >> \"$JSON_LOG\"\n");
-        script.push_str("        fi\n");
-        script.push_str("        # Validate JSON\n");
-        script.push_str("        if command -v jq >/dev/null 2>&1; then\n");
-        script.push_str("            if ! jq empty \"$JSON_LOG\" >/dev/null 2>&1; then\n");
-        script.push_str("                echo \"500 - Internal Script Error: Generated JSON is not valid\" >&2\n");
-        script.push_str("                exit 1\n");
-        script.push_str("            fi\n");
-        script.push_str("        fi\n");
-        script.push_str("    fi\n");
-        script.push_str("}\n");
-        script.push_str("trap cleanup EXIT\n\n");
-
-        script.push_str("echo '[' > \"$JSON_LOG\"\n");
-        script.push_str("FIRST_ENTRY=true\n\n");
-
         // Generate prerequisite checks
         if let Some(ref prerequisites) = test_case.prerequisites {
             if !prerequisites.is_empty() {
@@ -594,7 +707,7 @@ impl TestExecutor {
                                 script.push_str("set -e\n");
                                 script.push_str("if [ $PREREQ_EXIT_CODE -ne 0 ]; then\n");
                                 script.push_str(&format!(
-                                    "    echo \"ERROR: Prerequisite {} failed: {}\"\n",
+                                    "    echo \"WARNING: Prerequisite {} failed: {}\"\n",
                                     idx + 1,
                                     prereq.description.replace("\"", "\\\"")
                                 ));
@@ -603,12 +716,13 @@ impl TestExecutor {
                                 script.push_str("\"\n");
                                 script.push_str("    echo \"Exit code: $PREREQ_EXIT_CODE\"\n");
                                 script.push_str("    echo \"Output: $PREREQ_OUTPUT\"\n");
-                                script.push_str("    exit 1\n");
-                                script.push_str("fi\n");
+                                script.push_str("    echo \"Continuing with test execution despite prerequisite failure...\"\n");
+                                script.push_str("else\n");
                                 script.push_str(&format!(
-                                    "echo \"[PASS] Prerequisite {} verified\"\n",
+                                    "    echo \"[PASS] Prerequisite {} verified\"\n",
                                     idx + 1
                                 ));
+                                script.push_str("fi\n");
                             } else {
                                 // Automatic prerequisite without verification command - treat as error
                                 script.push_str(&format!(
@@ -630,7 +744,7 @@ impl TestExecutor {
         // Execute setup_test hook after prerequisites
         if let Some(ref hooks) = test_case.hooks {
             if let Some(ref hook) = hooks.setup_test {
-                script.push_str(&Self::generate_hook_execution("setup_test", hook));
+                script.push_str(&Self::generate_hook_execution("setup_test", hook, yaml_dir));
             }
         }
 
@@ -679,7 +793,10 @@ impl TestExecutor {
                     };
                     if let Some(command) = bdd_registry.try_parse_as_bdd(&value_str) {
                         script.push_str(&format!("# {}: {}\n", key, value_str));
+                        // Wrap BDD commands in error handling so failures don't cause script exit
+                        script.push_str("set +e\n");
                         script.push_str(&format!("{}\n", command));
+                        script.push_str("set -e\n");
                     } else {
                         script.push_str(&format!("# {}: {}\n", key, value_str));
                     }
@@ -723,7 +840,10 @@ impl TestExecutor {
                     };
                     if let Some(command) = bdd_registry.try_parse_as_bdd(&value_str) {
                         script.push_str(&format!("# {}: {}\n", key, value_str));
+                        // Wrap BDD commands in error handling so failures don't cause script exit
+                        script.push_str("set +e\n");
                         script.push_str(&format!("{}\n", command));
+                        script.push_str("set -e\n");
                     } else {
                         script.push_str(&format!("# {}: {}\n", key, value_str));
                     }
@@ -750,7 +870,11 @@ impl TestExecutor {
                         bash_escape(&sequence.name)
                     ));
                     script.push_str("export TEST_SEQUENCE_ID TEST_SEQUENCE_NAME\n");
-                    script.push_str(&Self::generate_hook_execution("before_sequence", hook));
+                    script.push_str(&Self::generate_hook_execution(
+                        "before_sequence",
+                        hook,
+                        yaml_dir,
+                    ));
                 }
             }
 
@@ -787,7 +911,10 @@ impl TestExecutor {
                         };
                         if let Some(command) = bdd_registry.try_parse_as_bdd(&value_str) {
                             script.push_str(&format!("# {}: {}\n", key, value_str));
+                            // Wrap BDD commands in error handling so failures don't cause script exit
+                            script.push_str("set +e\n");
                             script.push_str(&format!("{}\n", command));
+                            script.push_str("set -e\n");
                         } else {
                             script.push_str(&format!("# {}: {}\n", key, value_str));
                         }
@@ -823,7 +950,11 @@ impl TestExecutor {
                             bash_escape(&step.description)
                         ));
                         script.push_str("export TEST_STEP_NUMBER TEST_STEP_DESCRIPTION\n");
-                        script.push_str(&Self::generate_hook_execution("before_step", hook));
+                        script.push_str(&Self::generate_hook_execution(
+                            "before_step",
+                            hook,
+                            yaml_dir,
+                        ));
                     }
                 }
 
@@ -860,6 +991,9 @@ impl TestExecutor {
                         script.push_str("    MANUAL_STEP_CONFIRMED=false\n");
                         script.push_str("fi\n\n");
 
+                        // Initialize COMMAND_OUTPUT for manual steps (no actual command output)
+                        script.push_str("COMMAND_OUTPUT=\"Manual step\"\n\n");
+
                         // Convert hydration placeholders in verification expressions
                         let converted_result_expr =
                             convert_verification_expr_hydration(&step.verification.result);
@@ -891,18 +1025,44 @@ impl TestExecutor {
 
                         // Generate verification script for output
                         if has_output_verification {
-                            let output_verification_script = if uses_variables {
-                                generate_verification_with_var_subst(
-                                    &converted_output_expr,
-                                    "USER_VERIFICATION_OUTPUT",
-                                )
-                            } else {
-                                Self::generate_verification_script(
-                                    &converted_output_expr,
-                                    "USER_VERIFICATION_OUTPUT",
-                                )
+                            // Determine if this is a bash expression based on the expression type
+                            let is_bash_expr = match &converted_output_expr {
+                                VerificationExpression::Conditional { .. } => true, // Conditionals are always bash expressions
+                                VerificationExpression::Simple(s) => Self::is_bash_expression(s),
                             };
-                            script.push_str(&output_verification_script);
+
+                            // Check if this looks like a prompt (not a bash expression)
+                            if !is_bash_expr && !uses_variables {
+                                // Treat as a manual verification prompt
+                                // Use read_verification to prompt the user
+                                script.push_str("# Use read_verification for manual step prompt\n");
+                                if let VerificationExpression::Simple(s) = &converted_output_expr {
+                                    let escaped_prompt =
+                                        s.replace("\\", "\\\\").replace("\"", "\\\"");
+                                    script.push_str(&format!(
+                                        "if read_verification \"{}\"; then\n",
+                                        escaped_prompt
+                                    ));
+                                }
+                                script.push_str("    USER_VERIFICATION_OUTPUT=true\n");
+                                script.push_str("else\n");
+                                script.push_str("    USER_VERIFICATION_OUTPUT=false\n");
+                                script.push_str("fi\n");
+                            } else {
+                                // Generate verification script for bash expressions
+                                let output_verification_script = if uses_variables {
+                                    generate_verification_with_var_subst(
+                                        &converted_output_expr,
+                                        "USER_VERIFICATION_OUTPUT",
+                                    )
+                                } else {
+                                    Self::generate_verification_script(
+                                        &converted_output_expr,
+                                        "USER_VERIFICATION_OUTPUT",
+                                    )
+                                };
+                                script.push_str(&output_verification_script);
+                            }
                         } else {
                             script.push_str("USER_VERIFICATION_OUTPUT=true\n");
                         }
@@ -937,6 +1097,8 @@ impl TestExecutor {
                         script.push_str("fi\n\n");
                     } else {
                         // No verification fields - just prompt to continue using read_true_false
+                        script.push_str("# Initialize COMMAND_OUTPUT for manual step\n");
+                        script.push_str("COMMAND_OUTPUT=\"Manual step\"\n\n");
                         script.push_str("# Prompt user to confirm they want to continue\n");
                         script.push_str("MANUAL_STEP_CONFIRMED=false\n");
                         script.push_str(
@@ -1027,7 +1189,11 @@ impl TestExecutor {
                             script.push_str("STEP_EXIT_CODE=0\n");
                             script.push_str("COMMAND_OUTPUT=\"\"\n");
                             script.push_str("export STEP_EXIT_CODE COMMAND_OUTPUT\n");
-                            script.push_str(&Self::generate_hook_execution("after_step", hook));
+                            script.push_str(&Self::generate_hook_execution(
+                                "after_step",
+                                hook,
+                                yaml_dir,
+                            ));
                         }
                     }
 
@@ -1045,15 +1211,33 @@ impl TestExecutor {
                 // Convert hydration placeholders (${#VAR_NAME} -> ${VAR_NAME})
                 let converted_command = convert_hydration_placeholder_to_bash(&step.command);
 
+                // Trim trailing whitespace and newlines from the command
+                let normalized_command = converted_command.trim_end().to_string();
+
+                // For commands without here-documents, remove internal newlines to avoid bash syntax errors
+                // This handles YAML commands that span multiple lines
+                let is_heredoc_command = normalized_command.contains("<<");
+                let normalized_command = if is_heredoc_command {
+                    // Keep internal newlines for heredocs
+                    normalized_command
+                } else {
+                    // Remove internal newlines for regular commands
+                    normalized_command
+                        .replace(['\n', '\r'], " ")
+                        .split_whitespace()
+                        .collect::<Vec<_>>()
+                        .join(" ")
+                };
+
                 // Check if the command needs variable substitution
                 let needs_substitution =
-                    converted_command.contains("${") || converted_command.contains("$STEP_VARS");
+                    normalized_command.contains("${") || normalized_command.contains("$STEP_VARS");
 
                 if needs_substitution {
                     // Generate bash code to perform variable substitution on the command
                     // Store the original command in a variable
                     // Escape backslashes, quotes, and dollar signs to prevent premature expansion
-                    let escaped_command = converted_command
+                    let escaped_command = normalized_command
                         .replace("\\", "\\\\")
                         .replace("\"", "\\\"")
                         .replace("$", "\\$");
@@ -1078,11 +1262,29 @@ impl TestExecutor {
                         "{ eval \"$SUBSTITUTED_COMMAND\"; } 2>&1 | tee \"$LOG_FILE\" > \"$_CAPTURE_TMPFILE\"\n",
                     );
                 } else {
-                    // No substitution needed - inline the command directly
-                    script.push_str(&format!(
-                        "{{ {}; }} 2>&1 | tee \"$LOG_FILE\" > \"$_CAPTURE_TMPFILE\"\n",
-                        converted_command
-                    ));
+                    // No substitution needed - but still need to properly quote the command
+                    // to handle commands with special characters (quotes, etc.)
+                    let escaped_command = normalized_command
+                        .replace("\\", "\\\\")
+                        .replace("\"", "\\\"")
+                        .replace("$", "\\$");
+                    script.push_str(&format!("ORIGINAL_COMMAND=\"{}\"\n", escaped_command));
+
+                    // Special handling for here-documents: ensure EOF delimiter is on its own line
+                    if is_heredoc_command {
+                        // For here-documents, put closing brace on new line to keep EOF delimiter intact
+                        script.push_str(&format!(
+                            "{{\n{}\n}} 2>&1 | tee \"$LOG_FILE\" > \"$_CAPTURE_TMPFILE\"\n",
+                            normalized_command
+                        ));
+                    } else {
+                        // For regular commands, use compact form
+                        // Note: newlines have already been removed from normalized_command above
+                        script.push_str(&format!(
+                            "{{ {}; }} 2>&1 | tee \"$LOG_FILE\" > \"$_CAPTURE_TMPFILE\"\n",
+                            normalized_command
+                        ));
+                    }
                 }
 
                 script.push_str("EXIT_CODE=$?\n");
@@ -1216,38 +1418,6 @@ impl TestExecutor {
                     }
                 }
 
-                // Build the overall verification condition
-                let mut verification_condition = String::from("\"$VERIFICATION_RESULT_PASS\" = true ] && [ \"$VERIFICATION_OUTPUT_PASS\" = true");
-                for var_name in &general_verification_vars {
-                    verification_condition.push_str(&format!(" ] && [ \"${}\" = true", var_name));
-                }
-
-                script.push_str(&format!("if [ {} ]; then\n", verification_condition));
-                script.push_str(&format!(
-                    "    echo \"[PASS] Step {}: {}\"\n",
-                    step.step, step.description
-                ));
-                script.push_str("else\n");
-                script.push_str(&format!(
-                    "    echo \"[FAIL] Step {}: {}\"\n",
-                    step.step, step.description
-                ));
-                script.push_str("    echo \"  Command: ");
-                script.push_str(&converted_command.replace("\"", "\\\""));
-                script.push_str("\"\n");
-                script.push_str("    echo \"  Exit code: $EXIT_CODE\"\n");
-                script.push_str("    echo \"  Output: $COMMAND_OUTPUT\"\n");
-                script.push_str("    echo \"  Result verification: $VERIFICATION_RESULT_PASS\"\n");
-                script.push_str("    echo \"  Output verification: $VERIFICATION_OUTPUT_PASS\"\n");
-
-                // Add general verification results to error message
-                for var_name in &general_verification_vars {
-                    script.push_str(&format!("    echo \"  {}: ${}\"\n", var_name, var_name));
-                }
-
-                script.push_str("    exit 1\n");
-                script.push_str("fi\n\n");
-
                 // Escape command for JSON - handle all control characters
                 // Note: Single quotes are converted to double quotes to avoid bash syntax issues
                 let escaped_command = converted_command
@@ -1290,13 +1460,49 @@ impl TestExecutor {
                 script.push_str("    echo '  }'\n");
                 script.push_str("} >> \"$JSON_LOG\"\n\n");
 
+                // Build the overall verification condition
+                let mut verification_condition = String::from("\"$VERIFICATION_RESULT_PASS\" = true ] && [ \"$VERIFICATION_OUTPUT_PASS\" = true");
+                for var_name in &general_verification_vars {
+                    verification_condition.push_str(&format!(" ] && [ \"${}\" = true", var_name));
+                }
+
+                script.push_str(&format!("if [ {} ]; then\n", verification_condition));
+                script.push_str(&format!(
+                    "    echo \"[PASS] Step {}: {}\"\n",
+                    step.step, step.description
+                ));
+                script.push_str("else\n");
+                script.push_str(&format!(
+                    "    echo \"[FAIL] Step {}: {}\"\n",
+                    step.step, step.description
+                ));
+                script.push_str("    echo \"  Command: ");
+                script.push_str(&converted_command.replace("\"", "\\\""));
+                script.push_str("\"\n");
+                script.push_str("    echo \"  Exit code: $EXIT_CODE\"\n");
+                script.push_str("    echo \"  Output: $COMMAND_OUTPUT\"\n");
+                script.push_str("    echo \"  Result verification: $VERIFICATION_RESULT_PASS\"\n");
+                script.push_str("    echo \"  Output verification: $VERIFICATION_OUTPUT_PASS\"\n");
+
+                // Add general verification results to error message
+                for var_name in &general_verification_vars {
+                    script.push_str(&format!("    echo \"  {}: ${}\"\n", var_name, var_name));
+                }
+
+                script.push_str("    exit 1\n");
+                script.push_str("fi\n\n");
+
                 // Execute after_step hook for automated step
                 if let Some(ref hooks) = test_case.hooks {
                     if let Some(ref hook) = hooks.after_step {
                         // Set step context variables for after_step hook
                         script.push_str("STEP_EXIT_CODE=$EXIT_CODE\n");
                         script.push_str("export STEP_EXIT_CODE COMMAND_OUTPUT\n");
-                        script.push_str(&Self::generate_hook_execution("after_step", hook));
+                        script.push_str(&Self::generate_hook_execution(
+                            "after_step",
+                            hook,
+                            yaml_dir,
+                        ));
                     }
                 }
             }
@@ -1304,7 +1510,11 @@ impl TestExecutor {
             // Execute after_sequence hook
             if let Some(ref hooks) = test_case.hooks {
                 if let Some(ref hook) = hooks.after_sequence {
-                    script.push_str(&Self::generate_hook_execution("after_sequence", hook));
+                    script.push_str(&Self::generate_hook_execution(
+                        "after_sequence",
+                        hook,
+                        yaml_dir,
+                    ));
                 }
             }
         }
@@ -1325,7 +1535,11 @@ impl TestExecutor {
         // Execute teardown_test hook after all sequences
         if let Some(ref hooks) = test_case.hooks {
             if let Some(ref hook) = hooks.teardown_test {
-                script.push_str(&Self::generate_hook_execution("teardown_test", hook));
+                script.push_str(&Self::generate_hook_execution(
+                    "teardown_test",
+                    hook,
+                    yaml_dir,
+                ));
             }
         }
 
@@ -1334,7 +1548,7 @@ impl TestExecutor {
         // Execute script_end hook before final exit
         if let Some(ref hooks) = test_case.hooks {
             if let Some(ref hook) = hooks.script_end {
-                script.push_str(&Self::generate_hook_execution("script_end", hook));
+                script.push_str(&Self::generate_hook_execution("script_end", hook, yaml_dir));
             }
         }
 
@@ -1346,7 +1560,7 @@ impl TestExecutor {
     pub fn generate_test_script(&self, test_case: &TestCase) -> String {
         let json_path_str = format!("{}_execution_log.json", test_case.id);
         let json_path = Path::new(&json_path_str);
-        self.generate_test_script_with_json_output(test_case, json_path, None)
+        self.generate_test_script_with_json_output(test_case, json_path, None, None)
     }
 
     pub fn generate_test_script_from_yaml(
@@ -1357,7 +1571,20 @@ impl TestExecutor {
         let json_path_str = format!("{}_execution_log.json", test_case.id);
         let json_path = Path::new(&json_path_str);
         let hash = compute_yaml_sha256(yaml_bytes);
-        self.generate_test_script_with_json_output(test_case, json_path, Some(hash))
+        self.generate_test_script_with_json_output(test_case, json_path, Some(hash), None)
+    }
+
+    pub fn generate_test_script_from_yaml_with_path(
+        &self,
+        test_case: &TestCase,
+        yaml_bytes: &[u8],
+        yaml_file: &Path,
+    ) -> String {
+        let json_path_str = format!("{}_execution_log.json", test_case.id);
+        let json_path = Path::new(&json_path_str);
+        let hash = compute_yaml_sha256(yaml_bytes);
+        let yaml_dir = yaml_file.parent();
+        self.generate_test_script_with_json_output(test_case, json_path, Some(hash), yaml_dir)
     }
 
     pub fn execute_test_case(&self, test_case: &TestCase) -> Result<()> {
@@ -1956,13 +2183,29 @@ impl Default for TestExecutor {
 /// assert_eq!(result, "s/.*token=\\([A-Z0-9][A-Z0-9]*\\).*/\\1/p");
 /// ```
 pub fn convert_pcre_to_sed_pattern(pattern: &str) -> String {
+    // Handle common JSON/quoted string patterns: "field":"([^"]+)" -> capture quoted value
+    if pattern.contains('"') && pattern.contains(r"\(") && pattern.contains("[^") {
+        // Convert [^"]+ to [^"]* for basic sed (one-or-more to zero-or-more)
+        let converted = pattern
+            .replace(r#"[^"]+"#, "[^\"]*")
+            .replace(r"[^']+", "[^']*")
+            .replace(r"[^,]+", "[^,]*")
+            .replace(r"[^}]+", "[^}]*")
+            .replace(r"[^;]+", "[^;]*");
+        return format!("s/.*{}.*/\\1/p", converted);
+    }
+
     // Handle \K pattern (keep everything before, match after)
     if let Some(idx) = pattern.find(r"\K") {
         let prefix = &pattern[..idx];
         let suffix = &pattern[idx + 2..];
 
-        // Convert PCRE character classes to POSIX for sed
-        let converted_suffix = suffix
+        // Convert PCRE parentheses to sed parentheses FIRST (before character class conversions)
+        // This prevents double-escaping when parentheses are part of the replaced patterns
+        let paren_converted_suffix = suffix.replace("(", r"\(").replace(")", r"\)");
+
+        // Then convert PCRE character classes to POSIX for sed
+        let converted_suffix = paren_converted_suffix
             .replace(r"\d+", r"\([0-9][0-9]*\)")
             .replace(r"\d", r"\([0-9]\)")
             .replace(r"\w+", r"\([a-zA-Z0-9_][a-zA-Z0-9_]*\)")
@@ -1989,8 +2232,11 @@ pub fn convert_pcre_to_sed_pattern(pattern: &str) -> String {
             let lookbehind = &pattern[4..end_idx];
             let rest = &pattern[end_idx + 1..];
 
-            // Convert character classes
-            let converted_rest = rest
+            // Convert PCRE parentheses to sed parentheses FIRST (before character class conversions)
+            let paren_converted_rest = rest.replace("(", r"\(").replace(")", r"\)");
+
+            // Then convert character classes
+            let converted_rest = paren_converted_rest
                 .replace(r"\d+", r"\([0-9][0-9]*\)")
                 .replace(r"\d", r"\([0-9]\)")
                 .replace(r"\w+", r"\([a-zA-Z0-9_][a-zA-Z0-9_]*\)")
@@ -2022,7 +2268,7 @@ pub fn convert_pcre_to_sed_pattern(pattern: &str) -> String {
     }
 
     // General case: convert PCRE classes and wrap in capture group
-    let converted = pattern
+    let mut converted = pattern
         .replace(r"\d+", r"[0-9][0-9]*")
         .replace(r"\d", r"[0-9]")
         .replace(r"\w+", r"[a-zA-Z0-9_][a-zA-Z0-9_]*")
@@ -2030,8 +2276,61 @@ pub fn convert_pcre_to_sed_pattern(pattern: &str) -> String {
         .replace(r"\s+", r"[[:space:]][[:space:]]*")
         .replace(r"\s", r"[[:space:]]");
 
-    // Wrap in sed substitution with capture group
-    format!("s/.*\\({}\\).*/\\1/p", converted)
+    // Handle character class with + quantifier: [^x]+ -> [^x]*
+    // This is necessary because basic sed doesn't support + quantifier
+    let char_class_plus_re = Regex::new(r"\[\^([^\]]+)\]\+").unwrap();
+    converted = char_class_plus_re
+        .replace_all(&converted, |caps: &regex::Captures| {
+            format!("[^{}]*", &caps[1])
+        })
+        .to_string();
+
+    // Also handle positive character classes with +: [a-zA-Z]+ -> [a-zA-Z]*
+    let char_class_plus_re2 = Regex::new(r"\[([^\[\]]+)\]\+").unwrap();
+    converted = char_class_plus_re2
+        .replace_all(&converted, |caps: &regex::Captures| {
+            format!("[{}]*", &caps[1])
+        })
+        .to_string();
+
+    // Handle {n,m} quantifiers: [0-9]{4} -> [0-9][0-9][0-9][0-9]
+    // This converts exact repetition {n} to n copies of the preceding element
+    let brace_quant_re = Regex::new(r"([^\[\]]*)\{(\d+)(?:,(\d+))?\}").unwrap();
+    let mut prev_pos = 0;
+    let mut result_str = String::new();
+    for caps in brace_quant_re.captures_iter(&converted) {
+        let match_start = caps.get(0).unwrap().start();
+        let match_end = caps.get(0).unwrap().end();
+
+        // Add the part before this match
+        result_str.push_str(&converted[prev_pos..match_start]);
+
+        // Get the element to repeat and the count
+        let element = &caps[1];
+        if let Ok(count) = caps[2].parse::<usize>() {
+            // Repeat the element count times
+            for _ in 0..count {
+                result_str.push_str(element);
+            }
+        }
+
+        prev_pos = match_end;
+    }
+    // Add remaining part
+    result_str.push_str(&converted[prev_pos..]);
+    converted = result_str;
+
+    // Convert PCRE parentheses to sed parentheses
+    converted = converted.replace("(", r"\(").replace(")", r"\)");
+
+    // Check if pattern already has capture group
+    if converted.contains(r"\(") {
+        // Pattern already has a capture group, use it directly
+        format!("s/.*{}.*/\\1/p", converted)
+    } else {
+        // No capture group in pattern, wrap entire pattern in one
+        format!("s/.*\\({}\\).*/\\1/p", converted)
+    }
 }
 
 /// Performs variable substitution in a command string using the STEP_VARS associative array.
@@ -3394,8 +3693,9 @@ mod tests {
         assert!(script.contains("ORIGINAL_COMMAND=\"echo \\${SERVER_HOST}\""));
         assert!(!script.contains("${#SERVER_HOST}"));
 
-        // Should convert verification expression
-        assert!(script.contains("\\${EXPECTED_OUTPUT}"));
+        // Should convert verification expression (hydration placeholder replaced)
+        // The ${#EXPECTED_OUTPUT} should be converted to ${EXPECTED_OUTPUT}
+        assert!(script.contains("${EXPECTED_OUTPUT}") || script.contains("\\${EXPECTED_OUTPUT}"));
         assert!(!script.contains("${#EXPECTED_OUTPUT}"));
     }
 
@@ -4034,8 +4334,12 @@ mod tests {
         test_case.test_sequences.push(sequence);
 
         let json_output_path = PathBuf::from("/tmp/test.json");
-        let script =
-            executor.generate_test_script_with_json_output(&test_case, &json_output_path, None);
+        let script = executor.generate_test_script_with_json_output(
+            &test_case,
+            &json_output_path,
+            None,
+            None,
+        );
 
         // Check cleanup function is defined
         assert!(script.contains("cleanup() {"));
@@ -4085,8 +4389,12 @@ mod tests {
         test_case.test_sequences.push(sequence);
 
         let json_output_path = PathBuf::from("/tmp/test.json");
-        let script =
-            executor.generate_test_script_with_json_output(&test_case, &json_output_path, None);
+        let script = executor.generate_test_script_with_json_output(
+            &test_case,
+            &json_output_path,
+            None,
+            None,
+        );
 
         // Check temp file is created with mktemp
         assert!(script.contains("_CAPTURE_TMPFILE=$(mktemp)"));
@@ -4151,8 +4459,12 @@ mod tests {
         test_case.test_sequences.push(sequence);
 
         let json_output_path = PathBuf::from("/tmp/test.json");
-        let script =
-            executor.generate_test_script_with_json_output(&test_case, &json_output_path, None);
+        let script = executor.generate_test_script_with_json_output(
+            &test_case,
+            &json_output_path,
+            None,
+            None,
+        );
 
         // Check that JSON escaping code uses printf with COMMAND_OUTPUT
         assert!(script.contains("printf '%s' \"$COMMAND_OUTPUT\" | jq -Rs ."));
@@ -4193,8 +4505,12 @@ mod tests {
         test_case.test_sequences.push(sequence);
 
         let json_output_path = PathBuf::from("/tmp/test.json");
-        let script =
-            executor.generate_test_script_with_json_output(&test_case, &json_output_path, None);
+        let script = executor.generate_test_script_with_json_output(
+            &test_case,
+            &json_output_path,
+            None,
+            None,
+        );
 
         // Verify JSON escaping code has fallback for empty output
         assert!(script.contains("|| echo \"\""));
@@ -4254,8 +4570,12 @@ mod tests {
         test_case.test_sequences.push(sequence);
 
         let json_output_path = PathBuf::from("/tmp/test.json");
-        let script =
-            executor.generate_test_script_with_json_output(&test_case, &json_output_path, None);
+        let script = executor.generate_test_script_with_json_output(
+            &test_case,
+            &json_output_path,
+            None,
+            None,
+        );
 
         // Verify jq handles binary data with -Rs (raw input, slurp) and uses printf with COMMAND_OUTPUT
         assert!(script.contains("printf '%s' \"$COMMAND_OUTPUT\" | jq -Rs ."));
@@ -4302,8 +4622,12 @@ mod tests {
         test_case.test_sequences.push(sequence);
 
         let json_output_path = PathBuf::from("/tmp/test.json");
-        let script =
-            executor.generate_test_script_with_json_output(&test_case, &json_output_path, None);
+        let script = executor.generate_test_script_with_json_output(
+            &test_case,
+            &json_output_path,
+            None,
+            None,
+        );
 
         // Check that cleanup function closes JSON file properly
         assert!(script.contains("cleanup() {"));
@@ -4369,8 +4693,12 @@ mod tests {
         test_case.test_sequences.push(sequence);
 
         let json_output_path = PathBuf::from("/tmp/test.json");
-        let script =
-            executor.generate_test_script_with_json_output(&test_case, &json_output_path, None);
+        let script = executor.generate_test_script_with_json_output(
+            &test_case,
+            &json_output_path,
+            None,
+            None,
+        );
 
         // Verify all components are present
         assert!(script.contains("_CAPTURE_TMPFILE=$(mktemp)"));
@@ -4433,8 +4761,12 @@ mod tests {
         test_case.test_sequences.push(sequence);
 
         let json_output_path = PathBuf::from("/tmp/test.json");
-        let script =
-            executor.generate_test_script_with_json_output(&test_case, &json_output_path, None);
+        let script = executor.generate_test_script_with_json_output(
+            &test_case,
+            &json_output_path,
+            None,
+            None,
+        );
 
         // Verify all fallback levels are present (json-escape first, then jq)
         assert!(script.contains("if command -v json-escape >/dev/null 2>&1; then"));

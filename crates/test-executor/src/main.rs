@@ -469,7 +469,11 @@ fn main() -> Result<()> {
                     .context("Failed to resolve dependencies")?;
 
                 let executor = TestExecutor::new();
-                let script = executor.generate_test_script_from_yaml(&test_case, &yaml_bytes);
+                let script = executor.generate_test_script_from_yaml_with_path(
+                    &test_case,
+                    &yaml_bytes,
+                    &yaml_file,
+                );
 
                 if let Some(output_path) = &output {
                     fs::write(output_path, &script).context(format!(

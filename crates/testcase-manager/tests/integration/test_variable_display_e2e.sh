@@ -116,6 +116,8 @@ section "Test 1: Creating Test YAML with New Variable Capture Format"
 
 VARIABLE_YAML="$TEMP_DIR/test_variable_display.yaml"
 cat > "$VARIABLE_YAML" << 'EOF'
+type: test_case
+schema: tcms/test-case.schema.v1.json
 requirement: TEST_VAR_DISPLAY
 item: 1
 tc: 1

@@ -115,29 +115,178 @@ impl fmt::Display for Verification {
 }
 
 /// Verification expression that can be either a simple string or a conditional expression
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
-#[serde(untagged)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum VerificationExpression {
-    /// Simple string expression for backward compatibility
-    Simple(String),
-
-    /// Conditional expression with condition and branches
+    /// Conditional expression with condition and branches (try first for struct matching)
     Conditional {
         /// The condition to evaluate
         condition: String,
 
         /// Expressions to run if condition is true
-        #[serde(skip_serializing_if = "Option::is_none")]
         if_true: Option<Vec<String>>,
 
         /// Expressions to run if condition is false
-        #[serde(skip_serializing_if = "Option::is_none")]
         if_false: Option<Vec<String>>,
 
         /// Expressions to always run regardless of condition
-        #[serde(skip_serializing_if = "Option::is_none")]
         always: Option<Vec<String>>,
     },
+
+    /// Simple string expression for backward compatibility (fallback for non-struct input)
+    Simple(String),
+}
+
+impl VerificationExpression {
+    /// Create a VerificationExpression from a boolean value
+    /// true -> "true", false -> "false"
+    pub fn from_bool(value: bool) -> Self {
+        VerificationExpression::Simple(value.to_string())
+    }
+}
+
+// Custom deserialization to support both string and boolean values
+impl<'de> serde::Deserialize<'de> for VerificationExpression {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use serde::de::Visitor;
+        use std::fmt;
+
+        struct VerificationExpressionVisitor;
+
+        impl<'de> Visitor<'de> for VerificationExpressionVisitor {
+            type Value = VerificationExpression;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a string, boolean, or conditional expression object")
+            }
+
+            fn visit_bool<E>(self, value: bool) -> Result<VerificationExpression, E>
+            where
+                E: serde::de::Error,
+            {
+                Ok(VerificationExpression::Simple(value.to_string()))
+            }
+
+            fn visit_str<E>(self, value: &str) -> Result<VerificationExpression, E>
+            where
+                E: serde::de::Error,
+            {
+                Ok(VerificationExpression::Simple(value.to_string()))
+            }
+
+            fn visit_string<E>(self, value: String) -> Result<VerificationExpression, E>
+            where
+                E: serde::de::Error,
+            {
+                Ok(VerificationExpression::Simple(value))
+            }
+
+            fn visit_map<M>(self, mut map: M) -> Result<VerificationExpression, M::Error>
+            where
+                M: serde::de::MapAccess<'de>,
+            {
+                // Try to deserialize as Conditional expression
+                let mut condition: Option<String> = None;
+                let mut if_true: Option<Vec<String>> = None;
+                let mut if_false: Option<Vec<String>> = None;
+                let mut always: Option<Vec<String>> = None;
+
+                while let Some((key, value)) = map.next_entry::<String, serde_json::Value>()? {
+                    match key.as_str() {
+                        "condition" => condition = Some(value.as_str().unwrap_or("").to_string()),
+                        "if_true" => {
+                            if_true = value.as_array().map(|arr| {
+                                arr.iter()
+                                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                                    .collect()
+                            })
+                        }
+                        "if_false" => {
+                            if_false = value.as_array().map(|arr| {
+                                arr.iter()
+                                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                                    .collect()
+                            })
+                        }
+                        "always" => {
+                            always = value.as_array().map(|arr| {
+                                arr.iter()
+                                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                                    .collect()
+                            })
+                        }
+                        _ => {}
+                    }
+                }
+
+                if let Some(cond) = condition {
+                    Ok(VerificationExpression::Conditional {
+                        condition: cond,
+                        if_true,
+                        if_false,
+                        always,
+                    })
+                } else {
+                    Err(serde::de::Error::custom(
+                        "Conditional variant requires 'condition' field",
+                    ))
+                }
+            }
+        }
+
+        deserializer.deserialize_any(VerificationExpressionVisitor)
+    }
+}
+
+// Custom serialization to match custom deserialization
+impl serde::Serialize for VerificationExpression {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        use serde::ser::SerializeMap;
+
+        match self {
+            VerificationExpression::Simple(s) => {
+                // Serialize Simple variant as just a plain string value, without the enum tag
+                serializer.serialize_str(s)
+            }
+            VerificationExpression::Conditional {
+                condition,
+                if_true,
+                if_false,
+                always,
+            } => {
+                // Serialize Conditional variant as a map object
+                // Count how many fields will be serialized (condition is always present, others are optional)
+                let mut field_count = 1; // condition is always present
+                if if_true.is_some() {
+                    field_count += 1;
+                }
+                if if_false.is_some() {
+                    field_count += 1;
+                }
+                if always.is_some() {
+                    field_count += 1;
+                }
+
+                let mut map = serializer.serialize_map(Some(field_count))?;
+                map.serialize_entry("condition", condition)?;
+                if let Some(ref items) = if_true {
+                    map.serialize_entry("if_true", items)?;
+                }
+                if let Some(ref items) = if_false {
+                    map.serialize_entry("if_false", items)?;
+                }
+                if let Some(ref items) = always {
+                    map.serialize_entry("always", items)?;
+                }
+                map.end()
+            }
+        }
+    }
 }
 
 impl fmt::Display for VerificationExpression {
