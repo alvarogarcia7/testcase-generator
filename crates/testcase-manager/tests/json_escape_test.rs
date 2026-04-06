@@ -223,7 +223,15 @@ fn test_json_escape_binary_empty_input() -> Result<()> {
 fn test_json_escape_binary_test_mode_valid() -> Result<()> {
     let input = "Simple text";
     let output = Command::new("cargo")
-        .args(["run", "-p", "json-escape", "--bin", "json-escape", "--", "--test"])
+        .args([
+            "run",
+            "-p",
+            "json-escape",
+            "--bin",
+            "json-escape",
+            "--",
+            "--test",
+        ])
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
@@ -250,7 +258,15 @@ fn test_json_escape_binary_test_mode_valid() -> Result<()> {
 fn test_json_escape_binary_empty_string_test_mode() -> Result<()> {
     let input = "";
     let output = Command::new("cargo")
-        .args(["run", "-p", "json-escape", "--bin", "json-escape", "--", "--test"])
+        .args([
+            "run",
+            "-p",
+            "json-escape",
+            "--bin",
+            "json-escape",
+            "--",
+            "--test",
+        ])
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
@@ -617,7 +633,15 @@ fn test_json_escape_binary_test_mode_long_input() -> Result<()> {
     }
 
     let output = Command::new("cargo")
-        .args(["run", "-p", "json-escape", "--bin", "json-escape", "--", "--test"])
+        .args([
+            "run",
+            "-p",
+            "json-escape",
+            "--bin",
+            "json-escape",
+            "--",
+            "--test",
+        ])
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())

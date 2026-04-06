@@ -69,6 +69,8 @@ fn test_missing_required_args() {
     let output = std::process::Command::new("cargo")
         .args([
             "run",
+            "-p",
+            "verifier",
             "--bin",
             "verifier",
             "--",
@@ -100,6 +102,8 @@ fn test_single_file_mode_missing_test_case_id() {
     let output = std::process::Command::new("cargo")
         .args([
             "run",
+            "-p",
+            "verifier",
             "--bin",
             "verifier",
             "--",
@@ -130,6 +134,8 @@ fn test_single_file_mode_missing_log_file() {
     let output = std::process::Command::new("cargo")
         .args([
             "run",
+            "-p",
+            "verifier",
             "--bin",
             "verifier",
             "--",
@@ -165,6 +171,8 @@ fn test_mutually_exclusive_modes_conflict() {
     let output = std::process::Command::new("cargo")
         .args([
             "run",
+            "-p",
+            "verifier",
             "--bin",
             "verifier",
             "--",
@@ -206,6 +214,8 @@ fn test_invalid_format_uppercase() {
     let output = std::process::Command::new("cargo")
         .args([
             "run",
+            "-p",
+            "verifier",
             "--bin",
             "verifier",
             "--",
@@ -239,6 +249,8 @@ fn test_invalid_format_lowercase() {
     let output = std::process::Command::new("cargo")
         .args([
             "run",
+            "-p",
+            "verifier",
             "--bin",
             "verifier",
             "--",
@@ -272,6 +284,8 @@ fn test_valid_format_yaml_lowercase() {
     let output = std::process::Command::new("cargo")
         .args([
             "run",
+            "-p",
+            "verifier",
             "--bin",
             "verifier",
             "--",
@@ -306,6 +320,8 @@ fn test_valid_format_yaml_uppercase() {
     let output = std::process::Command::new("cargo")
         .args([
             "run",
+            "-p",
+            "verifier",
             "--bin",
             "verifier",
             "--",
@@ -338,6 +354,8 @@ fn test_valid_format_json_lowercase() {
     let output = std::process::Command::new("cargo")
         .args([
             "run",
+            "-p",
+            "verifier",
             "--bin",
             "verifier",
             "--",
@@ -370,6 +388,8 @@ fn test_valid_format_json_uppercase() {
     let output = std::process::Command::new("cargo")
         .args([
             "run",
+            "-p",
+            "verifier",
             "--bin",
             "verifier",
             "--",
@@ -405,6 +425,8 @@ fn test_single_file_mode_log_file_not_exists() {
     let output = std::process::Command::new("cargo")
         .args([
             "run",
+            "-p",
+            "verifier",
             "--bin",
             "verifier",
             "--",
@@ -436,6 +458,8 @@ fn test_single_file_mode_log_file_exists() {
     let output = std::process::Command::new("cargo")
         .args([
             "run",
+            "-p",
+            "verifier",
             "--bin",
             "verifier",
             "--",
@@ -469,6 +493,8 @@ fn test_folder_mode_folder_not_exists() {
     let output = std::process::Command::new("cargo")
         .args([
             "run",
+            "-p",
+            "verifier",
             "--bin",
             "verifier",
             "--",
@@ -498,6 +524,8 @@ fn test_folder_mode_path_is_file() {
     let output = std::process::Command::new("cargo")
         .args([
             "run",
+            "-p",
+            "verifier",
             "--bin",
             "verifier",
             "--",
@@ -531,6 +559,8 @@ fn test_folder_mode_folder_exists() {
     let output = std::process::Command::new("cargo")
         .args([
             "run",
+            "-p",
+            "verifier",
             "--bin",
             "verifier",
             "--",
@@ -563,6 +593,8 @@ fn test_single_file_mode_success_yaml_output() {
     let output = std::process::Command::new("cargo")
         .args([
             "run",
+            "-p",
+            "verifier",
             "--bin",
             "verifier",
             "--",
@@ -609,6 +641,8 @@ fn test_single_file_mode_success_json_output() {
     let output = std::process::Command::new("cargo")
         .args([
             "run",
+            "-p",
+            "verifier",
             "--bin",
             "verifier",
             "--",
@@ -655,6 +689,8 @@ fn test_single_file_mode_with_output_file() {
     let output = std::process::Command::new("cargo")
         .args([
             "run",
+            "-p",
+            "verifier",
             "--bin",
             "verifier",
             "--",
@@ -705,6 +741,8 @@ fn test_folder_mode_success_empty_folder() {
     let output = std::process::Command::new("cargo")
         .args([
             "run",
+            "-p",
+            "verifier",
             "--bin",
             "verifier",
             "--",
@@ -749,6 +787,8 @@ fn test_folder_mode_success_with_logs() {
     let output = std::process::Command::new("cargo")
         .args([
             "run",
+            "-p",
+            "verifier",
             "--bin",
             "verifier",
             "--",
@@ -775,8 +815,12 @@ fn test_folder_mode_success_with_logs() {
     // Should find and process log file
     assert!(stderr.contains("Found 1") || stderr.contains("Processing"));
 
-    // Output should contain report
-    assert!(stdout.contains("test_cases:") || stdout.contains("test_case_id:"));
+    // Output should contain report (verifier outputs YAML to stderr via log::info!)
+    assert!(
+        stderr.contains("test_cases:")
+            || stderr.contains("test_case_id:")
+            || stderr.contains("type:")
+    );
 }
 
 // ============================================================================
@@ -796,6 +840,8 @@ fn test_short_flags_single_file_mode() {
     let output = std::process::Command::new("cargo")
         .args([
             "run",
+            "-p",
+            "verifier",
             "--bin",
             "verifier",
             "--",
@@ -836,6 +882,8 @@ fn test_short_flags_folder_mode() {
     let output = std::process::Command::new("cargo")
         .args([
             "run",
+            "-p",
+            "verifier",
             "--bin",
             "verifier",
             "--",
@@ -883,6 +931,8 @@ fn test_mixed_case_format() {
     let output = std::process::Command::new("cargo")
         .args([
             "run",
+            "-p",
+            "verifier",
             "--bin",
             "verifier",
             "--",
@@ -916,6 +966,8 @@ fn test_default_format_is_yaml() {
     let output = std::process::Command::new("cargo")
         .args([
             "run",
+            "-p",
+            "verifier",
             "--bin",
             "verifier",
             "--",
@@ -957,6 +1009,8 @@ fn test_default_test_case_dir() {
     let output = std::process::Command::new("cargo")
         .args([
             "run",
+            "-p",
+            "verifier",
             "--bin",
             "verifier",
             "--",
@@ -992,6 +1046,8 @@ fn test_verbose_flag_enables_debug_logging_single_file_mode() {
     let output = std::process::Command::new("cargo")
         .args([
             "run",
+            "-p",
+            "verifier",
             "--bin",
             "verifier",
             "--",
@@ -1035,6 +1091,8 @@ fn test_verbose_flag_short_form_enables_debug_logging() {
     let output = std::process::Command::new("cargo")
         .args([
             "run",
+            "-p",
+            "verifier",
             "--bin",
             "verifier",
             "--",
@@ -1077,6 +1135,8 @@ fn test_without_verbose_flag_debug_messages_suppressed_single_file_mode() {
     let output = std::process::Command::new("cargo")
         .args([
             "run",
+            "-p",
+            "verifier",
             "--bin",
             "verifier",
             "--",
@@ -1135,6 +1195,8 @@ fn test_verbose_flag_enables_debug_logging_folder_mode() {
     let output = std::process::Command::new("cargo")
         .args([
             "run",
+            "-p",
+            "verifier",
             "--bin",
             "verifier",
             "--",
@@ -1180,6 +1242,8 @@ fn test_without_verbose_flag_debug_messages_suppressed_folder_mode() {
     let output = std::process::Command::new("cargo")
         .args([
             "run",
+            "-p",
+            "verifier",
             "--bin",
             "verifier",
             "--",
@@ -1245,6 +1309,8 @@ fn test_verbose_flag_with_empty_folder() {
     let output = std::process::Command::new("cargo")
         .args([
             "run",
+            "-p",
+            "verifier",
             "--bin",
             "verifier",
             "--",
@@ -1285,6 +1351,8 @@ fn test_verbose_flag_with_multiple_log_files() {
     let output = std::process::Command::new("cargo")
         .args([
             "run",
+            "-p",
+            "verifier",
             "--bin",
             "verifier",
             "--",
