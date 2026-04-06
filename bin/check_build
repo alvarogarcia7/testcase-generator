@@ -1,0 +1,7 @@
+#!/bin/bash
+
+make build-all
+
+make test-all
+
+exit 0
