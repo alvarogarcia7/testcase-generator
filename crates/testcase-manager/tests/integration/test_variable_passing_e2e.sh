@@ -111,6 +111,8 @@ section "Test 1: Creating Test YAML with Variable Capture"
 
 VARIABLE_YAML="$TEMP_DIR/test_variables.yaml"
 cat > "$VARIABLE_YAML" << 'EOF'
+type: test_case
+schema: tcms/test-case.schema.v1.json
 requirement: TEST_VARS
 item: 1
 tc: 1
@@ -134,7 +136,8 @@ test_sequences:
         description: Generate a session ID
         command: echo 'SESSION_ID=12345'
         capture_vars:
-          SESSION_ID: 'SESSION_ID=\K\d+'
+          - name: SESSION_ID
+            capture: 'SESSION_ID=\K\d+'
         expected:
           success: true
           result: "0"
@@ -156,8 +159,10 @@ test_sequences:
         description: Capture multiple values
         command: echo 'USER=testuser TOKEN=abc123xyz'
         capture_vars:
-          username: 'USER=\K\w+'
-          token: 'TOKEN=\K\w+'
+          - name: username
+            capture: 'USER=\K\w+'
+          - name: token
+            capture: 'TOKEN=\K\w+'
         expected:
           success: true
           result: "0"
@@ -179,8 +184,10 @@ test_sequences:
         description: Capture IP address from command output
         command: echo 'Server running at 192.168.1.100:8080'
         capture_vars:
-          server_ip: '\d+\.\d+\.\d+\.\d+'
-          server_port: ':(\d+)'
+          - name: server_ip
+            capture: '\d+\.\d+\.\d+\.\d+'
+          - name: server_port
+            capture: ':(\d+)'
         expected:
           success: true
           result: "0"

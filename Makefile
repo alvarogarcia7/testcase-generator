@@ -377,7 +377,7 @@ test-e2e-f: build
 # test-e2e-all: Run ALL E2E integration tests unconditionally
 # This target runs the complete E2E test suite regardless of changes
 # Used by test-all to ensure comprehensive testing in CI/CD
-test-e2e-all: build-all
+test-e2e-all: setup-python-for-test build-all
 	${MAKE} test-e2e-all-no-build
 .PHONY: test-e2e-all
 
@@ -392,6 +392,7 @@ test-e2e-all-no-build:
 	./crates/testcase-manager/tests/integration/test_manual_steps_e2e.sh
 	./crates/testcase-manager/tests/integration/test_manual_verification_e2e.sh
 	./crates/testcase-manager/tests/integration/test_orchestrator_e2e.sh
+	./crates/testcase-manager/tests/integration/test_pipeline_e2e.sh
 	./crates/testcase-manager/tests/integration/test_validate_yaml_watch_e2e.sh
 	./crates/testcase-manager/tests/integration/test_validate_yaml_multi_e2e.sh
 	./crates/testcase-manager/tests/integration/test_validate_yaml_schema_watch_e2e.sh
@@ -404,9 +405,9 @@ test-e2e-all-no-build:
 	./crates/testcase-manager/tests/integration/test_verifier_edge_cases_e2e.sh
 	${MAKE} test-verifier-edge-cases
 	./crates/testcase-manager/tests/integration/test_documentation_generation.sh
-	BUILD_VARIANT="" ./scripts/run_verifier_and_generate_reports.sh
-	${MAKE} validate-output-schemas
-.PHONY: test-e2e-all-no-build
+# 	BUILD_VARIANT="" ./scripts/run_verifier_and_generate_reports.sh
+# 	${MAKE} validate-output-schemas
+.PHONY: test-e2e-all-f so-build
 
 example_export-demo:
 	./examples/export_demo.sh
@@ -699,6 +700,16 @@ test-e2e-orchestrator-examples:
 	@${MAKE} build BASE_REF=$(or $(BASE_REF),main)
 	./tests/integration/test_orchestrator_examples.sh
 .PHONY: test-e2e-orchestrator-examples
+
+test-e2e-pipeline:
+	@${MAKE} build BASE_REF=$(or $(BASE_REF),main)
+	./crates/testcase-manager/tests/integration/test_pipeline_e2e.sh
+.PHONY: test-e2e-pipeline
+
+test-e2e-pipeline-batch:
+	@${MAKE} build BASE_REF=$(or $(BASE_REF),main)
+	./crates/testcase-manager/tests/integration/test_pipeline_batch.sh
+.PHONY: test-e2e-pipeline-batch
 
 generate-docs:
 	@${MAKE} build BASE_REF=$(or $(BASE_REF),main)

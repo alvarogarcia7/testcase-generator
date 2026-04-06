@@ -489,7 +489,7 @@ impl TestOrchestrator {
             test_case.id.replace('/', "_")
         ));
         let script_content =
-            executor.generate_test_script_with_json_output(test_case, &json_log_path, None);
+            executor.generate_test_script_with_json_output(test_case, &json_log_path, None, None);
 
         let script_path = output_dir.join(format!("{}_test.sh", test_case.id.replace('/', "_")));
         fs::write(&script_path, &script_content).context(format!(

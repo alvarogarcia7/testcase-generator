@@ -1117,6 +1117,57 @@ Build individual crates for faster development iteration:
 - **Test Comparison From Files**: make test-comparison-from-files BEFORE=before.txt AFTER=after.txt (generate test comparison report from pre-saved cargo test outputs)
 - **Dev Server**: N/A
 
+### Pipeline Testing
+
+The project includes comprehensive pipeline testing tools that validate test cases through a complete 5-stage pipeline:
+
+**Pipeline E2E Test** (single test case validation):
+```bash
+make test-e2e-pipeline
+```
+Runs the pipeline validation on two test cases (one passing, one failing) to verify all stages work correctly.
+
+**Pipeline Batch Processor** (all test cases):
+```bash
+make test-e2e-pipeline-batch
+```
+Applies the 5-stage pipeline to all test case YAMLs in the `testcases/` directory and reports grand totals of success/failure per stage.
+
+**Direct Script Execution**:
+```bash
+# Single test case pipeline
+./crates/testcase-manager/tests/integration/test_pipeline_e2e.sh
+
+# Batch processor with options
+./crates/testcase-manager/tests/integration/test_pipeline_batch.sh [--no-remove] [--testcases-dir DIR]
+```
+
+**Options**:
+- `--no-remove`: Preserve temporary files for debugging
+- `--testcases-dir DIR`: Process YAMLs from a custom directory (default: testcases/)
+
+**5-Stage Pipeline**:
+1. **Stage 1**: YAML validation against test-case.schema.json
+2. **Stage 2**: Script generation with bash syntax and shellcheck validation
+3. **Stage 3**: Script execution with JSON output validation
+4. **Stage 4**: Verification with YAML report generation
+5. **Stage 5**: Result summary generation in JSON format
+
+**Batch Processor Output**:
+- Per-stage statistics (total, success, failure, success rate %)
+- Overall test case statistics (total, completed, passed, failed)
+- Detailed lists of passed and failed test cases with failure stage information
+- Organized output directories: logs/, scripts/, executions/, verifications/, results/
+
+**Requirements**:
+- bash 3.2+ compatible
+- jq (JSON processing)
+- shellcheck (optional, for enhanced validation)
+
+**Documentation**:
+- User Guide: `PIPELINE_BATCH_PROCESSOR.md`
+- Implementation Details: `IMPLEMENTATION_PIPELINE_BATCH.md`
+
 ### Sccache Configuration
 
 **⚠️ IMPORTANT**: If you're experiencing build failures with exit status 254, immediately disable sccache:

@@ -165,4 +165,4 @@ jobs:
       - name: Run E2E tests
         run: |
           export PATH="$HOME/.cargo/bin:$PATH"
-          make test-e2e
+          make test-e2e-all

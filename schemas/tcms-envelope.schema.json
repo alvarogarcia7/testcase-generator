@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://tcms.example.com/schemas/tcms-envelope.schema.json",
+  "$id": "tcms-envelope.schema.json",
   "title": "TCMS Envelope Meta-Schema",
   "description": "Meta-schema for TCMS document envelopes requiring type and schema fields",
   "type": "object",
