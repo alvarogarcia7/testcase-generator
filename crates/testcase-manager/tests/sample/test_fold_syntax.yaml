@@ -1,0 +1,53 @@
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: TEST_MULTILINE_002
+item: 1
+tc: 2
+id: TEST_MULTILINE_FOLD
+description: >
+  Test case demonstrating multi-line descriptions
+  using YAML fold (>) syntax which folds line breaks
+  into spaces for a single paragraph.
+general_initial_conditions:
+  System:
+    - Ready
+initial_conditions:
+  Device:
+    - Connected
+test_sequences:
+  - id: 1
+    name: Multi-line Fold Syntax Sequence
+    description: >
+      This sequence tests that multi-line descriptions using fold syntax
+      are properly handled in generated scripts.
+      The text should be folded into a single line.
+    initial_conditions:
+      LPA:
+        - Active
+    steps:
+      - step: 1
+        description: >
+          This step demonstrates a folded multi-line description.
+          The second sentence continues the thought.
+          The third sentence completes the description.
+        command: pwd
+        expected:
+          success: true
+          result: "0"
+          output: ""
+        verification:
+          result: "[ $EXIT_CODE -eq 0 ]"
+          output: "true"
+      - step: 2
+        description: >
+          Execute date command to get current timestamp.
+          This is useful for logging purposes.
+          The output format can be customized.
+        command: date '+%Y-%m-%d'
+        expected:
+          success: true
+          result: "0"
+          output: ""
+        verification:
+          result: "[ $EXIT_CODE -eq 0 ]"
+          output: "true"

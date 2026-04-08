@@ -167,67 +167,24 @@ EOF
 
 pass "Created test YAML with pipe syntax multi-line descriptions"
 
-# Test 2: Create test YAML with multi-line descriptions using fold (>) syntax
-section "Test 2: Creating Test YAML with Multi-line Descriptions (Fold Syntax)"
+# Test 2: YAML with multi-line descriptions using fold (>) syntax
+# NOTE: This test has been converted to a Rust E2E test
+# See: crates/testcase-manager/tests/multiline_descriptions_e2e_test.rs
+# Test file: crates/testcase-manager/tests/sample/test_fold_syntax.yaml
+section "Test 2: Multi-line Descriptions (Fold Syntax) - Rust E2E Test"
 
-FOLD_YAML="$TEMP_DIR/test_fold_syntax.yaml"
-cat > "$FOLD_YAML" << 'EOF'
-type: test_case
-schema: tcms/test-case.schema.v1.json
-requirement: TEST_MULTILINE_002
-item: 1
-tc: 2
-id: TEST_MULTILINE_FOLD
-description: >
-  Test case demonstrating multi-line descriptions
-  using YAML fold (>) syntax which folds line breaks
-  into spaces for a single paragraph.
-general_initial_conditions:
-  System:
-    - Ready
-initial_conditions:
-  Device:
-    - Connected
-test_sequences:
-  - id: 1
-    name: Multi-line Fold Syntax Sequence
-    description: >
-      This sequence tests that multi-line descriptions using fold syntax
-      are properly handled in generated scripts.
-      The text should be folded into a single line.
-    initial_conditions:
-      LPA:
-        - Active
-    steps:
-      - step: 1
-        description: >
-          This step demonstrates a folded multi-line description.
-          The second sentence continues the thought.
-          The third sentence completes the description.
-        command: pwd
-        expected:
-          success: true
-          result: "0"
-          output: ""
-        verification:
-          result: "[ $EXIT_CODE -eq 0 ]"
-          output: "true"
-      - step: 2
-        description: >
-          Execute date command to get current timestamp.
-          This is useful for logging purposes.
-          The output format can be customized.
-        command: date '+%Y-%m-%d'
-        expected:
-          success: true
-          result: "0"
-          output: ""
-        verification:
-          result: "[ $EXIT_CODE -eq 0 ]"
-          output: "true"
-EOF
+# Use the test file from the sample directory instead of inline heredoc
+FOLD_YAML="$PROJECT_ROOT/crates/testcase-manager/tests/sample/test_fold_syntax.yaml"
 
-pass "Created test YAML with fold syntax multi-line descriptions"
+if [[ ! -f "$FOLD_YAML" ]]; then
+    fail "Fold syntax test file not found at $FOLD_YAML"
+    echo "This test has been converted to a Rust E2E test."
+    echo "Please ensure the file exists: crates/testcase-manager/tests/sample/test_fold_syntax.yaml"
+    ((TESTS_FAILED++))
+else
+    pass "Fold syntax YAML test file found (Rust E2E test)"
+    ((TESTS_PASSED++))
+fi
 
 # Test 3: Create test YAML with mixed syntax
 section "Test 3: Creating Test YAML with Mixed Multi-line Syntax"
@@ -319,12 +276,17 @@ else
     ((TESTS_FAILED++))
 fi
 
-if "$VALIDATE_YAML_BIN" --schema "$SCHEMA_FILE" "$FOLD_YAML" > /dev/null 2>&1; then
-    pass "Fold syntax YAML validates against schema"
-    ((TESTS_PASSED++))
+# Fold syntax YAML validation - using static file from Rust E2E test
+if [[ -f "$FOLD_YAML" ]]; then
+    if "$VALIDATE_YAML_BIN" --schema "$SCHEMA_FILE" "$FOLD_YAML" > /dev/null 2>&1; then
+        pass "Fold syntax YAML validates against schema (Rust E2E test file)"
+        ((TESTS_PASSED++))
+    else
+        fail "Fold syntax YAML failed schema validation"
+        ((TESTS_FAILED++))
+    fi
 else
-    fail "Fold syntax YAML failed schema validation"
-    ((TESTS_FAILED++))
+    info "Fold syntax YAML validation skipped - file managed by Rust E2E test"
 fi
 
 if "$VALIDATE_YAML_BIN" --schema "$SCHEMA_FILE" "$MIXED_YAML" > /dev/null 2>&1; then
@@ -356,23 +318,11 @@ else
     ((TESTS_FAILED++))
 fi
 
-FOLD_SCRIPT="$TEMP_DIR/test_fold_syntax.sh"
-if "$TEST_EXECUTOR_BIN" generate "$FOLD_YAML" -o "$FOLD_SCRIPT" > "$TEMP_DIR/fold_gen_output.txt" 2>&1; then
-    pass "Generated script from fold syntax YAML"
-    ((TESTS_PASSED++))
-else
-    fail "Failed to generate script from fold syntax YAML"
-    info "Error output: $(cat "$TEMP_DIR/fold_gen_output.txt" 2>/dev/null | head -20)"
-    ((TESTS_FAILED++))
-fi
-
-if [[ -f "$FOLD_SCRIPT" ]]; then
-    pass "Fold syntax script file created"
-    ((TESTS_PASSED++))
-else
-    fail "Fold syntax script file not found"
-    ((TESTS_FAILED++))
-fi
+# NOTE: Fold syntax test is now handled by Rust E2E test
+# See: crates/testcase-manager/tests/multiline_descriptions_e2e_test.rs
+# Skipping fold syntax script generation in bash test
+info "Fold syntax test is handled by Rust E2E test - skipping bash generation"
+FOLD_SCRIPT=""
 
 MIXED_SCRIPT="$TEMP_DIR/test_mixed_syntax.sh"
 if "$TEST_EXECUTOR_BIN" generate "$MIXED_YAML" -o "$MIXED_SCRIPT" > "$TEMP_DIR/mixed_gen_output.txt" 2>&1; then
@@ -407,7 +357,8 @@ if [[ -f "$PIPE_SCRIPT" ]]; then
     validate_with_shellcheck "$PIPE_SCRIPT" "Pipe syntax script"
 fi
 
-if [[ -f "$FOLD_SCRIPT" ]]; then
+# Fold syntax bash validation skipped - handled by Rust E2E test
+if [[ -n "$FOLD_SCRIPT" && -f "$FOLD_SCRIPT" ]]; then
     if bash -n "$FOLD_SCRIPT" 2>/dev/null; then
         pass "Fold syntax script has valid bash syntax"
         ((TESTS_PASSED++))
@@ -417,6 +368,8 @@ if [[ -f "$FOLD_SCRIPT" ]]; then
         ((TESTS_FAILED++))
     fi
     validate_with_shellcheck "$FOLD_SCRIPT" "Fold syntax script"
+else
+    info "Fold syntax test skipped - handled by Rust E2E test"
 fi
 
 if [[ -f "$MIXED_SCRIPT" ]]; then
@@ -470,7 +423,8 @@ if [[ -f "$PIPE_SCRIPT" ]]; then
     fi
 fi
 
-if [[ -f "$FOLD_SCRIPT" ]]; then
+# Fold syntax description verification skipped - handled by Rust E2E test
+if [[ -n "$FOLD_SCRIPT" && -f "$FOLD_SCRIPT" ]]; then
     # Fold syntax should combine lines into single comment or multiple comments
     # Check that description text is present (regardless of line breaks)
     if grep -q "This step demonstrates a folded multi-line description" "$FOLD_SCRIPT"; then
@@ -480,6 +434,8 @@ if [[ -f "$FOLD_SCRIPT" ]]; then
         fail "Fold script missing multi-line description text"
         ((TESTS_FAILED++))
     fi
+else
+    info "Fold syntax description test skipped - handled by Rust E2E test"
 fi
 
 if [[ -f "$MIXED_SCRIPT" ]]; then
@@ -544,7 +500,8 @@ if [[ -f "$PIPE_SCRIPT" ]]; then
     cd "$PROJECT_ROOT"
 fi
 
-if [[ -f "$FOLD_SCRIPT" ]]; then
+# Fold syntax execution skipped - handled by Rust E2E test
+if [[ -n "$FOLD_SCRIPT" && -f "$FOLD_SCRIPT" ]]; then
     FOLD_OUTPUT="$TEMP_DIR/fold_output.txt"
     cd "$TEMP_DIR"
     if bash "$FOLD_SCRIPT" > "$FOLD_OUTPUT" 2>&1; then
@@ -556,6 +513,8 @@ if [[ -f "$FOLD_SCRIPT" ]]; then
         ((TESTS_FAILED++))
     fi
     cd "$PROJECT_ROOT"
+else
+    info "Fold syntax execution test skipped - handled by Rust E2E test"
 fi
 
 if [[ -f "$MIXED_SCRIPT" ]]; then
@@ -614,6 +573,7 @@ else
     ((TESTS_FAILED++))
 fi
 
+# Fold syntax JSON log verification skipped - handled by Rust E2E test
 FOLD_JSON="$TEMP_DIR/TEST_MULTILINE_FOLD_execution_log.json"
 if [[ -f "$FOLD_JSON" ]]; then
     pass "Fold syntax JSON log created"
@@ -640,8 +600,7 @@ if [[ -f "$FOLD_JSON" ]]; then
         info "jq not available - skipping detailed JSON validation"
     fi
 else
-    fail "Fold syntax JSON log not created"
-    ((TESTS_FAILED++))
+    info "Fold syntax JSON log test skipped - handled by Rust E2E test"
 fi
 
 MIXED_JSON="$TEMP_DIR/TEST_MULTILINE_MIXED_execution_log.json"
