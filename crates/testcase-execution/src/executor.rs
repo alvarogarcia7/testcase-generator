@@ -958,7 +958,10 @@ impl TestExecutor {
             }
 
             for step in &sequence.steps {
-                script.push_str(&format!("# Step {}: {}\n", step.step, step.description));
+                let comment =
+                    format_multiline_comment(&format!("# Step {}: ", step.step), &step.description);
+                script.push_str(&comment);
+                script.push('\n');
 
                 // Execute before_step hook with TEST_STEP_NUMBER and TEST_STEP_DESCRIPTION
                 if let Some(ref hooks) = test_case.hooks {
@@ -985,9 +988,18 @@ impl TestExecutor {
                         VerificationExpression::Simple(s) if s.trim() == "true");
                     let has_verification = has_result_verification || has_output_verification;
 
+                    // Format multi-line description for echo statements
+                    let echo_desc = step
+                        .description
+                        .lines()
+                        .map(|line| line.trim())
+                        .filter(|line| !line.is_empty())
+                        .collect::<Vec<_>>()
+                        .join(" ");
                     script.push_str(&format!(
                         "echo \"Step {}: {}\"\n",
-                        step.step, step.description
+                        step.step,
+                        echo_desc.replace("\"", "\\\"")
                     ));
                     script.push_str(&format!(
                         "echo \"Command: {}\"\n",
@@ -1099,12 +1111,14 @@ impl TestExecutor {
                         script.push_str("if [ \"$USER_VERIFICATION\" = true ]; then\n");
                         script.push_str(&format!(
                             "    echo \"[PASS] Step {}: {}\"\n",
-                            step.step, step.description
+                            step.step,
+                            echo_desc.replace("\"", "\\\"")
                         ));
                         script.push_str("else\n");
                         script.push_str(&format!(
                             "    echo \"[FAIL] Step {}: {}\"\n",
-                            step.step, step.description
+                            step.step,
+                            echo_desc.replace("\"", "\\\"")
                         ));
                         script.push_str(
                             "    echo \"  Result verification: $USER_VERIFICATION_RESULT\"\n",
@@ -1218,6 +1232,15 @@ impl TestExecutor {
 
                     continue;
                 }
+
+                // Format multi-line description for echo statements (automated steps)
+                let echo_desc = step
+                    .description
+                    .lines()
+                    .map(|line| line.trim())
+                    .filter(|line| !line.is_empty())
+                    .collect::<Vec<_>>()
+                    .join(" ");
 
                 script.push_str(&format!(
                     "LOG_FILE=\"{}_sequence-{}_step-{}.actual.log\"\n",
@@ -1488,12 +1511,14 @@ impl TestExecutor {
                 script.push_str(&format!("if [ {} ]; then\n", verification_condition));
                 script.push_str(&format!(
                     "    echo \"[PASS] Step {}: {}\"\n",
-                    step.step, step.description
+                    step.step,
+                    echo_desc.replace("\"", "\\\"")
                 ));
                 script.push_str("else\n");
                 script.push_str(&format!(
                     "    echo \"[FAIL] Step {}: {}\"\n",
-                    step.step, step.description
+                    step.step,
+                    echo_desc.replace("\"", "\\\"")
                 ));
                 script.push_str("    echo \"  Command: ");
                 script.push_str(&converted_command.replace("\"", "\\\""));
@@ -2447,6 +2472,29 @@ pub fn bash_escape(value: &str) -> String {
     // In bash, the safest way to escape a string is to wrap it in single quotes
     // and escape any single quotes by ending the quote, adding an escaped quote, and starting again
     format!("'{}'", value.replace('\'', r"'\''"))
+}
+
+/// Helper function to format multi-line comments for bash scripts
+///
+/// Splits text on newlines, trims each line, filters out empty lines,
+/// and prefixes each with the given string (e.g., '# Step 1: ')
+///
+/// # Examples
+///
+/// ```
+/// use testcase_execution::executor::format_multiline_comment;
+///
+/// let text = "First line\nSecond line\n\nThird line";
+/// let result = format_multiline_comment("# ", text);
+/// assert_eq!(result, "# First line\n# Second line\n# Third line");
+/// ```
+pub fn format_multiline_comment(prefix: &str, text: &str) -> String {
+    text.lines()
+        .map(|line| line.trim())
+        .filter(|line| !line.is_empty())
+        .map(|line| format!("{}{}", prefix, line))
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 #[cfg(test)]
