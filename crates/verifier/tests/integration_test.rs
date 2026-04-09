@@ -43,7 +43,8 @@ fn test_e2e_verifier_with_config_file_only() {
     .unwrap();
 
     // Use the full container config file
-    let config_path = get_workspace_root().join("testcases/verifier_scenarios/full_container_config.yml");
+    let config_path =
+        get_workspace_root().join("testcases/verifier_scenarios/full_container_config.yml");
 
     // Run verifier with config file, no CLI overrides
     let schema_path = get_schema_path();
@@ -198,7 +199,8 @@ fn test_e2e_verifier_with_config_and_cli_overrides() {
     .unwrap();
 
     // Use the full container config file
-    let config_path = get_workspace_root().join("testcases/verifier_scenarios/full_container_config.yml");
+    let config_path =
+        get_workspace_root().join("testcases/verifier_scenarios/full_container_config.yml");
 
     // Run verifier with config file AND CLI overrides
     let schema_path = get_schema_path();
@@ -328,7 +330,8 @@ fn test_e2e_verifier_with_minimal_config_file() {
     .unwrap();
 
     // Use the minimal config file
-    let config_path = get_workspace_root().join("testcases/verifier_scenarios/minimal_container_config.yml");
+    let config_path =
+        get_workspace_root().join("testcases/verifier_scenarios/minimal_container_config.yml");
 
     // Run verifier with minimal config file
     let schema_path = get_schema_path();
@@ -393,7 +396,8 @@ fn test_e2e_verifier_json_format_with_config() {
     .unwrap();
 
     // Use the full container config file
-    let config_path = get_workspace_root().join("testcases/verifier_scenarios/full_container_config.yml");
+    let config_path =
+        get_workspace_root().join("testcases/verifier_scenarios/full_container_config.yml");
 
     // Run verifier with JSON format
     let schema_path = get_schema_path();
