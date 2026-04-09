@@ -629,6 +629,7 @@ verify-testcases: build-validate-yaml
 	@FAILED=0; \
 	for file in $$(find testcases tests/sample data -type f \( -name "*.yml" -o -name "*.yaml" \) -not \( -path "*/expected_output_reports/*" -o -path "*/testcase_results_container/*" -o -path "*/generated_samples/*" -o -path "*/verifier_scenarios_incorrect/*" -o -name "*te.y*" -o -iname "sample_test_runs.yaml" -o -name "*wrong*" -o -name "data.yml" -o -name "steps-in-json.yml" -o -name "1.yaml" -o -name "SGP.22_4.4.2.yaml" -o -name "conditional_verification_example.yml" -o -name "doc_gen_*.yml" -o -name "*container*" -o -path "*test_case_result*" -o -path "*test_result_01*" \) 2>/dev/null); do \
 		echo "Validating: $$file"; \
+		echo "DBD05AAD-1BEA-48C2-A967-B7C4626C5EC4: TODO Verify that this file has a schema. If it doesn't have a schema, mark it as failure. If it has it, add it to the list of schemas to validate."; \
 		if ./target/debug/validate-yaml --schema schemas/test-case.schema.json "$$file" >/dev/null 2>&1; then \
 			echo "  ✓ PASSED"; \
 		else \
@@ -642,6 +643,7 @@ verify-testcases: build-validate-yaml
 	else \
 		echo "All test case files validated successfully"; \
 	fi
+	echo "DBD05AAD-1BEA-48C2-A967-B7C4626C5EC4: TODO Verify all the schemas in the list, make sure they are all valid according to the JSON Schema validation"; \
 .PHONY: verify-testcases
 
 # Validates output samples in schemas/tcms/samples/ and testcases/examples/expected_test_results/
