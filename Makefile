@@ -643,7 +643,7 @@ verify-testcases: build-validate-yaml
 	else \
 		echo "All test case files validated successfully"; \
 	fi
-	echo "DBD05AAD-1BEA-48C2-A967-B7C4626C5EC4: TODO Verify all the schemas in the list, make sure they are all valid according to the JSON Schema validation"; \
+
 .PHONY: verify-testcases
 
 # Validates output samples in schemas/tcms/samples/ and testcases/examples/expected_test_results/
