@@ -270,10 +270,12 @@ check_misplaced_samples() {
 # Check for duplicate schema files
 check_duplicate_schemas() {
     section "Checking for Duplicate Schema Files"
-    
+
     local duplicates_found=0
-    
+
     # Use Python to track schema files across directories
+    # Note: Intentionally excludes schemas/tcms/verification_methods/ since each verification
+    # method has its own unique domain-specific schema that is correctly named schema.json
     uv run python3 << PYEOF
 import sys
 from pathlib import Path
@@ -289,18 +291,14 @@ schema_files = defaultdict(list)
 for schema_file in schemas_root.glob('*.json'):
     schema_files[schema_file.name].append(f'schemas/')
 
-# Check schemas/tcms/
+# Check schemas/tcms/ (excluding verification_methods subdirectories)
 for schema_file in tcms_dir.glob('*.json'):
     schema_files[schema_file.name].append(f'schemas/tcms/')
 
-# Check schemas/tcms/verification_methods/
-vm_dir = tcms_dir / 'verification_methods'
-if vm_dir.exists():
-    for subdir in vm_dir.iterdir():
-        if subdir.is_dir():
-            for schema_file in subdir.glob('*.json'):
-                rel_path = f'schemas/tcms/verification_methods/{subdir.name}/'
-                schema_files[schema_file.name].append(rel_path)
+# Note: Intentionally NOT checking schemas/tcms/verification_methods/ because
+# each verification method subdirectory (test/, analysis/, demonstration/, etc.)
+# has its own unique, domain-specific schema.json file. These are not duplicates.
+# Each verification method needs its own schema.json with its own enum-based type.
 
 # Report duplicates
 duplicates = {name: locs for name, locs in schema_files.items() if len(locs) > 1}
@@ -314,14 +312,14 @@ else:
     print('✓ No duplicate schema files detected')
     sys.exit(0)
 PYEOF
-    
+
     if [ $? -ne 0 ]; then
         log_warning_custom "Duplicate schema files detected (see above)"
         duplicates_found=1
     else
         pass "No duplicate schema files"
     fi
-    
+
     return 0
 }
 

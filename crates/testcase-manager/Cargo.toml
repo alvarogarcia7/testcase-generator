@@ -42,30 +42,6 @@ tempfile = { workspace = true }
 reqwest = { workspace = true }
 roxmltree = { workspace = true }
 
-[[bin]]
-name = "editor"
-path = "src/main_editor.rs"
-
-[[bin]]
-name = "script-cleanup"
-path = "src/bin/script-cleanup.rs"
-
-[[bin]]
-name = "json-escape"
-path = "src/bin/json-escape.rs"
-
-[[bin]]
-name = "verifier"
-path = "src/bin/verifier.rs"
-
-[[bin]]
-name = "test-plan-documentation-generator-compat"
-path = "src/bin/test-plan-documentation-generator-compat.rs"
-
-[[bin]]
-name = "json-to-yaml"
-path = "src/bin/json-to-yaml.rs"
-
 [[example]]
 name = "tty_fallback_demo"
 path = "examples/tty_fallback_demo.rs"

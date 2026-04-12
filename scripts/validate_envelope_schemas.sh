@@ -462,15 +462,10 @@ if os.path.isdir(tcms_dir):
         if file.endswith('.json') and os.path.isfile(os.path.join(tcms_dir, file)):
             schema_files[file].append('schemas/tcms/')
 
-# Check schemas/tcms/verification_methods/
-vm_dir = os.path.join(tcms_dir, 'verification_methods')
-if os.path.isdir(vm_dir):
-    for subdir in os.listdir(vm_dir):
-        subdir_path = os.path.join(vm_dir, subdir)
-        if os.path.isdir(subdir_path):
-            for file in os.listdir(subdir_path):
-                if file.endswith('.json') and os.path.isfile(os.path.join(subdir_path, file)):
-                    schema_files[file].append(f'schemas/tcms/verification_methods/{subdir}/')
+# NOTE: Intentionally NOT checking schemas/tcms/verification_methods/ because
+# each verification method subdirectory (test/, analysis/, demonstration/, etc.)
+# has its own unique, domain-specific schema.json file. These are not duplicates.
+# Each verification method needs its own schema.json with its own enum-based type.
 
 # Report duplicates
 duplicates = {name: locs for name, locs in schema_files.items() if len(locs) > 1}
