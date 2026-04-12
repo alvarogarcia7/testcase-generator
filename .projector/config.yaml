@@ -1,0 +1,9 @@
+# Example Projector configuration file
+# This demonstrates how to configure projects and checks declaratively
+
+projects:
+  - name: tcms
+    checks:
+      - name: build
+        description: Compile/build the project
+        mandatory: true
