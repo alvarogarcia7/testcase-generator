@@ -31,23 +31,23 @@ docker:build:
     - export COMMIT_SHA=$(git rev-parse --short HEAD)
     - echo "COMMIT_SHA=$COMMIT_SHA" >> build.env
     - echo "Building Python + Docker client image"
-    - docker build -t $CI_REGISTRY_IMAGE:${COMMIT_SHA} .
-    - docker inspect  $CI_REGISTRY_IMAGE:${COMMIT_SHA} | tee docker_inspect.json
-    - docker run --rm $CI_REGISTRY_IMAGE:${COMMIT_SHA} ls
-    - docker run --rm $CI_REGISTRY_IMAGE:${COMMIT_SHA} /usr/local/bin/editor --help
+    - time docker build -t $CI_REGISTRY_IMAGE:${COMMIT_SHA} .
+    - time docker inspect  $CI_REGISTRY_IMAGE:${COMMIT_SHA} | tee docker_inspect.json
+    - time docker run --rm $CI_REGISTRY_IMAGE:${COMMIT_SHA} ls
+    - time docker run --rm $CI_REGISTRY_IMAGE:${COMMIT_SHA} /usr/local/bin/editor --help
     # Verify Python 3.14 is available in the image
-    - docker run --rm $CI_REGISTRY_IMAGE:${COMMIT_SHA} python3.14 --version
-    - docker run --rm $CI_REGISTRY_IMAGE:${COMMIT_SHA} python3 --version
-    - docker run --rm $CI_REGISTRY_IMAGE:${COMMIT_SHA} uv --version
+    - time docker run --rm $CI_REGISTRY_IMAGE:${COMMIT_SHA} python3.14 --version
+    - time docker run --rm $CI_REGISTRY_IMAGE:${COMMIT_SHA} python3 --version
+    - time docker run --rm $CI_REGISTRY_IMAGE:${COMMIT_SHA} uv --version
     # Verify cargo works offline
-    - docker run --rm --net none $CI_REGISTRY_IMAGE:${COMMIT_SHA} cargo --offline build --all --all-features --release
-    - docker run --rm --net none $CI_REGISTRY_IMAGE:${COMMIT_SHA} cargo --offline build --all --all-features
+    - time docker run --rm --net none $CI_REGISTRY_IMAGE:${COMMIT_SHA} cargo --offline build --all --all-features --release
+    - time docker run --rm --net none $CI_REGISTRY_IMAGE:${COMMIT_SHA} cargo --offline build --all --all-features
     # Push the image to the registry for
     - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
-    - docker push $CI_REGISTRY_IMAGE:${COMMIT_SHA}
-    - docker tag ${CI_REGISTRY_IMAGE}:${COMMIT_SHA} ${CI_REGISTRY_IMAGE}:latest
-    - docker push $CI_REGISTRY_IMAGE:latest
-    - docker inspect $CI_REGISTRY_IMAGE:latest | tee docker_inspect.json
+    - time docker push $CI_REGISTRY_IMAGE:${COMMIT_SHA}
+    - time docker tag ${CI_REGISTRY_IMAGE}:${COMMIT_SHA} ${CI_REGISTRY_IMAGE}:latest
+    - time docker push $CI_REGISTRY_IMAGE:latest
+    - time docker inspect $CI_REGISTRY_IMAGE:latest | tee docker_inspect.json
   artifacts:
     name: "docker-verify-$CI_COMMIT_REF_SLUG"
     paths:
@@ -93,19 +93,17 @@ docker:push:
       artifacts: true
   script:
     - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
-    - find . || true
     - ls -la build.env || true
     - echo "COMMIT_SHA=$COMMIT_SHA" # Debugging output
     - echo "Pushing Docker image to registry"
     - echo "COMMIT_SHA=$COMMIT_SHA" # Debugging output
     - echo "CI_REGISTRY_IMAGE=$CI_REGISTRY_IMAGE" # Debugging output
     - echo "Pulling image ${CI_REGISTRY_IMAGE}:${COMMIT_SHA} to verify it exists before pushing latest tag" # Debugging output
-    - docker pull ${CI_REGISTRY_IMAGE}:${COMMIT_SHA} || { echo "Failed to pull image ${CI_REGISTRY_IMAGE}:${COMMIT_SHA}. Check if the build stage pushed the image correctly."; exit 1; }
   # Variable comes from artifacts->VARIABLE_NAME
-    - docker pull ${CI_REGISTRY_IMAGE}:${COMMIT_SHA}
-    - docker tag ${CI_REGISTRY_IMAGE}:${COMMIT_SHA} ${CI_REGISTRY_IMAGE}:latest
+    - time docker pull ${CI_REGISTRY_IMAGE}:${COMMIT_SHA}
+    - time docker tag ${CI_REGISTRY_IMAGE}:${COMMIT_SHA} ${CI_REGISTRY_IMAGE}:latest
 #    - docker push $CI_REGISTRY_IMAGE:${COMMIT_SHA} - No need, already pushed
-    - docker push $CI_REGISTRY_IMAGE:latest
+    - time docker push $CI_REGISTRY_IMAGE:latest
 #  only:
 #    - master
 #    - main
@@ -122,11 +120,12 @@ rust:build-test-lint:
     - apt-get install -y -qq curl jq
     # Install uv package manager
     - curl -LsSf https://astral.sh/uv/install.sh | sh
-    - export PATH="$HOME/.cargo/bin:$PATH"
+    - source $HOME/.local/bin/env || true
+    - export PATH="$HOME/.cargo/bin:$HOME/.local/bin:/root/.cargo/bin:/root/.local/bin:$PATH"
     # Install Python 3.14 using uv
-    - uv python install 3.14
+    - time uv python install 3.14
     # Sync Python dependencies
-    - uv sync --python 3.14
+    - time uv sync --python 3.14
     # Install sccache using the installation script
     - ./scripts/install-sccache.sh --ci
     # Install coverage tools using the installation script
@@ -364,25 +363,6 @@ rust:build-test-lint:
         uv run python3.14 scripts/ci_post_clippy_comment.py clippy_output.txt || true
       fi
   coverage: '/lines\.*: \d+\.\d+%/'
-  artifacts:
-    name: "rust-artifacts-$CI_COMMIT_REF_SLUG"
-    paths:
-      - lcov.info
-      - coverage/
-      - coverage_report.json
-      - test_output.txt
-      - test_results.json
-      - e2e_output.txt
-      - doc_test_output.txt
-      - clippy_output.txt
-      - artifacts/binaries/
-    reports:
-      junit: test_results.xml
-      coverage_report:
-        coverage_format: cobertura
-        path: cobertura.xml
-    expire_in: 1 week
-    when: always
 
 #docker:verify:
 #  stage: docker
@@ -431,6 +411,7 @@ rust:e2e-tests:
     - cargo build --all --all-features --release
     - make test-e2e 2>&1 | tee e2e_output.txt || true
     - echo "===== sccache Statistics After E2E Tests ====="
+    - touch e2e_output.txt
     - sccache --show-stats
   artifacts:
     name: "e2e-artifacts-$CI_COMMIT_REF_SLUG"
