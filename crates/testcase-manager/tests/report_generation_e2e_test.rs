@@ -1,6 +1,5 @@
 use std::fs;
 use std::path::PathBuf;
-use std::process::Command;
 use tempfile::TempDir;
 use testcase_manager::TestCaseStorage;
 use testcase_manager::{
@@ -16,11 +15,6 @@ fn get_workspace_root() -> PathBuf {
     workspace_root.pop(); // Go up from crate dir
     workspace_root.pop(); // Go up from crates dir
     workspace_root
-}
-
-/// Get the full path to the schema file for verifier
-fn get_schema_path() -> PathBuf {
-    get_workspace_root().join("data/testcase_results_container/schema.json")
 }
 
 fn load_test_case(filename: &str) -> TestCase {

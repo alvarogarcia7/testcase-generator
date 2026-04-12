@@ -802,7 +802,6 @@ fn test_folder_mode_success_with_logs() {
         .output()
         .unwrap();
 
-    let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
 
     // Should not have validation errors
