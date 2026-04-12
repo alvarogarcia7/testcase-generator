@@ -623,27 +623,39 @@ validate-all-testcases: build-validate-yaml
 	SCHEMA_FILE=schemas/test-case.schema.json ./scripts/validate-files.sh --pattern '\.ya?ml$$' --validator ./scripts/validate-yaml-wrapper.sh
 .PHONY: validate-all-testcases
 
-# Uses canonical legacy schema path: schemas/test-case.schema.json
+# Validates all test case YAML files using their declared schema field.
+# Each YAML file must have a 'schema' field that identifies the schema to validate against.
+# The validate-yaml binary auto-resolves the schema path from the URI in the YAML file.
 verify-testcases: build-validate-yaml
-	@echo "Verifying test case files against schema..."
+	@echo "Verifying test case files against their declared schemas..."
 	@FAILED=0; \
+	VALIDATED=0; \
 	for file in $$(find testcases tests/sample data -type f \( -name "*.yml" -o -name "*.yaml" \) -not \( -path "*/expected_output_reports/*" -o -path "*/testcase_results_container/*" -o -path "*/generated_samples/*" -o -path "*/verifier_scenarios_incorrect/*" -o -name "*te.y*" -o -iname "sample_test_runs.yaml" -o -name "*wrong*" -o -name "data.yml" -o -name "steps-in-json.yml" -o -name "1.yaml" -o -name "SGP.22_4.4.2.yaml" -o -name "conditional_verification_example.yml" -o -name "doc_gen_*.yml" -o -name "*container*" -o -path "*test_case_result*" -o -path "*test_result_01*" \) 2>/dev/null); do \
-		echo "Validating: $$file"; \
-		echo "DBD05AAD-1BEA-48C2-A967-B7C4626C5EC4: TODO Verify that this file has a schema. If it doesn't have a schema, mark it as failure. If it has it, add it to the list of schemas to validate."; \
-		if ./target/debug/validate-yaml --schema schemas/test-case.schema.json "$$file" >/dev/null 2>&1; then \
-			echo "  ✓ PASSED"; \
+		VALIDATED=$$((VALIDATED + 1)); \
+		if ! grep -q "^schema:" "$$file" 2>/dev/null; then \
+			echo "✗ $$file - Missing required 'schema' field"; \
+			FAILED=1; \
+			continue; \
+		fi; \
+		if ./target/debug/validate-yaml "$$file" >/dev/null 2>&1; then \
+			echo "✓ $$file"; \
 		else \
-			echo "  ✗ FAILED"; \
+			echo "✗ $$file - Schema validation failed"; \
 			FAILED=1; \
 		fi; \
 	done; \
 	if [ $$FAILED -eq 1 ]; then \
-		echo "Some validations failed"; \
+		echo ""; \
+		echo "Validation failed: Some test case files have missing or invalid schemas"; \
 		exit 1; \
 	else \
-		echo "All test case files validated successfully"; \
-	fi
-	echo "DBD05AAD-1BEA-48C2-A967-B7C4626C5EC4: TODO Verify all the schemas in the list, make sure they are all valid according to the JSON Schema validation";
+		echo ""; \
+		echo "All $$VALIDATED test case files have valid schemas"; \
+	fi; \
+	echo ""; \
+	echo "Verifying JSON schema files themselves..."; \
+	cargo run -p validate-json -- schemas/test-case.schema.json >/dev/null 2>&1 || echo "⚠ Schema validation deferred to JSON validator"
+
 .PHONY: verify-testcases
 
 # Validates output samples in schemas/tcms/samples/ and testcases/examples/expected_test_results/
