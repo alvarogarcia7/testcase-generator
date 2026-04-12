@@ -1,7 +1,7 @@
 ---
 id: TCMS-34
 title: 'gitlab pipeline: uv is failing'
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-04-06 10:44'
 labels:
