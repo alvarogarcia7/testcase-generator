@@ -2,31 +2,29 @@
 # Testcase Manager Makefile
 # ============================================================================
 #
-# This Makefile uses an INCREMENTAL BUILD STRATEGY by default for everyday
-# development workflows. Common targets like `make build`, `make test`,
-# `make lint`, and `make clippy` automatically detect which crates have changed
-# since a base reference (default: main branch) and only build/test those crates
-# and their reverse dependencies.
+# This Makefile provides both FULL and INCREMENTAL build and test strategies.
 #
-# INCREMENTAL TARGETS (default for everyday use):
+# FULL BUILD AND TEST TARGETS (comprehensive):
+#   make test               - Full build + all unit tests + all E2E tests
+#   make test-all           - Same as 'make test' (always runs complete suite)
+#   make test-unit          - Full workspace unit tests
+#   make test-e2e           - Full workspace E2E tests
+#   make test-e2e-all       - Same as 'make test-e2e' (all E2E tests)
+#   make build-all          - Build all workspace crates unconditionally
+#
+# INCREMENTAL TARGETS (for faster development iteration):
 #   make build              - Build only affected crates
-#   make test               - Test only affected crates
 #   make lint               - Lint only affected crates
 #   make clippy             - Clippy only affected crates
-#   make test-unit          - Unit tests for affected crates only
-#   make test-e2e           - E2E tests for affected crates only
+#   make test-from          - Test only affected crates (from BASE_REF)
+#   make build-from         - Build only affected crates (from BASE_REF)
 #
-# FULL BUILD TARGETS (for CI/CD or comprehensive validation):
-#   make build-all          - Build all workspace crates unconditionally
-#   make test-all           - Full build + all unit tests + all E2E tests
-#   make test-e2e-all       - Run all E2E tests unconditionally (with build)
-#
-# CUSTOMIZING BASE REFERENCE:
+# CUSTOMIZING BASE REFERENCE (for incremental targets):
 #   By default, incremental targets compare against 'main' branch.
 #   You can override this with BASE_REF parameter:
 #
 #   make build BASE_REF=develop          # Compare against develop branch
-#   make test BASE_REF=HEAD~3            # Compare against 3 commits ago
+#   make test-from BASE_REF=HEAD~3       # Test changes from 3 commits ago
 #   make build BASE_REF=abc123           # Compare against specific commit
 #
 # DEBUGGING:
@@ -184,26 +182,17 @@ test-audit-verifier-keys: build-audit-verifier
 	./crates/audit-verifier/tests/integration/test_audit_key_scenarios.sh
 .PHONY: test-audit-verifier-keys
 
-test: setup-python-for-test
-	${MAKE} test-unit
-	${MAKE} test-e2e
+test: setup-python-for-test build-all
+	cargo test --workspace --all-features --tests
+	${MAKE} test-e2e-all-no-build
 	${MAKE} verify-testcases
 	${MAKE} test-campaigns
 # 	${MAKE} generate-docs-coverage
 	${MAKE} coverage-clean
 .PHONY: test
 
-test-unit: build
-	@BASE_REF=$(or $(BASE_REF),main); \
-	AFFECTED=$$(./scripts/detect-local-changes.sh "$$BASE_REF" 2>/dev/null || echo ""); \
-	if [ -z "$$AFFECTED" ]; then \
-		echo "No changes detected - skipping unit tests"; \
-	else \
-		echo "Running unit tests for affected crates: $$AFFECTED"; \
-		for crate in $$AFFECTED; do \
-			cargo test -p "$$crate" --all-features --tests || exit 1; \
-		done; \
-	fi
+test-unit: build-all
+	cargo test --workspace --all-features --tests
 .PHONY: test-unit
 
 test-doc:
@@ -291,75 +280,8 @@ test-e2e-failing-all:
 	./tests/integration/run_all_tests.sh
 .PHONY: test-e2e-failing-all
 
-test-e2e: build
-	@BASE_REF=$(or $(BASE_REF),main); \
-	AFFECTED=$$(./scripts/detect-local-changes.sh "$$BASE_REF" 2>/dev/null || echo ""); \
-	if [ -z "$$AFFECTED" ]; then \
-		echo "No changes detected - running minimal E2E tests"; \
-		./crates/testcase-manager/tests/integration/check_environment.sh; \
-		./crates/testcase-manager/tests/integration/smoke_test.sh; \
-	else \
-		echo "Running E2E tests for affected crates: $$AFFECTED"; \
-		E2E_TESTS_FILE=$$(mktemp); \
-		./crates/testcase-manager/tests/integration/check_environment.sh; \
-		for crate in $$AFFECTED; do \
-			case "$$crate" in \
-				validate-yaml) \
-					echo "./crates/testcase-manager/tests/integration/test_validate_yaml_watch_e2e.sh" >> $$E2E_TESTS_FILE; \
-					echo "./crates/testcase-manager/tests/integration/test_validate_yaml_multi_e2e.sh" >> $$E2E_TESTS_FILE; \
-					echo "./crates/testcase-manager/tests/integration/test_validate_yaml_schema_watch_e2e.sh" >> $$E2E_TESTS_FILE; \
-					echo "./crates/testcase-manager/tests/integration/test_validate_yaml_transitive_schema_watch_e2e.sh" >> $$E2E_TESTS_FILE; \
-					echo "./crates/testcase-manager/tests/integration/test_auto_schema_validation_e2e.sh" >> $$E2E_TESTS_FILE; \
-					;; \
-				test-executor) \
-					echo "./crates/testcase-manager/tests/integration/test_executor_e2e.sh" >> $$E2E_TESTS_FILE; \
-					echo "./crates/testcase-manager/tests/integration/test_script_generation_acceptance_e2e.sh" >> $$E2E_TESTS_FILE; \
-					echo "./crates/testcase-manager/tests/integration/test_variable_passing_e2e.sh" >> $$E2E_TESTS_FILE; \
-					echo "./crates/testcase-manager/tests/integration/test_conditional_verification_e2e.sh" >> $$E2E_TESTS_FILE; \
-					echo "./crates/testcase-manager/tests/integration/test_manual_steps_e2e.sh" >> $$E2E_TESTS_FILE; \
-					;; \
-				test-orchestrator) \
-					echo "./crates/testcase-manager/tests/integration/test_orchestrator_e2e.sh" >> $$E2E_TESTS_FILE; \
-					;; \
-				verifier) \
-					echo "./crates/testcase-manager/tests/integration/test_verifier_e2e.sh" >> $$E2E_TESTS_FILE; \
-					echo "./crates/testcase-manager/tests/integration/test_verifier_container_e2e.sh" >> $$E2E_TESTS_FILE; \
-					echo "./crates/testcase-manager/tests/integration/test_verifier_edge_cases_e2e.sh" >> $$E2E_TESTS_FILE; \
-					echo "./scripts/run_verifier_and_generate_reports.sh" >> $$E2E_TESTS_FILE; \
-					;; \
-				audit-verifier) \
-					echo "./crates/audit-verifier/tests/integration/test_audit_logging_demo_e2e.sh" >> $$E2E_TESTS_FILE; \
-					echo "./crates/audit-verifier/tests/integration/test_audit_verifier_e2e.sh" >> $$E2E_TESTS_FILE; \
-					echo "./crates/audit-verifier/tests/integration/test_audit_key_scenarios.sh" >> $$E2E_TESTS_FILE; \
-					echo "./crates/audit-verifier/tests/integration/test_simple_workflow.sh" >> $$E2E_TESTS_FILE; \
-					;; \
-				json-escape) \
-					echo "./crates/testcase-manager/tests/integration/test_json_escape_e2e.sh" >> $$E2E_TESTS_FILE; \
-					;; \
-				testcase-manager) \
-					echo "./crates/testcase-manager/tests/integration/smoke_test.sh" >> $$E2E_TESTS_FILE; \
-					echo "./crates/testcase-manager/tests/integration/test_bdd_e2e.sh" >> $$E2E_TESTS_FILE; \
-					echo "./crates/testcase-manager/tests/integration/test_manual_verification_e2e.sh" >> $$E2E_TESTS_FILE; \
-					echo "./crates/testcase-manager/tests/integration/test_variable_display_e2e.sh" >> $$E2E_TESTS_FILE; \
-					echo "./crates/testcase-manager/tests/integration/test_documentation_generation.sh" >> $$E2E_TESTS_FILE; \
-					;; \
-			esac; \
-		done; \
-		if [ -s "$$E2E_TESTS_FILE" ]; then \
-			cat "$$E2E_TESTS_FILE" | sort -u | while read test_script; do \
-				if [ -f "$$test_script" ]; then \
-					echo "Running: $$test_script"; \
-					bash "$$test_script" || exit 1; \
-				fi; \
-			done; \
-		fi; \
-		rm -f "$$E2E_TESTS_FILE"; \
-		if echo "$$AFFECTED" | grep -qw "verifier"; then \
-			${MAKE} test-verifier-edge-cases; \
-			BUILD_VARIANT="" ./scripts/run_verifier_and_generate_reports.sh; \
-		fi; \
-		${MAKE} validate-output-schemas; \
-	fi
+test-e2e: setup-python-for-test build-all
+	${MAKE} test-e2e-all-no-build
 .PHONY: test-e2e
 
 test-e2e-f: build
@@ -376,10 +298,8 @@ test-e2e-f: build
 .PHONY: test-e2e-f
 
 # test-e2e-all: Run ALL E2E integration tests unconditionally
-# This target runs the complete E2E test suite regardless of changes
-# Used by test-all to ensure comprehensive testing in CI/CD
-test-e2e-all: setup-python-for-test build-all
-	${MAKE} test-e2e-all-no-build
+# This target is now identical to 'test-e2e' - both run the complete E2E suite
+test-e2e-all: test-e2e
 .PHONY: test-e2e-all
 
 # test-e2e-all-no-build: Run ALL E2E integration tests without building
@@ -422,10 +342,8 @@ build-all:
 
 # test-all: Unconditional full build and test cycle
 # Performs complete build, unit tests, and E2E tests regardless of changes
-# This target ignores any incremental build logic and always runs the full suite
-test-all: setup-python-for-test build-all
-	cargo test --workspace --all-features --tests
-	${MAKE} test-e2e-all-no-build
+# This target is now identical to 'test' - both run the complete test suite
+test-all: test
 .PHONY: test-all
 
 # Coverage exclusion pattern - escapes dots for regex
