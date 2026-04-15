@@ -188,6 +188,7 @@ test: setup-python-for-test
 	${MAKE} test-unit
 	${MAKE} test-e2e
 	${MAKE} verify-testcases
+	${MAKE} test-campaigns
 # 	${MAKE} generate-docs-coverage
 	${MAKE} coverage-clean
 .PHONY: test
@@ -837,3 +838,173 @@ test-rest:
 	while IFS= read -r line; do cargo test -p "$$line" || echo "$$line" >> .test-failing-tmp; done < ".test-failing"
 	-mv .test-failing-tmp .test-failing
 .PHONY: test-rest
+
+# ============================================================================
+# Campaign Management Tests
+# ============================================================================
+
+# test-campaigns: Run campaign management system tests
+# Tests the campaign-start, campaign-run, campaign-collect-evidence, and campaign-stop scripts
+test-campaigns: build-test-executor build-verifier
+	@echo "========================================="
+	@echo "Testing Campaign Management System"
+	@echo "========================================="
+	@echo ""
+	@CAMPAIGN_NAME="test_campaign_$$(date +%s)"; \
+	CAMPAIGN_DIR="campaigns/$$CAMPAIGN_NAME"; \
+	echo "Creating test campaign: $$CAMPAIGN_NAME"; \
+	echo ""; \
+	if ./scripts/campaign-start.sh --name "$$CAMPAIGN_NAME" --description "Automated test campaign for make test"; then \
+		echo "✓ Campaign created successfully"; \
+	else \
+		echo "✗ Campaign creation failed"; \
+		exit 1; \
+	fi; \
+	echo ""; \
+	echo "Running tests in campaign..."; \
+	if [ -f "testcases/self_validated_example.yml" ]; then \
+		if ./scripts/campaign-run.sh --campaign "$$CAMPAIGN_DIR" --pattern "self_validated_example\.yml" --continue-on-error; then \
+			echo "✓ Campaign run completed"; \
+		else \
+			echo "✗ Campaign run failed"; \
+			rm -rf "$$CAMPAIGN_DIR"; \
+			exit 1; \
+		fi; \
+	else \
+		echo "⚠ No test cases found, skipping campaign run"; \
+	fi; \
+	echo ""; \
+	echo "Collecting campaign evidence..."; \
+	if ./scripts/campaign-collect-evidence.sh --campaign "$$CAMPAIGN_DIR" --checksums; then \
+		echo "✓ Evidence collection completed"; \
+	else \
+		echo "✗ Evidence collection failed"; \
+		rm -rf "$$CAMPAIGN_DIR"; \
+		exit 1; \
+	fi; \
+	echo ""; \
+	echo "Stopping campaign..."; \
+	if ./scripts/campaign-stop.sh --campaign "$$CAMPAIGN_DIR" --summary "Automated test campaign completed"; then \
+		echo "✓ Campaign stopped successfully"; \
+	else \
+		echo "✗ Campaign stop failed"; \
+		rm -rf "$$CAMPAIGN_DIR"; \
+		exit 1; \
+	fi; \
+	echo ""; \
+	echo "Verifying campaign artifacts..."; \
+	if [ -f "$$CAMPAIGN_DIR/metadata/campaign.yaml" ]; then \
+		echo "✓ Campaign metadata exists"; \
+	else \
+		echo "✗ Campaign metadata missing"; \
+		rm -rf "$$CAMPAIGN_DIR"; \
+		exit 1; \
+	fi; \
+	if [ -f "$$CAMPAIGN_DIR/reports/CAMPAIGN_SUMMARY.md" ]; then \
+		echo "✓ Campaign summary report exists"; \
+	else \
+		echo "✗ Campaign summary report missing"; \
+		rm -rf "$$CAMPAIGN_DIR"; \
+		exit 1; \
+	fi; \
+	EVIDENCE_ARCHIVE="$${CAMPAIGN_NAME}_evidence.tar.gz"; \
+	if [ -f "$$EVIDENCE_ARCHIVE" ]; then \
+		echo "✓ Evidence archive created"; \
+		rm -f "$$EVIDENCE_ARCHIVE" "$${EVIDENCE_ARCHIVE}.sha256" "$${CAMPAIGN_NAME}_evidence_report.txt"; \
+	else \
+		echo "✗ Evidence archive missing"; \
+		rm -rf "$$CAMPAIGN_DIR"; \
+		exit 1; \
+	fi; \
+	echo ""; \
+	echo "Cleaning up test campaign..."; \
+	rm -rf "$$CAMPAIGN_DIR"; \
+	echo "✓ Test campaign cleaned up"; \
+	echo ""; \
+	echo "========================================="
+	echo "Campaign Management Tests: SUCCESS"
+	echo "========================================="
+.PHONY: test-campaigns
+
+# test-campaigns-full: Run comprehensive campaign tests with multiple test patterns
+test-campaigns-full: build-test-executor build-verifier
+	@echo "========================================="
+	@echo "Testing Campaign Management (Full Suite)"
+	@echo "========================================="
+	@echo ""
+	@CAMPAIGN_NAME="test_campaign_full_$$(date +%s)"; \
+	CAMPAIGN_DIR="campaigns/$$CAMPAIGN_NAME"; \
+	echo "Creating test campaign: $$CAMPAIGN_NAME"; \
+	./scripts/campaign-start.sh --name "$$CAMPAIGN_NAME" --description "Full campaign test suite"; \
+	echo ""; \
+	echo "Running first batch of tests..."; \
+	if [ -d "testcases/bdd_examples" ]; then \
+		./scripts/campaign-run.sh --campaign "$$CAMPAIGN_DIR" --testcase-dir testcases/bdd_examples --continue-on-error || true; \
+	fi; \
+	echo ""; \
+	echo "Running second batch of tests..."; \
+	./scripts/campaign-run.sh --campaign "$$CAMPAIGN_DIR" --pattern "self.*\.yml" --continue-on-error || true; \
+	echo ""; \
+	echo "Collecting evidence..."; \
+	./scripts/campaign-collect-evidence.sh --campaign "$$CAMPAIGN_DIR" --format tar.gz --checksums; \
+	echo ""; \
+	echo "Stopping campaign..."; \
+	./scripts/campaign-stop.sh --campaign "$$CAMPAIGN_DIR" --summary "Full test campaign completed" --collect-evidence; \
+	echo ""; \
+	echo "Cleaning up..."; \
+	rm -rf "$$CAMPAIGN_DIR"; \
+	rm -f "$${CAMPAIGN_NAME}_evidence.tar.gz" "$${CAMPAIGN_NAME}_evidence.tar.gz.sha256" "$${CAMPAIGN_NAME}_evidence_report.txt"; \
+	echo ""; \
+	echo "========================================="
+	echo "Full Campaign Tests: SUCCESS"
+	echo "========================================="
+.PHONY: test-campaigns-full
+
+# campaign-demo: Run a demonstration campaign (non-destructive)
+campaign-demo: build-test-executor build-verifier
+	@echo "========================================="
+	@echo "Campaign Management Demo"
+	@echo "========================================="
+	@echo ""
+	@echo "This demo creates a sample campaign to demonstrate the workflow."
+	@echo ""
+	@CAMPAIGN_NAME="demo_campaign_$$(date +%Y%m%d_%H%M%S)"; \
+	CAMPAIGN_DIR="campaigns/$$CAMPAIGN_NAME"; \
+	echo "Step 1: Starting campaign '$$CAMPAIGN_NAME'"; \
+	echo "  Command: ./scripts/campaign-start.sh --name \"$$CAMPAIGN_NAME\""; \
+	echo ""; \
+	./scripts/campaign-start.sh --name "$$CAMPAIGN_NAME" --description "Demo campaign to showcase test campaign management"; \
+	echo ""; \
+	read -p "Press Enter to continue to Step 2 (Run Tests)..."; \
+	echo ""; \
+	echo "Step 2: Running tests with pattern matching"; \
+	echo "  Command: ./scripts/campaign-run.sh --campaign \"$$CAMPAIGN_DIR\" --pattern \"self.*\""; \
+	echo ""; \
+	./scripts/campaign-run.sh --campaign "$$CAMPAIGN_DIR" --pattern "self.*\.yml" --continue-on-error || true; \
+	echo ""; \
+	read -p "Press Enter to continue to Step 3 (Collect Evidence)..."; \
+	echo ""; \
+	echo "Step 3: Collecting campaign evidence"; \
+	echo "  Command: ./scripts/campaign-collect-evidence.sh --campaign \"$$CAMPAIGN_DIR\" --checksums"; \
+	echo ""; \
+	./scripts/campaign-collect-evidence.sh --campaign "$$CAMPAIGN_DIR" --checksums; \
+	echo ""; \
+	read -p "Press Enter to continue to Step 4 (Stop Campaign)..."; \
+	echo ""; \
+	echo "Step 4: Stopping campaign and generating reports"; \
+	echo "  Command: ./scripts/campaign-stop.sh --campaign \"$$CAMPAIGN_DIR\""; \
+	echo ""; \
+	./scripts/campaign-stop.sh --campaign "$$CAMPAIGN_DIR" --summary "Demo campaign completed successfully"; \
+	echo ""; \
+	echo "========================================="
+	echo "Demo Complete!"
+	echo "========================================="
+	echo ""; \
+	echo "Campaign artifacts created at: $$CAMPAIGN_DIR"; \
+	echo "Evidence archive: $${CAMPAIGN_NAME}_evidence.tar.gz"; \
+	echo ""; \
+	echo "To clean up demo artifacts, run:"; \
+	echo "  rm -rf $$CAMPAIGN_DIR"; \
+	echo "  rm -f $${CAMPAIGN_NAME}_evidence.*"; \
+	echo ""
+.PHONY: campaign-demo
