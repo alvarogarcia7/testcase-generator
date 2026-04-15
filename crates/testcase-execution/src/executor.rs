@@ -1243,11 +1243,11 @@ impl TestExecutor {
                         .replace("$", "\\$");
                     script.push_str(&format!("ORIGINAL_COMMAND=\"{}\"\n", escaped_command));
 
-                    // Perform variable substitution: replace ${var_name} patterns using eval
+                    // Perform variable substitution: replace ${var_name} patterns
                     script.push_str("SUBSTITUTED_COMMAND=\"$ORIGINAL_COMMAND\"\n");
                     script.push_str("if [ -n \"$CAPTURED_VAR_NAMES\" ]; then\n");
                     script.push_str("    for var_name in $CAPTURED_VAR_NAMES; do\n");
-                    script.push_str("        eval \"var_value=\\$$var_name\"\n");
+                    script.push_str("        var_value=\"${!var_name}\"\n");
                     script.push_str("        # Escape special characters for sed\n");
                     script.push_str(
                         "        escaped_value=$(printf '%s' \"$var_value\" | sed 's/[&/\\]/\\\\&/g')\n",
@@ -3374,7 +3374,7 @@ mod tests {
         assert!(script.contains("ORIGINAL_COMMAND="));
         assert!(script.contains("SUBSTITUTED_COMMAND=\"$ORIGINAL_COMMAND\""));
         assert!(script.contains("for var_name in $CAPTURED_VAR_NAMES; do"));
-        assert!(script.contains("eval \"var_value=\\$$var_name\""));
+        assert!(script.contains("var_value=\"${!var_name}\""));
         assert!(script.contains("# Replace ${var_name} pattern"));
         assert!(script.contains("SUBSTITUTED_COMMAND=$(echo \"$SUBSTITUTED_COMMAND\" | sed \"s/\\${$var_name}/$escaped_value/g\")"));
         assert!(script.contains(
@@ -3427,7 +3427,7 @@ mod tests {
         // Verify substitution in result expression
         assert!(script.contains("EXPR="));
         assert!(script.contains("for var_name in $CAPTURED_VAR_NAMES; do"));
-        assert!(script.contains("eval \"var_value=\\$$var_name\""));
+        assert!(script.contains("var_value=\"${!var_name}\""));
         assert!(
             script.contains("EXPR=$(echo \"$EXPR\" | sed \"s/\\${$var_name}/$escaped_value/g\")")
         );
