@@ -100,6 +100,8 @@ impl CoverageAnalyzer {
                         requirement_text: Some(req_def.text.clone()),
                         covered_portions: None,
                         coverage_errors: None,
+                        covered_portions_passing: None,
+                        covered_portions_failing: None,
                     },
                 );
             }
@@ -309,6 +311,8 @@ impl CoverageAnalyzer {
                         requirement_text: req_text,
                         covered_portions: None,
                         coverage_errors: errors,
+                        covered_portions_passing: None,
+                        covered_portions_failing: None,
                     }
                 });
 
@@ -327,6 +331,17 @@ impl CoverageAnalyzer {
                         item.covered_portions
                             .get_or_insert_with(Vec::new)
                             .push(covers_str.clone());
+
+                        // Track passing vs failing covered portions
+                        if test_case_result.status == TestStatus::Pass {
+                            item.covered_portions_passing
+                                .get_or_insert_with(Vec::new)
+                                .push(covers_str.clone());
+                        } else if test_case_result.status == TestStatus::Fail {
+                            item.covered_portions_failing
+                                .get_or_insert_with(Vec::new)
+                                .push(covers_str.clone());
+                        }
                     }
                 }
             }
@@ -354,12 +369,19 @@ impl CoverageAnalyzer {
                 .iter()
                 .any(|tc| tc.status == TestStatus::Fail);
             let has_coverage = !item.test_cases.is_empty();
+            let has_errors = item
+                .coverage_errors
+                .as_ref()
+                .map(|errors| !errors.is_empty())
+                .unwrap_or(false);
 
-            item.status = match (&final_coverage_type, has_coverage, has_failures) {
-                (CoverageType::Full, true, false) => CoverageStatus::CoveredPass,
-                (CoverageType::Full, true, true) => CoverageStatus::CoveredFail,
-                (CoverageType::Partial, true, false) => CoverageStatus::PartialCoveredPass,
-                (CoverageType::Partial, true, true) => CoverageStatus::PartialCoveredFail,
+            item.status = match (&final_coverage_type, has_coverage, has_failures, has_errors) {
+                (CoverageType::Full, true, false, false) => CoverageStatus::CoveredPass,
+                (CoverageType::Full, true, _, true) => CoverageStatus::CoveredFail,
+                (CoverageType::Full, true, true, _) => CoverageStatus::CoveredFail,
+                (CoverageType::Partial, true, false, false) => CoverageStatus::PartialCoveredPass,
+                (CoverageType::Partial, true, _, true) => CoverageStatus::PartialCoveredFail,
+                (CoverageType::Partial, true, true, _) => CoverageStatus::PartialCoveredFail,
                 _ => CoverageStatus::Uncovered,
             };
         }
@@ -368,12 +390,23 @@ impl CoverageAnalyzer {
     }
 
     fn is_fully_covered(&self, requirement_text: &str, covered_portions: &[String]) -> bool {
-        let mut remaining_text = requirement_text.to_string();
+        let mut coverage_mask = vec![false; requirement_text.len()];
 
         for portion in covered_portions {
-            remaining_text = remaining_text.replace(portion, "");
+            let mut start = 0;
+            while let Some(pos) = requirement_text[start..].find(portion) {
+                let actual_pos = start + pos;
+                for item in coverage_mask
+                    .iter_mut()
+                    .skip(actual_pos)
+                    .take(portion.len())
+                {
+                    *item = true;
+                }
+                start = actual_pos + 1;
+            }
         }
 
-        remaining_text.is_empty()
+        coverage_mask.iter().all(|&covered| covered)
     }
 }

@@ -104,17 +104,25 @@ impl HtmlReportGenerator {
                 let failed_count = req
                     .test_cases
                     .iter()
-                    .filter(|tc| tc.status == TestStatus::Fail)
+                    .filter(|tc| {
+                        tc.status == TestStatus::Fail || tc.status == TestStatus::NotExecuted
+                    })
                     .count();
 
                 let details_id = format!("details-{}", idx);
 
                 let requirement_text_html = if let Some(ref req_text) = req.requirement_text {
+                    let highlighted = Self::highlight_requirement_text(
+                        req_text,
+                        &req.coverage_type,
+                        req.covered_portions_passing.as_deref(),
+                        req.covered_portions_failing.as_deref(),
+                    );
                     format!(
                         "<div class=\"requirement-text\">\
-                            <strong>Requirement Text:</strong> {}\
+                            <strong>Requirement Text:</strong><br/>{}\
                         </div>",
-                        html_escape(req_text)
+                        highlighted
                     )
                 } else {
                     String::new()
@@ -236,6 +244,133 @@ impl HtmlReportGenerator {
             })
             .collect::<Vec<String>>()
             .join("\n")
+    }
+
+    fn highlight_requirement_text(
+        req_text: &str,
+        coverage_type: &CoverageType,
+        passing_portions: Option<&[String]>,
+        failing_portions: Option<&[String]>,
+    ) -> String {
+        if req_text.is_empty() {
+            return String::new();
+        }
+
+        #[derive(Debug, Clone, Copy, PartialEq)]
+        enum CoverageState {
+            Uncovered,
+            CoveredPassing,
+            CoveredFailing,
+        }
+
+        // Work with byte positions to match with str::find()
+        let mut coverage_map: Vec<CoverageState> = vec![CoverageState::Uncovered; req_text.len()];
+
+        // If coverage_type is Full, mark everything as passing by default
+        if *coverage_type == CoverageType::Full {
+            for item in coverage_map.iter_mut() {
+                *item = CoverageState::CoveredPassing;
+            }
+        } else {
+            // First mark all passing portions (green)
+            if let Some(portions) = passing_portions {
+                for portion in portions {
+                    if portion.is_empty() {
+                        continue;
+                    }
+                    let mut start = 0;
+                    while let Some(pos) = req_text[start..].find(portion) {
+                        let actual_pos = start + pos;
+                        let end_pos = (actual_pos + portion.len()).min(req_text.len());
+                        for item in coverage_map
+                            .iter_mut()
+                            .skip(actual_pos)
+                            .take(end_pos - actual_pos)
+                        {
+                            *item = CoverageState::CoveredPassing;
+                        }
+                        start = actual_pos + 1;
+                    }
+                }
+            }
+        }
+
+        // Then mark failing portions (orange) - these override passing
+        if let Some(portions) = failing_portions {
+            for portion in portions {
+                if portion.is_empty() {
+                    continue;
+                }
+                let mut start = 0;
+                while let Some(pos) = req_text[start..].find(portion) {
+                    let actual_pos = start + pos;
+                    let end_pos = (actual_pos + portion.len()).min(req_text.len());
+                    for item in coverage_map
+                        .iter_mut()
+                        .skip(actual_pos)
+                        .take(end_pos - actual_pos)
+                    {
+                        *item = CoverageState::CoveredFailing;
+                    }
+                    start = actual_pos + 1;
+                }
+            }
+        }
+
+        // Build highlighted HTML
+        let mut result = String::new();
+        let mut current_state: Option<CoverageState> = None;
+        let bytes = req_text.as_bytes();
+
+        for (byte_idx, &byte) in bytes.iter().enumerate() {
+            let state = coverage_map[byte_idx];
+
+            // Close previous span if state changes
+            if let Some(prev_state) = current_state {
+                if state != prev_state {
+                    result.push_str("</span>");
+                    current_state = None;
+                }
+            }
+
+            // Open new span if state changes or at start
+            if current_state.is_none() || current_state != Some(state) {
+                match state {
+                    CoverageState::CoveredPassing => {
+                        result.push_str("<span class=\"covered-passing\">");
+                    }
+                    CoverageState::CoveredFailing => {
+                        result.push_str("<span class=\"covered-failing\">");
+                    }
+                    CoverageState::Uncovered => {
+                        result.push_str("<span class=\"uncovered\">");
+                    }
+                }
+                current_state = Some(state);
+            }
+
+            // Add the character (escaped)
+            let ch = byte as char;
+            let escaped_char = match ch {
+                '&' => "&amp;",
+                '<' => "&lt;",
+                '>' => "&gt;",
+                '"' => "&quot;",
+                '\'' => "&#39;",
+                _ => {
+                    result.push(ch);
+                    continue;
+                }
+            };
+            result.push_str(escaped_char);
+        }
+
+        // Close final span
+        if current_state.is_some() {
+            result.push_str("</span>");
+        }
+
+        result
     }
 }
 

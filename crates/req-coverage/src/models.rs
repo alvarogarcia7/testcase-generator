@@ -110,6 +110,12 @@ pub struct RequirementCoverageItem {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub coverage_errors: Option<Vec<String>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub covered_portions_passing: Option<Vec<String>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub covered_portions_failing: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -291,6 +297,8 @@ mod tests {
             requirement_text: None,
             covered_portions: None,
             coverage_errors: None,
+            covered_portions_passing: None,
+            covered_portions_failing: None,
         };
 
         report.add_requirement(item);
@@ -318,6 +326,8 @@ mod tests {
             requirement_text: Some("full requirement text".to_string()),
             covered_portions: Some(vec!["partial coverage".to_string()]),
             coverage_errors: None,
+            covered_portions_passing: None,
+            covered_portions_failing: None,
         };
 
         report.add_requirement(item);
@@ -340,6 +350,8 @@ mod tests {
             requirement_text: None,
             covered_portions: None,
             coverage_errors: None,
+            covered_portions_passing: None,
+            covered_portions_failing: None,
         };
 
         report.add_requirement(item);
@@ -367,6 +379,8 @@ mod tests {
             requirement_text: None,
             covered_portions: None,
             coverage_errors: None,
+            covered_portions_passing: None,
+            covered_portions_failing: None,
         });
 
         report.requirements.push(RequirementCoverageItem {
@@ -382,6 +396,8 @@ mod tests {
             requirement_text: None,
             covered_portions: None,
             coverage_errors: None,
+            covered_portions_passing: None,
+            covered_portions_failing: None,
         });
 
         report.requirements.push(RequirementCoverageItem {
@@ -392,6 +408,8 @@ mod tests {
             requirement_text: None,
             covered_portions: None,
             coverage_errors: None,
+            covered_portions_passing: None,
+            covered_portions_failing: None,
         });
 
         report.compute_statistics();

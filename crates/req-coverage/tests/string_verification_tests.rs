@@ -142,10 +142,7 @@ fn test_full_coverage_with_single_test_case() -> Result<()> {
     let req = &report.requirements[0];
     assert_eq!(req.requirement_id, "REQ-001");
     assert_eq!(req.coverage_type, req_coverage::models::CoverageType::Full);
-    assert_eq!(
-        req.requirement_text,
-        Some("authenticate users".to_string())
-    );
+    assert_eq!(req.requirement_text, Some("authenticate users".to_string()));
     assert_eq!(
         req.covered_portions,
         Some(vec!["authenticate users".to_string()])
