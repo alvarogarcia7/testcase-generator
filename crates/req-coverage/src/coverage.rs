@@ -87,6 +87,24 @@ impl CoverageAnalyzer {
 
         let mut requirement_map: RequirementMap = BTreeMap::new();
 
+        // Initialize requirement_map with all requirements from definitions (if available)
+        if let Some(ref req_defs) = self.requirement_definitions {
+            for (req_id, req_def) in req_defs {
+                requirement_map.insert(
+                    req_id.clone(),
+                    RequirementCoverageItem {
+                        requirement_id: req_id.clone(),
+                        coverage_type: CoverageType::Full,
+                        test_cases: Vec::new(),
+                        status: CoverageStatus::Uncovered,
+                        requirement_text: Some(req_def.text.clone()),
+                        covered_portions: None,
+                        coverage_errors: None,
+                    },
+                );
+            }
+        }
+
         for test_case in test_cases {
             self.process_test_case(&test_case, &verification_results, &mut requirement_map)?;
         }
@@ -138,7 +156,7 @@ impl CoverageAnalyzer {
                                 test_cases.push(test_case);
                             }
                             Err(e) => {
-                                log::warn!("Failed to load test case from {:?}: {}", path, e);
+                                log::warn!("Failed to load test case from {:?}: {:?}", path, e);
                             }
                         }
                     }
@@ -356,6 +374,6 @@ impl CoverageAnalyzer {
             remaining_text = remaining_text.replace(portion, "");
         }
 
-        remaining_text.trim().is_empty()
+        remaining_text.is_empty()
     }
 }

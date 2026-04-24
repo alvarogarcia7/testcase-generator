@@ -35,7 +35,11 @@ fn create_test_case_file(
             covers_text
         )
     } else {
-        String::new()
+        format!(
+            r#"requirement_coverage:
+  type: full
+"#
+        )
     };
 
     let content = format!(
@@ -48,26 +52,27 @@ id: {}
 description: Test case for {}
 {}general_initial_conditions:
   system:
-  - Test system ready
+    - Test system ready
 initial_conditions:
   system:
-  - Ready
-test_sequences:
-- id: 1
-  name: Test sequence
-  description: Test
-  initial_conditions:
-    system:
     - Ready
-  steps:
-  - step: 1
-    description: Test step
-    command: echo test
-    expected:
-      result: "0"
-      output: test
-    verification:
-      result: '[[ $EXIT_CODE -eq 0 ]]'
+test_sequences:
+  - id: 1
+    name: Test sequence
+    description: Test
+    initial_conditions:
+      system:
+        - Ready
+    steps:
+      - step: 1
+        description: Test step
+        command: echo test
+        expected:
+          result: "0"
+          output: test
+        verification:
+          result: '[[ $EXIT_CODE -eq 0 ]]'
+          output: 'grep -q "test" <<< "$COMMAND_OUTPUT"'
 "#,
         requirement, id, requirement, requirement_coverage
     );
