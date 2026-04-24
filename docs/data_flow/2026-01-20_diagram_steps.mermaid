@@ -3,11 +3,12 @@ sequenceDiagram
     participant Generator as [System=TCMS CLI - Quality: Alpha]<br>Test Case Generator
     participant Editor as [Program=$Editor - Quality: Mature]<br>Manual Editor
     participant Generate as [Program=Bash - Quality: Beta]<br> test-executor generate
+    participant TestMachine as [System=Test Machine - Quality: Mature]<br>Test Machine
     participant Bash as [Program=Bash - Quality: Mature]<br> Bash
     participant DUT as [System/Program=DUT - Quality: Under Inspection]<br>Device Under Test
     participant Verifier as [System=TCMS CLI - Quality: Alpha]<br>Test Verifier
+    participant ReqCoverage as [System=TCMS CLI - Quality: Alpha]<br>Requirement Coverage
     participant Reports as [System=TCMS Reports - Quality: Beta]<br>Documentation Generator
-    participant TODO as TODO_???
 
     
     Tester ->> Generator: generate
@@ -17,8 +18,8 @@ sequenceDiagram
     Tester ->> Generate: Create Test Case Shell Script (input: Test Case YAML)    
     Note over Generate,Tester: Artifact: Test Case Shell Script (.sh)
 
-    Tester ->> TODO: Start Test Campaign Execution (input: set of Test Case YAML [.yaml])
-    Note over TODO,Tester: Artifact: Test Campaign Execution Log (.json) PK={id,dut_version,timestamp}
+    Tester ->> TestMachine: Start Test Campaign Execution (input: set of Test Case YAML [.yaml])
+    Note over TestMachine,Tester: Artifact: Test Campaign Execution Log (.json) PK={id,dut_version,timestamp}
 
     Tester ->> Bash: Execute test case <br>input: Test Case Shell Script
     %% replaced single execution step with alternative paths
@@ -36,6 +37,10 @@ sequenceDiagram
     Tester ->> Verifier: Verify Test Execution<br>input: Test Case Execution Log, Test Case YAML
     Verifier ->> Verifier: verify expectations
     Note over Verifier,Tester: Artifact: <br>1. Test Verification Log (.json, schema=TODO) PK={id,timestamp} <br> 2. Test Execution Result (.xml) PK={id,version,timestamp}
+
+    Tester ->> ReqCoverage: Verify Requirement Coverage<br>input: test cases, test verification
+    ReqCoverage ->> ReqCoverage: Verify Requirement Coverage
+    Note over Tester,ReqCoverage: Artifact: <br>1. Test Coverage Log (.json, schema=TODO) PK=TODO
 
     Tester ->> Reports: Generate Test Plan Documentation (input: set of (Test Execution Result [.xml] + Test Case YAML [.yaml]))
     Note over Reports,Tester: Artifact: Test Plan Documentation (.adoc/.html/.pdf)<br>PK={id,version,timestamp}
