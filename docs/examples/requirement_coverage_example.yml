@@ -1,0 +1,54 @@
+# Example test case showing requirement coverage specification
+# This demonstrates how test cases can specify their coverage of requirements
+
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: AUTH-001
+item: 1
+tc: 1
+id: AUTH_001_TC_001
+description: Test user authentication with valid credentials
+
+# Full coverage example - this test case covers the entire requirement
+requirement_coverage:
+  type: full
+
+general_initial_conditions:
+  system:
+  - Authentication service is running
+  - User database is accessible
+
+initial_conditions:
+  system:
+  - Test user account exists in database
+  - User credentials are valid
+
+test_sequences:
+- id: 1
+  name: Valid Authentication Flow
+  description: Test successful authentication with correct username and password
+  initial_conditions:
+    system:
+    - User is logged out
+  steps:
+  - step: 1
+    description: Submit login form with valid credentials
+    command: curl -X POST http://localhost:8080/login -d "username=testuser&password=testpass123"
+    expected:
+      success: true
+      result: 0
+      output: '{"status":"success","token":"..."}'
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q '"status":"success"' <<< "$COMMAND_OUTPUT"
+  
+  - step: 2
+    description: Verify authentication token is valid
+    command: curl -H "Authorization: Bearer $AUTH_TOKEN" http://localhost:8080/protected
+    expected:
+      success: true
+      result: 0
+      output: '{"message":"Access granted"}'
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q '"message":"Access granted"' <<< "$COMMAND_OUTPUT"

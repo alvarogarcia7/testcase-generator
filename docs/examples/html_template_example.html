@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Custom Requirement Coverage Report</title>
+    <style>
+        /* Custom styles - modify as needed */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #ffffff;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: #f9f9f9;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        
+        .timestamp {
+            color: #7f8c8d;
+            font-size: 1rem;
+            margin-bottom: 30px;
+            font-style: italic;
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 25px;
+            margin-bottom: 50px;
+        }
+        
+        .stat-card {
+            background: white;
+            color: #2c3e50;
+            padding: 25px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-left: 5px solid #3498db;
+        }
+        
+        .stat-card.total {
+            border-left-color: #3498db;
+        }
+        
+        .stat-card.full {
+            border-left-color: #2ecc71;
+        }
+        
+        .stat-card.partial {
+            border-left-color: #f39c12;
+        }
+        
+        .stat-card.uncovered {
+            border-left-color: #e74c3c;
+        }
+        
+        .stat-number {
+            font-size: 3rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+        
+        .stat-label {
+            font-size: 1rem;
+            color: #7f8c8d;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .requirements-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .requirements-table th {
+            background: #34495e;
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        .requirements-table td {
+            padding: 15px;
+            border-bottom: 1px solid #ecf0f1;
+        }
+        
+        .requirements-table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        
+        .status-badge.green {
+            background: #d5f4e6;
+            color: #27ae60;
+        }
+        
+        .status-badge.red {
+            background: #fadbd8;
+            color: #c0392b;
+        }
+        
+        .status-badge.yellow {
+            background: #fcf3cf;
+            color: #d68910;
+        }
+        
+        .status-badge.orange {
+            background: #ffe6cc;
+            color: #ca6f1e;
+        }
+        
+        .status-badge.gray {
+            background: #d5d8dc;
+            color: #5d6d7e;
+        }
+        
+        .coverage-type {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 5px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            background: #ecf0f1;
+            color: #2c3e50;
+        }
+        
+        .test-cases {
+            margin-top: 15px;
+            padding-left: 25px;
+        }
+        
+        .test-case-item {
+            padding: 10px;
+            margin: 6px 0;
+            background: #f8f9fa;
+            border-left: 4px solid #bdc3c7;
+            border-radius: 5px;
+            font-size: 0.95rem;
+        }
+        
+        .test-case-item.pass {
+            border-left-color: #27ae60;
+            background: #eafaf1;
+        }
+        
+        .test-case-item.fail {
+            border-left-color: #c0392b;
+            background: #fadbd8;
+        }
+        
+        .test-case-item.not-executed {
+            border-left-color: #95a5a6;
+        }
+        
+        .test-case-id {
+            font-weight: 700;
+            color: #2c3e50;
+        }
+        
+        .test-case-description {
+            color: #7f8c8d;
+            margin-left: 10px;
+        }
+        
+        .test-case-covers {
+            display: block;
+            color: #3498db;
+            font-style: italic;
+            margin-top: 5px;
+            font-size: 0.9rem;
+        }
+        
+        .expandable {
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        .expandable::before {
+            content: '▶ ';
+            display: inline-block;
+            transition: transform 0.3s;
+            color: #3498db;
+        }
+        
+        .expandable.expanded::before {
+            transform: rotate(90deg);
+        }
+        
+        .details {
+            display: none;
+        }
+        
+        .details.show {
+            display: block;
+        }
+        
+        h2 {
+            color: #2c3e50;
+            margin-top: 50px;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #3498db;
+            font-size: 1.8rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📋 Custom Requirement Coverage Report</h1>
+        <div class="timestamp">Generated: {{GENERATED_AT}}</div>
+        
+        <div class="dashboard">
+            <div class="stat-card total">
+                <div class="stat-number">{{TOTAL_REQUIREMENTS}}</div>
+                <div class="stat-label">Total Requirements</div>
+            </div>
+            <div class="stat-card full">
+                <div class="stat-number">{{FULLY_COVERED}}</div>
+                <div class="stat-label">Fully Covered</div>
+            </div>
+            <div class="stat-card partial">
+                <div class="stat-number">{{PARTIALLY_COVERED}}</div>
+                <div class="stat-label">Partially Covered</div>
+            </div>
+            <div class="stat-card uncovered">
+                <div class="stat-number">{{UNCOVERED}}</div>
+                <div class="stat-label">Uncovered</div>
+            </div>
+        </div>
+        
+        <h2>Requirements Coverage Details</h2>
+        
+        <table class="requirements-table">
+            <thead>
+                <tr>
+                    <th>Requirement ID</th>
+                    <th>Coverage Type</th>
+                    <th>Status</th>
+                    <th>Test Cases</th>
+                    <th>Pass/Fail</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{REQUIREMENTS_ROWS}}
+            </tbody>
+        </table>
+    </div>
+    
+    <script>
+        document.querySelectorAll('.expandable').forEach(el => {
+            el.addEventListener('click', function() {
+                this.classList.toggle('expanded');
+                const detailsId = this.getAttribute('data-details');
+                const details = document.getElementById(detailsId);
+                details.classList.toggle('show');
+            });
+        });
+    </script>
+</body>
+</html>

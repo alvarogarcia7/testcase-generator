@@ -1,0 +1,24 @@
+[package]
+name = "req-coverage"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "req-coverage"
+path = "src/main.rs"
+
+[dependencies]
+testcase-models = { path = "../testcase-models" }
+testcase-common = { path = "../testcase-common" }
+testcase-storage = { path = "../testcase-storage" }
+
+anyhow = { workspace = true }
+clap = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+chrono = { workspace = true }
+log = { workspace = true }
+env_logger = { workspace = true }
+walkdir = { workspace = true }
+indexmap = { workspace = true }

@@ -6,6 +6,7 @@ members = [
     "crates/editor",
     "crates/json-escape",
     "crates/json-to-yaml",
+    "crates/req-coverage",
     "crates/script-cleanup",
     "crates/testcase-models",
     "crates/testcase-cli",

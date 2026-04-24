@@ -36,6 +36,7 @@ The workspace follows a **bottom-up dependency hierarchy** where higher-level cr
 │  test-verify         test-run-manager       script-cleanup               │
 │  validate-yaml       validate-json          verifier                     │
 │  json-escape         json-to-yaml           tpdg-compat                  │
+│  req-coverage                                                            │
 │                                                                           │
 └───────────────────────────────┬─────────────────────────────────────────┘
                                 │ depends on
@@ -521,6 +522,36 @@ json-to-yaml input.json output.yaml
 **Usage**:
 ```bash
 test-plan-documentation-generator-compat [OPTIONS]
+```
+
+#### `req-coverage`
+**Binary**: `req-coverage`
+
+**Purpose**: Generate requirement coverage reports from test cases and verification results
+
+**Key Features**:
+- Analyzes test case requirement coverage
+- Correlates test cases with verification results
+- Generates JSON coverage reports
+- Produces interactive HTML reports
+- Supports full and partial requirement coverage tracking
+- Visual dashboard with coverage statistics
+
+**Dependencies**: `testcase-models`, `testcase-common`, `testcase-storage`, `clap`, `serde`, `serde_json`, `serde_yaml`, `chrono`, `anyhow`, `walkdir`
+
+**Usage**:
+```bash
+# Generate coverage report JSON
+req-coverage verify \
+  --test-cases-folder ./testcases \
+  --test-results-folder ./verification_results \
+  --output coverage.json
+
+# Generate HTML report
+req-coverage print \
+  --format html \
+  --input coverage.json \
+  --output ./coverage-html
 ```
 
 ## Adding New Crates
