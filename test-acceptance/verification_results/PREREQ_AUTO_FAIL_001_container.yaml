@@ -1,0 +1,37 @@
+title: Acceptance Test Results - PREREQ_AUTO_FAIL_001.yaml
+project: Test Case Manager - Acceptance Suite
+test_date: 2026-04-01T09:07:09.605670Z
+test_results:
+- test_case_id: PREREQ_AUTO_FAIL_001
+  description: Test case with automatic prerequisite that fails verification
+  sequences:
+  - sequence_id: 1
+    name: Test Sequence That Should Not Execute
+    step_results:
+    - !Pass
+      step: 1
+      description: This step should never execute
+      requirement: PREREQ_AUTO_FAIL
+      item: 1
+      tc: 1
+    all_steps_passed: true
+    requirement: PREREQ_AUTO_FAIL
+    item: 1
+    tc: 1
+  total_steps: 1
+  passed_steps: 1
+  failed_steps: 0
+  not_executed_steps: 0
+  overall_pass: true
+  requirement: PREREQ_AUTO_FAIL
+  item: 1
+  tc: 1
+  source_yaml_sha256: 06c17b4458972e7dbdee89e9cd509fb571a8ba21039d6cf820eab4d1c844168d
+metadata:
+  environment: Automated Test Environment - alvaros-MacBook-Pro-M1.local
+  execution_duration: 0.0
+  total_test_cases: 1
+  passed_test_cases: 1
+  failed_test_cases: 0
+  source_hashes:
+    PREREQ_AUTO_FAIL_001: 06c17b4458972e7dbdee89e9cd509fb571a8ba21039d6cf820eab4d1c844168d

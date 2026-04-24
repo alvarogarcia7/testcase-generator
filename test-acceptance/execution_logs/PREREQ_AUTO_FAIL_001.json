@@ -1,0 +1,12 @@
+[
+  {
+    "test_sequence": 1,
+    "step": 1,
+    "command": "echo \"This should not appear\"",
+    "exit_code": 0,
+    "output": "This should not appear",
+    "timestamp": "2026-01-22T14:30:00+04:00",
+    "result_verification_pass": false,
+    "output_verification_pass": false
+  }
+]
