@@ -70,6 +70,21 @@ schemas/tcms/container-config.schema.v1.json
 
 ---
 
+## Standalone Tool Schemas
+
+These schemas are used by specific tools and are not part of the versioned TCMS envelope system.
+
+### Requirement Coverage Report
+```
+schemas/coverage-report.schema.json
+```
+- **Tool:** `req-coverage`
+- **Purpose:** Requirement coverage analysis report
+- **Features:** Coverage statistics, requirement status tracking, test case results
+- **Example:** `schemas/coverage-report.example.json`
+
+---
+
 ## Verification Methods (Domain-Specific)
 
 Located in `schemas/tcms/verification_methods/*/schema.json`
@@ -238,6 +253,9 @@ Need to define a schema?
 │
 ├─ Configuring container metadata?
 │  └─ Use: tcms/container-config.schema.v1.json
+│
+├─ Generating requirement coverage report?
+│  └─ Use: coverage-report.schema.json
 │
 └─ Using specific verification methodology?
    ├─ Test → tcms/verification_methods/test/schema.json

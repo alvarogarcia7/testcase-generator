@@ -1,0 +1,17 @@
+{
+  "generated_at": "2024-01-20T15:30:45.123Z",
+  "summary": {
+    "total_requirements": 1,
+    "fully_covered": 0,
+    "partially_covered": 0,
+    "uncovered": 1
+  },
+  "requirements": [
+    {
+      "requirement_id": "REQ-001",
+      "coverage_type": "full",
+      "test_cases": [],
+      "status": "uncovered"
+    }
+  ]
+}
