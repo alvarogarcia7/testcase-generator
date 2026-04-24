@@ -1,0 +1,27 @@
+# Example Requirements Definitions File
+# This file defines the full text of requirements for string-based coverage verification
+
+requirements:
+  - id: REQ-001
+    text: "The system shall authenticate users with valid credentials and deny access to users with invalid credentials."
+    description: "User authentication requirement"
+  
+  - id: REQ-002
+    text: "The system shall allow password reset via email and log all password reset attempts for security audit purposes."
+    description: "Password reset and logging requirement"
+  
+  - id: AUTH-001
+    text: "The authentication module shall verify username and password against the user database, enforce password complexity rules, and lock accounts after three failed login attempts."
+    description: "Authentication module specification"
+  
+  - id: AUTH-002
+    text: "The system shall provide password reset functionality through email verification, ensuring the reset link expires after 24 hours and can only be used once."
+    description: "Password reset functionality"
+  
+  - id: AUTH-003
+    text: "Email notifications for password reset shall include a secure token, user identification, timestamp, and expiration notice."
+    description: "Email notification requirements"
+  
+  - id: SEC-005
+    text: "All security-related events including login attempts, password changes, and account lockouts shall be logged with timestamp, user ID, IP address, and action type."
+    description: "Security event logging requirement"

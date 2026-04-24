@@ -109,6 +109,57 @@ impl HtmlReportGenerator {
 
                 let details_id = format!("details-{}", idx);
 
+                let requirement_text_html = if let Some(ref req_text) = req.requirement_text {
+                    format!(
+                        "<div class=\"requirement-text\">\
+                            <strong>Requirement Text:</strong> {}\
+                        </div>",
+                        html_escape(req_text)
+                    )
+                } else {
+                    String::new()
+                };
+
+                let covered_portions_html = if let Some(ref portions) = req.covered_portions {
+                    if !portions.is_empty() {
+                        let portions_list: Vec<String> = portions
+                            .iter()
+                            .map(|p| format!("<li>{}</li>", html_escape(p)))
+                            .collect();
+                        format!(
+                            "<div class=\"covered-portions\">\
+                                <strong>Covered Portions:</strong>\
+                                <ul>{}</ul>\
+                            </div>",
+                            portions_list.join("")
+                        )
+                    } else {
+                        String::new()
+                    }
+                } else {
+                    String::new()
+                };
+
+                let coverage_errors_html = if let Some(ref errors) = req.coverage_errors {
+                    if !errors.is_empty() {
+                        let errors_list: Vec<String> = errors
+                            .iter()
+                            .map(|e| format!("<li class=\"error\">{}</li>", html_escape(e)))
+                            .collect();
+                        format!(
+                            "<div class=\"coverage-errors\">\
+                                <strong>Coverage Errors:</strong>\
+                                <ul>{}</ul>\
+                            </div>",
+                            errors_list.join("")
+                        )
+                    } else {
+                        String::new()
+                    }
+                } else {
+                    String::new()
+                };
+
                 let test_cases_html = if req.test_cases.is_empty() {
                     String::from("<div class=\"test-cases\"><em>No test cases</em></div>")
                 } else {
@@ -164,7 +215,9 @@ impl HtmlReportGenerator {
                         <td>{} / {}</td>\
                     </tr>\
                     <tr>\
-                        <td colspan=\"5\" class=\"details\" id=\"{}\">{}</td>\
+                        <td colspan=\"5\" class=\"details\" id=\"{}\">\
+                            {}{}{}{}\
+                        </td>\
                     </tr>",
                     details_id,
                     html_escape(&req.requirement_id),
@@ -175,6 +228,9 @@ impl HtmlReportGenerator {
                     passed_count,
                     failed_count,
                     details_id,
+                    requirement_text_html,
+                    covered_portions_html,
+                    coverage_errors_html,
                     test_cases_html
                 )
             })

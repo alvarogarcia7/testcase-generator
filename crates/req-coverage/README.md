@@ -132,6 +132,101 @@ This test case will be counted toward coverage for REQ-002, AUTH-003, and SEC-00
 
 **Note**: The tool defaults to `full` coverage type if `requirement_coverage` is not specified.
 
+## Requirement Definitions File
+
+To enable string-based coverage verification, you can provide a requirement definitions file that contains the full text of each requirement. The tool will then verify that:
+
+1. The `covers` strings in test cases are actually present in the requirement text
+2. All parts of the requirement text are covered by the cumulation of `covers` strings across all test cases
+3. Returns errors if test cases claim to cover text not found in the requirement
+
+### Requirement Definitions File Format
+
+Create a YAML or JSON file with the following structure:
+
+**YAML format (requirements.yaml):**
+```yaml
+requirements:
+  - id: REQ-001
+    text: "The system shall authenticate users with valid credentials and deny access to users with invalid credentials."
+    description: "User authentication requirement"
+  
+  - id: REQ-002
+    text: "The system shall allow password reset via email and log all password reset attempts."
+    description: "Password reset requirement"
+```
+
+**JSON format (requirements.json):**
+```json
+{
+  "requirements": [
+    {
+      "id": "REQ-001",
+      "text": "The system shall authenticate users with valid credentials and deny access to users with invalid credentials.",
+      "description": "User authentication requirement"
+    },
+    {
+      "id": "REQ-002",
+      "text": "The system shall allow password reset via email and log all password reset attempts.",
+      "description": "Password reset requirement"
+    }
+  ]
+}
+```
+
+### Using Requirement Definitions
+
+Pass the requirements file when running the verify command:
+
+```bash
+req-coverage verify \
+  --test-cases-folder ./testcases \
+  --test-results-folder ./test-results \
+  --output req-coverage.json \
+  --requirements-file ./requirements.yaml
+```
+
+### String-Based Coverage Verification
+
+When a requirements file is provided, the tool performs the following verification:
+
+1. **Validation**: Each `covers` string in test cases must be a substring of the requirement text
+2. **Cumulative Coverage**: The tool combines all `covers` strings from all test cases for each requirement
+3. **Full vs Partial**: If the cumulative coverage accounts for all text in the requirement, it's marked as "full" coverage; otherwise "partial"
+4. **Error Detection**: If a test case claims to cover text not found in the requirement, an error is reported
+
+**Example Test Cases:**
+
+```yaml
+# Test case 1
+requirement: REQ-001
+requirement_coverage:
+  type: partial
+  covers: "authenticate users with valid credentials"
+
+# Test case 2
+requirement: REQ-001
+requirement_coverage:
+  type: partial
+  covers: "deny access to users with invalid credentials"
+```
+
+With the requirement text: "The system shall authenticate users with valid credentials and deny access to users with invalid credentials."
+
+- Both test cases' `covers` strings are validated to exist in the requirement
+- The cumulative coverage checks if all parts of the requirement text are covered
+- If "The system shall" and "and" are not covered by any test case, the requirement is marked as "partial"
+- If all text is covered (accounting for all words), it's marked as "full"
+
+### Coverage Report Details
+
+When using requirement definitions, the coverage report includes:
+
+- **Requirement Text**: The full text of the requirement
+- **Covered Portions**: List of all `covers` strings from test cases
+- **Coverage Errors**: Any errors where test cases claim to cover text not in the requirement
+- **Automatic Type Determination**: Coverage type is automatically determined based on cumulative coverage
+
 ## Output Formats
 
 ### JSON Report Structure
@@ -269,6 +364,33 @@ The `req-coverage` tool is a **Layer 5 binary crate** in the workspace architect
 - `report.rs`: Report loading and saving
 - `html.rs`: HTML report generation
 
+## Testing
+
+### Unit Tests
+
+Run unit tests for the library:
+```bash
+cargo test -p req-coverage --lib
+```
+
+### Integration Tests
+
+Shell script-based integration tests are available in `integration-tests/`:
+```bash
+cd integration-tests
+./run_integration_tests.sh
+```
+
+The integration tests validate:
+- Full and partial coverage detection
+- Error detection and reporting
+- Multiple requirements handling
+- YAML and JSON format support
+- Backward compatibility
+- HTML report generation
+
+See [integration-tests/README.md](integration-tests/README.md) for details.
+
 ## Troubleshooting
 
 ### No test cases found
@@ -288,6 +410,39 @@ The `req-coverage` tool is a **Layer 5 binary crate** in the workspace architect
 **Error**: "Failed to parse YAML from..."
 
 **Solution**: Ensure all test case YAML files have a `requirement` field.
+
+## Testing
+
+### Running Tests
+
+The project includes comprehensive unit and integration tests.
+
+**Quick Start - Run all tests with results saved:**
+```bash
+cd crates/req-coverage
+./run_integration_tests.sh
+```
+
+This script runs all tests and saves timestamped results to `test_results/`.
+
+**Manual test commands:**
+```bash
+# Run all tests
+cargo test -p req-coverage
+
+# Run unit tests only
+cargo test -p req-coverage --lib
+
+# Run integration tests only
+cargo test -p req-coverage --test string_verification_tests
+```
+
+**View test results:**
+```bash
+cat crates/req-coverage/test_results/latest_results.txt
+```
+
+See [INTEGRATION_TESTS.md](INTEGRATION_TESTS.md) for detailed test documentation.
 
 ## Future Enhancements
 

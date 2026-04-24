@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fs;
 use std::path::Path;
 use walkdir::WalkDir;
@@ -10,6 +10,7 @@ use testcase_storage::TestCaseStorage;
 
 pub struct CoverageAnalyzer {
     test_case_storage: TestCaseStorage,
+    requirement_definitions: Option<HashMap<String, RequirementDefinition>>,
 }
 
 impl CoverageAnalyzer {
@@ -17,7 +18,57 @@ impl CoverageAnalyzer {
         let test_case_storage = TestCaseStorage::new(test_cases_folder)
             .context("Failed to initialize test case storage")?;
 
-        Ok(Self { test_case_storage })
+        Ok(Self {
+            test_case_storage,
+            requirement_definitions: None,
+        })
+    }
+
+    pub fn with_requirements(test_cases_folder: &Path, requirements_file: &Path) -> Result<Self> {
+        let test_case_storage = TestCaseStorage::new(test_cases_folder)
+            .context("Failed to initialize test case storage")?;
+
+        let requirement_definitions = Self::load_requirement_definitions(requirements_file)?;
+
+        Ok(Self {
+            test_case_storage,
+            requirement_definitions: Some(requirement_definitions),
+        })
+    }
+
+    fn load_requirement_definitions(
+        requirements_file: &Path,
+    ) -> Result<HashMap<String, RequirementDefinition>> {
+        log::info!(
+            "Loading requirement definitions from: {:?}",
+            requirements_file
+        );
+
+        let content = fs::read_to_string(requirements_file).context(format!(
+            "Failed to read requirements file: {:?}",
+            requirements_file
+        ))?;
+
+        let definitions: RequirementDefinitions =
+            if requirements_file.extension().and_then(|s| s.to_str()) == Some("json") {
+                serde_json::from_str(&content).context(format!(
+                    "Failed to parse JSON from: {:?}",
+                    requirements_file
+                ))?
+            } else {
+                serde_yaml::from_str(&content).context(format!(
+                    "Failed to parse YAML from: {:?}",
+                    requirements_file
+                ))?
+            };
+
+        let mut map = HashMap::new();
+        for req_def in definitions.requirements {
+            map.insert(req_def.id.clone(), req_def);
+        }
+
+        log::info!("Loaded {} requirement definitions", map.len());
+        Ok(map)
     }
 
     pub fn analyze(&self, test_results_folder: &Path) -> Result<CoverageReport> {
@@ -214,14 +265,71 @@ impl CoverageAnalyzer {
 
             let item = requirement_map
                 .entry(requirement_id.clone())
-                .or_insert_with(|| RequirementCoverageItem {
-                    requirement_id: requirement_id.clone(),
-                    coverage_type: coverage_type.clone(),
-                    test_cases: Vec::new(),
-                    status: CoverageStatus::Uncovered,
+                .or_insert_with(|| {
+                    let (req_text, errors) =
+                        if let Some(ref req_defs) = self.requirement_definitions {
+                            if let Some(req_def) = req_defs.get(&requirement_id) {
+                                (Some(req_def.text.clone()), None)
+                            } else {
+                                (
+                                    None,
+                                    Some(vec![format!(
+                                        "Requirement definition not found for ID: {}",
+                                        requirement_id
+                                    )]),
+                                )
+                            }
+                        } else {
+                            (None, None)
+                        };
+
+                    RequirementCoverageItem {
+                        requirement_id: requirement_id.clone(),
+                        coverage_type: coverage_type.clone(),
+                        test_cases: Vec::new(),
+                        status: CoverageStatus::Uncovered,
+                        requirement_text: req_text,
+                        covered_portions: None,
+                        coverage_errors: errors,
+                    }
                 });
 
+            if let Some(ref req_text) = item.requirement_text {
+                if let Some(ref covers_str) = test_case_result.covers {
+                    if !req_text.contains(covers_str) {
+                        let error_msg = format!(
+                            "Test case {} claims to cover '{}' which is not found in requirement {}",
+                            test_case.id, covers_str, requirement_id
+                        );
+                        log::warn!("{}", error_msg);
+                        item.coverage_errors
+                            .get_or_insert_with(Vec::new)
+                            .push(error_msg);
+                    } else {
+                        item.covered_portions
+                            .get_or_insert_with(Vec::new)
+                            .push(covers_str.clone());
+                    }
+                }
+            }
+
             item.test_cases.push(test_case_result);
+
+            let final_coverage_type = if let Some(ref req_text) = item.requirement_text {
+                if let Some(ref covered) = item.covered_portions {
+                    if self.is_fully_covered(req_text, covered) {
+                        CoverageType::Full
+                    } else {
+                        CoverageType::Partial
+                    }
+                } else {
+                    item.coverage_type.clone()
+                }
+            } else {
+                item.coverage_type.clone()
+            };
+
+            item.coverage_type = final_coverage_type.clone();
 
             let has_failures = item
                 .test_cases
@@ -229,7 +337,7 @@ impl CoverageAnalyzer {
                 .any(|tc| tc.status == TestStatus::Fail);
             let has_coverage = !item.test_cases.is_empty();
 
-            item.status = match (&item.coverage_type, has_coverage, has_failures) {
+            item.status = match (&final_coverage_type, has_coverage, has_failures) {
                 (CoverageType::Full, true, false) => CoverageStatus::CoveredPass,
                 (CoverageType::Full, true, true) => CoverageStatus::CoveredFail,
                 (CoverageType::Partial, true, false) => CoverageStatus::PartialCoveredPass,
@@ -239,5 +347,15 @@ impl CoverageAnalyzer {
         }
 
         Ok(())
+    }
+
+    fn is_fully_covered(&self, requirement_text: &str, covered_portions: &[String]) -> bool {
+        let mut remaining_text = requirement_text.to_string();
+
+        for portion in covered_portions {
+            remaining_text = remaining_text.replace(portion, "");
+        }
+
+        remaining_text.trim().is_empty()
     }
 }

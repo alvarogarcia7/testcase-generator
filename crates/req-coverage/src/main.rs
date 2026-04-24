@@ -1,14 +1,9 @@
-mod coverage;
-mod html;
-mod models;
-mod report;
-
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use std::path::{Path, PathBuf};
 
-use coverage::CoverageAnalyzer;
-use report::ReportGenerator;
+use req_coverage::coverage::CoverageAnalyzer;
+use req_coverage::report::ReportGenerator;
 
 #[derive(Parser)]
 #[command(name = "req-coverage")]
@@ -40,6 +35,9 @@ enum Commands {
 
         #[arg(long, value_name = "FILE", required = true)]
         output: PathBuf,
+
+        #[arg(long, value_name = "FILE")]
+        requirements_file: Option<PathBuf>,
     },
 
     #[command(about = "Generate HTML report from coverage JSON")]
@@ -69,8 +67,14 @@ fn main() -> Result<()> {
             test_cases_folder,
             test_results_folder,
             output,
+            requirements_file,
         } => {
-            handle_verify_command(&test_cases_folder, &test_results_folder, &output)?;
+            handle_verify_command(
+                &test_cases_folder,
+                &test_results_folder,
+                &output,
+                requirements_file.as_deref(),
+            )?;
         }
         Commands::Print {
             format,
@@ -89,11 +93,15 @@ fn handle_verify_command(
     test_cases_folder: &PathBuf,
     test_results_folder: &PathBuf,
     output: &PathBuf,
+    requirements_file: Option<&Path>,
 ) -> Result<()> {
     log::info!("=== Requirement Coverage Verification ===");
     log::info!("Test cases folder: {:?}", test_cases_folder);
     log::info!("Test results folder: {:?}", test_results_folder);
     log::info!("Output file: {:?}", output);
+    if let Some(req_file) = requirements_file {
+        log::info!("Requirements file: {:?}", req_file);
+    }
 
     if !test_cases_folder.exists() {
         anyhow::bail!("Test cases folder does not exist: {:?}", test_cases_folder);
@@ -120,8 +128,19 @@ fn handle_verify_command(
         );
     }
 
-    let analyzer = CoverageAnalyzer::new(test_cases_folder)
-        .context("Failed to initialize coverage analyzer")?;
+    if let Some(req_file) = requirements_file {
+        if !req_file.exists() {
+            anyhow::bail!("Requirements file does not exist: {:?}", req_file);
+        }
+    }
+
+    let analyzer = if let Some(req_file) = requirements_file {
+        CoverageAnalyzer::with_requirements(test_cases_folder, req_file)
+            .context("Failed to initialize coverage analyzer with requirements")?
+    } else {
+        CoverageAnalyzer::new(test_cases_folder)
+            .context("Failed to initialize coverage analyzer")?
+    };
 
     let report = analyzer
         .analyze(test_results_folder)

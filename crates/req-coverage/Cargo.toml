@@ -3,6 +3,10 @@ name = "req-coverage"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+name = "req_coverage"
+path = "src/lib.rs"
+
 [[bin]]
 name = "req-coverage"
 path = "src/main.rs"
@@ -22,3 +26,6 @@ log = { workspace = true }
 env_logger = { workspace = true }
 walkdir = { workspace = true }
 indexmap = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3.8"

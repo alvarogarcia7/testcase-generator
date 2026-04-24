@@ -1,0 +1,4 @@
+# Integration test generated files
+test-data/
+results/
+*.log
