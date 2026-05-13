@@ -190,10 +190,10 @@ def get_execution_timestamp(campaign_dir: Path, verbose: bool = False) -> Option
                 print(f"Warning: Failed to read execution log {log_file}: {e}")
 
     if earliest_timestamp is None and logs_dir.exists():
-        # Fallback to file modification time
+        # Fallback to file modification time (make timezone-aware)
         log_files = list(logs_dir.glob("*.json"))
         if log_files:
-            earliest_timestamp = datetime.fromtimestamp(min(f.stat().st_mtime for f in log_files))
+            earliest_timestamp = datetime.fromtimestamp(min(f.stat().st_mtime for f in log_files), tz=timezone.utc)
 
     return earliest_timestamp
 
@@ -318,10 +318,10 @@ def merge_campaigns(
                 if timestamp:
                     results_by_testcase[test_case_id].append((result, timestamp))
                 else:
-                    # Fallback: use file modification time
+                    # Fallback: use file modification time (make timezone-aware)
                     result_file = campaign_dir / "20_verification" / f"{test_case_id}_verification.yaml"
                     if result_file.exists():
-                        mtime = datetime.fromtimestamp(result_file.stat().st_mtime)
+                        mtime = datetime.fromtimestamp(result_file.stat().st_mtime, tz=timezone.utc)
                         results_by_testcase[test_case_id].append((result, mtime))
             else:
                 results_by_testcase[test_case_id].append(result)
