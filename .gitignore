@@ -183,3 +183,4 @@ private*.pem
 # Test Rest
 .test-failing
 .test-failing-tmp
+.projector.db

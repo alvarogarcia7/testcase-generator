@@ -87,7 +87,7 @@ impl TestRunStorage {
             }
         }
 
-        test_runs.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
+        test_runs.sort_by_key(|a| a.timestamp);
         Ok(test_runs)
     }
 
@@ -124,7 +124,7 @@ impl TestRunStorage {
             }
         }
 
-        all_test_runs.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
+        all_test_runs.sort_by_key(|a| a.timestamp);
         Ok(all_test_runs)
     }
 

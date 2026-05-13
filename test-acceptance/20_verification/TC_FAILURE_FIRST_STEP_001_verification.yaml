@@ -1,0 +1,33 @@
+type: test_verification
+schema: tcms/test-verification.schema.v1.json
+test_case_id: TC_FAILURE_FIRST_STEP_001
+description: Test case where the first step fails - verifies that test execution halts immediately on first failure
+requirement: FAILURE_FIRST_STEP
+item: 1
+tc: 1
+sequences:
+  - sequence_id: 1
+    name: First Step Failure Sequence
+    step_results:
+      - Fail:
+          step: 1
+          description: Search for pattern but expect it to be found (verification fails)
+          expected:
+            success: true
+            result: '0'
+            output: some pattern
+          actual_result: '1'
+          actual_output: ''
+          reason: exit code verification failed - expected 0 but got 1, output verification failed - pattern not found
+      - NotExecuted:
+          step: 2
+          description: This step should not execute due to verification failure
+      - NotExecuted:
+          step: 3
+          description: This step should also not execute
+    all_steps_passed: false
+total_steps: 3
+passed_steps: 0
+failed_steps: 1
+not_executed_steps: 2
+overall_pass: false

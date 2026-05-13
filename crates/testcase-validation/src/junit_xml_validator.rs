@@ -136,24 +136,15 @@ pub fn validate_junit_xml(xml: &str) -> Result<()> {
 
         // Validate failure and error elements
         for child in testcase.children().filter(|n| n.is_element()) {
-            match child.tag_name().name() {
-                "failure" => {
-                    if !child.has_attribute("message") && child.text().is_none() {
-                        anyhow::bail!(
-                            "testcase #{} <failure> element must have 'message' attribute or text content",
-                            idx + 1
-                        );
-                    }
-                }
-                "error" => {
-                    if !child.has_attribute("message") && child.text().is_none() {
-                        anyhow::bail!(
-                            "testcase #{} <error> element must have 'message' attribute or text content",
-                            idx + 1
-                        );
-                    }
-                }
-                _ => {}
+            if (!child.has_attribute("message") && child.text().is_none())
+                && matches!(child.tag_name().name(), "failure" | "error")
+            {
+                let element_type = child.tag_name().name();
+                anyhow::bail!(
+                    "testcase #{} <{}> element must have 'message' attribute or text content",
+                    idx + 1,
+                    element_type
+                );
             }
         }
     }

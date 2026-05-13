@@ -130,12 +130,30 @@ rust:build-test-lint:
     - ./scripts/install-sccache.sh --ci
     # Install coverage tools using the installation script
     - ./scripts/install-coverage-tools.sh --gitlab
+  image: rust:1.94
+  cache:
+    key: "${CI_COMMIT_REF_SLUG}"
+    paths:
+      # Cache the cargo home directory which contains registries and bins
+#      - .cargo
+      # Cache the build artifacts directory
+#      - target
+      # Cache sccache compilation cache
+      - .sccache
+      # Cache uv and Python environments
+      - .venv
+      - $HOME/.cargo/bin/uv
+      - $HOME/.local/share/uv
+    # This ensures the cache is available to all jobs in the pipeline
+    policy: pull-push
+  stage: rust
+  script:
     # Detect changed crates for selective builds
     - |
       echo "===== Detecting Changed Crates ====="
       export AFFECTED_CRATES=""
       export BUILD_ALL_CRATES="false"
-      
+
       # Check if we're on a protected branch (main, master, etc.) or if change detection should be skipped
       if [[ "$CI_COMMIT_REF_PROTECTED" == "true" ]] || [[ "$CI_COMMIT_BRANCH" == "main" ]] || [[ "$CI_COMMIT_BRANCH" == "master" ]]; then
         echo "Running on protected branch '$CI_COMMIT_BRANCH' - building all crates"
@@ -161,24 +179,7 @@ rust:build-test-lint:
           export BUILD_ALL_CRATES="true"
         fi
       fi
-  image: rust:latest
-  cache:
-    key: "${CI_COMMIT_REF_SLUG}"
-    paths:
-      # Cache the cargo home directory which contains registries and bins
-#      - .cargo
-      # Cache the build artifacts directory
-#      - target
-      # Cache sccache compilation cache
-      - .sccache
-      # Cache uv and Python environments
-      - .venv
-      - $HOME/.cargo/bin/uv
-      - $HOME/.local/share/uv
-    # This ensures the cache is available to all jobs in the pipeline
-    policy: pull-push
-  stage: rust
-  script:
+
     # Add required components
     - rustup component add clippy rustfmt
 
@@ -391,7 +392,7 @@ rust:build-test-lint:
 
 rust:e2e-tests:
   stage: e2e
-  image: rust:latest
+  image: rust:1.94
   needs:
     - job: rust:build-test-lint
       artifacts: false

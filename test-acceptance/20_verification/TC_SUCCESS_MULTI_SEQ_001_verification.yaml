@@ -1,0 +1,55 @@
+type: test_verification
+schema: tcms/test-verification.schema.v1.json
+test_case_id: TC_SUCCESS_MULTI_SEQ_001
+description: Multi-sequence test with 3 sequences containing 2-4 steps each - demonstrates test organization and complex workflows
+requirement: MULTI_SEQUENCE
+item: 1
+tc: 1
+sequences:
+  - sequence_id: 1
+    name: File Creation Sequence
+    step_results:
+      - Pass:
+          step: 1
+          description: Create first test file
+      - Pass:
+          step: 2
+          description: Create second test file
+      - Pass:
+          step: 3
+          description: Verify files exist
+    all_steps_passed: true
+  - sequence_id: 2
+    name: File Content Processing
+    step_results:
+      - Pass:
+          step: 1
+          description: Read first file content
+      - Pass:
+          step: 2
+          description: Read second file content
+      - Pass:
+          step: 3
+          description: Count total characters in both files
+      - Pass:
+          step: 4
+          description: Concatenate files
+    all_steps_passed: true
+  - sequence_id: 3
+    name: File Cleanup Sequence
+    step_results:
+      - Pass:
+          step: 1
+          description: Remove first test file
+      - Pass:
+          step: 2
+          description: Remove second test file
+      - Pass:
+          step: 3
+          description: Remove combined file
+    all_steps_passed: true
+total_steps: 10
+passed_steps: 10
+failed_steps: 0
+not_executed_steps: 0
+overall_pass: true

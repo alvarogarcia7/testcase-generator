@@ -1,0 +1,26 @@
+type: test_verification
+schema: tcms/test-verification.schema.v1.json
+test_case_id: TC_SUCCESS_SIMPLE_001
+description: Simple single-sequence test with 3 basic steps - verifies basic command execution and output validation
+requirement: SIMPLE_SUCCESS
+item: 1
+tc: 1
+sequences:
+  - sequence_id: 1
+    name: Basic Command Execution
+    step_results:
+      - Pass:
+          step: 1
+          description: Print hello world message
+      - Pass:
+          step: 2
+          description: Display current date
+      - Pass:
+          step: 3
+          description: List temporary directory
+    all_steps_passed: true
+total_steps: 3
+passed_steps: 3
+failed_steps: 0
+not_executed_steps: 0
+overall_pass: true
