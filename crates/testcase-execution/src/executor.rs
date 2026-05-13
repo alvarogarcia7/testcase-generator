@@ -232,6 +232,27 @@ fn generate_verification_with_var_subst(expr: &VerificationExpression, var_name:
     bash_eval::generate_verification_with_var_subst(&bash_expr, var_name)
 }
 
+/// Format a multi-line text as shell comments, with the first line prefixed with a label
+/// and subsequent lines properly commented
+fn format_as_comment(prefix: &str, text: &str) -> String {
+    let lines: Vec<&str> = text.lines().collect();
+    let mut result = String::new();
+
+    for (idx, line) in lines.iter().enumerate() {
+        if idx == 0 {
+            result.push_str("# ");
+            result.push_str(prefix);
+            result.push_str(line);
+        } else {
+            result.push_str("# ");
+            result.push_str(line);
+        }
+        result.push('\n');
+    }
+
+    result
+}
+
 impl TestExecutor {
     pub fn new() -> Self {
         Self {
@@ -639,9 +660,7 @@ impl TestExecutor {
         script.push_str("# Test Case: ");
         script.push_str(&test_case.id);
         script.push('\n');
-        script.push_str("# Description: ");
-        script.push_str(&test_case.description);
-        script.push('\n');
+        script.push_str(&format_as_comment("Description: ", &test_case.description));
         if let Some(ref hash) = source_hash {
             script.push_str("# Source YAML SHA-256: ");
             script.push_str(hash);
@@ -4783,5 +4802,65 @@ mod tests {
         assert!(script.contains("cleanup() {"));
         assert!(script.contains("rm -f \"$_CAPTURE_TMPFILE\""));
         assert!(script.contains("trap cleanup EXIT"));
+    }
+
+    #[test]
+    fn test_format_as_comment_single_line() {
+        let result = format_as_comment("Description: ", "Single line description");
+        assert_eq!(result, "# Description: Single line description\n");
+    }
+
+    #[test]
+    fn test_format_as_comment_multi_line() {
+        let text =
+            "First line of description\nSecond line of description\nThird line of description";
+        let result = format_as_comment("Description: ", text);
+        let expected = "# Description: First line of description\n# Second line of description\n# Third line of description\n";
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_format_as_comment_multi_line_in_script() {
+        let executor = TestExecutor::new();
+        let mut test_case = TestCase::new(
+            "REQ_DESC".to_string(),
+            1,
+            1,
+            "TC_DESC_001".to_string(),
+            "Multi-line test description".to_string(),
+        );
+        test_case.description = "This is the first line of the description.\nThis is the second line of the description.\nThis is the third line of the description.".to_string();
+
+        let mut sequence = TestSequence::new(1, "Seq1".to_string(), "First sequence".to_string());
+        let step = Step {
+            step: 1,
+            manual: None,
+            description: "Simple echo step".to_string(),
+            command: "echo 'test'".to_string(),
+            capture_vars: None,
+            expected: Expected {
+                success: Some(true),
+                result: "[[ $EXIT_CODE -eq 0 ]]".to_string(),
+                output: "[[ \"$COMMAND_OUTPUT\" == *test* ]]".to_string(),
+            },
+            verification: Verification {
+                result: VerificationExpression::Simple("[[ $EXIT_CODE -eq 0 ]]".to_string()),
+                output: VerificationExpression::Simple(
+                    "[[ \"$COMMAND_OUTPUT\" == *test* ]]".to_string(),
+                ),
+                output_file: None,
+                general: None,
+            },
+            reference: None,
+        };
+        sequence.steps.push(step);
+        test_case.test_sequences.push(sequence);
+
+        let script = executor.generate_test_script(&test_case);
+
+        // Check that all lines of the description are properly commented
+        assert!(script.contains("# Description: This is the first line of the description."));
+        assert!(script.contains("# This is the second line of the description."));
+        assert!(script.contains("# This is the third line of the description."));
     }
 }
