@@ -183,3 +183,11 @@ private*.pem
 # Test Rest
 .test-failing
 .test-failing-tmp
+
+# Campaign management
+campaigns/
+*_evidence.tar.gz
+*_evidence.tar.bz2
+*_evidence.zip
+*_evidence_report.txt
+*.sha256
