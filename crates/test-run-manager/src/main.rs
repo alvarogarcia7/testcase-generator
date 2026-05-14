@@ -91,7 +91,7 @@ fn list_test_runs(base_path: &Path, _test_runs_dir: &Path) -> Result<()> {
 
     for test_case_id in test_case_ids {
         if let Some(runs) = runs_by_test_case.get_mut(&test_case_id) {
-            runs.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
+            runs.sort_by_key(|b| std::cmp::Reverse(b.timestamp));
 
             let run_count = runs.len();
             let latest_timestamp = runs.first().map(|r| r.timestamp).unwrap();
