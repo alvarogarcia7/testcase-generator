@@ -36,6 +36,7 @@
 include mk/python.mk
 -include mk/incremental.mk
 -include mk/projector.mk
+-include mk/backlog.mk
 
 pre-commit:
 	@${MAKE} build BASE_REF=$(or $(BASE_REF),main)
