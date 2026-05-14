@@ -130,7 +130,7 @@ rust:build-test-lint:
     - ./scripts/install-sccache.sh --ci
     # Install coverage tools using the installation script
     - ./scripts/install-coverage-tools.sh --gitlab
-  image: rust:1.94
+  image: rust:1.95
   cache:
     key: "${CI_COMMIT_REF_SLUG}"
     paths:
@@ -392,7 +392,7 @@ rust:build-test-lint:
 
 rust:e2e-tests:
   stage: e2e
-  image: rust:1.94
+  image: rust:1.95
   needs:
     - job: rust:build-test-lint
       artifacts: false
