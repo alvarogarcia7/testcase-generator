@@ -1,0 +1,69 @@
+# Example test case showing partial requirement coverage
+# This test case only covers the password reset aspect of AUTH-002
+
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: AUTH-002
+item: 1
+tc: 1
+id: AUTH_002_TC_001
+description: Test password reset functionality
+
+# Partial coverage example - this test case only covers one aspect of the requirement
+# It also covers AUTH-003 requirement
+requirement_coverage:
+  type: partial
+  covers: "Password reset via email"
+  additional_requirements:
+    - AUTH-003
+
+general_initial_conditions:
+  system:
+  - Email service is configured and running
+  - User database is accessible
+
+initial_conditions:
+  system:
+  - Test user account exists
+  - User has valid email address
+
+test_sequences:
+- id: 1
+  name: Password Reset Flow
+  description: Test password reset request and confirmation
+  initial_conditions:
+    system:
+    - User is logged out
+  steps:
+  - step: 1
+    description: Request password reset
+    command: curl -X POST http://localhost:8080/password-reset -d "email=test@example.com"
+    expected:
+      success: true
+      result: 0
+      output: '{"status":"success","message":"Reset email sent"}'
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q '"status":"success"' <<< "$COMMAND_OUTPUT"
+  
+  - step: 2
+    description: Verify reset email was sent
+    command: check_email_inbox test@example.com
+    expected:
+      success: true
+      result: 0
+      output: 'Password reset link:'
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q 'Password reset link' <<< "$COMMAND_OUTPUT"
+  
+  - step: 3
+    description: Complete password reset with new password
+    command: curl -X POST http://localhost:8080/password-reset/confirm -d "token=$RESET_TOKEN&new_password=newpass456"
+    expected:
+      success: true
+      result: 0
+      output: '{"status":"success","message":"Password updated"}'
+    verification:
+      result: '[[ $EXIT_CODE -eq 0 ]]'
+      output: grep -q '"message":"Password updated"' <<< "$COMMAND_OUTPUT"

@@ -162,7 +162,7 @@ pub fn generate_verification_script(expression: &BashExpression, var_name: &str)
 /// Generate bash script code with variable substitution support.
 ///
 /// Used when capture variables are present and need runtime substitution.
-/// This generates a script that iterates through `STEP_VAR_NAMES` and performs
+/// This generates a script that iterates through `CAPTURED_VAR_NAMES` and performs
 /// sed-based substitution of `${var_name}` patterns.
 pub fn generate_verification_with_var_subst(expression: &BashExpression, var_name: &str) -> String {
     match expression {
@@ -178,7 +178,7 @@ pub fn generate_verification_with_var_subst(expression: &BashExpression, var_nam
             script.push_str(&format!("EXPR=\"{}\"\n", escaped_expr));
             script.push_str("if [ -n \"$CAPTURED_VAR_NAMES\" ]; then\n");
             script.push_str("    for var_name in $CAPTURED_VAR_NAMES; do\n");
-            script.push_str("        eval \"var_value=\\$$var_name\"\n");
+            script.push_str("        var_value=\"${!var_name}\"\n");
             script.push_str("        # Escape special characters for sed\n");
             script.push_str(
                 "        escaped_value=$(printf '%s' \"$var_value\" | sed 's/[&/\\]/\\\\&/g')\n",
@@ -215,7 +215,7 @@ pub fn generate_verification_with_var_subst(expression: &BashExpression, var_nam
             script.push_str(&format!("COND_EXPR=\"{}\"\n", escaped_condition));
             script.push_str("if [ -n \"$CAPTURED_VAR_NAMES\" ]; then\n");
             script.push_str("    for var_name in $CAPTURED_VAR_NAMES; do\n");
-            script.push_str("        eval \"var_value=\\$$var_name\"\n");
+            script.push_str("        var_value=\"${!var_name}\"\n");
             script.push_str(
                 "        escaped_value=$(printf '%s' \"$var_value\" | sed 's/[&/\\]/\\\\&/g')\n",
             );

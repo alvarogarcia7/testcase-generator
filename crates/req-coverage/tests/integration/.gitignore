@@ -1,0 +1,3 @@
+# Integration test results (generated at runtime)
+results/*
+!results/README.md

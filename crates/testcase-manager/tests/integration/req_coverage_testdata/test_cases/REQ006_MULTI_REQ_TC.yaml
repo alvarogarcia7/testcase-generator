@@ -1,0 +1,36 @@
+type: test_case
+schema: tcms/test-case.schema.v1.json
+requirement: REQ-006
+item: 1
+tc: 1
+id: REQ006_MULTI_REQ_TC
+description: Test case that covers multiple requirements
+requirement_coverage:
+  type: full
+  additional_requirements:
+    - REQ-007
+    - REQ-008
+general_initial_conditions:
+  system:
+    - Shell environment is available
+initial_conditions:
+  system:
+    - Commands can be executed
+test_sequences:
+  - id: 1
+    name: Multi-Requirement Test
+    description: Test covering multiple requirements
+    initial_conditions:
+      system:
+        - Shell is ready
+    steps:
+      - step: 1
+        description: Validate integration
+        command: echo "Integration test for REQ-006, REQ-007, REQ-008"
+        expected:
+          success: true
+          result: 0
+          output: Integration test for REQ-006, REQ-007, REQ-008
+        verification:
+          result: '[[ $EXIT_CODE -eq 0 ]]'
+          output: grep -q 'Integration test' <<< "$COMMAND_OUTPUT"

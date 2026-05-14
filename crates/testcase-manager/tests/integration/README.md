@@ -110,6 +110,66 @@ Run with:
 ./tests/integration/test_json_escape_e2e.sh --no-remove
 ```
 
+### `test_req_coverage_e2e.sh`
+
+End-to-end integration test for the `req-coverage` tool that validates:
+
+1. **Binary Building**
+   - Builds the req-coverage binary from source
+   - Verifies binary exists and is executable
+
+2. **Test Data Validation**
+   - Verifies test case YAML files exist
+   - Verifies verification result container files exist
+   - Validates expected file counts
+
+3. **Coverage Analysis (verify command)**
+   - Analyzes test cases and verification results
+   - Generates JSON coverage report
+   - Validates JSON structure with jq
+   - Verifies coverage statistics calculations
+
+4. **Coverage Scenarios Tested**
+   - **Full coverage, all passed**: REQ-001 (2 test cases)
+   - **Full coverage, mixed results**: REQ-002 (1 pass, 1 fail)
+   - **Full coverage, not executed**: REQ-005 (no verification results)
+   - **Partial coverage, passed**: REQ-003
+   - **Partial coverage, failed**: REQ-004
+   - **Multi-requirement coverage**: REQ-006/007/008 (single test covers 3 requirements)
+
+5. **HTML Report Generation (print command)**
+   - Generates HTML report from JSON coverage data
+   - Validates HTML file creation
+   - Verifies HTML content structure
+
+6. **Coverage Statistics Display**
+   - Displays total requirements and coverage breakdown
+   - Calculates and displays test case percentages:
+     - % Success (passed tests)
+     - % Failure (failed tests)
+     - % Not executed
+   - Shows detailed per-requirement breakdown
+
+7. **Detailed Coverage Analysis**
+   - Validates specific requirement statuses:
+     - `covered_pass`: Full coverage, all tests passed
+     - `covered_fail`: Full coverage, some tests failed
+     - `partial_covered_pass`: Partial coverage, all tests passed
+     - `partial_covered_fail`: Partial coverage, some tests failed
+     - `notexecuted`: Test case has no verification results
+
+**Test Data**: Located in `req_coverage_testdata/` with 8 test cases covering various scenarios.
+
+Run with:
+```bash
+./tests/integration/test_req_coverage_e2e.sh
+
+# Keep temporary files for debugging
+./tests/integration/test_req_coverage_e2e.sh --no-remove
+```
+
+See [req_coverage_testdata/README.md](req_coverage_testdata/README.md) for detailed documentation on test data structure.
+
 ### `e2e_complete_workflow.exp`
 
 The main end-to-end integration test that validates:

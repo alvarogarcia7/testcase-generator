@@ -1,0 +1,9 @@
+# Test results directory
+test_results/
+
+# Sample report output (generated, but keep the HTML)
+sample_report/
+sample_requirements.yaml
+
+# Keep the sample coverage HTML report
+!sample_coverage_report.html

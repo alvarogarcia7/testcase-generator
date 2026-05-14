@@ -602,6 +602,32 @@ impl fmt::Display for TestSequence {
     }
 }
 
+/// Type of requirement coverage
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[serde(rename_all = "lowercase")]
+pub enum RequirementCoverageType {
+    /// This test case covers the entire requirement
+    Full,
+    /// This test case covers a partial aspect of the requirement
+    Partial,
+}
+
+/// Requirement coverage specification
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub struct RequirementCoverageSpec {
+    /// Type of coverage (full or partial)
+    #[serde(rename = "type")]
+    pub coverage_type: RequirementCoverageType,
+
+    /// Description of what is covered (required for partial coverage)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub covers: Option<String>,
+
+    /// List of additional requirements this test case covers
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub additional_requirements: Option<Vec<String>>,
+}
+
 /// A complete test case following the GSMA schema
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TestCase {
@@ -627,6 +653,10 @@ pub struct TestCase {
 
     /// Description of the test case
     pub description: String,
+
+    /// Requirement coverage specification
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub requirement_coverage: Option<RequirementCoverageSpec>,
 
     /// Prerequisites that must be satisfied before running this test case
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -679,6 +709,7 @@ impl TestCase {
             tc,
             id,
             description,
+            requirement_coverage: None,
             prerequisites: None,
             general_initial_conditions: InitialConditions::default(),
             initial_conditions: InitialConditions::default(),

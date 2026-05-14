@@ -71,7 +71,8 @@ The workspace follows a **strict bottom-up layered architecture** where higher-l
 │                                                                   │
 │  editor, test-executor, test-orchestrator, test-verify,          │
 │  test-run-manager, verifier, validate-yaml, validate-json,       │
-│  script-cleanup, json-escape, json-to-yaml, tpdg-compat          │
+│  script-cleanup, json-escape, json-to-yaml, tpdg-compat,         │
+│  req-coverage                                                    │
 └───────────────────────────┬───────────────────────────────────────┘
                             │ depends on
                             ↓

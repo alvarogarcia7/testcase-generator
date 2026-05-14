@@ -1,0 +1,38 @@
+title: Requirement Coverage Test Results
+project: Test Case Manager - Requirement Coverage E2E Test
+test_date: 2026-01-20T10:00:00.000000Z
+test_results:
+  - test_case_id: REQ001_PASS_TC
+    description: Test case for REQ-001 that passes verification
+    overall_pass: true
+
+  - test_case_id: REQ001_ADDITIONAL_PASS_TC
+    description: Additional test case for REQ-001 that also passes
+    overall_pass: true
+
+  - test_case_id: REQ002_FAIL_TC
+    description: Test case for REQ-002 that fails verification
+    overall_pass: false
+
+  - test_case_id: REQ002_MIXED_RESULT_TC
+    description: Additional test case for REQ-002 that passes (creating mixed results)
+    overall_pass: true
+
+  - test_case_id: REQ003_PARTIAL_PASS_TC
+    description: Test case for partial coverage of REQ-003 that passes
+    overall_pass: true
+
+  - test_case_id: REQ004_PARTIAL_FAIL_TC
+    description: Test case for partial coverage of REQ-004 that fails
+    overall_pass: false
+
+  - test_case_id: REQ006_MULTI_REQ_TC
+    description: Test case that covers multiple requirements
+    overall_pass: true
+
+metadata:
+  environment: E2E Test Environment
+  execution_duration: 5.0
+  total_test_cases: 7
+  passed_test_cases: 5
+  failed_test_cases: 2

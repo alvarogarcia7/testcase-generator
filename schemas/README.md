@@ -263,6 +263,9 @@ Specialized schemas for different verification methodologies in `tcms/verificati
   - `verification-output.schema.json`
   - `verification-result.schema.json`
 
+### Standalone Tool Schemas
+- **coverage-report.schema.json** - Requirement coverage analysis report (req-coverage tool output)
+
 ## 📖 Quick Schema Selection
 
 ### I need to...
@@ -272,6 +275,7 @@ Specialized schemas for different verification methodologies in `tcms/verificati
 - **Aggregate multiple results** → `tcms/test-results-container.schema.v1.json`
 - **Configure container metadata** → `tcms/container-config.schema.v1.json`
 - **Use specific verification method** → `tcms/verification_methods/{type}/schema.json`
+- **Generate requirement coverage report** → `coverage-report.schema.json`
 
 ## 🔄 Envelope Pattern
 
