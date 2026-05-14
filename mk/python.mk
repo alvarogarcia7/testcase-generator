@@ -84,3 +84,32 @@ setup-python:
 verify-python:
 	./scripts/verify_python_env.sh
 .PHONY: verify-python
+
+# Test merge_campaigns script
+# Runs unit tests for the merge_campaigns.py script
+test-merge-campaigns: setup-python-for-test
+	@echo "Running merge_campaigns tests..."
+	@uv run python3.14 scripts/test_merge_campaigns.py -v
+	@echo "✓ merge_campaigns tests passed"
+.PHONY: test-merge-campaigns
+
+# Merge multiple test campaign results
+# Merges verification results from multiple campaigns using specified merge strategy
+# Usage: make merge-campaigns CAMPAIGNS="dir1 dir2" STRATEGY=or OUTPUT=merged.yaml
+merge-campaigns:
+	@if [ -z "$(CAMPAIGNS)" ] || [ -z "$(STRATEGY)" ]; then \
+		echo "Usage: make merge-campaigns CAMPAIGNS='dir1 dir2 ...' STRATEGY=[or|and|oldest|newest] [OUTPUT=file.yaml]"; \
+		echo ""; \
+		echo "Merge strategies:"; \
+		echo "  or:     failure OR success = success (any campaign passes)"; \
+		echo "  and:    failure AND success = failure (all campaigns must pass)"; \
+		echo "  oldest: use result from campaign with earliest execution timestamp"; \
+		echo "  newest: use result from campaign with latest execution timestamp"; \
+		exit 1; \
+	fi
+	@uv run python3.14 scripts/merge_campaigns.py \
+		--campaigns $(CAMPAIGNS) \
+		--merge-strategy $(STRATEGY) \
+		$(if $(OUTPUT),--output $(OUTPUT),) \
+		--verbose
+.PHONY: merge-campaigns
