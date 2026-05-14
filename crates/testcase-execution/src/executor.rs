@@ -232,6 +232,27 @@ fn generate_verification_with_var_subst(expr: &VerificationExpression, var_name:
     bash_eval::generate_verification_with_var_subst(&bash_expr, var_name)
 }
 
+/// Format a multi-line text as shell comments, with the first line prefixed with a label
+/// and subsequent lines properly commented
+fn format_as_comment(prefix: &str, text: &str) -> String {
+    let lines: Vec<&str> = text.lines().collect();
+    let mut result = String::new();
+
+    for (idx, line) in lines.iter().enumerate() {
+        if idx == 0 {
+            result.push_str("# ");
+            result.push_str(prefix);
+            result.push_str(line);
+        } else {
+            result.push_str("# ");
+            result.push_str(line);
+        }
+        result.push('\n');
+    }
+
+    result
+}
+
 impl TestExecutor {
     pub fn new() -> Self {
         Self {
@@ -639,9 +660,7 @@ impl TestExecutor {
         script.push_str("# Test Case: ");
         script.push_str(&test_case.id);
         script.push('\n');
-        script.push_str("# Description: ");
-        script.push_str(&test_case.description);
-        script.push('\n');
+        script.push_str(&format_as_comment("Description: ", &test_case.description));
         if let Some(ref hash) = source_hash {
             script.push_str("# Source YAML SHA-256: ");
             script.push_str(hash);
@@ -939,7 +958,10 @@ impl TestExecutor {
             }
 
             for step in &sequence.steps {
-                script.push_str(&format!("# Step {}: {}\n", step.step, step.description));
+                let comment =
+                    format_multiline_comment(&format!("# Step {}: ", step.step), &step.description);
+                script.push_str(&comment);
+                script.push('\n');
 
                 // Execute before_step hook with TEST_STEP_NUMBER and TEST_STEP_DESCRIPTION
                 if let Some(ref hooks) = test_case.hooks {
@@ -966,9 +988,18 @@ impl TestExecutor {
                         VerificationExpression::Simple(s) if s.trim() == "true");
                     let has_verification = has_result_verification || has_output_verification;
 
+                    // Format multi-line description for echo statements
+                    let echo_desc = step
+                        .description
+                        .lines()
+                        .map(|line| line.trim())
+                        .filter(|line| !line.is_empty())
+                        .collect::<Vec<_>>()
+                        .join(" ");
                     script.push_str(&format!(
                         "echo \"Step {}: {}\"\n",
-                        step.step, step.description
+                        step.step,
+                        echo_desc.replace("\"", "\\\"")
                     ));
                     script.push_str(&format!(
                         "echo \"Command: {}\"\n",
@@ -1080,12 +1111,14 @@ impl TestExecutor {
                         script.push_str("if [ \"$USER_VERIFICATION\" = true ]; then\n");
                         script.push_str(&format!(
                             "    echo \"[PASS] Step {}: {}\"\n",
-                            step.step, step.description
+                            step.step,
+                            echo_desc.replace("\"", "\\\"")
                         ));
                         script.push_str("else\n");
                         script.push_str(&format!(
                             "    echo \"[FAIL] Step {}: {}\"\n",
-                            step.step, step.description
+                            step.step,
+                            echo_desc.replace("\"", "\\\"")
                         ));
                         script.push_str(
                             "    echo \"  Result verification: $USER_VERIFICATION_RESULT\"\n",
@@ -1199,6 +1232,15 @@ impl TestExecutor {
 
                     continue;
                 }
+
+                // Format multi-line description for echo statements (automated steps)
+                let echo_desc = step
+                    .description
+                    .lines()
+                    .map(|line| line.trim())
+                    .filter(|line| !line.is_empty())
+                    .collect::<Vec<_>>()
+                    .join(" ");
 
                 script.push_str(&format!(
                     "LOG_FILE=\"{}_sequence-{}_step-{}.actual.log\"\n",
@@ -1469,12 +1511,14 @@ impl TestExecutor {
                 script.push_str(&format!("if [ {} ]; then\n", verification_condition));
                 script.push_str(&format!(
                     "    echo \"[PASS] Step {}: {}\"\n",
-                    step.step, step.description
+                    step.step,
+                    echo_desc.replace("\"", "\\\"")
                 ));
                 script.push_str("else\n");
                 script.push_str(&format!(
                     "    echo \"[FAIL] Step {}: {}\"\n",
-                    step.step, step.description
+                    step.step,
+                    echo_desc.replace("\"", "\\\"")
                 ));
                 script.push_str("    echo \"  Command: ");
                 script.push_str(&converted_command.replace("\"", "\\\""));
@@ -2428,6 +2472,29 @@ pub fn bash_escape(value: &str) -> String {
     // In bash, the safest way to escape a string is to wrap it in single quotes
     // and escape any single quotes by ending the quote, adding an escaped quote, and starting again
     format!("'{}'", value.replace('\'', r"'\''"))
+}
+
+/// Helper function to format multi-line comments for bash scripts
+///
+/// Splits text on newlines, trims each line, filters out empty lines,
+/// and prefixes each with the given string (e.g., '# Step 1: ')
+///
+/// # Examples
+///
+/// ```
+/// use testcase_execution::executor::format_multiline_comment;
+///
+/// let text = "First line\nSecond line\n\nThird line";
+/// let result = format_multiline_comment("# ", text);
+/// assert_eq!(result, "# First line\n# Second line\n# Third line");
+/// ```
+pub fn format_multiline_comment(prefix: &str, text: &str) -> String {
+    text.lines()
+        .map(|line| line.trim())
+        .filter(|line| !line.is_empty())
+        .map(|line| format!("{}{}", prefix, line))
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 #[cfg(test)]
@@ -4783,5 +4850,65 @@ mod tests {
         assert!(script.contains("cleanup() {"));
         assert!(script.contains("rm -f \"$_CAPTURE_TMPFILE\""));
         assert!(script.contains("trap cleanup EXIT"));
+    }
+
+    #[test]
+    fn test_format_as_comment_single_line() {
+        let result = format_as_comment("Description: ", "Single line description");
+        assert_eq!(result, "# Description: Single line description\n");
+    }
+
+    #[test]
+    fn test_format_as_comment_multi_line() {
+        let text =
+            "First line of description\nSecond line of description\nThird line of description";
+        let result = format_as_comment("Description: ", text);
+        let expected = "# Description: First line of description\n# Second line of description\n# Third line of description\n";
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_format_as_comment_multi_line_in_script() {
+        let executor = TestExecutor::new();
+        let mut test_case = TestCase::new(
+            "REQ_DESC".to_string(),
+            1,
+            1,
+            "TC_DESC_001".to_string(),
+            "Multi-line test description".to_string(),
+        );
+        test_case.description = "This is the first line of the description.\nThis is the second line of the description.\nThis is the third line of the description.".to_string();
+
+        let mut sequence = TestSequence::new(1, "Seq1".to_string(), "First sequence".to_string());
+        let step = Step {
+            step: 1,
+            manual: None,
+            description: "Simple echo step".to_string(),
+            command: "echo 'test'".to_string(),
+            capture_vars: None,
+            expected: Expected {
+                success: Some(true),
+                result: "[[ $EXIT_CODE -eq 0 ]]".to_string(),
+                output: "[[ \"$COMMAND_OUTPUT\" == *test* ]]".to_string(),
+            },
+            verification: Verification {
+                result: VerificationExpression::Simple("[[ $EXIT_CODE -eq 0 ]]".to_string()),
+                output: VerificationExpression::Simple(
+                    "[[ \"$COMMAND_OUTPUT\" == *test* ]]".to_string(),
+                ),
+                output_file: None,
+                general: None,
+            },
+            reference: None,
+        };
+        sequence.steps.push(step);
+        test_case.test_sequences.push(sequence);
+
+        let script = executor.generate_test_script(&test_case);
+
+        // Check that all lines of the description are properly commented
+        assert!(script.contains("# Description: This is the first line of the description."));
+        assert!(script.contains("# This is the second line of the description."));
+        assert!(script.contains("# This is the third line of the description."));
     }
 }

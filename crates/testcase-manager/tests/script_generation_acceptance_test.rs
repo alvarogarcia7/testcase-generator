@@ -843,3 +843,219 @@ fn test_json_log_structure_compliance() -> Result<()> {
 
     Ok(())
 }
+
+// ============================================================================
+// Multi-line Description Tests
+// ============================================================================
+
+#[test]
+fn test_multiline_description_in_generated_script() -> Result<()> {
+    let temp_dir = TempDir::new()?;
+    let mut test_case = TestCase::new(
+        "REQ007".to_string(),
+        1,
+        7,
+        "MULTILINE_DESC_TC_001".to_string(),
+        "Test case with multi-line step description".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(
+        1,
+        "MultilineSequence".to_string(),
+        "Sequence with multi-line description".to_string(),
+    );
+
+    let step = Step {
+        step: 1,
+        manual: None,
+        description: "Line 1\nLine 2\nLine 3".to_string(),
+        command: "echo 'test'".to_string(),
+        capture_vars: None,
+        expected: Expected {
+            success: Some(true),
+            result: "[ $EXIT_CODE -eq 0 ]".to_string(),
+            output: "true".to_string(),
+        },
+        verification: Verification {
+            result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+            output: VerificationExpression::Simple("true".to_string()),
+            output_file: None,
+            general: None,
+        },
+        reference: None,
+    };
+    sequence.steps.push(step);
+
+    test_case.test_sequences.push(sequence);
+    let executor = TestExecutor::with_output_dir(temp_dir.path());
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Assert each line is properly commented with '# Step 1: ' prefix
+    assert!(
+        script.contains("# Step 1: Line 1"),
+        "Script should contain '# Step 1: Line 1'"
+    );
+    assert!(
+        script.contains("# Step 1: Line 2"),
+        "Script should contain '# Step 1: Line 2'"
+    );
+    assert!(
+        script.contains("# Step 1: Line 3"),
+        "Script should contain '# Step 1: Line 3'"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn test_multiline_description_with_empty_lines() -> Result<()> {
+    let temp_dir = TempDir::new()?;
+    let mut test_case = TestCase::new(
+        "REQ008".to_string(),
+        1,
+        8,
+        "MULTILINE_EMPTY_TC_001".to_string(),
+        "Test case with multi-line description containing empty lines".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(
+        1,
+        "EmptyLinesSequence".to_string(),
+        "Sequence with empty lines in description".to_string(),
+    );
+
+    let step = Step {
+        step: 1,
+        manual: None,
+        description: "First line\n\nSecond line\n\n\nThird line".to_string(),
+        command: "echo 'test'".to_string(),
+        capture_vars: None,
+        expected: Expected {
+            success: Some(true),
+            result: "[ $EXIT_CODE -eq 0 ]".to_string(),
+            output: "true".to_string(),
+        },
+        verification: Verification {
+            result: VerificationExpression::Simple("[ $EXIT_CODE -eq 0 ]".to_string()),
+            output: VerificationExpression::Simple("true".to_string()),
+            output_file: None,
+            general: None,
+        },
+        reference: None,
+    };
+    sequence.steps.push(step);
+
+    test_case.test_sequences.push(sequence);
+    let executor = TestExecutor::with_output_dir(temp_dir.path());
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Assert each non-empty line is properly commented with '# Step 1: ' prefix
+    assert!(
+        script.contains("# Step 1: First line"),
+        "Script should contain '# Step 1: First line'"
+    );
+    assert!(
+        script.contains("# Step 1: Second line"),
+        "Script should contain '# Step 1: Second line'"
+    );
+    assert!(
+        script.contains("# Step 1: Third line"),
+        "Script should contain '# Step 1: Third line'"
+    );
+
+    // Verify empty lines are filtered out (no standalone "# Step 1:" without content)
+    let lines: Vec<&str> = script.lines().collect();
+    let step_comment_lines: Vec<&str> = lines
+        .iter()
+        .filter(|line| line.starts_with("# Step 1:"))
+        .copied()
+        .collect();
+
+    // Should have exactly 3 comment lines (empty lines filtered out)
+    assert_eq!(
+        step_comment_lines.len(),
+        3,
+        "Should have exactly 3 comment lines for Step 1 (empty lines filtered out)"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn test_multiline_description_in_manual_step() -> Result<()> {
+    let temp_dir = TempDir::new()?;
+    let mut test_case = TestCase::new(
+        "REQ009".to_string(),
+        1,
+        9,
+        "MANUAL_MULTILINE_TC_001".to_string(),
+        "Test case with manual step containing multi-line description".to_string(),
+    );
+
+    let mut sequence = TestSequence::new(
+        1,
+        "ManualMultilineSequence".to_string(),
+        "Manual step with multi-line description".to_string(),
+    );
+
+    let step = Step {
+        step: 1,
+        manual: Some(true),
+        description: "First instruction\nSecond instruction\nThird instruction".to_string(),
+        command: "ssh device".to_string(),
+        capture_vars: None,
+        expected: Expected {
+            success: Some(true),
+            result: "connected".to_string(),
+            output: "success".to_string(),
+        },
+        verification: Verification {
+            result: VerificationExpression::Simple("true".to_string()),
+            output: VerificationExpression::Simple("connection successful".to_string()),
+            output_file: None,
+            general: None,
+        },
+        reference: None,
+    };
+    sequence.steps.push(step);
+
+    test_case.test_sequences.push(sequence);
+    let executor = TestExecutor::with_output_dir(temp_dir.path());
+
+    let script = executor.generate_test_script(&test_case);
+
+    // Assert step comment is properly formatted
+    assert!(
+        script.contains("# Step 1: First instruction"),
+        "Script should contain '# Step 1: First instruction'"
+    );
+    assert!(
+        script.contains("# Step 1: Second instruction"),
+        "Script should contain '# Step 1: Second instruction'"
+    );
+    assert!(
+        script.contains("# Step 1: Third instruction"),
+        "Script should contain '# Step 1: Third instruction'"
+    );
+
+    // Assert the echo statement for manual step prompt contains the multi-line description
+    // (lines should be joined with spaces for the echo output)
+    assert!(
+        script.contains("echo \"Step 1: First instruction Second instruction Third instruction\""),
+        "Script should contain echo statement with joined description for manual step prompt"
+    );
+
+    // Verify manual step helpers are included
+    assert!(
+        script.contains("read_true_false"),
+        "Script should contain read_true_false function for manual step"
+    );
+    assert!(
+        script.contains("INFO: This is a manual step"),
+        "Script should contain manual step info message"
+    );
+
+    Ok(())
+}

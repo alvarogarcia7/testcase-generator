@@ -568,11 +568,9 @@ fn format_batch_report_text(report: &BatchVerificationReport) -> String {
     output.push_str(&format!(
         "             {} passed ({}%)\n",
         report.passed_test_cases,
-        if report.total_test_cases > 0 {
-            (report.passed_test_cases * 100) / report.total_test_cases
-        } else {
-            0
-        }
+        (report.passed_test_cases * 100)
+            .checked_div(report.total_test_cases)
+            .unwrap_or(0)
     ));
     output.push_str(&format!(
         "             {} failed\n",
@@ -583,11 +581,9 @@ fn format_batch_report_text(report: &BatchVerificationReport) -> String {
     output.push_str(&format!(
         "             {} passed ({}%)\n",
         report.passed_steps,
-        if report.total_steps > 0 {
-            (report.passed_steps * 100) / report.total_steps
-        } else {
-            0
-        }
+        (report.passed_steps * 100)
+            .checked_div(report.total_steps)
+            .unwrap_or(0)
     ));
     output.push_str(&format!("             {} failed\n", report.failed_steps));
     output.push_str(&format!(
@@ -956,11 +952,9 @@ fn format_batch_report_verbose(
     output.push_str(&format!(
         "               {} passed ({}%)\n",
         report.passed_test_cases,
-        if report.total_test_cases > 0 {
-            (report.passed_test_cases * 100) / report.total_test_cases
-        } else {
-            0
-        }
+        (report.passed_test_cases * 100)
+            .checked_div(report.total_test_cases)
+            .unwrap_or(0)
     ));
     output.push_str(&format!(
         "               {} failed\n",
@@ -971,11 +965,9 @@ fn format_batch_report_verbose(
     output.push_str(&format!(
         "               {} passed ({}%)\n",
         report.passed_steps,
-        if report.total_steps > 0 {
-            (report.passed_steps * 100) / report.total_steps
-        } else {
-            0
-        }
+        (report.passed_steps * 100)
+            .checked_div(report.total_steps)
+            .unwrap_or(0)
     ));
     output.push_str(&format!("               {} failed\n", report.failed_steps));
     output.push_str(&format!(
