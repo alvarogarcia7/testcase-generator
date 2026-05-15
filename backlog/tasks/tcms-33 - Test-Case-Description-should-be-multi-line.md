@@ -1,9 +1,10 @@
 ---
 id: TCMS-33
 title: Test Case Description should be multi-line
-status: To Do
+status: In Review
 assignee: []
 created_date: '2026-04-06 10:04'
+updated_date: '2026-05-14 12:30'
 labels:
   - defect
 dependencies: []

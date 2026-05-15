@@ -1,10 +1,10 @@
 ---
 id: TCMS-37
 title: TCMS merge results of multiple test campaigns
-status: To Do
+status: In Review
 assignee: []
 created_date: '2026-05-13 16:02'
-updated_date: '2026-05-14 12:14'
+updated_date: '2026-05-14 12:30'
 labels: []
 dependencies: []
 ---
