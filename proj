@@ -1,0 +1,9 @@
+#!/bin/bash
+
+set -ufeo pipefail
+
+source ~/Documents/project/projector/.venv/bin/activate
+
+python -m projector.cli $@
+
+deactivate
