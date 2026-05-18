@@ -37,6 +37,34 @@ test_sequences:
         verification:
           result: "[[ $? -eq 0 ]]"
           output: "grep -q '3' $COMMAND_OUTPUT"
+#          Missing: for i in $(seq 0 3); do echo $i; done
+#  0
+#  1
+#  2
+#  3
+#      A=3; for i in $(seq 0 $A); do echo $i; done
+#      0
+#      1
+#      2
+#      3
+#      A=3; for i in $(seq 0 $((A+1))); do echo $i; done
+      #0
+      #1
+      #2
+      #3
+      #4
+#      B=1; A=3; for i in $(seq 0 $((A+B))); do echo $i; done
+#      0
+#      1
+#      2
+#      3
+#      4
+#      B=1; A=3; for i in $(seq 0 $((A+((B+1))))); do echo $i; done
+#      0
+#      1
+#      2
+#      3
+#      4
       - step: 3
         description: Loop with break
         command: for i in 1 2 3 4 5; do if [ $i -eq 3 ]; then break; fi; echo $i; done

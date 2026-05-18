@@ -27,6 +27,8 @@ test_sequences:
         verification:
           result: "[[ $? -eq 0 ]]"
           output: "grep -q 'equal' $COMMAND_OUTPUT"
+#          Missing double [[ for test
+#        command: if [[ 1 -eq 1 ]]; then echo "equal"; fi
       - step: 2
         description: String comparison
         command: str="test"; if [ "$str" = "test" ]; then echo "match"; fi
